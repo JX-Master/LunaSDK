@@ -40,7 +40,6 @@ public sealed class StudioTargetRules : TargetRules
             "Font",
             "GUI",
             "GUIWindow",
-            "ImGui",
             "Asset",
             "ObjLoader",
             "RG",

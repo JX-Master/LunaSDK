@@ -29,6 +29,7 @@ namespace Luna
             menu_separator,
             table_layout,
             grid_layout,
+            canvas_layout,
             text,
             button,
             selectable,
@@ -81,6 +82,12 @@ namespace Luna
             hsv
         };
 
+        enum class GUIImageFlag : u32
+        {
+            none = 0x00,
+            flip_y = 0x01
+        };
+
         struct GUINode
         {
             GUIID id = 0;
@@ -110,6 +117,9 @@ namespace Luna
             GUIID menu_popup_id = 0;
             GUITableDesc table_desc;
             GUIGridLayoutDesc grid_desc;
+            GUICanvasLayoutDesc canvas_desc;
+            bool has_canvas_item_layout = false;
+            GUICanvasItemLayout canvas_item_layout;
             bool has_table_cell_color = false;
             Float4U table_cell_color = Float4U(0.0f);
             GUITreeNodeFlag tree_flags = GUITreeNodeFlag::none;
@@ -120,6 +130,7 @@ namespace Luna
             RectF user_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             bool selected = false;
             bool enabled = true;
+            GUIImageFlag image_flags = GUIImageFlag::none;
             RectF paint_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             Float2U paint_line_begin = Float2U(0.0f);
             Float2U paint_line_end = Float2U(0.0f);

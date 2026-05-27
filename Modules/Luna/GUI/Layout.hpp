@@ -179,6 +179,48 @@ namespace Luna
             GUILayoutCrossAxisAlignment cell_cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
         };
 
+        struct GUICanvasLayoutDesc
+        {
+            GUIEdgeInsets padding;
+            bool clip_children = true;
+        };
+
+        struct GUICanvasItemLayout
+        {
+            Float2U anchor_min = Float2U(0.0f, 0.0f);
+            Float2U anchor_max = Float2U(0.0f, 0.0f);
+            Float2U offset_min = Float2U(0.0f, 0.0f);
+            Float2U offset_max = Float2U(0.0f, 0.0f);
+
+            static GUICanvasItemLayout fixed(const Float2U& position, const Float2U& size)
+            {
+                GUICanvasItemLayout r;
+                r.offset_min = position;
+                r.offset_max = position + size;
+                return r;
+            }
+
+            static GUICanvasItemLayout anchored(const Float2U& anchor, const Float2U& anchored_position, const Float2U& size, const Float2U& pivot = Float2U(0.5f, 0.5f))
+            {
+                GUICanvasItemLayout r;
+                r.anchor_min = anchor;
+                r.anchor_max = anchor;
+                Float2U min_offset = anchored_position - size * pivot;
+                r.offset_min = min_offset;
+                r.offset_max = min_offset + size;
+                return r;
+            }
+
+            static GUICanvasItemLayout stretch(const GUIEdgeInsets& insets = GUIEdgeInsets())
+            {
+                GUICanvasItemLayout r;
+                r.anchor_max = Float2U(1.0f, 1.0f);
+                r.offset_min = Float2U(insets.left, insets.top);
+                r.offset_max = Float2U(-insets.right, -insets.bottom);
+                return r;
+            }
+        };
+
         enum class GUITreeNodeFlag : u32
         {
             none = 0x00,

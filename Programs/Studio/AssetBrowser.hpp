@@ -60,10 +60,10 @@ namespace Luna
 
         void change_path(const Path& path);
 
-        void render();
+        void render(bool* open);
 
     private:
-        void navbar();
-        void tile_context();
+        void navbar(const RectF& rect);
+        void tile_context(const RectF& rect);
     };
 }

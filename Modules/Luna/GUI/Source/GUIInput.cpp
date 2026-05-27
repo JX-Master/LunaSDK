@@ -1419,12 +1419,20 @@ namespace Luna
 
         void GUIContext::process_input_events()
         {
+            m_pointer_delta = Float2U(0.0f);
+            auto update_pointer_position = [&](const Float2U& position)
+            {
+                m_pointer_delta.x += position.x - m_pointer_pos.x;
+                m_pointer_delta.y += position.y - m_pointer_pos.y;
+                m_pointer_pos = position;
+            };
+
             for(const GUIInputEvent& e : m_input_events)
             {
                 if(e.type == GUIInputEventType::pointer_enter)
                 {
                     m_pointer_inside = true;
-                    m_pointer_pos = e.position;
+                    update_pointer_position(e.position);
                 }
                 else if(e.type == GUIInputEventType::pointer_leave)
                 {
@@ -1435,7 +1443,7 @@ namespace Luna
                 {
                     Float2U old_pos = m_pointer_pos;
                     m_pointer_inside = true;
-                    m_pointer_pos = e.position;
+                    update_pointer_position(e.position);
                     if(m_drag_drop_candidate_source_id && !m_drag_drop_active)
                     {
                         f32 dx = e.position.x - m_drag_drop_start_pos.x;
@@ -1513,7 +1521,11 @@ namespace Luna
                 else if(e.type == GUIInputEventType::pointer_down)
                 {
                     m_pointer_inside = true;
-                    m_pointer_pos = e.position;
+                    update_pointer_position(e.position);
+                    if((u32)e.button < 5)
+                    {
+                        m_pointer_button_down[(u32)e.button] = true;
+                    }
                     m_active_float_component = U32_MAX;
                     m_active_numeric_defer_until_drag = false;
                     m_active_color_part = 0;
@@ -1892,7 +1904,11 @@ namespace Luna
                 else if(e.type == GUIInputEventType::pointer_up)
                 {
                     m_pointer_inside = true;
-                    m_pointer_pos = e.position;
+                    update_pointer_position(e.position);
+                    if((u32)e.button < 5)
+                    {
+                        m_pointer_button_down[(u32)e.button] = false;
+                    }
                     if(e.button == GUIPointerButton::right)
                     {
                         GUIID target = hit_test(e.position);
@@ -2303,7 +2319,7 @@ namespace Luna
                 else if(e.type == GUIInputEventType::pointer_wheel)
                 {
                     m_pointer_inside = true;
-                    m_pointer_pos = e.position;
+                    update_pointer_position(e.position);
                     GUIID dropdown_combo = 0;
                     i32 dropdown_item = -1;
                     if(hit_test_combo_dropdown(e.position, dropdown_combo, dropdown_item))
@@ -2384,6 +2400,11 @@ namespace Luna
                 }
                 else if(e.type == GUIInputEventType::key_down)
                 {
+                    if((u32)e.key < 256)
+                    {
+                        m_key_down[(u32)e.key] = true;
+                    }
+                    m_key_modifiers = e.modifiers;
                     if(e.key == GUIKey::esc && !m_open_popup_stack.empty())
                     {
                         if(test_flags(m_open_popup_stack.back().flags, GUIPopupFlag::close_on_escape))
@@ -2531,6 +2552,14 @@ namespace Luna
                         break;
                     }
                 }
+                else if(e.type == GUIInputEventType::key_up)
+                {
+                    if((u32)e.key < 256)
+                    {
+                        m_key_down[(u32)e.key] = false;
+                    }
+                    m_key_modifiers = e.modifiers;
+                }
                 else if(e.type == GUIInputEventType::blur)
                 {
                     if(m_focused_id)
@@ -2567,6 +2596,15 @@ namespace Luna
                     m_active_dock_panel_start_neighbor_height = 0.0f;
                     m_active_dock_split_space_id = 0;
                     m_active_dock_split_node = U32_MAX;
+                    m_key_modifiers = GUIKeyModifierFlag::none;
+                    for(bool& down : m_key_down)
+                    {
+                        down = false;
+                    }
+                    for(bool& down : m_pointer_button_down)
+                    {
+                        down = false;
+                    }
                     close_combo_dropdowns_except(0);
                     for(usize i = 0; i < m_open_popup_stack.size(); ++i)
                     {

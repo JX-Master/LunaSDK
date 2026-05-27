@@ -609,6 +609,7 @@ namespace Luna
                 kind == GUINodeKind::tree_node ||
                 kind == GUINodeKind::table_layout ||
                 kind == GUINodeKind::grid_layout ||
+                kind == GUINodeKind::canvas_layout ||
                 kind == GUINodeKind::dock_space ||
                 kind == GUINodeKind::tab_bar)
             {
@@ -1221,6 +1222,7 @@ namespace Luna
             GUIID m_focused_id = 0;
             GUIID m_hovered_id = 0;
             Float2U m_pointer_pos = Float2U(0.0f);
+            Float2U m_pointer_delta = Float2U(0.0f);
             bool m_pointer_inside = false;
             u32 m_active_float_component = U32_MAX;
             Float2U m_active_numeric_start_pos = Float2U(0.0f);
@@ -1229,6 +1231,8 @@ namespace Luna
             bool m_submitted = false;
             bool m_has_next_item_layout = false;
             GUILayoutStyle m_next_item_layout;
+            bool m_has_next_canvas_item_layout = false;
+            GUICanvasItemLayout m_next_canvas_item_layout;
             bool m_has_next_table_cell_color = false;
             Float4U m_next_table_cell_color = Float4U(0.0f);
             bool m_has_next_dock_panel_style = false;
@@ -1289,6 +1293,9 @@ namespace Luna
             GUIDragDropPayload m_drag_drop_payload_view;
             GUIID m_tooltip_hovered_id = 0;
             f64 m_tooltip_hover_start = 0.0;
+            bool m_pointer_button_down[5] = {};
+            bool m_key_down[256] = {};
+            GUIKeyModifierFlag m_key_modifiers = GUIKeyModifierFlag::none;
             u64 m_generation = 0;
             f64 m_time = 0.0;
             Ref<VG::IShapeDrawList> m_shape_draw_list;
@@ -1337,6 +1344,7 @@ namespace Luna
             void set_state(GUIItemHandle handle, const Name& key, const Any& value);
             void remove_state(GUIItemHandle handle, const Name& key);
             void set_next_item_layout(const GUILayoutStyle& style);
+            void set_next_canvas_item_layout(const GUICanvasItemLayout& layout);
             void set_next_table_cell_color(const Float4U& color);
             void set_next_dock_panel_style(const GUIDockPanelStyle& style, bool* open);
             void push_id(GUIID id);
@@ -1344,6 +1352,7 @@ namespace Luna
             void push_clip_rect(const RectF& rect);
             void pop_clip_rect();
             void tree_push();
+            void tree_push(GUIItemHandle node);
             void tree_pop();
             bool begin_drag_drop_source(GUIItemHandle source, const Name& payload_type);
             void set_drag_drop_payload(const void* data, usize data_size);
@@ -1375,6 +1384,7 @@ namespace Luna
             void measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred);
             void arrange_table_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void arrange_grid_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
+            void arrange_canvas_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void arrange_tab_bar_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void arrange_dock_space_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void render_table_node(u32 node_index);
@@ -1430,7 +1440,8 @@ namespace Luna
             void render_combo_dropdown(const GUINode& node, const RectF& rect);
             void render_drag_drop_overlay();
             void render_scrollbars(u32 node_index);
-            void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius, RHI::ITexture* texture = nullptr);
+            void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
+                RHI::ITexture* texture = nullptr, GUIImageFlag image_flags = GUIImageFlag::none);
             void render_gradient_rect(const RectF& rect, const RectF& clip_rect,
                 const Float4U& top_left, const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left);
             void render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,

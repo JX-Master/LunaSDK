@@ -26,6 +26,9 @@ namespace Luna
 
     bool edit_actor_ref(const c8* name, World* world, ActorRef& ref);
 
+    void push_edit_object_gui_flow_layout();
+    void pop_edit_object_gui_flow_layout();
+
     bool edit_object(typeinfo_t type, void* data);
 
     bool edit_scene_object(World* world, typeinfo_t type, void* data);

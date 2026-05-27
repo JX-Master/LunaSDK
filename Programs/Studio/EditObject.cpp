@@ -10,9 +10,9 @@
 #include "EditObject.hpp"
 #include <Luna/Runtime/Reflection.hpp>
 #include <Luna/GUI/GUI.hpp>
-#include <Luna/ImGui/ImGui.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
+#include <Luna/Runtime/HashMap.hpp>
 #include "MainEditor.hpp"
 
 namespace Luna
@@ -24,31 +24,72 @@ namespace Luna
             Float2 size;
         };
 
+        u32 g_gui_property_flow_depth = 0;
+
         GUIPropertyRow begin_gui_property_row(const c8* name, f32 height = 30.0f)
         {
-            Float2 pos = ImGui::GetCursorScreenPos();
-            Float2 avail = ImGui::GetContentRegionAvail();
-            f32 width = max(avail.x, 240.0f);
+            (void)g_gui_property_flow_depth;
+            GUI::GUILayoutStyle row_style = GUI::GUILayoutStyle::fill_width();
+            row_style.height_policy = GUI::GUISizePolicy::fixed;
+            row_style.fixed_height_value = height;
+            GUI::SetNextItemLayout(row_style);
             GUI::GUILayoutDesc row;
             row.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::stretch;
-            GUI::BeginHLayout(name, RectF(pos.x, pos.y, width, height), row);
+            GUI::BeginHLayout(name, row);
             GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
-            return GUIPropertyRow { Float2(width, height) };
+            return GUIPropertyRow { Float2(0.0f, height) };
         }
 
         bool end_gui_property_row(const GUIPropertyRow& row, GUI::GUIItemHandle item)
         {
+            (void)row;
             GUI::EndHLayout();
-            ImGui::Dummy(row.size);
             return GUI::GetItemState(item, GUI::GUIState::value_changed());
         }
+
+        void end_gui_property_row(const GUIPropertyRow& row)
+        {
+            (void)row;
+            GUI::EndHLayout();
+        }
+
+        template <typename _Ty>
+        _Ty& get_edit_buffer(HashMap<usize, _Ty>& buffers, usize key, const _Ty& default_value)
+        {
+            auto iter = buffers.find(key);
+            if(iter == buffers.end())
+            {
+                iter = buffers.insert_or_assign(key, default_value).first;
+            }
+            return iter->second;
+        }
+
+        Float3 quaternion_to_euler_degrees(const Float4& quaternion)
+        {
+            Float3 euler = AffineMatrix::euler_angles(AffineMatrix::make_rotation(quaternion));
+            euler *= 180.0f / PI;
+            if (euler.x > 89.0f || euler.x < -89.0f)
+            {
+                euler.z = 0.0f;
+            }
+            return euler;
+        }
+
+        HashMap<usize, f32> g_radian_edit_buffers;
+        HashMap<usize, Float3> g_quaternion_edit_buffers;
+        HashMap<usize, String> g_name_edit_buffers;
     }
 
-    /*static bool edit_primitive(const Name& name, typeinfo_t type, void* obj)
+    void push_edit_object_gui_flow_layout()
     {
-        if (type == boolean_type()) return ImGui::Checkbox(name.c_str(), (bool*)obj);
+        ++g_gui_property_flow_depth;
+    }
 
-    }*/
+    void pop_edit_object_gui_flow_layout()
+    {
+        luassert(g_gui_property_flow_depth);
+        --g_gui_property_flow_depth;
+    }
 
     bool edit_enum(const c8* name, typeinfo_t type, void* obj)
     {
@@ -77,8 +118,7 @@ namespace Luna
             strprintf(label, "%s: %s", name, descs[current_item].name.c_str());
             GUIPropertyRow row = begin_gui_property_row(name);
             GUI::GUIItemHandle button = GUI::Button(label.c_str());
-            GUI::EndHLayout();
-            ImGui::Dummy(row.size);
+            end_gui_property_row(row);
             if(GUI::IsItemClicked(button))
             {
                 current_item = (current_item + 1) % descs.size();
@@ -97,7 +137,6 @@ namespace Luna
             return false;
         }
 
-        ImGui::PushID((int)(usize)obj);
         GUI::PushID(obj);
 
         bool edited = false;
@@ -122,15 +161,20 @@ namespace Luna
                 }
                 if (get_property_attribute(object_type, name, "radian") == true)
                 {
-                    f32 v_edit = rad_to_deg(*data);
-                    v_min = rad_to_deg(v_min);
-                    v_max = rad_to_deg(v_max);
-                    f32 speed = (v_max <= v_min) ? 1.0f : (v_max - v_min) / 100.0f;
-                    ImGui::DragFloat(name, &v_edit, speed, v_min, v_max);
-                    if (ImGui::IsItemEdited())
+                    f32 v_min_deg = rad_to_deg(v_min);
+                    f32 v_max_deg = rad_to_deg(v_max);
+                    f32& v_edit = get_edit_buffer(g_radian_edit_buffers, (usize)obj, rad_to_deg(*data));
+                    f32 speed = (v_max_deg <= v_min_deg) ? 1.0f : (v_max_deg - v_min_deg) / 100.0f;
+                    GUIPropertyRow row = begin_gui_property_row(name);
+                    GUI::GUIItemHandle item = GUI::DragFloat(name, &v_edit, speed, v_min_deg, v_max_deg);
+                    edited = end_gui_property_row(row, item);
+                    if (edited)
                     {
                         *data = deg_to_rad(v_edit);
-                        edited = true;
+                    }
+                    else if(!GUI::IsItemActive(item) && !GUI::IsItemFocused(item))
+                    {
+                        v_edit = rad_to_deg(*data);
                     }
                 }
                 else
@@ -189,18 +233,18 @@ namespace Luna
             if(quat == true)
             {
                 Float4* data = (Float4*)obj;
-                auto euler = AffineMatrix::euler_angles(AffineMatrix::make_rotation(*data));
-                euler *= 180.0f / PI;
-                if (euler.x > 89.0f || euler.x < -89.0f)
+                Float3& euler = get_edit_buffer(g_quaternion_edit_buffers, (usize)obj, quaternion_to_euler_degrees(*data));
+                GUIPropertyRow row = begin_gui_property_row(name);
+                GUI::GUIItemHandle item = GUI::DragFloat3(name, euler.m, 0.1f, 0.0f, 0.0f);
+                edited = end_gui_property_row(row, item);
+                if (edited)
                 {
-                    euler.z = 0.0f;
+                    Float3 radians = euler * (PI / 180.0f);
+                    *data = Quaternion::from_euler_angles(radians);
                 }
-                ImGui::DragFloat3(name, euler.m);
-                if (ImGui::IsItemEdited())
+                else if(!GUI::IsItemActive(item) && !GUI::IsItemFocused(item))
                 {
-                    edited = true;
-                    euler *= PI / 180.0f;
-                    *data = Quaternion::from_euler_angles(euler);
+                    euler = quaternion_to_euler_degrees(*data);
                 }
             }
             else
@@ -219,16 +263,21 @@ namespace Luna
         else if (type == typeof<Name>())
         {
             Name* data = (Name*)obj;
-            String buf = data->c_str();
-            if (ImGui::InputText(name, buf))
+            String& buf = get_edit_buffer(g_name_edit_buffers, (usize)obj, String(data->c_str()));
+            GUIPropertyRow row = begin_gui_property_row(name);
+            GUI::GUIItemHandle item = GUI::InputText(name, buf);
+            edited = end_gui_property_row(row, item);
+            if (edited)
             {
                 *data = buf;
-                edited = true;
+            }
+            else if(!GUI::IsItemActive(item) && !GUI::IsItemFocused(item))
+            {
+                buf = data->c_str();
             }
         }
 
         GUI::PopID();
-        ImGui::PopID();
         return edited;
     }
 
@@ -249,10 +298,10 @@ namespace Luna
     {
         if (type == typeof<ActorRef>())
         {
-            ImGui::PushID((int)(usize)obj);
+            GUI::PushID(obj);
             ActorRef* ref = (ActorRef*)obj;
             bool edited = edit_actor_ref(name, world, *ref);
-            ImGui::PopID();
+            GUI::PopID();
             return edited;
         }
         else
@@ -276,65 +325,63 @@ namespace Luna
 
     bool edit_asset(const c8* name, Asset::asset_t& asset)
     {
-        using namespace ImGui;
-
         bool edited = false;
+        GUI::PushID(&asset);
 
-        String label = "##";
-        if (asset)
+        GUIPropertyRow row = begin_gui_property_row(name, 104.0f);
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(100.0f));
+        GUI::GUIItemHandle target = GUI::Button(asset ? "" : "(None)");
+
+        Name asset_ref_payload_type("Asset Ref");
+        if (GUI::BeginDragDropTarget(target, asset_ref_payload_type))
         {
-            label.append(Asset::get_asset_type(asset).c_str());
+            GUI::EndDragDropTarget();
         }
-
-        ImGui::Button(label.c_str(), {100, 100});
-
-        if (BeginDragDropTarget())
+        if (const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(target, asset_ref_payload_type))
         {
-            const ImGuiPayload* payload = AcceptDragDropPayload("Asset Ref");
-            if (payload)
+            if (const Asset::asset_t* data = payload->data_as<Asset::asset_t>())
             {
-                const Asset::asset_t* data = (const Asset::asset_t*)payload->Data;
                 asset = *data;
                 edited = true;
             }
-            EndDragDropTarget();
         }
 
         if (asset)
         {
-            ImGui::SameLine();
-
-            auto pos_after = ImGui::GetCursorScreenPos();
-
-            auto pos = ImGui::GetItemRectMin();
-            auto size = ImGui::GetItemRectSize();
-            RectF draw_rect = RectF(pos.x, pos.y, size.x, size.y);
-            draw_asset_tile(asset, draw_rect);
-
-            ImGui::SetCursorScreenPos(pos_after);
+            RectF draw_rect = GUI::GetItemState(target, GUI::GUIState::rect());
+            if(draw_rect.width > 1.0f && draw_rect.height > 1.0f)
+            {
+                draw_asset_tile(asset, draw_rect);
+            }
             auto path = Asset::get_asset_path(asset);
-            Text("%s", path.encode().c_str());
-            SameLine();
-            PushID(name);
-            if (Button("Clear"))
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+            GUI::Text(path.encode().c_str());
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(72.0f));
+            GUI::GUIItemHandle clear_button = GUI::Button("Clear");
+            if (GUI::IsItemClicked(clear_button))
             {
                 asset.reset();
                 edited = true;
             }
-            PopID();
+        }
+        else
+        {
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+            GUI::Text("(drop asset here)");
         }
 
-        ImGui::SameLine();
-        ImGui::Text("%s", name);
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(120.0f));
+        GUI::Text(name);
+        end_gui_property_row(row);
+        GUI::PopID();
 
         return edited;
     }
 
     bool edit_actor_ref(const c8* name, World* world, ActorRef& ref)
     {
-        using namespace ImGui;
-
         bool edited = false;
+        GUI::PushID(&ref);
 
         const c8* actor_name = "(None)";
         if(ref.guid != Guid(0, 0))
@@ -346,22 +393,28 @@ namespace Luna
             }
         }
 
-        ImGui::Button(actor_name, {100.0f, ImGui::GetTextLineHeightWithSpacing()});
+        GUIPropertyRow row = begin_gui_property_row(name, 30.0f);
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(160.0f));
+        GUI::GUIItemHandle target = GUI::Button(actor_name);
 
-        if (BeginDragDropTarget())
+        Name actor_ref_payload_type("Actor Ref");
+        if (GUI::BeginDragDropTarget(target, actor_ref_payload_type))
         {
-            const ImGuiPayload* payload = AcceptDragDropPayload("Actor Ref");
-            if (payload)
+            GUI::EndDragDropTarget();
+        }
+        if (const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(target, actor_ref_payload_type))
+        {
+            if (const Guid* data = payload->data_as<Guid>())
             {
-                const Guid* data = (const Guid*)payload->Data;
                 ref.guid = *data;
                 edited = true;
             }
-            EndDragDropTarget();
         }
 
-        ImGui::SameLine();
-        ImGui::Text("%s", name);
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+        GUI::Text(name);
+        end_gui_property_row(row);
+        GUI::PopID();
         return edited;
     }
 }

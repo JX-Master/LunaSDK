@@ -170,6 +170,12 @@ namespace Luna
                 node.layout_style = m_next_item_layout;
                 m_has_next_item_layout = false;
             }
+            if(m_has_next_canvas_item_layout)
+            {
+                node.has_canvas_item_layout = true;
+                node.canvas_item_layout = m_next_canvas_item_layout;
+                m_has_next_canvas_item_layout = false;
+            }
             if(m_has_next_table_cell_color)
             {
                 node.has_table_cell_color = true;
@@ -225,6 +231,11 @@ namespace Luna
                 m_build_desc.nodes[index].layout_desc.gap = 0.0f;
             }
             if(kind == GUINodeKind::tab_bar)
+            {
+                m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(0.0f);
+                m_build_desc.nodes[index].layout_desc.gap = 0.0f;
+            }
+            if(kind == GUINodeKind::canvas_layout)
             {
                 m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(0.0f);
                 m_build_desc.nodes[index].layout_desc.gap = 0.0f;
@@ -287,6 +298,15 @@ namespace Luna
             luassert(m_last_item_id != 0);
             ++m_tree_depth;
             m_id_stack.push_back(m_last_item_id);
+        }
+
+        void GUIContext::tree_push(GUIItemHandle node)
+        {
+            lutsassert();
+            luassert(node.context == get_object());
+            luassert(node.id != 0);
+            ++m_tree_depth;
+            m_id_stack.push_back(node.id);
         }
 
         void GUIContext::tree_pop()
@@ -530,6 +550,13 @@ namespace Luna
             lutsassert();
             m_next_item_layout = style;
             m_has_next_item_layout = true;
+        }
+
+        void GUIContext::set_next_canvas_item_layout(const GUICanvasItemLayout& layout)
+        {
+            lutsassert();
+            m_next_canvas_item_layout = layout;
+            m_has_next_canvas_item_layout = true;
         }
 
         void GUIContext::set_next_table_cell_color(const Float4U& color)

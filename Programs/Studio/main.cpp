@@ -72,7 +72,6 @@ namespace Luna
             module_font(),
             GUI::module_gui(),
             GUIWindow::module_gui_window(),
-            module_imgui(),
             module_asset(),
             module_obj_loader(),
             module_rg(),

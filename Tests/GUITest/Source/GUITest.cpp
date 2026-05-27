@@ -390,6 +390,40 @@ namespace Luna
         GUI::EndGridLayout();
         GUI::EndScrollView();
 
+        GUI::Text("CanvasLayout");
+        f32 canvas_width = max(app.showcase_content_size.x - 16.0f, 260.0f);
+        f32 canvas_height = 190.0f;
+        GUI::BeginCanvasLayout("Viewport Canvas", GUI::GUISize::fixed(canvas_width, canvas_height));
+        GUI::SetNextCanvasItemLayout(GUI::GUICanvasItemLayout::stretch(GUI::GUIEdgeInsets::all(8.0f)));
+        GUI::GUIItemHandle viewport = GUI::Image(nullptr, GUI::GUISize());
+        RectF viewport_rect = GUI::GetItemState(viewport, GUI::GUIState::rect());
+        if(viewport_rect.width > 1.0f && viewport_rect.height > 1.0f)
+        {
+            GUI::DrawRect(viewport_rect, Float4U(0.05f, 0.07f, 0.09f, 1.0f), 6.0f);
+            GUI::DrawLine(Float2U(viewport_rect.offset_x + 20.0f, viewport_rect.offset_y + viewport_rect.height - 24.0f),
+                Float2U(viewport_rect.offset_x + viewport_rect.width - 24.0f, viewport_rect.offset_y + 24.0f),
+                Float4U(0.14f, 0.36f, 0.68f, 0.9f), 4.0f);
+        }
+        GUI::SetNextCanvasItemLayout(GUI::GUICanvasItemLayout::fixed(Float2U(18.0f, 14.0f), Float2U(230.0f, 28.0f)));
+        GUI::Text("Top-left anchored overlay");
+        GUI::SetNextCanvasItemLayout(GUI::GUICanvasItemLayout::anchored(Float2U(1.0f, 0.0f), Float2U(-94.0f, 28.0f), Float2U(170.0f, 34.0f)));
+        GUI::Button("Top Right");
+        GUI::SetNextCanvasItemLayout(GUI::GUICanvasItemLayout::anchored(Float2U(0.5f, 0.5f), Float2U(0.0f, 0.0f), Float2U(220.0f, 44.0f)));
+        handles.canvas_hit = GUI::Button("Center Hit Target");
+        GUI::SetItemTooltip(handles.canvas_hit, "Canvas children are positioned by anchor and offset, not cursor order.");
+        GUI::GUICanvasItemLayout bottom_bar;
+        bottom_bar.anchor_min = Float2U(0.0f, 1.0f);
+        bottom_bar.anchor_max = Float2U(1.0f, 1.0f);
+        bottom_bar.offset_min = Float2U(18.0f, -48.0f);
+        bottom_bar.offset_max = Float2U(-18.0f, -12.0f);
+        GUI::SetNextCanvasItemLayout(bottom_bar);
+        GUI::BeginHLayout("Canvas Bottom Bar", row);
+        GUI::Text("Bottom stretch");
+        GUI::Button("Overlay");
+        GUI::Button("Controls");
+        GUI::EndHLayout();
+        GUI::EndCanvasLayout();
+
         GUI::Text("ScrollView");
         GUI::BeginScrollView("Nested Scroll", GUI::GUISize::fixed(max(app.showcase_content_size.x - 16.0f, 240.0f), min(max(app.showcase_content_size.y * 0.30f, 120.0f), 220.0f)));
         for(u32 i = 0; i < 16; ++i)

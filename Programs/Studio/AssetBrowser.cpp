@@ -99,24 +99,21 @@ namespace Luna
         return path;
     }
 
-    static bool gui_nav_button(const c8* label, bool disabled)
+    static GUI::GUIItemHandle gui_nav_button_at(const c8* label, const RectF& rect, bool disabled)
     {
-        constexpr f32 button_size = 24.0f;
-        Float2 pos = ImGui::GetCursorScreenPos();
-        RectF rect(pos.x, pos.y, button_size, button_size);
-        GUI::GUIItemHandle handle;
         if(disabled)
         {
             GUI::DrawRect(rect, Float4U(0.12f, 0.14f, 0.17f, 0.65f), 4.0f);
             GUI::DrawText(rect, label, Float4U(0.65f, 0.68f, 0.72f, 0.65f), 15.0f,
                 GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
+            return GUI::GUIItemHandle();
         }
-        else
-        {
-            handle = GUI::Button(label, rect);
-        }
-        ImGui::Dummy(Float2(button_size, button_size));
-        return !disabled && GUI::IsItemClicked(handle);
+        return GUI::Button(label, rect);
+    }
+
+    static f32 estimate_gui_text_width(const c8* text)
+    {
+        return text ? (f32)strlen(text) * 8.0f : 0.0f;
     }
 
     inline Path get_new_folder_path(const Path& dir_path)
@@ -158,7 +155,7 @@ namespace Luna
         }
     }
 
-    void AssetBrowser::render()
+    void AssetBrowser::render(bool* open)
     {
         for (auto& asset : m_deleting_assets)
         {
@@ -170,21 +167,37 @@ namespace Luna
         }
         m_deleting_assets.clear();
 
-        char title[64];
-        snprintf(title, 64, "Asset Browser##%llu", (u64)this);
+        if(open && !*open)
+        {
+            return;
+        }
 
-        ImGui::SetNextWindowSize({ 1000.0f, 500.0f }, ImGuiCond_FirstUseEver);
-        ImGui::Begin(title, nullptr, ImGuiWindowFlags_NoCollapse);
-        m_host_focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+        GUI::PushID(this);
+        GUI::GUIDockPanelStyle panel_style;
+        panel_style.floating_size = Float2U(1000.0f, 500.0f);
+        panel_style.min_floating_size = Float2U(320.0f, 220.0f);
+        GUI::GUILayoutDesc panel_layout;
+        panel_layout.padding = GUI::GUIEdgeInsets::all(0.0f);
+        panel_layout.gap = 0.0f;
+        GUI::GUIItemHandle panel = GUI::BeginDockPanel("Asset Browser", open, panel_style, panel_layout);
+        m_host_focused = GUI::IsItemFocused(panel) || GUI::IsItemHovered(panel) || GUI::IsItemActive(panel);
 
-        Float2 host_min = ImGui::GetCursorScreenPos();
-        Float2 host_size = ImGui::GetContentRegionAvail();
-        RectF host_rect(host_min.x, host_min.y, max(host_size.x, 1.0f), max(host_size.y, 1.0f));
+        RectF host_rect = GUI::GetItemState(panel, GUI::GUIState::rect());
+        if(host_rect.width <= 1.0f || host_rect.height <= 1.0f)
+        {
+            GUI::Text("Asset Browser");
+            GUI::EndDockPanel();
+            GUI::PopID();
+            return;
+        }
         GUI::PushClipRect(host_rect);
         GUI::DrawRect(host_rect, Float4U(0.06f, 0.07f, 0.08f, 1.0f), 0.0f);
 
-        Float2 menu_pos = ImGui::GetCursorScreenPos();
-        GUI::BeginMenuBar("Asset Browser Menu Bar", RectF(menu_pos.x, menu_pos.y, 146.0f, 30.0f));
+        constexpr f32 menu_height = 30.0f;
+        constexpr f32 nav_height = 30.0f;
+        constexpr f32 gap = 6.0f;
+        RectF menu_rect(host_rect.offset_x, host_rect.offset_y, min(146.0f, host_rect.width), menu_height);
+        GUI::BeginMenuBar("Asset Browser Menu Bar", menu_rect);
         GUI::BeginMenu("New");
         GUI::GUIItemHandle folder_item = GUI::MenuItem("Folder");
         Vector<Pair<Name, GUI::GUIItemHandle>> asset_items;
@@ -203,7 +216,6 @@ namespace Luna
         }
         GUI::EndMenu();
         GUI::EndMenuBar();
-        ImGui::Dummy(Float2(146.0f, 30.0f));
 
         if(GUI::IsItemClicked(folder_item))
         {
@@ -235,46 +247,58 @@ namespace Luna
             }
         }
 
-        navbar();
+        RectF navbar_rect(host_rect.offset_x, host_rect.offset_y + menu_height + gap, host_rect.width, nav_height);
+        navbar(navbar_rect);
 
-        tile_context();
+        RectF tile_rect(host_rect.offset_x, navbar_rect.offset_y + navbar_rect.height + gap, host_rect.width,
+            max(host_rect.height - menu_height - nav_height - gap * 2.0f, 1.0f));
+        tile_context(tile_rect);
 
         GUI::PopClipRect();
-        ImGui::End();
+        GUI::EndDockPanel();
+        GUI::PopID();
     }
-    void AssetBrowser::navbar()
+    void AssetBrowser::navbar(const RectF& rect)
     {
+        constexpr f32 button_size = 24.0f;
+        constexpr f32 gap = 6.0f;
+        constexpr f32 row_padding_y = 3.0f;
+        f32 row_width = max(rect.width, button_size * 3.0f + gap * 3.0f + 64.0f);
+        f32 cursor_x = rect.offset_x;
+        f32 button_y = rect.offset_y + row_padding_y;
+
         // Draw back/forward/pop arrow.
         bool back_disabled = (m_current_location_in_histroy_path == 0);
-        if (gui_nav_button("<", back_disabled))
+        GUI::GUIItemHandle back_button = gui_nav_button_at("<", RectF(cursor_x, button_y, button_size, button_size), back_disabled);
+        cursor_x += button_size + gap;
+        if (GUI::IsItemClicked(back_button))
         {
             --m_current_location_in_histroy_path;
             m_path.assign(m_histroy_paths[m_current_location_in_histroy_path]);
         }
-        ImGui::SameLine();
         bool forward_disabled = (m_current_location_in_histroy_path == m_histroy_paths.size() - 1);
-        if (gui_nav_button(">", forward_disabled))
+        GUI::GUIItemHandle forward_button = gui_nav_button_at(">", RectF(cursor_x, button_y, button_size, button_size), forward_disabled);
+        cursor_x += button_size + gap;
+        if (GUI::IsItemClicked(forward_button))
         {
             ++m_current_location_in_histroy_path;
             m_path.assign(m_histroy_paths[m_current_location_in_histroy_path]);
         }
-        ImGui::SameLine();
         bool pop_disabled = m_path.empty();
-        if (gui_nav_button("^", pop_disabled))
+        GUI::GUIItemHandle pop_button = gui_nav_button_at("^", RectF(cursor_x, button_y, button_size, button_size), pop_disabled);
+        cursor_x += button_size + gap;
+        if (GUI::IsItemClicked(pop_button))
         {
             auto path = m_path;
             path.pop_back();
             change_path(path);
         }
-        ImGui::SameLine();
+
         // Draw path.
         {
-            Float2 pos = ImGui::GetCursorScreenPos();
-            Float2 frame_padding = ImGui::GetStyle().FramePadding;
-
-            Float2 region_min = pos;
-            Float2 region_max = pos + frame_padding * 2 + Float2(ImGui::GetContentRegionAvail().x - ImGui::GetStyle().WindowPadding.x,
-                ImGui::GetTextLineHeight());
+            Float2U frame_padding(8.0f, 3.0f);
+            Float2 region_min(cursor_x, rect.offset_y + row_padding_y);
+            Float2 region_max(rect.offset_x + row_width, rect.offset_y + row_padding_y + button_size);
             if (!m_is_navbar_text_editing)
             {
                 RectF navbar_rect(region_min.x, region_min.y, region_max.x - region_min.x, region_max.y - region_min.y);
@@ -300,8 +324,7 @@ namespace Luna
                 for (u32 i = 0; i < m_path.size(); ++i)
                 {
                     auto node = m_path[i];
-                    Float2 text_size = ImGui::CalcTextSize(node.c_str());
-                    f32 node_width = max(text_size.x + 12.0f, 20.0f);
+                    f32 node_width = max(estimate_gui_text_width(node.c_str()) + 12.0f, 20.0f);
                     RectF node_rect(cursor_x, region_min.y + 1.0f, node_width, max(text_h - 2.0f, 1.0f));
                     GUI::PushID(i);
                     GUI::GUIItemHandle node_hit = GUI::HitBox(node.c_str(), node_rect);
@@ -332,7 +355,6 @@ namespace Luna
                     m_is_navbar_text_editing = true;
                     m_path_edit_text = m_path.encode(PathSeparator::slash, true);
                 }
-                ImGui::Dummy(region_max - region_min);
             }
             else
             {
@@ -342,10 +364,10 @@ namespace Luna
                     RectF(region_min.x, region_min.y, region_max.x - region_min.x, region_max.y - region_min.y), edit_row);
                 GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
                 GUI::InputText("PathTextEditing", m_path_edit_text);
+                GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(48.0f));
+                GUI::GUIItemHandle go_button = GUI::Button("Go");
                 GUI::EndHLayout();
-                ImGui::Dummy(region_max - region_min);
-                auto mouse_pos = ImGui::GetIO().MousePos;
-                if (!in_bounds(mouse_pos, region_min, region_max) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                if (GUI::IsItemClicked(go_button))
                 {
                     // Switch to normal mode.
                     m_is_navbar_text_editing = false;
@@ -358,7 +380,6 @@ namespace Luna
                 }
             }
         }
-
     }
     static RV remove_assets_in_folder(const Path& dir)
     {
@@ -421,88 +442,146 @@ namespace Luna
         lucatchret;
         return ok;
     }
-    void AssetBrowser::tile_context()
+    void AssetBrowser::tile_context(const RectF& child_rect)
     {
-        // Draw content.
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
-        ImGui::BeginChild("ctx", Float2(0.0f, 0.0f), true, ImGuiWindowFlags_NoMove);
-        Float2 child_min = ImGui::GetWindowPos();
-        Float2 child_size = ImGui::GetWindowSize();
-        GUI::PushClipRect(RectF(child_min.x, child_min.y, max(child_size.x, 1.0f), max(child_size.y, 1.0f)));
+        Float2 child_size(max(child_rect.width, 1.0f), max(child_rect.height, 1.0f));
+        GUI::DrawRect(child_rect, Float4U(0.16f, 0.19f, 0.24f, 1.0f), 5.0f);
+        GUI::DrawRect(RectF(child_rect.offset_x + 1.0f, child_rect.offset_y + 1.0f, max(child_rect.width - 2.0f, 1.0f), max(child_rect.height - 2.0f, 1.0f)),
+            Float4U(0.04f, 0.05f, 0.06f, 1.0f), 4.0f);
+        GUI::GUIItemHandle content_hit = GUI::HitBox("Asset Tile Background", child_rect);
+        if(m_asset_popup_open && GUI::IsItemClicked(content_hit))
+        {
+            m_asset_popup_open = false;
+        }
+
+        GUI::GUILayoutDesc host_layout;
+        host_layout.padding = GUI::GUIEdgeInsets::all(1.0f);
+        host_layout.gap = 0.0f;
+        GUI::BeginVLayout("Asset Tile Host", child_rect, host_layout);
+        GUI::GUIItemHandle scroll = GUI::BeginScrollView("Asset Tile Scroll", GUI::GUISize::fixed(max(child_size.x - 2.0f, 1.0f), max(child_size.y - 2.0f, 1.0f)));
+        RectF scroll_rect = GUI::GetItemState(scroll, GUI::GUIState::rect());
+        bool pushed_scroll_clip = scroll_rect.width > 1.0f && scroll_rect.height > 1.0f;
+        if(pushed_scroll_clip)
+        {
+            GUI::PushClipRect(scroll_rect);
+        }
+
         auto assets = get_assets_in_folder(m_path);
-        bool tile_context_focused = ImGui::IsWindowFocused();
         if (succeeded(assets))
         {
             if (assets.get().empty())
             {
-                auto region = ImGui::GetContentRegionAvail();
-                auto origin = ImGui::GetCursorScreenPos();
                 const char* text = "Empty Directory";
-                GUI::DrawText(RectF(origin.x, origin.y, region.x, region.y), text, Float4U(1.0f), 16.0f,
-                    GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
+                GUI::DrawText(child_rect, text, Float4U(1.0f), 16.0f, GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
             }
             else
             {
-                // Draw asset tiles.
+                auto commit_rename = [&](const AssetThumbnail& thumbnail)
+                {
+                    bool valid_filename = true;
+                    for(c8 ch : m_asset_name_editing_buf)
+                    {
+                        if(ch == '\\' || ch == '/' || ch == ':' || ch == '*' || ch == '?' || ch == '\"' || ch == '<' ||
+                            ch == '>' || ch == '|')
+                        {
+                            auto _ = Window::message_box("File or directory name cannot contain the following characters: \\ / : * ? \" < > |", "Rename directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                            valid_filename = false;
+                            break;
+                        }
+                    }
+                    if(valid_filename && thumbnail.m_filename != m_asset_name_editing_buf)
+                    {
+                        Path from_path = m_path;
+                        Path to_path = m_path;
+                        from_path.push_back(thumbnail.m_filename);
+                        to_path.push_back(m_asset_name_editing_buf);
+                        if(thumbnail.m_is_dir)
+                        {
+                            auto r = VFS::move_file(from_path, to_path);
+                            if(succeeded(r))
+                            {
+                                r = Asset::load_assets_meta(to_path);
+                            }
+                            if(failed(r))
+                            {
+                                auto _ = Window::message_box(explain(r.errcode()), "Rename directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                            }
+                        }
+                        else
+                        {
+                            auto asset = Asset::get_asset_by_path(from_path);
+                            if(succeeded(asset))
+                            {
+                                auto r = Asset::move_asset(asset.get(), to_path);
+                                if(failed(r))
+                                {
+                                    auto _ = Window::message_box(explain(r.errcode()), "Rename asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                                }
+                            }
+                        }
+                    }
+                    m_editing_asset_name.reset();
+                };
 
                 usize num_assets = assets.get().size();
-
-                constexpr u32 padding = 5;
-
-                u32 tile_width = (u32)(m_tile_size + padding * 2);
-                u32 tile_height = (u32)(m_tile_size + padding * 2 + ImGui::GetTextLineHeight());
-                auto window_pos = ImGui::GetWindowPos();
-
-                f32 woff = 0;
-                f32 hoff = 0;
-                auto origin_pos = ImGui::GetCursorPos();
+                constexpr f32 padding = 5.0f;
+                constexpr f32 label_height = 24.0f;
+                f32 tile_width = m_tile_size + padding * 2.0f;
+                f32 tile_height = m_tile_size + padding * 2.0f + label_height;
+                GUI::GUIGridLayoutDesc grid;
+                grid.sizing_mode = GUI::GUIGridSizingMode::fixed_cell_size;
+                grid.cell_size = Float2U(tile_width, tile_height);
+                grid.padding = GUI::GUIEdgeInsets::all(10.0f);
+                grid.gap = Float2U(8.0f, 8.0f);
+                GUI::BeginGridLayout("Asset Tile Grid", grid);
 
                 for (usize i = 0; i < num_assets; ++i)
                 {
-                    // Set cursor pos for next tile.
-                    ImGui::SetCursorPos(origin_pos + Float2(woff, hoff));
-
-                    auto tile_min = ImGui::GetCursorScreenPos() + padding;
-                    auto tile_max = tile_min + Float2((f32)tile_width, (f32)tile_height);
-                    RectF tile_rect(tile_min.x - padding, tile_min.y - padding, tile_max.x - tile_min.x, tile_max.y - tile_min.y);
-
-                    GUI::PushID(assets.get()[i].m_filename.c_str());
-                    GUI::GUIItemHandle tile_hit = GUI::HitBox("Asset Tile", tile_rect);
+                    AssetThumbnail& thumbnail = assets.get()[i];
+                    bool selected = m_selections.find(thumbnail.m_filename) != m_selections.end();
+                    GUI::PushID(thumbnail.m_filename.c_str());
+                    GUI::GUIItemHandle tile_hit = GUI::Selectable("", selected);
+                    RectF tile_rect = GUI::GetItemState(tile_hit, GUI::GUIState::rect());
                     GUI::PopID();
-                    bool tile_clicked = tile_context_focused && GUI::IsItemClicked(tile_hit);
-                    bool tile_right_clicked = tile_context_focused && GUI::IsItemRightClicked(tile_hit);
-                    bool tile_double_clicked = tile_context_focused && GUI::IsItemDoubleClicked(tile_hit);
+                    bool tile_clicked = GUI::IsItemClicked(tile_hit);
+                    bool tile_right_clicked = GUI::IsItemRightClicked(tile_hit);
+                    bool tile_double_clicked = GUI::IsItemDoubleClicked(tile_hit);
                     if(tile_clicked || tile_right_clicked)
                     {
                         m_selections.clear();
-                        m_selections.insert(assets.get()[i].m_filename);
+                        m_selections.insert(thumbnail.m_filename);
                     }
                     if(tile_right_clicked)
                     {
-                        m_popup_asset = assets.get()[i].m_filename;
+                        m_popup_asset = thumbnail.m_filename;
                         m_asset_popup_open = true;
                         m_asset_popup_position = GUI::GetPointerPosition();
                     }
 
-                    auto siter = m_selections.find(assets.get()[i].m_filename);
-                    if (siter != m_selections.end())
+                    if(tile_rect.width <= 1.0f || tile_rect.height <= 1.0f)
+                    {
+                        continue;
+                    }
+                    Float2U tile_min(tile_rect.offset_x + padding, tile_rect.offset_y + padding);
+                    RectF icon_rect(tile_min.x, tile_min.y, m_tile_size, m_tile_size);
+
+                    if(selected)
                     {
                         GUI::DrawRect(tile_rect, Float4U(0.18f, 0.28f, 0.45f, 0.90f), 5.0f);
                     }
 
-                    if (assets.get()[i].m_is_dir)
+                    if (thumbnail.m_is_dir)
                     {
-                        auto folder_icon_begin_pos = ImGui::GetCursorScreenPos() + Float2(padding, padding);
                         Float4U folder_color(0.78f, 0.78f, 0.78f, 1.0f);
                         GUI::DrawRect(RectF(
-                            folder_icon_begin_pos.x + m_tile_size * 0.18f,
-                            folder_icon_begin_pos.y + m_tile_size * 0.18f,
+                            icon_rect.offset_x + m_tile_size * 0.18f,
+                            icon_rect.offset_y + m_tile_size * 0.18f,
                             m_tile_size * 0.44f,
                             m_tile_size * 0.18f),
                             folder_color, 5.0f);
                         GUI::DrawRect(RectF(
-                            folder_icon_begin_pos.x + m_tile_size * 0.08f,
-                            folder_icon_begin_pos.y + m_tile_size * 0.30f,
+                            icon_rect.offset_x + m_tile_size * 0.08f,
+                            icon_rect.offset_y + m_tile_size * 0.30f,
                             m_tile_size * 0.84f,
                             m_tile_size * 0.56f),
                             folder_color, 7.0f);
@@ -511,31 +590,29 @@ namespace Luna
                         {
                             // Change path.
                             auto path = m_path;
-                            path.push_back(assets.get()[i].m_filename);
+                            path.push_back(thumbnail.m_filename);
                             change_path(path);
                         }
                     }
                     else
                     {
                         auto meta_path = m_path;
-                        meta_path.push_back(assets.get()[i].m_filename);
+                        meta_path.push_back(thumbnail.m_filename);
                         auto asset = Asset::get_asset_by_path(meta_path);
                         if (succeeded(asset))
                         {
-                            auto draw_rect = RectF(tile_min.x, tile_min.y, m_tile_size, m_tile_size);
+                            auto draw_rect = icon_rect;
 
-                            ImGui::SetCursorScreenPos({ draw_rect.offset_x, draw_rect.offset_y });
-                            ImGui::PushID(asset.get().handle);
-                            ImGui::Button("", { draw_rect.width, draw_rect.height });
-                            ImGui::PopID();
-
-                            if (ImGui::BeginDragDropSource())
+                            GUI::PushID(thumbnail.m_filename.c_str());
+                            Name asset_ref_payload_type("Asset Ref");
+                            if(GUI::BeginDragDropSource(tile_hit, asset_ref_payload_type))
                             {
                                 Asset::asset_t payload = asset.get();
-                                ImGui::SetDragDropPayload("Asset Ref", &payload, sizeof(payload));
-                                ImGui::Text("%s", meta_path.encode().c_str());
-                                ImGui::EndDragDropSource();
+                                GUI::SetDragDropPayload(&payload, sizeof(payload));
+                                GUI::Text(meta_path.encode().c_str());
+                                GUI::EndDragDropSource();
                             }
+                            GUI::PopID();
 
                             // Editor logic.
                             auto asset_type = Asset::get_asset_type(asset.get());
@@ -582,78 +659,32 @@ namespace Luna
                         }
                         else
                         {
-                            RectF draw_rect(tile_min.x, tile_min.y, m_tile_size, m_tile_size);
+                            RectF draw_rect = icon_rect;
                             GUI::DrawText(draw_rect, "Unknown", Float4U(1.0f), 16.0f, GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
                             GUI::DrawCircle(tile_min + Float2(m_tile_size, m_tile_size) - 5.0f, 10.0f, Color::red());
                         }
                     }
 
                     // Draw asset name.
-                    ImGui::SetCursorScreenPos(Float2(tile_min.x, tile_min.y + m_tile_size));
-                    if(assets.get()[i].m_filename == m_editing_asset_name)
+                    if(thumbnail.m_filename == m_editing_asset_name)
                     {
-                        RectF edit_rect(tile_min.x, tile_min.y + m_tile_size, m_tile_size, max(ImGui::GetTextLineHeight() + 6.0f, 20.0f));
+                        RectF edit_rect(tile_min.x, tile_min.y + m_tile_size, m_tile_size, label_height);
                         GUI::GUILayoutDesc edit_row;
                         edit_row.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::stretch;
                         GUI::BeginHLayout("AssetNameEdit", edit_rect, edit_row);
                         GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
                         GUI::InputText("AssetNameEdit", m_asset_name_editing_buf);
+                        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(34.0f));
+                        GUI::GUIItemHandle rename_ok = GUI::Button("OK");
                         GUI::EndHLayout();
-                        ImGui::Dummy(Float2(m_tile_size, ImGui::GetTextLineHeight()));
-
-                        Float2 edit_min(edit_rect.offset_x, edit_rect.offset_y);
-                        Float2 edit_max(edit_rect.offset_x + edit_rect.width, edit_rect.offset_y + edit_rect.height);
-                        if (!in_bounds(ImGui::GetIO().MousePos, edit_min, edit_max) &&
-                            (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsKeyDown(ImGuiKey_Enter)))
+                        if(GUI::IsItemClicked(rename_ok))
                         {
-                            bool valid_filename = true;
-                            for(c8 ch : m_asset_name_editing_buf)
-                            {
-                                if(ch == '\\' || ch == '/' || ch == ':' || ch == '*' || ch == '?' || ch == '\"' || ch == '<' ||
-                                    ch == '>' || ch == '|')
-                                {
-                                    auto _ = Window::message_box("File or directory name cannot contain the following characters: \\ / : * ? \" < > |", "Rename directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                                    valid_filename = false;
-                                    break;
-                                }
-                            }
-                            if(valid_filename && assets.get()[i].m_filename != m_asset_name_editing_buf)
-                            {
-                                Path from_path = m_path;
-                                Path to_path = m_path;
-                                from_path.push_back(assets.get()[i].m_filename);
-                                to_path.push_back(m_asset_name_editing_buf);
-                                if(assets.get()[i].m_is_dir)
-                                {
-                                    auto r = VFS::move_file(from_path, to_path);
-                                    if(succeeded(r))
-                                    {
-                                        r = Asset::load_assets_meta(to_path);
-                                    }
-                                    if(failed(r))
-                                    {
-                                        auto _ = Window::message_box(explain(r.errcode()), "Rename directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                                    }
-                                }
-                                else
-                                {
-                                    auto asset = Asset::get_asset_by_path(from_path);
-                                    if(succeeded(asset))
-                                    {
-                                        auto r = Asset::move_asset(asset.get(), to_path);
-                                        if(failed(r))
-                                        {
-                                            auto _ = Window::message_box(explain(r.errcode()), "Rename asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                                        }
-                                    }
-                                }
-                            }
-                            m_editing_asset_name.reset();
+                            commit_rename(thumbnail);
                         }
                     }
                     else
                     {
-                        auto& filename = assets.get()[i].m_filename;
+                        auto& filename = thumbnail.m_filename;
                         constexpr usize CLAMP_LEN = 12;
                         const c8* display_name = filename.c_str();
                         Name clipped_name;
@@ -685,29 +716,21 @@ namespace Luna
                         {
                             display_text = display_name;
                         }
-                        GUI::DrawText(RectF(tile_min.x, tile_min.y + m_tile_size, m_tile_size, ImGui::GetTextLineHeight()),
+                        GUI::DrawText(RectF(tile_min.x, tile_min.y + m_tile_size, m_tile_size, label_height),
                             display_text.c_str(), Float4U(1.0f), 16.0f, GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
-                        ImGui::Dummy(Float2(m_tile_size, ImGui::GetTextLineHeight()));
                     }
-
-                    // Update woff and hoff.
-                    woff += tile_width;
-                    if (woff + tile_width > ImGui::GetWindowWidth())
-                    {
-                        woff = 0;
-                        hoff += tile_height;
-                    }
+                }
+                GUI::EndGridLayout();
+                if(pushed_scroll_clip)
+                {
+                    GUI::PopClipRect();
+                    pushed_scroll_clip = false;
                 }
 
                 if(m_asset_popup_open)
                 {
                     constexpr f32 popup_width = 160.0f;
                     constexpr f32 popup_height = 70.0f;
-                    if(ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
-                        !in_bounds(ImGui::GetIO().MousePos, m_asset_popup_position, m_asset_popup_position + Float2U(popup_width, popup_height)))
-                    {
-                        m_asset_popup_open = false;
-                    }
                     GUI::BeginPopup("Asset Popup", m_asset_popup_position, GUI::GUISize::fixed(popup_width, popup_height));
                     GUI::GUIItemHandle rename_item = GUI::Selectable("Rename");
                     GUI::GUIItemHandle delete_item = GUI::Selectable("Delete");
@@ -756,19 +779,20 @@ namespace Luna
         }
         else
         {
-            auto region = ImGui::GetContentRegionAvail();
-            auto origin = ImGui::GetCursorScreenPos();
             const char* text_fail = "Failed to display assets in this directory.";
             const char* text_reason = explain(assets.errcode());
-            GUI::DrawText(RectF(origin.x, origin.y + region.y * 0.5f - 24.0f, region.x, 24.0f), text_fail,
+            GUI::DrawText(RectF(child_rect.offset_x, child_rect.offset_y + child_rect.height * 0.5f - 24.0f, child_rect.width, 24.0f), text_fail,
                 Float4U(1.0f), 16.0f, GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
-            GUI::DrawText(RectF(origin.x, origin.y + region.y * 0.5f, region.x, 24.0f), text_reason,
+            GUI::DrawText(RectF(child_rect.offset_x, child_rect.offset_y + child_rect.height * 0.5f, child_rect.width, 24.0f), text_reason,
                 Float4U(1.0f), 16.0f, GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
         }
 
-        GUI::PopClipRect();
-        ImGui::EndChild();
-        ImGui::PopStyleVar();
+        if(pushed_scroll_clip)
+        {
+            GUI::PopClipRect();
+        }
+        GUI::EndScrollView();
+        GUI::EndVLayout();
     }
     struct AssetLoadTask
     {

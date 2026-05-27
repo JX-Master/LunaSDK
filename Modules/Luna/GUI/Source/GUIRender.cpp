@@ -107,7 +107,8 @@ namespace Luna
             return RectF(rect.offset_x, m_frame_desc.surface_size.y - rect.offset_y - rect.height, rect.width, rect.height);
         }
 
-        void GUIContext::render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius, RHI::ITexture* texture)
+        void GUIContext::render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
+            RHI::ITexture* texture, GUIImageFlag image_flags)
         {
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
@@ -127,10 +128,12 @@ namespace Luna
                 VG::ShapeBuilder::add_rectangle_filled(points, 0.0f, 0.0f, r.width, r.height);
             }
             u32 end = (u32)points.size();
+            Float2U min_texcoord(0.0f, test_flags(image_flags, GUIImageFlag::flip_y) ? 1.0f : 0.0f);
+            Float2U max_texcoord(1.0f, test_flags(image_flags, GUIImageFlag::flip_y) ? 0.0f : 1.0f);
             m_active_draw_list->add_shape(begin, end - begin,
                 Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
                 Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
-                color, Float2U(0.0f, 0.0f), Float2U(1.0f, 1.0f));
+                color, min_texcoord, max_texcoord);
             m_active_draw_list->pop_state(pop_id);
         }
 
@@ -1184,7 +1187,7 @@ namespace Luna
                 break;
             }
             case GUINodeKind::image:
-                render_rect(rect, clip, Color::white(), 0.0f, node.texture);
+                render_rect(rect, clip, Color::white(), 0.0f, node.texture, node.image_flags);
                 break;
             case GUINodeKind::collapsing_header:
                 render_rect(rect, clip, hovered ? Float4U(0.22f, 0.27f, 0.34f, 1.0f) : Float4U(0.16f, 0.19f, 0.24f, 1.0f), 4.0f);
@@ -1466,7 +1469,7 @@ namespace Luna
                     to_vg_text_alignment(node.paint_vertical_alignment));
                 break;
             case GUINodeKind::draw_image:
-                render_rect(rect, clip, node.paint_color, 0.0f, node.texture);
+                render_rect(rect, clip, node.paint_color, 0.0f, node.texture, node.image_flags);
                 break;
             case GUINodeKind::hit_box:
                 break;

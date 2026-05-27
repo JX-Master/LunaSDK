@@ -409,6 +409,27 @@ namespace Luna
                 metrics = measure_grid_node(node_index, F32_MAX);
                 break;
             }
+            case GUINodeKind::canvas_layout:
+            {
+                f32 min_width = 1.0f;
+                f32 min_height = 1.0f;
+                f32 preferred_width = node.requested_size.width > 0.0f ? node.requested_size.width : 1.0f;
+                f32 preferred_height = node.requested_size.height > 0.0f ? node.requested_size.height : 1.0f;
+                for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    const GUINode& child_node = m_submitted_desc.nodes[child];
+                    if(is_absolute_node(child_node) && !child_node.has_canvas_item_layout) continue;
+                    GUILayoutMetrics child_metrics = measure_node(child);
+                    min_width = max(min_width, child_metrics.min_size.x);
+                    min_height = max(min_height, child_metrics.min_size.y);
+                    preferred_width = max(preferred_width, child_metrics.preferred_size.x);
+                    preferred_height = max(preferred_height, child_metrics.preferred_size.y);
+                }
+                metrics.min_size = Float2U(min_width, min_height);
+                metrics.preferred_size = Float2U(preferred_width, preferred_height);
+                metrics.max_size = Float2U(F32_MAX, F32_MAX);
+                break;
+            }
             case GUINodeKind::tab_bar:
             {
                 f32 min_header_width = 0.0f;
@@ -523,10 +544,16 @@ namespace Luna
                 max(rect.height - desc.padding.top - desc.padding.bottom, 1.0f));
 
             Vector<u32> children;
+            Vector<u32> absolute_children;
             children.reserve(16);
+            absolute_children.reserve(8);
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                if(is_absolute_node(m_submitted_desc.nodes[child])) continue;
+                if(is_absolute_node(m_submitted_desc.nodes[child]))
+                {
+                    absolute_children.push_back(child);
+                    continue;
+                }
                 children.push_back(child);
             }
             u32 child_count = (u32)children.size();
@@ -572,6 +599,64 @@ namespace Luna
                     x += cell_width + gap_x;
                 }
                 y += row_height + gap_y;
+            }
+
+            RectF surface_clip(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
+            for(u32 child : absolute_children)
+            {
+                GUINode& child_node = m_submitted_desc.nodes[child];
+                GUILayoutMetrics metrics = measure_node(child);
+                f32 width = max(resolve_base_axis_size(child_node, metrics, true), 1.0f);
+                f32 height = max(resolve_base_axis_size(child_node, metrics, false), 1.0f);
+                layout_node(child, RectF(child_node.position.x, child_node.position.y, width, height), surface_clip);
+            }
+        }
+
+        void GUIContext::arrange_canvas_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
+        {
+            GUINode& node = m_submitted_desc.nodes[node_index];
+            const GUICanvasLayoutDesc& desc = node.canvas_desc;
+            RectF content_rect(
+                rect.offset_x + desc.padding.left,
+                rect.offset_y + desc.padding.top,
+                max(rect.width - desc.padding.left - desc.padding.right, 1.0f),
+                max(rect.height - desc.padding.top - desc.padding.bottom, 1.0f));
+            RectF child_clip = desc.clip_children ? intersect_rect(content_rect, clip_rect) :
+                RectF(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
+
+            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+            {
+                GUINode& child_node = m_submitted_desc.nodes[child];
+                GUILayoutMetrics metrics = measure_node(child);
+                RectF child_rect;
+                if(child_node.has_canvas_item_layout)
+                {
+                    const GUICanvasItemLayout& item = child_node.canvas_item_layout;
+                    f32 anchor_min_x = clamp(item.anchor_min.x, 0.0f, 1.0f);
+                    f32 anchor_min_y = clamp(item.anchor_min.y, 0.0f, 1.0f);
+                    f32 anchor_max_x = clamp(item.anchor_max.x, 0.0f, 1.0f);
+                    f32 anchor_max_y = clamp(item.anchor_max.y, 0.0f, 1.0f);
+                    if(anchor_max_x < anchor_min_x) swap(anchor_min_x, anchor_max_x);
+                    if(anchor_max_y < anchor_min_y) swap(anchor_min_y, anchor_max_y);
+                    f32 left = content_rect.offset_x + content_rect.width * anchor_min_x + item.offset_min.x;
+                    f32 top = content_rect.offset_y + content_rect.height * anchor_min_y + item.offset_min.y;
+                    f32 right = content_rect.offset_x + content_rect.width * anchor_max_x + item.offset_max.x;
+                    f32 bottom = content_rect.offset_y + content_rect.height * anchor_max_y + item.offset_max.y;
+                    child_rect = RectF(left, top, max(right - left, 1.0f), max(bottom - top, 1.0f));
+                }
+                else if(is_absolute_node(child_node))
+                {
+                    f32 width = max(resolve_base_axis_size(child_node, metrics, true), 1.0f);
+                    f32 height = max(resolve_base_axis_size(child_node, metrics, false), 1.0f);
+                    child_rect = RectF(child_node.position.x, child_node.position.y, width, height);
+                }
+                else
+                {
+                    f32 width = max(resolve_base_axis_size(child_node, metrics, true), 1.0f);
+                    f32 height = max(resolve_base_axis_size(child_node, metrics, false), 1.0f);
+                    child_rect = RectF(content_rect.offset_x, content_rect.offset_y, width, height);
+                }
+                layout_node(child, child_rect, desc.clip_children ? intersect_rect(child_rect, child_clip) : child_clip);
             }
         }
 
@@ -1319,6 +1404,11 @@ namespace Luna
             if(node.kind == GUINodeKind::grid_layout)
             {
                 arrange_grid_node(node_index, rect, effective_clip);
+                return rect;
+            }
+            if(node.kind == GUINodeKind::canvas_layout)
+            {
+                arrange_canvas_node(node_index, rect, effective_clip);
                 return rect;
             }
             if(node.kind == GUINodeKind::tab_bar)
