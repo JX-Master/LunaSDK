@@ -608,6 +608,7 @@ namespace Luna
                 kind == GUINodeKind::selectable ||
                 kind == GUINodeKind::tree_node ||
                 kind == GUINodeKind::table_layout ||
+                kind == GUINodeKind::grid_layout ||
                 kind == GUINodeKind::dock_space ||
                 kind == GUINodeKind::tab_bar)
             {
@@ -1370,8 +1371,10 @@ namespace Luna
             void arrange_dock_tree_node(GUIID dock_space_id, u32 node_index, const RectF& rect, const RectF& clip_rect, const HashMap<GUIID, u32, GUIIDHash>& panel_indices);
             RectF layout_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             GUILayoutMetrics measure_node(u32 node_index);
+            GUILayoutMetrics measure_grid_node(u32 node_index, f32 available_width);
             void measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred);
             void arrange_table_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
+            void arrange_grid_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void arrange_tab_bar_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void arrange_dock_space_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void render_table_node(u32 node_index);

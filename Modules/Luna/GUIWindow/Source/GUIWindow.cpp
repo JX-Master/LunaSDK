@@ -128,9 +128,15 @@ namespace Luna
             else if(auto e = cast_object<Window::WindowMouseMoveEvent>(event))
             {
                 ge.position = Float2U((f32)e->x, (f32)e->y);
-                ge.type = is_client_position_valid(window, ge.position) ?
-                    GUI::GUIInputEventType::pointer_move :
-                    GUI::GUIInputEventType::pointer_leave;
+                if(is_client_position_valid(window, ge.position) || get_client_mouse_pos(window, ge.position))
+                {
+                    ge.type = GUI::GUIInputEventType::pointer_move;
+                }
+                else
+                {
+                    ge.type = GUI::GUIInputEventType::pointer_leave;
+                    ge.position = get_client_mouse_pos_unchecked(window);
+                }
             }
             else if(auto e = cast_object<Window::WindowMouseDownEvent>(event))
             {
@@ -270,11 +276,28 @@ namespace Luna
             return Window::set_clipboard_text(text, size);
         }
 
+        static void update_pointer_state(Window::IWindow* window, GUI::IGUIContext* gui)
+        {
+            GUI::GUIInputEvent event;
+            if(get_client_mouse_pos(window, event.position))
+            {
+                event.type = GUI::GUIInputEventType::pointer_move;
+            }
+            else
+            {
+                event.type = GUI::GUIInputEventType::pointer_leave;
+                event.position = get_client_mouse_pos_unchecked(window);
+            }
+            gui->add_input_event(event);
+        }
+
         LUNA_GUI_WINDOW_API RV update_text_input(Window::IWindow* window, GUI::IGUIContext* gui)
         {
             if(!window || !gui) return ok;
             lutry
             {
+                update_pointer_state(window, gui);
+
                 GUI::GUIClipboardIO clipboard_io;
                 clipboard_io.get_text = get_window_clipboard_text;
                 clipboard_io.set_text = set_window_clipboard_text;

@@ -355,6 +355,41 @@ namespace Luna
         GUI::EndVLayout();
         GUI::EndHLayout();
 
+        GUI::Text("GridLayout");
+        GUI::BeginScrollView("Grid Scroll", GUI::GUISize::fixed(max(app.showcase_content_size.x - 16.0f, 260.0f), 190.0f));
+        GUI::GUIGridLayoutDesc fixed_cell_grid;
+        fixed_cell_grid.sizing_mode = GUI::GUIGridSizingMode::fixed_cell_size;
+        fixed_cell_grid.cell_size = Float2U(112.0f, 58.0f);
+        fixed_cell_grid.padding = GUI::GUIEdgeInsets::all(8.0f);
+        fixed_cell_grid.gap = Float2U(8.0f, 8.0f);
+        GUI::BeginGridLayout("Fixed Cell Grid", fixed_cell_grid);
+        for(u32 i = 0; i < 18; ++i)
+        {
+            c8 label[32];
+            snprintf(label, 32, "Asset %02u", i + 1);
+            GUI::PushID(i);
+            GUI::Button(label);
+            GUI::PopID();
+        }
+        GUI::EndGridLayout();
+
+        GUI::GUIGridLayoutDesc column_grid;
+        column_grid.sizing_mode = GUI::GUIGridSizingMode::fixed_columns;
+        column_grid.columns = 4;
+        column_grid.padding = GUI::GUIEdgeInsets::xy(8.0f, 10.0f);
+        column_grid.gap = Float2U(8.0f, 8.0f);
+        GUI::BeginGridLayout("Four Column Grid", column_grid);
+        for(u32 i = 0; i < 8; ++i)
+        {
+            c8 label[32];
+            snprintf(label, 32, "Col %u", i + 1);
+            GUI::PushID(100 + i);
+            GUI::Selectable(label, (i % 3) == 0);
+            GUI::PopID();
+        }
+        GUI::EndGridLayout();
+        GUI::EndScrollView();
+
         GUI::Text("ScrollView");
         GUI::BeginScrollView("Nested Scroll", GUI::GUISize::fixed(max(app.showcase_content_size.x - 16.0f, 240.0f), min(max(app.showcase_content_size.y * 0.30f, 120.0f), 220.0f)));
         for(u32 i = 0; i < 16; ++i)

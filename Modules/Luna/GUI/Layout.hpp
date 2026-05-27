@@ -163,6 +163,22 @@ namespace Luna
             GUILayoutCrossAxisAlignment cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
         };
 
+        enum class GUIGridSizingMode : u8
+        {
+            fixed_cell_size,
+            fixed_columns
+        };
+
+        struct GUIGridLayoutDesc
+        {
+            GUIGridSizingMode sizing_mode = GUIGridSizingMode::fixed_cell_size;
+            Float2U cell_size = Float2U(96.0f, 118.0f);
+            u32 columns = 4;
+            GUIEdgeInsets padding = GUIEdgeInsets::all(6.0f);
+            Float2U gap = Float2U(8.0f, 8.0f);
+            GUILayoutCrossAxisAlignment cell_cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+        };
+
         enum class GUITreeNodeFlag : u32
         {
             none = 0x00,

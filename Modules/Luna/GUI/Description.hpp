@@ -28,6 +28,7 @@ namespace Luna
             menu_item,
             menu_separator,
             table_layout,
+            grid_layout,
             text,
             button,
             selectable,
@@ -108,6 +109,7 @@ namespace Luna
             GUIID popup_owner_id = 0;
             GUIID menu_popup_id = 0;
             GUITableDesc table_desc;
+            GUIGridLayoutDesc grid_desc;
             bool has_table_cell_color = false;
             Float4U table_cell_color = Float4U(0.0f);
             GUITreeNodeFlag tree_flags = GUITreeNodeFlag::none;

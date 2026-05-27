@@ -182,6 +182,20 @@ namespace Luna
             require_current_context()->set_next_table_cell_color(color);
         }
 
+        LUNA_GUI_API GUIItemHandle BeginGridLayout(const c8* label, const GUIGridLayoutDesc& desc)
+        {
+            GUIItemHandle handle;
+            GUIContext* ctx = require_current_context();
+            ctx->begin_container(GUINodeKind::grid_layout, label ? label : "GridLayout", GUISize(), &handle);
+            ctx->m_build_desc.nodes.back().grid_desc = desc;
+            return handle;
+        }
+
+        LUNA_GUI_API void EndGridLayout()
+        {
+            require_current_context()->end_container();
+        }
+
         LUNA_GUI_API GUIItemHandle BeginDockSpace(const c8* label, const GUISize& size)
         {
             GUIItemHandle handle;

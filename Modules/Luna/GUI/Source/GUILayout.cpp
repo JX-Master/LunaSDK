@@ -15,6 +15,37 @@ namespace Luna
 {
     namespace GUI
     {
+        static u32 grid_child_count(const GUIDescription& desc, const GUINode& node)
+        {
+            u32 count = 0;
+            for(u32 child = node.first_child; child != U32_MAX; child = desc.nodes[child].next_sibling)
+            {
+                if(is_absolute_node(desc.nodes[child])) continue;
+                ++count;
+            }
+            return count;
+        }
+
+        static u32 grid_row_count(u32 child_count, u32 columns)
+        {
+            columns = max(columns, 1u);
+            return child_count ? (child_count + columns - 1) / columns : 1;
+        }
+
+        static u32 grid_columns_for_width(const GUIGridLayoutDesc& desc, f32 content_width, u32 child_count)
+        {
+            if(desc.sizing_mode == GUIGridSizingMode::fixed_columns)
+            {
+                return max(desc.columns, 1u);
+            }
+            f32 cell_width = max(desc.cell_size.x, 1.0f);
+            f32 gap = max(desc.gap.x, 0.0f);
+            f32 available = max(content_width, cell_width);
+            u32 columns = (u32)((available + gap) / max(cell_width + gap, 1.0f));
+            columns = max(columns, 1u);
+            return child_count ? min(columns, child_count) : columns;
+        }
+
         void GUIContext::measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred)
         {
             const GUINode& node = m_submitted_desc.nodes[node_index];
@@ -70,6 +101,67 @@ namespace Luna
                     out_row_heights[row] = max(out_row_heights[row], cell_height);
                 }
             }
+        }
+
+        GUILayoutMetrics GUIContext::measure_grid_node(u32 node_index, f32 available_width)
+        {
+            const GUINode& node = m_submitted_desc.nodes[node_index];
+            const GUIGridLayoutDesc& desc = node.grid_desc;
+            f32 padding_x = desc.padding.left + desc.padding.right;
+            f32 padding_y = desc.padding.top + desc.padding.bottom;
+            f32 gap_x = max(desc.gap.x, 0.0f);
+            f32 gap_y = max(desc.gap.y, 0.0f);
+            u32 child_count = grid_child_count(m_submitted_desc, node);
+            GUILayoutMetrics metrics;
+
+            if(desc.sizing_mode == GUIGridSizingMode::fixed_cell_size)
+            {
+                f32 cell_width = max(desc.cell_size.x, 1.0f);
+                f32 cell_height = max(desc.cell_size.y, 1.0f);
+                bool constrained = available_width < F32_MAX * 0.5f;
+                f32 content_width = constrained ? max(available_width - padding_x, cell_width) : cell_width * (f32)max(child_count, 1u) + gap_x * (f32)max((i32)child_count - 1, 0);
+                u32 columns = grid_columns_for_width(desc, content_width, child_count);
+                u32 rows = grid_row_count(child_count, columns);
+                f32 width = padding_x + cell_width * (f32)columns + gap_x * (f32)max((i32)columns - 1, 0);
+                f32 height = padding_y + cell_height * (f32)rows + gap_y * (f32)max((i32)rows - 1, 0);
+                metrics.min_size = Float2U(padding_x + cell_width, padding_y + cell_height);
+                metrics.preferred_size = Float2U(max(width, 1.0f), max(height, 1.0f));
+                metrics.max_size = Float2U(F32_MAX, F32_MAX);
+                return metrics;
+            }
+
+            u32 columns = max(desc.columns, 1u);
+            u32 rows = grid_row_count(child_count, columns);
+            Vector<f32> min_row_heights;
+            Vector<f32> preferred_row_heights;
+            min_row_heights.assign(rows, 1.0f);
+            preferred_row_heights.assign(rows, 1.0f);
+            f32 min_cell_width = 1.0f;
+            f32 preferred_cell_width = 1.0f;
+            u32 cell_index = 0;
+            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+            {
+                const GUINode& child_node = m_submitted_desc.nodes[child];
+                if(is_absolute_node(child_node)) continue;
+                GUILayoutMetrics child_metrics = measure_node(child);
+                u32 row = cell_index / columns;
+                min_cell_width = max(min_cell_width, child_metrics.min_size.x);
+                preferred_cell_width = max(preferred_cell_width, child_metrics.preferred_size.x);
+                min_row_heights[row] = max(min_row_heights[row], child_metrics.min_size.y);
+                preferred_row_heights[row] = max(preferred_row_heights[row], child_metrics.preferred_size.y);
+                ++cell_index;
+            }
+
+            f32 min_height = padding_y + gap_y * (f32)max((i32)rows - 1, 0);
+            f32 preferred_height = min_height;
+            for(f32 h : min_row_heights) min_height += h;
+            for(f32 h : preferred_row_heights) preferred_height += h;
+            f32 min_width = padding_x + min_cell_width * (f32)columns + gap_x * (f32)max((i32)columns - 1, 0);
+            f32 preferred_width = padding_x + preferred_cell_width * (f32)columns + gap_x * (f32)max((i32)columns - 1, 0);
+            metrics.min_size = Float2U(max(min_width, 1.0f), max(min_height, 1.0f));
+            metrics.preferred_size = Float2U(max(preferred_width, 1.0f), max(preferred_height, 1.0f));
+            metrics.max_size = Float2U(F32_MAX, F32_MAX);
+            return metrics;
         }
 
         GUILayoutMetrics GUIContext::measure_node(u32 node_index)
@@ -312,6 +404,11 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
                 break;
             }
+            case GUINodeKind::grid_layout:
+            {
+                metrics = measure_grid_node(node_index, F32_MAX);
+                break;
+            }
             case GUINodeKind::tab_bar:
             {
                 f32 min_header_width = 0.0f;
@@ -411,6 +508,71 @@ namespace Luna
             m_layouts[node_index].metrics = metrics;
             m_layouts[node_index].metrics_valid = true;
             return metrics;
+        }
+
+        void GUIContext::arrange_grid_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
+        {
+            GUINode& node = m_submitted_desc.nodes[node_index];
+            const GUIGridLayoutDesc& desc = node.grid_desc;
+            f32 gap_x = max(desc.gap.x, 0.0f);
+            f32 gap_y = max(desc.gap.y, 0.0f);
+            RectF content_rect(
+                rect.offset_x + desc.padding.left,
+                rect.offset_y + desc.padding.top,
+                max(rect.width - desc.padding.left - desc.padding.right, 1.0f),
+                max(rect.height - desc.padding.top - desc.padding.bottom, 1.0f));
+
+            Vector<u32> children;
+            children.reserve(16);
+            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+            {
+                if(is_absolute_node(m_submitted_desc.nodes[child])) continue;
+                children.push_back(child);
+            }
+            u32 child_count = (u32)children.size();
+            u32 columns = grid_columns_for_width(desc, content_rect.width, child_count);
+            u32 rows = grid_row_count(child_count, columns);
+            if(!columns || !rows) return;
+
+            f32 cell_width = 1.0f;
+            Vector<f32> row_heights;
+            row_heights.assign(rows, 1.0f);
+            if(desc.sizing_mode == GUIGridSizingMode::fixed_cell_size)
+            {
+                cell_width = max(desc.cell_size.x, 1.0f);
+                for(f32& row_height : row_heights)
+                {
+                    row_height = max(desc.cell_size.y, 1.0f);
+                }
+            }
+            else
+            {
+                cell_width = max((content_rect.width - gap_x * (f32)max((i32)columns - 1, 0)) / (f32)columns, 1.0f);
+                for(usize i = 0; i < children.size(); ++i)
+                {
+                    u32 row = (u32)i / columns;
+                    GUINode& child_node = m_submitted_desc.nodes[children[i]];
+                    GUILayoutMetrics child_metrics = measure_node(children[i]);
+                    f32 child_height = resolve_base_axis_size(child_node, child_metrics, false);
+                    child_height = clamp(child_height, child_metrics.min_size.y, child_metrics.max_size.y);
+                    row_heights[row] = max(row_heights[row], child_height);
+                }
+            }
+
+            f32 y = content_rect.offset_y;
+            usize child_index = 0;
+            for(u32 row = 0; row < rows && child_index < children.size(); ++row)
+            {
+                f32 x = content_rect.offset_x;
+                f32 row_height = row_heights[row];
+                for(u32 column = 0; column < columns && child_index < children.size(); ++column, ++child_index)
+                {
+                    RectF cell_rect(x, y, cell_width, row_height);
+                    layout_node(children[child_index], cell_rect, intersect_rect(cell_rect, clip_rect));
+                    x += cell_width + gap_x;
+                }
+                y += row_height + gap_y;
+            }
         }
 
         void GUIContext::arrange_tab_bar_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
@@ -1154,6 +1316,11 @@ namespace Luna
                 arrange_table_node(node_index, rect, effective_clip);
                 return rect;
             }
+            if(node.kind == GUINodeKind::grid_layout)
+            {
+                arrange_grid_node(node_index, rect, effective_clip);
+                return rect;
+            }
             if(node.kind == GUINodeKind::tab_bar)
             {
                 arrange_tab_bar_node(node_index, rect, effective_clip);
@@ -1189,6 +1356,7 @@ namespace Luna
             f32 total_base_main = 0.0f;
             f32 total_fill_weight = 0.0f;
             f32 total_shrink_capacity = 0.0f;
+            bool has_grid_child = false;
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
                 GUINode& child_node = m_submitted_desc.nodes[child];
@@ -1196,6 +1364,10 @@ namespace Luna
                 {
                     absolute_children.push_back(child);
                     continue;
+                }
+                if(child_node.kind == GUINodeKind::grid_layout)
+                {
+                    has_grid_child = true;
                 }
                 GUILayoutMetrics metrics = measure_node(child);
                 f32 base_main = resolve_base_axis_size(child_node, metrics, horizontal);
@@ -1211,6 +1383,30 @@ namespace Luna
                     total_fill_weight += max(axis_fill_weight(child_node.layout_style, horizontal), 0.0f);
                 }
             }
+
+            auto refresh_axis_metrics = [&](f32 grid_available_width) {
+                total_base_main = 0.0f;
+                total_fill_weight = 0.0f;
+                total_shrink_capacity = 0.0f;
+                for(usize i = 0; i < children.size(); ++i)
+                {
+                    GUINode& child_node = m_submitted_desc.nodes[children[i]];
+                    GUILayoutMetrics metrics = child_node.kind == GUINodeKind::grid_layout ?
+                        apply_layout_style(child_node, measure_grid_node(children[i], grid_available_width)) :
+                        measure_node(children[i]);
+                    child_metrics[i] = metrics;
+                    f32 base_main = resolve_base_axis_size(child_node, metrics, horizontal);
+                    f32 min_main = axis_value(metrics.min_size, horizontal);
+                    base_main = max(base_main, min_main);
+                    main_sizes[i] = base_main;
+                    total_base_main += base_main;
+                    total_shrink_capacity += max(base_main - min_main, 0.0f);
+                    if(axis_policy(child_node.layout_style, horizontal) == GUISizePolicy::fill)
+                    {
+                        total_fill_weight += max(axis_fill_weight(child_node.layout_style, horizontal), 0.0f);
+                    }
+                }
+            };
 
             auto layout_absolute_children = [&]() {
                 RectF surface_clip(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
@@ -1326,38 +1522,70 @@ namespace Luna
             f32 total_gap = gap * (f32)(children.size() - 1);
             if(node.kind == GUINodeKind::scroll_view)
             {
-                f32 content_main = total_base_main + total_gap;
-                f32 content_cross = 0.0f;
-                for(usize i = 0; i < children.size(); ++i)
+                if(has_grid_child)
                 {
-                    GUINode& child_node = m_submitted_desc.nodes[children[i]];
-                    bool cross_x_axis = !horizontal;
-                    f32 child_cross = node.layout_desc.cross_axis_alignment == GUILayoutCrossAxisAlignment::stretch &&
-                        axis_policy(child_node.layout_style, cross_x_axis) != GUISizePolicy::fixed ?
-                        axis_value(child_metrics[i].min_size, cross_x_axis) :
-                        resolve_base_axis_size(child_node, child_metrics[i], cross_x_axis);
-                    child_cross = clamp(child_cross,
-                        axis_value(child_metrics[i].min_size, cross_x_axis),
-                        axis_value(child_metrics[i].max_size, cross_x_axis));
-                    content_cross = max(content_cross, child_cross);
+                    refresh_axis_metrics(viewport_rect.width);
                 }
 
-                f32 raw_content_width = horizontal ? content_main : content_cross;
-                f32 raw_content_height = horizontal ? content_cross : content_main;
-                bool has_vertical_bar = raw_content_height > viewport_rect.height + 0.5f;
-                bool has_horizontal_bar = raw_content_width > viewport_rect.width + 0.5f;
-                f32 bar_padding = scroll_bar_padding();
-                f32 padded_viewport_width = max(viewport_rect.width - (has_vertical_bar ? bar_padding : 0.0f), 1.0f);
-                f32 padded_viewport_height = max(viewport_rect.height - (has_horizontal_bar ? bar_padding : 0.0f), 1.0f);
-                if(has_vertical_bar && raw_content_width > padded_viewport_width + 0.5f)
+                auto compute_scroll_content_size = [&]() {
+                    f32 content_main = total_base_main + total_gap;
+                    f32 content_cross = 0.0f;
+                    for(usize i = 0; i < children.size(); ++i)
+                    {
+                        GUINode& child_node = m_submitted_desc.nodes[children[i]];
+                        bool cross_x_axis = !horizontal;
+                        f32 child_cross = node.layout_desc.cross_axis_alignment == GUILayoutCrossAxisAlignment::stretch &&
+                            axis_policy(child_node.layout_style, cross_x_axis) != GUISizePolicy::fixed ?
+                            axis_value(child_metrics[i].min_size, cross_x_axis) :
+                            resolve_base_axis_size(child_node, child_metrics[i], cross_x_axis);
+                        child_cross = clamp(child_cross,
+                            axis_value(child_metrics[i].min_size, cross_x_axis),
+                            axis_value(child_metrics[i].max_size, cross_x_axis));
+                        content_cross = max(content_cross, child_cross);
+                    }
+                    return horizontal ? Float2U(content_main, content_cross) : Float2U(content_cross, content_main);
+                };
+
+                Float2U raw_content_size = compute_scroll_content_size();
+                f32 raw_content_width = raw_content_size.x;
+                f32 raw_content_height = raw_content_size.y;
+                auto compute_scrollbars = [&]() {
+                    bool vertical = raw_content_height > viewport_rect.height + 0.5f;
+                    bool horizontal_bar = raw_content_width > viewport_rect.width + 0.5f;
+                    f32 bar_padding = scroll_bar_padding();
+                    f32 padded_width = max(viewport_rect.width - (vertical ? bar_padding : 0.0f), 1.0f);
+                    f32 padded_height = max(viewport_rect.height - (horizontal_bar ? bar_padding : 0.0f), 1.0f);
+                    if(vertical && raw_content_width > padded_width + 0.5f)
+                    {
+                        horizontal_bar = true;
+                        padded_height = max(viewport_rect.height - bar_padding, 1.0f);
+                    }
+                    if(horizontal_bar && raw_content_height > padded_height + 0.5f)
+                    {
+                        vertical = true;
+                        padded_width = max(viewport_rect.width - bar_padding, 1.0f);
+                    }
+                    return Float4U(vertical ? 1.0f : 0.0f, horizontal_bar ? 1.0f : 0.0f, padded_width, padded_height);
+                };
+
+                Float4U scrollbar_info = compute_scrollbars();
+                bool has_vertical_bar = scrollbar_info.x > 0.5f;
+                bool has_horizontal_bar = scrollbar_info.y > 0.5f;
+                f32 padded_viewport_width = scrollbar_info.z;
+                f32 padded_viewport_height = scrollbar_info.w;
+
+                if(has_grid_child && has_vertical_bar &&
+                    (padded_viewport_width + 0.5f < viewport_rect.width || padded_viewport_width > viewport_rect.width + 0.5f))
                 {
-                    has_horizontal_bar = true;
-                    padded_viewport_height = max(viewport_rect.height - bar_padding, 1.0f);
-                }
-                if(has_horizontal_bar && raw_content_height > padded_viewport_height + 0.5f)
-                {
-                    has_vertical_bar = true;
-                    padded_viewport_width = max(viewport_rect.width - bar_padding, 1.0f);
+                    refresh_axis_metrics(padded_viewport_width);
+                    raw_content_size = compute_scroll_content_size();
+                    raw_content_width = raw_content_size.x;
+                    raw_content_height = raw_content_size.y;
+                    scrollbar_info = compute_scrollbars();
+                    has_vertical_bar = scrollbar_info.x > 0.5f;
+                    has_horizontal_bar = scrollbar_info.y > 0.5f;
+                    padded_viewport_width = scrollbar_info.z;
+                    padded_viewport_height = scrollbar_info.w;
                 }
 
                 NodeLayout& layout = m_layouts[node_index];
