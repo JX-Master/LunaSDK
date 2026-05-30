@@ -50,16 +50,16 @@ namespace Luna
             snprintf(title, 256, "Model Editor###%d", (u32)(usize)this);
         }
         if(!m_open) return;
-        GUI::BeginWindow(title, &m_open, GUI::GUISize::fixed(760.0f, 620.0f));
+        GUI::begin_window(title, &m_open, GUI::Size::fixed(760.0f, 620.0f));
 
         Ref<Model> model = get_asset_or_async_load_if_not_ready<Model>(m_model);
         if (!model || (Asset::get_asset_state(m_model) != Asset::AssetState::loaded))
         {
-            GUI::Text("Model Asset is not loaded.");
+            GUI::text("Model Asset is not loaded.");
         }
         else
         {
-            if (GUI::IsItemClicked(GUI::Button("Save")))
+            if (GUI::is_item_clicked(GUI::button("Save")))
             {
                 lutry
                 {
@@ -79,7 +79,7 @@ namespace Luna
                 {
                     char mesh_info[64];
                     snprintf(mesh_info, 64, "This mesh requires %u material(s).", (u32)mesh->pieces.size());
-                    GUI::Text(mesh_info);
+                    GUI::text(mesh_info);
                 }
             }
 
@@ -91,25 +91,25 @@ namespace Luna
             {
                 char mat_name[32];
                 snprintf(mat_name, 32, "Material slot %u", i);
-                GUI::PushID(i);
-                GUI::GUILayoutDesc row;
+                GUI::push_id(i);
+                GUI::LayoutDesc row;
                 row.gap = 8.0f;
-                row.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::center;
-                GUI::BeginHLayout("Material Slot Row", row);
-                GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+                row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
+                GUI::begin_h_layout("Material Slot Row", row);
+                GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
                 gui_edit_asset_path(mat_name, model->materials[i], m_mat_names[i], "Failed to set material asset reference");
-                GUI::GUIItemHandle remove_button = GUI::Button("Remove current slot");
-                GUI::GUIItemHandle add_button = GUI::Button("Add before this");
-                GUI::EndHLayout();
-                if (GUI::IsItemClicked(remove_button))
+                GUI::ItemHandle remove_button = GUI::button("Remove current slot");
+                GUI::ItemHandle add_button = GUI::button("Add before this");
+                GUI::end_h_layout();
+                if (GUI::is_item_clicked(remove_button))
                 {
                     remove_index = i;
                 }
-                if (GUI::IsItemClicked(add_button))
+                if (GUI::is_item_clicked(add_button))
                 {
                     add_index = i;
                 }
-                GUI::PopID();
+                GUI::pop_id();
             }
             if (remove_index >= 0)
             {
@@ -119,13 +119,13 @@ namespace Luna
             {
                 model->materials.insert(model->materials.begin() + add_index, Asset::asset_t());
             }
-            if (GUI::IsItemClicked(GUI::Button("Add a new material slot")))
+            if (GUI::is_item_clicked(GUI::button("Add a new material slot")))
             {
                 model->materials.push_back(Asset::asset_t());
             }
         }
 
-        GUI::EndWindow();
+        GUI::end_window();
     }
     Ref<IAssetEditor> new_model_editor(object_t userdata, Asset::asset_t editing_asset)
     {

@@ -15,7 +15,7 @@ namespace Luna
 {
     namespace GUI
     {
-        static u32 grid_child_count(const GUIDescription& desc, const GUINode& node)
+        static u32 grid_child_count(const Description& desc, const Node& node)
         {
             u32 count = 0;
             for(u32 child = node.first_child; child != U32_MAX; child = desc.nodes[child].next_sibling)
@@ -32,9 +32,9 @@ namespace Luna
             return child_count ? (child_count + columns - 1) / columns : 1;
         }
 
-        static u32 grid_columns_for_width(const GUIGridLayoutDesc& desc, f32 content_width, u32 child_count)
+        static u32 grid_columns_for_width(const GridLayoutDesc& desc, f32 content_width, u32 child_count)
         {
-            if(desc.sizing_mode == GUIGridSizingMode::fixed_columns)
+            if(desc.sizing_mode == GridSizingMode::fixed_columns)
             {
                 return max(desc.columns, 1u);
             }
@@ -46,9 +46,9 @@ namespace Luna
             return child_count ? min(columns, child_count) : columns;
         }
 
-        void GUIContext::measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred)
+        void Context::measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred)
         {
-            const GUINode& node = m_submitted_desc.nodes[node_index];
+            const Node& node = m_submitted_desc.nodes[node_index];
             u32 columns = table_columns(node);
             u32 rows = table_rows(m_submitted_desc, node);
             out_column_widths.assign(columns, 1.0f);
@@ -57,8 +57,8 @@ namespace Luna
             PersistentItemState& persistent = get_or_create_persistent_state(node.id);
             for(u32 col = 0; col < columns; ++col)
             {
-                const GUITableTrackSize& size = table_track_size(node, true, col);
-                if(size.policy == GUITableTrackSizePolicy::fixed)
+                const TableTrackSize& size = table_track_size(node, true, col);
+                if(size.policy == TableTrackSizePolicy::fixed)
                 {
                     f32 value = size.value;
                     if(col < persistent.table_column_sizes.size() && persistent.table_column_sizes[col] > 0.0f)
@@ -70,8 +70,8 @@ namespace Luna
             }
             for(u32 row = 0; row < rows; ++row)
             {
-                const GUITableTrackSize& size = table_track_size(node, false, row);
-                if(size.policy == GUITableTrackSizePolicy::fixed)
+                const TableTrackSize& size = table_track_size(node, false, row);
+                if(size.policy == TableTrackSizePolicy::fixed)
                 {
                     f32 value = size.value;
                     if(row < persistent.table_row_sizes.size() && persistent.table_row_sizes[row] > 0.0f)
@@ -88,7 +88,7 @@ namespace Luna
                 u32 row = cell_index / columns;
                 u32 col = cell_index % columns;
                 if(row >= rows) break;
-                GUILayoutMetrics child_metrics = measure_node(child);
+                LayoutMetrics child_metrics = measure_node(child);
                 Float2U child_size = preferred ? child_metrics.preferred_size : child_metrics.min_size;
                 f32 cell_width = child_size.x + node.table_desc.style.padding.left + node.table_desc.style.padding.right;
                 f32 cell_height = child_size.y + node.table_desc.style.padding.top + node.table_desc.style.padding.bottom;
@@ -103,18 +103,18 @@ namespace Luna
             }
         }
 
-        GUILayoutMetrics GUIContext::measure_grid_node(u32 node_index, f32 available_width)
+        LayoutMetrics Context::measure_grid_node(u32 node_index, f32 available_width)
         {
-            const GUINode& node = m_submitted_desc.nodes[node_index];
-            const GUIGridLayoutDesc& desc = node.grid_desc;
+            const Node& node = m_submitted_desc.nodes[node_index];
+            const GridLayoutDesc& desc = node.grid_desc;
             f32 padding_x = desc.padding.left + desc.padding.right;
             f32 padding_y = desc.padding.top + desc.padding.bottom;
             f32 gap_x = max(desc.gap.x, 0.0f);
             f32 gap_y = max(desc.gap.y, 0.0f);
             u32 child_count = grid_child_count(m_submitted_desc, node);
-            GUILayoutMetrics metrics;
+            LayoutMetrics metrics;
 
-            if(desc.sizing_mode == GUIGridSizingMode::fixed_cell_size)
+            if(desc.sizing_mode == GridSizingMode::fixed_cell_size)
             {
                 f32 cell_width = max(desc.cell_size.x, 1.0f);
                 f32 cell_height = max(desc.cell_size.y, 1.0f);
@@ -141,9 +141,9 @@ namespace Luna
             u32 cell_index = 0;
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                const GUINode& child_node = m_submitted_desc.nodes[child];
+                const Node& child_node = m_submitted_desc.nodes[child];
                 if(is_absolute_node(child_node)) continue;
-                GUILayoutMetrics child_metrics = measure_node(child);
+                LayoutMetrics child_metrics = measure_node(child);
                 u32 row = cell_index / columns;
                 min_cell_width = max(min_cell_width, child_metrics.min_size.x);
                 preferred_cell_width = max(preferred_cell_width, child_metrics.preferred_size.x);
@@ -164,28 +164,28 @@ namespace Luna
             return metrics;
         }
 
-        GUILayoutMetrics GUIContext::measure_node(u32 node_index)
+        LayoutMetrics Context::measure_node(u32 node_index)
         {
             if(m_layouts[node_index].metrics_valid)
             {
                 return m_layouts[node_index].metrics;
             }
 
-            const GUINode& node = m_submitted_desc.nodes[node_index];
-            GUILayoutMetrics metrics;
+            const Node& node = m_submitted_desc.nodes[node_index];
+            LayoutMetrics metrics;
             f32 font_size = 16.0f;
             f32 text_width = (f32)node.text.size() * font_size * 0.52f;
             switch(node.kind)
             {
-            case GUINodeKind::text:
+            case NodeKind::text:
             {
                 f32 w = max(text_width, 1.0f);
                 f32 h = font_size + 4.0f;
                 f32 max_width = F32_MAX;
                 if(node.parent != U32_MAX)
                 {
-                    const GUINode& parent = m_submitted_desc.nodes[node.parent];
-                    if(parent.kind == GUINodeKind::tooltip)
+                    const Node& parent = m_submitted_desc.nodes[node.parent];
+                    if(parent.kind == NodeKind::tooltip)
                     {
                         f32 tooltip_width = parent.requested_size.width > 0.0f ? parent.requested_size.width : parent.tooltip_desc.max_width;
                         if(tooltip_width <= 0.0f)
@@ -211,7 +211,7 @@ namespace Luna
                 metrics.max_size = Float2U(max_width, h);
                 break;
             }
-            case GUINodeKind::button:
+            case NodeKind::button:
             {
                 f32 w = max(text_width + 24.0f, 72.0f);
                 metrics.min_size = Float2U(72.0f, 30.0f);
@@ -219,7 +219,7 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
             }
-            case GUINodeKind::selectable:
+            case NodeKind::selectable:
             {
                 f32 w = max(text_width + 24.0f, 72.0f);
                 metrics.min_size = Float2U(72.0f, 26.0f);
@@ -227,9 +227,9 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 26.0f);
                 break;
             }
-            case GUINodeKind::menu:
+            case NodeKind::menu:
             {
-                bool top_level = node.parent != U32_MAX && m_submitted_desc.nodes[node.parent].kind == GUINodeKind::menu_bar;
+                bool top_level = node.parent != U32_MAX && m_submitted_desc.nodes[node.parent].kind == NodeKind::menu_bar;
                 f32 w = top_level ? max(text_width + 22.0f, 42.0f) : max(text_width + 62.0f, 132.0f);
                 f32 h = top_level ? menu_bar_height() - 6.0f : menu_item_height();
                 metrics.min_size = Float2U(top_level ? min(w, 42.0f) : 96.0f, h);
@@ -237,7 +237,7 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, h);
                 break;
             }
-            case GUINodeKind::menu_item:
+            case NodeKind::menu_item:
             {
                 f32 shortcut_width = node.shortcut.empty() ? 0.0f : menu_text_width(node.shortcut) + 28.0f;
                 f32 w = max(text_width + shortcut_width + 42.0f, 132.0f);
@@ -246,12 +246,12 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, menu_item_height());
                 break;
             }
-            case GUINodeKind::menu_separator:
+            case NodeKind::menu_separator:
                 metrics.min_size = Float2U(1.0f, menu_separator_height());
                 metrics.preferred_size = Float2U(96.0f, menu_separator_height());
                 metrics.max_size = Float2U(F32_MAX, menu_separator_height());
                 break;
-            case GUINodeKind::checkbox:
+            case NodeKind::checkbox:
             {
                 f32 w = max(text_width + 30.0f, 80.0f);
                 metrics.min_size = Float2U(26.0f, 26.0f);
@@ -259,7 +259,7 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 26.0f);
                 break;
             }
-            case GUINodeKind::radio_button:
+            case NodeKind::radio_button:
             {
                 f32 w = max(text_width + 30.0f, 80.0f);
                 metrics.min_size = Float2U(26.0f, 26.0f);
@@ -267,7 +267,7 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 26.0f);
                 break;
             }
-            case GUINodeKind::toggle_switch:
+            case NodeKind::toggle_switch:
             {
                 f32 w = max(text_width + 58.0f, 72.0f);
                 metrics.min_size = Float2U(46.0f, 28.0f);
@@ -275,12 +275,12 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 28.0f);
                 break;
             }
-            case GUINodeKind::input_text:
+            case NodeKind::input_text:
                 metrics.min_size = Float2U(80.0f, 30.0f);
                 metrics.preferred_size = Float2U(240.0f, 30.0f);
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
-            case GUINodeKind::color_edit:
+            case NodeKind::color_edit:
             {
                 f32 w = max(text_width + 140.0f, 220.0f);
                 metrics.min_size = Float2U(150.0f, 30.0f);
@@ -288,17 +288,17 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
             }
-            case GUINodeKind::color_preview:
+            case NodeKind::color_preview:
                 metrics.min_size = Float2U(120.0f, 44.0f);
                 metrics.preferred_size = Float2U(240.0f, 44.0f);
                 metrics.max_size = Float2U(F32_MAX, 44.0f);
                 break;
-            case GUINodeKind::color_picker:
+            case NodeKind::color_picker:
                 metrics.min_size = Float2U(360.0f, 240.0f);
                 metrics.preferred_size = Float2U(520.0f, 300.0f);
                 metrics.max_size = Float2U(F32_MAX, 300.0f);
                 break;
-            case GUINodeKind::image:
+            case NodeKind::image:
             {
                 Float2U image_size(max(node.requested_size.width, 1.0f), max(node.requested_size.height, 1.0f));
                 metrics.min_size = image_size;
@@ -306,7 +306,7 @@ namespace Luna
                 metrics.max_size = image_size;
                 break;
             }
-            case GUINodeKind::collapsing_header:
+            case NodeKind::collapsing_header:
             {
                 f32 w = max(text_width + 32.0f, 120.0f);
                 metrics.min_size = Float2U(120.0f, 30.0f);
@@ -314,7 +314,7 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
             }
-            case GUINodeKind::tree_node:
+            case NodeKind::tree_node:
             {
                 f32 indent = tree_node_indent_width() * (f32)node.tree_depth;
                 f32 w = max(text_width + indent + 34.0f, 80.0f);
@@ -323,7 +323,7 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 26.0f);
                 break;
             }
-            case GUINodeKind::combo:
+            case NodeKind::combo:
             {
                 f32 w = max(text_width + 160.0f, 220.0f);
                 metrics.min_size = Float2U(140.0f, 30.0f);
@@ -331,7 +331,7 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
             }
-            case GUINodeKind::button_group:
+            case NodeKind::button_group:
             {
                 f32 width = 0.0f;
                 for(const String& item : node.items)
@@ -344,12 +344,12 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 28.0f);
                 break;
             }
-            case GUINodeKind::slider_float:
-            case GUINodeKind::slider_int:
-            case GUINodeKind::input_float:
-            case GUINodeKind::input_int:
-            case GUINodeKind::drag_float:
-            case GUINodeKind::drag_int:
+            case NodeKind::slider_float:
+            case NodeKind::slider_int:
+            case NodeKind::input_float:
+            case NodeKind::input_int:
+            case NodeKind::drag_float:
+            case NodeKind::drag_int:
             {
                 f32 w = max(text_width + 220.0f, 280.0f);
                 if(node.color_owner_id)
@@ -365,12 +365,12 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
             }
-            case GUINodeKind::hit_box:
+            case NodeKind::hit_box:
                 metrics.min_size = Float2U(1.0f, 1.0f);
                 metrics.preferred_size = Float2U(1.0f, 1.0f);
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
                 break;
-            case GUINodeKind::table_layout:
+            case NodeKind::table_layout:
             {
                 Vector<f32> min_columns;
                 Vector<f32> min_rows;
@@ -404,12 +404,12 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
                 break;
             }
-            case GUINodeKind::grid_layout:
+            case NodeKind::grid_layout:
             {
                 metrics = measure_grid_node(node_index, F32_MAX);
                 break;
             }
-            case GUINodeKind::canvas_layout:
+            case NodeKind::canvas_layout:
             {
                 f32 min_width = 1.0f;
                 f32 min_height = 1.0f;
@@ -417,9 +417,9 @@ namespace Luna
                 f32 preferred_height = node.requested_size.height > 0.0f ? node.requested_size.height : 1.0f;
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
-                    const GUINode& child_node = m_submitted_desc.nodes[child];
+                    const Node& child_node = m_submitted_desc.nodes[child];
                     if(is_absolute_node(child_node) && !child_node.has_canvas_item_layout) continue;
-                    GUILayoutMetrics child_metrics = measure_node(child);
+                    LayoutMetrics child_metrics = measure_node(child);
                     min_width = max(min_width, child_metrics.min_size.x);
                     min_height = max(min_height, child_metrics.min_size.y);
                     preferred_width = max(preferred_width, child_metrics.preferred_size.x);
@@ -430,16 +430,16 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
                 break;
             }
-            case GUINodeKind::tab_bar:
+            case NodeKind::tab_bar:
             {
                 f32 min_header_width = 0.0f;
                 f32 preferred_header_width = 0.0f;
-                GUILayoutMetrics content_metrics;
+                LayoutMetrics content_metrics;
                 bool has_content = false;
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
-                    const GUINode& child_node = m_submitted_desc.nodes[child];
-                    if(child_node.kind != GUINodeKind::tab_item) continue;
+                    const Node& child_node = m_submitted_desc.nodes[child];
+                    if(child_node.kind != NodeKind::tab_item) continue;
                     if(child_node.bool_value && !*child_node.bool_value) continue;
                     f32 ideal_width = tab_item_ideal_width(child_node);
                     min_header_width += tab_item_min_width();
@@ -464,8 +464,8 @@ namespace Luna
             }
             default:
             {
-                bool horizontal = node.kind == GUINodeKind::h_layout || node.kind == GUINodeKind::menu_bar;
-                const GUIEdgeInsets& padding = node.layout_desc.padding;
+                bool horizontal = node.kind == NodeKind::h_layout || node.kind == NodeKind::menu_bar;
+                const EdgeInsets& padding = node.layout_desc.padding;
                 f32 gap = node.layout_desc.gap;
                 f32 min_main = 0.0f;
                 f32 preferred_main = 0.0f;
@@ -474,9 +474,9 @@ namespace Luna
                 u32 child_count = 0;
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
-                    const GUINode& child_node = m_submitted_desc.nodes[child];
+                    const Node& child_node = m_submitted_desc.nodes[child];
                     if(is_absolute_node(child_node)) continue;
-                    GUILayoutMetrics child_metrics = measure_node(child);
+                    LayoutMetrics child_metrics = measure_node(child);
                     f32 child_min_main = axis_value(child_metrics.min_size, horizontal);
                     f32 child_preferred_main = resolve_base_axis_size(child_node, child_metrics, horizontal);
                     f32 child_min_cross = axis_value(child_metrics.min_size, !horizontal);
@@ -531,10 +531,10 @@ namespace Luna
             return metrics;
         }
 
-        void GUIContext::arrange_grid_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
+        void Context::arrange_grid_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
-            GUINode& node = m_submitted_desc.nodes[node_index];
-            const GUIGridLayoutDesc& desc = node.grid_desc;
+            Node& node = m_submitted_desc.nodes[node_index];
+            const GridLayoutDesc& desc = node.grid_desc;
             f32 gap_x = max(desc.gap.x, 0.0f);
             f32 gap_y = max(desc.gap.y, 0.0f);
             RectF content_rect(
@@ -564,7 +564,7 @@ namespace Luna
             f32 cell_width = 1.0f;
             Vector<f32> row_heights;
             row_heights.assign(rows, 1.0f);
-            if(desc.sizing_mode == GUIGridSizingMode::fixed_cell_size)
+            if(desc.sizing_mode == GridSizingMode::fixed_cell_size)
             {
                 cell_width = max(desc.cell_size.x, 1.0f);
                 for(f32& row_height : row_heights)
@@ -578,8 +578,8 @@ namespace Luna
                 for(usize i = 0; i < children.size(); ++i)
                 {
                     u32 row = (u32)i / columns;
-                    GUINode& child_node = m_submitted_desc.nodes[children[i]];
-                    GUILayoutMetrics child_metrics = measure_node(children[i]);
+                    Node& child_node = m_submitted_desc.nodes[children[i]];
+                    LayoutMetrics child_metrics = measure_node(children[i]);
                     f32 child_height = resolve_base_axis_size(child_node, child_metrics, false);
                     child_height = clamp(child_height, child_metrics.min_size.y, child_metrics.max_size.y);
                     row_heights[row] = max(row_heights[row], child_height);
@@ -604,18 +604,18 @@ namespace Luna
             RectF surface_clip(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
             for(u32 child : absolute_children)
             {
-                GUINode& child_node = m_submitted_desc.nodes[child];
-                GUILayoutMetrics metrics = measure_node(child);
+                Node& child_node = m_submitted_desc.nodes[child];
+                LayoutMetrics metrics = measure_node(child);
                 f32 width = max(resolve_base_axis_size(child_node, metrics, true), 1.0f);
                 f32 height = max(resolve_base_axis_size(child_node, metrics, false), 1.0f);
                 layout_node(child, RectF(child_node.position.x, child_node.position.y, width, height), surface_clip);
             }
         }
 
-        void GUIContext::arrange_canvas_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
+        void Context::arrange_canvas_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
-            GUINode& node = m_submitted_desc.nodes[node_index];
-            const GUICanvasLayoutDesc& desc = node.canvas_desc;
+            Node& node = m_submitted_desc.nodes[node_index];
+            const CanvasLayoutDesc& desc = node.canvas_desc;
             RectF content_rect(
                 rect.offset_x + desc.padding.left,
                 rect.offset_y + desc.padding.top,
@@ -626,12 +626,12 @@ namespace Luna
 
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                GUINode& child_node = m_submitted_desc.nodes[child];
-                GUILayoutMetrics metrics = measure_node(child);
+                Node& child_node = m_submitted_desc.nodes[child];
+                LayoutMetrics metrics = measure_node(child);
                 RectF child_rect;
                 if(child_node.has_canvas_item_layout)
                 {
-                    const GUICanvasItemLayout& item = child_node.canvas_item_layout;
+                    const CanvasItemLayout& item = child_node.canvas_item_layout;
                     f32 anchor_min_x = clamp(item.anchor_min.x, 0.0f, 1.0f);
                     f32 anchor_min_y = clamp(item.anchor_min.y, 0.0f, 1.0f);
                     f32 anchor_max_x = clamp(item.anchor_max.x, 0.0f, 1.0f);
@@ -660,20 +660,20 @@ namespace Luna
             }
         }
 
-        void GUIContext::arrange_tab_bar_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
+        void Context::arrange_tab_bar_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
-            GUINode& node = m_submitted_desc.nodes[node_index];
+            Node& node = m_submitted_desc.nodes[node_index];
             PersistentItemState& state = get_or_create_persistent_state(node.id);
             Vector<u32> live_tabs;
             live_tabs.reserve(8);
-            GUIID selected = state.tab_selected_id;
-            GUIID first_open = 0;
+            id_t selected = state.tab_selected_id;
+            id_t first_open = 0;
             bool selected_open = false;
 
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                GUINode& child_node = m_submitted_desc.nodes[child];
-                if(child_node.kind != GUINodeKind::tab_item) continue;
+                Node& child_node = m_submitted_desc.nodes[child];
+                if(child_node.kind != NodeKind::tab_item) continue;
                 bool open = !child_node.bool_value || *child_node.bool_value;
                 if(!open)
                 {
@@ -683,19 +683,19 @@ namespace Luna
                     continue;
                 }
                 live_tabs.push_back(child);
-                if(!first_open && !test_flags(child_node.tab_item_flags, GUITabItemFlag::button))
+                if(!first_open && !test_flags(child_node.tab_item_flags, TabItemFlag::button))
                 {
                     first_open = child_node.id;
                 }
                 // node.selected is build-time visibility; persistent selection is authoritative
                 // after input-triggered relayouts.
-                if(!selected && child_node.selected && !test_flags(child_node.tab_item_flags, GUITabItemFlag::button))
+                if(!selected && child_node.selected && !test_flags(child_node.tab_item_flags, TabItemFlag::button))
                 {
                     selected = child_node.id;
                 }
                 if(selected && selected == child_node.id)
                 {
-                    selected_open = !test_flags(child_node.tab_item_flags, GUITabItemFlag::button);
+                    selected_open = !test_flags(child_node.tab_item_flags, TabItemFlag::button);
                 }
             }
             if(!selected || !selected_open)
@@ -704,7 +704,7 @@ namespace Luna
             }
             state.tab_selected_id = selected;
 
-            auto live_tab_index = [&](GUIID id) -> u32 {
+            auto live_tab_index = [&](id_t id) -> u32 {
                 for(u32 tab : live_tabs)
                 {
                     if(m_submitted_desc.nodes[tab].id == id) return tab;
@@ -724,7 +724,7 @@ namespace Luna
             }
             for(u32 tab : live_tabs)
             {
-                GUIID id = m_submitted_desc.nodes[tab].id;
+                id_t id = m_submitted_desc.nodes[tab].id;
                 if(!tab_order_contains(state, id))
                 {
                     state.tab_order.push_back(id);
@@ -733,7 +733,7 @@ namespace Luna
 
             Vector<u32> tabs;
             tabs.reserve(live_tabs.size());
-            for(GUIID id : state.tab_order)
+            for(id_t id : state.tab_order)
             {
                 u32 tab = live_tab_index(id);
                 if(tab != U32_MAX) tabs.push_back(tab);
@@ -765,7 +765,7 @@ namespace Luna
                 total_width += width;
                 shrink_capacity += max(width - tab_item_min_width(), 0.0f);
             }
-            bool use_scroll = test_flags(node.tab_bar_flags, GUITabBarFlag::fitting_scroll);
+            bool use_scroll = test_flags(node.tab_bar_flags, TabBarFlag::fitting_scroll);
             if(use_scroll && total_width > header_area_rect.width + 0.5f)
             {
                 f32 button_size = tab_scroll_button_size();
@@ -787,7 +787,7 @@ namespace Luna
                     header_rect.height);
             }
             f32 available_width = max(header_area_rect.width, 1.0f);
-            if(!bar_layout.tab_scrollable && test_flags(node.tab_bar_flags, GUITabBarFlag::fitting_shrink) &&
+            if(!bar_layout.tab_scrollable && test_flags(node.tab_bar_flags, TabBarFlag::fitting_shrink) &&
                 total_width > available_width && shrink_capacity > 0.0f)
             {
                 f32 deficit = total_width - available_width;
@@ -809,15 +809,15 @@ namespace Luna
             for(usize i = 0; i < tabs.size(); ++i)
             {
                 u32 tab = tabs[i];
-                GUINode& tab_node = m_submitted_desc.nodes[tab];
+                Node& tab_node = m_submitted_desc.nodes[tab];
                 NodeLayout& tab_layout = m_layouts[tab];
-                bool content_visible = tab_node.id == selected && !test_flags(tab_node.tab_item_flags, GUITabItemFlag::button);
+                bool content_visible = tab_node.id == selected && !test_flags(tab_node.tab_item_flags, TabItemFlag::button);
                 RectF tab_header(cursor_x, header_rect.offset_y + 3.0f, max(widths[i], 1.0f), max(header_rect.height - 4.0f, 1.0f));
                 tab_layout.tab_header_rect = tab_header;
                 tab_layout.tab_header_clip_rect = header_clip;
                 tab_layout.tab_content_visible = content_visible;
                 tab_layout.tab_close_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-                if(tab_node.bool_value && !test_flags(tab_node.tab_item_flags, GUITabItemFlag::no_close_button))
+                if(tab_node.bool_value && !test_flags(tab_node.tab_item_flags, TabItemFlag::no_close_button))
                 {
                     f32 close_size = 18.0f;
                     tab_layout.tab_close_rect = RectF(
@@ -852,9 +852,9 @@ namespace Luna
             }
         }
 
-        void GUIContext::arrange_table_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
+        void Context::arrange_table_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
-            GUINode& node = m_submitted_desc.nodes[node_index];
+            Node& node = m_submitted_desc.nodes[node_index];
             NodeLayout& layout = m_layouts[node_index];
             Vector<f32> column_widths;
             Vector<f32> row_heights;
@@ -959,7 +959,7 @@ namespace Luna
             }
         }
 
-        u32 GUIContext::new_dock_leaf(PersistentItemState& dock_state, GUIID panel_id, u32 parent)
+        u32 Context::new_dock_leaf(PersistentItemState& dock_state, id_t panel_id, u32 parent)
         {
             DockTreeNode leaf;
             leaf.parent = parent;
@@ -973,7 +973,7 @@ namespace Luna
             return index;
         }
 
-        bool GUIContext::dock_tree_contains_panel(const PersistentItemState& dock_state, GUIID panel_id) const
+        bool Context::dock_tree_contains_panel(const PersistentItemState& dock_state, id_t panel_id) const
         {
             if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size()) return false;
             Vector<u32> stack;
@@ -990,7 +990,7 @@ namespace Luna
                     stack.push_back(node.child0);
                     continue;
                 }
-                for(GUIID tab : node.tabs)
+                for(id_t tab : node.tabs)
                 {
                     if(tab == panel_id) return true;
                 }
@@ -998,7 +998,7 @@ namespace Luna
             return false;
         }
 
-        void GUIContext::dock_tree_add_panel(PersistentItemState& dock_state, GUIID panel_id)
+        void Context::dock_tree_add_panel(PersistentItemState& dock_state, id_t panel_id)
         {
             if(!panel_id || dock_tree_contains_panel(dock_state, panel_id)) return;
             if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size())
@@ -1067,7 +1067,7 @@ namespace Luna
             }
         }
 
-        bool GUIContext::dock_tree_remove_panel(PersistentItemState& dock_state, GUIID panel_id)
+        bool Context::dock_tree_remove_panel(PersistentItemState& dock_state, id_t panel_id)
         {
             if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size()) return false;
             Vector<u32> stack;
@@ -1102,17 +1102,17 @@ namespace Luna
             return false;
         }
 
-        void GUIContext::dock_tree_dock_panel(PersistentItemState& dock_state, GUIID panel_id, u32 target_leaf, GUIDockDropDirection direction)
+        void Context::dock_tree_dock_panel(PersistentItemState& dock_state, id_t panel_id, u32 target_leaf, DockDropDirection direction)
         {
             if(!panel_id) return;
             dock_tree_remove_panel(dock_state, panel_id);
-            if(direction == GUIDockDropDirection::none) direction = GUIDockDropDirection::center;
+            if(direction == DockDropDirection::none) direction = DockDropDirection::center;
             if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size() || target_leaf >= dock_state.dock_nodes.size())
             {
                 dock_state.dock_root_node = new_dock_leaf(dock_state, panel_id);
                 return;
             }
-            if(direction == GUIDockDropDirection::center || dock_state.dock_nodes[target_leaf].split)
+            if(direction == DockDropDirection::center || dock_state.dock_nodes[target_leaf].split)
             {
                 DockTreeNode& leaf = dock_state.dock_nodes[target_leaf];
                 leaf.tabs.push_back(panel_id);
@@ -1129,9 +1129,9 @@ namespace Luna
             DockTreeNode split;
             split.split = true;
             split.parent = dock_state.dock_nodes[target_leaf].parent;
-            split.split_axis = (direction == GUIDockDropDirection::left || direction == GUIDockDropDirection::right) ? GUIDockSplitAxis::x : GUIDockSplitAxis::y;
+            split.split_axis = (direction == DockDropDirection::left || direction == DockDropDirection::right) ? DockSplitAxis::x : DockSplitAxis::y;
             split.split_ratio = 0.5f;
-            if(direction == GUIDockDropDirection::left || direction == GUIDockDropDirection::up)
+            if(direction == DockDropDirection::left || direction == DockDropDirection::up)
             {
                 split.child0 = new_child;
                 split.child1 = old_child;
@@ -1146,7 +1146,7 @@ namespace Luna
             dock_state.dock_nodes[new_child].parent = target_leaf;
         }
 
-        static bool dock_tree_prune_node(PersistentItemState& dock_state, u32 node_index, const HashSet<GUIID, GUIIDHash>& live_panels)
+        static bool dock_tree_prune_node(PersistentItemState& dock_state, u32 node_index, const HashSet<id_t, IdHash>& live_panels)
         {
             if(node_index >= dock_state.dock_nodes.size()) return false;
             DockTreeNode& node = dock_state.dock_nodes[node_index];
@@ -1169,7 +1169,7 @@ namespace Luna
                     return false;
                 }
                 bool selected_alive = false;
-                for(GUIID tab : node.tabs)
+                for(id_t tab : node.tabs)
                 {
                     if(tab == node.selected_tab)
                     {
@@ -1195,7 +1195,7 @@ namespace Luna
             return false;
         }
 
-        void GUIContext::dock_tree_prune_missing(PersistentItemState& dock_state, const HashSet<GUIID, GUIIDHash>& live_panels)
+        void Context::dock_tree_prune_missing(PersistentItemState& dock_state, const HashSet<id_t, IdHash>& live_panels)
         {
             if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size()) return;
             if(!dock_tree_prune_node(dock_state, dock_state.dock_root_node, live_panels))
@@ -1204,12 +1204,12 @@ namespace Luna
             }
         }
 
-        GUIID GUIContext::dock_tree_selected_panel(PersistentItemState& dock_state, u32 leaf_index)
+        id_t Context::dock_tree_selected_panel(PersistentItemState& dock_state, u32 leaf_index)
         {
             if(leaf_index >= dock_state.dock_nodes.size()) return 0;
             DockTreeNode& leaf = dock_state.dock_nodes[leaf_index];
             if(leaf.split || leaf.tabs.empty()) return 0;
-            for(GUIID tab : leaf.tabs)
+            for(id_t tab : leaf.tabs)
             {
                 if(tab == leaf.selected_tab) return tab;
             }
@@ -1217,7 +1217,7 @@ namespace Luna
             return leaf.selected_tab;
         }
 
-        void GUIContext::arrange_dock_tree_node(GUIID dock_space_id, u32 tree_node_index, const RectF& rect, const RectF& clip_rect, const HashMap<GUIID, u32, GUIIDHash>& panel_indices)
+        void Context::arrange_dock_tree_node(id_t dock_space_id, u32 tree_node_index, const RectF& rect, const RectF& clip_rect, const HashMap<id_t, u32, IdHash>& panel_indices)
         {
             PersistentItemState& dock_state = get_or_create_persistent_state(dock_space_id);
             if(tree_node_index >= dock_state.dock_nodes.size()) return;
@@ -1226,7 +1226,7 @@ namespace Luna
             if(tree_node.split)
             {
                 f32 splitter_size = dock_panel_splitter_size();
-                if(tree_node.split_axis == GUIDockSplitAxis::x)
+                if(tree_node.split_axis == DockSplitAxis::x)
                 {
                     f32 available_width = max(rect.width - splitter_size, 1.0f);
                     f32 child0_width = clamp(available_width * tree_node.split_ratio, 1.0f, max(available_width - 1.0f, 1.0f));
@@ -1249,15 +1249,15 @@ namespace Luna
                 return;
             }
 
-            GUIID selected_panel = dock_tree_selected_panel(dock_state, tree_node_index);
-            for(GUIID panel_id : tree_node.tabs)
+            id_t selected_panel = dock_tree_selected_panel(dock_state, tree_node_index);
+            for(id_t panel_id : tree_node.tabs)
             {
                 auto iter = panel_indices.find(panel_id);
                 if(iter == panel_indices.end()) continue;
                 u32 panel_index = iter->second;
                 NodeLayout& panel_layout = m_layouts[panel_index];
-                GUINode& panel_node = m_submitted_desc.nodes[panel_index];
-                GUIDockPanelStyle style = panel_layout.dock_panel_style;
+                Node& panel_node = m_submitted_desc.nodes[panel_index];
+                DockPanelStyle style = panel_layout.dock_panel_style;
                 bool selected = panel_id == selected_panel;
                 panel_layout.dock_panel_visible = selected;
                 panel_layout.dock_leaf_index = tree_node_index;
@@ -1269,7 +1269,7 @@ namespace Luna
                     dock_panel_close_rect(panel_layout.dock_panel_title_rect) :
                     RectF(0.0f, 0.0f, 0.0f, 0.0f);
                 panel_layout.dock_panel_resize_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-                panel_node.render_layer = GUIRenderLayer::main;
+                panel_node.render_layer = RenderLayer::main;
                 if(selected)
                 {
                     RectF content_rect = dock_panel_content_rect(rect, style);
@@ -1283,18 +1283,18 @@ namespace Luna
             }
         }
 
-        void GUIContext::arrange_dock_space_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
+        void Context::arrange_dock_space_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
-            GUINode& node = m_submitted_desc.nodes[node_index];
+            Node& node = m_submitted_desc.nodes[node_index];
             PersistentItemState& dock_state = get_or_create_persistent_state(node.id);
             Vector<u32> floating_children;
-            HashMap<GUIID, u32, GUIIDHash> docking_panel_indices;
-            HashSet<GUIID, GUIIDHash> live_docking_panels;
+            HashMap<id_t, u32, IdHash> docking_panel_indices;
+            HashSet<id_t, IdHash> live_docking_panels;
 
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                GUINode& child_node = m_submitted_desc.nodes[child];
-                GUIDockPanelStyle style = child_node.has_dock_panel_style ? child_node.dock_panel_style : GUIDockPanelStyle();
+                Node& child_node = m_submitted_desc.nodes[child];
+                DockPanelStyle style = child_node.has_dock_panel_style ? child_node.dock_panel_style : DockPanelStyle();
                 DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state, child_node.id);
                 if(!panel_state.initialized)
                 {
@@ -1321,7 +1321,7 @@ namespace Luna
                 child_layout.dock_panel_visible = visible;
                 child_layout.dock_space_id = node.id;
                 child_layout.dock_panel_style = style;
-                child_layout.dock_panel_floating = panel_state.mode == GUIDockPanelMode::floating;
+                child_layout.dock_panel_floating = panel_state.mode == DockPanelMode::floating;
                 child_layout.dock_panel_z_order = panel_state.z_order;
                 child_layout.dock_leaf_index = U32_MAX;
 
@@ -1331,9 +1331,9 @@ namespace Luna
                     child_layout.clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
                     continue;
                 }
-                if(panel_state.mode == GUIDockPanelMode::floating)
+                if(panel_state.mode == DockPanelMode::floating)
                 {
-                    child_node.render_layer = GUIRenderLayer::overlay;
+                    child_node.render_layer = RenderLayer::overlay;
                     floating_children.push_back(child);
                     dock_tree_remove_panel(dock_state, child_node.id);
                 }
@@ -1354,11 +1354,11 @@ namespace Luna
 
             for(u32 child : floating_children)
             {
-                GUINode& child_node = m_submitted_desc.nodes[child];
+                Node& child_node = m_submitted_desc.nodes[child];
                 NodeLayout& child_layout = m_layouts[child];
                 PersistentItemState& dock_state_ref = get_or_create_persistent_state(node.id);
                 DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state_ref, child_node.id);
-                GUIDockPanelStyle style = child_layout.dock_panel_style;
+                DockPanelStyle style = child_layout.dock_panel_style;
                 panel_state.rect.width = max(panel_state.rect.width, style.min_floating_size.x);
                 panel_state.rect.height = max(panel_state.rect.height, style.min_floating_size.y);
                 panel_state.rect.width = min(panel_state.rect.width, max(rect.width, 1.0f));
@@ -1378,9 +1378,9 @@ namespace Luna
             }
         }
 
-        RectF GUIContext::layout_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
+        RectF Context::layout_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
-            GUINode& node = m_submitted_desc.nodes[node_index];
+            Node& node = m_submitted_desc.nodes[node_index];
             RectF effective_clip = intersect_rect(rect, clip_rect);
             if(node.has_user_clip_rect)
             {
@@ -1389,34 +1389,34 @@ namespace Luna
             m_layouts[node_index].rect = rect;
             m_layouts[node_index].clip_rect = effective_clip;
 
-            if(node.kind != GUINodeKind::root)
+            if(node.kind != NodeKind::root)
             {
                 ItemResult& result = get_or_create_current_result(node.id);
                 result.states.insert_or_assign(Name("gui.rect"), Any(rect));
                 result.states.insert_or_assign(Name("gui.clip_rect"), Any(effective_clip));
             }
 
-            if(node.kind == GUINodeKind::table_layout)
+            if(node.kind == NodeKind::table_layout)
             {
                 arrange_table_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.kind == GUINodeKind::grid_layout)
+            if(node.kind == NodeKind::grid_layout)
             {
                 arrange_grid_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.kind == GUINodeKind::canvas_layout)
+            if(node.kind == NodeKind::canvas_layout)
             {
                 arrange_canvas_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.kind == GUINodeKind::tab_bar)
+            if(node.kind == NodeKind::tab_bar)
             {
                 arrange_tab_bar_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.kind == GUINodeKind::dock_space)
+            if(node.kind == NodeKind::dock_space)
             {
                 arrange_dock_space_node(node_index, rect, effective_clip);
                 return rect;
@@ -1424,8 +1424,8 @@ namespace Luna
 
             if(node.first_child == U32_MAX) return rect;
 
-            bool horizontal = node.kind == GUINodeKind::h_layout || node.kind == GUINodeKind::menu_bar;
-            const GUIEdgeInsets& padding = node.layout_desc.padding;
+            bool horizontal = node.kind == NodeKind::h_layout || node.kind == NodeKind::menu_bar;
+            const EdgeInsets& padding = node.layout_desc.padding;
             RectF content_rect(
                 rect.offset_x + padding.left,
                 rect.offset_y + padding.top,
@@ -1441,7 +1441,7 @@ namespace Luna
 
             Vector<u32> children;
             Vector<u32> absolute_children;
-            Vector<GUILayoutMetrics> child_metrics;
+            Vector<LayoutMetrics> child_metrics;
             Vector<f32> main_sizes;
             f32 total_base_main = 0.0f;
             f32 total_fill_weight = 0.0f;
@@ -1449,17 +1449,17 @@ namespace Luna
             bool has_grid_child = false;
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                GUINode& child_node = m_submitted_desc.nodes[child];
+                Node& child_node = m_submitted_desc.nodes[child];
                 if(is_absolute_node(child_node))
                 {
                     absolute_children.push_back(child);
                     continue;
                 }
-                if(child_node.kind == GUINodeKind::grid_layout)
+                if(child_node.kind == NodeKind::grid_layout)
                 {
                     has_grid_child = true;
                 }
-                GUILayoutMetrics metrics = measure_node(child);
+                LayoutMetrics metrics = measure_node(child);
                 f32 base_main = resolve_base_axis_size(child_node, metrics, horizontal);
                 f32 min_main = axis_value(metrics.min_size, horizontal);
                 base_main = max(base_main, min_main);
@@ -1468,7 +1468,7 @@ namespace Luna
                 main_sizes.push_back(base_main);
                 total_base_main += base_main;
                 total_shrink_capacity += max(base_main - min_main, 0.0f);
-                if(axis_policy(child_node.layout_style, horizontal) == GUISizePolicy::fill)
+                if(axis_policy(child_node.layout_style, horizontal) == SizePolicy::fill)
                 {
                     total_fill_weight += max(axis_fill_weight(child_node.layout_style, horizontal), 0.0f);
                 }
@@ -1480,8 +1480,8 @@ namespace Luna
                 total_shrink_capacity = 0.0f;
                 for(usize i = 0; i < children.size(); ++i)
                 {
-                    GUINode& child_node = m_submitted_desc.nodes[children[i]];
-                    GUILayoutMetrics metrics = child_node.kind == GUINodeKind::grid_layout ?
+                    Node& child_node = m_submitted_desc.nodes[children[i]];
+                    LayoutMetrics metrics = child_node.kind == NodeKind::grid_layout ?
                         apply_layout_style(child_node, measure_grid_node(children[i], grid_available_width)) :
                         measure_node(children[i]);
                     child_metrics[i] = metrics;
@@ -1491,7 +1491,7 @@ namespace Luna
                     main_sizes[i] = base_main;
                     total_base_main += base_main;
                     total_shrink_capacity += max(base_main - min_main, 0.0f);
-                    if(axis_policy(child_node.layout_style, horizontal) == GUISizePolicy::fill)
+                    if(axis_policy(child_node.layout_style, horizontal) == SizePolicy::fill)
                     {
                         total_fill_weight += max(axis_fill_weight(child_node.layout_style, horizontal), 0.0f);
                     }
@@ -1502,12 +1502,12 @@ namespace Luna
                 RectF surface_clip(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
                 for(u32 child : absolute_children)
                 {
-                    GUINode& child_node = m_submitted_desc.nodes[child];
-                    GUILayoutMetrics metrics = measure_node(child);
+                    Node& child_node = m_submitted_desc.nodes[child];
+                    LayoutMetrics metrics = measure_node(child);
                     f32 width = resolve_base_axis_size(child_node, metrics, true);
                     f32 height = resolve_base_axis_size(child_node, metrics, false);
                     Float2U position = child_node.position;
-                    if(child_node.kind == GUINodeKind::tooltip)
+                    if(child_node.kind == NodeKind::tooltip)
                     {
                         f32 max_width = child_node.tooltip_desc.max_width > 0.0f ? child_node.tooltip_desc.max_width : m_frame_desc.surface_size.x;
                         width = min(max(width, 1.0f), min(max_width, max(m_frame_desc.surface_size.x, 1.0f)));
@@ -1525,14 +1525,14 @@ namespace Luna
                         position.x = clamp(position.x, 0.0f, max(m_frame_desc.surface_size.x - width, 0.0f));
                         position.y = clamp(position.y, 0.0f, max(m_frame_desc.surface_size.y - height, 0.0f));
                     }
-                    else if(child_node.kind == GUINodeKind::popup && child_node.popup_owner_id)
+                    else if(child_node.kind == NodeKind::popup && child_node.popup_owner_id)
                     {
                         u32 owner_index = find_submitted_node_index(child_node.popup_owner_id);
                         if(owner_index != U32_MAX)
                         {
-                            const GUINode& owner = m_submitted_desc.nodes[owner_index];
+                            const Node& owner = m_submitted_desc.nodes[owner_index];
                             const RectF& owner_rect = m_layouts[owner_index].rect;
-                            bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].kind == GUINodeKind::menu_bar;
+                            bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].kind == NodeKind::menu_bar;
                             width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
                             height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
                             if(owner_in_menu_bar)
@@ -1544,7 +1544,7 @@ namespace Luna
                                     position.y = owner_rect.offset_y - height - 2.0f;
                                 }
                             }
-                            else if(owner.kind == GUINodeKind::color_edit)
+                            else if(owner.kind == NodeKind::color_edit)
                             {
                                 PersistentItemState& popup_state = get_or_create_persistent_state(child_node.id);
                                 if(popup_state.popup_anchor_valid)
@@ -1593,7 +1593,7 @@ namespace Luna
 
             if(children.empty())
             {
-                if(node.kind == GUINodeKind::scroll_view)
+                if(node.kind == NodeKind::scroll_view)
                 {
                     NodeLayout& layout = m_layouts[node_index];
                     layout.scroll_viewport_size = Float2U(max(viewport_rect.width, 1.0f), max(viewport_rect.height, 1.0f));
@@ -1610,7 +1610,7 @@ namespace Luna
 
             f32 gap = node.layout_desc.gap;
             f32 total_gap = gap * (f32)(children.size() - 1);
-            if(node.kind == GUINodeKind::scroll_view)
+            if(node.kind == NodeKind::scroll_view)
             {
                 if(has_grid_child)
                 {
@@ -1622,10 +1622,10 @@ namespace Luna
                     f32 content_cross = 0.0f;
                     for(usize i = 0; i < children.size(); ++i)
                     {
-                        GUINode& child_node = m_submitted_desc.nodes[children[i]];
+                        Node& child_node = m_submitted_desc.nodes[children[i]];
                         bool cross_x_axis = !horizontal;
-                        f32 child_cross = node.layout_desc.cross_axis_alignment == GUILayoutCrossAxisAlignment::stretch &&
-                            axis_policy(child_node.layout_style, cross_x_axis) != GUISizePolicy::fixed ?
+                        f32 child_cross = node.layout_desc.cross_axis_alignment == LayoutCrossAxisAlignment::stretch &&
+                            axis_policy(child_node.layout_style, cross_x_axis) != SizePolicy::fixed ?
                             axis_value(child_metrics[i].min_size, cross_x_axis) :
                             resolve_base_axis_size(child_node, child_metrics[i], cross_x_axis);
                         child_cross = clamp(child_cross,
@@ -1697,7 +1697,7 @@ namespace Luna
                 content_rect.offset_y -= persistent.scroll_y;
             }
             f32 available_main = horizontal ? content_rect.width : content_rect.height;
-            if(node.kind == GUINodeKind::scroll_view)
+            if(node.kind == NodeKind::scroll_view)
             {
                 available_main = max(available_main, total_base_main + total_gap);
             }
@@ -1706,8 +1706,8 @@ namespace Luna
             {
                 for(usize i = 0; i < children.size(); ++i)
                 {
-                    GUINode& child_node = m_submitted_desc.nodes[children[i]];
-                    if(axis_policy(child_node.layout_style, horizontal) != GUISizePolicy::fill) continue;
+                    Node& child_node = m_submitted_desc.nodes[children[i]];
+                    if(axis_policy(child_node.layout_style, horizontal) != SizePolicy::fill) continue;
                     f32 weight = max(axis_fill_weight(child_node.layout_style, horizontal), 0.0f);
                     f32 max_main = axis_value(child_metrics[i].max_size, horizontal);
                     main_sizes[i] = min(main_sizes[i] + remaining * (weight / total_fill_weight), max_main);
@@ -1731,15 +1731,15 @@ namespace Luna
             }
             f32 free_main = max(available_main - used_main, 0.0f);
             f32 main_offset = 0.0f;
-            if(node.layout_desc.main_axis_alignment == GUILayoutMainAxisAlignment::center)
+            if(node.layout_desc.main_axis_alignment == LayoutMainAxisAlignment::center)
             {
                 main_offset = free_main * 0.5f;
             }
-            else if(node.layout_desc.main_axis_alignment == GUILayoutMainAxisAlignment::end)
+            else if(node.layout_desc.main_axis_alignment == LayoutMainAxisAlignment::end)
             {
                 main_offset = free_main;
             }
-            else if(node.layout_desc.main_axis_alignment == GUILayoutMainAxisAlignment::space_between && children.size() > 1)
+            else if(node.layout_desc.main_axis_alignment == LayoutMainAxisAlignment::space_between && children.size() > 1)
             {
                 gap += free_main / (f32)(children.size() - 1);
                 main_offset = 0.0f;
@@ -1749,7 +1749,7 @@ namespace Luna
             f32 cross_start = horizontal ? content_rect.offset_y : content_rect.offset_x;
             f32 available_cross = horizontal ? content_rect.height : content_rect.width;
             RectF child_clip = effective_clip;
-            if(node.kind == GUINodeKind::scroll_view)
+            if(node.kind == NodeKind::scroll_view)
             {
                 const NodeLayout& layout = m_layouts[node_index];
                 child_clip = intersect_rect(
@@ -1758,11 +1758,11 @@ namespace Luna
             }
             for(usize i = 0; i < children.size(); ++i)
             {
-                GUINode& child_node = m_submitted_desc.nodes[children[i]];
+                Node& child_node = m_submitted_desc.nodes[children[i]];
                 bool cross_x_axis = !horizontal;
                 f32 cross_size;
-                if(node.layout_desc.cross_axis_alignment == GUILayoutCrossAxisAlignment::stretch &&
-                    axis_policy(child_node.layout_style, cross_x_axis) != GUISizePolicy::fixed)
+                if(node.layout_desc.cross_axis_alignment == LayoutCrossAxisAlignment::stretch &&
+                    axis_policy(child_node.layout_style, cross_x_axis) != SizePolicy::fixed)
                 {
                     cross_size = available_cross;
                 }
@@ -1774,11 +1774,11 @@ namespace Luna
                     axis_value(child_metrics[i].min_size, cross_x_axis),
                     axis_value(child_metrics[i].max_size, cross_x_axis));
                 f32 cross_offset = 0.0f;
-                if(node.layout_desc.cross_axis_alignment == GUILayoutCrossAxisAlignment::center)
+                if(node.layout_desc.cross_axis_alignment == LayoutCrossAxisAlignment::center)
                 {
                     cross_offset = max(available_cross - cross_size, 0.0f) * 0.5f;
                 }
-                else if(node.layout_desc.cross_axis_alignment == GUILayoutCrossAxisAlignment::end)
+                else if(node.layout_desc.cross_axis_alignment == LayoutCrossAxisAlignment::end)
                 {
                     cross_offset = max(available_cross - cross_size, 0.0f);
                 }

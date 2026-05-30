@@ -22,9 +22,9 @@ namespace Luna
 {
     namespace GUI
     {
-        struct GUIContext;
+        struct Context;
 
-        extern GUIContext* g_current_context;
+        extern Context* g_current_context;
 
         inline constexpr u64 FNV_OFFSET = 14695981039346656037ull;
         inline constexpr u64 FNV_PRIME = 1099511628211ull;
@@ -83,27 +83,27 @@ namespace Luna
             else value.y = axis_value;
         }
 
-        inline GUISizePolicy axis_policy(const GUILayoutStyle& style, bool x_axis)
+        inline SizePolicy axis_policy(const LayoutStyle& style, bool x_axis)
         {
             return x_axis ? style.width_policy : style.height_policy;
         }
 
-        inline f32 axis_fixed_size(const GUILayoutStyle& style, bool x_axis)
+        inline f32 axis_fixed_size(const LayoutStyle& style, bool x_axis)
         {
             return x_axis ? style.fixed_width_value : style.fixed_height_value;
         }
 
-        inline f32 axis_fill_weight(const GUILayoutStyle& style, bool x_axis)
+        inline f32 axis_fill_weight(const LayoutStyle& style, bool x_axis)
         {
             return x_axis ? style.fill_weight_x : style.fill_weight_y;
         }
 
-        inline u32 table_columns(const GUINode& node)
+        inline u32 table_columns(const Node& node)
         {
             return max(node.table_desc.columns, 1u);
         }
 
-        inline u32 table_child_count(const GUIDescription& desc, const GUINode& node)
+        inline u32 table_child_count(const Description& desc, const Node& node)
         {
             u32 ret = 0;
             for(u32 child = node.first_child; child != U32_MAX; child = desc.nodes[child].next_sibling)
@@ -113,28 +113,28 @@ namespace Luna
             return ret;
         }
 
-        inline u32 table_rows(const GUIDescription& desc, const GUINode& node)
+        inline u32 table_rows(const Description& desc, const Node& node)
         {
             u32 columns = table_columns(node);
             u32 child_count = table_child_count(desc, node);
             return max((child_count + columns - 1) / columns, (u32)node.table_desc.row_sizes.size());
         }
 
-        inline const GUITableTrackSize& table_track_size(const GUINode& node, bool column, u32 index)
+        inline const TableTrackSize& table_track_size(const Node& node, bool column, u32 index)
         {
-            static GUITableTrackSize default_size;
-            const Vector<GUITableTrackSize>& sizes = column ? node.table_desc.column_sizes : node.table_desc.row_sizes;
+            static TableTrackSize default_size;
+            const Vector<TableTrackSize>& sizes = column ? node.table_desc.column_sizes : node.table_desc.row_sizes;
             return index < sizes.size() ? sizes[index] : default_size;
         }
 
-        inline bool table_track_is_fixed(const GUINode& node, bool column, u32 index)
+        inline bool table_track_is_fixed(const Node& node, bool column, u32 index)
         {
-            return table_track_size(node, column, index).policy == GUITableTrackSizePolicy::fixed;
+            return table_track_size(node, column, index).policy == TableTrackSizePolicy::fixed;
         }
 
-        inline bool window_has_title_bar(const GUINode& node)
+        inline bool window_has_title_bar(const Node& node)
         {
-            return node.kind == GUINodeKind::window && node.bool_value;
+            return node.kind == NodeKind::window && node.bool_value;
         }
 
         inline f32 window_title_bar_height()
@@ -142,64 +142,64 @@ namespace Luna
             return 30.0f;
         }
 
-        inline u32 f32_value_count(const GUINode& node)
+        inline u32 f32_value_count(const Node& node)
         {
             return clamp((u32)node.f32_value_count, 1u, 4u);
         }
 
-        inline u32 i32_value_count(const GUINode& node)
+        inline u32 i32_value_count(const Node& node)
         {
             return clamp((u32)node.i32_value_count, 1u, 4u);
         }
 
-        inline bool is_float_numeric_node(const GUINode& node)
+        inline bool is_float_numeric_node(const Node& node)
         {
-            return node.kind == GUINodeKind::slider_float ||
-                node.kind == GUINodeKind::input_float ||
-                node.kind == GUINodeKind::drag_float;
+            return node.kind == NodeKind::slider_float ||
+                node.kind == NodeKind::input_float ||
+                node.kind == NodeKind::drag_float;
         }
 
-        inline bool is_int_numeric_node(const GUINode& node)
+        inline bool is_int_numeric_node(const Node& node)
         {
-            return node.kind == GUINodeKind::slider_int ||
-                node.kind == GUINodeKind::input_int ||
-                node.kind == GUINodeKind::drag_int;
+            return node.kind == NodeKind::slider_int ||
+                node.kind == NodeKind::input_int ||
+                node.kind == NodeKind::drag_int;
         }
 
-        inline bool is_numeric_node(const GUINode& node)
+        inline bool is_numeric_node(const Node& node)
         {
             return is_float_numeric_node(node) || is_int_numeric_node(node);
         }
 
-        inline bool is_numeric_input_node(const GUINode& node)
+        inline bool is_numeric_input_node(const Node& node)
         {
-            return node.kind == GUINodeKind::input_float ||
-                node.kind == GUINodeKind::input_int ||
-                ((node.kind == GUINodeKind::drag_float || node.kind == GUINodeKind::drag_int) &&
-                    test_flags(node.numeric_flags, GUINumericEditFlag::input_on_double_click));
+            return node.kind == NodeKind::input_float ||
+                node.kind == NodeKind::input_int ||
+                ((node.kind == NodeKind::drag_float || node.kind == NodeKind::drag_int) &&
+                    test_flags(node.numeric_flags, NumericEditFlag::input_on_double_click));
         }
 
-        inline bool is_numeric_pointer_edit_node(const GUINode& node)
+        inline bool is_numeric_pointer_edit_node(const Node& node)
         {
-            return node.kind == GUINodeKind::slider_float ||
-                node.kind == GUINodeKind::slider_int ||
-                node.kind == GUINodeKind::drag_float ||
-                node.kind == GUINodeKind::drag_int;
+            return node.kind == NodeKind::slider_float ||
+                node.kind == NodeKind::slider_int ||
+                node.kind == NodeKind::drag_float ||
+                node.kind == NodeKind::drag_int;
         }
 
-        inline u32 numeric_value_count(const GUINode& node)
+        inline u32 numeric_value_count(const Node& node)
         {
             return is_float_numeric_node(node) ? f32_value_count(node) : i32_value_count(node);
         }
 
-        inline f32 numeric_label_width(const GUINode& node, const RectF& rect)
+        inline f32 numeric_label_width(const Node& node, const RectF& rect)
         {
             if(node.text.empty()) return 0.0f;
             if(node.color_owner_id) return 48.0f;
             return min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
         }
 
-        inline RectF numeric_component_rect(const GUINode& node, const RectF& rect, u32 component)
+        inline RectF numeric_component_rect(const Node& node, const RectF& rect, u32 component)
         {
             f32 label_w = numeric_label_width(node, rect);
             u32 value_count = numeric_value_count(node);
@@ -211,7 +211,7 @@ namespace Luna
                 component_w, max(rect.height - 6.0f, 1.0f));
         }
 
-        inline String numeric_value_text(const GUINode& node, u32 component)
+        inline String numeric_value_text(const Node& node, u32 component)
         {
             String value_text;
             if(is_float_numeric_node(node))
@@ -237,9 +237,9 @@ namespace Luna
             return (f32)value / 255.0f;
         }
 
-        inline Float4U read_color_value(const GUINode& node)
+        inline Float4U read_color_value(const Node& node)
         {
-            if(node.color_value_type == GUIColorValueType::u8 && node.u8_value)
+            if(node.color_value_type == ColorValueType::u8 && node.u8_value)
             {
                 return Float4U(
                     color_u8_to_channel(node.u8_value[0]),
@@ -247,7 +247,7 @@ namespace Luna
                     color_u8_to_channel(node.u8_value[2]),
                     node.f32_value_count > 3 ? color_u8_to_channel(node.u8_value[3]) : 1.0f);
             }
-            if(node.color_value_type == GUIColorValueType::rgba8 && node.u32_value)
+            if(node.color_value_type == ColorValueType::rgba8 && node.u32_value)
             {
                 u32 value = *node.u32_value;
                 return Float4U(
@@ -267,20 +267,20 @@ namespace Luna
             return Float4U(0.0f, 0.0f, 0.0f, 1.0f);
         }
 
-        inline void write_color_value(GUINode& node, Float4U color)
+        inline void write_color_value(Node& node, Float4U color)
         {
             color.x = clamp(color.x, 0.0f, 1.0f);
             color.y = clamp(color.y, 0.0f, 1.0f);
             color.z = clamp(color.z, 0.0f, 1.0f);
             color.w = node.f32_value_count > 3 ? clamp(color.w, 0.0f, 1.0f) : 1.0f;
-            if(node.color_value_type == GUIColorValueType::u8 && node.u8_value)
+            if(node.color_value_type == ColorValueType::u8 && node.u8_value)
             {
                 node.u8_value[0] = color_channel_to_u8(color.x);
                 node.u8_value[1] = color_channel_to_u8(color.y);
                 node.u8_value[2] = color_channel_to_u8(color.z);
                 if(node.f32_value_count > 3) node.u8_value[3] = color_channel_to_u8(color.w);
             }
-            else if(node.color_value_type == GUIColorValueType::rgba8 && node.u32_value)
+            else if(node.color_value_type == ColorValueType::rgba8 && node.u32_value)
             {
                 u32 r = (u32)color_channel_to_u8(color.x);
                 u32 g = (u32)color_channel_to_u8(color.y);
@@ -417,25 +417,25 @@ namespace Luna
             return RectF(cur.offset_x, cur.offset_y + cur.height + 44.0f, cur.width, cur.height);
         }
 
-        inline f32 combo_label_width(const GUINode& node, const RectF& rect)
+        inline f32 combo_label_width(const Node& node, const RectF& rect)
         {
             return min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
         }
 
-        inline RectF combo_value_rect(const GUINode& node, const RectF& rect)
+        inline RectF combo_value_rect(const Node& node, const RectF& rect)
         {
             f32 label_w = combo_label_width(node, rect);
             return RectF(rect.offset_x + label_w, rect.offset_y, max(rect.width - label_w, 1.0f), rect.height);
         }
 
-        inline bool radio_button_selected(const GUINode& node)
+        inline bool radio_button_selected(const Node& node)
         {
             if(node.i32_value) return *node.i32_value == node.item_value;
             if(node.bool_value) return *node.bool_value;
             return node.selected;
         }
 
-        inline RectF button_group_item_rect(const GUINode& node, const RectF& rect, u32 index)
+        inline RectF button_group_item_rect(const Node& node, const RectF& rect, u32 index)
         {
             u32 count = max((u32)node.items.size(), 1u);
             f32 item_width = rect.width / (f32)count;
@@ -444,7 +444,7 @@ namespace Luna
             return RectF(x, rect.offset_y, w, rect.height);
         }
 
-        inline i32 button_group_item_at(const GUINode& node, const RectF& rect, const Float2U& pos)
+        inline i32 button_group_item_at(const Node& node, const RectF& rect, const Float2U& pos)
         {
             u32 count = (u32)node.items.size();
             if(!count || !point_in_rect(pos, rect)) return -1;
@@ -458,7 +458,7 @@ namespace Luna
             return 26.0f;
         }
 
-        inline RectF combo_dropdown_rect(const GUINode& node, const RectF& rect, const Float2U& surface_size)
+        inline RectF combo_dropdown_rect(const Node& node, const RectF& rect, const Float2U& surface_size)
         {
             RectF value = combo_value_rect(node, rect);
             f32 item_height = combo_item_height();
@@ -476,21 +476,21 @@ namespace Luna
             return RectF(x, y, dropdown_width, dropdown_height);
         }
 
-        inline i32 combo_dropdown_item_at(const GUINode& node, const RectF& dropdown_rect, const Float2U& pos)
+        inline i32 combo_dropdown_item_at(const Node& node, const RectF& dropdown_rect, const Float2U& pos)
         {
             if(!point_in_rect(pos, dropdown_rect) || node.items.empty()) return -1;
             i32 index = (i32)((pos.y - dropdown_rect.offset_y) / combo_item_height());
             return index >= 0 && (usize)index < node.items.size() ? index : -1;
         }
 
-        inline bool is_absolute_node(const GUINode& node)
+        inline bool is_absolute_node(const Node& node)
         {
-            return node.absolute_position || node.kind == GUINodeKind::popup || node.kind == GUINodeKind::tooltip;
+            return node.absolute_position || node.kind == NodeKind::popup || node.kind == NodeKind::tooltip;
         }
 
-        inline bool is_overlay_node(const GUINode& node)
+        inline bool is_overlay_node(const Node& node)
         {
-            return node.render_layer == GUIRenderLayer::overlay;
+            return node.render_layer == RenderLayer::overlay;
         }
 
         inline bool contains_name(const Vector<Name>& names, const Name& name)
@@ -502,9 +502,9 @@ namespace Luna
             return false;
         }
 
-        inline bool tree_node_is_leaf(const GUINode& node)
+        inline bool tree_node_is_leaf(const Node& node)
         {
-            return test_flags(node.tree_flags, GUITreeNodeFlag::leaf);
+            return test_flags(node.tree_flags, TreeNodeFlag::leaf);
         }
 
         inline f32 tree_node_indent_width()
@@ -512,7 +512,7 @@ namespace Luna
             return 18.0f;
         }
 
-        inline RectF tree_node_arrow_rect(const GUINode& node, const RectF& rect)
+        inline RectF tree_node_arrow_rect(const Node& node, const RectF& rect)
         {
             f32 x = rect.offset_x + 4.0f + tree_node_indent_width() * (f32)node.tree_depth;
             f32 y = rect.offset_y + max((rect.height - 18.0f) * 0.5f, 0.0f);
@@ -534,12 +534,12 @@ namespace Luna
             return 24.0f;
         }
 
-        inline f32 tab_item_ideal_width(const GUINode& node)
+        inline f32 tab_item_ideal_width(const Node& node)
         {
             f32 font_size = 15.0f;
             f32 text_width = (f32)node.text.size() * font_size * 0.52f;
-            f32 close_width = (node.bool_value && !test_flags(node.tab_item_flags, GUITabItemFlag::no_close_button)) ? 22.0f : 0.0f;
-            f32 unsaved_width = test_flags(node.tab_item_flags, GUITabItemFlag::unsaved_document) ? 12.0f : 0.0f;
+            f32 close_width = (node.bool_value && !test_flags(node.tab_item_flags, TabItemFlag::no_close_button)) ? 22.0f : 0.0f;
+            f32 unsaved_width = test_flags(node.tab_item_flags, TabItemFlag::unsaved_document) ? 12.0f : 0.0f;
             return max(text_width + 24.0f + close_width + unsaved_width, tab_item_min_width());
         }
 
@@ -553,9 +553,9 @@ namespace Luna
                 size);
         }
 
-        inline f32 resolve_base_axis_size(const GUINode& node, const GUILayoutMetrics& metrics, bool x_axis)
+        inline f32 resolve_base_axis_size(const Node& node, const LayoutMetrics& metrics, bool x_axis)
         {
-            if(axis_policy(node.layout_style, x_axis) == GUISizePolicy::fixed)
+            if(axis_policy(node.layout_style, x_axis) == SizePolicy::fixed)
             {
                 return clamp(axis_fixed_size(node.layout_style, x_axis),
                     axis_value(metrics.min_size, x_axis),
@@ -564,7 +564,7 @@ namespace Luna
             return axis_value(metrics.preferred_size, x_axis);
         }
 
-        inline GUILayoutMetrics apply_layout_style(const GUINode& node, GUILayoutMetrics metrics)
+        inline LayoutMetrics apply_layout_style(const Node& node, LayoutMetrics metrics)
         {
             for(u32 axis = 0; axis < 2; ++axis)
             {
@@ -573,7 +573,7 @@ namespace Luna
                 f32 max_size = min(axis_value(metrics.max_size, x_axis), axis_value(node.layout_style.max_size, x_axis));
                 if(max_size < min_size) max_size = min_size;
                 f32 preferred_size = clamp(axis_value(metrics.preferred_size, x_axis), min_size, max_size);
-                if(axis_policy(node.layout_style, x_axis) == GUISizePolicy::fixed)
+                if(axis_policy(node.layout_style, x_axis) == SizePolicy::fixed)
                 {
                     preferred_size = clamp(axis_fixed_size(node.layout_style, x_axis),
                         axis_value(node.layout_style.min_size, x_axis),
@@ -588,36 +588,36 @@ namespace Luna
             return metrics;
         }
 
-        inline GUILayoutStyle default_layout_style(GUINodeKind kind)
+        inline LayoutStyle default_layout_style(NodeKind kind)
         {
-            GUILayoutStyle style;
-            if(kind == GUINodeKind::input_text ||
-                kind == GUINodeKind::input_float ||
-                kind == GUINodeKind::input_int ||
-                kind == GUINodeKind::color_edit ||
-                kind == GUINodeKind::color_preview ||
-                kind == GUINodeKind::color_picker ||
-                kind == GUINodeKind::combo ||
-                kind == GUINodeKind::slider_float ||
-                kind == GUINodeKind::slider_int ||
-                kind == GUINodeKind::drag_float ||
-                kind == GUINodeKind::drag_int ||
-                kind == GUINodeKind::menu_bar ||
-                kind == GUINodeKind::menu_item ||
-                kind == GUINodeKind::menu_separator ||
-                kind == GUINodeKind::selectable ||
-                kind == GUINodeKind::tree_node ||
-                kind == GUINodeKind::table_layout ||
-                kind == GUINodeKind::grid_layout ||
-                kind == GUINodeKind::canvas_layout ||
-                kind == GUINodeKind::dock_space ||
-                kind == GUINodeKind::tab_bar)
+            LayoutStyle style;
+            if(kind == NodeKind::input_text ||
+                kind == NodeKind::input_float ||
+                kind == NodeKind::input_int ||
+                kind == NodeKind::color_edit ||
+                kind == NodeKind::color_preview ||
+                kind == NodeKind::color_picker ||
+                kind == NodeKind::combo ||
+                kind == NodeKind::slider_float ||
+                kind == NodeKind::slider_int ||
+                kind == NodeKind::drag_float ||
+                kind == NodeKind::drag_int ||
+                kind == NodeKind::menu_bar ||
+                kind == NodeKind::menu_item ||
+                kind == NodeKind::menu_separator ||
+                kind == NodeKind::selectable ||
+                kind == NodeKind::tree_node ||
+                kind == NodeKind::table_layout ||
+                kind == NodeKind::grid_layout ||
+                kind == NodeKind::canvas_layout ||
+                kind == NodeKind::dock_space ||
+                kind == NodeKind::tab_bar)
             {
-                style.width_policy = GUISizePolicy::fill;
+                style.width_policy = SizePolicy::fill;
             }
-            if(kind == GUINodeKind::dock_space || kind == GUINodeKind::tab_bar)
+            if(kind == NodeKind::dock_space || kind == NodeKind::tab_bar)
             {
-                style.height_policy = GUISizePolicy::fill;
+                style.height_policy = SizePolicy::fill;
             }
             return style;
         }
@@ -642,17 +642,17 @@ namespace Luna
             return (f32)text.size() * font_size * 0.52f;
         }
 
-        inline void apply_requested_size(GUINode& node, const GUISize& size)
+        inline void apply_requested_size(Node& node, const Size& size)
         {
             node.requested_size = size;
             if(size.width > 0.0f)
             {
-                node.layout_style.width_policy = GUISizePolicy::fixed;
+                node.layout_style.width_policy = SizePolicy::fixed;
                 node.layout_style.fixed_width_value = size.width;
             }
             if(size.height > 0.0f)
             {
-                node.layout_style.height_policy = GUISizePolicy::fixed;
+                node.layout_style.height_policy = SizePolicy::fixed;
                 node.layout_style.fixed_height_value = size.height;
             }
         }
@@ -768,14 +768,14 @@ namespace Luna
             return value.size();
         }
 
-        inline bool has_modifier(GUIKeyModifierFlag flags, GUIKeyModifierFlag flag)
+        inline bool has_modifier(KeyModifierFlag flags, KeyModifierFlag flag)
         {
             return (((u8)flags) & ((u8)flag)) != 0;
         }
 
-        struct GUIIDHash
+        struct IdHash
         {
-            usize operator()(GUIID value) const
+            usize operator()(id_t value) const
             {
                 return (usize)value;
             }
@@ -785,19 +785,19 @@ namespace Luna
         {
             bool initialized = false;
             bool closed = false;
-            GUIDockPanelMode mode = GUIDockPanelMode::docking;
+            DockPanelMode mode = DockPanelMode::docking;
             RectF rect = RectF(0.0f, 0.0f, 320.0f, 220.0f);
             f32 docking_height = 0.0f;
             u32 z_order = 0;
         };
 
-        enum class GUIDockSplitAxis : u8
+        enum class DockSplitAxis : u8
         {
             x,
             y
         };
 
-        enum class GUIDockDropDirection : u8
+        enum class DockDropDirection : u8
         {
             none,
             center,
@@ -813,12 +813,12 @@ namespace Luna
             u32 parent = U32_MAX;
             u32 child0 = U32_MAX;
             u32 child1 = U32_MAX;
-            GUIDockSplitAxis split_axis = GUIDockSplitAxis::x;
+            DockSplitAxis split_axis = DockSplitAxis::x;
             f32 split_ratio = 0.5f;
             RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             RectF split_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-            Vector<GUIID> tabs;
-            GUIID selected_tab = 0;
+            Vector<id_t> tabs;
+            id_t selected_tab = 0;
         };
 
         struct ItemResult
@@ -831,23 +831,23 @@ namespace Luna
         {
             Name type;
             Vector<byte_t> data;
-            GUIItemHandle source;
-            GUIItemHandle target;
+            ItemHandle source;
+            ItemHandle target;
             bool preview = false;
             bool delivery = false;
         };
 
         struct DragDropTargetScope
         {
-            GUIItemHandle target;
+            ItemHandle target;
             Name type;
         };
 
         struct PopupStackEntry
         {
-            GUIID id = 0;
-            GUIID parent_id = 0;
-            GUIPopupFlag flags = GUIPopupFlag::none;
+            id_t id = 0;
+            id_t parent_id = 0;
+            PopupFlag flags = PopupFlag::none;
         };
 
         struct PersistentItemState
@@ -866,7 +866,7 @@ namespace Luna
             bool button_group_selection_animation_initialized = false;
             Vector<f32> button_group_item_animations;
             u32 dock_next_z_order = 1;
-            HashMap<GUIID, DockPanelPersistentState, GUIIDHash> dock_panels;
+            HashMap<id_t, DockPanelPersistentState, IdHash> dock_panels;
             Vector<DockTreeNode> dock_nodes;
             u32 dock_root_node = U32_MAX;
             f64 last_click_time = -1000.0;
@@ -880,9 +880,9 @@ namespace Luna
             bool numeric_editing = false;
             Vector<f32> table_column_sizes;
             Vector<f32> table_row_sizes;
-            GUIID tab_selected_id = 0;
+            id_t tab_selected_id = 0;
             f32 tab_scroll_x = 0.0f;
-            Vector<GUIID> tab_order;
+            Vector<id_t> tab_order;
             Vector<i32> color_edit_axis;
             Vector<i32> color_edit_rgb;
             Vector<i32> color_edit_hsv;
@@ -915,9 +915,9 @@ namespace Luna
             return state.color_edit_axis[0];
         }
 
-        inline bool tab_order_contains(const PersistentItemState& state, GUIID id)
+        inline bool tab_order_contains(const PersistentItemState& state, id_t id)
         {
-            for(GUIID item : state.tab_order)
+            for(id_t item : state.tab_order)
             {
                 if(item == id) return true;
             }
@@ -926,10 +926,10 @@ namespace Luna
 
         struct TabBuildScope
         {
-            GUIID tab_bar_id = 0;
-            GUIID selected_id = 0;
-            GUIID first_open_id = 0;
-            GUITabBarFlag flags = GUITabBarFlag::none;
+            id_t tab_bar_id = 0;
+            id_t selected_id = 0;
+            id_t first_open_id = 0;
+            TabBarFlag flags = TabBarFlag::none;
             bool had_existing_tabs = false;
             bool visible_tab_chosen = false;
         };
@@ -960,7 +960,7 @@ namespace Luna
         {
             RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             RectF clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-            GUILayoutMetrics metrics;
+            LayoutMetrics metrics;
             bool metrics_valid = false;
             Vector<f32> table_column_offsets;
             Vector<f32> table_column_widths;
@@ -984,18 +984,18 @@ namespace Luna
             bool dock_panel_child = false;
             bool dock_panel_visible = true;
             bool dock_panel_floating = false;
-            GUIID dock_space_id = 0;
+            id_t dock_space_id = 0;
             RectF dock_panel_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             RectF dock_panel_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             RectF dock_panel_title_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             RectF dock_panel_close_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             RectF dock_panel_resize_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-            GUIDockPanelStyle dock_panel_style;
+            DockPanelStyle dock_panel_style;
             u32 dock_panel_z_order = 0;
             u32 dock_leaf_index = U32_MAX;
         };
 
-        inline RectF dock_panel_content_rect(const RectF& panel_rect, const GUIDockPanelStyle& style)
+        inline RectF dock_panel_content_rect(const RectF& panel_rect, const DockPanelStyle& style)
         {
             f32 border = max(style.border_size, 0.0f);
             f32 title_height = style.title_bar ? max(style.title_bar_height, 0.0f) : 0.0f;
@@ -1006,7 +1006,7 @@ namespace Luna
                 max(panel_rect.height - border * 2.0f - title_height, 1.0f));
         }
 
-        inline RectF dock_panel_title_rect(const RectF& panel_rect, const GUIDockPanelStyle& style)
+        inline RectF dock_panel_title_rect(const RectF& panel_rect, const DockPanelStyle& style)
         {
             f32 border = max(style.border_size, 0.0f);
             return RectF(
@@ -1026,7 +1026,7 @@ namespace Luna
                 size);
         }
 
-        inline RectF dock_panel_resize_rect(const RectF& panel_rect, const GUIDockPanelStyle& style)
+        inline RectF dock_panel_resize_rect(const RectF& panel_rect, const DockPanelStyle& style)
         {
             f32 size = max(style.resize_border_size, 1.0f);
             return RectF(
@@ -1036,7 +1036,7 @@ namespace Luna
                 size);
         }
 
-        inline RectF dock_panel_docked_resize_rect(const RectF& panel_rect, const GUIDockPanelStyle& style)
+        inline RectF dock_panel_docked_resize_rect(const RectF& panel_rect, const DockPanelStyle& style)
         {
             f32 size = max(style.resize_border_size, 4.0f);
             return RectF(
@@ -1046,7 +1046,7 @@ namespace Luna
                 size);
         }
 
-        inline f32 dock_panel_min_height(const GUIDockPanelStyle& style)
+        inline f32 dock_panel_min_height(const DockPanelStyle& style)
         {
             f32 chrome_height = max(style.border_size, 0.0f) * 2.0f + (style.title_bar ? max(style.title_bar_height, 0.0f) : 0.0f);
             return max(max(style.min_floating_size.y, chrome_height + 24.0f), 32.0f);
@@ -1069,7 +1069,7 @@ namespace Luna
                 max(title_rect.height - 4.0f, 1.0f));
         }
 
-        inline RectF dock_drop_icon_rect(const RectF& parent, GUIDockDropDirection direction)
+        inline RectF dock_drop_icon_rect(const RectF& parent, DockDropDirection direction)
         {
             f32 shorter = min(parent.width, parent.height);
             f32 center_size = clamp(shorter * 0.12f, 22.0f, 36.0f);
@@ -1080,34 +1080,34 @@ namespace Luna
             f32 cy = parent.offset_y + parent.height * 0.5f;
             switch(direction)
             {
-            case GUIDockDropDirection::center:
+            case DockDropDirection::center:
                 return RectF(cx - center_size * 0.5f, cy - center_size * 0.5f, center_size, center_size);
-            case GUIDockDropDirection::left:
+            case DockDropDirection::left:
                 return RectF(cx - offset - side_h * 0.5f, cy - side_w * 0.5f, side_h, side_w);
-            case GUIDockDropDirection::right:
+            case DockDropDirection::right:
                 return RectF(cx + offset - side_h * 0.5f, cy - side_w * 0.5f, side_h, side_w);
-            case GUIDockDropDirection::up:
+            case DockDropDirection::up:
                 return RectF(cx - side_w * 0.5f, cy - offset - side_h * 0.5f, side_w, side_h);
-            case GUIDockDropDirection::down:
+            case DockDropDirection::down:
                 return RectF(cx - side_w * 0.5f, cy + offset - side_h * 0.5f, side_w, side_h);
             default:
                 return RectF(0.0f, 0.0f, 0.0f, 0.0f);
             }
         }
 
-        inline RectF dock_drop_preview_rect(const RectF& parent, GUIDockDropDirection direction)
+        inline RectF dock_drop_preview_rect(const RectF& parent, DockDropDirection direction)
         {
             switch(direction)
             {
-            case GUIDockDropDirection::center:
-                return dock_panel_content_rect(parent, GUIDockPanelStyle());
-            case GUIDockDropDirection::left:
+            case DockDropDirection::center:
+                return dock_panel_content_rect(parent, DockPanelStyle());
+            case DockDropDirection::left:
                 return RectF(parent.offset_x, parent.offset_y, parent.width * 0.5f, parent.height);
-            case GUIDockDropDirection::right:
+            case DockDropDirection::right:
                 return RectF(parent.offset_x + parent.width * 0.5f, parent.offset_y, parent.width * 0.5f, parent.height);
-            case GUIDockDropDirection::up:
+            case DockDropDirection::up:
                 return RectF(parent.offset_x, parent.offset_y, parent.width, parent.height * 0.5f);
-            case GUIDockDropDirection::down:
+            case DockDropDirection::down:
                 return RectF(parent.offset_x, parent.offset_y + parent.height * 0.5f, parent.width, parent.height * 0.5f);
             default:
                 return RectF(0.0f, 0.0f, 0.0f, 0.0f);
@@ -1198,29 +1198,29 @@ namespace Luna
             return RectF(track.offset_x + travel * t, track.offset_y, thumb_width, track.height);
         }
 
-        struct GUIContext : IGUIContext
+        struct Context : IContext
         {
-            lustruct("GUI::GUIContext", "{BF721C36-C7C2-4B49-89E6-22F0B3BE56F5}");
+            lustruct("GUI::Context", "{BF721C36-C7C2-4B49-89E6-22F0B3BE56F5}");
             luiimpl();
             lutsassert_lock();
 
             Ref<RHI::IDevice> m_device;
-            GUIFrameDesc m_frame_desc;
-            GUIDescription m_build_desc;
-            GUIDescription m_submitted_desc;
+            FrameDesc m_frame_desc;
+            Description m_build_desc;
+            Description m_submitted_desc;
             Vector<NodeLayout> m_layouts;
-            Vector<GUIInputEvent> m_input_events;
+            Vector<InputEvent> m_input_events;
             Vector<u32> m_parent_stack;
-            Vector<GUIID> m_id_stack;
+            Vector<id_t> m_id_stack;
             Vector<RectF> m_clip_stack;
             Vector<u32> m_child_ordinals;
-            HashMap<GUIID, ItemResult, GUIIDHash> m_last_results;
-            HashMap<GUIID, ItemResult, GUIIDHash> m_current_results;
-            HashMap<GUIID, PersistentItemState, GUIIDHash> m_persistent_states;
-            GUIClipboardIO m_clipboard_io;
-            GUIID m_active_id = 0;
-            GUIID m_focused_id = 0;
-            GUIID m_hovered_id = 0;
+            HashMap<id_t, ItemResult, IdHash> m_last_results;
+            HashMap<id_t, ItemResult, IdHash> m_current_results;
+            HashMap<id_t, PersistentItemState, IdHash> m_persistent_states;
+            ClipboardIO m_clipboard_io;
+            id_t m_active_id = 0;
+            id_t m_focused_id = 0;
+            id_t m_hovered_id = 0;
             Float2U m_pointer_pos = Float2U(0.0f);
             Float2U m_pointer_delta = Float2U(0.0f);
             bool m_pointer_inside = false;
@@ -1230,72 +1230,72 @@ namespace Luna
             u32 m_active_color_part = 0;
             bool m_submitted = false;
             bool m_has_next_item_layout = false;
-            GUILayoutStyle m_next_item_layout;
+            LayoutStyle m_next_item_layout;
             bool m_has_next_canvas_item_layout = false;
-            GUICanvasItemLayout m_next_canvas_item_layout;
+            CanvasItemLayout m_next_canvas_item_layout;
             bool m_has_next_table_cell_color = false;
             Float4U m_next_table_cell_color = Float4U(0.0f);
             bool m_has_next_dock_panel_style = false;
-            GUIDockPanelStyle m_next_dock_panel_style;
+            DockPanelStyle m_next_dock_panel_style;
             bool* m_next_dock_panel_open = nullptr;
             Vector<TabBuildScope> m_tab_build_stack;
-            GUIID m_last_item_id = 0;
+            id_t m_last_item_id = 0;
             u32 m_tree_depth = 0;
             bool m_layout_dirty = false;
-            GUIID m_active_table_resize_id = 0;
+            id_t m_active_table_resize_id = 0;
             bool m_active_table_resize_column = false;
             u32 m_active_table_resize_index = U32_MAX;
-            GUIID m_active_scrollbar_id = 0;
+            id_t m_active_scrollbar_id = 0;
             bool m_active_scrollbar_vertical = false;
             f32 m_active_scrollbar_grab_offset = 0.0f;
-            GUIID m_active_dock_space_id = 0;
-            GUIID m_active_dock_panel_id = 0;
+            id_t m_active_dock_space_id = 0;
+            id_t m_active_dock_panel_id = 0;
             bool m_active_dock_panel_resize = false;
             bool m_active_dock_panel_close = false;
             bool m_active_dock_panel_was_floating = false;
             bool m_active_dock_panel_title_drag = false;
             bool m_active_dock_panel_undocked = false;
-            GUIID m_active_dock_panel_resize_neighbor_id = 0;
+            id_t m_active_dock_panel_resize_neighbor_id = 0;
             Float2U m_active_dock_panel_grab_offset = Float2U(0.0f);
             RectF m_active_dock_panel_start_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             RectF m_active_dock_panel_restore_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             RectF m_active_dock_panel_start_title_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             f32 m_active_dock_panel_start_neighbor_height = 0.0f;
-            GUIID m_active_dock_split_space_id = 0;
+            id_t m_active_dock_split_space_id = 0;
             u32 m_active_dock_split_node = U32_MAX;
-            GUIDockSplitAxis m_active_dock_split_axis = GUIDockSplitAxis::x;
+            DockSplitAxis m_active_dock_split_axis = DockSplitAxis::x;
             f32 m_active_dock_split_start_ratio = 0.5f;
             Float2U m_active_dock_split_start_pos = Float2U(0.0f);
-            GUIID m_open_combo_id = 0;
+            id_t m_open_combo_id = 0;
             Vector<PopupStackEntry> m_open_popup_stack;
-            Vector<GUIID> m_popup_build_stack;
-            HashMap<GUIID, u32, GUIIDHash> m_popup_node_indices;
-            GUIID m_active_tab_bar_id = 0;
-            GUIID m_active_tab_item_id = 0;
+            Vector<id_t> m_popup_build_stack;
+            HashMap<id_t, u32, IdHash> m_popup_node_indices;
+            id_t m_active_tab_bar_id = 0;
+            id_t m_active_tab_item_id = 0;
             bool m_active_tab_close = false;
             bool m_active_tab_reorder_allowed = false;
             bool m_active_tab_reordering = false;
             Float2U m_active_tab_start_pos = Float2U(0.0f);
-            GUIID m_active_tab_scroll_id = 0;
+            id_t m_active_tab_scroll_id = 0;
             bool m_active_tab_scroll_left = false;
-            GUIID m_drag_drop_candidate_source_id = 0;
+            id_t m_drag_drop_candidate_source_id = 0;
             Name m_drag_drop_candidate_type;
             Float2U m_drag_drop_start_pos = Float2U(0.0f);
             bool m_drag_drop_active = false;
             bool m_drag_drop_payload_set = false;
             bool m_drag_drop_preview_built = false;
-            GUIID m_drag_drop_source_id = 0;
+            id_t m_drag_drop_source_id = 0;
             Name m_drag_drop_type;
             Vector<byte_t> m_drag_drop_payload_data;
-            HashMap<GUIID, DragDropPayloadStorage, GUIIDHash> m_last_drag_drop_deliveries;
-            HashMap<GUIID, DragDropPayloadStorage, GUIIDHash> m_current_drag_drop_deliveries;
+            HashMap<id_t, DragDropPayloadStorage, IdHash> m_last_drag_drop_deliveries;
+            HashMap<id_t, DragDropPayloadStorage, IdHash> m_current_drag_drop_deliveries;
             Vector<DragDropTargetScope> m_drag_drop_target_stack;
-            GUIDragDropPayload m_drag_drop_payload_view;
-            GUIID m_tooltip_hovered_id = 0;
+            DragDropPayload m_drag_drop_payload_view;
+            id_t m_tooltip_hovered_id = 0;
             f64 m_tooltip_hover_start = 0.0;
             bool m_pointer_button_down[5] = {};
             bool m_key_down[256] = {};
-            GUIKeyModifierFlag m_key_modifiers = GUIKeyModifierFlag::none;
+            KeyModifierFlag m_key_modifiers = KeyModifierFlag::none;
             u64 m_generation = 0;
             f64 m_time = 0.0;
             Ref<VG::IShapeDrawList> m_shape_draw_list;
@@ -1305,82 +1305,82 @@ namespace Luna
             Ref<VG::IShapeRenderer> m_shape_renderer;
             Ref<VG::IFontAtlas> m_font_atlas;
 
-            GUIContext();
+            Context();
 
-            virtual void begin_frame(const GUIFrameDesc& desc) override;
-            virtual void add_input_event(const GUIInputEvent& event) override;
-            virtual void add_input_events(Span<const GUIInputEvent> events) override;
-            virtual R<GUIDescription> end_build() override;
-            virtual RV submit(const GUIDescription& desc) override;
-            virtual void set_clipboard_io(const GUIClipboardIO& io) override;
-            virtual GUITextInputState get_text_input_state() override;
+            virtual void begin_frame(const FrameDesc& desc) override;
+            virtual void add_input_event(const InputEvent& event) override;
+            virtual void add_input_events(Span<const InputEvent> events) override;
+            virtual R<Description> end_build() override;
+            virtual RV submit(const Description& desc) override;
+            virtual void set_clipboard_io(const ClipboardIO& io) override;
+            virtual TextInputState get_text_input_state() override;
             virtual RV render(RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target) override;
 
-            GUIItemHandle add_node(GUINodeKind kind, const c8* text, bool interactive);
-            void begin_container(GUINodeKind kind, const c8* label, const GUISize& size, GUIItemHandle* out_handle);
+            ItemHandle add_node(NodeKind kind, const c8* text, bool interactive);
+            void begin_container(NodeKind kind, const c8* label, const Size& size, ItemHandle* out_handle);
             void end_container();
-            GUIItemHandle begin_popup(const c8* label, const GUIPopupDesc& desc);
+            ItemHandle begin_popup(const c8* label, const PopupDesc& desc);
             void end_popup();
-            void open_popup(GUIItemHandle popup);
-            void close_popup(GUIItemHandle popup);
+            void open_popup(ItemHandle popup);
+            void close_popup(ItemHandle popup);
             void close_current_popup();
             void close_all_popups();
-            bool is_popup_open(GUIItemHandle popup) const;
-            bool is_popup_open(GUIID id) const;
-            bool popup_node_visible(const GUINode& node) const;
-            bool tooltip_node_visible(const GUINode& node) const;
-            u32 find_submitted_node_index(GUIID id) const;
+            bool is_popup_open(ItemHandle popup) const;
+            bool is_popup_open(id_t id) const;
+            bool popup_node_visible(const Node& node) const;
+            bool tooltip_node_visible(const Node& node) const;
+            u32 find_submitted_node_index(id_t id) const;
             void rebuild_popup_node_indices();
             void prune_popup_stack();
             void close_popup_stack_from(usize index);
-            i32 popup_stack_index(GUIID id) const;
+            i32 popup_stack_index(id_t id) const;
             i32 popup_level_at_pos(const Float2U& pos) const;
             bool close_popups_for_pointer_down(const Float2U& pos);
-            void open_menu_popup(GUIID menu_id);
+            void open_menu_popup(id_t menu_id);
             void update_menu_hover();
-            GUIItemHandle begin_tooltip(GUIItemHandle owner, const c8* label, const GUITooltipDesc& desc);
+            ItemHandle begin_tooltip(ItemHandle owner, const c8* label, const TooltipDesc& desc);
             void end_tooltip();
-            const Any* get_state(GUIItemHandle handle, const Name& key);
-            void set_state(GUIItemHandle handle, const Name& key, const Any& value);
-            void remove_state(GUIItemHandle handle, const Name& key);
-            void set_next_item_layout(const GUILayoutStyle& style);
-            void set_next_canvas_item_layout(const GUICanvasItemLayout& layout);
+            const Any* get_state(ItemHandle handle, const Name& key);
+            void set_state(ItemHandle handle, const Name& key, const Any& value);
+            void remove_state(ItemHandle handle, const Name& key);
+            void set_next_item_layout(const LayoutStyle& style);
+            void set_next_canvas_item_layout(const CanvasItemLayout& layout);
             void set_next_table_cell_color(const Float4U& color);
-            void set_next_dock_panel_style(const GUIDockPanelStyle& style, bool* open);
-            void push_id(GUIID id);
+            void set_next_dock_panel_style(const DockPanelStyle& style, bool* open);
+            void push_id(id_t id);
             void pop_id();
             void push_clip_rect(const RectF& rect);
             void pop_clip_rect();
             void tree_push();
-            void tree_push(GUIItemHandle node);
+            void tree_push(ItemHandle node);
             void tree_pop();
-            bool begin_drag_drop_source(GUIItemHandle source, const Name& payload_type);
+            bool begin_drag_drop_source(ItemHandle source, const Name& payload_type);
             void set_drag_drop_payload(const void* data, usize data_size);
             void end_drag_drop_source();
-            bool begin_drag_drop_target(GUIItemHandle target, const Name& payload_type);
-            const GUIDragDropPayload* accept_drag_drop_payload(const Name& payload_type);
-            const GUIDragDropPayload* accept_drag_drop_payload(GUIItemHandle target, const Name& payload_type);
+            bool begin_drag_drop_target(ItemHandle target, const Name& payload_type);
+            const DragDropPayload* accept_drag_drop_payload(const Name& payload_type);
+            const DragDropPayload* accept_drag_drop_payload(ItemHandle target, const Name& payload_type);
             void end_drag_drop_target();
             bool is_drag_drop_active() const;
-            const GUIDragDropPayload* get_drag_drop_payload();
-            const GUIDragDropPayload* make_drag_drop_payload_view(const DragDropPayloadStorage& storage);
+            const DragDropPayload* get_drag_drop_payload();
+            const DragDropPayload* make_drag_drop_payload_view(const DragDropPayloadStorage& storage);
 
-            ItemResult* get_query_result(GUIItemHandle handle);
-            ItemResult& get_or_create_current_result(GUIID id);
-            PersistentItemState& get_or_create_persistent_state(GUIID id);
-            GUINode* find_build_node(GUIItemHandle handle);
-            DockPanelPersistentState& get_or_create_dock_panel_state(PersistentItemState& dock_state, GUIID panel_id);
-            u32 new_dock_leaf(PersistentItemState& dock_state, GUIID panel_id, u32 parent = U32_MAX);
-            void dock_tree_add_panel(PersistentItemState& dock_state, GUIID panel_id);
-            bool dock_tree_contains_panel(const PersistentItemState& dock_state, GUIID panel_id) const;
-            bool dock_tree_remove_panel(PersistentItemState& dock_state, GUIID panel_id);
-            void dock_tree_dock_panel(PersistentItemState& dock_state, GUIID panel_id, u32 target_leaf, GUIDockDropDirection direction);
-            void dock_tree_prune_missing(PersistentItemState& dock_state, const HashSet<GUIID, GUIIDHash>& live_panels);
-            GUIID dock_tree_selected_panel(PersistentItemState& dock_state, u32 leaf_index);
-            void arrange_dock_tree_node(GUIID dock_space_id, u32 node_index, const RectF& rect, const RectF& clip_rect, const HashMap<GUIID, u32, GUIIDHash>& panel_indices);
+            ItemResult* get_query_result(ItemHandle handle);
+            ItemResult& get_or_create_current_result(id_t id);
+            PersistentItemState& get_or_create_persistent_state(id_t id);
+            Node* find_build_node(ItemHandle handle);
+            DockPanelPersistentState& get_or_create_dock_panel_state(PersistentItemState& dock_state, id_t panel_id);
+            u32 new_dock_leaf(PersistentItemState& dock_state, id_t panel_id, u32 parent = U32_MAX);
+            void dock_tree_add_panel(PersistentItemState& dock_state, id_t panel_id);
+            bool dock_tree_contains_panel(const PersistentItemState& dock_state, id_t panel_id) const;
+            bool dock_tree_remove_panel(PersistentItemState& dock_state, id_t panel_id);
+            void dock_tree_dock_panel(PersistentItemState& dock_state, id_t panel_id, u32 target_leaf, DockDropDirection direction);
+            void dock_tree_prune_missing(PersistentItemState& dock_state, const HashSet<id_t, IdHash>& live_panels);
+            id_t dock_tree_selected_panel(PersistentItemState& dock_state, u32 leaf_index);
+            void arrange_dock_tree_node(id_t dock_space_id, u32 node_index, const RectF& rect, const RectF& clip_rect, const HashMap<id_t, u32, IdHash>& panel_indices);
             RectF layout_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
-            GUILayoutMetrics measure_node(u32 node_index);
-            GUILayoutMetrics measure_grid_node(u32 node_index, f32 available_width);
+            LayoutMetrics measure_node(u32 node_index);
+            LayoutMetrics measure_grid_node(u32 node_index, f32 available_width);
             void measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred);
             void arrange_table_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void arrange_grid_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
@@ -1391,57 +1391,57 @@ namespace Luna
             void render_tab_item(u32 node_index);
             void render_tab_scroll_buttons(u32 node_index);
             void render_dock_panel_chrome(u32 node_index);
-            bool hit_test_table_separator(const Float2U& pos, GUIID& out_id, bool& out_column, u32& out_index) const;
+            bool hit_test_table_separator(const Float2U& pos, id_t& out_id, bool& out_column, u32& out_index) const;
             void update_table_resize_from_pointer(const Float2U& pos);
-            bool hit_test_dock_panel(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id) const;
-            bool hit_test_dock_panel_chrome(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id, bool& out_resize, bool& out_close) const;
+            bool hit_test_dock_panel(const Float2U& pos, id_t& out_space_id, id_t& out_panel_id) const;
+            bool hit_test_dock_panel_chrome(const Float2U& pos, id_t& out_space_id, id_t& out_panel_id, bool& out_resize, bool& out_close) const;
             void update_dock_panel_from_pointer(const Float2U& pos);
-            bool hit_test_dock_panel_tab(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id, u32& out_leaf_index) const;
-            bool hit_test_dock_splitter(const Float2U& pos, GUIID& out_space_id, u32& out_node_index, GUIDockSplitAxis& out_axis) const;
+            bool hit_test_dock_panel_tab(const Float2U& pos, id_t& out_space_id, id_t& out_panel_id, u32& out_leaf_index) const;
+            bool hit_test_dock_splitter(const Float2U& pos, id_t& out_space_id, u32& out_node_index, DockSplitAxis& out_axis) const;
             void update_dock_splitter_from_pointer(const Float2U& pos);
-            bool find_dock_drop_target(GUIID payload_panel, const Float2U& pos, GUIID& out_space_id, u32& out_leaf_index, GUIDockDropDirection& out_direction) const;
+            bool find_dock_drop_target(id_t payload_panel, const Float2U& pos, id_t& out_space_id, u32& out_leaf_index, DockDropDirection& out_direction) const;
             void render_dock_preview();
-            void raise_dock_panel(GUIID dock_space_id, GUIID panel_id);
-            DockPanelPersistentState* find_dock_panel_state(GUIID dock_space_id, GUIID panel_id);
-            void clamp_scroll_state(GUIID id);
-            bool hit_test_scrollbar(const Float2U& pos, GUIID& out_id, bool& out_vertical, RectF& out_thumb_rect) const;
+            void raise_dock_panel(id_t dock_space_id, id_t panel_id);
+            DockPanelPersistentState* find_dock_panel_state(id_t dock_space_id, id_t panel_id);
+            void clamp_scroll_state(id_t id);
+            bool hit_test_scrollbar(const Float2U& pos, id_t& out_id, bool& out_vertical, RectF& out_thumb_rect) const;
             void update_scrollbar_from_pointer(const Float2U& pos);
-            GUIID hit_test_drag_drop_source(const Float2U& pos, Name& out_type) const;
-            GUIID hit_test_drag_drop_target(const Name& type, const Float2U& pos) const;
-            void start_drag_drop(GUIID source_id, const Name& type);
+            id_t hit_test_drag_drop_source(const Float2U& pos, Name& out_type) const;
+            id_t hit_test_drag_drop_target(const Name& type, const Float2U& pos) const;
+            void start_drag_drop(id_t source_id, const Name& type);
             void clear_drag_drop();
-            void deliver_drag_drop_payload(GUIID target_id);
-            bool hit_test_combo_dropdown(const Float2U& pos, GUIID& out_id, i32& out_item) const;
-            void close_combo_dropdowns_except(GUIID keep_id);
-            bool hit_test_tab_header(const Float2U& pos, GUIID& out_tab_bar_id, GUIID& out_tab_item_id, bool& out_close) const;
-            bool hit_test_tab_scroll_button(const Float2U& pos, GUIID& out_tab_bar_id, bool& out_left) const;
-            GUIID hit_test_tab_scroll_area(const Float2U& pos) const;
-            void select_tab_item(GUIID tab_bar_id, GUIID tab_item_id);
-            GUIID fallback_tab_item(GUIID tab_bar_id, GUIID excluded_tab_item_id) const;
-            bool reorder_tab_item_from_pointer(GUIID tab_bar_id, GUIID tab_item_id, const Float2U& pos);
-            void scroll_tab_bar(GUIID tab_bar_id, f32 delta);
-            GUIID hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const;
-            GUIID hit_test(const Float2U& pos) const;
-            GUIID hit_test_node_kind(const Float2U& pos, GUINodeKind kind) const;
-            GUINode* find_node(GUIID id);
-            u32 hit_test_numeric_component(const GUINode& node, const RectF& rect, const Float2U& pos) const;
-            void update_numeric_node_from_pointer(GUIID id, const Float2U& pos, const Float2U* old_pos = nullptr);
-            void update_color_picker_from_pointer(GUIID id, const Float2U& pos);
-            void sync_color_edit_numeric_state(GUIID owner_id);
-            void apply_color_edit_numeric_state(GUIID owner_id, GUIColorEditPart part);
-            bool input_text_cursor_from_pointer(GUIID id, const Float2U& pos, usize& out_cursor);
-            bool update_input_text_selection_from_pointer(GUIID id, const Float2U& pos);
-            bool numeric_text_cursor_from_pointer(GUIID id, const Float2U& pos, usize& out_cursor);
-            bool update_numeric_text_selection_from_pointer(GUIID id, const Float2U& pos);
-            void begin_numeric_text_edit(GUIID id, const Float2U& pos, u32 component, bool select_all);
-            void mark_value_changed(GUIID id);
+            void deliver_drag_drop_payload(id_t target_id);
+            bool hit_test_combo_dropdown(const Float2U& pos, id_t& out_id, i32& out_item) const;
+            void close_combo_dropdowns_except(id_t keep_id);
+            bool hit_test_tab_header(const Float2U& pos, id_t& out_tab_bar_id, id_t& out_tab_item_id, bool& out_close) const;
+            bool hit_test_tab_scroll_button(const Float2U& pos, id_t& out_tab_bar_id, bool& out_left) const;
+            id_t hit_test_tab_scroll_area(const Float2U& pos) const;
+            void select_tab_item(id_t tab_bar_id, id_t tab_item_id);
+            id_t fallback_tab_item(id_t tab_bar_id, id_t excluded_tab_item_id) const;
+            bool reorder_tab_item_from_pointer(id_t tab_bar_id, id_t tab_item_id, const Float2U& pos);
+            void scroll_tab_bar(id_t tab_bar_id, f32 delta);
+            id_t hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, NodeKind kind) const;
+            id_t hit_test(const Float2U& pos) const;
+            id_t hit_test_node_kind(const Float2U& pos, NodeKind kind) const;
+            Node* find_node(id_t id);
+            u32 hit_test_numeric_component(const Node& node, const RectF& rect, const Float2U& pos) const;
+            void update_numeric_node_from_pointer(id_t id, const Float2U& pos, const Float2U* old_pos = nullptr);
+            void update_color_picker_from_pointer(id_t id, const Float2U& pos);
+            void sync_color_edit_numeric_state(id_t owner_id);
+            void apply_color_edit_numeric_state(id_t owner_id, ColorEditPart part);
+            bool input_text_cursor_from_pointer(id_t id, const Float2U& pos, usize& out_cursor);
+            bool update_input_text_selection_from_pointer(id_t id, const Float2U& pos);
+            bool numeric_text_cursor_from_pointer(id_t id, const Float2U& pos, usize& out_cursor);
+            bool update_numeric_text_selection_from_pointer(id_t id, const Float2U& pos);
+            void begin_numeric_text_edit(id_t id, const Float2U& pos, u32 component, bool select_all);
+            void mark_value_changed(id_t id);
             void process_input_events();
             void render_node(u32 node_index);
-            void render_combo_dropdown(const GUINode& node, const RectF& rect);
+            void render_combo_dropdown(const Node& node, const RectF& rect);
             void render_drag_drop_overlay();
             void render_scrollbars(u32 node_index);
             void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
-                RHI::ITexture* texture = nullptr, GUIImageFlag image_flags = GUIImageFlag::none);
+                RHI::ITexture* texture = nullptr, ImageFlag image_flags = ImageFlag::none);
             void render_gradient_rect(const RectF& rect, const RectF& clip_rect,
                 const Float4U& top_left, const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left);
             void render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
@@ -1449,11 +1449,11 @@ namespace Luna
             void render_color_swatch(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius);
             void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color);
             void render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width);
-            void render_line(const GUINode& node, const RectF& rect, const RectF& clip_rect);
+            void render_line(const Node& node, const RectF& rect, const RectF& clip_rect);
             void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment = VG::TextAlignment::center);
             RectF to_vg_rect(const RectF& rect) const;
         };
 
-        GUIContext* require_current_context();
+        Context* require_current_context();
     }
 }

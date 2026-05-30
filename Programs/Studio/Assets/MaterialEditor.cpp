@@ -50,16 +50,16 @@ namespace Luna
             snprintf(title, 256, "Material Editor###%d", (u32)(usize)this);
         }
         if(!m_open) return;
-        GUI::BeginWindow(title, &m_open, GUI::GUISize::fixed(720.0f, 520.0f));
+        GUI::begin_window(title, &m_open, GUI::Size::fixed(720.0f, 520.0f));
 
         Ref<Material> mat = get_asset_or_async_load_if_not_ready<Material>(m_material);
         if (!mat || (Asset::get_asset_state(m_material) != Asset::AssetState::loaded))
         {
-            GUI::Text("Material Asset is not loaded.");
+            GUI::text("Material Asset is not loaded.");
         }
         else
         {
-            if (GUI::IsItemClicked(GUI::Button("Save")))
+            if (GUI::is_item_clicked(GUI::button("Save")))
             {
                 lutry
                 {
@@ -72,7 +72,7 @@ namespace Luna
             }
             i32 material_type = (i32)mat->material_type;
             const c8* material_types[] = {"lit", "unlit"};
-            GUI::Combo("Material Type", &material_type, Span<const c8*>(material_types, 2));
+            GUI::combo("Material Type", &material_type, Span<const c8*>(material_types, 2));
             mat->material_type = (MeterialType)material_type;
             if (mat->material_type == MeterialType::lit)
             {
@@ -86,9 +86,9 @@ namespace Luna
             {
                 gui_edit_asset_path("Emissive", mat->emissive, m_emissive_name);
             }
-            GUI::DragFloat("Emissive Intensity", &mat->emissive_intensity, 0.01f, 0.0f, 20.0f);
+            GUI::drag_float("Emissive Intensity", &mat->emissive_intensity, 0.01f, 0.0f, 20.0f);
         }
-        GUI::EndWindow();
+        GUI::end_window();
     }
     static Ref<IAssetEditor> material_new_editor(object_t userdata, Asset::asset_t editing_asset)
     {

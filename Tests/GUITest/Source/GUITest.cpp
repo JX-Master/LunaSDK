@@ -30,7 +30,7 @@ namespace Luna
         Ref<Window::IWindow> window;
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
-        Ref<GUI::IGUIContext> gui;
+        Ref<GUI::IContext> gui;
         u32 queue = U32_MAX;
         u32 width = 0;
         u32 height = 0;
@@ -94,28 +94,28 @@ namespace Luna
 
     struct FrameHandles
     {
-        GUI::GUIItemHandle tabs[12];
-        GUI::GUIItemHandle tree_nodes[8];
-        GUI::GUIItemHandle primary_button;
-        GUI::GUIItemHandle double_click_item;
-        GUI::GUIItemHandle right_click_item;
-        GUI::GUIItemHandle open_window_button;
-        GUI::GUIItemHandle popup_action;
-        GUI::GUIItemHandle popup_close;
-        GUI::GUIItemHandle managed_popup_button;
-        GUI::GUIItemHandle managed_popup;
-        GUI::GUIItemHandle managed_popup_action;
-        GUI::GUIItemHandle nested_popup_button;
-        GUI::GUIItemHandle nested_popup;
-        GUI::GUIItemHandle nested_popup_close;
-        GUI::GUIItemHandle menu_new;
-        GUI::GUIItemHandle menu_save;
-        GUI::GUIItemHandle menu_show_grid;
-        GUI::GUIItemHandle menu_theme_dark;
-        GUI::GUIItemHandle canvas_hit;
-        GUI::GUIItemHandle drag_number_target;
-        GUI::GUIItemHandle drag_text_target;
-        GUI::GUIItemHandle drag_mixed_target;
+        GUI::ItemHandle tabs[12];
+        GUI::ItemHandle tree_nodes[8];
+        GUI::ItemHandle primary_button;
+        GUI::ItemHandle double_click_item;
+        GUI::ItemHandle right_click_item;
+        GUI::ItemHandle open_window_button;
+        GUI::ItemHandle popup_action;
+        GUI::ItemHandle popup_close;
+        GUI::ItemHandle managed_popup_button;
+        GUI::ItemHandle managed_popup;
+        GUI::ItemHandle managed_popup_action;
+        GUI::ItemHandle nested_popup_button;
+        GUI::ItemHandle nested_popup;
+        GUI::ItemHandle nested_popup_close;
+        GUI::ItemHandle menu_new;
+        GUI::ItemHandle menu_save;
+        GUI::ItemHandle menu_show_grid;
+        GUI::ItemHandle menu_theme_dark;
+        GUI::ItemHandle canvas_hit;
+        GUI::ItemHandle drag_number_target;
+        GUI::ItemHandle drag_text_target;
+        GUI::ItemHandle drag_mixed_target;
     };
 
     constexpr const c8* DEMO_TABS[] =
@@ -153,23 +153,23 @@ namespace Luna
 
     void demo_section(const c8* title)
     {
-        GUI::Text(title);
+        GUI::text(title);
     }
 
     void demo_two_column_label(const c8* label)
     {
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(150.0f));
-        GUI::Text(label);
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(150.0f));
+        GUI::text(label);
+        GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
     }
 
-    GUI::GUIItemHandle demo_tree_node(App& app, FrameHandles& handles, u32 index, const c8* label, GUI::GUITreeNodeFlag flags = GUI::GUITreeNodeFlag::none)
+    GUI::ItemHandle demo_tree_node(App& app, FrameHandles& handles, u32 index, const c8* label, GUI::TreeNodeFlag flags = GUI::TreeNodeFlag::none)
     {
         if(app.tree_selected == index)
         {
-            flags |= GUI::GUITreeNodeFlag::selected;
+            flags |= GUI::TreeNodeFlag::selected;
         }
-        handles.tree_nodes[index] = GUI::TreeNode(label, flags);
+        handles.tree_nodes[index] = GUI::tree_node(label, flags);
         return handles.tree_nodes[index];
     }
 
@@ -185,586 +185,586 @@ namespace Luna
 
     void demo_number_drag_source(const c8* label, i32 value)
     {
-        GUI::GUIItemHandle source = GUI::Selectable(label);
+        GUI::ItemHandle source = GUI::selectable(label);
         Name type = demo_number_payload_type();
-        if(GUI::BeginDragDropSource(source, type))
+        if(GUI::begin_drag_drop_source(source, type))
         {
-            GUI::SetDragDropPayload(&value, sizeof(value));
+            GUI::set_drag_drop_payload(&value, sizeof(value));
             c8 preview[96];
             snprintf(preview, 96, "Dragging number %d", value);
-            GUI::Text(preview);
-            GUI::EndDragDropSource();
+            GUI::text(preview);
+            GUI::end_drag_drop_source();
         }
     }
 
     void demo_text_drag_source(const c8* label, const c8* value)
     {
-        GUI::GUIItemHandle source = GUI::Selectable(label);
+        GUI::ItemHandle source = GUI::selectable(label);
         Name type = demo_text_payload_type();
-        if(GUI::BeginDragDropSource(source, type))
+        if(GUI::begin_drag_drop_source(source, type))
         {
-            GUI::SetDragDropPayload(value, strlen(value) + 1);
+            GUI::set_drag_drop_payload(value, strlen(value) + 1);
             c8 preview[128];
             snprintf(preview, 128, "Dragging text: %s", value);
-            GUI::Text(preview);
-            GUI::EndDragDropSource();
+            GUI::text(preview);
+            GUI::end_drag_drop_source();
         }
     }
 
     void draw_overview_tab(App& app)
     {
         demo_section("Showcase map");
-        GUI::Text("This test is a compact interactive catalog for Luna GUI.");
-        GUI::Text("Use the tabs above to exercise widgets, layout, tables, drawing, popups, and item state.");
-        GUI::Text("The window title is updated from after-submit state queries every frame.");
+        GUI::text("This test is a compact interactive catalog for Luna GUI.");
+        GUI::text("Use the tabs above to exercise widgets, layout, tables, drawing, popups, and item state.");
+        GUI::text("The window title is updated from after-submit state queries every frame.");
 
-        GUI::GUILayoutDesc row;
+        GUI::LayoutDesc row;
         row.gap = 8.0f;
-        row.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::center;
-        GUI::BeginHLayout("Overview Quick Actions", row);
-        GUI::Text("Quick edit");
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
-        GUI::InputText("Overview Text", app.overview_quick_edit_text);
-        GUI::Checkbox("Enabled", &app.checkbox_a);
-        GUI::EndHLayout();
+        row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
+        GUI::begin_h_layout("Overview Quick Actions", row);
+        GUI::text("Quick edit");
+        GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
+        GUI::input_text("Overview Text", app.overview_quick_edit_text);
+        GUI::checkbox("Enabled", &app.checkbox_a);
+        GUI::end_h_layout();
 
-        GUI::GUIItemHandle header = GUI::CollapsingHeader("What this page covers");
-        if(GUI::GetItemState(header, GUI::GUIState::open()))
+        GUI::ItemHandle header = GUI::collapsing_header("What this page covers");
+        if(GUI::get_item_state(header, GUI::State::open()))
         {
-            GUI::BeginVLayout("Coverage Details");
-            GUI::Text("Immediate-style build API that produces a GUI description tree.");
-            GUI::Text("Handle-based state queries before and after submit.");
-            GUI::Text("Two-pass layout, tables, popups, absolute paint nodes, and clipping.");
-            GUI::EndVLayout();
+            GUI::begin_v_layout("Coverage Details");
+            GUI::text("Immediate-style build API that produces a GUI description tree.");
+            GUI::text("Handle-based state queries before and after submit.");
+            GUI::text("Two-pass layout, tables, popups, absolute paint nodes, and clipping.");
+            GUI::end_v_layout();
         }
     }
 
     void draw_widgets_tab(App& app, FrameHandles& handles)
     {
         demo_section("Basic widgets");
-        GUI::GUILayoutDesc row;
+        GUI::LayoutDesc row;
         row.gap = 8.0f;
-        row.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::center;
+        row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
 
-        GUI::BeginHLayout("Buttons", row);
-        handles.primary_button = GUI::Button("Count Click");
-        handles.double_click_item = GUI::Button("Double Click");
-        handles.right_click_item = GUI::Selectable("Right Click Target");
-        GUI::EndHLayout();
+        GUI::begin_h_layout("Buttons", row);
+        handles.primary_button = GUI::button("Count Click");
+        handles.double_click_item = GUI::button("Double Click");
+        handles.right_click_item = GUI::selectable("Right Click Target");
+        GUI::end_h_layout();
 
         c8 counters[160];
         snprintf(counters, 160, "Clicks: %u    Double clicks: %u    Right clicks: %u", app.click_count, app.double_click_count, app.right_click_count);
-        GUI::Text(counters);
+        GUI::text(counters);
 
-        GUI::BeginHLayout("Checks", row);
-        GUI::Checkbox("Feature A", &app.checkbox_a);
-        GUI::Checkbox("Feature B", &app.checkbox_b);
-        GUI::EndHLayout();
+        GUI::begin_h_layout("Checks", row);
+        GUI::checkbox("Feature A", &app.checkbox_a);
+        GUI::checkbox("Feature B", &app.checkbox_b);
+        GUI::end_h_layout();
 
-        GUI::BeginHLayout("Switches", row);
-        GUI::Switch("Realtime Preview", &app.switch_a);
-        GUI::Switch("Network Sync", &app.switch_b);
-        GUI::EndHLayout();
+        GUI::begin_h_layout("Switches", row);
+        GUI::toggle_switch("Realtime Preview", &app.switch_a);
+        GUI::toggle_switch("Network Sync", &app.switch_b);
+        GUI::end_h_layout();
 
-        GUI::BeginHLayout("Radio Buttons", row);
-        GUI::RadioButton("Low", &app.radio_choice, 0);
-        GUI::RadioButton("Medium", &app.radio_choice, 1);
-        GUI::RadioButton("High", &app.radio_choice, 2);
-        GUI::RadioButton("Manual Bool", &app.radio_manual);
-        GUI::EndHLayout();
+        GUI::begin_h_layout("Radio Buttons", row);
+        GUI::radio_button("Low", &app.radio_choice, 0);
+        GUI::radio_button("Medium", &app.radio_choice, 1);
+        GUI::radio_button("High", &app.radio_choice, 2);
+        GUI::radio_button("Manual Bool", &app.radio_manual);
+        GUI::end_h_layout();
 
         const c8* group_items[] = {"Title", "Settings", "Preview"};
-        GUI::BeginHLayout("Button Group Single", row);
+        GUI::begin_h_layout("Button Group Single", row);
         demo_two_column_label("ButtonGroup single");
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(360.0f));
-        GUI::ButtonGroup("Single Button Group", &app.button_group_choice, Span<const c8*>(group_items, 3));
-        GUI::EndHLayout();
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(360.0f));
+        GUI::button_group("Single Button Group", &app.button_group_choice, Span<const c8*>(group_items, 3));
+        GUI::end_h_layout();
 
-        GUI::BeginHLayout("Button Group Multi", row);
+        GUI::begin_h_layout("Button Group Multi", row);
         demo_two_column_label("ButtonGroup multi");
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(360.0f));
-        GUI::ButtonGroup("Multi Button Group", Span<bool>(app.button_group_multi, 3), Span<const c8*>(group_items, 3));
-        GUI::EndHLayout();
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(360.0f));
+        GUI::button_group("Multi Button Group", Span<bool>(app.button_group_multi, 3), Span<const c8*>(group_items, 3));
+        GUI::end_h_layout();
 
-        GUI::BeginHLayout("Text Inputs", row);
+        GUI::begin_h_layout("Text Inputs", row);
         demo_two_column_label("InputText");
-        GUI::InputText("InputText", app.widget_input_text);
-        GUI::EndHLayout();
+        GUI::input_text("InputText", app.widget_input_text);
+        GUI::end_h_layout();
 
-        GUI::BeginHLayout("Notes Input", row);
+        GUI::begin_h_layout("Notes Input", row);
         demo_two_column_label("Notes");
-        GUI::InputText("Notes", app.widget_notes_text);
-        GUI::EndHLayout();
+        GUI::input_text("Notes", app.widget_notes_text);
+        GUI::end_h_layout();
 
         const c8* combo_items[] = {"Alpha", "Beta", "Gamma", "Delta"};
-        GUI::Combo("Combo dropdown", &app.combo_index, Span<const c8*>(combo_items, 4));
-        GUI::SliderFloat("SliderFloat", &app.slider_value, 0.0f, 1.0f);
-        GUI::SliderFloat3("SliderFloat3", app.slider3_value.m, 0.0f, 1.0f);
-        GUI::SliderInt("SliderInt", &app.slider_int_value, 0, 10);
-        GUI::SliderInt3("SliderInt3", app.slider_int3_value, 0, 10);
-        GUI::SliderFloatWithInput("SliderFloatWithInput", &app.slider_with_input_value, 0.0f, 1.0f);
-        GUI::SliderIntWithInput("SliderIntWithInput", &app.slider_int_with_input_value, 0, 100);
-        GUI::DragFloat("DragFloat", &app.drag_value, 0.25f, -100.0f, 100.0f, GUI::GUINumericEditFlag::input_on_double_click);
-        GUI::DragFloat2("DragFloat2", app.drag2_value.m, 0.05f, 0.0f, 0.0f, GUI::GUINumericEditFlag::input_on_double_click);
-        GUI::DragFloat3("DragFloat3", app.drag3_value.m, 0.05f, 0.0f, 0.0f, GUI::GUINumericEditFlag::input_on_double_click);
-        GUI::DragFloat4("DragFloat4", app.drag4_value.m, 0.05f, 0.0f, 0.0f, GUI::GUINumericEditFlag::input_on_double_click);
-        GUI::DragInt("DragInt", &app.drag_int_value, 1.0f, -100, 100, GUI::GUINumericEditFlag::input_on_double_click);
-        GUI::DragInt2("DragInt2", app.drag_int2_value, 1.0f, -100, 100, GUI::GUINumericEditFlag::input_on_double_click);
-        GUI::DragInt3("DragInt3", app.drag_int3_value, 1.0f, -100, 100, GUI::GUINumericEditFlag::input_on_double_click);
-        GUI::DragInt4("DragInt4", app.drag_int4_value, 1.0f, -100, 100, GUI::GUINumericEditFlag::input_on_double_click);
-        GUI::ColorEdit3("ColorEdit3", app.color_value.m);
-        GUI::ColorEdit4("ColorEdit4", app.color4_value.m);
-        GUI::ColorEdit3("ColorEdit3 u8", app.color_u8_value);
-        GUI::ColorEdit4("ColorEdit4 u8", app.color4_u8_value);
-        GUI::ColorEdit3("ColorEdit3 RGBA8", &app.color_rgba8_value);
-        GUI::ColorEdit4("ColorEdit4 RGBA8", &app.color4_rgba8_value);
+        GUI::combo("Combo dropdown", &app.combo_index, Span<const c8*>(combo_items, 4));
+        GUI::slider_float("SliderFloat", &app.slider_value, 0.0f, 1.0f);
+        GUI::slider_float3("SliderFloat3", app.slider3_value.m, 0.0f, 1.0f);
+        GUI::slider_int("SliderInt", &app.slider_int_value, 0, 10);
+        GUI::slider_int3("SliderInt3", app.slider_int3_value, 0, 10);
+        GUI::slider_float_with_input("SliderFloatWithInput", &app.slider_with_input_value, 0.0f, 1.0f);
+        GUI::slider_int_with_input("SliderIntWithInput", &app.slider_int_with_input_value, 0, 100);
+        GUI::drag_float("DragFloat", &app.drag_value, 0.25f, -100.0f, 100.0f, GUI::NumericEditFlag::input_on_double_click);
+        GUI::drag_float2("DragFloat2", app.drag2_value.m, 0.05f, 0.0f, 0.0f, GUI::NumericEditFlag::input_on_double_click);
+        GUI::drag_float3("DragFloat3", app.drag3_value.m, 0.05f, 0.0f, 0.0f, GUI::NumericEditFlag::input_on_double_click);
+        GUI::drag_float4("DragFloat4", app.drag4_value.m, 0.05f, 0.0f, 0.0f, GUI::NumericEditFlag::input_on_double_click);
+        GUI::drag_int("DragInt", &app.drag_int_value, 1.0f, -100, 100, GUI::NumericEditFlag::input_on_double_click);
+        GUI::drag_int2("DragInt2", app.drag_int2_value, 1.0f, -100, 100, GUI::NumericEditFlag::input_on_double_click);
+        GUI::drag_int3("DragInt3", app.drag_int3_value, 1.0f, -100, 100, GUI::NumericEditFlag::input_on_double_click);
+        GUI::drag_int4("DragInt4", app.drag_int4_value, 1.0f, -100, 100, GUI::NumericEditFlag::input_on_double_click);
+        GUI::color_edit3("ColorEdit3", app.color_value.m);
+        GUI::color_edit4("ColorEdit4", app.color4_value.m);
+        GUI::color_edit3("ColorEdit3 u8", app.color_u8_value);
+        GUI::color_edit4("ColorEdit4 u8", app.color4_u8_value);
+        GUI::color_edit3("ColorEdit3 RGBA8", &app.color_rgba8_value);
+        GUI::color_edit4("ColorEdit4 RGBA8", &app.color4_rgba8_value);
     }
 
     void draw_layout_tab(App& app, FrameHandles& handles)
     {
         demo_section("Layout containers");
-        GUI::Text("Rows and columns are measured first, then arranged.");
+        GUI::text("Rows and columns are measured first, then arranged.");
 
-        GUI::GUILayoutDesc row;
+        GUI::LayoutDesc row;
         row.gap = 8.0f;
-        row.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::stretch;
-        GUI::BeginHLayout("Fill Row", row);
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(110.0f));
-        GUI::Button("Fixed");
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width(1.0f));
-        GUI::Button("Fill 1");
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width(2.0f));
-        GUI::Button("Fill 2");
-        GUI::EndHLayout();
+        row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::stretch;
+        GUI::begin_h_layout("Fill Row", row);
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(110.0f));
+        GUI::button("Fixed");
+        GUI::set_next_item_layout(GUI::LayoutStyle::fill_width(1.0f));
+        GUI::button("Fill 1");
+        GUI::set_next_item_layout(GUI::LayoutStyle::fill_width(2.0f));
+        GUI::button("Fill 2");
+        GUI::end_h_layout();
 
-        GUI::GUILayoutDesc columns;
+        GUI::LayoutDesc columns;
         columns.gap = 10.0f;
-        columns.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::stretch;
-        GUI::BeginHLayout("Columns", columns);
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
-        GUI::BeginVLayout("Left Column");
-        GUI::Text("Left column");
-        GUI::Button("Action A");
-        GUI::Button("Action B");
-        GUI::EndVLayout();
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
-        GUI::BeginVLayout("Right Column");
-        GUI::Text("Right column");
-        GUI::Checkbox("Check in column", &app.checkbox_a);
-        GUI::InputText("Column input", app.layout_column_text);
-        GUI::EndVLayout();
-        GUI::EndHLayout();
+        columns.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::stretch;
+        GUI::begin_h_layout("Columns", columns);
+        GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
+        GUI::begin_v_layout("Left Column");
+        GUI::text("Left column");
+        GUI::button("Action A");
+        GUI::button("Action B");
+        GUI::end_v_layout();
+        GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
+        GUI::begin_v_layout("Right Column");
+        GUI::text("Right column");
+        GUI::checkbox("Check in column", &app.checkbox_a);
+        GUI::input_text("Column input", app.layout_column_text);
+        GUI::end_v_layout();
+        GUI::end_h_layout();
 
-        GUI::Text("GridLayout");
-        GUI::BeginScrollView("Grid Scroll", GUI::GUISize::fixed(max(app.showcase_content_size.x - 16.0f, 260.0f), 190.0f));
-        GUI::GUIGridLayoutDesc fixed_cell_grid;
-        fixed_cell_grid.sizing_mode = GUI::GUIGridSizingMode::fixed_cell_size;
+        GUI::text("GridLayout");
+        GUI::begin_scroll_view("Grid Scroll", GUI::Size::fixed(max(app.showcase_content_size.x - 16.0f, 260.0f), 190.0f));
+        GUI::GridLayoutDesc fixed_cell_grid;
+        fixed_cell_grid.sizing_mode = GUI::GridSizingMode::fixed_cell_size;
         fixed_cell_grid.cell_size = Float2U(112.0f, 58.0f);
-        fixed_cell_grid.padding = GUI::GUIEdgeInsets::all(8.0f);
+        fixed_cell_grid.padding = GUI::EdgeInsets::all(8.0f);
         fixed_cell_grid.gap = Float2U(8.0f, 8.0f);
-        GUI::BeginGridLayout("Fixed Cell Grid", fixed_cell_grid);
+        GUI::begin_grid_layout("Fixed Cell Grid", fixed_cell_grid);
         for(u32 i = 0; i < 18; ++i)
         {
             c8 label[32];
             snprintf(label, 32, "Asset %02u", i + 1);
-            GUI::PushID(i);
-            GUI::Button(label);
-            GUI::PopID();
+            GUI::push_id(i);
+            GUI::button(label);
+            GUI::pop_id();
         }
-        GUI::EndGridLayout();
+        GUI::end_grid_layout();
 
-        GUI::GUIGridLayoutDesc column_grid;
-        column_grid.sizing_mode = GUI::GUIGridSizingMode::fixed_columns;
+        GUI::GridLayoutDesc column_grid;
+        column_grid.sizing_mode = GUI::GridSizingMode::fixed_columns;
         column_grid.columns = 4;
-        column_grid.padding = GUI::GUIEdgeInsets::xy(8.0f, 10.0f);
+        column_grid.padding = GUI::EdgeInsets::xy(8.0f, 10.0f);
         column_grid.gap = Float2U(8.0f, 8.0f);
-        GUI::BeginGridLayout("Four Column Grid", column_grid);
+        GUI::begin_grid_layout("Four Column Grid", column_grid);
         for(u32 i = 0; i < 8; ++i)
         {
             c8 label[32];
             snprintf(label, 32, "Col %u", i + 1);
-            GUI::PushID(100 + i);
-            GUI::Selectable(label, (i % 3) == 0);
-            GUI::PopID();
+            GUI::push_id(100 + i);
+            GUI::selectable(label, (i % 3) == 0);
+            GUI::pop_id();
         }
-        GUI::EndGridLayout();
-        GUI::EndScrollView();
+        GUI::end_grid_layout();
+        GUI::end_scroll_view();
 
-        GUI::Text("CanvasLayout");
+        GUI::text("CanvasLayout");
         f32 canvas_width = max(app.showcase_content_size.x - 16.0f, 260.0f);
         f32 canvas_height = 190.0f;
-        GUI::BeginCanvasLayout("Viewport Canvas", GUI::GUISize::fixed(canvas_width, canvas_height));
-        GUI::SetNextCanvasItemLayout(GUI::GUICanvasItemLayout::stretch(GUI::GUIEdgeInsets::all(8.0f)));
-        GUI::GUIItemHandle viewport = GUI::Image(nullptr, GUI::GUISize());
-        RectF viewport_rect = GUI::GetItemState(viewport, GUI::GUIState::rect());
+        GUI::begin_canvas_layout("Viewport Canvas", GUI::Size::fixed(canvas_width, canvas_height));
+        GUI::set_next_canvas_item_layout(GUI::CanvasItemLayout::stretch(GUI::EdgeInsets::all(8.0f)));
+        GUI::ItemHandle viewport = GUI::image(nullptr, GUI::Size());
+        RectF viewport_rect = GUI::get_item_state(viewport, GUI::State::rect());
         if(viewport_rect.width > 1.0f && viewport_rect.height > 1.0f)
         {
-            GUI::DrawRect(viewport_rect, Float4U(0.05f, 0.07f, 0.09f, 1.0f), 6.0f);
-            GUI::DrawLine(Float2U(viewport_rect.offset_x + 20.0f, viewport_rect.offset_y + viewport_rect.height - 24.0f),
+            GUI::draw_rect(viewport_rect, Float4U(0.05f, 0.07f, 0.09f, 1.0f), 6.0f);
+            GUI::draw_line(Float2U(viewport_rect.offset_x + 20.0f, viewport_rect.offset_y + viewport_rect.height - 24.0f),
                 Float2U(viewport_rect.offset_x + viewport_rect.width - 24.0f, viewport_rect.offset_y + 24.0f),
                 Float4U(0.14f, 0.36f, 0.68f, 0.9f), 4.0f);
         }
-        GUI::SetNextCanvasItemLayout(GUI::GUICanvasItemLayout::fixed(Float2U(18.0f, 14.0f), Float2U(230.0f, 28.0f)));
-        GUI::Text("Top-left anchored overlay");
-        GUI::SetNextCanvasItemLayout(GUI::GUICanvasItemLayout::anchored(Float2U(1.0f, 0.0f), Float2U(-94.0f, 28.0f), Float2U(170.0f, 34.0f)));
-        GUI::Button("Top Right");
-        GUI::SetNextCanvasItemLayout(GUI::GUICanvasItemLayout::anchored(Float2U(0.5f, 0.5f), Float2U(0.0f, 0.0f), Float2U(220.0f, 44.0f)));
-        handles.canvas_hit = GUI::Button("Center Hit Target");
-        GUI::SetItemTooltip(handles.canvas_hit, "Canvas children are positioned by anchor and offset, not cursor order.");
-        GUI::GUICanvasItemLayout bottom_bar;
+        GUI::set_next_canvas_item_layout(GUI::CanvasItemLayout::fixed(Float2U(18.0f, 14.0f), Float2U(230.0f, 28.0f)));
+        GUI::text("Top-left anchored overlay");
+        GUI::set_next_canvas_item_layout(GUI::CanvasItemLayout::anchored(Float2U(1.0f, 0.0f), Float2U(-94.0f, 28.0f), Float2U(170.0f, 34.0f)));
+        GUI::button("Top Right");
+        GUI::set_next_canvas_item_layout(GUI::CanvasItemLayout::anchored(Float2U(0.5f, 0.5f), Float2U(0.0f, 0.0f), Float2U(220.0f, 44.0f)));
+        handles.canvas_hit = GUI::button("Center Hit Target");
+        GUI::set_item_tooltip(handles.canvas_hit, "Canvas children are positioned by anchor and offset, not cursor order.");
+        GUI::CanvasItemLayout bottom_bar;
         bottom_bar.anchor_min = Float2U(0.0f, 1.0f);
         bottom_bar.anchor_max = Float2U(1.0f, 1.0f);
         bottom_bar.offset_min = Float2U(18.0f, -48.0f);
         bottom_bar.offset_max = Float2U(-18.0f, -12.0f);
-        GUI::SetNextCanvasItemLayout(bottom_bar);
-        GUI::BeginHLayout("Canvas Bottom Bar", row);
-        GUI::Text("Bottom stretch");
-        GUI::Button("Overlay");
-        GUI::Button("Controls");
-        GUI::EndHLayout();
-        GUI::EndCanvasLayout();
+        GUI::set_next_canvas_item_layout(bottom_bar);
+        GUI::begin_h_layout("Canvas Bottom Bar", row);
+        GUI::text("Bottom stretch");
+        GUI::button("Overlay");
+        GUI::button("Controls");
+        GUI::end_h_layout();
+        GUI::end_canvas_layout();
 
-        GUI::Text("ScrollView");
-        GUI::BeginScrollView("Nested Scroll", GUI::GUISize::fixed(max(app.showcase_content_size.x - 16.0f, 240.0f), min(max(app.showcase_content_size.y * 0.30f, 120.0f), 220.0f)));
+        GUI::text("ScrollView");
+        GUI::begin_scroll_view("Nested Scroll", GUI::Size::fixed(max(app.showcase_content_size.x - 16.0f, 240.0f), min(max(app.showcase_content_size.y * 0.30f, 120.0f), 220.0f)));
         for(u32 i = 0; i < 16; ++i)
         {
             c8 line[96];
             snprintf(line, 96, "Scrollable row %02u: mouse wheel should move this content.", i + 1);
-            GUI::Text(line);
+            GUI::text(line);
         }
-        GUI::EndScrollView();
+        GUI::end_scroll_view();
 
-        GUI::Text("DockSpace");
-        GUI::BeginDockSpace("Layout DockSpace", GUI::GUISize::fixed(max(app.showcase_content_size.x - 16.0f, 260.0f), 260.0f));
+        GUI::text("DockSpace");
+        GUI::begin_dock_space("Layout DockSpace", GUI::Size::fixed(max(app.showcase_content_size.x - 16.0f, 260.0f), 260.0f));
         if(app.dock_panel_a_open)
         {
-            GUI::BeginDockPanel("Docked Panel", &app.dock_panel_a_open);
-            GUI::Text("This panel starts in docking mode.");
-            GUI::Button("Docked Action");
-            GUI::EndDockPanel();
+            GUI::begin_dock_panel("Docked Panel", &app.dock_panel_a_open);
+            GUI::text("This panel starts in docking mode.");
+            GUI::button("Docked Action");
+            GUI::end_dock_panel();
         }
         if(app.dock_panel_b_open)
         {
-            GUI::GUIDockPanelStyle floating_style;
-            floating_style.initial_mode = GUI::GUIDockPanelMode::floating;
+            GUI::DockPanelStyle floating_style;
+            floating_style.initial_mode = GUI::DockPanelMode::floating;
             floating_style.floating_position = Float2U(220.0f, 34.0f);
             floating_style.floating_size = Float2U(240.0f, 150.0f);
-            GUI::BeginDockPanel("Floating Panel", &app.dock_panel_b_open, floating_style);
-            GUI::Text("Drag the title bar or resize from the corner.");
-            GUI::Switch("Live", &app.switch_a);
-            GUI::EndDockPanel();
+            GUI::begin_dock_panel("Floating Panel", &app.dock_panel_b_open, floating_style);
+            GUI::text("Drag the title bar or resize from the corner.");
+            GUI::toggle_switch("Live", &app.switch_a);
+            GUI::end_dock_panel();
         }
-        GUI::EndDockSpace();
+        GUI::end_dock_space();
 
-        handles.open_window_button = GUI::Button("Open Closeable Floating Window");
+        handles.open_window_button = GUI::button("Open Closeable Floating Window");
         if(app.floating_window_open)
         {
-            GUI::BeginWindow("Floating Demo", &app.floating_window_open, GUI::GUISize::fixed(280.0f, 150.0f));
-            GUI::Text("This is a closeable GUI window.");
-            GUI::Checkbox("Window checkbox", &app.checkbox_b);
-            GUI::EndWindow();
+            GUI::begin_window("Floating Demo", &app.floating_window_open, GUI::Size::fixed(280.0f, 150.0f));
+            GUI::text("This is a closeable GUI window.");
+            GUI::checkbox("Window checkbox", &app.checkbox_b);
+            GUI::end_window();
         }
     }
 
     void draw_tables_tab(App& app)
     {
         demo_section("TableLayout");
-        GUI::Text("Columns are fixed and resizable; rows are hug-sized with alternating backgrounds.");
+        GUI::text("Columns are fixed and resizable; rows are hug-sized with alternating backgrounds.");
 
-        GUI::GUITableDesc table;
+        GUI::TableDesc table;
         table.columns = 4;
         f32 table_width = max(app.showcase_content_size.x - 24.0f, 360.0f);
         f32 table_column = max((table_width - 180.0f) / 3.0f, 96.0f);
         table.column_sizes = {
-            GUI::GUITableTrackSize::fixed(table_column),
-            GUI::GUITableTrackSize::fixed(table_column),
-            GUI::GUITableTrackSize::fixed(table_column),
-            GUI::GUITableTrackSize::fixed(180.0f)
+            GUI::TableTrackSize::fixed(table_column),
+            GUI::TableTrackSize::fixed(table_column),
+            GUI::TableTrackSize::fixed(table_column),
+            GUI::TableTrackSize::fixed(180.0f)
         };
         table.style.border_size = 1.0f;
-        table.style.background_mode = GUI::GUITableBackgroundMode::alternate_rows;
+        table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
         table.style.background_color = Float4U(0.10f, 0.12f, 0.15f, 0.92f);
         table.style.alternate_background_color = Float4U(0.14f, 0.16f, 0.20f, 0.92f);
         table.style.row_separators = true;
         table.style.column_separators = true;
         table.style.resize_fixed_columns = true;
         table.style.separator_size = 1.0f;
-        GUI::BeginTableLayout("Table Showcase", table);
-        GUI::Text("Name");
-        GUI::Text("Enabled");
-        GUI::Text("Value");
-        GUI::Text("Action");
+        GUI::begin_table_layout("Table Showcase", table);
+        GUI::text("Name");
+        GUI::text("Enabled");
+        GUI::text("Value");
+        GUI::text("Action");
         for(u32 i = 0; i < 4; ++i)
         {
             c8 label[64];
             snprintf(label, 64, "Row %u", i + 1);
-            GUI::Text(label);
-            GUI::Checkbox("Enabled", &app.table_checks[i]);
-            GUI::SliderFloat("Value", &app.table_values[i], 0.0f, 1.0f);
-            GUI::Button("Run");
+            GUI::text(label);
+            GUI::checkbox("Enabled", &app.table_checks[i]);
+            GUI::slider_float("Value", &app.table_values[i], 0.0f, 1.0f);
+            GUI::button("Run");
         }
-        GUI::EndTableLayout();
+        GUI::end_table_layout();
     }
 
     void draw_drawing_tab(App& app, FrameHandles& handles)
     {
         demo_section("DrawList and absolute paint nodes");
-        GUI::Text("The canvas below reserves layout space, then absolute draw commands paint into its last-frame rect.");
+        GUI::text("The canvas below reserves layout space, then absolute draw commands paint into its last-frame rect.");
         f32 canvas_width = max(app.showcase_content_size.x - 16.0f, 260.0f);
         f32 canvas_height = min(max(app.showcase_content_size.y * 0.42f, 180.0f), 280.0f);
-        GUI::GUIItemHandle canvas = GUI::Image(nullptr, GUI::GUISize::fixed(canvas_width, canvas_height));
-        RectF rect = GUI::GetItemState(canvas, GUI::GUIState::rect());
+        GUI::ItemHandle canvas = GUI::image(nullptr, GUI::Size::fixed(canvas_width, canvas_height));
+        RectF rect = GUI::get_item_state(canvas, GUI::State::rect());
         if(rect.width > 1.0f && rect.height > 1.0f)
         {
-            GUI::PushClipRect(rect);
-            GUI::DrawRect(rect, Float4U(0.06f, 0.08f, 0.10f, 1.0f), 6.0f);
-            GUI::DrawRect(RectF(rect.offset_x + 20.0f, rect.offset_y + 20.0f, 180.0f, 76.0f), Float4U(0.22f, 0.34f, 0.55f, 1.0f), 8.0f);
-            GUI::DrawCircle(Float2U(rect.offset_x + 290.0f, rect.offset_y + 58.0f), 38.0f, Float4U(app.color_value.x, app.color_value.y, app.color_value.z, 1.0f));
-            GUI::DrawLine(Float2U(rect.offset_x + 360.0f, rect.offset_y + 30.0f), Float2U(rect.offset_x + 560.0f, rect.offset_y + 120.0f), Float4U(0.9f, 0.8f, 0.3f, 1.0f), 5.0f);
-            GUI::DrawText(RectF(rect.offset_x + 24.0f, rect.offset_y + 118.0f, 420.0f, 32.0f), "DrawText: clipped to the canvas", Color::white(), 16.0f);
-            handles.canvas_hit = GUI::HitBox("Canvas HitBox", RectF(rect.offset_x + 20.0f, rect.offset_y + 160.0f, 240.0f, 52.0f));
-            GUI::DrawRect(RectF(rect.offset_x + 20.0f, rect.offset_y + 160.0f, 240.0f, 52.0f),
-                GUI::IsItemHovered(handles.canvas_hit) ? Float4U(0.30f, 0.48f, 0.74f, 1.0f) : Float4U(0.16f, 0.24f, 0.34f, 1.0f), 6.0f);
-            GUI::DrawText(RectF(rect.offset_x + 28.0f, rect.offset_y + 160.0f, 224.0f, 52.0f), "Absolute HitBox", Color::white(), 16.0f, GUI::GUITextAlignment::center);
+            GUI::push_clip_rect(rect);
+            GUI::draw_rect(rect, Float4U(0.06f, 0.08f, 0.10f, 1.0f), 6.0f);
+            GUI::draw_rect(RectF(rect.offset_x + 20.0f, rect.offset_y + 20.0f, 180.0f, 76.0f), Float4U(0.22f, 0.34f, 0.55f, 1.0f), 8.0f);
+            GUI::draw_circle(Float2U(rect.offset_x + 290.0f, rect.offset_y + 58.0f), 38.0f, Float4U(app.color_value.x, app.color_value.y, app.color_value.z, 1.0f));
+            GUI::draw_line(Float2U(rect.offset_x + 360.0f, rect.offset_y + 30.0f), Float2U(rect.offset_x + 560.0f, rect.offset_y + 120.0f), Float4U(0.9f, 0.8f, 0.3f, 1.0f), 5.0f);
+            GUI::draw_text(RectF(rect.offset_x + 24.0f, rect.offset_y + 118.0f, 420.0f, 32.0f), "DrawText: clipped to the canvas", Color::white(), 16.0f);
+            handles.canvas_hit = GUI::hit_box("Canvas HitBox", RectF(rect.offset_x + 20.0f, rect.offset_y + 160.0f, 240.0f, 52.0f));
+            GUI::draw_rect(RectF(rect.offset_x + 20.0f, rect.offset_y + 160.0f, 240.0f, 52.0f),
+                GUI::is_item_hovered(handles.canvas_hit) ? Float4U(0.30f, 0.48f, 0.74f, 1.0f) : Float4U(0.16f, 0.24f, 0.34f, 1.0f), 6.0f);
+            GUI::draw_text(RectF(rect.offset_x + 28.0f, rect.offset_y + 160.0f, 224.0f, 52.0f), "Absolute HitBox", Color::white(), 16.0f, GUI::TextAlignment::center);
             if(app.clip_enabled)
             {
-                GUI::DrawCircle(Float2U(rect.offset_x + rect.width + 20.0f, rect.offset_y + 40.0f), 48.0f, Float4U(1.0f, 0.2f, 0.2f, 0.8f));
+                GUI::draw_circle(Float2U(rect.offset_x + rect.width + 20.0f, rect.offset_y + 40.0f), 48.0f, Float4U(1.0f, 0.2f, 0.2f, 0.8f));
             }
-            GUI::PopClipRect();
+            GUI::pop_clip_rect();
         }
-        GUI::Checkbox("Draw an intentionally clipped red circle", &app.clip_enabled);
+        GUI::checkbox("Draw an intentionally clipped red circle", &app.clip_enabled);
     }
 
     void draw_popups_tab(App& app, FrameHandles& handles)
     {
         demo_section("MenuBar and MenuItem");
-        GUI::BeginMenuBar("Demo Menu Bar");
-        GUI::BeginMenu("File");
-        handles.menu_new = GUI::MenuItem("New Scene", "Ctrl+N");
-        handles.menu_save = GUI::MenuItem("Save", "Ctrl+S");
-        GUI::MenuSeparator();
-        GUI::MenuItem("Disabled Action", "Ctrl+D", false, false);
-        GUI::EndMenu();
-        GUI::BeginMenu("View");
-        handles.menu_show_grid = GUI::MenuItem("Show Grid", nullptr, &app.menu_show_grid);
-        GUI::MenuItem("Snap To Grid", nullptr, &app.menu_snap_to_grid);
-        GUI::BeginMenu("Theme");
-        handles.menu_theme_dark = GUI::MenuItem("Dark");
-        GUI::MenuItem("Light", nullptr, false, false);
-        GUI::EndMenu();
-        GUI::EndMenu();
-        GUI::EndMenuBar();
+        GUI::begin_menu_bar("Demo Menu Bar");
+        GUI::begin_menu("File");
+        handles.menu_new = GUI::menu_item("New Scene", "Ctrl+N");
+        handles.menu_save = GUI::menu_item("Save", "Ctrl+S");
+        GUI::menu_separator();
+        GUI::menu_item("Disabled Action", "Ctrl+D", false, false);
+        GUI::end_menu();
+        GUI::begin_menu("View");
+        handles.menu_show_grid = GUI::menu_item("Show Grid", nullptr, &app.menu_show_grid);
+        GUI::menu_item("Snap To Grid", nullptr, &app.menu_snap_to_grid);
+        GUI::begin_menu("Theme");
+        handles.menu_theme_dark = GUI::menu_item("Dark");
+        GUI::menu_item("Light", nullptr, false, false);
+        GUI::end_menu();
+        GUI::end_menu();
+        GUI::end_menu_bar();
 
         demo_section("Popups and context menus");
-        GUI::Text("Right-click the selectable below, or click the buttons to open legacy and stack-managed popups.");
-        handles.right_click_item = GUI::Selectable("Right click me", app.popup_open);
-        handles.primary_button = GUI::Button("Open Legacy Popup");
-        handles.managed_popup_button = GUI::Button("Open Stack Popup");
-        GUI::Text(app.popup_text.c_str());
+        GUI::text("Right-click the selectable below, or click the buttons to open legacy and stack-managed popups.");
+        handles.right_click_item = GUI::selectable("Right click me", app.popup_open);
+        handles.primary_button = GUI::button("Open Legacy Popup");
+        handles.managed_popup_button = GUI::button("Open Stack Popup");
+        GUI::text(app.popup_text.c_str());
 
-        GUI::GUIPopupDesc popup_desc;
+        GUI::PopupDesc popup_desc;
         popup_desc.position = app.popup_position;
-        popup_desc.size = GUI::GUISize::fixed(220.0f, 100.0f);
-        handles.managed_popup = GUI::BeginPopup("Managed Popup", popup_desc);
-        GUI::Text("Stack-managed popup");
-        handles.managed_popup_action = GUI::Selectable("Action");
-        handles.nested_popup_button = GUI::Selectable("Open child popup");
+        popup_desc.size = GUI::Size::fixed(220.0f, 100.0f);
+        handles.managed_popup = GUI::begin_popup("Managed Popup", popup_desc);
+        GUI::text("Stack-managed popup");
+        handles.managed_popup_action = GUI::selectable("Action");
+        handles.nested_popup_button = GUI::selectable("Open child popup");
 
-        GUI::GUIPopupDesc nested_desc;
+        GUI::PopupDesc nested_desc;
         nested_desc.position = Float2U(app.popup_position.x + 180.0f, app.popup_position.y + 34.0f);
-        nested_desc.size = GUI::GUISize::fixed(190.0f, 72.0f);
-        handles.nested_popup = GUI::BeginPopup("Nested Managed Popup", nested_desc);
-        GUI::Text("Nested overlay layer");
-        handles.nested_popup_close = GUI::Selectable("Close child");
-        GUI::EndPopup();
-        GUI::EndPopup();
+        nested_desc.size = GUI::Size::fixed(190.0f, 72.0f);
+        handles.nested_popup = GUI::begin_popup("Nested Managed Popup", nested_desc);
+        GUI::text("Nested overlay layer");
+        handles.nested_popup_close = GUI::selectable("Close child");
+        GUI::end_popup();
+        GUI::end_popup();
     }
 
     void draw_tooltips_tab(App& app, FrameHandles& handles)
     {
         demo_section("Tooltip");
-        GUI::Text("Hover these controls to show text-only and custom overlay tooltips.");
+        GUI::text("Hover these controls to show text-only and custom overlay tooltips.");
 
-        GUI::GUIItemHandle button = GUI::Button("Hover for tooltip");
-        GUI::SetItemTooltip(button, "Tooltip content is built every frame but only rendered after the hover delay.");
+        GUI::ItemHandle button = GUI::button("Hover for tooltip");
+        GUI::set_item_tooltip(button, "Tooltip content is built every frame but only rendered after the hover delay.");
 
-        GUI::GUITooltipDesc quick_desc;
+        GUI::TooltipDesc quick_desc;
         quick_desc.delay = 0.0f;
-        GUI::GUIItemHandle instant = GUI::Selectable("Instant tooltip");
-        GUI::SetItemTooltip(instant, "This tooltip has zero delay and follows the pointer.", quick_desc);
+        GUI::ItemHandle instant = GUI::selectable("Instant tooltip");
+        GUI::set_item_tooltip(instant, "This tooltip has zero delay and follows the pointer.", quick_desc);
 
-        GUI::GUITooltipDesc custom_desc;
+        GUI::TooltipDesc custom_desc;
         custom_desc.delay = 0.2f;
         custom_desc.max_width = 280.0f;
-        GUI::GUIItemHandle custom = GUI::Button("Hover for custom tooltip");
-        GUI::BeginTooltip(custom, "Custom Tooltip", custom_desc);
-        GUI::Text("Custom tooltip");
-        GUI::Text("Multiple nodes can be placed here.");
+        GUI::ItemHandle custom = GUI::button("Hover for custom tooltip");
+        GUI::begin_tooltip(custom, "Custom Tooltip", custom_desc);
+        GUI::text("Custom tooltip");
+        GUI::text("Multiple nodes can be placed here.");
         c8 state[96];
         snprintf(state, 96, "Checkbox A: %s", app.checkbox_a ? "checked" : "unchecked");
-        GUI::Text(state);
-        GUI::EndTooltip();
+        GUI::text(state);
+        GUI::end_tooltip();
 
-        GUI::Text("Tooltip over an absolute canvas hit-box:");
-        GUI::GUIItemHandle canvas = GUI::Image(nullptr, GUI::GUISize::fixed(260.0f, 72.0f));
-        RectF rect = GUI::GetItemState(canvas, GUI::GUIState::rect());
+        GUI::text("Tooltip over an absolute canvas hit-box:");
+        GUI::ItemHandle canvas = GUI::image(nullptr, GUI::Size::fixed(260.0f, 72.0f));
+        RectF rect = GUI::get_item_state(canvas, GUI::State::rect());
         if(rect.width > 1.0f && rect.height > 1.0f)
         {
             RectF hit_rect(rect.offset_x + 8.0f, rect.offset_y + 12.0f, 220.0f, 46.0f);
-            handles.canvas_hit = GUI::HitBox("Tooltip Canvas Hit", hit_rect);
-            GUI::DrawRect(hit_rect, GUI::IsItemHovered(handles.canvas_hit) ? Float4U(0.25f, 0.43f, 0.68f, 1.0f) : Float4U(0.14f, 0.21f, 0.30f, 1.0f), 6.0f);
-            GUI::DrawText(hit_rect, "Hover canvas region", Color::white(), 16.0f, GUI::GUITextAlignment::center);
-            GUI::SetItemTooltip(handles.canvas_hit, "Tooltips can attach to regular widgets or explicit hit boxes.");
+            handles.canvas_hit = GUI::hit_box("Tooltip Canvas Hit", hit_rect);
+            GUI::draw_rect(hit_rect, GUI::is_item_hovered(handles.canvas_hit) ? Float4U(0.25f, 0.43f, 0.68f, 1.0f) : Float4U(0.14f, 0.21f, 0.30f, 1.0f), 6.0f);
+            GUI::draw_text(hit_rect, "Hover canvas region", Color::white(), 16.0f, GUI::TextAlignment::center);
+            GUI::set_item_tooltip(handles.canvas_hit, "Tooltips can attach to regular widgets or explicit hit boxes.");
         }
     }
 
     void draw_state_tab(App& app, FrameHandles& handles)
     {
         demo_section("State queries");
-        GUI::Text("Widget APIs return handles. Query before submit for last-frame state and after submit for current-frame state.");
-        handles.primary_button = GUI::Button("Inspect Me");
-        bool hovered = GUI::IsItemHovered(handles.primary_button);
-        bool active = GUI::IsItemActive(handles.primary_button);
-        bool focused = GUI::IsItemFocused(handles.primary_button);
+        GUI::text("Widget APIs return handles. Query before submit for last-frame state and after submit for current-frame state.");
+        handles.primary_button = GUI::button("Inspect Me");
+        bool hovered = GUI::is_item_hovered(handles.primary_button);
+        bool active = GUI::is_item_active(handles.primary_button);
+        bool focused = GUI::is_item_focused(handles.primary_button);
         c8 state[192];
         snprintf(state, 192, "Before submit query: hovered=%s active=%s focused=%s",
             hovered ? "true" : "false",
             active ? "true" : "false",
             focused ? "true" : "false");
-        GUI::Text(state);
-        GUI::Text(app.state_text.c_str());
+        GUI::text(state);
+        GUI::text(app.state_text.c_str());
     }
 
     void draw_trees_tab(App& app, FrameHandles& handles)
     {
         demo_section("TreeNode");
-        GUI::Text("TreeNode supports open state, selection, leaf rows, and indentation.");
-        GUI::Text("The first node only toggles when the arrow is clicked.");
+        GUI::text("TreeNode supports open state, selection, leaf rows, and indentation.");
+        GUI::text("The first node only toggles when the arrow is clicked.");
 
-        GUI::GUIItemHandle scene = demo_tree_node(app, handles, 0, "Scene",
-            GUI::GUITreeNodeFlag::default_open | GUI::GUITreeNodeFlag::open_on_arrow);
-        if(GUI::GetItemState(scene, GUI::GUIState::open()))
+        GUI::ItemHandle scene = demo_tree_node(app, handles, 0, "Scene",
+            GUI::TreeNodeFlag::default_open | GUI::TreeNodeFlag::open_on_arrow);
+        if(GUI::get_item_state(scene, GUI::State::open()))
         {
-            GUI::TreePush();
-            demo_tree_node(app, handles, 1, "Camera", GUI::GUITreeNodeFlag::leaf);
-            demo_tree_node(app, handles, 2, "Directional Light", GUI::GUITreeNodeFlag::leaf);
+            GUI::tree_push();
+            demo_tree_node(app, handles, 1, "Camera", GUI::TreeNodeFlag::leaf);
+            demo_tree_node(app, handles, 2, "Directional Light", GUI::TreeNodeFlag::leaf);
 
-            GUI::GUIItemHandle actor = demo_tree_node(app, handles, 3, "Sponza Actor", GUI::GUITreeNodeFlag::default_open);
-            if(GUI::GetItemState(actor, GUI::GUIState::open()))
+            GUI::ItemHandle actor = demo_tree_node(app, handles, 3, "Sponza Actor", GUI::TreeNodeFlag::default_open);
+            if(GUI::get_item_state(actor, GUI::State::open()))
             {
-                GUI::TreePush();
-                demo_tree_node(app, handles, 4, "Transform", GUI::GUITreeNodeFlag::leaf);
-                demo_tree_node(app, handles, 5, "Mesh Renderer", GUI::GUITreeNodeFlag::leaf);
+                GUI::tree_push();
+                demo_tree_node(app, handles, 4, "Transform", GUI::TreeNodeFlag::leaf);
+                demo_tree_node(app, handles, 5, "Mesh Renderer", GUI::TreeNodeFlag::leaf);
 
-                GUI::GUIItemHandle material = demo_tree_node(app, handles, 6, "Materials");
-                if(GUI::GetItemState(material, GUI::GUIState::open()))
+                GUI::ItemHandle material = demo_tree_node(app, handles, 6, "Materials");
+                if(GUI::get_item_state(material, GUI::State::open()))
                 {
-                    GUI::TreePush();
-                    demo_tree_node(app, handles, 7, "Material Slot 0", GUI::GUITreeNodeFlag::leaf);
-                    GUI::TreePop();
+                    GUI::tree_push();
+                    demo_tree_node(app, handles, 7, "Material Slot 0", GUI::TreeNodeFlag::leaf);
+                    GUI::tree_pop();
                 }
-                GUI::TreePop();
+                GUI::tree_pop();
             }
-            GUI::TreePop();
+            GUI::tree_pop();
         }
 
         c8 selected[96];
         snprintf(selected, 96, "Selected tree node index: %u", app.tree_selected);
-        GUI::Text(selected);
+        GUI::text(selected);
     }
 
     void draw_drag_drop_tab(App& app, FrameHandles& handles)
     {
         demo_section("Drag and Drop");
-        GUI::Text("Drag number payloads and text payloads to the matching targets.");
-        GUI::Text("Only targets that explicitly accept the payload type should be highlighted.");
+        GUI::text("Drag number payloads and text payloads to the matching targets.");
+        GUI::text("Only targets that explicitly accept the payload type should be highlighted.");
 
-        GUI::GUILayoutDesc columns;
+        GUI::LayoutDesc columns;
         columns.gap = 18.0f;
-        columns.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::begin;
-        GUI::BeginHLayout("DragDrop Columns", columns);
+        columns.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::begin;
+        GUI::begin_h_layout("DragDrop Columns", columns);
 
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(220.0f));
-        GUI::BeginVLayout("Drag Sources");
-        GUI::Text("Sources");
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(220.0f));
+        GUI::begin_v_layout("Drag Sources");
+        GUI::text("Sources");
         demo_number_drag_source("Number: 7", 7);
         demo_number_drag_source("Number: 42", 42);
         demo_text_drag_source("Text: Luna", "Luna");
         demo_text_drag_source("Text: Studio", "Studio");
-        GUI::EndVLayout();
+        GUI::end_v_layout();
 
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(280.0f));
-        GUI::BeginVLayout("Drop Targets");
-        GUI::Text("Targets");
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(280.0f));
+        GUI::begin_v_layout("Drop Targets");
+        GUI::text("Targets");
 
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(240.0f));
-        handles.drag_number_target = GUI::Button("Accept Number");
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(240.0f));
+        handles.drag_number_target = GUI::button("Accept Number");
         Name number_type = demo_number_payload_type();
-        if(GUI::BeginDragDropTarget(handles.drag_number_target, number_type))
+        if(GUI::begin_drag_drop_target(handles.drag_number_target, number_type))
         {
-            (void)GUI::AcceptDragDropPayload(number_type);
-            GUI::EndDragDropTarget();
+            (void)GUI::accept_drag_drop_payload(number_type);
+            GUI::end_drag_drop_target();
         }
         c8 number_text[96];
         snprintf(number_text, 96, "Number target: %d", app.dropped_number);
-        GUI::Text(number_text);
+        GUI::text(number_text);
 
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(240.0f));
-        handles.drag_text_target = GUI::Button("Accept Text");
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(240.0f));
+        handles.drag_text_target = GUI::button("Accept Text");
         Name text_type = demo_text_payload_type();
-        if(GUI::BeginDragDropTarget(handles.drag_text_target, text_type))
+        if(GUI::begin_drag_drop_target(handles.drag_text_target, text_type))
         {
-            (void)GUI::AcceptDragDropPayload(text_type);
-            GUI::EndDragDropTarget();
+            (void)GUI::accept_drag_drop_payload(text_type);
+            GUI::end_drag_drop_target();
         }
-        GUI::Text(app.dropped_text.c_str());
+        GUI::text(app.dropped_text.c_str());
 
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(240.0f));
-        handles.drag_mixed_target = GUI::Button("Accept Both");
-        if(GUI::BeginDragDropTarget(handles.drag_mixed_target, number_type))
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(240.0f));
+        handles.drag_mixed_target = GUI::button("Accept Both");
+        if(GUI::begin_drag_drop_target(handles.drag_mixed_target, number_type))
         {
-            (void)GUI::AcceptDragDropPayload(number_type);
-            GUI::EndDragDropTarget();
+            (void)GUI::accept_drag_drop_payload(number_type);
+            GUI::end_drag_drop_target();
         }
-        if(GUI::BeginDragDropTarget(handles.drag_mixed_target, text_type))
+        if(GUI::begin_drag_drop_target(handles.drag_mixed_target, text_type))
         {
-            (void)GUI::AcceptDragDropPayload(text_type);
-            GUI::EndDragDropTarget();
+            (void)GUI::accept_drag_drop_payload(text_type);
+            GUI::end_drag_drop_target();
         }
-        GUI::Text(app.mixed_drop_text.c_str());
-        GUI::EndVLayout();
+        GUI::text(app.mixed_drop_text.c_str());
+        GUI::end_v_layout();
 
-        GUI::EndHLayout();
+        GUI::end_h_layout();
     }
 
     void draw_tabs_tab(App& app)
     {
         demo_section("Basic TabBar");
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_height(150.0f));
-        GUI::BeginTabBar("Basic Nested Tabs");
-        if(GUI::BeginTabItem("Scene"))
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_height(150.0f));
+        GUI::begin_tab_bar("Basic Nested Tabs");
+        if(GUI::begin_tab_item("Scene"))
         {
-            GUI::Text("Scene tab content");
-            GUI::Text("Only the selected tab builds its body.");
-            GUI::EndTabItem();
+            GUI::text("Scene tab content");
+            GUI::text("Only the selected tab builds its body.");
+            GUI::end_tab_item();
         }
-        if(GUI::BeginTabItem("Inspector"))
+        if(GUI::begin_tab_item("Inspector"))
         {
-            GUI::Text("Inspector tab content");
-            GUI::Checkbox("Visible", &app.checkbox_a);
-            GUI::EndTabItem();
+            GUI::text("Inspector tab content");
+            GUI::checkbox("Visible", &app.checkbox_a);
+            GUI::end_tab_item();
         }
-        if(GUI::BeginTabItem("Console"))
+        if(GUI::begin_tab_item("Console"))
         {
-            GUI::Text("Console tab content");
-            GUI::InputText("Console Filter", app.state_text);
-            GUI::EndTabItem();
+            GUI::text("Console tab content");
+            GUI::input_text("Console Filter", app.state_text);
+            GUI::end_tab_item();
         }
-        GUI::EndTabBar();
+        GUI::end_tab_bar();
 
         demo_section("Closable Documents");
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_height(170.0f));
-        GUI::BeginTabBar("Closable Document Tabs");
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_height(170.0f));
+        GUI::begin_tab_bar("Closable Document Tabs");
         bool any_open = false;
         for(u32 i = 0; i < 4; ++i)
         {
@@ -772,28 +772,28 @@ namespace Luna
             any_open = true;
             c8 label[32];
             snprintf(label, 32, "Document %u", i + 1);
-            GUI::GUITabItemFlag flags = i == 1 ? GUI::GUITabItemFlag::unsaved_document : GUI::GUITabItemFlag::none;
-            if(GUI::BeginTabItem(label, &app.tab_document_open[i], flags))
+            GUI::TabItemFlag flags = i == 1 ? GUI::TabItemFlag::unsaved_document : GUI::TabItemFlag::none;
+            if(GUI::begin_tab_item(label, &app.tab_document_open[i], flags))
             {
                 c8 text[96];
                 snprintf(text, 96, "Document %u body. Close this tab with its X button.", i + 1);
-                GUI::Text(text);
-                GUI::EndTabItem();
+                GUI::text(text);
+                GUI::end_tab_item();
             }
         }
         if(!any_open)
         {
-            GUI::TabItemButton("All documents closed");
+            GUI::tab_item_button("All documents closed");
         }
-        GUI::EndTabBar();
+        GUI::end_tab_bar();
 
         demo_section("Scrollable Reorderable Tabs");
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_height(150.0f));
-        GUI::GUITabBarFlag reorder_scroll_flags = (GUI::GUITabBarFlag)(
-            (u32)GUI::GUITabBarFlag::fitting_scroll |
-            (u32)GUI::GUITabBarFlag::reorderable |
-            (u32)GUI::GUITabBarFlag::auto_select_new_tabs);
-        GUI::BeginTabBar("Overflow Reorder Tabs", reorder_scroll_flags);
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_height(150.0f));
+        GUI::TabBarFlag reorder_scroll_flags = (GUI::TabBarFlag)(
+            (u32)GUI::TabBarFlag::fitting_scroll |
+            (u32)GUI::TabBarFlag::reorderable |
+            (u32)GUI::TabBarFlag::auto_select_new_tabs);
+        GUI::begin_tab_bar("Overflow Reorder Tabs", reorder_scroll_flags);
         constexpr const c8* labels[] =
         {
             "Pinned",
@@ -809,21 +809,21 @@ namespace Luna
         };
         for(u32 i = 0; i < (u32)(sizeof(labels) / sizeof(labels[0])); ++i)
         {
-            GUI::GUITabItemFlag flags = i == 0 ? GUI::GUITabItemFlag::no_reorder : GUI::GUITabItemFlag::none;
-            if(GUI::BeginTabItem(labels[i], nullptr, flags))
+            GUI::TabItemFlag flags = i == 0 ? GUI::TabItemFlag::no_reorder : GUI::TabItemFlag::none;
+            if(GUI::begin_tab_item(labels[i], nullptr, flags))
             {
-                GUI::Text("Use the arrow buttons or wheel over the tab strip to scroll.");
-                GUI::Text("Drag a non-pinned tab header horizontally to reorder it.");
-                GUI::EndTabItem();
+                GUI::text("Use the arrow buttons or wheel over the tab strip to scroll.");
+                GUI::text("Drag a non-pinned tab header horizontally to reorder it.");
+                GUI::end_tab_item();
             }
         }
-        GUI::EndTabBar();
+        GUI::end_tab_bar();
     }
 
     void draw_showcase_tab(App& app, FrameHandles& handles, u32 tab)
     {
-        GUI::BeginScrollView("Showcase Content", GUI::GUISize::fixed(app.showcase_content_size.x, app.showcase_content_size.y));
-        GUI::PushID(tab);
+        GUI::begin_scroll_view("Showcase Content", GUI::Size::fixed(app.showcase_content_size.x, app.showcase_content_size.y));
+        GUI::push_id(tab);
         switch(tab)
         {
         case DEMO_TAB_OVERVIEW:
@@ -862,31 +862,31 @@ namespace Luna
         default:
             break;
         }
-        GUI::PopID();
-        GUI::EndScrollView();
+        GUI::pop_id();
+        GUI::end_scroll_view();
     }
 
     void draw_showcase(App& app, FrameHandles& handles, const Float2U& surface_size, u32& built_tab)
     {
         app.showcase_size = Float2U(max(surface_size.x, 1.0f), max(surface_size.y, 1.0f));
         app.showcase_content_size = Float2U(max(app.showcase_size.x - 32.0f, 240.0f), max(app.showcase_size.y - 92.0f, 140.0f));
-        GUI::BeginWindow("Luna GUI Showcase", GUI::GUISize::fixed(app.showcase_size.x, app.showcase_size.y));
-        GUI::Text("Luna GUI Showcase");
+        GUI::begin_window("Luna GUI Showcase", GUI::Size::fixed(app.showcase_size.x, app.showcase_size.y));
+        GUI::text("Luna GUI Showcase");
 
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill());
-        GUI::BeginTabBar("Showcase Tabs", GUI::GUITabBarFlag::fitting_shrink);
+        GUI::set_next_item_layout(GUI::LayoutStyle::fill());
+        GUI::begin_tab_bar("Showcase Tabs", GUI::TabBarFlag::fitting_shrink);
         for(u32 i = 0; i < DEMO_TAB_COUNT; ++i)
         {
-            if(GUI::BeginTabItem(DEMO_TABS[i]))
+            if(GUI::begin_tab_item(DEMO_TABS[i]))
             {
                 built_tab = i;
                 app.selected_tab = i;
                 draw_showcase_tab(app, handles, i);
-                GUI::EndTabItem();
+                GUI::end_tab_item();
             }
         }
-        GUI::EndTabBar();
-        GUI::EndWindow();
+        GUI::end_tab_bar();
+        GUI::end_window();
     }
 
     RV run_app()
@@ -939,7 +939,7 @@ namespace Luna
                 }
 
                 auto logical_sz = app.window->get_size();
-                GUI::GUIFrameDesc frame;
+                GUI::FrameDesc frame;
                 frame.surface_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
                 frame.framebuffer_size = fb_sz;
                 frame.dpi_scale = app.window->get_dpi_scale_factor();
@@ -951,22 +951,22 @@ namespace Luna
                 draw_showcase(app, handles, frame.surface_size, built_tab);
                 if(app.popup_open)
                 {
-                    GUI::BeginPopup("Popup Test", app.popup_position, GUI::GUISize::fixed(180.0f, 72.0f));
-                    handles.popup_action = GUI::Selectable("Popup action");
-                    handles.popup_close = GUI::Selectable("Close");
-                    GUI::EndPopup();
+                    GUI::begin_popup("Popup Test", app.popup_position, GUI::Size::fixed(180.0f, 72.0f));
+                    handles.popup_action = GUI::selectable("Popup action");
+                    handles.popup_close = GUI::selectable("Close");
+                    GUI::end_popup();
                 }
 
                 lulet(desc, app.gui->end_build());
                 luexp(app.gui->submit(desc));
                 luexp(GUIWindow::update_text_input(&input_adapter));
 
-                if(GUI::IsItemClicked(handles.popup_action))
+                if(GUI::is_item_clicked(handles.popup_action))
                 {
                     app.popup_text = "Popup action clicked";
                     app.popup_open = false;
                 }
-                if(GUI::IsItemClicked(handles.popup_close))
+                if(GUI::is_item_clicked(handles.popup_close))
                 {
                     app.popup_text = "Popup closed";
                     app.popup_open = false;
@@ -974,106 +974,106 @@ namespace Luna
 
                 if(built_tab == DEMO_TAB_WIDGETS)
                 {
-                    if(GUI::IsItemClicked(handles.primary_button))
+                    if(GUI::is_item_clicked(handles.primary_button))
                     {
                         ++app.click_count;
                     }
-                    if(GUI::IsItemDoubleClicked(handles.double_click_item))
+                    if(GUI::is_item_double_clicked(handles.double_click_item))
                     {
                         ++app.double_click_count;
                     }
-                    if(GUI::IsItemRightClicked(handles.right_click_item))
+                    if(GUI::is_item_right_clicked(handles.right_click_item))
                     {
                         ++app.right_click_count;
                         app.popup_open = true;
-                        app.popup_position = GUI::GetPointerPosition();
+                        app.popup_position = GUI::get_pointer_position();
                         app.popup_text = "Widget context popup";
                     }
                 }
                 else if(built_tab == DEMO_TAB_LAYOUT)
                 {
-                    if(GUI::IsItemClicked(handles.open_window_button))
+                    if(GUI::is_item_clicked(handles.open_window_button))
                     {
                         app.floating_window_open = true;
                     }
                 }
                 else if(built_tab == DEMO_TAB_DRAWING)
                 {
-                    if(GUI::IsItemClicked(handles.canvas_hit))
+                    if(GUI::is_item_clicked(handles.canvas_hit))
                     {
                         app.state_text = "Canvas HitBox clicked";
                     }
                 }
                 else if(built_tab == DEMO_TAB_POPUPS)
                 {
-                    if(GUI::IsItemClicked(handles.menu_new))
+                    if(GUI::is_item_clicked(handles.menu_new))
                     {
                         app.popup_text = "Menu: New Scene";
                     }
-                    if(GUI::IsItemClicked(handles.menu_save))
+                    if(GUI::is_item_clicked(handles.menu_save))
                     {
                         app.popup_text = "Menu: Save";
                     }
-                    if(GUI::IsItemClicked(handles.menu_show_grid))
+                    if(GUI::is_item_clicked(handles.menu_show_grid))
                     {
                         app.popup_text = app.menu_show_grid ? "Menu: Show Grid on" : "Menu: Show Grid off";
                     }
-                    if(GUI::IsItemClicked(handles.menu_theme_dark))
+                    if(GUI::is_item_clicked(handles.menu_theme_dark))
                     {
                         app.popup_text = "Menu: Dark theme";
                     }
-                    if(GUI::IsItemClicked(handles.primary_button))
+                    if(GUI::is_item_clicked(handles.primary_button))
                     {
                         app.popup_open = true;
-                        app.popup_position = GUI::GetPointerPosition();
+                        app.popup_position = GUI::get_pointer_position();
                         app.popup_text = "Popup opened by button";
                     }
-                    if(GUI::IsItemClicked(handles.managed_popup_button))
+                    if(GUI::is_item_clicked(handles.managed_popup_button))
                     {
-                        app.popup_position = GUI::GetPointerPosition();
+                        app.popup_position = GUI::get_pointer_position();
                         app.popup_text = "Stack popup opened";
-                        GUI::OpenPopup(handles.managed_popup);
+                        GUI::open_popup(handles.managed_popup);
                     }
-                    if(GUI::IsItemClicked(handles.managed_popup_action))
+                    if(GUI::is_item_clicked(handles.managed_popup_action))
                     {
                         app.popup_text = "Stack popup action clicked";
-                        GUI::CloseCurrentPopup();
+                        GUI::close_current_popup();
                     }
-                    if(GUI::IsItemClicked(handles.nested_popup_button))
+                    if(GUI::is_item_clicked(handles.nested_popup_button))
                     {
                         app.popup_text = "Nested popup opened";
-                        GUI::OpenPopup(handles.nested_popup);
+                        GUI::open_popup(handles.nested_popup);
                     }
-                    if(GUI::IsItemClicked(handles.nested_popup_close))
+                    if(GUI::is_item_clicked(handles.nested_popup_close))
                     {
                         app.popup_text = "Nested popup closed";
-                        GUI::ClosePopup(handles.nested_popup);
+                        GUI::close_popup(handles.nested_popup);
                     }
-                    if(GUI::IsItemRightClicked(handles.right_click_item))
+                    if(GUI::is_item_right_clicked(handles.right_click_item))
                     {
                         app.popup_open = true;
-                        app.popup_position = GUI::GetPointerPosition();
+                        app.popup_position = GUI::get_pointer_position();
                         app.popup_text = "Popup opened by right click";
                     }
                 }
                 else if(built_tab == DEMO_TAB_STATE)
                 {
-                    bool hovered = GUI::IsItemHovered(handles.primary_button);
-                    bool active = GUI::IsItemActive(handles.primary_button);
-                    bool focused = GUI::IsItemFocused(handles.primary_button);
+                    bool hovered = GUI::is_item_hovered(handles.primary_button);
+                    bool active = GUI::is_item_active(handles.primary_button);
+                    bool focused = GUI::is_item_focused(handles.primary_button);
                     c8 state[192];
                     snprintf(state, 192, "After submit query: hovered=%s active=%s focused=%s clicked=%s",
                         hovered ? "true" : "false",
                         active ? "true" : "false",
                         focused ? "true" : "false",
-                        GUI::IsItemClicked(handles.primary_button) ? "true" : "false");
+                        GUI::is_item_clicked(handles.primary_button) ? "true" : "false");
                     app.state_text = state;
                 }
                 else if(built_tab == DEMO_TAB_TREES)
                 {
                     for(u32 i = 0; i < TREE_NODE_COUNT; ++i)
                     {
-                        if(GUI::IsItemClicked(handles.tree_nodes[i]))
+                        if(GUI::is_item_clicked(handles.tree_nodes[i]))
                         {
                             app.tree_selected = i;
                             c8 state[96];
@@ -1086,7 +1086,7 @@ namespace Luna
                 {
                     Name number_type = demo_number_payload_type();
                     Name text_type = demo_text_payload_type();
-                    if(const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(handles.drag_number_target, number_type))
+                    if(const GUI::DragDropPayload* payload = GUI::accept_drag_drop_payload(handles.drag_number_target, number_type))
                     {
                         if(const i32* value = payload->data_as<i32>())
                         {
@@ -1096,7 +1096,7 @@ namespace Luna
                             app.state_text = state;
                         }
                     }
-                    if(const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(handles.drag_text_target, text_type))
+                    if(const GUI::DragDropPayload* payload = GUI::accept_drag_drop_payload(handles.drag_text_target, text_type))
                     {
                         app.dropped_text = "Text target: ";
                         if(payload->data && payload->data_size)
@@ -1105,7 +1105,7 @@ namespace Luna
                         }
                         app.state_text = app.dropped_text;
                     }
-                    if(const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(handles.drag_mixed_target, number_type))
+                    if(const GUI::DragDropPayload* payload = GUI::accept_drag_drop_payload(handles.drag_mixed_target, number_type))
                     {
                         if(const i32* value = payload->data_as<i32>())
                         {
@@ -1115,7 +1115,7 @@ namespace Luna
                             app.state_text = state;
                         }
                     }
-                    if(const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(handles.drag_mixed_target, text_type))
+                    if(const GUI::DragDropPayload* payload = GUI::accept_drag_drop_payload(handles.drag_mixed_target, text_type))
                     {
                         app.mixed_drop_text = "Mixed target: text ";
                         if(payload->data && payload->data_size)

@@ -3,7 +3,7 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
-* @file GUIContext.cpp
+* @file Context.cpp
 * @author JXMaster
 * @date 2026/5/21
 */
@@ -16,7 +16,7 @@ namespace Luna
 {
     namespace GUI
     {
-        GUIContext::GUIContext()
+        Context::Context()
         {
             m_shape_draw_list = VG::new_shape_draw_list(m_device);
             m_main_draw_list = new_draw_list();
@@ -25,7 +25,7 @@ namespace Luna
             m_font_atlas = VG::new_font_atlas();
         }
 
-        void GUIContext::begin_frame(const GUIFrameDesc& desc)
+        void Context::begin_frame(const FrameDesc& desc)
         {
             lutsassert();
             m_time += desc.delta_time;
@@ -36,7 +36,7 @@ namespace Luna
             m_last_drag_drop_deliveries = m_current_drag_drop_deliveries;
             m_current_drag_drop_deliveries.clear();
             ++m_generation;
-            m_build_desc = GUIDescription();
+            m_build_desc = Description();
             m_build_desc.generation = m_generation;
             m_parent_stack.clear();
             m_id_stack.clear();
@@ -56,13 +56,13 @@ namespace Luna
                 m_drag_drop_payload_data.clear();
             }
 
-            GUINode root;
+            Node root;
             root.id = 1;
-            root.kind = GUINodeKind::root;
-            root.render_layer = GUIRenderLayer::main;
+            root.kind = NodeKind::root;
+            root.render_layer = RenderLayer::main;
             root.parent = U32_MAX;
             root.depth = 0;
-            apply_requested_size(root, GUISize::fixed(desc.surface_size.x, desc.surface_size.y));
+            apply_requested_size(root, Size::fixed(desc.surface_size.x, desc.surface_size.y));
             m_build_desc.nodes.push_back(root);
             m_child_ordinals.push_back(0);
             m_parent_stack.push_back(0);
@@ -70,42 +70,42 @@ namespace Luna
             set_current_context(this);
         }
 
-        void GUIContext::add_input_event(const GUIInputEvent& event)
+        void Context::add_input_event(const InputEvent& event)
         {
             lutsassert();
             m_input_events.push_back(event);
         }
 
-        void GUIContext::add_input_events(Span<const GUIInputEvent> events)
+        void Context::add_input_events(Span<const InputEvent> events)
         {
             lutsassert();
             m_input_events.insert(m_input_events.end(), events.begin(), events.end());
         }
 
-        void GUIContext::set_clipboard_io(const GUIClipboardIO& io)
+        void Context::set_clipboard_io(const ClipboardIO& io)
         {
             lutsassert();
             m_clipboard_io = io;
         }
 
-        GUITextInputState GUIContext::get_text_input_state()
+        TextInputState Context::get_text_input_state()
         {
             lutsassert();
-            GUITextInputState ret;
+            TextInputState ret;
             if(!m_focused_id || m_submitted_desc.nodes.empty() || m_layouts.size() != m_submitted_desc.nodes.size())
             {
                 return ret;
             }
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
-                const GUINode& node = m_submitted_desc.nodes[i];
+                const Node& node = m_submitted_desc.nodes[i];
                 if(node.id != m_focused_id)
                 {
                     continue;
                 }
                 PersistentItemState& state = get_or_create_persistent_state(node.id);
                 f32 font_size = 16.0f;
-                if(node.kind == GUINodeKind::input_text && node.string_value)
+                if(node.kind == NodeKind::input_text && node.string_value)
                 {
                     const RectF& rect = m_layouts[i].rect;
                     state.text_cursor = clamp_utf8_cursor(*node.string_value, state.text_cursor);
@@ -129,13 +129,13 @@ namespace Luna
             return ret;
         }
 
-        R<GUIDescription> GUIContext::end_build()
+        R<Description> Context::end_build()
         {
             lutsassert();
             return m_build_desc;
         }
 
-        GUIItemHandle GUIContext::add_node(GUINodeKind kind, const c8* text, bool interactive)
+        ItemHandle Context::add_node(NodeKind kind, const c8* text, bool interactive)
         {
             lutsassert();
             luassert(!m_parent_stack.empty());
@@ -147,7 +147,7 @@ namespace Luna
             h = hash_u64((u64)ordinal, h);
             h = hash_cstr(text, h);
 
-            GUINode node;
+            Node node;
             node.id = h ? h : 1;
             node.kind = kind;
             node.render_layer = m_build_desc.nodes[parent].render_layer;
@@ -155,7 +155,7 @@ namespace Luna
             node.depth = m_build_desc.nodes[parent].depth + 1;
             node.text = text ? text : "";
             node.interactive = interactive;
-            if(m_build_desc.nodes[parent].kind == GUINodeKind::dock_space)
+            if(m_build_desc.nodes[parent].kind == NodeKind::dock_space)
             {
                 node.interactive = true;
             }
@@ -182,7 +182,7 @@ namespace Luna
                 node.table_cell_color = m_next_table_cell_color;
                 m_has_next_table_cell_color = false;
             }
-            if(m_has_next_dock_panel_style && m_build_desc.nodes[parent].kind == GUINodeKind::dock_space)
+            if(m_has_next_dock_panel_style && m_build_desc.nodes[parent].kind == NodeKind::dock_space)
             {
                 node.has_dock_panel_style = true;
                 node.dock_panel_style = m_next_dock_panel_style;
@@ -200,7 +200,7 @@ namespace Luna
             m_build_desc.nodes.push_back(node);
             m_child_ordinals.push_back(0);
 
-            GUINode& parent_node = m_build_desc.nodes[parent];
+            Node& parent_node = m_build_desc.nodes[parent];
             if(parent_node.first_child == U32_MAX)
             {
                 parent_node.first_child = index;
@@ -212,46 +212,46 @@ namespace Luna
             parent_node.last_child = index;
 
             m_last_item_id = node.id;
-            return GUIItemHandle{get_object(), node.id, m_generation};
+            return ItemHandle{get_object(), node.id, m_generation};
         }
 
-        void GUIContext::begin_container(GUINodeKind kind, const c8* label, const GUISize& size, GUIItemHandle* out_handle)
+        void Context::begin_container(NodeKind kind, const c8* label, const Size& size, ItemHandle* out_handle)
         {
-            bool interactive = kind == GUINodeKind::scroll_view || kind == GUINodeKind::popup || kind == GUINodeKind::menu_bar || kind == GUINodeKind::table_layout || kind == GUINodeKind::tab_bar;
-            GUIItemHandle handle = add_node(kind, label, interactive);
+            bool interactive = kind == NodeKind::scroll_view || kind == NodeKind::popup || kind == NodeKind::menu_bar || kind == NodeKind::table_layout || kind == NodeKind::tab_bar;
+            ItemHandle handle = add_node(kind, label, interactive);
             u32 index = (u32)m_build_desc.nodes.size() - 1;
             apply_requested_size(m_build_desc.nodes[index], size);
-            if(kind == GUINodeKind::window || kind == GUINodeKind::scroll_view)
+            if(kind == NodeKind::window || kind == NodeKind::scroll_view)
             {
-                m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(8.0f);
+                m_build_desc.nodes[index].layout_desc.padding = EdgeInsets::all(8.0f);
             }
-            if(kind == GUINodeKind::dock_space)
+            if(kind == NodeKind::dock_space)
             {
-                m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(0.0f);
+                m_build_desc.nodes[index].layout_desc.padding = EdgeInsets::all(0.0f);
                 m_build_desc.nodes[index].layout_desc.gap = 0.0f;
             }
-            if(kind == GUINodeKind::tab_bar)
+            if(kind == NodeKind::tab_bar)
             {
-                m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(0.0f);
+                m_build_desc.nodes[index].layout_desc.padding = EdgeInsets::all(0.0f);
                 m_build_desc.nodes[index].layout_desc.gap = 0.0f;
             }
-            if(kind == GUINodeKind::canvas_layout)
+            if(kind == NodeKind::canvas_layout)
             {
-                m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(0.0f);
+                m_build_desc.nodes[index].layout_desc.padding = EdgeInsets::all(0.0f);
                 m_build_desc.nodes[index].layout_desc.gap = 0.0f;
             }
-            if(kind == GUINodeKind::menu_bar)
+            if(kind == NodeKind::menu_bar)
             {
-                m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::xy(4.0f, 2.0f);
+                m_build_desc.nodes[index].layout_desc.padding = EdgeInsets::xy(4.0f, 2.0f);
                 m_build_desc.nodes[index].layout_desc.gap = 2.0f;
-                m_build_desc.nodes[index].layout_desc.cross_axis_alignment = GUILayoutCrossAxisAlignment::center;
+                m_build_desc.nodes[index].layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::center;
             }
             m_parent_stack.push_back(index);
             m_id_stack.push_back(handle.id);
             if(out_handle) *out_handle = handle;
         }
 
-        void GUIContext::end_container()
+        void Context::end_container()
         {
             lutsassert();
             luassert(m_parent_stack.size() > 1);
@@ -259,7 +259,7 @@ namespace Luna
             m_id_stack.pop_back();
         }
 
-        void GUIContext::push_id(GUIID id)
+        void Context::push_id(id_t id)
         {
             lutsassert();
             u64 h = hash_u64(m_id_stack.empty() ? 0 : m_id_stack.back());
@@ -267,14 +267,14 @@ namespace Luna
             m_id_stack.push_back(h);
         }
 
-        void GUIContext::pop_id()
+        void Context::pop_id()
         {
             lutsassert();
             luassert(m_id_stack.size() > 1);
             m_id_stack.pop_back();
         }
 
-        void GUIContext::push_clip_rect(const RectF& rect)
+        void Context::push_clip_rect(const RectF& rect)
         {
             lutsassert();
             RectF clipped = rect;
@@ -285,14 +285,14 @@ namespace Luna
             m_clip_stack.push_back(clipped);
         }
 
-        void GUIContext::pop_clip_rect()
+        void Context::pop_clip_rect()
         {
             lutsassert();
             luassert(!m_clip_stack.empty());
             m_clip_stack.pop_back();
         }
 
-        void GUIContext::tree_push()
+        void Context::tree_push()
         {
             lutsassert();
             luassert(m_last_item_id != 0);
@@ -300,7 +300,7 @@ namespace Luna
             m_id_stack.push_back(m_last_item_id);
         }
 
-        void GUIContext::tree_push(GUIItemHandle node)
+        void Context::tree_push(ItemHandle node)
         {
             lutsassert();
             luassert(node.context == get_object());
@@ -309,7 +309,7 @@ namespace Luna
             m_id_stack.push_back(node.id);
         }
 
-        void GUIContext::tree_pop()
+        void Context::tree_pop()
         {
             lutsassert();
             luassert(m_tree_depth > 0);
@@ -318,11 +318,11 @@ namespace Luna
             m_id_stack.pop_back();
         }
 
-        bool GUIContext::begin_drag_drop_source(GUIItemHandle source, const Name& payload_type)
+        bool Context::begin_drag_drop_source(ItemHandle source, const Name& payload_type)
         {
             lutsassert();
             if(!payload_type) return false;
-            GUINode* node = find_build_node(source);
+            Node* node = find_build_node(source);
             if(!node) return false;
             if(!contains_name(node->drag_drop_source_types, payload_type))
             {
@@ -334,21 +334,21 @@ namespace Luna
             }
 
             m_drag_drop_preview_built = true;
-            GUIItemHandle preview;
+            ItemHandle preview;
             Float2U preview_pos(
                 min(m_pointer_pos.x + 14.0f, max(m_frame_desc.surface_size.x - 8.0f, 0.0f)),
                 min(m_pointer_pos.y + 18.0f, max(m_frame_desc.surface_size.y - 8.0f, 0.0f)));
-            begin_container(GUINodeKind::popup, "DragDropPreview", GUISize(), &preview);
-            GUINode& preview_node = m_build_desc.nodes.back();
-            preview_node.render_layer = GUIRenderLayer::overlay;
+            begin_container(NodeKind::popup, "DragDropPreview", Size(), &preview);
+            Node& preview_node = m_build_desc.nodes.back();
+            preview_node.render_layer = RenderLayer::overlay;
             preview_node.absolute_position = true;
             preview_node.position = preview_pos;
-            preview_node.layout_desc.padding = GUIEdgeInsets::all(6.0f);
+            preview_node.layout_desc.padding = EdgeInsets::all(6.0f);
             preview_node.layout_desc.gap = 2.0f;
             return true;
         }
 
-        void GUIContext::set_drag_drop_payload(const void* data, usize data_size)
+        void Context::set_drag_drop_payload(const void* data, usize data_size)
         {
             lutsassert();
             if(!m_drag_drop_active) return;
@@ -360,17 +360,17 @@ namespace Luna
             m_drag_drop_payload_set = true;
         }
 
-        void GUIContext::end_drag_drop_source()
+        void Context::end_drag_drop_source()
         {
             lutsassert();
             end_container();
         }
 
-        bool GUIContext::begin_drag_drop_target(GUIItemHandle target, const Name& payload_type)
+        bool Context::begin_drag_drop_target(ItemHandle target, const Name& payload_type)
         {
             lutsassert();
             if(!payload_type) return false;
-            GUINode* node = find_build_node(target);
+            Node* node = find_build_node(target);
             if(!node) return false;
             if(!contains_name(node->drag_drop_target_types, payload_type))
             {
@@ -384,24 +384,24 @@ namespace Luna
             return true;
         }
 
-        const GUIDragDropPayload* GUIContext::accept_drag_drop_payload(const Name& payload_type)
+        const DragDropPayload* Context::accept_drag_drop_payload(const Name& payload_type)
         {
             lutsassert();
             if(m_drag_drop_target_stack.empty()) return nullptr;
             return accept_drag_drop_payload(m_drag_drop_target_stack.back().target, payload_type);
         }
 
-        const GUIDragDropPayload* GUIContext::accept_drag_drop_payload(GUIItemHandle target, const Name& payload_type)
+        const DragDropPayload* Context::accept_drag_drop_payload(ItemHandle target, const Name& payload_type)
         {
             lutsassert();
             if(!payload_type || target.context != get_object()) return nullptr;
-            const HashMap<GUIID, DragDropPayloadStorage, GUIIDHash>& deliveries = m_submitted ? m_current_drag_drop_deliveries : m_last_drag_drop_deliveries;
+            const HashMap<id_t, DragDropPayloadStorage, IdHash>& deliveries = m_submitted ? m_current_drag_drop_deliveries : m_last_drag_drop_deliveries;
             auto iter = deliveries.find(target.id);
             if(iter == deliveries.end() || iter->second.type != payload_type) return nullptr;
             return make_drag_drop_payload_view(iter->second);
         }
 
-        void GUIContext::end_drag_drop_target()
+        void Context::end_drag_drop_target()
         {
             lutsassert();
             if(!m_drag_drop_target_stack.empty())
@@ -410,27 +410,27 @@ namespace Luna
             }
         }
 
-        bool GUIContext::is_drag_drop_active() const
+        bool Context::is_drag_drop_active() const
         {
             lutsassert();
             return m_drag_drop_active;
         }
 
-        const GUIDragDropPayload* GUIContext::get_drag_drop_payload()
+        const DragDropPayload* Context::get_drag_drop_payload()
         {
             lutsassert();
             if(!m_drag_drop_active) return nullptr;
             m_drag_drop_payload_view.type = m_drag_drop_type;
             m_drag_drop_payload_view.data = m_drag_drop_payload_data.empty() ? nullptr : m_drag_drop_payload_data.data();
             m_drag_drop_payload_view.data_size = m_drag_drop_payload_data.size();
-            m_drag_drop_payload_view.source = GUIItemHandle{get_object(), m_drag_drop_source_id, m_generation};
-            m_drag_drop_payload_view.target = GUIItemHandle();
+            m_drag_drop_payload_view.source = ItemHandle{get_object(), m_drag_drop_source_id, m_generation};
+            m_drag_drop_payload_view.target = ItemHandle();
             m_drag_drop_payload_view.preview = true;
             m_drag_drop_payload_view.delivery = false;
             return &m_drag_drop_payload_view;
         }
 
-        const GUIDragDropPayload* GUIContext::make_drag_drop_payload_view(const DragDropPayloadStorage& storage)
+        const DragDropPayload* Context::make_drag_drop_payload_view(const DragDropPayloadStorage& storage)
         {
             m_drag_drop_payload_view.type = storage.type;
             m_drag_drop_payload_view.data = storage.data.empty() ? nullptr : storage.data.data();
@@ -442,7 +442,7 @@ namespace Luna
             return &m_drag_drop_payload_view;
         }
 
-        void GUIContext::set_next_dock_panel_style(const GUIDockPanelStyle& style, bool* open)
+        void Context::set_next_dock_panel_style(const DockPanelStyle& style, bool* open)
         {
             lutsassert();
             m_has_next_dock_panel_style = true;
@@ -450,7 +450,7 @@ namespace Luna
             m_next_dock_panel_open = open;
         }
 
-        ItemResult* GUIContext::get_query_result(GUIItemHandle handle)
+        ItemResult* Context::get_query_result(ItemHandle handle)
         {
             if(handle.context != get_object()) return nullptr;
             if(m_submitted)
@@ -463,7 +463,7 @@ namespace Luna
             return iter == m_last_results.end() ? nullptr : &iter->second;
         }
 
-        ItemResult& GUIContext::get_or_create_current_result(GUIID id)
+        ItemResult& Context::get_or_create_current_result(id_t id)
         {
             auto iter = m_current_results.find(id);
             if(iter == m_current_results.end())
@@ -475,7 +475,7 @@ namespace Luna
             return iter->second;
         }
 
-        PersistentItemState& GUIContext::get_or_create_persistent_state(GUIID id)
+        PersistentItemState& Context::get_or_create_persistent_state(id_t id)
         {
             auto iter = m_persistent_states.find(id);
             if(iter == m_persistent_states.end())
@@ -486,17 +486,17 @@ namespace Luna
             return iter->second;
         }
 
-        GUINode* GUIContext::find_build_node(GUIItemHandle handle)
+        Node* Context::find_build_node(ItemHandle handle)
         {
             if(handle.context != get_object() || handle.generation != m_generation) return nullptr;
-            for(GUINode& node : m_build_desc.nodes)
+            for(Node& node : m_build_desc.nodes)
             {
                 if(node.id == handle.id) return &node;
             }
             return nullptr;
         }
 
-        DockPanelPersistentState& GUIContext::get_or_create_dock_panel_state(PersistentItemState& dock_state, GUIID panel_id)
+        DockPanelPersistentState& Context::get_or_create_dock_panel_state(PersistentItemState& dock_state, id_t panel_id)
         {
             auto iter = dock_state.dock_panels.find(panel_id);
             if(iter == dock_state.dock_panels.end())
@@ -507,17 +507,17 @@ namespace Luna
             return iter->second;
         }
 
-        const Any* GUIContext::get_state(GUIItemHandle handle, const Name& key)
+        const Any* Context::get_state(ItemHandle handle, const Name& key)
         {
             lutsassert();
             ItemResult* result = get_query_result(handle);
             if(!result && !m_submitted && handle.context == get_object() && handle.generation == m_generation && key == Name("gui.open"))
             {
-                for(const GUINode& node : m_build_desc.nodes)
+                for(const Node& node : m_build_desc.nodes)
                 {
-                    if(node.id != handle.id || node.kind != GUINodeKind::tree_node) continue;
+                    if(node.id != handle.id || node.kind != NodeKind::tree_node) continue;
                     ItemResult& fallback = get_or_create_current_result(handle.id);
-                    bool default_open = !tree_node_is_leaf(node) && test_flags(node.tree_flags, GUITreeNodeFlag::default_open);
+                    bool default_open = !tree_node_is_leaf(node) && test_flags(node.tree_flags, TreeNodeFlag::default_open);
                     fallback.states.insert_or_assign(key, Any(default_open));
                     result = &fallback;
                     break;
@@ -528,7 +528,7 @@ namespace Luna
             return iter == result->states.end() ? nullptr : &iter->second;
         }
 
-        void GUIContext::set_state(GUIItemHandle handle, const Name& key, const Any& value)
+        void Context::set_state(ItemHandle handle, const Name& key, const Any& value)
         {
             lutsassert();
             if(handle.context != get_object()) return;
@@ -536,7 +536,7 @@ namespace Luna
             result.states.insert_or_assign(key, value);
         }
 
-        void GUIContext::remove_state(GUIItemHandle handle, const Name& key)
+        void Context::remove_state(ItemHandle handle, const Name& key)
         {
             lutsassert();
             if(handle.context != get_object()) return;
@@ -545,21 +545,21 @@ namespace Luna
             iter->second.states.erase(key);
         }
 
-        void GUIContext::set_next_item_layout(const GUILayoutStyle& style)
+        void Context::set_next_item_layout(const LayoutStyle& style)
         {
             lutsassert();
             m_next_item_layout = style;
             m_has_next_item_layout = true;
         }
 
-        void GUIContext::set_next_canvas_item_layout(const GUICanvasItemLayout& layout)
+        void Context::set_next_canvas_item_layout(const CanvasItemLayout& layout)
         {
             lutsassert();
             m_next_canvas_item_layout = layout;
             m_has_next_canvas_item_layout = true;
         }
 
-        void GUIContext::set_next_table_cell_color(const Float4U& color)
+        void Context::set_next_table_cell_color(const Float4U& color)
         {
             lutsassert();
             m_next_table_cell_color = color;

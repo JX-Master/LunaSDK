@@ -14,33 +14,33 @@ namespace Luna
 {
     namespace GUI
     {
-        struct GUIDragDropPayload
+        struct DragDropPayload
         {
             Name type;
             const void* data = nullptr;
             usize data_size = 0;
-            GUIItemHandle source;
-            GUIItemHandle target;
+            ItemHandle source;
+            ItemHandle target;
             bool preview = false;
             bool delivery = false;
 
-            template <typename _Ty>
-            const _Ty* data_as() const
+            template <typename T>
+            const T* data_as() const
             {
-                return data_size == sizeof(_Ty) ? (const _Ty*)data : nullptr;
+                return data_size == sizeof(T) ? (const T*)data : nullptr;
             }
         };
 
-        LUNA_GUI_API bool BeginDragDropSource(GUIItemHandle source, const Name& payload_type);
-        LUNA_GUI_API void SetDragDropPayload(const void* data, usize data_size);
-        LUNA_GUI_API void EndDragDropSource();
+        LUNA_GUI_API bool begin_drag_drop_source(ItemHandle source, const Name& payload_type);
+        LUNA_GUI_API void set_drag_drop_payload(const void* data, usize data_size);
+        LUNA_GUI_API void end_drag_drop_source();
 
-        LUNA_GUI_API bool BeginDragDropTarget(GUIItemHandle target, const Name& payload_type);
-        LUNA_GUI_API const GUIDragDropPayload* AcceptDragDropPayload(const Name& payload_type);
-        LUNA_GUI_API const GUIDragDropPayload* AcceptDragDropPayload(GUIItemHandle target, const Name& payload_type);
-        LUNA_GUI_API void EndDragDropTarget();
+        LUNA_GUI_API bool begin_drag_drop_target(ItemHandle target, const Name& payload_type);
+        LUNA_GUI_API const DragDropPayload* accept_drag_drop_payload(const Name& payload_type);
+        LUNA_GUI_API const DragDropPayload* accept_drag_drop_payload(ItemHandle target, const Name& payload_type);
+        LUNA_GUI_API void end_drag_drop_target();
 
-        LUNA_GUI_API bool IsDragDropActive();
-        LUNA_GUI_API const GUIDragDropPayload* GetDragDropPayload();
+        LUNA_GUI_API bool is_drag_drop_active();
+        LUNA_GUI_API const DragDropPayload* get_drag_drop_payload();
     }
 }

@@ -19,47 +19,47 @@ namespace Luna
 {
     namespace GUI
     {
-        GUIContext* g_current_context = nullptr;
+        Context* g_current_context = nullptr;
 
-        namespace GUIState
+        namespace State
         {
-            LUNA_GUI_API GUIStateKey<bool> clicked() { return {Name("gui.clicked"), false}; }
-            LUNA_GUI_API GUIStateKey<bool> right_clicked() { return {Name("gui.right_clicked"), false}; }
-            LUNA_GUI_API GUIStateKey<bool> double_clicked() { return {Name("gui.double_clicked"), false}; }
-            LUNA_GUI_API GUIStateKey<bool> hovered() { return {Name("gui.hovered"), false}; }
-            LUNA_GUI_API GUIStateKey<bool> active() { return {Name("gui.active"), false}; }
-            LUNA_GUI_API GUIStateKey<bool> focused() { return {Name("gui.focused"), false}; }
-            LUNA_GUI_API GUIStateKey<bool> open() { return {Name("gui.open"), true}; }
-            LUNA_GUI_API GUIStateKey<bool> value_changed() { return {Name("gui.value_changed"), false}; }
-            LUNA_GUI_API GUIStateKey<RectF> rect() { return {Name("gui.rect"), RectF(0.0f, 0.0f, 0.0f, 0.0f)}; }
-            LUNA_GUI_API GUIStateKey<RectF> clip_rect() { return {Name("gui.clip_rect"), RectF(0.0f, 0.0f, 0.0f, 0.0f)}; }
+            LUNA_GUI_API StateKey<bool> clicked() { return {Name("gui.clicked"), false}; }
+            LUNA_GUI_API StateKey<bool> right_clicked() { return {Name("gui.right_clicked"), false}; }
+            LUNA_GUI_API StateKey<bool> double_clicked() { return {Name("gui.double_clicked"), false}; }
+            LUNA_GUI_API StateKey<bool> hovered() { return {Name("gui.hovered"), false}; }
+            LUNA_GUI_API StateKey<bool> active() { return {Name("gui.active"), false}; }
+            LUNA_GUI_API StateKey<bool> focused() { return {Name("gui.focused"), false}; }
+            LUNA_GUI_API StateKey<bool> open() { return {Name("gui.open"), true}; }
+            LUNA_GUI_API StateKey<bool> value_changed() { return {Name("gui.value_changed"), false}; }
+            LUNA_GUI_API StateKey<RectF> rect() { return {Name("gui.rect"), RectF(0.0f, 0.0f, 0.0f, 0.0f)}; }
+            LUNA_GUI_API StateKey<RectF> clip_rect() { return {Name("gui.clip_rect"), RectF(0.0f, 0.0f, 0.0f, 0.0f)}; }
         }
 
-        LUNA_GUI_API Ref<IGUIContext> new_context(RHI::IDevice* device)
+        LUNA_GUI_API Ref<IContext> new_context(RHI::IDevice* device)
         {
-            Ref<GUIContext> ctx = new_object<GUIContext>();
+            Ref<Context> ctx = new_object<Context>();
             ctx->m_device = device ? device : RHI::get_main_device();
             ctx->m_shape_draw_list = VG::new_shape_draw_list(ctx->m_device);
-            return Ref<IGUIContext>(ctx);
+            return Ref<IContext>(ctx);
         }
 
-        LUNA_GUI_API void set_current_context(IGUIContext* context)
+        LUNA_GUI_API void set_current_context(IContext* context)
         {
-            g_current_context = context ? (GUIContext*)context->get_object() : nullptr;
+            g_current_context = context ? (Context*)context->get_object() : nullptr;
         }
 
-        LUNA_GUI_API IGUIContext* get_current_context()
+        LUNA_GUI_API IContext* get_current_context()
         {
             return g_current_context;
         }
 
-        GUIContext* require_current_context()
+        Context* require_current_context()
         {
-            luassert_msg(g_current_context, "No current GUI context. Call IGUIContext::begin_frame first.");
+            luassert_msg(g_current_context, "No current GUI context. Call IContext::begin_frame first.");
             return g_current_context;
         }
 
-        struct GUIModule : public Module
+        struct ModuleImpl : public Module
         {
             virtual const c8* get_name() override { return "GUI"; }
             virtual RV on_register() override
@@ -68,8 +68,8 @@ namespace Luna
             }
             virtual RV on_init() override
             {
-                register_boxed_type<GUIContext>();
-                impl_interface_for_type<GUIContext, IGUIContext>();
+                register_boxed_type<Context>();
+                impl_interface_for_type<Context, IContext>();
                 register_boxed_type<DrawList>();
                 impl_interface_for_type<DrawList, IDrawList>();
                 return ok;
@@ -82,7 +82,7 @@ namespace Luna
     {
         LUNA_GUI_API Module* module_gui()
         {
-            static GUIModule m;
+            static ModuleImpl m;
             return &m;
         }
     }

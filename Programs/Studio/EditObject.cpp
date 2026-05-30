@@ -29,28 +29,28 @@ namespace Luna
         GUIPropertyRow begin_gui_property_row(const c8* name, f32 height = 30.0f)
         {
             (void)g_gui_property_flow_depth;
-            GUI::GUILayoutStyle row_style = GUI::GUILayoutStyle::fill_width();
-            row_style.height_policy = GUI::GUISizePolicy::fixed;
+            GUI::LayoutStyle row_style = GUI::LayoutStyle::fill_width();
+            row_style.height_policy = GUI::SizePolicy::fixed;
             row_style.fixed_height_value = height;
-            GUI::SetNextItemLayout(row_style);
-            GUI::GUILayoutDesc row;
-            row.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::stretch;
-            GUI::BeginHLayout(name, row);
-            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+            GUI::set_next_item_layout(row_style);
+            GUI::LayoutDesc row;
+            row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::stretch;
+            GUI::begin_h_layout(name, row);
+            GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
             return GUIPropertyRow { Float2(0.0f, height) };
         }
 
-        bool end_gui_property_row(const GUIPropertyRow& row, GUI::GUIItemHandle item)
+        bool end_gui_property_row(const GUIPropertyRow& row, GUI::ItemHandle item)
         {
             (void)row;
-            GUI::EndHLayout();
-            return GUI::GetItemState(item, GUI::GUIState::value_changed());
+            GUI::end_h_layout();
+            return GUI::get_item_state(item, GUI::State::value_changed());
         }
 
         void end_gui_property_row(const GUIPropertyRow& row)
         {
             (void)row;
-            GUI::EndHLayout();
+            GUI::end_h_layout();
         }
 
         template <typename _Ty>
@@ -117,9 +117,9 @@ namespace Luna
             String label;
             strprintf(label, "%s: %s", name, descs[current_item].name.c_str());
             GUIPropertyRow row = begin_gui_property_row(name);
-            GUI::GUIItemHandle button = GUI::Button(label.c_str());
+            GUI::ItemHandle button = GUI::button(label.c_str());
             end_gui_property_row(row);
-            if(GUI::IsItemClicked(button))
+            if(GUI::is_item_clicked(button))
             {
                 current_item = (current_item + 1) % descs.size();
                 set_enum_instance_value(type, obj, descs[current_item].value);
@@ -137,7 +137,7 @@ namespace Luna
             return false;
         }
 
-        GUI::PushID(obj);
+        GUI::push_id(obj);
 
         bool edited = false;
 
@@ -166,13 +166,13 @@ namespace Luna
                     f32& v_edit = get_edit_buffer(g_radian_edit_buffers, (usize)obj, rad_to_deg(*data));
                     f32 speed = (v_max_deg <= v_min_deg) ? 1.0f : (v_max_deg - v_min_deg) / 100.0f;
                     GUIPropertyRow row = begin_gui_property_row(name);
-                    GUI::GUIItemHandle item = GUI::DragFloat(name, &v_edit, speed, v_min_deg, v_max_deg);
+                    GUI::ItemHandle item = GUI::drag_float(name, &v_edit, speed, v_min_deg, v_max_deg);
                     edited = end_gui_property_row(row, item);
                     if (edited)
                     {
                         *data = deg_to_rad(v_edit);
                     }
-                    else if(!GUI::IsItemActive(item) && !GUI::IsItemFocused(item))
+                    else if(!GUI::is_item_active(item) && !GUI::is_item_focused(item))
                     {
                         v_edit = rad_to_deg(*data);
                     }
@@ -185,7 +185,7 @@ namespace Luna
                         speed = (v_max - v_min) / 100.0f;
                     }
                     GUIPropertyRow row = begin_gui_property_row(name);
-                    GUI::GUIItemHandle item = GUI::DragFloat(name, data, speed, v_min, v_max);
+                    GUI::ItemHandle item = GUI::drag_float(name, data, speed, v_min, v_max);
                     edited = end_gui_property_row(row, item);
                 }
             }
@@ -193,7 +193,7 @@ namespace Luna
             {
                 bool* data = (bool*)obj;
                 GUIPropertyRow row = begin_gui_property_row(name, 26.0f);
-                GUI::GUIItemHandle item = GUI::Checkbox(name, data);
+                GUI::ItemHandle item = GUI::checkbox(name, data);
                 edited = end_gui_property_row(row, item);
             }
         }
@@ -206,7 +206,7 @@ namespace Luna
         {
             Float2* data = (Float2*)obj;
             GUIPropertyRow row = begin_gui_property_row(name);
-            GUI::GUIItemHandle item = GUI::DragFloat2(name, data->m, 0.01f, 0.0f, 0.0f);
+            GUI::ItemHandle item = GUI::drag_float2(name, data->m, 0.01f, 0.0f, 0.0f);
             edited = end_gui_property_row(row, item);
         }
         else if (type == typeof<Float3>())
@@ -216,14 +216,14 @@ namespace Luna
             {
                 Float3* data = (Float3*)obj;
                 GUIPropertyRow row = begin_gui_property_row(name);
-                GUI::GUIItemHandle item = GUI::ColorEdit3(name, data->m);
+                GUI::ItemHandle item = GUI::color_edit3(name, data->m);
                 edited = end_gui_property_row(row, item);
             }
             else
             {
                 Float3* data = (Float3*)obj;
                 GUIPropertyRow row = begin_gui_property_row(name);
-                GUI::GUIItemHandle item = GUI::DragFloat3(name, data->m, 0.01f, 0.0f, 0.0f);
+                GUI::ItemHandle item = GUI::drag_float3(name, data->m, 0.01f, 0.0f, 0.0f);
                 edited = end_gui_property_row(row, item);
             }
         }
@@ -235,14 +235,14 @@ namespace Luna
                 Float4* data = (Float4*)obj;
                 Float3& euler = get_edit_buffer(g_quaternion_edit_buffers, (usize)obj, quaternion_to_euler_degrees(*data));
                 GUIPropertyRow row = begin_gui_property_row(name);
-                GUI::GUIItemHandle item = GUI::DragFloat3(name, euler.m, 0.1f, 0.0f, 0.0f);
+                GUI::ItemHandle item = GUI::drag_float3(name, euler.m, 0.1f, 0.0f, 0.0f);
                 edited = end_gui_property_row(row, item);
                 if (edited)
                 {
                     Float3 radians = euler * (PI / 180.0f);
                     *data = Quaternion::from_euler_angles(radians);
                 }
-                else if(!GUI::IsItemActive(item) && !GUI::IsItemFocused(item))
+                else if(!GUI::is_item_active(item) && !GUI::is_item_focused(item))
                 {
                     euler = quaternion_to_euler_degrees(*data);
                 }
@@ -251,7 +251,7 @@ namespace Luna
             {
                 Float4* data = (Float4*)obj;
                 GUIPropertyRow row = begin_gui_property_row(name);
-                GUI::GUIItemHandle item = GUI::DragFloat4(name, data->m, 0.01f, 0.0f, 0.0f);
+                GUI::ItemHandle item = GUI::drag_float4(name, data->m, 0.01f, 0.0f, 0.0f);
                 edited = end_gui_property_row(row, item);
             }
         }
@@ -265,19 +265,19 @@ namespace Luna
             Name* data = (Name*)obj;
             String& buf = get_edit_buffer(g_name_edit_buffers, (usize)obj, String(data->c_str()));
             GUIPropertyRow row = begin_gui_property_row(name);
-            GUI::GUIItemHandle item = GUI::InputText(name, buf);
+            GUI::ItemHandle item = GUI::input_text(name, buf);
             edited = end_gui_property_row(row, item);
             if (edited)
             {
                 *data = buf;
             }
-            else if(!GUI::IsItemActive(item) && !GUI::IsItemFocused(item))
+            else if(!GUI::is_item_active(item) && !GUI::is_item_focused(item))
             {
                 buf = data->c_str();
             }
         }
 
-        GUI::PopID();
+        GUI::pop_id();
         return edited;
     }
 
@@ -298,10 +298,10 @@ namespace Luna
     {
         if (type == typeof<ActorRef>())
         {
-            GUI::PushID(obj);
+            GUI::push_id(obj);
             ActorRef* ref = (ActorRef*)obj;
             bool edited = edit_actor_ref(name, world, *ref);
-            GUI::PopID();
+            GUI::pop_id();
             return edited;
         }
         else
@@ -326,18 +326,18 @@ namespace Luna
     bool edit_asset(const c8* name, Asset::asset_t& asset)
     {
         bool edited = false;
-        GUI::PushID(&asset);
+        GUI::push_id(&asset);
 
         GUIPropertyRow row = begin_gui_property_row(name, 104.0f);
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(100.0f));
-        GUI::GUIItemHandle target = GUI::Button(asset ? "" : "(None)");
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(100.0f));
+        GUI::ItemHandle target = GUI::button(asset ? "" : "(None)");
 
         Name asset_ref_payload_type("Asset Ref");
-        if (GUI::BeginDragDropTarget(target, asset_ref_payload_type))
+        if (GUI::begin_drag_drop_target(target, asset_ref_payload_type))
         {
-            GUI::EndDragDropTarget();
+            GUI::end_drag_drop_target();
         }
-        if (const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(target, asset_ref_payload_type))
+        if (const GUI::DragDropPayload* payload = GUI::accept_drag_drop_payload(target, asset_ref_payload_type))
         {
             if (const Asset::asset_t* data = payload->data_as<Asset::asset_t>())
             {
@@ -348,17 +348,17 @@ namespace Luna
 
         if (asset)
         {
-            RectF draw_rect = GUI::GetItemState(target, GUI::GUIState::rect());
+            RectF draw_rect = GUI::get_item_state(target, GUI::State::rect());
             if(draw_rect.width > 1.0f && draw_rect.height > 1.0f)
             {
                 draw_asset_tile(asset, draw_rect);
             }
             auto path = Asset::get_asset_path(asset);
-            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
-            GUI::Text(path.encode().c_str());
-            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(72.0f));
-            GUI::GUIItemHandle clear_button = GUI::Button("Clear");
-            if (GUI::IsItemClicked(clear_button))
+            GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
+            GUI::text(path.encode().c_str());
+            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(72.0f));
+            GUI::ItemHandle clear_button = GUI::button("Clear");
+            if (GUI::is_item_clicked(clear_button))
             {
                 asset.reset();
                 edited = true;
@@ -366,14 +366,14 @@ namespace Luna
         }
         else
         {
-            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
-            GUI::Text("(drop asset here)");
+            GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
+            GUI::text("(drop asset here)");
         }
 
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(120.0f));
-        GUI::Text(name);
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(120.0f));
+        GUI::text(name);
         end_gui_property_row(row);
-        GUI::PopID();
+        GUI::pop_id();
 
         return edited;
     }
@@ -381,7 +381,7 @@ namespace Luna
     bool edit_actor_ref(const c8* name, World* world, ActorRef& ref)
     {
         bool edited = false;
-        GUI::PushID(&ref);
+        GUI::push_id(&ref);
 
         const c8* actor_name = "(None)";
         if(ref.guid != Guid(0, 0))
@@ -394,15 +394,15 @@ namespace Luna
         }
 
         GUIPropertyRow row = begin_gui_property_row(name, 30.0f);
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(160.0f));
-        GUI::GUIItemHandle target = GUI::Button(actor_name);
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(160.0f));
+        GUI::ItemHandle target = GUI::button(actor_name);
 
         Name actor_ref_payload_type("Actor Ref");
-        if (GUI::BeginDragDropTarget(target, actor_ref_payload_type))
+        if (GUI::begin_drag_drop_target(target, actor_ref_payload_type))
         {
-            GUI::EndDragDropTarget();
+            GUI::end_drag_drop_target();
         }
-        if (const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(target, actor_ref_payload_type))
+        if (const GUI::DragDropPayload* payload = GUI::accept_drag_drop_payload(target, actor_ref_payload_type))
         {
             if (const Guid* data = payload->data_as<Guid>())
             {
@@ -411,10 +411,10 @@ namespace Luna
             }
         }
 
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
-        GUI::Text(name);
+        GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
+        GUI::text(name);
         end_gui_property_row(row);
-        GUI::PopID();
+        GUI::pop_id();
         return edited;
     }
 }

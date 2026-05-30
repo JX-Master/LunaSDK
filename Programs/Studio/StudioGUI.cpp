@@ -19,21 +19,21 @@ namespace Luna
             path_text = Asset::get_asset_path(asset).encode();
         }
 
-        GUI::PushID(label);
-        GUI::GUILayoutDesc row;
+        GUI::push_id(label);
+        GUI::LayoutDesc row;
         row.gap = 8.0f;
-        row.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::center;
-        GUI::BeginHLayout(label, row);
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(112.0f));
-        GUI::Text(label);
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
-        GUI::InputText("Path", path_text);
-        GUI::GUIItemHandle set_button = GUI::Button("Set");
-        GUI::GUIItemHandle clear_button = GUI::Button("Clear");
-        GUI::EndHLayout();
+        row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
+        GUI::begin_h_layout(label, row);
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(112.0f));
+        GUI::text(label);
+        GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
+        GUI::input_text("Path", path_text);
+        GUI::ItemHandle set_button = GUI::button("Set");
+        GUI::ItemHandle clear_button = GUI::button("Clear");
+        GUI::end_h_layout();
 
         bool edited = false;
-        if(GUI::IsItemClicked(set_button))
+        if(GUI::is_item_clicked(set_button))
         {
             if(path_text.empty())
             {
@@ -56,13 +56,13 @@ namespace Luna
                 }
             }
         }
-        if(GUI::IsItemClicked(clear_button))
+        if(GUI::is_item_clicked(clear_button))
         {
             asset.reset();
             path_text.clear();
             edited = true;
         }
-        GUI::PopID();
+        GUI::pop_id();
         return edited;
     }
 }

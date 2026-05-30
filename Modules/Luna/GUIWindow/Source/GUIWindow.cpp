@@ -20,72 +20,72 @@ namespace Luna
 {
     namespace GUIWindow
     {
-        static GUI::GUIPointerButton to_gui_button(HID::MouseButton button)
+        static GUI::PointerButton to_gui_button(HID::MouseButton button)
         {
             switch(button)
             {
-            case HID::MouseButton::left: return GUI::GUIPointerButton::left;
-            case HID::MouseButton::right: return GUI::GUIPointerButton::right;
-            case HID::MouseButton::middle: return GUI::GUIPointerButton::middle;
-            case HID::MouseButton::function1: return GUI::GUIPointerButton::extra1;
-            case HID::MouseButton::function2: return GUI::GUIPointerButton::extra2;
-            default: return GUI::GUIPointerButton::left;
+            case HID::MouseButton::left: return GUI::PointerButton::left;
+            case HID::MouseButton::right: return GUI::PointerButton::right;
+            case HID::MouseButton::middle: return GUI::PointerButton::middle;
+            case HID::MouseButton::function1: return GUI::PointerButton::extra1;
+            case HID::MouseButton::function2: return GUI::PointerButton::extra2;
+            default: return GUI::PointerButton::left;
             }
         }
 
-        static GUI::GUIKey to_gui_key(HID::KeyCode key)
+        static GUI::Key to_gui_key(HID::KeyCode key)
         {
             using namespace HID;
             switch(key)
             {
-            case KeyCode::tab: return GUI::GUIKey::tab;
-            case KeyCode::left: return GUI::GUIKey::left;
-            case KeyCode::right: return GUI::GUIKey::right;
-            case KeyCode::up: return GUI::GUIKey::up;
-            case KeyCode::down: return GUI::GUIKey::down;
-            case KeyCode::enter: return GUI::GUIKey::enter;
-            case KeyCode::esc: return GUI::GUIKey::esc;
-            case KeyCode::backspace: return GUI::GUIKey::backspace;
-            case KeyCode::del: return GUI::GUIKey::del;
-            case KeyCode::spacebar: return GUI::GUIKey::space;
-            case KeyCode::a: return GUI::GUIKey::a;
-            case KeyCode::b: return GUI::GUIKey::b;
-            case KeyCode::c: return GUI::GUIKey::c;
-            case KeyCode::d: return GUI::GUIKey::d;
-            case KeyCode::e: return GUI::GUIKey::e;
-            case KeyCode::f: return GUI::GUIKey::f;
-            case KeyCode::g: return GUI::GUIKey::g;
-            case KeyCode::h: return GUI::GUIKey::h;
-            case KeyCode::i: return GUI::GUIKey::i;
-            case KeyCode::j: return GUI::GUIKey::j;
-            case KeyCode::k: return GUI::GUIKey::k;
-            case KeyCode::l: return GUI::GUIKey::l;
-            case KeyCode::m: return GUI::GUIKey::m;
-            case KeyCode::n: return GUI::GUIKey::n;
-            case KeyCode::o: return GUI::GUIKey::o;
-            case KeyCode::p: return GUI::GUIKey::p;
-            case KeyCode::q: return GUI::GUIKey::q;
-            case KeyCode::r: return GUI::GUIKey::r;
-            case KeyCode::s: return GUI::GUIKey::s;
-            case KeyCode::t: return GUI::GUIKey::t;
-            case KeyCode::u: return GUI::GUIKey::u;
-            case KeyCode::v: return GUI::GUIKey::v;
-            case KeyCode::w: return GUI::GUIKey::w;
-            case KeyCode::x: return GUI::GUIKey::x;
-            case KeyCode::y: return GUI::GUIKey::y;
-            case KeyCode::z: return GUI::GUIKey::z;
-            default: return GUI::GUIKey::unknown;
+            case KeyCode::tab: return GUI::Key::tab;
+            case KeyCode::left: return GUI::Key::left;
+            case KeyCode::right: return GUI::Key::right;
+            case KeyCode::up: return GUI::Key::up;
+            case KeyCode::down: return GUI::Key::down;
+            case KeyCode::enter: return GUI::Key::enter;
+            case KeyCode::esc: return GUI::Key::esc;
+            case KeyCode::backspace: return GUI::Key::backspace;
+            case KeyCode::del: return GUI::Key::del;
+            case KeyCode::spacebar: return GUI::Key::space;
+            case KeyCode::a: return GUI::Key::a;
+            case KeyCode::b: return GUI::Key::b;
+            case KeyCode::c: return GUI::Key::c;
+            case KeyCode::d: return GUI::Key::d;
+            case KeyCode::e: return GUI::Key::e;
+            case KeyCode::f: return GUI::Key::f;
+            case KeyCode::g: return GUI::Key::g;
+            case KeyCode::h: return GUI::Key::h;
+            case KeyCode::i: return GUI::Key::i;
+            case KeyCode::j: return GUI::Key::j;
+            case KeyCode::k: return GUI::Key::k;
+            case KeyCode::l: return GUI::Key::l;
+            case KeyCode::m: return GUI::Key::m;
+            case KeyCode::n: return GUI::Key::n;
+            case KeyCode::o: return GUI::Key::o;
+            case KeyCode::p: return GUI::Key::p;
+            case KeyCode::q: return GUI::Key::q;
+            case KeyCode::r: return GUI::Key::r;
+            case KeyCode::s: return GUI::Key::s;
+            case KeyCode::t: return GUI::Key::t;
+            case KeyCode::u: return GUI::Key::u;
+            case KeyCode::v: return GUI::Key::v;
+            case KeyCode::w: return GUI::Key::w;
+            case KeyCode::x: return GUI::Key::x;
+            case KeyCode::y: return GUI::Key::y;
+            case KeyCode::z: return GUI::Key::z;
+            default: return GUI::Key::unknown;
             }
         }
 
-        static GUI::GUIKeyModifierFlag get_gui_modifiers()
+        static GUI::KeyModifierFlag get_gui_modifiers()
         {
             u8 flags = 0;
-            if(HID::get_key_state(HID::KeyCode::ctrl)) flags |= (u8)GUI::GUIKeyModifierFlag::ctrl;
-            if(HID::get_key_state(HID::KeyCode::shift)) flags |= (u8)GUI::GUIKeyModifierFlag::shift;
-            if(HID::get_key_state(HID::KeyCode::menu)) flags |= (u8)GUI::GUIKeyModifierFlag::alt;
-            if(HID::get_key_state(HID::KeyCode::system)) flags |= (u8)GUI::GUIKeyModifierFlag::system;
-            return (GUI::GUIKeyModifierFlag)flags;
+            if(HID::get_key_state(HID::KeyCode::ctrl)) flags |= (u8)GUI::KeyModifierFlag::ctrl;
+            if(HID::get_key_state(HID::KeyCode::shift)) flags |= (u8)GUI::KeyModifierFlag::shift;
+            if(HID::get_key_state(HID::KeyCode::menu)) flags |= (u8)GUI::KeyModifierFlag::alt;
+            if(HID::get_key_state(HID::KeyCode::system)) flags |= (u8)GUI::KeyModifierFlag::system;
+            return (GUI::KeyModifierFlag)flags;
         }
 
         static bool is_client_position_valid(Window::IWindow* window, const Float2U& position)
@@ -108,21 +108,21 @@ namespace Luna
             return is_client_position_valid(window, position);
         }
 
-        LUNA_GUI_WINDOW_API bool handle_window_event(object_t event, Window::IWindow* window, GUI::IGUIContext* gui)
+        LUNA_GUI_WINDOW_API bool handle_window_event(object_t event, Window::IWindow* window, GUI::IContext* gui)
         {
             if(!window || !gui) return false;
             auto window_event = cast_object<Window::WindowEvent>(event);
             if(!window_event || window_event->window != window) return false;
 
-            GUI::GUIInputEvent ge;
+            GUI::InputEvent ge;
             if(cast_object<Window::WindowMouseEnterEvent>(event))
             {
                 if(!get_client_mouse_pos(window, ge.position)) return false;
-                ge.type = GUI::GUIInputEventType::pointer_enter;
+                ge.type = GUI::InputEventType::pointer_enter;
             }
             else if(cast_object<Window::WindowMouseLeaveEvent>(event))
             {
-                ge.type = GUI::GUIInputEventType::pointer_leave;
+                ge.type = GUI::InputEventType::pointer_leave;
                 ge.position = get_client_mouse_pos_unchecked(window);
             }
             else if(auto e = cast_object<Window::WindowMouseMoveEvent>(event))
@@ -130,84 +130,84 @@ namespace Luna
                 ge.position = Float2U((f32)e->x, (f32)e->y);
                 if(is_client_position_valid(window, ge.position) || get_client_mouse_pos(window, ge.position))
                 {
-                    ge.type = GUI::GUIInputEventType::pointer_move;
+                    ge.type = GUI::InputEventType::pointer_move;
                 }
                 else
                 {
-                    ge.type = GUI::GUIInputEventType::pointer_leave;
+                    ge.type = GUI::InputEventType::pointer_leave;
                     ge.position = get_client_mouse_pos_unchecked(window);
                 }
             }
             else if(auto e = cast_object<Window::WindowMouseDownEvent>(event))
             {
                 if(!get_client_mouse_pos(window, ge.position)) return false;
-                ge.type = GUI::GUIInputEventType::pointer_down;
+                ge.type = GUI::InputEventType::pointer_down;
                 ge.button = to_gui_button(e->button);
             }
             else if(auto e = cast_object<Window::WindowMouseUpEvent>(event))
             {
-                ge.type = GUI::GUIInputEventType::pointer_up;
+                ge.type = GUI::InputEventType::pointer_up;
                 ge.position = get_client_mouse_pos_unchecked(window);
                 ge.button = to_gui_button(e->button);
             }
             else if(auto e = cast_object<Window::WindowScrollEvent>(event))
             {
                 if(!get_client_mouse_pos(window, ge.position)) return false;
-                ge.type = GUI::GUIInputEventType::pointer_wheel;
+                ge.type = GUI::InputEventType::pointer_wheel;
                 ge.wheel_delta = Float2U(e->scroll_x, e->scroll_y);
             }
             else if(auto e = cast_object<Window::WindowTouchDownEvent>(event))
             {
                 ge.position = Float2U(e->x, e->y);
                 if(!is_client_position_valid(window, ge.position)) return false;
-                ge.type = GUI::GUIInputEventType::pointer_down;
+                ge.type = GUI::InputEventType::pointer_down;
                 ge.device_id = 1;
                 ge.pointer_id = e->id;
-                ge.button = GUI::GUIPointerButton::left;
+                ge.button = GUI::PointerButton::left;
             }
             else if(auto e = cast_object<Window::WindowTouchMoveEvent>(event))
             {
                 ge.position = Float2U(e->x, e->y);
-                ge.type = GUI::GUIInputEventType::pointer_move;
+                ge.type = GUI::InputEventType::pointer_move;
                 ge.device_id = 1;
                 ge.pointer_id = e->id;
                 if(!is_client_position_valid(window, ge.position))
                 {
-                    ge.type = GUI::GUIInputEventType::pointer_leave;
+                    ge.type = GUI::InputEventType::pointer_leave;
                 }
             }
             else if(auto e = cast_object<Window::WindowTouchUpEvent>(event))
             {
                 ge.position = Float2U(e->x, e->y);
-                ge.type = GUI::GUIInputEventType::pointer_up;
+                ge.type = GUI::InputEventType::pointer_up;
                 ge.device_id = 1;
                 ge.pointer_id = e->id;
-                ge.button = GUI::GUIPointerButton::left;
+                ge.button = GUI::PointerButton::left;
             }
             else if(auto e = cast_object<Window::WindowKeyDownEvent>(event))
             {
-                ge.type = GUI::GUIInputEventType::key_down;
+                ge.type = GUI::InputEventType::key_down;
                 ge.key = to_gui_key(e->key);
                 ge.modifiers = get_gui_modifiers();
             }
             else if(auto e = cast_object<Window::WindowKeyUpEvent>(event))
             {
-                ge.type = GUI::GUIInputEventType::key_up;
+                ge.type = GUI::InputEventType::key_up;
                 ge.key = to_gui_key(e->key);
                 ge.modifiers = get_gui_modifiers();
             }
             else if(auto e = cast_object<Window::WindowInputTextEvent>(event))
             {
-                ge.type = GUI::GUIInputEventType::text_utf8;
+                ge.type = GUI::InputEventType::text_utf8;
                 ge.text = e->text;
             }
             else if(cast_object<Window::WindowInputFocusEvent>(event))
             {
-                ge.type = GUI::GUIInputEventType::focus;
+                ge.type = GUI::InputEventType::focus;
             }
             else if(cast_object<Window::WindowLoseInputFocusEvent>(event))
             {
-                ge.type = GUI::GUIInputEventType::blur;
+                ge.type = GUI::InputEventType::blur;
             }
             else
             {
@@ -257,7 +257,7 @@ namespace Luna
             adapter->next_event_userdata = nullptr;
         }
 
-        static RectI to_window_text_input_rect(const GUI::GUITextInputState& state)
+        static RectI to_window_text_input_rect(const GUI::TextInputState& state)
         {
             return RectI(
                 (i32)floor(state.rect.offset_x),
@@ -276,34 +276,34 @@ namespace Luna
             return Window::set_clipboard_text(text, size);
         }
 
-        static void update_pointer_state(Window::IWindow* window, GUI::IGUIContext* gui)
+        static void update_pointer_state(Window::IWindow* window, GUI::IContext* gui)
         {
-            GUI::GUIInputEvent event;
+            GUI::InputEvent event;
             if(get_client_mouse_pos(window, event.position))
             {
-                event.type = GUI::GUIInputEventType::pointer_move;
+                event.type = GUI::InputEventType::pointer_move;
             }
             else
             {
-                event.type = GUI::GUIInputEventType::pointer_leave;
+                event.type = GUI::InputEventType::pointer_leave;
                 event.position = get_client_mouse_pos_unchecked(window);
             }
             gui->add_input_event(event);
         }
 
-        LUNA_GUI_WINDOW_API RV update_text_input(Window::IWindow* window, GUI::IGUIContext* gui)
+        LUNA_GUI_WINDOW_API RV update_text_input(Window::IWindow* window, GUI::IContext* gui)
         {
             if(!window || !gui) return ok;
             lutry
             {
                 update_pointer_state(window, gui);
 
-                GUI::GUIClipboardIO clipboard_io;
+                GUI::ClipboardIO clipboard_io;
                 clipboard_io.get_text = get_window_clipboard_text;
                 clipboard_io.set_text = set_window_clipboard_text;
                 gui->set_clipboard_io(clipboard_io);
 
-                GUI::GUITextInputState state = gui->get_text_input_state();
+                GUI::TextInputState state = gui->get_text_input_state();
                 if(state.active)
                 {
                     if(!window->is_text_input_active())

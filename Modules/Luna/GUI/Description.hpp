@@ -14,7 +14,7 @@ namespace Luna
 {
     namespace GUI
     {
-        enum class GUINodeKind : u8
+        enum class NodeKind : u8
         {
             root,
             v_layout,
@@ -62,37 +62,37 @@ namespace Luna
             button_group
         };
 
-        enum class GUIRenderLayer : u8
+        enum class RenderLayer : u8
         {
             main,
             overlay
         };
 
-        enum class GUIColorValueType : u8
+        enum class ColorValueType : u8
         {
             f32,
             u8,
             rgba8
         };
 
-        enum class GUIColorEditPart : u8
+        enum class ColorEditPart : u8
         {
             none,
             rgb,
             hsv
         };
 
-        enum class GUIImageFlag : u32
+        enum class ImageFlag : u32
         {
             none = 0x00,
             flip_y = 0x01
         };
 
-        struct GUINode
+        struct Node
         {
-            GUIID id = 0;
-            GUINodeKind kind = GUINodeKind::root;
-            GUIRenderLayer render_layer = GUIRenderLayer::main;
+            id_t id = 0;
+            NodeKind kind = NodeKind::root;
+            RenderLayer render_layer = RenderLayer::main;
             u32 parent = U32_MAX;
             u32 first_child = U32_MAX;
             u32 last_child = U32_MAX;
@@ -101,28 +101,28 @@ namespace Luna
             String text;
             String shortcut;
             Ref<RHI::ITexture> texture;
-            GUISize requested_size;
-            GUILayoutStyle layout_style;
-            GUILayoutDesc layout_desc;
+            Size requested_size;
+            LayoutStyle layout_style;
+            LayoutDesc layout_desc;
             bool has_dock_panel_style = false;
-            GUIDockPanelStyle dock_panel_style;
+            DockPanelStyle dock_panel_style;
             bool* dock_panel_open = nullptr;
-            GUITabBarFlag tab_bar_flags = GUITabBarFlag::none;
-            GUITabItemFlag tab_item_flags = GUITabItemFlag::none;
-            GUIPopupFlag popup_flags = GUIPopupFlag::none;
-            GUINumericEditFlag numeric_flags = GUINumericEditFlag::none;
-            GUITooltipDesc tooltip_desc;
-            GUIID popup_parent_id = 0;
-            GUIID popup_owner_id = 0;
-            GUIID menu_popup_id = 0;
-            GUITableDesc table_desc;
-            GUIGridLayoutDesc grid_desc;
-            GUICanvasLayoutDesc canvas_desc;
+            TabBarFlag tab_bar_flags = TabBarFlag::none;
+            TabItemFlag tab_item_flags = TabItemFlag::none;
+            PopupFlag popup_flags = PopupFlag::none;
+            NumericEditFlag numeric_flags = NumericEditFlag::none;
+            TooltipDesc tooltip_desc;
+            id_t popup_parent_id = 0;
+            id_t popup_owner_id = 0;
+            id_t menu_popup_id = 0;
+            TableDesc table_desc;
+            GridLayoutDesc grid_desc;
+            CanvasLayoutDesc canvas_desc;
             bool has_canvas_item_layout = false;
-            GUICanvasItemLayout canvas_item_layout;
+            CanvasItemLayout canvas_item_layout;
             bool has_table_cell_color = false;
             Float4U table_cell_color = Float4U(0.0f);
-            GUITreeNodeFlag tree_flags = GUITreeNodeFlag::none;
+            TreeNodeFlag tree_flags = TreeNodeFlag::none;
             u32 tree_depth = 0;
             bool absolute_position = false;
             Float2U position = Float2U(0.0f);
@@ -130,7 +130,7 @@ namespace Luna
             RectF user_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             bool selected = false;
             bool enabled = true;
-            GUIImageFlag image_flags = GUIImageFlag::none;
+            ImageFlag image_flags = ImageFlag::none;
             RectF paint_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             Float2U paint_line_begin = Float2U(0.0f);
             Float2U paint_line_end = Float2U(0.0f);
@@ -138,8 +138,8 @@ namespace Luna
             f32 paint_radius = 0.0f;
             f32 paint_line_width = 1.0f;
             f32 paint_font_size = 16.0f;
-            GUITextAlignment paint_horizontal_alignment = GUITextAlignment::begin;
-            GUITextAlignment paint_vertical_alignment = GUITextAlignment::center;
+            TextAlignment paint_horizontal_alignment = TextAlignment::begin;
+            TextAlignment paint_vertical_alignment = TextAlignment::center;
             bool* bool_value = nullptr;
             String* string_value = nullptr;
             i32* i32_value = nullptr;
@@ -149,9 +149,9 @@ namespace Luna
             u8 f32_value_count = 1;
             u8* u8_value = nullptr;
             u32* u32_value = nullptr;
-            GUIColorValueType color_value_type = GUIColorValueType::f32;
-            GUIID color_owner_id = 0;
-            GUIColorEditPart color_edit_part = GUIColorEditPart::none;
+            ColorValueType color_value_type = ColorValueType::f32;
+            id_t color_owner_id = 0;
+            ColorEditPart color_edit_part = ColorEditPart::none;
             bool f32_color = false;
             f32 min_value = 0.0f;
             f32 max_value = 0.0f;
@@ -162,10 +162,10 @@ namespace Luna
             bool interactive = false;
         };
 
-        struct GUIDescription
+        struct Description
         {
             u64 generation = 0;
-            Vector<GUINode> nodes;
+            Vector<Node> nodes;
         };
     }
 }

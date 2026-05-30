@@ -216,7 +216,7 @@ namespace Luna
         Ref<Window::IWindow> window;
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
-        Ref<GUI::IGUIContext> gui;
+        Ref<GUI::IContext> gui;
         Vector<Ref<AHI::IAdapter>> playback_adapters;
         Vector<Ref<AHI::IAdapter>> capture_adapters;
         Vector<AudioSource> audio_sources;
@@ -280,7 +280,7 @@ namespace Luna
                 }
                 auto sz = app.window->get_size();
 
-                GUI::GUIFrameDesc frame;
+                GUI::FrameDesc frame;
                 frame.surface_size = Float2U((f32)sz.x, (f32)sz.y);
                 frame.framebuffer_size = fb_sz;
                 frame.dpi_scale = app.window->get_dpi_scale_factor();
@@ -289,14 +289,14 @@ namespace Luna
 
                 static i32 current_playback_adapter = 0;
                 static i32 current_capture_adapter = 0;
-                GUI::GUIItemHandle create_device_button;
-                GUI::GUIItemHandle add_audio_source_button;
-                Vector<GUI::GUIItemHandle> apply_audio_source_buttons;
+                GUI::ItemHandle create_device_button;
+                GUI::ItemHandle add_audio_source_button;
+                Vector<GUI::ItemHandle> apply_audio_source_buttons;
 
-                GUI::BeginWindow("AHITest", GUI::GUISize::fixed((f32)sz.x, (f32)sz.y));
+                GUI::begin_window("AHITest", GUI::Size::fixed((f32)sz.x, (f32)sz.y));
                 {
-                    GUI::GUIItemHandle adapters_header = GUI::CollapsingHeader("Adapters and formats");
-                    if(GUI::GetItemState(adapters_header, GUI::GUIState::open()))
+                    GUI::ItemHandle adapters_header = GUI::collapsing_header("Adapters and formats");
+                    if(GUI::get_item_state(adapters_header, GUI::State::open()))
                     {
                         Vector<const c8*> playback_adapter_names;
                         Vector<const c8*> capture_adapter_names;
@@ -309,19 +309,19 @@ namespace Luna
                         {
                             capture_adapter_names.push_back(adapter->get_name());
                         }
-                        GUI::Combo("Playback Adapters", &current_playback_adapter, Span<const c8*>(playback_adapter_names.data(), playback_adapter_names.size()));
-                        GUI::Combo("Capture Adapters", &current_capture_adapter, Span<const c8*>(capture_adapter_names.data(), capture_adapter_names.size()));
+                        GUI::combo("Playback Adapters", &current_playback_adapter, Span<const c8*>(playback_adapter_names.data(), playback_adapter_names.size()));
+                        GUI::combo("Capture Adapters", &current_capture_adapter, Span<const c8*>(capture_adapter_names.data(), capture_adapter_names.size()));
                         if((usize)current_playback_adapter < app.playback_adapters.size() && (usize)current_capture_adapter < app.capture_adapters.size())
                         {
                             if(!app.device)
                             {
-                                create_device_button = GUI::Button("Create Device");
+                                create_device_button = GUI::button("Create Device");
                             }
                         }
                         if(app.device)
                         {
-                            GUI::GUIItemHandle device_header = GUI::CollapsingHeader("Device");
-                            if(GUI::GetItemState(device_header, GUI::GUIState::open()))
+                            GUI::ItemHandle device_header = GUI::collapsing_header("Device");
+                            if(GUI::get_item_state(device_header, GUI::State::open()))
                             {
                                 {
                                     auto bd = app.device->get_playback_bit_depth();
@@ -337,7 +337,7 @@ namespace Luna
                                     }
                                     String text;
                                     strprintf(text, "Playback: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_playback_num_channels());
-                                    GUI::Text(text.c_str());
+                                    GUI::text(text.c_str());
                                     bd = app.device->get_capture_bit_depth();
                                     switch(bd)
                                     {
@@ -349,18 +349,18 @@ namespace Luna
                                         default: bit_depth = "unknown"; break;
                                     }
                                     strprintf(text, "Capture: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_capture_num_channels());
-                                    GUI::Text(text.c_str());
+                                    GUI::text(text.c_str());
                                 }
 
-                                GUI::SliderFloat("Input Audio Level", &input_audio_level, 0.0f, 1.0f);
-                                add_audio_source_button = GUI::Button("Add Audio Source");
+                                GUI::slider_float("Input Audio Level", &input_audio_level, 0.0f, 1.0f);
+                                add_audio_source_button = GUI::button("Add Audio Source");
                                 if(!app.audio_sources.empty())
                                 {
-                                    GUI::GUITableDesc source_table;
+                                    GUI::TableDesc source_table;
                                     source_table.columns = 4;
-                                    source_table.style.padding = GUI::GUIEdgeInsets::xy(8.0f, 4.0f);
+                                    source_table.style.padding = GUI::EdgeInsets::xy(8.0f, 4.0f);
                                     source_table.style.border_size = 1.0f;
-                                    source_table.style.background_mode = GUI::GUITableBackgroundMode::alternate_rows;
+                                    source_table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
                                     source_table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.72f);
                                     source_table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.17f, 0.72f);
                                     source_table.style.row_separators = true;
@@ -368,33 +368,33 @@ namespace Luna
                                     source_table.style.resize_fixed_columns = true;
                                     f32 source_table_w = max((f32)sz.x - 40.0f, 480.0f);
                                     f32 control_w = max((source_table_w - 226.0f) * 0.5f, 220.0f);
-                                    source_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(120.0f));
-                                    source_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(control_w));
-                                    source_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(control_w));
-                                    source_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(80.0f));
-                                    GUI::BeginTableLayout("Audio Sources", source_table);
+                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(120.0f));
+                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(control_w));
+                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(control_w));
+                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(80.0f));
+                                    GUI::begin_table_layout("Audio Sources", source_table);
                                     for (usize i = 0; i < app.audio_sources.size(); ++i)
                                     {
                                         AudioSource& source = app.audio_sources[i];
-                                        GUI::PushID((u64)i);
-                                        GUI::Text("Audio Source");
-                                        GUI::DragFloat("Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
-                                        GUI::SliderFloat("Volume", &source.volume, 0.0f, 1.0f);
-                                        apply_audio_source_buttons.push_back(GUI::Button("Apply"));
-                                        GUI::PopID();
+                                        GUI::push_id((u64)i);
+                                        GUI::text("Audio Source");
+                                        GUI::drag_float("Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
+                                        GUI::slider_float("Volume", &source.volume, 0.0f, 1.0f);
+                                        apply_audio_source_buttons.push_back(GUI::button("Apply"));
+                                        GUI::pop_id();
                                     }
-                                    GUI::EndTableLayout();
+                                    GUI::end_table_layout();
                                 }
                             }
                         }
                     }
                 }
-                GUI::EndWindow();
+                GUI::end_window();
 
                 lulet(gui_desc, app.gui->end_build());
                 luexp(app.gui->submit(gui_desc));
 
-                if(GUI::IsItemClicked(create_device_button))
+                if(GUI::is_item_clicked(create_device_button))
                 {
                     AHI::DeviceDesc desc;
                     desc.flags = AHI::DeviceFlag::playback | AHI::DeviceFlag::capture;
@@ -408,14 +408,14 @@ namespace Luna
                     luset(app.device, AHI::new_device(desc));
                     app.device->add_capture_data_callback(on_capture_data);
                 }
-                if(GUI::IsItemClicked(add_audio_source_button))
+                if(GUI::is_item_clicked(add_audio_source_button))
                 {
                     AudioSource source;
                     app.audio_sources.push_back(source);
                 }
                 for(usize i = 0; i < apply_audio_source_buttons.size() && i < app.audio_sources.size(); ++i)
                 {
-                    if(GUI::IsItemClicked(apply_audio_source_buttons[i]))
+                    if(GUI::is_item_clicked(apply_audio_source_buttons[i]))
                     {
                         AudioSource& source = app.audio_sources[i];
                         AudioSourceCallback callback;

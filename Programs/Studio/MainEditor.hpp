@@ -29,7 +29,7 @@ namespace Luna
         Ref<Window::IWindow> m_window;
         Ref<RHI::ISwapChain> m_swap_chain;
         Ref<RHI::ICommandBuffer> m_cmdbuf;
-        Ref<GUI::IGUIContext> m_gui;
+        Ref<GUI::IContext> m_gui;
 
         Ref<AssetBrowser> m_asset_browsers[4];
         bool m_asset_browsers_enabled[4] = { true, false, false, false };

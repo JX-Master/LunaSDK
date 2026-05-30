@@ -15,344 +15,344 @@ namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API void PushID(u64 id)
+        LUNA_GUI_API void push_id(u64 id)
         {
             require_current_context()->push_id(id);
         }
 
-        LUNA_GUI_API void PushID(const void* ptr)
+        LUNA_GUI_API void push_id(const void* ptr)
         {
             require_current_context()->push_id((u64)(usize)ptr);
         }
 
-        LUNA_GUI_API void PushID(const c8* str)
+        LUNA_GUI_API void push_id(const c8* str)
         {
             u64 h = hash_cstr(str ? str : "", FNV_OFFSET);
             require_current_context()->push_id(h);
         }
 
-        LUNA_GUI_API void PopID()
+        LUNA_GUI_API void pop_id()
         {
             require_current_context()->pop_id();
         }
 
-        LUNA_GUI_API void PushClipRect(const RectF& rect)
+        LUNA_GUI_API void push_clip_rect(const RectF& rect)
         {
             require_current_context()->push_clip_rect(rect);
         }
 
-        LUNA_GUI_API void PopClipRect()
+        LUNA_GUI_API void pop_clip_rect()
         {
             require_current_context()->pop_clip_rect();
         }
 
-        LUNA_GUI_API void TreePush()
+        LUNA_GUI_API void tree_push()
         {
             require_current_context()->tree_push();
         }
 
-        LUNA_GUI_API void TreePush(GUIItemHandle node)
+        LUNA_GUI_API void tree_push(ItemHandle node)
         {
             require_current_context()->tree_push(node);
         }
 
-        LUNA_GUI_API void TreePop()
+        LUNA_GUI_API void tree_pop()
         {
             require_current_context()->tree_pop();
         }
 
-        LUNA_GUI_API bool BeginDragDropSource(GUIItemHandle source, const Name& payload_type)
+        LUNA_GUI_API bool begin_drag_drop_source(ItemHandle source, const Name& payload_type)
         {
             return require_current_context()->begin_drag_drop_source(source, payload_type);
         }
 
-        LUNA_GUI_API void SetDragDropPayload(const void* data, usize data_size)
+        LUNA_GUI_API void set_drag_drop_payload(const void* data, usize data_size)
         {
             require_current_context()->set_drag_drop_payload(data, data_size);
         }
 
-        LUNA_GUI_API void EndDragDropSource()
+        LUNA_GUI_API void end_drag_drop_source()
         {
             require_current_context()->end_drag_drop_source();
         }
 
-        LUNA_GUI_API bool BeginDragDropTarget(GUIItemHandle target, const Name& payload_type)
+        LUNA_GUI_API bool begin_drag_drop_target(ItemHandle target, const Name& payload_type)
         {
             return require_current_context()->begin_drag_drop_target(target, payload_type);
         }
 
-        LUNA_GUI_API const GUIDragDropPayload* AcceptDragDropPayload(const Name& payload_type)
+        LUNA_GUI_API const DragDropPayload* accept_drag_drop_payload(const Name& payload_type)
         {
             return require_current_context()->accept_drag_drop_payload(payload_type);
         }
 
-        LUNA_GUI_API const GUIDragDropPayload* AcceptDragDropPayload(GUIItemHandle target, const Name& payload_type)
+        LUNA_GUI_API const DragDropPayload* accept_drag_drop_payload(ItemHandle target, const Name& payload_type)
         {
             return require_current_context()->accept_drag_drop_payload(target, payload_type);
         }
 
-        LUNA_GUI_API void EndDragDropTarget()
+        LUNA_GUI_API void end_drag_drop_target()
         {
             require_current_context()->end_drag_drop_target();
         }
 
-        LUNA_GUI_API bool IsDragDropActive()
+        LUNA_GUI_API bool is_drag_drop_active()
         {
             return require_current_context()->is_drag_drop_active();
         }
 
-        LUNA_GUI_API const GUIDragDropPayload* GetDragDropPayload()
+        LUNA_GUI_API const DragDropPayload* get_drag_drop_payload()
         {
             return require_current_context()->get_drag_drop_payload();
         }
 
-        LUNA_GUI_API void SetNextItemLayout(const GUILayoutStyle& style)
+        LUNA_GUI_API void set_next_item_layout(const LayoutStyle& style)
         {
             require_current_context()->set_next_item_layout(style);
         }
 
-        LUNA_GUI_API void SetNextCanvasItemLayout(const GUICanvasItemLayout& layout)
+        LUNA_GUI_API void set_next_canvas_item_layout(const CanvasItemLayout& layout)
         {
             require_current_context()->set_next_canvas_item_layout(layout);
         }
 
-        LUNA_GUI_API void SetNextDockPanelStyle(const GUIDockPanelStyle& style, bool* open)
+        LUNA_GUI_API void set_next_dock_panel_style(const DockPanelStyle& style, bool* open)
         {
             require_current_context()->set_next_dock_panel_style(style, open);
         }
 
-        LUNA_GUI_API GUIItemHandle BeginHLayout(const c8* label, const GUILayoutDesc& desc)
+        LUNA_GUI_API ItemHandle begin_h_layout(const c8* label, const LayoutDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::h_layout, label ? label : "HLayout", GUISize(), &handle);
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::h_layout, label ? label : "HLayout", Size(), &handle);
             ctx->m_build_desc.nodes.back().layout_desc = desc;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle BeginHLayout(const c8* label, const RectF& rect, const GUILayoutDesc& desc)
+        LUNA_GUI_API ItemHandle begin_h_layout(const c8* label, const RectF& rect, const LayoutDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::h_layout, label ? label : "HLayout", GUISize::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::h_layout, label ? label : "HLayout", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.layout_desc = desc;
             node.absolute_position = true;
             node.position = Float2U(rect.offset_x, rect.offset_y);
             return handle;
         }
 
-        LUNA_GUI_API void EndHLayout()
+        LUNA_GUI_API void end_h_layout()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API GUIItemHandle BeginVLayout(const c8* label, const GUILayoutDesc& desc)
+        LUNA_GUI_API ItemHandle begin_v_layout(const c8* label, const LayoutDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::v_layout, label ? label : "VLayout", GUISize(), &handle);
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::v_layout, label ? label : "VLayout", Size(), &handle);
             ctx->m_build_desc.nodes.back().layout_desc = desc;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle BeginVLayout(const c8* label, const RectF& rect, const GUILayoutDesc& desc)
+        LUNA_GUI_API ItemHandle begin_v_layout(const c8* label, const RectF& rect, const LayoutDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::v_layout, label ? label : "VLayout", GUISize::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::v_layout, label ? label : "VLayout", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.layout_desc = desc;
             node.absolute_position = true;
             node.position = Float2U(rect.offset_x, rect.offset_y);
             return handle;
         }
 
-        LUNA_GUI_API void EndVLayout()
+        LUNA_GUI_API void end_v_layout()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API GUIItemHandle BeginTableLayout(const c8* label, const GUITableDesc& desc)
+        LUNA_GUI_API ItemHandle begin_table_layout(const c8* label, const TableDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::table_layout, label ? label : "TableLayout", GUISize(), &handle);
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::table_layout, label ? label : "TableLayout", Size(), &handle);
             ctx->m_build_desc.nodes.back().table_desc = desc;
             return handle;
         }
 
-        LUNA_GUI_API void EndTableLayout()
+        LUNA_GUI_API void end_table_layout()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API void SetNextTableCellColor(const Float4U& color)
+        LUNA_GUI_API void set_next_table_cell_color(const Float4U& color)
         {
             require_current_context()->set_next_table_cell_color(color);
         }
 
-        LUNA_GUI_API GUIItemHandle BeginGridLayout(const c8* label, const GUIGridLayoutDesc& desc)
+        LUNA_GUI_API ItemHandle begin_grid_layout(const c8* label, const GridLayoutDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::grid_layout, label ? label : "GridLayout", GUISize(), &handle);
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::grid_layout, label ? label : "GridLayout", Size(), &handle);
             ctx->m_build_desc.nodes.back().grid_desc = desc;
             return handle;
         }
 
-        LUNA_GUI_API void EndGridLayout()
+        LUNA_GUI_API void end_grid_layout()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API GUIItemHandle BeginCanvasLayout(const c8* label, const GUISize& size, const GUICanvasLayoutDesc& desc)
+        LUNA_GUI_API ItemHandle begin_canvas_layout(const c8* label, const Size& size, const CanvasLayoutDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::canvas_layout, label ? label : "CanvasLayout", size, &handle);
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::canvas_layout, label ? label : "CanvasLayout", size, &handle);
             ctx->m_build_desc.nodes.back().canvas_desc = desc;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle BeginCanvasLayout(const c8* label, const RectF& rect, const GUICanvasLayoutDesc& desc)
+        LUNA_GUI_API ItemHandle begin_canvas_layout(const c8* label, const RectF& rect, const CanvasLayoutDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::canvas_layout, label ? label : "CanvasLayout", GUISize::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::canvas_layout, label ? label : "CanvasLayout", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.canvas_desc = desc;
             node.absolute_position = true;
             node.position = Float2U(rect.offset_x, rect.offset_y);
             return handle;
         }
 
-        LUNA_GUI_API void EndCanvasLayout()
+        LUNA_GUI_API void end_canvas_layout()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API GUIItemHandle BeginDockSpace(const c8* label, const GUISize& size)
+        LUNA_GUI_API ItemHandle begin_dock_space(const c8* label, const Size& size)
         {
-            GUIItemHandle handle;
-            require_current_context()->begin_container(GUINodeKind::dock_space, label ? label : "DockSpace", size, &handle);
+            ItemHandle handle;
+            require_current_context()->begin_container(NodeKind::dock_space, label ? label : "DockSpace", size, &handle);
             return handle;
         }
 
-        LUNA_GUI_API void EndDockSpace()
+        LUNA_GUI_API void end_dock_space()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API GUIItemHandle BeginDockPanel(const c8* label, bool* open, const GUIDockPanelStyle& style, const GUILayoutDesc& desc)
+        LUNA_GUI_API ItemHandle begin_dock_panel(const c8* label, bool* open, const DockPanelStyle& style, const LayoutDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
+            ItemHandle handle;
+            Context* ctx = require_current_context();
             ctx->set_next_dock_panel_style(style, open);
-            ctx->begin_container(GUINodeKind::v_layout, label ? label : "DockPanel", GUISize(), &handle);
+            ctx->begin_container(NodeKind::v_layout, label ? label : "DockPanel", Size(), &handle);
             ctx->m_build_desc.nodes.back().layout_desc = desc;
             return handle;
         }
 
-        LUNA_GUI_API void EndDockPanel()
+        LUNA_GUI_API void end_dock_panel()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API GUIItemHandle BeginScrollView(const c8* label, const GUISize& size)
+        LUNA_GUI_API ItemHandle begin_scroll_view(const c8* label, const Size& size)
         {
-            GUIItemHandle handle;
-            require_current_context()->begin_container(GUINodeKind::scroll_view, label ? label : "ScrollView", size, &handle);
+            ItemHandle handle;
+            require_current_context()->begin_container(NodeKind::scroll_view, label ? label : "ScrollView", size, &handle);
             return handle;
         }
 
-        LUNA_GUI_API void EndScrollView()
+        LUNA_GUI_API void end_scroll_view()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API GUIItemHandle BeginWindow(const c8* label, const GUISize& size)
+        LUNA_GUI_API ItemHandle begin_window(const c8* label, const Size& size)
         {
-            GUIItemHandle handle;
-            require_current_context()->begin_container(GUINodeKind::window, label ? label : "Window", size, &handle);
+            ItemHandle handle;
+            require_current_context()->begin_container(NodeKind::window, label ? label : "Window", size, &handle);
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle BeginWindow(const c8* label, bool* open, const GUISize& size)
+        LUNA_GUI_API ItemHandle begin_window(const c8* label, bool* open, const Size& size)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::window, label ? label : "Window", size, &handle);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::window, label ? label : "Window", size, &handle);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.bool_value = open;
             node.interactive = open != nullptr;
             return handle;
         }
 
-        LUNA_GUI_API void EndWindow()
+        LUNA_GUI_API void end_window()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API GUIItemHandle BeginPopup(const c8* label, const Float2U& position, const GUISize& size)
+        LUNA_GUI_API ItemHandle begin_popup(const c8* label, const Float2U& position, const Size& size)
         {
-            GUIPopupDesc desc;
+            PopupDesc desc;
             desc.position = position;
             desc.size = size;
-            desc.flags = GUIPopupFlag::none;
+            desc.flags = PopupFlag::none;
             return require_current_context()->begin_popup(label, desc);
         }
 
-        LUNA_GUI_API GUIItemHandle BeginPopup(const c8* label, const GUIPopupDesc& desc)
+        LUNA_GUI_API ItemHandle begin_popup(const c8* label, const PopupDesc& desc)
         {
             return require_current_context()->begin_popup(label, desc);
         }
 
-        LUNA_GUI_API void EndPopup()
+        LUNA_GUI_API void end_popup()
         {
             require_current_context()->end_popup();
         }
 
-        LUNA_GUI_API void OpenPopup(GUIItemHandle popup)
+        LUNA_GUI_API void open_popup(ItemHandle popup)
         {
             require_current_context()->open_popup(popup);
         }
 
-        LUNA_GUI_API void ClosePopup(GUIItemHandle popup)
+        LUNA_GUI_API void close_popup(ItemHandle popup)
         {
             require_current_context()->close_popup(popup);
         }
 
-        LUNA_GUI_API void CloseCurrentPopup()
+        LUNA_GUI_API void close_current_popup()
         {
             require_current_context()->close_current_popup();
         }
 
-        LUNA_GUI_API void CloseAllPopups()
+        LUNA_GUI_API void close_all_popups()
         {
             require_current_context()->close_all_popups();
         }
 
-        LUNA_GUI_API bool IsPopupOpen(GUIItemHandle popup)
+        LUNA_GUI_API bool is_popup_open(ItemHandle popup)
         {
             return require_current_context()->is_popup_open(popup);
         }
 
-        LUNA_GUI_API GUIItemHandle BeginMenuBar(const c8* label, const GUILayoutDesc& desc)
+        LUNA_GUI_API ItemHandle begin_menu_bar(const c8* label, const LayoutDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::menu_bar, label ? label : "MenuBar", GUISize(), &handle);
-            GUINode& node = ctx->m_build_desc.nodes.back();
-            GUILayoutDesc default_desc;
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::menu_bar, label ? label : "MenuBar", Size(), &handle);
+            Node& node = ctx->m_build_desc.nodes.back();
+            LayoutDesc default_desc;
             if(desc.padding.left == 0.0f && desc.padding.top == 0.0f && desc.padding.right == 0.0f && desc.padding.bottom == 0.0f &&
                 desc.gap == default_desc.gap &&
                 desc.main_axis_alignment == default_desc.main_axis_alignment &&
                 desc.cross_axis_alignment == default_desc.cross_axis_alignment)
             {
-                node.layout_desc.padding = GUIEdgeInsets::xy(4.0f, 2.0f);
+                node.layout_desc.padding = EdgeInsets::xy(4.0f, 2.0f);
                 node.layout_desc.gap = 2.0f;
-                node.layout_desc.cross_axis_alignment = GUILayoutCrossAxisAlignment::center;
+                node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::center;
             }
             else
             {
@@ -361,21 +361,21 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle BeginMenuBar(const c8* label, const RectF& rect, const GUILayoutDesc& desc)
+        LUNA_GUI_API ItemHandle begin_menu_bar(const c8* label, const RectF& rect, const LayoutDesc& desc)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::menu_bar, label ? label : "MenuBar", GUISize::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
-            GUINode& node = ctx->m_build_desc.nodes.back();
-            GUILayoutDesc default_desc;
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::menu_bar, label ? label : "MenuBar", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
+            Node& node = ctx->m_build_desc.nodes.back();
+            LayoutDesc default_desc;
             if(desc.padding.left == 0.0f && desc.padding.top == 0.0f && desc.padding.right == 0.0f && desc.padding.bottom == 0.0f &&
                 desc.gap == default_desc.gap &&
                 desc.main_axis_alignment == default_desc.main_axis_alignment &&
                 desc.cross_axis_alignment == default_desc.cross_axis_alignment)
             {
-                node.layout_desc.padding = GUIEdgeInsets::xy(4.0f, 2.0f);
+                node.layout_desc.padding = EdgeInsets::xy(4.0f, 2.0f);
                 node.layout_desc.gap = 2.0f;
-                node.layout_desc.cross_axis_alignment = GUILayoutCrossAxisAlignment::center;
+                node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::center;
             }
             else
             {
@@ -386,52 +386,52 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API void EndMenuBar()
+        LUNA_GUI_API void end_menu_bar()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API GUIItemHandle BeginMenu(const c8* label, bool enabled)
+        LUNA_GUI_API ItemHandle begin_menu(const c8* label, bool enabled)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::menu, label ? label : "", enabled);
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::menu, label ? label : "", enabled);
             u32 menu_index = (u32)ctx->m_build_desc.nodes.size() - 1;
-            GUINode& menu_node = ctx->m_build_desc.nodes[menu_index];
+            Node& menu_node = ctx->m_build_desc.nodes[menu_index];
             menu_node.enabled = enabled;
 
-            GUIPopupDesc popup_desc;
-            popup_desc.flags = GUIPopupFlag::managed | GUIPopupFlag::close_on_outside_click | GUIPopupFlag::close_on_escape | GUIPopupFlag::close_on_blur;
-            GUIItemHandle popup = ctx->begin_popup("##MenuPopup", popup_desc);
-            GUINode& popup_node = ctx->m_build_desc.nodes.back();
+            PopupDesc popup_desc;
+            popup_desc.flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
+            ItemHandle popup = ctx->begin_popup("##MenuPopup", popup_desc);
+            Node& popup_node = ctx->m_build_desc.nodes.back();
             popup_node.popup_owner_id = handle.id;
-            popup_node.layout_desc.padding = GUIEdgeInsets::xy(6.0f, 5.0f);
+            popup_node.layout_desc.padding = EdgeInsets::xy(6.0f, 5.0f);
             popup_node.layout_desc.gap = 1.0f;
-            popup_node.layout_desc.cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+            popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
             ctx->m_build_desc.nodes[menu_index].menu_popup_id = popup.id;
             return handle;
         }
 
-        LUNA_GUI_API void EndMenu()
+        LUNA_GUI_API void end_menu()
         {
             require_current_context()->end_popup();
         }
 
-        LUNA_GUI_API GUIItemHandle MenuItem(const c8* label, const c8* shortcut, bool selected, bool enabled)
+        LUNA_GUI_API ItemHandle menu_item(const c8* label, const c8* shortcut, bool selected, bool enabled)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::menu_item, label ? label : "", enabled);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::menu_item, label ? label : "", enabled);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.shortcut = shortcut ? shortcut : "";
             node.selected = selected;
             node.enabled = enabled;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle MenuItem(const c8* label, const c8* shortcut, bool* selected, bool enabled)
+        LUNA_GUI_API ItemHandle menu_item(const c8* label, const c8* shortcut, bool* selected, bool enabled)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::menu_item, label ? label : "", enabled);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::menu_item, label ? label : "", enabled);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.shortcut = shortcut ? shortcut : "";
             node.bool_value = selected;
             node.selected = selected ? *selected : false;
@@ -439,21 +439,21 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle MenuSeparator()
+        LUNA_GUI_API ItemHandle menu_separator()
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::menu_separator, "##MenuSeparator", false);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::menu_separator, "##MenuSeparator", false);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.enabled = false;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle BeginTabBar(const c8* label, GUITabBarFlag flags)
+        LUNA_GUI_API ItemHandle begin_tab_bar(const c8* label, TabBarFlag flags)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::tab_bar, label ? label : "TabBar", GUISize(), &handle);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            ItemHandle handle;
+            Context* ctx = require_current_context();
+            ctx->begin_container(NodeKind::tab_bar, label ? label : "TabBar", Size(), &handle);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.tab_bar_flags = flags;
 
             PersistentItemState& state = ctx->get_or_create_persistent_state(handle.id);
@@ -466,9 +466,9 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API void EndTabBar()
+        LUNA_GUI_API void end_tab_bar()
         {
-            GUIContext* ctx = require_current_context();
+            Context* ctx = require_current_context();
             luassert(!ctx->m_tab_build_stack.empty());
             TabBuildScope scope = ctx->m_tab_build_stack.back();
             ctx->m_tab_build_stack.pop_back();
@@ -480,13 +480,13 @@ namespace Luna
             ctx->end_container();
         }
 
-        LUNA_GUI_API bool BeginTabItem(const c8* label, bool* open, GUITabItemFlag flags)
+        LUNA_GUI_API bool begin_tab_item(const c8* label, bool* open, TabItemFlag flags)
         {
-            GUIContext* ctx = require_current_context();
+            Context* ctx = require_current_context();
             luassert(!ctx->m_tab_build_stack.empty());
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::tab_item, label ? label : "", true);
+            ItemHandle handle = ctx->add_node(NodeKind::tab_item, label ? label : "", true);
             u32 index = (u32)ctx->m_build_desc.nodes.size() - 1;
-            GUINode& node = ctx->m_build_desc.nodes[index];
+            Node& node = ctx->m_build_desc.nodes[index];
             node.bool_value = open;
             node.tab_item_flags = flags;
             bool item_open = !open || *open;
@@ -498,18 +498,18 @@ namespace Luna
             }
             PersistentItemState& bar_state = ctx->get_or_create_persistent_state(scope.tab_bar_id);
             bool auto_select_new = item_open &&
-                test_flags(scope.flags, GUITabBarFlag::auto_select_new_tabs) &&
+                test_flags(scope.flags, TabBarFlag::auto_select_new_tabs) &&
                 scope.had_existing_tabs &&
                 !tab_order_contains(bar_state, handle.id) &&
-                !test_flags(flags, GUITabItemFlag::button);
-            if(item_open && (test_flags(flags, GUITabItemFlag::selected) || auto_select_new) &&
-                !test_flags(flags, GUITabItemFlag::button))
+                !test_flags(flags, TabItemFlag::button);
+            if(item_open && (test_flags(flags, TabItemFlag::selected) || auto_select_new) &&
+                !test_flags(flags, TabItemFlag::button))
             {
                 scope.selected_id = handle.id;
                 bar_state.tab_selected_id = handle.id;
             }
             bool explicit_selected = item_open && scope.selected_id == handle.id;
-            bool visible = item_open && !test_flags(flags, GUITabItemFlag::button) &&
+            bool visible = item_open && !test_flags(flags, TabItemFlag::button) &&
                 ((scope.selected_id && scope.selected_id == handle.id) ||
                     (!scope.selected_id && !scope.visible_tab_chosen) ||
                     explicit_selected);
@@ -523,30 +523,30 @@ namespace Luna
             return visible;
         }
 
-        LUNA_GUI_API void EndTabItem()
+        LUNA_GUI_API void end_tab_item()
         {
             require_current_context()->end_container();
         }
 
-        LUNA_GUI_API GUIItemHandle TabItemButton(const c8* label, GUITabItemFlag flags)
+        LUNA_GUI_API ItemHandle tab_item_button(const c8* label, TabItemFlag flags)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::tab_item, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
-            node.tab_item_flags = (GUITabItemFlag)((u32)flags | (u32)GUITabItemFlag::button);
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::tab_item, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
+            node.tab_item_flags = (TabItemFlag)((u32)flags | (u32)TabItemFlag::button);
             return handle;
         }
 
-        LUNA_GUI_API void SetTabItemClosed(const c8* label)
+        LUNA_GUI_API void set_tab_item_closed(const c8* label)
         {
-            GUIContext* ctx = require_current_context();
+            Context* ctx = require_current_context();
             if(ctx->m_parent_stack.empty()) return;
             u32 parent = ctx->m_parent_stack.back();
             if(parent >= ctx->m_build_desc.nodes.size()) return;
             for(u32 child = ctx->m_build_desc.nodes[parent].first_child; child != U32_MAX; child = ctx->m_build_desc.nodes[child].next_sibling)
             {
-                GUINode& node = ctx->m_build_desc.nodes[child];
-                if(node.kind != GUINodeKind::tab_item || strcmp(node.text.c_str(), label ? label : "") != 0) continue;
+                Node& node = ctx->m_build_desc.nodes[child];
+                if(node.kind != NodeKind::tab_item || strcmp(node.text.c_str(), label ? label : "") != 0) continue;
                 if(node.bool_value)
                 {
                     *node.bool_value = false;
@@ -555,118 +555,118 @@ namespace Luna
             }
         }
 
-        LUNA_GUI_API GUIItemHandle Button(const c8* label)
+        LUNA_GUI_API ItemHandle button(const c8* label)
         {
-            return require_current_context()->add_node(GUINodeKind::button, label ? label : "", true);
+            return require_current_context()->add_node(NodeKind::button, label ? label : "", true);
         }
 
-        LUNA_GUI_API GUIItemHandle Button(const c8* label, const RectF& rect)
+        LUNA_GUI_API ItemHandle button(const c8* label, const RectF& rect)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::button, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::button, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.absolute_position = true;
             node.position = Float2U(rect.offset_x, rect.offset_y);
-            apply_requested_size(node, GUISize::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
+            apply_requested_size(node, Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle Selectable(const c8* label, bool selected)
+        LUNA_GUI_API ItemHandle selectable(const c8* label, bool selected)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::selectable, label ? label : "", true);
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::selectable, label ? label : "", true);
             ctx->m_build_desc.nodes.back().selected = selected;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle Text(const c8* text)
+        LUNA_GUI_API ItemHandle text(const c8* text)
         {
-            return require_current_context()->add_node(GUINodeKind::text, text ? text : "", false);
+            return require_current_context()->add_node(NodeKind::text, text ? text : "", false);
         }
 
-        LUNA_GUI_API GUIItemHandle Checkbox(const c8* label, bool* value)
+        LUNA_GUI_API ItemHandle checkbox(const c8* label, bool* value)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::checkbox, label ? label : "", true);
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::checkbox, label ? label : "", true);
             ctx->m_build_desc.nodes.back().bool_value = value;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle RadioButton(const c8* label, bool selected)
+        LUNA_GUI_API ItemHandle radio_button(const c8* label, bool selected)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::radio_button, label ? label : "", true);
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::radio_button, label ? label : "", true);
             ctx->m_build_desc.nodes.back().selected = selected;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle RadioButton(const c8* label, bool* value)
+        LUNA_GUI_API ItemHandle radio_button(const c8* label, bool* value)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::radio_button, label ? label : "", true);
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::radio_button, label ? label : "", true);
             ctx->m_build_desc.nodes.back().bool_value = value;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle RadioButton(const c8* label, i32* value, i32 button_value)
+        LUNA_GUI_API ItemHandle radio_button(const c8* label, i32* value, i32 button_value)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::radio_button, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::radio_button, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.i32_value = value;
             node.item_value = button_value;
             node.selected = value && *value == button_value;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle Switch(const c8* label, bool* value)
+        LUNA_GUI_API ItemHandle toggle_switch(const c8* label, bool* value)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::toggle_switch, label ? label : "", true);
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::toggle_switch, label ? label : "", true);
             ctx->m_build_desc.nodes.back().bool_value = value;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle InputText(const c8* label, String& value)
+        LUNA_GUI_API ItemHandle input_text(const c8* label, String& value)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::input_text, label ? label : "", true);
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::input_text, label ? label : "", true);
             ctx->m_build_desc.nodes.back().string_value = &value;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle Image(RHI::ITexture* texture, const GUISize& size, GUIImageFlag flags)
+        LUNA_GUI_API ItemHandle image(RHI::ITexture* texture, const Size& size, ImageFlag flags)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::image, "Image", false);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::image, "Image", false);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.texture = texture;
             node.image_flags = flags;
             apply_requested_size(node, size);
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle CollapsingHeader(const c8* label)
+        LUNA_GUI_API ItemHandle collapsing_header(const c8* label)
         {
-            return require_current_context()->add_node(GUINodeKind::collapsing_header, label ? label : "", true);
+            return require_current_context()->add_node(NodeKind::collapsing_header, label ? label : "", true);
         }
 
-        LUNA_GUI_API GUIItemHandle TreeNode(const c8* label, GUITreeNodeFlag flags)
+        LUNA_GUI_API ItemHandle tree_node(const c8* label, TreeNodeFlag flags)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::tree_node, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::tree_node, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.tree_flags = flags;
             node.tree_depth = ctx->m_tree_depth;
-            node.selected = test_flags(flags, GUITreeNodeFlag::selected);
+            node.selected = test_flags(flags, TreeNodeFlag::selected);
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle Combo(const c8* label, i32* current_item, Span<const c8*> items)
+        LUNA_GUI_API ItemHandle combo(const c8* label, i32* current_item, Span<const c8*> items)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::combo, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::combo, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.i32_value = current_item;
             node.items.reserve(items.size());
             for(const c8* item : items)
@@ -680,11 +680,11 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle ButtonGroup(const c8* label, i32* current_item, Span<const c8*> items)
+        LUNA_GUI_API ItemHandle button_group(const c8* label, i32* current_item, Span<const c8*> items)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::button_group, label ? label : "ButtonGroup", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::button_group, label ? label : "ButtonGroup", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.i32_value = current_item;
             node.items.reserve(items.size());
             for(const c8* item : items)
@@ -698,11 +698,11 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle ButtonGroup(const c8* label, Span<bool> selected, Span<const c8*> items)
+        LUNA_GUI_API ItemHandle button_group(const c8* label, Span<bool> selected, Span<const c8*> items)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::button_group, label ? label : "ButtonGroup", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::button_group, label ? label : "ButtonGroup", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.bool_value = selected.data();
             usize count = min(selected.size(), items.size());
             node.items.reserve(count);
@@ -713,11 +713,11 @@ namespace Luna
             return handle;
         }
 
-        static GUIItemHandle add_slider_float_node(const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
+        static ItemHandle add_slider_float_node(const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::slider_float, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::slider_float, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.f32_value = value;
             node.f32_value_count = count;
             node.min_value = min_value;
@@ -732,31 +732,31 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle SliderFloat(const c8* label, f32* value, f32 min_value, f32 max_value)
+        LUNA_GUI_API ItemHandle slider_float(const c8* label, f32* value, f32 min_value, f32 max_value)
         {
             return add_slider_float_node(label, value, 1, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderFloat2(const c8* label, f32* value, f32 min_value, f32 max_value)
+        LUNA_GUI_API ItemHandle slider_float2(const c8* label, f32* value, f32 min_value, f32 max_value)
         {
             return add_slider_float_node(label, value, 2, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderFloat3(const c8* label, f32* value, f32 min_value, f32 max_value)
+        LUNA_GUI_API ItemHandle slider_float3(const c8* label, f32* value, f32 min_value, f32 max_value)
         {
             return add_slider_float_node(label, value, 3, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderFloat4(const c8* label, f32* value, f32 min_value, f32 max_value)
+        LUNA_GUI_API ItemHandle slider_float4(const c8* label, f32* value, f32 min_value, f32 max_value)
         {
             return add_slider_float_node(label, value, 4, min_value, max_value);
         }
 
-        static GUIItemHandle add_slider_int_node(const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
+        static ItemHandle add_slider_int_node(const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::slider_int, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::slider_int, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.i32_value = value;
             node.i32_value_count = count;
             node.min_value = (f32)min_value;
@@ -771,31 +771,31 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle SliderInt(const c8* label, i32* value, i32 min_value, i32 max_value)
+        LUNA_GUI_API ItemHandle slider_int(const c8* label, i32* value, i32 min_value, i32 max_value)
         {
             return add_slider_int_node(label, value, 1, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderInt2(const c8* label, i32* value, i32 min_value, i32 max_value)
+        LUNA_GUI_API ItemHandle slider_int2(const c8* label, i32* value, i32 min_value, i32 max_value)
         {
             return add_slider_int_node(label, value, 2, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderInt3(const c8* label, i32* value, i32 min_value, i32 max_value)
+        LUNA_GUI_API ItemHandle slider_int3(const c8* label, i32* value, i32 min_value, i32 max_value)
         {
             return add_slider_int_node(label, value, 3, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderInt4(const c8* label, i32* value, i32 min_value, i32 max_value)
+        LUNA_GUI_API ItemHandle slider_int4(const c8* label, i32* value, i32 min_value, i32 max_value)
         {
             return add_slider_int_node(label, value, 4, min_value, max_value);
         }
 
-        static GUIItemHandle add_input_float_node(const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
+        static ItemHandle add_input_float_node(const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::input_float, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::input_float, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.f32_value = value;
             node.f32_value_count = count;
             node.min_value = min_value;
@@ -810,11 +810,11 @@ namespace Luna
             return handle;
         }
 
-        static GUIItemHandle add_input_int_node(const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
+        static ItemHandle add_input_int_node(const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::input_int, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::input_int, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.i32_value = value;
             node.i32_value_count = count;
             node.min_value = (f32)min_value;
@@ -829,119 +829,119 @@ namespace Luna
             return handle;
         }
 
-        static GUIItemHandle add_slider_float_with_input_component(const c8* label, f32* value, f32 min_value, f32 max_value)
+        static ItemHandle add_slider_float_with_input_component(const c8* label, f32* value, f32 min_value, f32 max_value)
         {
-            GUILayoutDesc row;
+            LayoutDesc row;
             row.gap = 8.0f;
-            row.cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
-            GUIItemHandle handle = BeginHLayout(label ? label : "SliderFloatWithInput", row);
-            SetNextItemLayout(GUILayoutStyle::fill());
+            row.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
+            ItemHandle handle = begin_h_layout(label ? label : "SliderFloatWithInput", row);
+            set_next_item_layout(LayoutStyle::fill());
             add_slider_float_node(label, value, 1, min_value, max_value);
-            SetNextItemLayout(GUILayoutStyle::fixed_width(72.0f));
+            set_next_item_layout(LayoutStyle::fixed_width(72.0f));
             add_input_float_node("", value, 1, min_value, max_value);
-            EndHLayout();
+            end_h_layout();
             return handle;
         }
 
-        static GUIItemHandle add_slider_int_with_input_component(const c8* label, i32* value, i32 min_value, i32 max_value)
+        static ItemHandle add_slider_int_with_input_component(const c8* label, i32* value, i32 min_value, i32 max_value)
         {
-            GUILayoutDesc row;
+            LayoutDesc row;
             row.gap = 8.0f;
-            row.cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
-            GUIItemHandle handle = BeginHLayout(label ? label : "SliderIntWithInput", row);
-            SetNextItemLayout(GUILayoutStyle::fill());
+            row.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
+            ItemHandle handle = begin_h_layout(label ? label : "SliderIntWithInput", row);
+            set_next_item_layout(LayoutStyle::fill());
             add_slider_int_node(label, value, 1, min_value, max_value);
-            SetNextItemLayout(GUILayoutStyle::fixed_width(72.0f));
+            set_next_item_layout(LayoutStyle::fixed_width(72.0f));
             add_input_int_node("", value, 1, min_value, max_value);
-            EndHLayout();
+            end_h_layout();
             return handle;
         }
 
-        static GUIItemHandle add_slider_float_with_input_node(const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
+        static ItemHandle add_slider_float_with_input_node(const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
         {
             if(count <= 1) return add_slider_float_with_input_component(label, value, min_value, max_value);
-            GUILayoutDesc column;
+            LayoutDesc column;
             column.gap = 4.0f;
-            GUIItemHandle handle = BeginVLayout(label ? label : "SliderFloatWithInput", column);
+            ItemHandle handle = begin_v_layout(label ? label : "SliderFloatWithInput", column);
             const c8* components[] = { "X", "Y", "Z", "W" };
             for(u32 i = 0; i < count; ++i)
             {
-                PushID(i);
+                push_id(i);
                 String component_label;
                 if(label && label[0]) strprintf(component_label, "%s %s", label, components[i]);
                 else component_label = components[i];
                 add_slider_float_with_input_component(component_label.c_str(), value ? value + i : nullptr, min_value, max_value);
-                PopID();
+                pop_id();
             }
-            EndVLayout();
+            end_v_layout();
             return handle;
         }
 
-        static GUIItemHandle add_slider_int_with_input_node(const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
+        static ItemHandle add_slider_int_with_input_node(const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
         {
             if(count <= 1) return add_slider_int_with_input_component(label, value, min_value, max_value);
-            GUILayoutDesc column;
+            LayoutDesc column;
             column.gap = 4.0f;
-            GUIItemHandle handle = BeginVLayout(label ? label : "SliderIntWithInput", column);
+            ItemHandle handle = begin_v_layout(label ? label : "SliderIntWithInput", column);
             const c8* components[] = { "X", "Y", "Z", "W" };
             for(u32 i = 0; i < count; ++i)
             {
-                PushID(i);
+                push_id(i);
                 String component_label;
                 if(label && label[0]) strprintf(component_label, "%s %s", label, components[i]);
                 else component_label = components[i];
                 add_slider_int_with_input_component(component_label.c_str(), value ? value + i : nullptr, min_value, max_value);
-                PopID();
+                pop_id();
             }
-            EndVLayout();
+            end_v_layout();
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle SliderFloatWithInput(const c8* label, f32* value, f32 min_value, f32 max_value)
+        LUNA_GUI_API ItemHandle slider_float_with_input(const c8* label, f32* value, f32 min_value, f32 max_value)
         {
             return add_slider_float_with_input_node(label, value, 1, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderFloat2WithInput(const c8* label, f32* value, f32 min_value, f32 max_value)
+        LUNA_GUI_API ItemHandle slider_float2_with_input(const c8* label, f32* value, f32 min_value, f32 max_value)
         {
             return add_slider_float_with_input_node(label, value, 2, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderFloat3WithInput(const c8* label, f32* value, f32 min_value, f32 max_value)
+        LUNA_GUI_API ItemHandle slider_float3_with_input(const c8* label, f32* value, f32 min_value, f32 max_value)
         {
             return add_slider_float_with_input_node(label, value, 3, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderFloat4WithInput(const c8* label, f32* value, f32 min_value, f32 max_value)
+        LUNA_GUI_API ItemHandle slider_float4_with_input(const c8* label, f32* value, f32 min_value, f32 max_value)
         {
             return add_slider_float_with_input_node(label, value, 4, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderIntWithInput(const c8* label, i32* value, i32 min_value, i32 max_value)
+        LUNA_GUI_API ItemHandle slider_int_with_input(const c8* label, i32* value, i32 min_value, i32 max_value)
         {
             return add_slider_int_with_input_node(label, value, 1, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderInt2WithInput(const c8* label, i32* value, i32 min_value, i32 max_value)
+        LUNA_GUI_API ItemHandle slider_int2_with_input(const c8* label, i32* value, i32 min_value, i32 max_value)
         {
             return add_slider_int_with_input_node(label, value, 2, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderInt3WithInput(const c8* label, i32* value, i32 min_value, i32 max_value)
+        LUNA_GUI_API ItemHandle slider_int3_with_input(const c8* label, i32* value, i32 min_value, i32 max_value)
         {
             return add_slider_int_with_input_node(label, value, 3, min_value, max_value);
         }
 
-        LUNA_GUI_API GUIItemHandle SliderInt4WithInput(const c8* label, i32* value, i32 min_value, i32 max_value)
+        LUNA_GUI_API ItemHandle slider_int4_with_input(const c8* label, i32* value, i32 min_value, i32 max_value)
         {
             return add_slider_int_with_input_node(label, value, 4, min_value, max_value);
         }
 
-        static GUIItemHandle add_drag_float_node(const c8* label, f32* value, u8 count, f32 speed, f32 min_value, f32 max_value, bool color, GUINumericEditFlag flags)
+        static ItemHandle add_drag_float_node(const c8* label, f32* value, u8 count, f32 speed, f32 min_value, f32 max_value, bool color, NumericEditFlag flags)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::drag_float, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::drag_float, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.f32_value = value;
             node.f32_value_count = count;
             node.f32_color = color;
@@ -959,31 +959,31 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle DragFloat(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, GUINumericEditFlag flags)
+        LUNA_GUI_API ItemHandle drag_float(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, NumericEditFlag flags)
         {
             return add_drag_float_node(label, value, 1, speed, min_value, max_value, false, flags);
         }
 
-        LUNA_GUI_API GUIItemHandle DragFloat2(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, GUINumericEditFlag flags)
+        LUNA_GUI_API ItemHandle drag_float2(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, NumericEditFlag flags)
         {
             return add_drag_float_node(label, value, 2, speed, min_value, max_value, false, flags);
         }
 
-        LUNA_GUI_API GUIItemHandle DragFloat3(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, GUINumericEditFlag flags)
+        LUNA_GUI_API ItemHandle drag_float3(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, NumericEditFlag flags)
         {
             return add_drag_float_node(label, value, 3, speed, min_value, max_value, false, flags);
         }
 
-        LUNA_GUI_API GUIItemHandle DragFloat4(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, GUINumericEditFlag flags)
+        LUNA_GUI_API ItemHandle drag_float4(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, NumericEditFlag flags)
         {
             return add_drag_float_node(label, value, 4, speed, min_value, max_value, false, flags);
         }
 
-        static GUIItemHandle add_drag_int_node(const c8* label, i32* value, u8 count, f32 speed, i32 min_value, i32 max_value, GUINumericEditFlag flags)
+        static ItemHandle add_drag_int_node(const c8* label, i32* value, u8 count, f32 speed, i32 min_value, i32 max_value, NumericEditFlag flags)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::drag_int, label ? label : "", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::drag_int, label ? label : "", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.i32_value = value;
             node.i32_value_count = count;
             node.numeric_flags = flags;
@@ -1000,22 +1000,22 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle DragInt(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, GUINumericEditFlag flags)
+        LUNA_GUI_API ItemHandle drag_int(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, NumericEditFlag flags)
         {
             return add_drag_int_node(label, value, 1, speed, min_value, max_value, flags);
         }
 
-        LUNA_GUI_API GUIItemHandle DragInt2(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, GUINumericEditFlag flags)
+        LUNA_GUI_API ItemHandle drag_int2(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, NumericEditFlag flags)
         {
             return add_drag_int_node(label, value, 2, speed, min_value, max_value, flags);
         }
 
-        LUNA_GUI_API GUIItemHandle DragInt3(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, GUINumericEditFlag flags)
+        LUNA_GUI_API ItemHandle drag_int3(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, NumericEditFlag flags)
         {
             return add_drag_int_node(label, value, 3, speed, min_value, max_value, flags);
         }
 
-        LUNA_GUI_API GUIItemHandle DragInt4(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, GUINumericEditFlag flags)
+        LUNA_GUI_API ItemHandle drag_int4(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, NumericEditFlag flags)
         {
             return add_drag_int_node(label, value, 4, speed, min_value, max_value, flags);
         }
@@ -1036,7 +1036,7 @@ namespace Luna
             state.color_edit_hsv[2] = (i32)color_channel_to_u8(v);
         }
 
-        static void assign_color_binding(GUINode& node, f32* f32_value, u8* u8_value, u32* u32_value, GUIColorValueType type, u8 count)
+        static void assign_color_binding(Node& node, f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count)
         {
             node.f32_value = f32_value;
             node.u8_value = u8_value;
@@ -1045,39 +1045,39 @@ namespace Luna
             node.f32_value_count = count;
         }
 
-        static GUIItemHandle add_color_picker_node(const c8* label, f32* f32_value, u8* u8_value, u32* u32_value, GUIColorValueType type, u8 count, GUIID owner_id)
+        static ItemHandle add_color_picker_node(const c8* label, f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count, id_t owner_id)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::color_picker, label ? label : "ColorPicker", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::color_picker, label ? label : "ColorPicker", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             assign_color_binding(node, f32_value, u8_value, u32_value, type, count);
             node.color_owner_id = owner_id;
             return handle;
         }
 
-        static void tag_color_numeric_node(GUIContext* ctx, GUIItemHandle handle, GUIID owner_id, GUIColorEditPart part)
+        static void tag_color_numeric_node(Context* ctx, ItemHandle handle, id_t owner_id, ColorEditPart part)
         {
-            if(GUINode* node = ctx->find_build_node(handle))
+            if(Node* node = ctx->find_build_node(handle))
             {
                 node->color_owner_id = owner_id;
                 node->color_edit_part = part;
             }
         }
 
-        static GUIItemHandle add_color_channel_drag(const c8* label, i32* value, GUIID owner_id, GUIColorEditPart part)
+        static ItemHandle add_color_channel_drag(const c8* label, i32* value, id_t owner_id, ColorEditPart part)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = DragInt(label, value, 1.0f, 0, 255, GUINumericEditFlag::input_on_double_click);
+            Context* ctx = require_current_context();
+            ItemHandle handle = drag_int(label, value, 1.0f, 0, 255, NumericEditFlag::input_on_double_click);
             tag_color_numeric_node(ctx, handle, owner_id, part);
             return handle;
         }
 
-        static GUIItemHandle add_color_edit_node(const c8* label, f32* f32_value, u8* u8_value, u32* u32_value, GUIColorValueType type, u8 count)
+        static ItemHandle add_color_edit_node(const c8* label, f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::color_edit, label ? label : "", true);
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::color_edit, label ? label : "", true);
             u32 color_index = (u32)ctx->m_build_desc.nodes.size() - 1;
-            GUINode& node = ctx->m_build_desc.nodes[color_index];
+            Node& node = ctx->m_build_desc.nodes[color_index];
             assign_color_binding(node, f32_value, u8_value, u32_value, type, count);
             write_color_value(node, read_color_value(node));
 
@@ -1086,47 +1086,47 @@ namespace Luna
             ensure_color_edit_state_channels(color_state);
             sync_color_edit_build_state(color_state, read_color_value(node));
 
-            GUIPopupDesc popup_desc;
-            popup_desc.size = GUISize::fixed(476.0f, count == 4 ? 470.0f : 432.0f);
-            popup_desc.flags = GUIPopupFlag::managed | GUIPopupFlag::close_on_outside_click | GUIPopupFlag::close_on_escape | GUIPopupFlag::close_on_blur;
+            PopupDesc popup_desc;
+            popup_desc.size = Size::fixed(476.0f, count == 4 ? 470.0f : 432.0f);
+            popup_desc.flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
             ctx->push_id(handle.id);
-            GUIItemHandle popup = ctx->begin_popup("##ColorEditPopup", popup_desc);
-            GUINode& popup_node = ctx->m_build_desc.nodes.back();
+            ItemHandle popup = ctx->begin_popup("##ColorEditPopup", popup_desc);
+            Node& popup_node = ctx->m_build_desc.nodes.back();
             popup_node.popup_owner_id = handle.id;
-            popup_node.layout_desc.padding = GUIEdgeInsets::all(10.0f);
+            popup_node.layout_desc.padding = EdgeInsets::all(10.0f);
             popup_node.layout_desc.gap = 8.0f;
-            popup_node.layout_desc.cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+            popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
 
-            SetNextItemLayout(GUILayoutStyle::fixed_height(300.0f));
+            set_next_item_layout(LayoutStyle::fixed_height(300.0f));
             add_color_picker_node("##ColorPicker", f32_value, u8_value, u32_value, type, count, handle.id);
 
             const c8* axis_items[] = { "H", "S", "V", "R", "G", "B" };
-            SetNextItemLayout(GUILayoutStyle::fixed_height(28.0f));
-            ButtonGroup("Channel", &color_edit_axis_ref(color_state), Span<const c8*>(axis_items, 6));
+            set_next_item_layout(LayoutStyle::fixed_height(28.0f));
+            button_group("Channel", &color_edit_axis_ref(color_state), Span<const c8*>(axis_items, 6));
 
-            GUILayoutDesc row;
+            LayoutDesc row;
             row.gap = 6.0f;
-            row.cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
-            SetNextItemLayout(GUILayoutStyle::fixed_height(30.0f));
-            BeginHLayout("RGB", row);
-            add_color_channel_drag("R", &color_state.color_edit_rgb[0], handle.id, GUIColorEditPart::rgb);
-            add_color_channel_drag("G", &color_state.color_edit_rgb[1], handle.id, GUIColorEditPart::rgb);
-            add_color_channel_drag("B", &color_state.color_edit_rgb[2], handle.id, GUIColorEditPart::rgb);
-            EndHLayout();
+            row.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
+            set_next_item_layout(LayoutStyle::fixed_height(30.0f));
+            begin_h_layout("RGB", row);
+            add_color_channel_drag("R", &color_state.color_edit_rgb[0], handle.id, ColorEditPart::rgb);
+            add_color_channel_drag("G", &color_state.color_edit_rgb[1], handle.id, ColorEditPart::rgb);
+            add_color_channel_drag("B", &color_state.color_edit_rgb[2], handle.id, ColorEditPart::rgb);
+            end_h_layout();
 
-            SetNextItemLayout(GUILayoutStyle::fixed_height(30.0f));
-            BeginHLayout("HSV", row);
-            add_color_channel_drag("H", &color_state.color_edit_hsv[0], handle.id, GUIColorEditPart::hsv);
-            add_color_channel_drag("S", &color_state.color_edit_hsv[1], handle.id, GUIColorEditPart::hsv);
-            add_color_channel_drag("V", &color_state.color_edit_hsv[2], handle.id, GUIColorEditPart::hsv);
-            EndHLayout();
+            set_next_item_layout(LayoutStyle::fixed_height(30.0f));
+            begin_h_layout("HSV", row);
+            add_color_channel_drag("H", &color_state.color_edit_hsv[0], handle.id, ColorEditPart::hsv);
+            add_color_channel_drag("S", &color_state.color_edit_hsv[1], handle.id, ColorEditPart::hsv);
+            add_color_channel_drag("V", &color_state.color_edit_hsv[2], handle.id, ColorEditPart::hsv);
+            end_h_layout();
 
             if(count == 4)
             {
-                SetNextItemLayout(GUILayoutStyle::fixed_height(30.0f));
-                BeginHLayout("Alpha", row);
-                add_color_channel_drag("A", &color_state.color_edit_rgb[3], handle.id, GUIColorEditPart::rgb);
-                EndHLayout();
+                set_next_item_layout(LayoutStyle::fixed_height(30.0f));
+                begin_h_layout("Alpha", row);
+                add_color_channel_drag("A", &color_state.color_edit_rgb[3], handle.id, ColorEditPart::rgb);
+                end_h_layout();
             }
 
             ctx->end_popup();
@@ -1135,34 +1135,34 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle ColorEdit3(const c8* label, f32* value)
+        LUNA_GUI_API ItemHandle color_edit3(const c8* label, f32* value)
         {
-            return add_color_edit_node(label, value, nullptr, nullptr, GUIColorValueType::f32, 3);
+            return add_color_edit_node(label, value, nullptr, nullptr, ColorValueType::f32, 3);
         }
 
-        LUNA_GUI_API GUIItemHandle ColorEdit4(const c8* label, f32* value)
+        LUNA_GUI_API ItemHandle color_edit4(const c8* label, f32* value)
         {
-            return add_color_edit_node(label, value, nullptr, nullptr, GUIColorValueType::f32, 4);
+            return add_color_edit_node(label, value, nullptr, nullptr, ColorValueType::f32, 4);
         }
 
-        LUNA_GUI_API GUIItemHandle ColorEdit3(const c8* label, u8* value)
+        LUNA_GUI_API ItemHandle color_edit3(const c8* label, u8* value)
         {
-            return add_color_edit_node(label, nullptr, value, nullptr, GUIColorValueType::u8, 3);
+            return add_color_edit_node(label, nullptr, value, nullptr, ColorValueType::u8, 3);
         }
 
-        LUNA_GUI_API GUIItemHandle ColorEdit4(const c8* label, u8* value)
+        LUNA_GUI_API ItemHandle color_edit4(const c8* label, u8* value)
         {
-            return add_color_edit_node(label, nullptr, value, nullptr, GUIColorValueType::u8, 4);
+            return add_color_edit_node(label, nullptr, value, nullptr, ColorValueType::u8, 4);
         }
 
-        LUNA_GUI_API GUIItemHandle ColorEdit3(const c8* label, u32* value)
+        LUNA_GUI_API ItemHandle color_edit3(const c8* label, u32* value)
         {
-            return add_color_edit_node(label, nullptr, nullptr, value, GUIColorValueType::rgba8, 3);
+            return add_color_edit_node(label, nullptr, nullptr, value, ColorValueType::rgba8, 3);
         }
 
-        LUNA_GUI_API GUIItemHandle ColorEdit4(const c8* label, u32* value)
+        LUNA_GUI_API ItemHandle color_edit4(const c8* label, u32* value)
         {
-            return add_color_edit_node(label, nullptr, nullptr, value, GUIColorValueType::rgba8, 4);
+            return add_color_edit_node(label, nullptr, nullptr, value, ColorValueType::rgba8, 4);
         }
 
         static bool project_gizmo_point(const Float3& point, const Float4x4& view, const Float4x4& projection, const RectF& viewport_rect, Float2U& out)
@@ -1292,15 +1292,15 @@ namespace Luna
                 bool visible = project_gizmo_point(point, view, projection, viewport_rect, screen);
                 if(visible && previous_visible)
                 {
-                    DrawLine(previous_screen, screen, color, width);
+                    draw_line(previous_screen, screen, color, width);
                 }
                 previous_screen = screen;
                 previous_visible = visible;
             }
         }
 
-        LUNA_GUI_API GUIItemHandle Gizmo(const c8* label, Float4x4& world_matrix, const Float4x4& view, const Float4x4& projection, const RectF& viewport_rect,
-            GUIGizmoOperation operation, GUIGizmoMode mode, f32 snap, bool enabled, bool orthographic,
+        LUNA_GUI_API ItemHandle gizmo(const c8* label, Float4x4& world_matrix, const Float4x4& view, const Float4x4& projection, const RectF& viewport_rect,
+            GizmoOperation operation, GizmoMode mode, f32 snap, bool enabled, bool orthographic,
             Float4x4* delta_matrix, bool* is_mouse_hover, bool* is_mouse_moving, bool* edited)
         {
             (void)orthographic;
@@ -1309,11 +1309,11 @@ namespace Luna
             if(is_mouse_moving) *is_mouse_moving = false;
             if(edited) *edited = false;
 
-            PushID(label ? label : "Gizmo");
+            push_id(label ? label : "Gizmo");
 
             Float3 origin = AffineMatrix::translation(world_matrix);
             Float3 axes[3];
-            if(mode == GUIGizmoMode::local)
+            if(mode == GizmoMode::local)
             {
                 axes[0] = gizmo_normalize_axis(AffineMatrix::right(world_matrix), Float3(1.0f, 0.0f, 0.0f));
                 axes[1] = gizmo_normalize_axis(AffineMatrix::up(world_matrix), Float3(0.0f, 1.0f, 0.0f));
@@ -1336,8 +1336,8 @@ namespace Luna
             }
             if(!visible)
             {
-                GUIItemHandle invalid = HitBox("Invalid", RectF(-10000.0f, -10000.0f, 1.0f, 1.0f));
-                PopID();
+                ItemHandle invalid = hit_box("Invalid", RectF(-10000.0f, -10000.0f, 1.0f, 1.0f));
+                pop_id();
                 return invalid;
             }
 
@@ -1347,62 +1347,62 @@ namespace Luna
                 Float4U(0.25f, 0.46f, 0.96f, 1.0f)
             };
 
-            GUIItemHandle axis_handles[3];
+            ItemHandle axis_handles[3];
             for(u32 i = 0; i < 3; ++i)
             {
                 c8 axis_label[8];
                 snprintf(axis_label, 8, "Axis%u", i);
-                axis_handles[i] = HitBox(axis_label, gizmo_line_hit_rect(origin_screen, axis_screen[i], 7.0f));
+                axis_handles[i] = hit_box(axis_label, gizmo_line_hit_rect(origin_screen, axis_screen[i], 7.0f));
             }
-            GUIItemHandle center_handle = HitBox("Center", RectF(origin_screen.x - 8.0f, origin_screen.y - 8.0f, 16.0f, 16.0f));
+            ItemHandle center_handle = hit_box("Center", RectF(origin_screen.x - 8.0f, origin_screen.y - 8.0f, 16.0f, 16.0f));
 
             i32 active_axis = -1;
             for(i32 i = 0; i < 3; ++i)
             {
-                if(IsItemActive(axis_handles[i]))
+                if(is_item_active(axis_handles[i]))
                 {
                     active_axis = i;
                     break;
                 }
             }
-            if(active_axis < 0 && IsItemActive(center_handle))
+            if(active_axis < 0 && is_item_active(center_handle))
             {
                 active_axis = 3;
             }
 
-            bool hovered = IsItemHovered(center_handle);
+            bool hovered = is_item_hovered(center_handle);
             for(u32 i = 0; i < 3; ++i)
             {
-                hovered = hovered || IsItemHovered(axis_handles[i]);
+                hovered = hovered || is_item_hovered(axis_handles[i]);
             }
             if(is_mouse_hover) *is_mouse_hover = hovered;
             if(is_mouse_moving) *is_mouse_moving = active_axis >= 0;
 
-            if(operation == GUIGizmoOperation::rotate)
+            if(operation == GizmoOperation::rotate)
             {
                 gizmo_draw_rotation_ring(origin, axes[1], axes[2], axis_world_len, view, projection, viewport_rect,
-                    IsItemHovered(axis_handles[0]) || IsItemActive(axis_handles[0]) ? Float4U(1.0f, 0.95f, 0.65f, 1.0f) : axis_colors[0], 3.0f);
+                    is_item_hovered(axis_handles[0]) || is_item_active(axis_handles[0]) ? Float4U(1.0f, 0.95f, 0.65f, 1.0f) : axis_colors[0], 3.0f);
                 gizmo_draw_rotation_ring(origin, axes[2], axes[0], axis_world_len, view, projection, viewport_rect,
-                    IsItemHovered(axis_handles[1]) || IsItemActive(axis_handles[1]) ? Float4U(1.0f, 0.95f, 0.65f, 1.0f) : axis_colors[1], 3.0f);
+                    is_item_hovered(axis_handles[1]) || is_item_active(axis_handles[1]) ? Float4U(1.0f, 0.95f, 0.65f, 1.0f) : axis_colors[1], 3.0f);
                 gizmo_draw_rotation_ring(origin, axes[0], axes[1], axis_world_len, view, projection, viewport_rect,
-                    IsItemHovered(axis_handles[2]) || IsItemActive(axis_handles[2]) ? Float4U(1.0f, 0.95f, 0.65f, 1.0f) : axis_colors[2], 3.0f);
+                    is_item_hovered(axis_handles[2]) || is_item_active(axis_handles[2]) ? Float4U(1.0f, 0.95f, 0.65f, 1.0f) : axis_colors[2], 3.0f);
             }
             for(u32 i = 0; i < 3; ++i)
             {
-                bool axis_hot = IsItemHovered(axis_handles[i]) || IsItemActive(axis_handles[i]);
+                bool axis_hot = is_item_hovered(axis_handles[i]) || is_item_active(axis_handles[i]);
                 Float4U color = axis_hot ? Float4U(1.0f, 0.95f, 0.65f, 1.0f) : axis_colors[i];
                 f32 width = axis_hot ? 4.0f : 3.0f;
-                DrawLine(origin_screen, axis_screen[i], color, operation == GUIGizmoOperation::rotate ? 2.0f : width);
-                DrawCircle(axis_screen[i], axis_hot ? 6.0f : 5.0f, color);
+                draw_line(origin_screen, axis_screen[i], color, operation == GizmoOperation::rotate ? 2.0f : width);
+                draw_circle(axis_screen[i], axis_hot ? 6.0f : 5.0f, color);
             }
-            DrawCircle(origin_screen, IsItemHovered(center_handle) || IsItemActive(center_handle) ? 8.0f : 6.0f,
-                IsItemHovered(center_handle) || IsItemActive(center_handle) ? Float4U(1.0f, 0.95f, 0.65f, 1.0f) : Float4U(1.0f));
+            draw_circle(origin_screen, is_item_hovered(center_handle) || is_item_active(center_handle) ? 8.0f : 6.0f,
+                is_item_hovered(center_handle) || is_item_active(center_handle) ? Float4U(1.0f, 0.95f, 0.65f, 1.0f) : Float4U(1.0f));
 
-            GUIStateKey<i32> active_axis_key { Name("gui.gizmo.active_axis"), -1 };
-            GUIStateKey<Float2U> last_pointer_key { Name("gui.gizmo.last_pointer"), gizmo_state_default_pointer() };
-            i32 last_active_axis = GetItemState(center_handle, active_axis_key);
-            Float2U pointer = GetPointerPosition();
-            Float2U last_pointer = GetItemState(center_handle, last_pointer_key);
+            StateKey<i32> active_axis_key { Name("gui.gizmo.active_axis"), -1 };
+            StateKey<Float2U> last_pointer_key { Name("gui.gizmo.last_pointer"), gizmo_state_default_pointer() };
+            i32 last_active_axis = get_item_state(center_handle, active_axis_key);
+            Float2U pointer = get_pointer_position();
+            Float2U last_pointer = get_item_state(center_handle, last_pointer_key);
 
             bool changed = false;
             if(enabled && active_axis >= 0)
@@ -1410,7 +1410,7 @@ namespace Luna
                 if(last_active_axis == active_axis)
                 {
                     Float2 screen_delta(pointer.x - last_pointer.x, pointer.y - last_pointer.y);
-                    if(operation == GUIGizmoOperation::translate)
+                    if(operation == GizmoOperation::translate)
                     {
                         Float3 world_delta(0.0f, 0.0f, 0.0f);
                         if(active_axis < 3)
@@ -1450,7 +1450,7 @@ namespace Luna
                             if(delta_matrix) *delta_matrix = AffineMatrix::make_translation(world_delta);
                         }
                     }
-                    else if(operation == GUIGizmoOperation::scale)
+                    else if(operation == GizmoOperation::scale)
                     {
                         f32 factor = 1.0f;
                         if(active_axis < 3)
@@ -1473,7 +1473,7 @@ namespace Luna
                             if(delta_matrix) *delta_matrix = gizmo_scale_delta_matrix(active_axis, factor);
                         }
                     }
-                    else if(operation == GUIGizmoOperation::rotate)
+                    else if(operation == GizmoOperation::rotate)
                     {
                         Float3 axis = active_axis < 3 ? axes[active_axis] : gizmo_normalize_axis(AffineMatrix::forward(inverse(view)), Float3(0.0f, 0.0f, 1.0f));
                         f32 delta_angle = 0.0f;
@@ -1510,137 +1510,137 @@ namespace Luna
             {
                 if(edited) *edited = true;
             }
-            SetItemState(center_handle, active_axis_key, active_axis);
-            SetItemState(center_handle, last_pointer_key, pointer);
+            set_item_state(center_handle, active_axis_key, active_axis);
+            set_item_state(center_handle, last_pointer_key, pointer);
 
-            PopID();
+            pop_id();
             return center_handle;
         }
 
-        LUNA_GUI_API GUIItemHandle HitBox(const c8* label, const RectF& rect)
+        LUNA_GUI_API ItemHandle hit_box(const c8* label, const RectF& rect)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(GUINodeKind::hit_box, label ? label : "HitBox", true);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(NodeKind::hit_box, label ? label : "HitBox", true);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.absolute_position = true;
             node.position = Float2U(rect.offset_x, rect.offset_y);
-            apply_requested_size(node, GUISize::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
+            apply_requested_size(node, Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
             return handle;
         }
 
-        LUNA_GUI_API const Any* get_item_state_any(GUIItemHandle handle, const Name& key)
+        LUNA_GUI_API const Any* get_item_state_any(ItemHandle handle, const Name& key)
         {
             if(!handle.context) return nullptr;
-            GUIContext* ctx = (GUIContext*)handle.context;
+            Context* ctx = (Context*)handle.context;
             return ctx->get_state(handle, key);
         }
 
-        LUNA_GUI_API void set_item_state_any(GUIItemHandle handle, const Name& key, const Any& value)
+        LUNA_GUI_API void set_item_state_any(ItemHandle handle, const Name& key, const Any& value)
         {
             if(!handle.context) return;
-            GUIContext* ctx = (GUIContext*)handle.context;
+            Context* ctx = (Context*)handle.context;
             ctx->set_state(handle, key, value);
         }
 
-        LUNA_GUI_API void remove_item_state(GUIItemHandle handle, const Name& key)
+        LUNA_GUI_API void remove_item_state(ItemHandle handle, const Name& key)
         {
             if(!handle.context) return;
-            GUIContext* ctx = (GUIContext*)handle.context;
+            Context* ctx = (Context*)handle.context;
             ctx->remove_state(handle, key);
         }
 
-        LUNA_GUI_API bool IsItemClicked(GUIItemHandle handle)
+        LUNA_GUI_API bool is_item_clicked(ItemHandle handle)
         {
-            return GetItemState(handle, GUIState::clicked());
+            return get_item_state(handle, State::clicked());
         }
 
-        LUNA_GUI_API bool IsItemRightClicked(GUIItemHandle handle)
+        LUNA_GUI_API bool is_item_right_clicked(ItemHandle handle)
         {
-            return GetItemState(handle, GUIState::right_clicked());
+            return get_item_state(handle, State::right_clicked());
         }
 
-        LUNA_GUI_API bool IsItemDoubleClicked(GUIItemHandle handle)
+        LUNA_GUI_API bool is_item_double_clicked(ItemHandle handle)
         {
-            return GetItemState(handle, GUIState::double_clicked());
+            return get_item_state(handle, State::double_clicked());
         }
 
-        LUNA_GUI_API bool IsItemHovered(GUIItemHandle handle)
+        LUNA_GUI_API bool is_item_hovered(ItemHandle handle)
         {
-            return GetItemState(handle, GUIState::hovered());
+            return get_item_state(handle, State::hovered());
         }
 
-        LUNA_GUI_API bool IsItemActive(GUIItemHandle handle)
+        LUNA_GUI_API bool is_item_active(ItemHandle handle)
         {
-            return GetItemState(handle, GUIState::active());
+            return get_item_state(handle, State::active());
         }
 
-        LUNA_GUI_API bool IsItemFocused(GUIItemHandle handle)
+        LUNA_GUI_API bool is_item_focused(ItemHandle handle)
         {
-            return GetItemState(handle, GUIState::focused());
+            return get_item_state(handle, State::focused());
         }
 
-        LUNA_GUI_API Float2U GetPointerPosition()
+        LUNA_GUI_API Float2U get_pointer_position()
         {
             return require_current_context()->m_pointer_pos;
         }
 
-        LUNA_GUI_API bool IsPointerButtonDown(GUIPointerButton button)
+        LUNA_GUI_API bool is_pointer_button_down(PointerButton button)
         {
             u32 index = (u32)button;
             return index < 5 ? require_current_context()->m_pointer_button_down[index] : false;
         }
 
-        LUNA_GUI_API bool IsKeyDown(GUIKey key)
+        LUNA_GUI_API bool is_key_down(Key key)
         {
             u32 index = (u32)key;
             return index < 256 ? require_current_context()->m_key_down[index] : false;
         }
 
-        LUNA_GUI_API GUIKeyModifierFlag GetKeyModifiers()
+        LUNA_GUI_API KeyModifierFlag get_key_modifiers()
         {
             return require_current_context()->m_key_modifiers;
         }
 
-        LUNA_GUI_API GUIFrameDesc GetFrameDesc()
+        LUNA_GUI_API FrameDesc get_frame_desc()
         {
             return require_current_context()->m_frame_desc;
         }
 
-        LUNA_GUI_API Float2U GetPointerDelta()
+        LUNA_GUI_API Float2U get_pointer_delta()
         {
             return require_current_context()->m_pointer_delta;
         }
 
-        static GUIItemHandle add_draw_node(GUINodeKind kind, const c8* label, const RectF& rect, const Float4U& color)
+        static ItemHandle add_draw_node(NodeKind kind, const c8* label, const RectF& rect, const Float4U& color)
         {
-            GUIContext* ctx = require_current_context();
-            GUIItemHandle handle = ctx->add_node(kind, label ? label : "", false);
-            GUINode& node = ctx->m_build_desc.nodes.back();
+            Context* ctx = require_current_context();
+            ItemHandle handle = ctx->add_node(kind, label ? label : "", false);
+            Node& node = ctx->m_build_desc.nodes.back();
             node.absolute_position = true;
             node.position = Float2U(rect.offset_x, rect.offset_y);
             node.paint_rect = rect;
             node.paint_color = color;
-            apply_requested_size(node, GUI::GUISize::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
+            apply_requested_size(node, GUI::Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle DrawRect(const RectF& rect, const Float4U& color, f32 radius)
+        LUNA_GUI_API ItemHandle draw_rect(const RectF& rect, const Float4U& color, f32 radius)
         {
-            GUIItemHandle handle = add_draw_node(GUINodeKind::draw_rect, "DrawRect", rect, color);
+            ItemHandle handle = add_draw_node(NodeKind::draw_rect, "DrawRect", rect, color);
             require_current_context()->m_build_desc.nodes.back().paint_radius = radius;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle DrawCircle(const Float2U& center, f32 radius, const Float4U& color)
+        LUNA_GUI_API ItemHandle draw_circle(const Float2U& center, f32 radius, const Float4U& color)
         {
             f32 r = max(radius, 0.5f);
             RectF rect(center.x - r, center.y - r, r * 2.0f, r * 2.0f);
-            GUIItemHandle handle = add_draw_node(GUINodeKind::draw_circle, "DrawCircle", rect, color);
+            ItemHandle handle = add_draw_node(NodeKind::draw_circle, "DrawCircle", rect, color);
             require_current_context()->m_build_desc.nodes.back().paint_radius = r;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle DrawLine(const Float2U& begin, const Float2U& end, const Float4U& color, f32 width)
+        LUNA_GUI_API ItemHandle draw_line(const Float2U& begin, const Float2U& end, const Float4U& color, f32 width)
         {
             f32 line_width = max(width, 1.0f);
             f32 half_width = line_width * 0.5f;
@@ -1649,19 +1649,19 @@ namespace Luna
             f32 max_x = max(begin.x, end.x) + half_width;
             f32 max_y = max(begin.y, end.y) + half_width;
             RectF rect(min_x, min_y, max(max_x - min_x, 1.0f), max(max_y - min_y, 1.0f));
-            GUIItemHandle handle = add_draw_node(GUINodeKind::draw_line, "DrawLine", rect, color);
-            GUINode& node = require_current_context()->m_build_desc.nodes.back();
+            ItemHandle handle = add_draw_node(NodeKind::draw_line, "DrawLine", rect, color);
+            Node& node = require_current_context()->m_build_desc.nodes.back();
             node.paint_line_begin = begin;
             node.paint_line_end = end;
             node.paint_line_width = line_width;
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle DrawText(const RectF& rect, const c8* text, const Float4U& color, f32 font_size,
-            GUITextAlignment horizontal_alignment, GUITextAlignment vertical_alignment)
+        LUNA_GUI_API ItemHandle draw_text(const RectF& rect, const c8* text, const Float4U& color, f32 font_size,
+            TextAlignment horizontal_alignment, TextAlignment vertical_alignment)
         {
-            GUIItemHandle handle = add_draw_node(GUINodeKind::draw_text, text ? text : "", rect, color);
-            GUINode& node = require_current_context()->m_build_desc.nodes.back();
+            ItemHandle handle = add_draw_node(NodeKind::draw_text, text ? text : "", rect, color);
+            Node& node = require_current_context()->m_build_desc.nodes.back();
             node.text = text ? text : "";
             node.paint_font_size = font_size;
             node.paint_horizontal_alignment = horizontal_alignment;
@@ -1669,10 +1669,10 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle DrawImage(RHI::ITexture* texture, const RectF& rect, const Float4U& color, GUIImageFlag flags)
+        LUNA_GUI_API ItemHandle draw_image(RHI::ITexture* texture, const RectF& rect, const Float4U& color, ImageFlag flags)
         {
-            GUIItemHandle handle = add_draw_node(GUINodeKind::draw_image, "DrawImage", rect, color);
-            GUINode& node = require_current_context()->m_build_desc.nodes.back();
+            ItemHandle handle = add_draw_node(NodeKind::draw_image, "DrawImage", rect, color);
+            Node& node = require_current_context()->m_build_desc.nodes.back();
             node.texture = texture;
             node.image_flags = flags;
             return handle;

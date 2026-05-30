@@ -14,28 +14,28 @@ namespace Luna
 {
     namespace GUI
     {
-        struct GUISize
+        struct Size
         {
             f32 width = 0.0f;
             f32 height = 0.0f;
 
-            static GUISize fixed(f32 width, f32 height)
+            static Size fixed(f32 width, f32 height)
             {
-                GUISize r;
+                Size r;
                 r.width = width;
                 r.height = height;
                 return r;
             }
         };
 
-        enum class GUISizePolicy : u8
+        enum class SizePolicy : u8
         {
             fixed,
             hug,
             fill
         };
 
-        enum class GUILayoutMainAxisAlignment : u8
+        enum class LayoutMainAxisAlignment : u8
         {
             begin,
             center,
@@ -43,7 +43,7 @@ namespace Luna
             space_between
         };
 
-        enum class GUILayoutCrossAxisAlignment : u8
+        enum class LayoutCrossAxisAlignment : u8
         {
             begin,
             center,
@@ -51,16 +51,16 @@ namespace Luna
             stretch
         };
 
-        struct GUIEdgeInsets
+        struct EdgeInsets
         {
             f32 left = 0.0f;
             f32 top = 0.0f;
             f32 right = 0.0f;
             f32 bottom = 0.0f;
 
-            static GUIEdgeInsets all(f32 value)
+            static EdgeInsets all(f32 value)
             {
-                GUIEdgeInsets r;
+                EdgeInsets r;
                 r.left = value;
                 r.top = value;
                 r.right = value;
@@ -68,9 +68,9 @@ namespace Luna
                 return r;
             }
 
-            static GUIEdgeInsets xy(f32 x, f32 y)
+            static EdgeInsets xy(f32 x, f32 y)
             {
-                GUIEdgeInsets r;
+                EdgeInsets r;
                 r.left = x;
                 r.right = x;
                 r.top = y;
@@ -79,17 +79,17 @@ namespace Luna
             }
         };
 
-        struct GUILayoutMetrics
+        struct LayoutMetrics
         {
             Float2U min_size = Float2U(0.0f);
             Float2U preferred_size = Float2U(0.0f);
             Float2U max_size = Float2U(F32_MAX, F32_MAX);
         };
 
-        struct GUILayoutStyle
+        struct LayoutStyle
         {
-            GUISizePolicy width_policy = GUISizePolicy::hug;
-            GUISizePolicy height_policy = GUISizePolicy::hug;
+            SizePolicy width_policy = SizePolicy::hug;
+            SizePolicy height_policy = SizePolicy::hug;
             f32 fixed_width_value = 0.0f;
             f32 fixed_height_value = 0.0f;
             f32 fill_weight_x = 1.0f;
@@ -97,112 +97,112 @@ namespace Luna
             Float2U min_size = Float2U(0.0f);
             Float2U max_size = Float2U(F32_MAX, F32_MAX);
 
-            static GUILayoutStyle hug()
+            static LayoutStyle hug()
             {
-                return GUILayoutStyle();
+                return LayoutStyle();
             }
 
-            static GUILayoutStyle fill(f32 weight = 1.0f)
+            static LayoutStyle fill(f32 weight = 1.0f)
             {
-                GUILayoutStyle r;
-                r.width_policy = GUISizePolicy::fill;
-                r.height_policy = GUISizePolicy::fill;
+                LayoutStyle r;
+                r.width_policy = SizePolicy::fill;
+                r.height_policy = SizePolicy::fill;
                 r.fill_weight_x = weight;
                 r.fill_weight_y = weight;
                 return r;
             }
 
-            static GUILayoutStyle fill_width(f32 weight = 1.0f)
+            static LayoutStyle fill_width(f32 weight = 1.0f)
             {
-                GUILayoutStyle r;
-                r.width_policy = GUISizePolicy::fill;
+                LayoutStyle r;
+                r.width_policy = SizePolicy::fill;
                 r.fill_weight_x = weight;
                 return r;
             }
 
-            static GUILayoutStyle fill_height(f32 weight = 1.0f)
+            static LayoutStyle fill_height(f32 weight = 1.0f)
             {
-                GUILayoutStyle r;
-                r.height_policy = GUISizePolicy::fill;
+                LayoutStyle r;
+                r.height_policy = SizePolicy::fill;
                 r.fill_weight_y = weight;
                 return r;
             }
 
-            static GUILayoutStyle fixed(f32 width, f32 height)
+            static LayoutStyle fixed(f32 width, f32 height)
             {
-                GUILayoutStyle r;
-                r.width_policy = GUISizePolicy::fixed;
-                r.height_policy = GUISizePolicy::fixed;
+                LayoutStyle r;
+                r.width_policy = SizePolicy::fixed;
+                r.height_policy = SizePolicy::fixed;
                 r.fixed_width_value = width;
                 r.fixed_height_value = height;
                 return r;
             }
 
-            static GUILayoutStyle fixed_width(f32 width)
+            static LayoutStyle fixed_width(f32 width)
             {
-                GUILayoutStyle r;
-                r.width_policy = GUISizePolicy::fixed;
+                LayoutStyle r;
+                r.width_policy = SizePolicy::fixed;
                 r.fixed_width_value = width;
                 return r;
             }
 
-            static GUILayoutStyle fixed_height(f32 height)
+            static LayoutStyle fixed_height(f32 height)
             {
-                GUILayoutStyle r;
-                r.height_policy = GUISizePolicy::fixed;
+                LayoutStyle r;
+                r.height_policy = SizePolicy::fixed;
                 r.fixed_height_value = height;
                 return r;
             }
         };
 
-        struct GUILayoutDesc
+        struct LayoutDesc
         {
-            GUIEdgeInsets padding;
+            EdgeInsets padding;
             f32 gap = 6.0f;
-            GUILayoutMainAxisAlignment main_axis_alignment = GUILayoutMainAxisAlignment::begin;
-            GUILayoutCrossAxisAlignment cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+            LayoutMainAxisAlignment main_axis_alignment = LayoutMainAxisAlignment::begin;
+            LayoutCrossAxisAlignment cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
         };
 
-        enum class GUIGridSizingMode : u8
+        enum class GridSizingMode : u8
         {
             fixed_cell_size,
             fixed_columns
         };
 
-        struct GUIGridLayoutDesc
+        struct GridLayoutDesc
         {
-            GUIGridSizingMode sizing_mode = GUIGridSizingMode::fixed_cell_size;
+            GridSizingMode sizing_mode = GridSizingMode::fixed_cell_size;
             Float2U cell_size = Float2U(96.0f, 118.0f);
             u32 columns = 4;
-            GUIEdgeInsets padding = GUIEdgeInsets::all(6.0f);
+            EdgeInsets padding = EdgeInsets::all(6.0f);
             Float2U gap = Float2U(8.0f, 8.0f);
-            GUILayoutCrossAxisAlignment cell_cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+            LayoutCrossAxisAlignment cell_cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
         };
 
-        struct GUICanvasLayoutDesc
+        struct CanvasLayoutDesc
         {
-            GUIEdgeInsets padding;
+            EdgeInsets padding;
             bool clip_children = true;
         };
 
-        struct GUICanvasItemLayout
+        struct CanvasItemLayout
         {
             Float2U anchor_min = Float2U(0.0f, 0.0f);
             Float2U anchor_max = Float2U(0.0f, 0.0f);
             Float2U offset_min = Float2U(0.0f, 0.0f);
             Float2U offset_max = Float2U(0.0f, 0.0f);
 
-            static GUICanvasItemLayout fixed(const Float2U& position, const Float2U& size)
+            static CanvasItemLayout fixed(const Float2U& position, const Float2U& size)
             {
-                GUICanvasItemLayout r;
+                CanvasItemLayout r;
                 r.offset_min = position;
                 r.offset_max = position + size;
                 return r;
             }
 
-            static GUICanvasItemLayout anchored(const Float2U& anchor, const Float2U& anchored_position, const Float2U& size, const Float2U& pivot = Float2U(0.5f, 0.5f))
+            static CanvasItemLayout anchored(const Float2U& anchor, const Float2U& anchored_position, const Float2U& size, const Float2U& pivot = Float2U(0.5f, 0.5f))
             {
-                GUICanvasItemLayout r;
+                CanvasItemLayout r;
                 r.anchor_min = anchor;
                 r.anchor_max = anchor;
                 Float2U min_offset = anchored_position - size * pivot;
@@ -211,9 +211,9 @@ namespace Luna
                 return r;
             }
 
-            static GUICanvasItemLayout stretch(const GUIEdgeInsets& insets = GUIEdgeInsets())
+            static CanvasItemLayout stretch(const EdgeInsets& insets = EdgeInsets())
             {
-                GUICanvasItemLayout r;
+                CanvasItemLayout r;
                 r.anchor_max = Float2U(1.0f, 1.0f);
                 r.offset_min = Float2U(insets.left, insets.top);
                 r.offset_max = Float2U(-insets.right, -insets.bottom);
@@ -221,7 +221,7 @@ namespace Luna
             }
         };
 
-        enum class GUITreeNodeFlag : u32
+        enum class TreeNodeFlag : u32
         {
             none = 0x00,
             selected = 0x01,
@@ -230,7 +230,7 @@ namespace Luna
             open_on_arrow = 0x08
         };
 
-        enum class GUITabBarFlag : u32
+        enum class TabBarFlag : u32
         {
             none = 0x00,
             reorderable = 0x01,
@@ -239,7 +239,7 @@ namespace Luna
             auto_select_new_tabs = 0x08
         };
 
-        enum class GUITabItemFlag : u32
+        enum class TabItemFlag : u32
         {
             none = 0x00,
             selected = 0x01,
@@ -249,7 +249,7 @@ namespace Luna
             button = 0x10
         };
 
-        enum class GUIPopupFlag : u32
+        enum class PopupFlag : u32
         {
             none = 0x00,
             managed = 0x01,
@@ -259,34 +259,34 @@ namespace Luna
             modal = 0x10
         };
 
-        enum class GUINumericEditFlag : u32
+        enum class NumericEditFlag : u32
         {
             none = 0x00,
             input_on_double_click = 0x01
         };
 
-        struct GUIPopupDesc
+        struct PopupDesc
         {
             Float2U position = Float2U(0.0f);
-            GUISize size;
-            GUIPopupFlag flags = GUIPopupFlag::managed | GUIPopupFlag::close_on_outside_click | GUIPopupFlag::close_on_escape | GUIPopupFlag::close_on_blur;
+            Size size;
+            PopupFlag flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
         };
 
-        struct GUITooltipDesc
+        struct TooltipDesc
         {
             Float2U offset = Float2U(14.0f, 18.0f);
-            GUISize size;
+            Size size;
             f32 delay = 0.35f;
             f32 max_width = 360.0f;
         };
 
-        enum class GUIDockPanelMode : u8
+        enum class DockPanelMode : u8
         {
             docking,
             floating
         };
 
-        struct GUIDockPanelStyle
+        struct DockPanelStyle
         {
             bool title_bar = true;
             bool close_button = true;
@@ -294,7 +294,7 @@ namespace Luna
             f32 title_bar_height = 28.0f;
             f32 border_size = 1.0f;
             f32 resize_border_size = 6.0f;
-            GUIDockPanelMode initial_mode = GUIDockPanelMode::docking;
+            DockPanelMode initial_mode = DockPanelMode::docking;
             Float2U floating_position = Float2U(24.0f, 24.0f);
             Float2U floating_size = Float2U(320.0f, 220.0f);
             Float2U min_floating_size = Float2U(120.0f, 80.0f);
@@ -304,32 +304,32 @@ namespace Luna
             Float4U border_color = Float4U(0.24f, 0.29f, 0.36f, 1.0f);
         };
 
-        enum class GUITableTrackSizePolicy : u8
+        enum class TableTrackSizePolicy : u8
         {
             hug,
             fixed
         };
 
-        struct GUITableTrackSize
+        struct TableTrackSize
         {
-            GUITableTrackSizePolicy policy = GUITableTrackSizePolicy::hug;
+            TableTrackSizePolicy policy = TableTrackSizePolicy::hug;
             f32 value = 0.0f;
 
-            static GUITableTrackSize hug()
+            static TableTrackSize hug()
             {
-                return GUITableTrackSize();
+                return TableTrackSize();
             }
 
-            static GUITableTrackSize fixed(f32 value)
+            static TableTrackSize fixed(f32 value)
             {
-                GUITableTrackSize r;
-                r.policy = GUITableTrackSizePolicy::fixed;
+                TableTrackSize r;
+                r.policy = TableTrackSizePolicy::fixed;
                 r.value = value;
                 return r;
             }
         };
 
-        enum class GUITableBackgroundMode : u8
+        enum class TableBackgroundMode : u8
         {
             none,
             solid,
@@ -337,36 +337,36 @@ namespace Luna
             alternate_columns
         };
 
-        struct GUIColorOverride
+        struct ColorOverride
         {
             bool enabled = false;
             Float4U color = Float4U(0.0f);
 
-            static GUIColorOverride none()
+            static ColorOverride none()
             {
-                return GUIColorOverride();
+                return ColorOverride();
             }
 
-            static GUIColorOverride make(const Float4U& value)
+            static ColorOverride make(const Float4U& value)
             {
-                GUIColorOverride r;
+                ColorOverride r;
                 r.enabled = true;
                 r.color = value;
                 return r;
             }
         };
 
-        struct GUITableStyle
+        struct TableStyle
         {
-            GUIEdgeInsets padding = GUIEdgeInsets::xy(6.0f, 4.0f);
+            EdgeInsets padding = EdgeInsets::xy(6.0f, 4.0f);
             f32 border_size = 0.0f;
             Float4U border_color = Float4U(0.25f, 0.28f, 0.32f, 1.0f);
-            GUITableBackgroundMode background_mode = GUITableBackgroundMode::none;
+            TableBackgroundMode background_mode = TableBackgroundMode::none;
             Float4U background_color = Float4U(0.10f, 0.12f, 0.14f, 0.72f);
             Float4U alternate_background_color = Float4U(0.13f, 0.15f, 0.18f, 0.72f);
-            Vector<GUIColorOverride> row_colors;
-            Vector<GUIColorOverride> column_colors;
-            Vector<GUIColorOverride> cell_colors;
+            Vector<ColorOverride> row_colors;
+            Vector<ColorOverride> column_colors;
+            Vector<ColorOverride> cell_colors;
             bool row_separators = false;
             bool column_separators = false;
             f32 separator_size = 1.0f;
@@ -376,12 +376,12 @@ namespace Luna
             f32 resize_hit_size = 6.0f;
         };
 
-        struct GUITableDesc
+        struct TableDesc
         {
             u32 columns = 1;
-            Vector<GUITableTrackSize> column_sizes;
-            Vector<GUITableTrackSize> row_sizes;
-            GUITableStyle style;
+            Vector<TableTrackSize> column_sizes;
+            Vector<TableTrackSize> row_sizes;
+            TableStyle style;
         };
     }
 }

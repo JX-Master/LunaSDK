@@ -30,9 +30,9 @@ namespace Luna
 {
     namespace GUI
     {
-        using GUIID = u64;
+        using id_t = u64;
 
-        enum class GUIInputEventType : u8
+        enum class InputEventType : u8
         {
             pointer_enter,
             pointer_leave,
@@ -47,7 +47,7 @@ namespace Luna
             blur
         };
 
-        enum class GUIPointerButton : u8
+        enum class PointerButton : u8
         {
             left,
             right,
@@ -56,7 +56,7 @@ namespace Luna
             extra2
         };
 
-        enum class GUIKey : u16
+        enum class Key : u16
         {
             unknown,
             tab,
@@ -97,7 +97,7 @@ namespace Luna
             z
         };
 
-        enum class GUIKeyModifierFlag : u8
+        enum class KeyModifierFlag : u8
         {
             none = 0x00,
             ctrl = 0x01,
@@ -106,14 +106,14 @@ namespace Luna
             system = 0x08
         };
 
-        enum class GUITextAlignment : u8
+        enum class TextAlignment : u8
         {
             begin,
             center,
             end
         };
 
-        struct GUIFrameDesc
+        struct FrameDesc
         {
             Float2U surface_size = Float2U(0.0f);
             UInt2U framebuffer_size = UInt2U(0, 0);
@@ -121,45 +121,45 @@ namespace Luna
             f32 delta_time = 1.0f / 60.0f;
         };
 
-        struct GUIInputEvent
+        struct InputEvent
         {
-            GUIInputEventType type = GUIInputEventType::pointer_move;
+            InputEventType type = InputEventType::pointer_move;
             u64 device_id = 0;
             u64 pointer_id = 0;
             Float2U position = Float2U(0.0f);
             Float2U wheel_delta = Float2U(0.0f);
-            GUIPointerButton button = GUIPointerButton::left;
-            GUIKey key = GUIKey::unknown;
-            GUIKeyModifierFlag modifiers = GUIKeyModifierFlag::none;
+            PointerButton button = PointerButton::left;
+            Key key = Key::unknown;
+            KeyModifierFlag modifiers = KeyModifierFlag::none;
             String text;
         };
 
-        struct GUITextInputState
+        struct TextInputState
         {
             bool active = false;
             RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             i32 cursor = 0;
         };
 
-        struct GUIClipboardIO
+        struct ClipboardIO
         {
             void* userdata = nullptr;
             RV(*get_text)(String& out_text, void* userdata) = nullptr;
             RV(*set_text)(const c8* text, usize size, void* userdata) = nullptr;
         };
 
-        struct GUIItemHandle
+        struct ItemHandle
         {
             object_t context = nullptr;
-            GUIID id = 0;
+            id_t id = 0;
             u64 generation = 0;
         };
 
-        template <typename _Ty>
-        struct GUIStateKey
+        template <typename T>
+        struct StateKey
         {
             Name name;
-            _Ty default_value;
+            T default_value;
         };
     }
 }

@@ -48,37 +48,37 @@ namespace Luna
 
     void MainEditor::draw_main_menu_bar()
     {
-        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_height(34.0f));
-        GUI::BeginMenuBar("Main Menu Bar");
-        GUI::BeginMenu("File");
-        GUI::GUIItemHandle save_all_item = GUI::MenuItem("Save All");
-        GUI::EndMenu();
+        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_height(34.0f));
+        GUI::begin_menu_bar("Main Menu Bar");
+        GUI::begin_menu("File");
+        GUI::ItemHandle save_all_item = GUI::menu_item("Save All");
+        GUI::end_menu();
 
-        GUI::BeginMenu("Edit");
-        GUI::GUIItemHandle undo_item = GUI::MenuItem("Undo", "Ctrl+Z", false, can_undo());
-        GUI::GUIItemHandle redo_item = GUI::MenuItem("Redo", "Ctrl+Shift+Z", false, can_redo());
-        GUI::EndMenu();
+        GUI::begin_menu("Edit");
+        GUI::ItemHandle undo_item = GUI::menu_item("Undo", "Ctrl+Z", false, can_undo());
+        GUI::ItemHandle redo_item = GUI::menu_item("Redo", "Ctrl+Shift+Z", false, can_redo());
+        GUI::end_menu();
 
-        GUI::BeginMenu("View");
+        GUI::begin_menu("View");
         for(usize i = 0; i < 4; ++i)
         {
             c8 buf[32];
             snprintf(buf, 32, "Asset Browser %u", (u32)i);
-            GUI::MenuItem(buf, nullptr, &m_asset_browsers_enabled[i]);
+            GUI::menu_item(buf, nullptr, &m_asset_browsers_enabled[i]);
         }
-        GUI::MenuItem("Memory Profiler", nullptr, &m_memory_profiler_window_enabled);
-        GUI::EndMenu();
-        GUI::EndMenuBar();
+        GUI::menu_item("Memory Profiler", nullptr, &m_memory_profiler_window_enabled);
+        GUI::end_menu();
+        GUI::end_menu_bar();
 
-        if(GUI::IsItemClicked(save_all_item))
+        if(GUI::is_item_clicked(save_all_item))
         {
             auto _ = save_all();
         }
-        if(GUI::IsItemClicked(undo_item))
+        if(GUI::is_item_clicked(undo_item))
         {
             undo();
         }
-        if(GUI::IsItemClicked(redo_item))
+        if(GUI::is_item_clicked(redo_item))
         {
             redo();
         }
@@ -235,7 +235,7 @@ namespace Luna
             }
 
             sz = m_window->get_size();
-            GUI::GUIFrameDesc gui_frame;
+            GUI::FrameDesc gui_frame;
             gui_frame.surface_size = Float2U((f32)sz.x, (f32)sz.y);
             gui_frame.framebuffer_size = m_window->get_framebuffer_size();
             gui_frame.dpi_scale = m_window->get_dpi_scale_factor();
@@ -246,14 +246,14 @@ namespace Luna
 
             //m_ctx->show_demo_window();
 
-            GUI::GUILayoutDesc root_layout;
-            root_layout.padding = GUI::GUIEdgeInsets::all(0.0f);
+            GUI::LayoutDesc root_layout;
+            root_layout.padding = GUI::EdgeInsets::all(0.0f);
             root_layout.gap = 0.0f;
-            GUI::BeginVLayout("Studio Root", RectF(0.0f, 0.0f, (f32)sz.x, (f32)sz.y), root_layout);
+            GUI::begin_v_layout("Studio Root", RectF(0.0f, 0.0f, (f32)sz.x, (f32)sz.y), root_layout);
             draw_main_menu_bar();
 
-            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill());
-            GUI::BeginDockSpace("Studio DockSpace");
+            GUI::set_next_item_layout(GUI::LayoutStyle::fill());
+            GUI::begin_dock_space("Studio DockSpace");
             for (usize i = 0; i < 4; ++i)
             {
                 if (m_asset_browsers_enabled[i])
@@ -281,8 +281,8 @@ namespace Luna
                     ++iter;
                 }
             }
-            GUI::EndDockSpace();
-            GUI::EndVLayout();
+            GUI::end_dock_space();
+            GUI::end_v_layout();
 
             lulet(gui_desc, m_gui->end_build());
             luexp(m_gui->submit(gui_desc));
@@ -496,11 +496,11 @@ namespace Luna
                 }
                 else
                 {
-                    GUI::DrawText(draw_rect, asset_type.c_str(), Float4U(1.0f), 16.0f, GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
+                    GUI::draw_text(draw_rect, asset_type.c_str(), Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
                 }
                 return;
             }
-            GUI::DrawText(draw_rect, asset_type.c_str(), Float4U(1.0f), 16.0f, GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
+            GUI::draw_text(draw_rect, asset_type.c_str(), Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
         }
     }
 }

@@ -46,15 +46,15 @@ namespace Luna
         lutry
         {
             auto desc = tex->get_desc();
-            GUI::BeginWindow(name, &m_open, GUI::GUISize::fixed(max((f32)desc.width + 16.0f, 220.0f), max((f32)desc.height + 46.0f, 120.0f)));
-            GUI::Image(tex.get(), GUI::GUISize::fixed((f32)desc.width, (f32)desc.height));
-            GUI::EndWindow();
+            GUI::begin_window(name, &m_open, GUI::Size::fixed(max((f32)desc.width + 16.0f, 220.0f), max((f32)desc.height + 46.0f, 120.0f)));
+            GUI::image(tex.get(), GUI::Size::fixed((f32)desc.width, (f32)desc.height));
+            GUI::end_window();
         }
         lucatch
         {
-            GUI::BeginWindow(name, &m_open, GUI::GUISize::fixed(260.0f, 120.0f));
-            GUI::Text("Texture Unavailable.");
-            GUI::EndWindow();
+            GUI::begin_window(name, &m_open, GUI::Size::fixed(260.0f, 120.0f));
+            GUI::text("Texture Unavailable.");
+            GUI::end_window();
         }
     }
     static void on_draw_tex_tile(object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
@@ -64,12 +64,12 @@ namespace Luna
             Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
             if (tex)
             {
-                GUI::DrawImage(tex.get(), draw_rect);
+                GUI::draw_image(tex.get(), draw_rect);
             }
         }
         else
         {
-            GUI::DrawText(draw_rect, "Texture", Float4U(1.0f), 16.0f, GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
+            GUI::draw_text(draw_rect, "Texture", Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
         }
     }
     static Ref<IAssetEditor> new_tex_editor(object_t userdata, Asset::asset_t editing_asset)
