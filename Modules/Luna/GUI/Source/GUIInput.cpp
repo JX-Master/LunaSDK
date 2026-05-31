@@ -920,6 +920,7 @@ namespace Luna
         {
             Node* menu = find_node(menu_id);
             if(!menu || menu->kind != NodeKind::menu || !menu->enabled || !menu->menu_popup_id) return;
+            m_next_popup_opener_id = menu_id;
             open_popup(ItemHandle{get_object(), menu->menu_popup_id, m_generation});
             ItemResult& result = get_or_create_current_result(menu->id);
             result.states.insert_or_assign(Name("gui.open"), Any(true));

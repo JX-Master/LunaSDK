@@ -846,6 +846,7 @@ namespace Luna
         {
             id_t id = 0;
             id_t parent_id = 0;
+            id_t opener_id = 0;
             PopupFlag flags = PopupFlag::none;
         };
 
@@ -1270,6 +1271,7 @@ namespace Luna
             Vector<PopupStackEntry> m_open_popup_stack;
             Vector<id_t> m_popup_build_stack;
             HashMap<id_t, u32, IdHash> m_popup_node_indices;
+            id_t m_next_popup_opener_id = 0;
             id_t m_active_tab_bar_id = 0;
             id_t m_active_tab_item_id = 0;
             bool m_active_tab_close = false;
@@ -1340,6 +1342,7 @@ namespace Luna
             void prune_popup_stack();
             void close_popup_stack_from(usize index);
             i32 popup_stack_index(id_t id) const;
+            id_t current_clicked_item_id() const;
             i32 popup_level_at_pos(const Float2U& pos) const;
             bool close_popups_for_pointer_down(const Float2U& pos);
             void open_menu_popup(id_t menu_id);

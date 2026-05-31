@@ -49,7 +49,6 @@ namespace Luna
         bool dock_panel_a_open = true;
         bool dock_panel_b_open = true;
         bool tab_document_open[4] = { true, true, true, true };
-        bool popup_open = false;
         bool floating_window_open = false;
         Float2U popup_position = Float2U(120.0f, 120.0f);
         String overview_quick_edit_text = "Overview quick edit";
@@ -100,8 +99,6 @@ namespace Luna
         GUI::ItemHandle double_click_item;
         GUI::ItemHandle right_click_item;
         GUI::ItemHandle open_window_button;
-        GUI::ItemHandle popup_action;
-        GUI::ItemHandle popup_close;
         GUI::ItemHandle managed_popup_button;
         GUI::ItemHandle managed_popup;
         GUI::ItemHandle managed_popup_action;
@@ -556,9 +553,8 @@ namespace Luna
         GUI::end_menu_bar(app.gui);
 
         demo_section(app, "Popups and context menus");
-        GUI::text(app.gui, "Right-click the selectable below, or click the buttons to open legacy and stack-managed popups.");
-        handles.right_click_item = GUI::selectable(app.gui, "Right click me", app.popup_open);
-        handles.primary_button = GUI::button(app.gui, "Open Legacy Popup");
+        GUI::text(app.gui, "Right-click the selectable below, or click the button to open a stack-managed popup.");
+        handles.right_click_item = GUI::selectable(app.gui, "Right click me");
         handles.managed_popup_button = GUI::button(app.gui, "Open Stack Popup");
         GUI::text(app.gui, app.popup_text.c_str());
 
@@ -949,28 +945,10 @@ namespace Luna
                 FrameHandles handles = {};
                 u32 built_tab = app.selected_tab;
                 draw_showcase(app, handles, frame.surface_size, built_tab);
-                if(app.popup_open)
-                {
-                    GUI::begin_popup(app.gui, "Popup Test", app.popup_position, GUI::Size::fixed(180.0f, 72.0f));
-                    handles.popup_action = GUI::selectable(app.gui, "Popup action");
-                    handles.popup_close = GUI::selectable(app.gui, "Close");
-                    GUI::end_popup(app.gui);
-                }
 
                 lulet(desc, app.gui->end_build());
                 luexp(app.gui->submit(desc));
                 luexp(GUIWindow::update_text_input(&input_adapter));
-
-                if(GUI::is_item_clicked(handles.popup_action))
-                {
-                    app.popup_text = "Popup action clicked";
-                    app.popup_open = false;
-                }
-                if(GUI::is_item_clicked(handles.popup_close))
-                {
-                    app.popup_text = "Popup closed";
-                    app.popup_open = false;
-                }
 
                 if(built_tab == DEMO_TAB_WIDGETS)
                 {
@@ -985,9 +963,6 @@ namespace Luna
                     if(GUI::is_item_right_clicked(handles.right_click_item))
                     {
                         ++app.right_click_count;
-                        app.popup_open = true;
-                        app.popup_position = GUI::get_pointer_position(app.gui);
-                        app.popup_text = "Widget context popup";
                     }
                 }
                 else if(built_tab == DEMO_TAB_LAYOUT)
@@ -1022,12 +997,6 @@ namespace Luna
                     {
                         app.popup_text = "Menu: Dark theme";
                     }
-                    if(GUI::is_item_clicked(handles.primary_button))
-                    {
-                        app.popup_open = true;
-                        app.popup_position = GUI::get_pointer_position(app.gui);
-                        app.popup_text = "Popup opened by button";
-                    }
                     if(GUI::is_item_clicked(handles.managed_popup_button))
                     {
                         app.popup_position = GUI::get_pointer_position(app.gui);
@@ -1051,9 +1020,9 @@ namespace Luna
                     }
                     if(GUI::is_item_right_clicked(handles.right_click_item))
                     {
-                        app.popup_open = true;
                         app.popup_position = GUI::get_pointer_position(app.gui);
-                        app.popup_text = "Popup opened by right click";
+                        app.popup_text = "Stack popup opened by right click";
+                        GUI::open_popup(app.gui, handles.managed_popup);
                     }
                 }
                 else if(built_tab == DEMO_TAB_STATE)

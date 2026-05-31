@@ -71,6 +71,18 @@ namespace Luna
             return -1;
         }
 
+        id_t Context::current_clicked_item_id() const
+        {
+            for(const auto& item : m_current_results)
+            {
+                auto iter = item.second.states.find(Name("gui.clicked"));
+                if(iter == item.second.states.end()) continue;
+                const bool* clicked = iter->second.as<bool>();
+                if(clicked && *clicked) return item.first;
+            }
+            return 0;
+        }
+
         bool Context::is_popup_open(id_t id) const
         {
             return popup_stack_index(id) >= 0;
@@ -165,7 +177,11 @@ namespace Luna
         void Context::open_popup(ItemHandle popup)
         {
             lutsassert();
-            if(!popup.id || popup.context != get_object()) return;
+            if(!popup.id || popup.context != get_object())
+            {
+                m_next_popup_opener_id = 0;
+                return;
+            }
 
             const Node* node = find_popup_node_in_desc(m_submitted_desc, popup.id);
             if(!node)
@@ -175,6 +191,8 @@ namespace Luna
 
             PopupFlag flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
             id_t parent_id = 0;
+            id_t opener_id = m_next_popup_opener_id ? m_next_popup_opener_id : current_clicked_item_id();
+            m_next_popup_opener_id = 0;
             if(node)
             {
                 flags = node->popup_flags;
@@ -193,6 +211,10 @@ namespace Luna
                 persistent.open = true;
                 ItemResult& result = get_or_create_current_result(popup.id);
                 result.states.insert_or_assign(Name("gui.open"), Any(true));
+                if(opener_id)
+                {
+                    m_open_popup_stack[(usize)existing].opener_id = opener_id;
+                }
                 return;
             }
 
@@ -223,6 +245,7 @@ namespace Luna
             PopupStackEntry entry;
             entry.id = popup.id;
             entry.parent_id = parent_id;
+            entry.opener_id = opener_id;
             entry.flags = flags;
             m_open_popup_stack.push_back(entry);
             PersistentItemState& persistent = get_or_create_persistent_state(popup.id);
@@ -275,6 +298,20 @@ namespace Luna
                 if(point_in_rect(pos, layout.rect) && point_in_rect(pos, layout.clip_rect))
                 {
                     return (i32)level;
+                }
+                id_t opener_id = m_open_popup_stack[level].opener_id;
+                if(opener_id)
+                {
+                    for(usize node_index = 0; node_index < m_submitted_desc.nodes.size(); ++node_index)
+                    {
+                        if(m_submitted_desc.nodes[node_index].id != opener_id) continue;
+                        const NodeLayout& opener_layout = m_layouts[node_index];
+                        if(point_in_rect(pos, opener_layout.rect) && point_in_rect(pos, opener_layout.clip_rect))
+                        {
+                            return (i32)level;
+                        }
+                        break;
+                    }
                 }
             }
             return -1;
