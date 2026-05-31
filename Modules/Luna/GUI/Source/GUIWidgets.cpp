@@ -71,6 +71,11 @@ namespace Luna
             context_from_interface(context)->tree_pop();
         }
 
+        LUNA_GUI_API ItemHandle custom_node(IContext* context, Ref<Node> node, const c8* label, bool interactive)
+        {
+            return context_from_interface(context)->add_node(move(node), label, interactive);
+        }
+
         LUNA_GUI_API bool begin_drag_drop_source(IContext* context, ItemHandle source, const Name& payload_type)
         {
             return context_from_interface(context)->begin_drag_drop_source(source, payload_type);
@@ -135,7 +140,7 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::h_layout, label ? label : "HLayout", Size(), &handle);
+            ctx->begin_container(Ref<Node>(new_object<HLayoutNode>()), label ? label : "HLayout", Size(), &handle);
             ctx->m_build_desc.nodes.back().layout_desc = desc;
             return handle;
         }
@@ -144,7 +149,7 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::h_layout, label ? label : "HLayout", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
+            ctx->begin_container(Ref<Node>(new_object<HLayoutNode>()), label ? label : "HLayout", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
             Node& node = ctx->m_build_desc.nodes.back();
             node.layout_desc = desc;
             node.absolute_position = true;
@@ -161,7 +166,7 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::v_layout, label ? label : "VLayout", Size(), &handle);
+            ctx->begin_container(Ref<Node>(new_object<VLayoutNode>()), label ? label : "VLayout", Size(), &handle);
             ctx->m_build_desc.nodes.back().layout_desc = desc;
             return handle;
         }
@@ -170,7 +175,7 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::v_layout, label ? label : "VLayout", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
+            ctx->begin_container(Ref<Node>(new_object<VLayoutNode>()), label ? label : "VLayout", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
             Node& node = ctx->m_build_desc.nodes.back();
             node.layout_desc = desc;
             node.absolute_position = true;
@@ -187,8 +192,9 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::table_layout, label ? label : "TableLayout", Size(), &handle);
-            ctx->m_build_desc.nodes.back().table_desc = desc;
+            Ref<TableLayoutNode> node = new_object<TableLayoutNode>();
+            node->desc = desc;
+            ctx->begin_container(Ref<Node>(node), label ? label : "TableLayout", Size(), &handle);
             return handle;
         }
 
@@ -206,8 +212,9 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::grid_layout, label ? label : "GridLayout", Size(), &handle);
-            ctx->m_build_desc.nodes.back().grid_desc = desc;
+            Ref<GridLayoutNode> node = new_object<GridLayoutNode>();
+            node->desc = desc;
+            ctx->begin_container(Ref<Node>(node), label ? label : "GridLayout", Size(), &handle);
             return handle;
         }
 
@@ -220,8 +227,9 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::canvas_layout, label ? label : "CanvasLayout", size, &handle);
-            ctx->m_build_desc.nodes.back().canvas_desc = desc;
+            Ref<CanvasLayoutNode> node = new_object<CanvasLayoutNode>();
+            node->desc = desc;
+            ctx->begin_container(Ref<Node>(node), label ? label : "CanvasLayout", size, &handle);
             return handle;
         }
 
@@ -229,11 +237,12 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::canvas_layout, label ? label : "CanvasLayout", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.canvas_desc = desc;
-            node.absolute_position = true;
-            node.position = Float2U(rect.offset_x, rect.offset_y);
+            Ref<CanvasLayoutNode> node = new_object<CanvasLayoutNode>();
+            node->desc = desc;
+            ctx->begin_container(Ref<Node>(node), label ? label : "CanvasLayout", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
+            Node& built_node = ctx->m_build_desc.nodes.back();
+            built_node.absolute_position = true;
+            built_node.position = Float2U(rect.offset_x, rect.offset_y);
             return handle;
         }
 
@@ -245,7 +254,7 @@ namespace Luna
         LUNA_GUI_API ItemHandle begin_dock_space(IContext* context, const c8* label, const Size& size)
         {
             ItemHandle handle;
-            context_from_interface(context)->begin_container(NodeKind::dock_space, label ? label : "DockSpace", size, &handle);
+            context_from_interface(context)->begin_container(Ref<Node>(new_object<DockSpaceNode>()), label ? label : "DockSpace", size, &handle);
             return handle;
         }
 
@@ -259,7 +268,7 @@ namespace Luna
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
             ctx->set_next_dock_panel_style(style, open);
-            ctx->begin_container(NodeKind::v_layout, label ? label : "DockPanel", Size(), &handle);
+            ctx->begin_container(Ref<Node>(new_object<VLayoutNode>()), label ? label : "DockPanel", Size(), &handle);
             ctx->m_build_desc.nodes.back().layout_desc = desc;
             return handle;
         }
@@ -272,7 +281,7 @@ namespace Luna
         LUNA_GUI_API ItemHandle begin_scroll_view(IContext* context, const c8* label, const Size& size)
         {
             ItemHandle handle;
-            context_from_interface(context)->begin_container(NodeKind::scroll_view, label ? label : "ScrollView", size, &handle);
+            context_from_interface(context)->begin_container(Ref<Node>(new_object<ScrollViewNode>()), label ? label : "ScrollView", size, &handle);
             return handle;
         }
 
@@ -284,7 +293,7 @@ namespace Luna
         LUNA_GUI_API ItemHandle begin_window(IContext* context, const c8* label, const Size& size)
         {
             ItemHandle handle;
-            context_from_interface(context)->begin_container(NodeKind::window, label ? label : "Window", size, &handle);
+            context_from_interface(context)->begin_container(Ref<Node>(new_object<WindowNode>()), label ? label : "Window", size, &handle);
             return handle;
         }
 
@@ -292,10 +301,10 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::window, label ? label : "Window", size, &handle);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.bool_value = open;
-            node.interactive = open != nullptr;
+            Ref<WindowNode> node = new_object<WindowNode>();
+            node->open = open;
+            ctx->begin_container(Ref<Node>(node), label ? label : "Window", size, &handle);
+            ctx->m_build_desc.nodes.back().interactive = open != nullptr;
             return handle;
         }
 
@@ -352,7 +361,7 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::menu_bar, label ? label : "MenuBar", Size(), &handle);
+            ctx->begin_container(Ref<Node>(new_object<MenuBarNode>()), label ? label : "MenuBar", Size(), &handle);
             Node& node = ctx->m_build_desc.nodes.back();
             LayoutDesc default_desc;
             if(desc.padding.left == 0.0f && desc.padding.top == 0.0f && desc.padding.right == 0.0f && desc.padding.bottom == 0.0f &&
@@ -375,7 +384,7 @@ namespace Luna
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::menu_bar, label ? label : "MenuBar", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
+            ctx->begin_container(Ref<Node>(new_object<MenuBarNode>()), label ? label : "MenuBar", Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
             Node& node = ctx->m_build_desc.nodes.back();
             LayoutDesc default_desc;
             if(desc.padding.left == 0.0f && desc.padding.top == 0.0f && desc.padding.right == 0.0f && desc.padding.bottom == 0.0f &&
@@ -404,20 +413,25 @@ namespace Luna
         LUNA_GUI_API ItemHandle begin_menu(IContext* context, const c8* label, bool enabled)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::menu, label ? label : "", enabled);
+            Ref<MenuNode> menu = new_object<MenuNode>();
+            menu->enabled = enabled;
+            if(!ctx->m_parent_stack.empty() && ctx->m_parent_stack.back() != U32_MAX)
+            {
+                u32 parent = ctx->m_parent_stack.back();
+                menu->top_level_menu = parent < ctx->m_build_desc.nodes.size() && ctx->m_build_desc.nodes[parent].is_menu_bar();
+            }
+            ItemHandle handle = ctx->add_node(Ref<Node>(menu), label ? label : "", enabled);
             u32 menu_index = (u32)ctx->m_build_desc.nodes.size() - 1;
-            Node& menu_node = ctx->m_build_desc.nodes[menu_index];
-            menu_node.enabled = enabled;
 
             PopupDesc popup_desc;
             popup_desc.flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
             ItemHandle popup = ctx->begin_popup("##MenuPopup", popup_desc);
             Node& popup_node = ctx->m_build_desc.nodes.back();
-            popup_node.popup_owner_id = handle.id;
+            popup_node.set_popup_owner(handle.id);
             popup_node.layout_desc.padding = EdgeInsets::xy(6.0f, 5.0f);
             popup_node.layout_desc.gap = 1.0f;
             popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
-            ctx->m_build_desc.nodes[menu_index].menu_popup_id = popup.id;
+            ctx->m_build_desc.nodes[menu_index].set_menu_popup(popup.id);
             return handle;
         }
 
@@ -429,42 +443,38 @@ namespace Luna
         LUNA_GUI_API ItemHandle menu_item(IContext* context, const c8* label, const c8* shortcut, bool selected, bool enabled)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::menu_item, label ? label : "", enabled);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.shortcut = shortcut ? shortcut : "";
-            node.selected = selected;
-            node.enabled = enabled;
-            return handle;
+            Ref<MenuItemNode> node = new_object<MenuItemNode>();
+            node->shortcut = shortcut ? shortcut : "";
+            node->selected = selected;
+            node->enabled = enabled;
+            return ctx->add_node(Ref<Node>(node), label ? label : "", enabled);
         }
 
         LUNA_GUI_API ItemHandle menu_item(IContext* context, const c8* label, const c8* shortcut, bool* selected, bool enabled)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::menu_item, label ? label : "", enabled);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.shortcut = shortcut ? shortcut : "";
-            node.bool_value = selected;
-            node.selected = selected ? *selected : false;
-            node.enabled = enabled;
-            return handle;
+            Ref<MenuItemNode> node = new_object<MenuItemNode>();
+            node->shortcut = shortcut ? shortcut : "";
+            node->selected_value = selected;
+            node->selected = selected ? *selected : false;
+            node->enabled = enabled;
+            return ctx->add_node(Ref<Node>(node), label ? label : "", enabled);
         }
 
         LUNA_GUI_API ItemHandle menu_separator(IContext* context)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::menu_separator, "##MenuSeparator", false);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.enabled = false;
-            return handle;
+            Ref<MenuSeparatorNode> node = new_object<MenuSeparatorNode>();
+            return ctx->add_node(Ref<Node>(node), "##MenuSeparator", false);
         }
 
         LUNA_GUI_API ItemHandle begin_tab_bar(IContext* context, const c8* label, TabBarFlag flags)
         {
             ItemHandle handle;
             Context* ctx = context_from_interface(context);
-            ctx->begin_container(NodeKind::tab_bar, label ? label : "TabBar", Size(), &handle);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.tab_bar_flags = flags;
+            Ref<TabBarNode> node = new_object<TabBarNode>();
+            node->flags = flags;
+            ctx->begin_container(Ref<Node>(node), label ? label : "TabBar", Size(), &handle);
 
             PersistentItemState& state = ctx->get_or_create_persistent_state(handle.id);
             TabBuildScope scope;
@@ -494,11 +504,12 @@ namespace Luna
         {
             Context* ctx = context_from_interface(context);
             luassert(!ctx->m_tab_build_stack.empty());
-            ItemHandle handle = ctx->add_node(NodeKind::tab_item, label ? label : "", true);
+            Ref<TabItemNode> tab_node = new_object<TabItemNode>();
+            tab_node->open = open;
+            tab_node->flags = flags;
+            ItemHandle handle = ctx->add_node(Ref<Node>(tab_node), label ? label : "", true);
             u32 index = (u32)ctx->m_build_desc.nodes.size() - 1;
             Node& node = ctx->m_build_desc.nodes[index];
-            node.bool_value = open;
-            node.tab_item_flags = flags;
             bool item_open = !open || *open;
 
             TabBuildScope& scope = ctx->m_tab_build_stack.back();
@@ -523,7 +534,7 @@ namespace Luna
                 ((scope.selected_id && scope.selected_id == handle.id) ||
                     (!scope.selected_id && !scope.visible_tab_chosen) ||
                     explicit_selected);
-            node.selected = visible;
+            node.set_tab_item_selected(visible);
             if(visible)
             {
                 scope.visible_tab_chosen = true;
@@ -541,9 +552,9 @@ namespace Luna
         LUNA_GUI_API ItemHandle tab_item_button(IContext* context, const c8* label, TabItemFlag flags)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::tab_item, label ? label : "", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.tab_item_flags = (TabItemFlag)((u32)flags | (u32)TabItemFlag::button);
+            Ref<TabItemNode> tab_node = new_object<TabItemNode>();
+            tab_node->flags = (TabItemFlag)((u32)flags | (u32)TabItemFlag::button);
+            ItemHandle handle = ctx->add_node(Ref<Node>(tab_node), label ? label : "", true);
             return handle;
         }
 
@@ -556,10 +567,10 @@ namespace Luna
             for(u32 child = ctx->m_build_desc.nodes[parent].first_child; child != U32_MAX; child = ctx->m_build_desc.nodes[child].next_sibling)
             {
                 Node& node = ctx->m_build_desc.nodes[child];
-                if(node.kind != NodeKind::tab_item || strcmp(node.text.c_str(), label ? label : "") != 0) continue;
-                if(node.bool_value)
+                if(!node.is_tab_item() || strcmp(node.text.c_str(), label ? label : "") != 0) continue;
+                if(node.bool_value())
                 {
-                    *node.bool_value = false;
+                    *node.bool_value() = false;
                 }
                 break;
             }
@@ -567,13 +578,16 @@ namespace Luna
 
         LUNA_GUI_API ItemHandle button(IContext* context, const c8* label)
         {
-            return context_from_interface(context)->add_node(NodeKind::button, label ? label : "", true);
+            Context* ctx = context_from_interface(context);
+            Ref<ButtonNode> node = new_object<ButtonNode>();
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle button(IContext* context, const c8* label, const RectF& rect)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::button, label ? label : "", true);
+            Ref<ButtonNode> button_node = new_object<ButtonNode>();
+            ItemHandle handle = ctx->add_node(Ref<Node>(button_node), label ? label : "", true);
             Node& node = ctx->m_build_desc.nodes.back();
             node.absolute_position = true;
             node.position = Float2U(rect.offset_x, rect.offset_y);
@@ -584,154 +598,154 @@ namespace Luna
         LUNA_GUI_API ItemHandle selectable(IContext* context, const c8* label, bool selected)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::selectable, label ? label : "", true);
-            ctx->m_build_desc.nodes.back().selected = selected;
-            return handle;
+            Ref<SelectableNode> node = new_object<SelectableNode>();
+            node->selected = selected;
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle text(IContext* context, const c8* text)
         {
-            return context_from_interface(context)->add_node(NodeKind::text, text ? text : "", false);
+            Context* ctx = context_from_interface(context);
+            Ref<TextNode> node = new_object<TextNode>();
+            return ctx->add_node(Ref<Node>(node), text ? text : "", false);
         }
 
         LUNA_GUI_API ItemHandle checkbox(IContext* context, const c8* label, bool* value)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::checkbox, label ? label : "", true);
-            ctx->m_build_desc.nodes.back().bool_value = value;
-            return handle;
+            Ref<CheckboxNode> node = new_object<CheckboxNode>();
+            node->value = value;
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle radio_button(IContext* context, const c8* label, bool selected)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::radio_button, label ? label : "", true);
-            ctx->m_build_desc.nodes.back().selected = selected;
-            return handle;
+            Ref<RadioButtonNode> node = new_object<RadioButtonNode>();
+            node->selected = selected;
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle radio_button(IContext* context, const c8* label, bool* value)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::radio_button, label ? label : "", true);
-            ctx->m_build_desc.nodes.back().bool_value = value;
-            return handle;
+            Ref<RadioButtonNode> node = new_object<RadioButtonNode>();
+            node->value = value;
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle radio_button(IContext* context, const c8* label, i32* value, i32 button_value)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::radio_button, label ? label : "", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.i32_value = value;
-            node.item_value = button_value;
-            node.selected = value && *value == button_value;
-            return handle;
+            Ref<RadioButtonNode> node = new_object<RadioButtonNode>();
+            node->i32_value = value;
+            node->item_value = button_value;
+            node->selected = value && *value == button_value;
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle toggle_switch(IContext* context, const c8* label, bool* value)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::toggle_switch, label ? label : "", true);
-            ctx->m_build_desc.nodes.back().bool_value = value;
-            return handle;
+            Ref<ToggleSwitchNode> node = new_object<ToggleSwitchNode>();
+            node->value = value;
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle input_text(IContext* context, const c8* label, String& value)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::input_text, label ? label : "", true);
-            ctx->m_build_desc.nodes.back().string_value = &value;
+            Ref<InputTextNode> input_node = new_object<InputTextNode>();
+            input_node->value = &value;
+            ItemHandle handle = ctx->add_node(Ref<Node>(input_node), label ? label : "", true);
             return handle;
         }
 
         LUNA_GUI_API ItemHandle image(IContext* context, RHI::ITexture* texture, const Size& size, ImageFlag flags)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::image, "Image", false);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.texture = texture;
-            node.image_flags = flags;
-            apply_requested_size(node, size);
+            Ref<ImageNode> node = new_object<ImageNode>();
+            node->image = texture;
+            node->flags = flags;
+            apply_requested_size(*node, size);
+            ItemHandle handle = ctx->add_node(Ref<Node>(node), "Image", false);
             return handle;
         }
 
         LUNA_GUI_API ItemHandle collapsing_header(IContext* context, const c8* label)
         {
-            return context_from_interface(context)->add_node(NodeKind::collapsing_header, label ? label : "", true);
+            Context* ctx = context_from_interface(context);
+            Ref<CollapsingHeaderNode> node = new_object<CollapsingHeaderNode>();
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle tree_node(IContext* context, const c8* label, TreeNodeFlag flags)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::tree_node, label ? label : "", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.tree_flags = flags;
-            node.tree_depth = ctx->m_tree_depth;
-            node.selected = test_flags(flags, TreeNodeFlag::selected);
-            return handle;
+            Ref<TreeNodeNode> node = new_object<TreeNodeNode>();
+            node->flags = flags;
+            node->indent_depth = ctx->m_tree_depth;
+            node->selected = test_flags(flags, TreeNodeFlag::selected);
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle combo(IContext* context, const c8* label, i32* current_item, Span<const c8*> items)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::combo, label ? label : "", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.i32_value = current_item;
-            node.items.reserve(items.size());
+            Ref<ComboNode> node = new_object<ComboNode>();
+            node->current_item = current_item;
+            node->combo_items.reserve(items.size());
             for(const c8* item : items)
             {
-                node.items.push_back(item ? item : "");
+                node->combo_items.push_back(item ? item : "");
             }
-            if(current_item && !node.items.empty())
+            if(current_item && !node->combo_items.empty())
             {
-                *current_item = clamp(*current_item, 0, (i32)node.items.size() - 1);
+                *current_item = clamp(*current_item, 0, (i32)node->combo_items.size() - 1);
             }
-            return handle;
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle button_group(IContext* context, const c8* label, i32* current_item, Span<const c8*> items)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::button_group, label ? label : "ButtonGroup", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.i32_value = current_item;
-            node.items.reserve(items.size());
+            Ref<ButtonGroupNode> node = new_object<ButtonGroupNode>();
+            node->current_item = current_item;
+            node->items.reserve(items.size());
             for(const c8* item : items)
             {
-                node.items.push_back(item ? item : "");
+                node->items.push_back(item ? item : "");
             }
-            if(current_item && !node.items.empty())
+            if(current_item && !node->items.empty())
             {
-                *current_item = clamp(*current_item, 0, (i32)node.items.size() - 1);
+                *current_item = clamp(*current_item, 0, (i32)node->items.size() - 1);
             }
-            return handle;
+            return ctx->add_node(Ref<Node>(node), label ? label : "ButtonGroup", true);
         }
 
         LUNA_GUI_API ItemHandle button_group(IContext* context, const c8* label, Span<bool> selected, Span<const c8*> items)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::button_group, label ? label : "ButtonGroup", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.bool_value = selected.data();
+            Ref<ButtonGroupNode> node = new_object<ButtonGroupNode>();
+            node->selected = selected.data();
             usize count = min(selected.size(), items.size());
-            node.items.reserve(count);
+            node->items.reserve(count);
             for(usize i = 0; i < count; ++i)
             {
-                node.items.push_back(items[i] ? items[i] : "");
+                node->items.push_back(items[i] ? items[i] : "");
             }
-            return handle;
+            return ctx->add_node(Ref<Node>(node), label ? label : "ButtonGroup", true);
         }
 
         static ItemHandle add_slider_float_node(IContext* context, const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::slider_float, label ? label : "", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.f32_value = value;
-            node.f32_value_count = count;
-            node.min_value = min_value;
-            node.max_value = max_value;
+            Ref<SliderFloatNode> slider_node = new_object<SliderFloatNode>();
+            slider_node->binding.f32_value = value;
+            slider_node->binding.value_count = count;
+            slider_node->binding.min_value = min_value;
+            slider_node->binding.max_value = max_value;
+            ItemHandle handle = ctx->add_node(Ref<Node>(slider_node), label ? label : "", true);
             if(value)
             {
                 for(u32 i = 0; i < count; ++i)
@@ -765,12 +779,12 @@ namespace Luna
         static ItemHandle add_slider_int_node(IContext* context, const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::slider_int, label ? label : "", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.i32_value = value;
-            node.i32_value_count = count;
-            node.min_value = (f32)min_value;
-            node.max_value = (f32)max_value;
+            Ref<SliderIntNode> slider_node = new_object<SliderIntNode>();
+            slider_node->binding.i32_value = value;
+            slider_node->binding.value_count = count;
+            slider_node->binding.min_value = (f32)min_value;
+            slider_node->binding.max_value = (f32)max_value;
+            ItemHandle handle = ctx->add_node(Ref<Node>(slider_node), label ? label : "", true);
             if(value)
             {
                 for(u32 i = 0; i < count; ++i)
@@ -804,12 +818,12 @@ namespace Luna
         static ItemHandle add_input_float_node(IContext* context, const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::input_float, label ? label : "", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.f32_value = value;
-            node.f32_value_count = count;
-            node.min_value = min_value;
-            node.max_value = max_value;
+            Ref<InputFloatNode> input_node = new_object<InputFloatNode>();
+            input_node->binding.f32_value = value;
+            input_node->binding.value_count = count;
+            input_node->binding.min_value = min_value;
+            input_node->binding.max_value = max_value;
+            ItemHandle handle = ctx->add_node(Ref<Node>(input_node), label ? label : "", true);
             if(value && max_value > min_value)
             {
                 for(u32 i = 0; i < count; ++i)
@@ -823,12 +837,12 @@ namespace Luna
         static ItemHandle add_input_int_node(IContext* context, const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::input_int, label ? label : "", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.i32_value = value;
-            node.i32_value_count = count;
-            node.min_value = (f32)min_value;
-            node.max_value = (f32)max_value;
+            Ref<InputIntNode> input_node = new_object<InputIntNode>();
+            input_node->binding.i32_value = value;
+            input_node->binding.value_count = count;
+            input_node->binding.min_value = (f32)min_value;
+            input_node->binding.max_value = (f32)max_value;
+            ItemHandle handle = ctx->add_node(Ref<Node>(input_node), label ? label : "", true);
             if(value && max_value > min_value)
             {
                 for(u32 i = 0; i < count; ++i)
@@ -950,15 +964,15 @@ namespace Luna
         static ItemHandle add_drag_float_node(IContext* context, const c8* label, f32* value, u8 count, f32 speed, f32 min_value, f32 max_value, bool color, NumericEditFlag flags)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::drag_float, label ? label : "", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.f32_value = value;
-            node.f32_value_count = count;
-            node.f32_color = color;
-            node.numeric_flags = flags;
-            node.min_value = min_value;
-            node.max_value = max_value;
-            node.step_value = speed;
+            Ref<DragFloatNode> drag_node = new_object<DragFloatNode>();
+            drag_node->binding.f32_value = value;
+            drag_node->binding.value_count = count;
+            drag_node->binding.f32_color = color;
+            drag_node->binding.flags = flags;
+            drag_node->binding.min_value = min_value;
+            drag_node->binding.max_value = max_value;
+            drag_node->binding.step_value = speed;
+            ItemHandle handle = ctx->add_node(Ref<Node>(drag_node), label ? label : "", true);
             if(value && max_value > min_value)
             {
                 for(u32 i = 0; i < count; ++i)
@@ -992,14 +1006,14 @@ namespace Luna
         static ItemHandle add_drag_int_node(IContext* context, const c8* label, i32* value, u8 count, f32 speed, i32 min_value, i32 max_value, NumericEditFlag flags)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::drag_int, label ? label : "", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.i32_value = value;
-            node.i32_value_count = count;
-            node.numeric_flags = flags;
-            node.min_value = (f32)min_value;
-            node.max_value = (f32)max_value;
-            node.step_value = speed;
+            Ref<DragIntNode> drag_node = new_object<DragIntNode>();
+            drag_node->binding.i32_value = value;
+            drag_node->binding.value_count = count;
+            drag_node->binding.flags = flags;
+            drag_node->binding.min_value = (f32)min_value;
+            drag_node->binding.max_value = (f32)max_value;
+            drag_node->binding.step_value = speed;
+            ItemHandle handle = ctx->add_node(Ref<Node>(drag_node), label ? label : "", true);
             if(value && max_value > min_value)
             {
                 for(u32 i = 0; i < count; ++i)
@@ -1046,22 +1060,22 @@ namespace Luna
             state.color_edit_hsv[2] = (i32)color_channel_to_u8(v);
         }
 
-        static void assign_color_binding(Node& node, f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count)
+        static void assign_color_binding(ColorBinding& binding, f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count)
         {
-            node.f32_value = f32_value;
-            node.u8_value = u8_value;
-            node.u32_value = u32_value;
-            node.color_value_type = type;
-            node.f32_value_count = count;
+            binding.f32_value = f32_value;
+            binding.u8_value = u8_value;
+            binding.u32_value = u32_value;
+            binding.type = type;
+            binding.value_count = count;
         }
 
         static ItemHandle add_color_picker_node(IContext* context, const c8* label, f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count, id_t owner_id)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::color_picker, label ? label : "ColorPicker", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            assign_color_binding(node, f32_value, u8_value, u32_value, type, count);
-            node.color_owner_id = owner_id;
+            Ref<ColorPickerNode> picker_node = new_object<ColorPickerNode>();
+            assign_color_binding(picker_node->binding, f32_value, u8_value, u32_value, type, count);
+            picker_node->binding.owner_id = owner_id;
+            ItemHandle handle = ctx->add_node(Ref<Node>(picker_node), label ? label : "ColorPicker", true);
             return handle;
         }
 
@@ -1069,8 +1083,10 @@ namespace Luna
         {
             if(Node* node = ctx->find_build_node(handle))
             {
-                node->color_owner_id = owner_id;
-                node->color_edit_part = part;
+                if(!node->is_drag_numeric() || !node->is_int_numeric()) return;
+                DragIntNode* drag_node = (DragIntNode*)node;
+                drag_node->binding.color_owner_id = owner_id;
+                drag_node->binding.color_part = part;
             }
         }
 
@@ -1085,10 +1101,11 @@ namespace Luna
         static ItemHandle add_color_edit_node(IContext* context, const c8* label, f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::color_edit, label ? label : "", true);
+            Ref<ColorEditNode> edit_node = new_object<ColorEditNode>();
+            assign_color_binding(edit_node->binding, f32_value, u8_value, u32_value, type, count);
+            ItemHandle handle = ctx->add_node(Ref<Node>(edit_node), label ? label : "", true);
             u32 color_index = (u32)ctx->m_build_desc.nodes.size() - 1;
             Node& node = ctx->m_build_desc.nodes[color_index];
-            assign_color_binding(node, f32_value, u8_value, u32_value, type, count);
             write_color_value(node, read_color_value(node));
 
             PersistentItemState& color_state = ctx->get_or_create_persistent_state(handle.id);
@@ -1102,7 +1119,7 @@ namespace Luna
             ctx->push_id(handle.id);
             ItemHandle popup = ctx->begin_popup("##ColorEditPopup", popup_desc);
             Node& popup_node = ctx->m_build_desc.nodes.back();
-            popup_node.popup_owner_id = handle.id;
+            popup_node.set_popup_owner(handle.id);
             popup_node.layout_desc.padding = EdgeInsets::all(10.0f);
             popup_node.layout_desc.gap = 8.0f;
             popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
@@ -1141,7 +1158,7 @@ namespace Luna
 
             ctx->end_popup();
             ctx->pop_id();
-            ctx->m_build_desc.nodes[color_index].menu_popup_id = popup.id;
+            ctx->m_build_desc.nodes[color_index].set_menu_popup(popup.id);
             return handle;
         }
 
@@ -1530,11 +1547,11 @@ namespace Luna
         LUNA_GUI_API ItemHandle hit_box(IContext* context, const c8* label, const RectF& rect)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(NodeKind::hit_box, label ? label : "HitBox", true);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.absolute_position = true;
-            node.position = Float2U(rect.offset_x, rect.offset_y);
-            apply_requested_size(node, Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
+            Ref<HitBoxNode> node = new_object<HitBoxNode>();
+            node->absolute_position = true;
+            node->position = Float2U(rect.offset_x, rect.offset_y);
+            apply_requested_size(*node, Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
+            ItemHandle handle = ctx->add_node(Ref<Node>(node), label ? label : "HitBox", true);
             return handle;
         }
 
@@ -1621,33 +1638,31 @@ namespace Luna
             return context_from_interface(context)->m_pointer_delta;
         }
 
-        static ItemHandle add_draw_node(IContext* context, NodeKind kind, const c8* label, const RectF& rect, const Float4U& color)
+        static ItemHandle add_draw_node(IContext* context, Ref<Node> node, const c8* label, const RectF& rect)
         {
             Context* ctx = context_from_interface(context);
-            ItemHandle handle = ctx->add_node(kind, label ? label : "", false);
-            Node& node = ctx->m_build_desc.nodes.back();
-            node.absolute_position = true;
-            node.position = Float2U(rect.offset_x, rect.offset_y);
-            node.paint_rect = rect;
-            node.paint_color = color;
-            apply_requested_size(node, GUI::Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
+            node->absolute_position = true;
+            node->position = Float2U(rect.offset_x, rect.offset_y);
+            apply_requested_size(*node, GUI::Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
+            ItemHandle handle = ctx->add_node(move(node), label ? label : "", false);
             return handle;
         }
 
         LUNA_GUI_API ItemHandle draw_rect(IContext* context, const RectF& rect, const Float4U& color, f32 radius)
         {
-            ItemHandle handle = add_draw_node(context, NodeKind::draw_rect, "DrawRect", rect, color);
-            context_from_interface(context)->m_build_desc.nodes.back().paint_radius = radius;
-            return handle;
+            Ref<DrawRectNode> node = new_object<DrawRectNode>();
+            node->color = color;
+            node->radius = radius;
+            return add_draw_node(context, Ref<Node>(node), "DrawRect", rect);
         }
 
         LUNA_GUI_API ItemHandle draw_circle(IContext* context, const Float2U& center, f32 radius, const Float4U& color)
         {
             f32 r = max(radius, 0.5f);
             RectF rect(center.x - r, center.y - r, r * 2.0f, r * 2.0f);
-            ItemHandle handle = add_draw_node(context, NodeKind::draw_circle, "DrawCircle", rect, color);
-            context_from_interface(context)->m_build_desc.nodes.back().paint_radius = r;
-            return handle;
+            Ref<DrawCircleNode> node = new_object<DrawCircleNode>();
+            node->color = color;
+            return add_draw_node(context, Ref<Node>(node), "DrawCircle", rect);
         }
 
         LUNA_GUI_API ItemHandle draw_line(IContext* context, const Float2U& begin, const Float2U& end, const Float4U& color, f32 width)
@@ -1659,33 +1674,33 @@ namespace Luna
             f32 max_x = max(begin.x, end.x) + half_width;
             f32 max_y = max(begin.y, end.y) + half_width;
             RectF rect(min_x, min_y, max(max_x - min_x, 1.0f), max(max_y - min_y, 1.0f));
-            ItemHandle handle = add_draw_node(context, NodeKind::draw_line, "DrawLine", rect, color);
-            Node& node = context_from_interface(context)->m_build_desc.nodes.back();
-            node.paint_line_begin = begin;
-            node.paint_line_end = end;
-            node.paint_line_width = line_width;
-            return handle;
+            Ref<DrawLineNode> node = new_object<DrawLineNode>();
+            node->begin = begin;
+            node->end = end;
+            node->color = color;
+            node->width = line_width;
+            return add_draw_node(context, Ref<Node>(node), "DrawLine", rect);
         }
 
         LUNA_GUI_API ItemHandle draw_text(IContext* context, const RectF& rect, const c8* text, const Float4U& color, f32 font_size,
             TextAlignment horizontal_alignment, TextAlignment vertical_alignment)
         {
-            ItemHandle handle = add_draw_node(context, NodeKind::draw_text, text ? text : "", rect, color);
-            Node& node = context_from_interface(context)->m_build_desc.nodes.back();
-            node.text = text ? text : "";
-            node.paint_font_size = font_size;
-            node.paint_horizontal_alignment = horizontal_alignment;
-            node.paint_vertical_alignment = vertical_alignment;
-            return handle;
+            Ref<DrawTextNode> node = new_object<DrawTextNode>();
+            node->text = text ? text : "";
+            node->color = color;
+            node->font_size = font_size;
+            node->horizontal_alignment = horizontal_alignment;
+            node->vertical_alignment = vertical_alignment;
+            return add_draw_node(context, Ref<Node>(node), text ? text : "", rect);
         }
 
         LUNA_GUI_API ItemHandle draw_image(IContext* context, RHI::ITexture* texture, const RectF& rect, const Float4U& color, ImageFlag flags)
         {
-            ItemHandle handle = add_draw_node(context, NodeKind::draw_image, "DrawImage", rect, color);
-            Node& node = context_from_interface(context)->m_build_desc.nodes.back();
-            node.texture = texture;
-            node.image_flags = flags;
-            return handle;
+            Ref<DrawImageNode> node = new_object<DrawImageNode>();
+            node->image = texture;
+            node->color = color;
+            node->flags = flags;
+            return add_draw_node(context, Ref<Node>(node), "DrawImage", rect);
         }
     }
 }

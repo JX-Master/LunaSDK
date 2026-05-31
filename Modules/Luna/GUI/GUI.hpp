@@ -11,6 +11,7 @@
 #include "Base.hpp"
 #include "Layout.hpp"
 #include "Description.hpp"
+#include "Nodes.hpp"
 #include "State.hpp"
 #include "DrawList.hpp"
 #include "DragDrop.hpp"

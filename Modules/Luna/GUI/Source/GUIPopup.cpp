@@ -21,7 +21,7 @@ namespace Luna
             {
                 for(const Node& node : desc.nodes)
                 {
-                    if(node.id == id && node.kind == NodeKind::popup)
+                    if(node.id == id && node.is_popup())
                     {
                         return &node;
                     }
@@ -33,12 +33,13 @@ namespace Luna
         ItemHandle Context::begin_popup(const c8* label, const PopupDesc& desc)
         {
             ItemHandle handle;
-            id_t layer_id = allocate_detached_layer_id(NodeKind::popup, label ? label : "Popup");
+            id_t layer_id = allocate_detached_layer_id(PopupNode::__guid, label ? label : "Popup");
             push_layer_internal(layer_id, desc.position);
-            begin_container(NodeKind::popup, label ? label : "Popup", desc.size, &handle, layer_id);
+            Ref<PopupNode> popup_node = new_object<PopupNode>();
+            popup_node->flags = desc.flags;
+            popup_node->parent_popup = m_popup_build_stack.empty() ? 0 : m_popup_build_stack.back();
+            begin_container(Ref<Node>(popup_node), label ? label : "Popup", desc.size, &handle, layer_id);
             Node& node = m_build_desc.nodes.back();
-            node.popup_flags = desc.flags;
-            node.popup_parent_id = m_popup_build_stack.empty() ? 0 : m_popup_build_stack.back();
             node.layout_desc.padding = EdgeInsets::all(6.0f);
             node.layout_desc.gap = 2.0f;
             m_popup_build_stack.push_back(handle.id);
@@ -50,7 +51,7 @@ namespace Luna
             lutsassert();
             luassert(!m_parent_stack.empty());
             const Node& node = m_build_desc.nodes[m_parent_stack.back()];
-            luassert(node.kind == NodeKind::popup);
+            luassert(node.is_popup());
             if(!m_popup_build_stack.empty() && m_popup_build_stack.back() == node.id)
             {
                 m_popup_build_stack.pop_back();
@@ -96,8 +97,8 @@ namespace Luna
 
         bool Context::popup_node_visible(const Node& node) const
         {
-            if(node.kind != NodeKind::popup) return true;
-            if(!test_flags(node.popup_flags, PopupFlag::managed)) return true;
+            if(!node.is_popup()) return true;
+            if(!test_flags(node.get_popup_flags(), PopupFlag::managed)) return true;
             return is_popup_open(node.id);
         }
 
@@ -118,7 +119,7 @@ namespace Luna
             m_popup_node_indices.clear();
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
-                if(m_submitted_desc.nodes[i].kind == NodeKind::popup)
+                if(m_submitted_desc.nodes[i].is_popup())
                 {
                     m_popup_node_indices.insert_or_assign(m_submitted_desc.nodes[i].id, (u32)i);
                 }
@@ -151,14 +152,14 @@ namespace Luna
                     break;
                 }
                 const Node& node = m_submitted_desc.nodes[iter->second];
-                if(!test_flags(node.popup_flags, PopupFlag::managed))
+                if(!test_flags(node.get_popup_flags(), PopupFlag::managed))
                 {
                     close_popup_stack_from(i);
                     break;
                 }
-                if(node.popup_parent_id)
+                if(node.popup_parent())
                 {
-                    auto parent_iter = m_popup_node_indices.find(node.popup_parent_id);
+                    auto parent_iter = m_popup_node_indices.find(node.popup_parent());
                     if(parent_iter != m_popup_node_indices.end() &&
                         !popup_node_visible(m_submitted_desc.nodes[parent_iter->second]))
                     {
@@ -166,8 +167,8 @@ namespace Luna
                         break;
                     }
                 }
-                m_open_popup_stack[i].parent_id = node.popup_parent_id;
-                m_open_popup_stack[i].flags = node.popup_flags;
+                m_open_popup_stack[i].parent_id = node.popup_parent();
+                m_open_popup_stack[i].flags = node.get_popup_flags();
                 PersistentItemState& persistent = get_or_create_persistent_state(node.id);
                 persistent.open = true;
                 ++i;
@@ -195,8 +196,8 @@ namespace Luna
             m_next_popup_opener_id = 0;
             if(node)
             {
-                flags = node->popup_flags;
-                parent_id = node->popup_parent_id;
+                flags = node->get_popup_flags();
+                parent_id = node->popup_parent();
                 if(!test_flags(flags, PopupFlag::managed))
                 {
                     flags |= PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
@@ -325,11 +326,12 @@ namespace Luna
             {
                 id_t target = hit_test(pos);
                 Node* target_node = target ? find_node(target) : nullptr;
-                bool menu_target = target_node && target_node->kind == NodeKind::menu;
+                bool menu_target = target_node && target_node->is_menu();
                 PopupFlag flags = m_open_popup_stack.back().flags;
-                if(menu_target && target_node->menu_popup_id && is_popup_open(target_node->menu_popup_id))
+                id_t menu_popup = target_node ? target_node->menu_popup() : 0;
+                if(menu_target && menu_popup && is_popup_open(menu_popup))
                 {
-                    close_popup(ItemHandle{get_object(), target_node->menu_popup_id, m_generation});
+                    close_popup(ItemHandle{get_object(), menu_popup, m_generation});
                     return true;
                 }
                 if(test_flags(flags, PopupFlag::close_on_outside_click))

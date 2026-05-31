@@ -16,6 +16,7 @@
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/VG/VG.hpp>
+#include <Luna/VG/Shapes.hpp>
 #include <Luna/Window/AppMain.hpp>
 #include <Luna/Window/Event.hpp>
 #include <cstdio>
@@ -113,6 +114,53 @@ namespace Luna
         GUI::ItemHandle drag_number_target;
         GUI::ItemHandle drag_text_target;
         GUI::ItemHandle drag_mixed_target;
+    };
+
+    struct DemoCustomNode : GUI::Node
+    {
+        lustruct("GUITest::DemoCustomNode", "{A7A8030D-AAD4-4374-B967-74AF3DAD0A4D}");
+
+        virtual Guid type_guid() const override
+        {
+            return __guid;
+        }
+
+        virtual Ref<GUI::Node> clone() const override
+        {
+            return new_object<DemoCustomNode>(*this);
+        }
+
+        virtual GUI::LayoutMetrics measure() const override
+        {
+            GUI::LayoutMetrics metrics;
+            metrics.min_size = Float2U(160.0f, 34.0f);
+            metrics.preferred_size = Float2U(260.0f, 38.0f);
+            metrics.max_size = Float2U(F32_MAX, 38.0f);
+            return metrics;
+        }
+
+        virtual void render(GUI::NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const GUI::NodeRenderState& state) const override
+        {
+            RectF r(rect.offset_x, state.surface_size.y - rect.offset_y - rect.height, rect.width, rect.height);
+            RectF c(clip_rect.offset_x, state.surface_size.y - clip_rect.offset_y - clip_rect.height, clip_rect.width, clip_rect.height);
+            GUI::IDrawList* draw_list = ctx.draw_list();
+            GUI::DrawListState draw_state = draw_list->get_state();
+            draw_state.shape_buffer = draw_list->get_shape_buffer();
+            draw_state.texture = nullptr;
+            draw_state.clip_rect = c;
+            u32 pop_id = draw_list->push_state(&draw_state);
+            Vector<f32>& points = draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 begin = (u32)points.size();
+            VG::ShapeBuilder::add_rounded_rectangle_filled(points, 0.0f, 0.0f, r.width, r.height, 6.0f);
+            u32 end = (u32)points.size();
+            Float4U color = state.active ? Float4U(0.22f, 0.38f, 0.64f, 1.0f) :
+                (state.hovered ? Float4U(0.24f, 0.34f, 0.50f, 1.0f) : Float4U(0.14f, 0.20f, 0.30f, 1.0f));
+            draw_list->add_shape(begin, end - begin,
+                Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
+                Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
+                color);
+            draw_list->pop_state(pop_id);
+        }
     };
 
     constexpr const c8* DEMO_TABS[] =
@@ -233,6 +281,14 @@ namespace Luna
             GUI::text(app.gui, "Handle-based state queries before and after submit.");
             GUI::text(app.gui, "Two-pass layout, tables, popups, absolute paint nodes, and clipping.");
             GUI::end_v_layout(app.gui);
+        }
+
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
+        Ref<DemoCustomNode> custom = new_object<DemoCustomNode>();
+        GUI::ItemHandle custom_handle = GUI::custom_node(app.gui, Ref<GUI::Node>(custom), "RTTI custom node", true);
+        if(GUI::is_item_hovered(custom_handle))
+        {
+            GUI::text(app.gui, "The filled strip above is a user-defined Node registered outside the GUI module.");
         }
     }
 
@@ -891,6 +947,7 @@ namespace Luna
         {
             luexp(add_modules({module_window(), module_rhi(), module_font(), module_vg(), GUI::module_gui(), GUIWindow::module_gui_window()}));
             luexp(init_modules());
+            register_struct_type<DemoCustomNode>({}, typeof<GUI::Node>());
             set_log_to_platform_enabled(true);
             using namespace RHI;
 

@@ -1,0 +1,221 @@
+/*!
+* This file is a portion of LunaSDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+*/
+#pragma once
+#include "Common.hpp"
+
+namespace Luna
+{
+    namespace GUI
+    {
+        struct RootNode : Node
+        {
+            lustruct("GUI::RootNode", "{24EF0005-B823-4C28-929C-987F18238ABF}");
+
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_root() const override;
+            virtual bool uses_node_measure() const override;
+        };
+        struct HLayoutNode : Node
+        {
+            lustruct("GUI::HLayoutNode", "{34171215-492A-4321-BDEA-371F6BC90996}");
+
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_horizontal_layout() const override;
+            virtual bool uses_node_measure() const override;
+        };
+        struct VLayoutNode : Node
+        {
+            lustruct("GUI::VLayoutNode", "{629AF481-BA18-4CB8-93ED-9D1EE652D21C}");
+
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool uses_node_measure() const override;
+        };
+        struct ScrollViewNode : Node
+        {
+            lustruct("GUI::ScrollViewNode", "{99956C7E-0997-4E23-8A95-373C5196A7F7}");
+
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_scroll_view() const override;
+            virtual bool default_interactive() const override;
+            virtual bool uses_node_measure() const override;
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
+
+            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
+        };
+        struct WindowNode : Node
+        {
+            lustruct("GUI::WindowNode", "{5EB73D33-D324-43E6-AB3F-502BBCD40CDE}");
+
+            bool* open = nullptr;
+
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_window() const override;
+            virtual bool uses_node_measure() const override;
+            virtual bool* bool_value() const override;
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
+
+            static f32 title_bar_height();
+
+            static RectF close_rect(const RectF& rect);
+
+            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
+
+            virtual void on_click(NodeInputContext& ctx) override;
+        };
+        struct PopupNode : Node
+        {
+            lustruct("GUI::PopupNode", "{4F3DD901-DAA3-40DB-84C1-5115157C52D8}");
+
+            PopupFlag flags = PopupFlag::none;
+            id_t parent_popup = 0;
+            id_t owner = 0;
+
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_popup() const override;
+            virtual bool default_interactive() const override;
+            virtual bool uses_node_measure() const override;
+            virtual PopupFlag get_popup_flags() const override;
+            virtual id_t popup_parent() const override;
+            virtual id_t popup_owner() const override;
+            virtual void set_popup_parent(id_t value) override;
+            virtual void set_popup_owner(id_t value) override;
+
+            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
+        };
+        struct TooltipNode : Node
+        {
+            lustruct("GUI::TooltipNode", "{2ADD9350-26DF-4D76-8A54-940C213F8730}");
+
+            TooltipDesc desc;
+            id_t owner = 0;
+
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_tooltip() const override;
+            virtual bool uses_node_measure() const override;
+            virtual id_t popup_owner() const override;
+            virtual void set_popup_owner(id_t value) override;
+            virtual const TooltipDesc* get_tooltip_desc() const override;
+            virtual TooltipDesc* get_tooltip_desc() override;
+
+            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
+        };
+        struct MenuBarNode : Node
+        {
+            lustruct("GUI::MenuBarNode", "{6ED53028-CB49-4A5F-857D-B9C63B4C133C}");
+
+            MenuBarNode();
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_menu_bar() const override;
+            virtual bool is_horizontal_layout() const override;
+            virtual bool default_interactive() const override;
+            virtual bool uses_node_measure() const override;
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
+
+            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
+        };
+        struct TableLayoutNode : Node
+        {
+            lustruct("GUI::TableLayoutNode", "{173F13E1-D89C-4298-8EA4-74400F85C11F}");
+
+            TableDesc desc;
+
+            TableLayoutNode();
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_table_layout() const override;
+            virtual bool default_interactive() const override;
+            virtual bool uses_node_measure() const override;
+            virtual bool uses_context_render() const override;
+            virtual const TableDesc* get_table_desc() const override;
+            virtual TableDesc* get_table_desc() override;
+        };
+        struct GridLayoutNode : Node
+        {
+            lustruct("GUI::GridLayoutNode", "{7255CE2D-5213-43B4-980B-3DB1FBF0A727}");
+
+            GridLayoutDesc desc;
+
+            GridLayoutNode();
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_grid_layout() const override;
+            virtual bool uses_node_measure() const override;
+            virtual const GridLayoutDesc* get_grid_desc() const override;
+            virtual GridLayoutDesc* get_grid_desc() override;
+        };
+        struct CanvasLayoutNode : Node
+        {
+            lustruct("GUI::CanvasLayoutNode", "{3C74E39A-09C3-40C6-A612-DD27B0E4BB9A}");
+
+            CanvasLayoutDesc desc;
+
+            CanvasLayoutNode();
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_canvas_layout() const override;
+            virtual bool uses_node_measure() const override;
+            virtual const CanvasLayoutDesc* get_canvas_desc() const override;
+            virtual CanvasLayoutDesc* get_canvas_desc() override;
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
+        };
+        struct DockSpaceNode : Node
+        {
+            lustruct("GUI::DockSpaceNode", "{1FEE4004-7AE1-4B09-A76B-5853159CB940}");
+
+            DockSpaceNode();
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_dock_space() const override;
+            virtual bool uses_node_measure() const override;
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
+
+            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
+        };
+        struct TabBarNode : Node
+        {
+            lustruct("GUI::TabBarNode", "{20647252-F597-4C02-A465-5E2B274F1587}");
+
+            TabBarFlag flags = TabBarFlag::none;
+
+            TabBarNode();
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_tab_bar() const override;
+            virtual bool default_interactive() const override;
+            virtual bool uses_node_measure() const override;
+            virtual TabBarFlag get_tab_bar_flags() const override;
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
+
+            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
+        };
+        struct TabItemNode : Node
+        {
+            lustruct("GUI::TabItemNode", "{3F9D09AA-938D-4991-9E09-0EC593173DB1}");
+
+            bool* open = nullptr;
+            TabItemFlag flags = TabItemFlag::none;
+            bool content_visible = false;
+
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+            virtual bool is_tab_item() const override;
+            virtual bool uses_node_measure() const override;
+            virtual bool uses_context_render() const override;
+            virtual bool* bool_value() const override;
+            virtual TabItemFlag get_tab_item_flags() const override;
+            virtual bool tab_item_selected() const override;
+            virtual void set_tab_item_selected(bool value) override;
+        };
+    }
+}

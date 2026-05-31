@@ -19,6 +19,79 @@ namespace Luna
 {
     namespace GUI
     {
+        static VG::TextAlignment to_vg_text_alignment(TextAlignment alignment);
+
+        struct ContextNodeRenderContext : NodeRenderContext
+        {
+            Context* context = nullptr;
+            IDrawList* active_draw_list = nullptr;
+            id_t node_id = 0;
+
+            virtual IDrawList* draw_list() override
+            {
+                return active_draw_list;
+            }
+
+            virtual const Any* get_persistent_state(const Name& key) const override
+            {
+                if(!context || !node_id) return nullptr;
+                PersistentItemState& state = context->get_or_create_persistent_state(node_id);
+                auto iter = state.custom_states.find(key);
+                return iter == state.custom_states.end() ? nullptr : &iter->second;
+            }
+
+            virtual void set_persistent_state(const Name& key, const Any& value) override
+            {
+                if(!context || !node_id) return;
+                PersistentItemState& state = context->get_or_create_persistent_state(node_id);
+                state.custom_states.insert_or_assign(key, value);
+            }
+
+            virtual bool is_popup_open(id_t popup_id) const override
+            {
+                return context && popup_id ? context->is_popup_open(popup_id) : false;
+            }
+
+            virtual bool is_combo_open(id_t combo_id) const override
+            {
+                if(!context || !combo_id || context->m_open_combo_id != combo_id)
+                {
+                    return false;
+                }
+                PersistentItemState& state = context->get_or_create_persistent_state(combo_id);
+                return state.open;
+            }
+
+            virtual void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
+                RHI::ITexture* texture, ImageFlag image_flags) override
+            {
+                context->render_rect(rect, clip_rect, color, radius, texture, image_flags);
+            }
+
+            virtual void render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
+                bool top_left, bool top_right, bool bottom_right, bool bottom_left) override
+            {
+                context->render_rect_corners(rect, clip_rect, color, radius, top_left, top_right, bottom_right, bottom_left);
+            }
+
+            virtual void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color) override
+            {
+                context->render_circle(rect, clip_rect, color);
+            }
+
+            virtual void render_line(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width) override
+            {
+                context->render_line_segment(begin, end, clip_rect, color, width);
+            }
+
+            virtual void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
+                TextAlignment horizontal_alignment, TextAlignment vertical_alignment) override
+            {
+                context->render_text(rect, clip_rect, text, font_size, color,
+                    to_vg_text_alignment(horizontal_alignment), to_vg_text_alignment(vertical_alignment));
+            }
+        };
+
         static VG::TextAlignment to_vg_text_alignment(TextAlignment alignment)
         {
             switch(alignment)
@@ -259,38 +332,6 @@ namespace Luna
             m_active_draw_list->pop_state(pop_id);
         }
 
-        void Context::render_line(const Node& node, const RectF& rect, const RectF& clip_rect)
-        {
-            RectF r = to_vg_rect(rect);
-            RectF c = to_vg_rect(clip_rect);
-            DrawListState state = m_active_draw_list->get_state();
-            state.shape_buffer = m_active_draw_list->get_shape_buffer();
-            state.texture = nullptr;
-            state.clip_rect = c;
-            u32 pop_id = m_active_draw_list->push_state(&state);
-            auto& points = m_active_draw_list->get_shape_buffer()->get_shape_points(true);
-            u32 begin = (u32)points.size();
-            Float2U line_begin = node.paint_line_begin;
-            Float2U line_end = node.paint_line_end;
-            if(node.layer < m_submitted_desc.layers.size())
-            {
-                const Float2U& layer_position = m_submitted_desc.layers[node.layer].screen_position;
-                line_begin.x += layer_position.x;
-                line_begin.y += layer_position.y;
-                line_end.x += layer_position.x;
-                line_end.y += layer_position.y;
-            }
-            Float2U p1(line_begin.x - rect.offset_x, rect.height - (line_begin.y - rect.offset_y));
-            Float2U p2(line_end.x - rect.offset_x, rect.height - (line_end.y - rect.offset_y));
-            VG::ShapeBuilder::add_line(points, p1.x, p1.y, p2.x, p2.y, node.paint_line_width);
-            u32 end = (u32)points.size();
-            m_active_draw_list->add_shape(begin, end - begin,
-                Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
-                Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
-                node.paint_color, Float2U(0.0f, 0.0f), Float2U(1.0f, 1.0f));
-            m_active_draw_list->pop_state(pop_id);
-        }
-
         void Context::render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment)
         {
             if(!text || !text[0]) return;
@@ -321,7 +362,7 @@ namespace Luna
             const NodeLayout& layout = m_layouts[node_index];
             const RectF& rect = layout.rect;
             const RectF& clip = layout.clip_rect;
-            const TableStyle& style = node.table_desc.style;
+            const TableStyle& style = table_desc(node).style;
             u32 columns = layout.table_columns;
             u32 rows = layout.table_rows;
             if(!columns || !rows) return;
@@ -451,49 +492,6 @@ namespace Luna
             }
         }
 
-        void Context::render_combo_dropdown(const Node& node, const RectF& rect)
-        {
-            if(node.kind != NodeKind::combo || node.id != m_open_combo_id) return;
-            PersistentItemState& state = get_or_create_persistent_state(node.id);
-            if(!state.open) return;
-            RectF surface_clip(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
-            RectF dropdown = combo_dropdown_rect(node, rect, m_frame_desc.surface_size);
-            render_rect(dropdown, surface_clip, Float4U(0.07f, 0.09f, 0.12f, 0.98f), 5.0f);
-
-            i32 hovered_item = -1;
-            if(m_pointer_inside)
-            {
-                hovered_item = combo_dropdown_item_at(node, dropdown, m_pointer_pos);
-            }
-            i32 selected_item = node.i32_value ? *node.i32_value : -1;
-            for(usize item_index = 0; item_index < node.items.size(); ++item_index)
-            {
-                RectF item_rect(
-                    dropdown.offset_x,
-                    dropdown.offset_y + combo_item_height() * (f32)item_index,
-                    dropdown.width,
-                    combo_item_height());
-                if(item_rect.offset_y >= dropdown.offset_y + dropdown.height) break;
-                bool selected = selected_item == (i32)item_index;
-                bool item_hovered = hovered_item == (i32)item_index;
-                if(selected || item_hovered)
-                {
-                    render_rect(item_rect, dropdown,
-                        selected ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : Float4U(0.17f, 0.23f, 0.32f, 1.0f),
-                        0.0f);
-                }
-                render_text(RectF(item_rect.offset_x + 8.0f, item_rect.offset_y, max(item_rect.width - 34.0f, 1.0f), item_rect.height),
-                    dropdown, node.items[item_index].c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
-                if(selected)
-                {
-                    f32 x = item_rect.offset_x + item_rect.width - 20.0f;
-                    f32 y = item_rect.offset_y + item_rect.height * 0.5f;
-                    render_line_segment(Float2U(x, y), Float2U(x + 4.0f, y + 4.0f), dropdown, Color::white(), 2.0f);
-                    render_line_segment(Float2U(x + 4.0f, y + 4.0f), Float2U(x + 12.0f, y - 5.0f), dropdown, Color::white(), 2.0f);
-                }
-            }
-        }
-
         void Context::render_drag_drop_overlay()
         {
             if(!m_drag_drop_active || !m_drag_drop_type || m_layouts.size() != m_submitted_desc.nodes.size()) return;
@@ -549,7 +547,7 @@ namespace Luna
             bool hovered = node.id == m_hovered_id;
             bool active = node.id == m_active_id;
             bool selected = layout.tab_content_visible;
-            bool button = test_flags(node.tab_item_flags, TabItemFlag::button);
+            bool button = test_flags(node.get_tab_item_flags(), TabItemFlag::button);
             Float4U color = selected ?
                 Float4U(0.17f, 0.27f, 0.42f, 1.0f) :
                 (active ? Float4U(0.17f, 0.24f, 0.34f, 1.0f) :
@@ -570,7 +568,7 @@ namespace Luna
 
             f32 left = rect.offset_x + 9.0f;
             f32 right = rect.offset_x + rect.width - 8.0f;
-            if(test_flags(node.tab_item_flags, TabItemFlag::unsaved_document))
+            if(test_flags(node.get_tab_item_flags(), TabItemFlag::unsaved_document))
             {
                 f32 dot = 6.0f;
                 render_circle(RectF(left, rect.offset_y + (rect.height - dot) * 0.5f, dot, dot), clip, Float4U(0.95f, 0.64f, 0.28f, 1.0f));
@@ -719,7 +717,7 @@ namespace Luna
             {
                 for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                 {
-                    if(m_submitted_desc.nodes[i].id == target_space_id && m_submitted_desc.nodes[i].kind == NodeKind::dock_space)
+                    if(m_submitted_desc.nodes[i].id == target_space_id && m_submitted_desc.nodes[i].is_dock_space())
                     {
                         target_rect = m_layouts[i].rect;
                         break;
@@ -789,11 +787,11 @@ namespace Luna
         void Context::render_node(u32 node_index)
         {
             const Node& node = m_submitted_desc.nodes[node_index];
-            if(node.kind == NodeKind::popup && !popup_node_visible(node))
+            if(node.is_popup() && !popup_node_visible(node))
             {
                 return;
             }
-            if(node.kind == NodeKind::tooltip && !tooltip_node_visible(node))
+            if(node.is_tooltip() && !tooltip_node_visible(node))
             {
                 return;
             }
@@ -813,6 +811,7 @@ namespace Luna
             }
             bool hovered = false;
             bool active = false;
+            bool focused = false;
             auto iter = m_current_results.find(node.id);
             if(iter != m_current_results.end())
             {
@@ -820,6 +819,8 @@ namespace Luna
                 hovered = h != iter->second.states.end() && h->second.as<bool>() && *h->second.as<bool>();
                 auto a = iter->second.states.find(Name("gui.active"));
                 active = a != iter->second.states.end() && a->second.as<bool>() && *a->second.as<bool>();
+                auto f = iter->second.states.find(Name("gui.focused"));
+                focused = f != iter->second.states.end() && f->second.as<bool>() && *f->second.as<bool>();
             }
 
             if(m_layouts[node_index].dock_panel_child)
@@ -827,215 +828,57 @@ namespace Luna
                 render_dock_panel_chrome(node_index);
             }
 
-            switch(node.kind)
+            auto render_polymorphic_node = [&]()
             {
-            case NodeKind::tab_bar:
-                render_rect(rect, clip, Float4U(0.08f, 0.10f, 0.13f, 0.70f), 4.0f);
-                render_rect(RectF(rect.offset_x, rect.offset_y + tab_bar_header_height() - 1.0f, rect.width, 1.0f),
-                    clip, Float4U(0.22f, 0.27f, 0.34f, 1.0f), 0.0f);
-                break;
-            case NodeKind::tab_item:
+                ContextNodeRenderContext node_render_context;
+                node_render_context.context = this;
+                node_render_context.active_draw_list = m_active_draw_list;
+                node_render_context.node_id = node.id;
+                node.render(node_render_context, rect, clip, NodeRenderState{hovered, active, focused, m_frame_desc.surface_size, m_pointer_pos, m_frame_desc.delta_time});
+            };
+
+            if(!node.uses_context_render())
+            {
+                render_polymorphic_node();
+            }
+            else if(node.is_tab_item())
+            {
                 render_tab_item(node_index);
-                break;
-            case NodeKind::dock_space:
-                render_rect(rect, clip, Float4U(0.07f, 0.08f, 0.10f, 1.0f), 0.0f);
-                break;
-            case NodeKind::window:
-                render_rect(rect, clip, Float4U(0.10f, 0.12f, 0.14f, 0.92f), 6.0f);
-                if(window_has_title_bar(node))
-                {
-                    RectF title_rect(rect.offset_x, rect.offset_y, rect.width, window_title_bar_height());
-                    render_rect(title_rect, clip, Float4U(0.13f, 0.17f, 0.22f, 1.0f), 6.0f);
-                    render_text(RectF(rect.offset_x + 10.0f, rect.offset_y, max(rect.width - 46.0f, 1.0f), window_title_bar_height()), clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
-                    RectF close_rect = window_close_rect(rect);
-                    bool close_hovered = m_pointer_inside && point_in_rect(m_pointer_pos, close_rect);
-                    render_rect(close_rect, clip, close_hovered ? Float4U(0.55f, 0.18f, 0.18f, 1.0f) : Float4U(0.23f, 0.27f, 0.33f, 1.0f), 4.0f);
-                    render_text(close_rect, clip, "X", 14.0f, Color::white(), VG::TextAlignment::center);
-                }
-                break;
-            case NodeKind::scroll_view:
-                render_rect(rect, clip, Float4U(0.10f, 0.12f, 0.14f, 0.92f), 6.0f);
-                break;
-            case NodeKind::popup:
-                render_rect(rect, clip, Float4U(0.08f, 0.10f, 0.13f, 0.98f), 5.0f);
-                break;
-            case NodeKind::tooltip:
-                render_rect(rect, clip, Float4U(0.05f, 0.06f, 0.07f, 0.97f), 4.0f);
-                render_rect(RectF(rect.offset_x, rect.offset_y, rect.width, 1.0f), clip, Float4U(0.28f, 0.33f, 0.40f, 1.0f), 0.0f);
-                render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - 1.0f, 0.0f), rect.width, 1.0f), clip, Float4U(0.28f, 0.33f, 0.40f, 1.0f), 0.0f);
-                render_rect(RectF(rect.offset_x, rect.offset_y, 1.0f, rect.height), clip, Float4U(0.28f, 0.33f, 0.40f, 1.0f), 0.0f);
-                render_rect(RectF(rect.offset_x + max(rect.width - 1.0f, 0.0f), rect.offset_y, 1.0f, rect.height), clip, Float4U(0.28f, 0.33f, 0.40f, 1.0f), 0.0f);
-                break;
-            case NodeKind::menu_bar:
-                render_rect(rect, clip, Float4U(0.08f, 0.10f, 0.13f, 0.92f), 0.0f);
-                render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - 1.0f, 0.0f), rect.width, 1.0f),
-                    clip, Float4U(0.20f, 0.24f, 0.30f, 1.0f), 0.0f);
-                break;
-            case NodeKind::table_layout:
+            }
+            else if(node.is_table_layout())
+            {
                 render_table_node(node_index);
-                break;
-            case NodeKind::button:
-                render_rect(rect, clip, active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : (hovered ? Float4U(0.26f, 0.43f, 0.72f, 1.0f) : Float4U(0.18f, 0.28f, 0.45f, 1.0f)), 5.0f);
-                render_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::center);
-                break;
-            case NodeKind::selectable:
-                if(node.selected || hovered || active)
-                {
-                    render_rect(rect, clip, active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : (hovered ? Float4U(0.20f, 0.30f, 0.44f, 1.0f) : Float4U(0.16f, 0.25f, 0.38f, 1.0f)), 4.0f);
-                }
-                render_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height), clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
-                break;
-            case NodeKind::menu:
-            {
-                bool top_level = node.parent != U32_MAX && m_submitted_desc.nodes[node.parent].kind == NodeKind::menu_bar;
-                bool open = node.menu_popup_id && is_popup_open(node.menu_popup_id);
-                Float4U text_color = node.enabled ? Float4U(1.0f) : Float4U(0.55f, 0.59f, 0.65f, 1.0f);
-                if(open || hovered || active)
-                {
-                    render_rect(rect, clip, active || open ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : Float4U(0.20f, 0.30f, 0.44f, 1.0f), top_level ? 4.0f : 3.0f);
-                }
-                render_text(RectF(rect.offset_x + (top_level ? 10.0f : 26.0f), rect.offset_y,
-                    max(rect.width - (top_level ? 20.0f : 50.0f), 1.0f), rect.height),
-                    clip, node.text.c_str(), 15.0f, text_color, VG::TextAlignment::begin);
-                if(!top_level)
-                {
-                    render_text(RectF(rect.offset_x + max(rect.width - 22.0f, 0.0f), rect.offset_y, 18.0f, rect.height),
-                        clip, ">", 15.0f, text_color, VG::TextAlignment::center);
-                }
-                break;
             }
-            case NodeKind::menu_item:
+            else if(node.is_input_text())
             {
-                bool checked = node.bool_value ? *node.bool_value : node.selected;
-                Float4U text_color = node.enabled ? Float4U(1.0f) : Float4U(0.55f, 0.59f, 0.65f, 1.0f);
-                if(hovered || active)
-                {
-                    render_rect(rect, clip, active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : Float4U(0.20f, 0.30f, 0.44f, 1.0f), 3.0f);
-                }
-                if(checked)
-                {
-                    f32 x0 = rect.offset_x + 8.0f;
-                    f32 y0 = rect.offset_y + rect.height * 0.56f;
-                    f32 x1 = rect.offset_x + 13.0f;
-                    f32 y1 = rect.offset_y + rect.height * 0.72f;
-                    f32 x2 = rect.offset_x + 22.0f;
-                    f32 y2 = rect.offset_y + rect.height * 0.32f;
-                    render_line_segment(Float2U(x0, y0), Float2U(x1, y1), clip, text_color, 2.0f);
-                    render_line_segment(Float2U(x1, y1), Float2U(x2, y2), clip, text_color, 2.0f);
-                }
-                render_text(RectF(rect.offset_x + 30.0f, rect.offset_y, max(rect.width - 74.0f, 1.0f), rect.height),
-                    clip, node.text.c_str(), 15.0f, text_color, VG::TextAlignment::begin);
-                if(!node.shortcut.empty())
-                {
-                    render_text(RectF(rect.offset_x + max(rect.width - 88.0f, 0.0f), rect.offset_y, 80.0f, rect.height),
-                        clip, node.shortcut.c_str(), 14.0f, Float4U(text_color.x, text_color.y, text_color.z, 0.72f), VG::TextAlignment::end);
-                }
-                break;
-            }
-            case NodeKind::menu_separator:
-            {
-                f32 y = rect.offset_y + rect.height * 0.5f;
-                render_line_segment(Float2U(rect.offset_x + 8.0f, y), Float2U(rect.offset_x + max(rect.width - 8.0f, 8.0f), y),
-                    clip, Float4U(0.24f, 0.29f, 0.36f, 1.0f), 1.0f);
-                break;
-            }
-            case NodeKind::text:
-                render_text(rect, clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                break;
-            case NodeKind::checkbox:
-            {
-                RectF box(rect.offset_x + 2.0f, rect.offset_y + 4.0f, 18.0f, 18.0f);
-                bool checked = node.bool_value && *node.bool_value;
-                render_rect(RectF(box.offset_x - 1.0f, box.offset_y - 1.0f, box.width + 2.0f, box.height + 2.0f),
-                    clip, hovered ? Float4U(0.34f, 0.39f, 0.46f, 1.0f) : Float4U(0.25f, 0.29f, 0.35f, 1.0f), 4.0f);
-                render_rect(box, clip, checked ? Float4U(0.22f, 0.55f, 0.32f, 1.0f) : Float4U(0.18f, 0.20f, 0.23f, 1.0f), 3.0f);
-                if(checked)
-                {
-                    render_line_segment(
-                        Float2U(box.offset_x + 4.0f, box.offset_y + 9.5f),
-                        Float2U(box.offset_x + 7.5f, box.offset_y + 13.0f),
-                        clip, Color::white(), 2.4f);
-                    render_line_segment(
-                        Float2U(box.offset_x + 7.5f, box.offset_y + 13.0f),
-                        Float2U(box.offset_x + 14.5f, box.offset_y + 5.5f),
-                        clip, Color::white(), 2.4f);
-                }
-                RectF label(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height);
-                render_text(label, clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                break;
-            }
-            case NodeKind::radio_button:
-            {
-                RectF outer(rect.offset_x + 2.0f, rect.offset_y + 4.0f, 18.0f, 18.0f);
-                bool checked = radio_button_selected(node);
-                render_circle(RectF(outer.offset_x - 1.0f, outer.offset_y - 1.0f, outer.width + 2.0f, outer.height + 2.0f),
-                    clip, hovered ? Float4U(0.38f, 0.43f, 0.50f, 1.0f) : Float4U(0.27f, 0.31f, 0.37f, 1.0f));
-                render_circle(outer, clip, Float4U(0.10f, 0.12f, 0.15f, 1.0f));
-                if(checked)
-                {
-                    render_circle(RectF(outer.offset_x + 5.0f, outer.offset_y + 5.0f, 8.0f, 8.0f),
-                        clip, Float4U(0.34f, 0.58f, 0.92f, 1.0f));
-                }
-                RectF label(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height);
-                render_text(label, clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                break;
-            }
-            case NodeKind::toggle_switch:
-            {
-                bool checked = node.bool_value && *node.bool_value;
-                PersistentItemState& state = get_or_create_persistent_state(node.id);
-                if(!state.switch_animation_initialized)
-                {
-                    state.switch_animation = checked ? 1.0f : 0.0f;
-                    state.switch_animation_initialized = true;
-                }
-                f32 target = checked ? 1.0f : 0.0f;
-                f32 blend = clamp(m_frame_desc.delta_time * 14.0f, 0.0f, 1.0f);
-                state.switch_animation += (target - state.switch_animation) * blend;
-                f32 t = clamp(state.switch_animation, 0.0f, 1.0f);
-
-                RectF track(rect.offset_x + 2.0f, rect.offset_y + 3.0f, 44.0f, 22.0f);
-                Float4U off_track = hovered ? Float4U(0.18f, 0.20f, 0.23f, 1.0f) : Float4U(0.12f, 0.14f, 0.16f, 1.0f);
-                Float4U on_track = hovered ? Float4U(0.25f, 0.62f, 0.38f, 1.0f) : Float4U(0.20f, 0.55f, 0.32f, 1.0f);
-                render_rect(track, clip, lerp_color(off_track, on_track, t), track.height * 0.5f);
-
-                f32 knob_size = 18.0f;
-                f32 knob_x = track.offset_x + 2.0f + (track.width - knob_size - 4.0f) * t;
-                RectF knob(knob_x, track.offset_y + 2.0f, knob_size, knob_size);
-                render_circle(knob, clip, lerp_color(Float4U(0.78f, 0.80f, 0.84f, 1.0f), Color::white(), t));
-
-                RectF label(rect.offset_x + 56.0f, rect.offset_y, max(rect.width - 56.0f, 1.0f), rect.height);
-                render_text(label, clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                break;
-            }
-            case NodeKind::input_text:
                 render_rect(rect, clip, node.id == m_focused_id ? Float4U(0.12f, 0.16f, 0.22f, 1.0f) : Float4U(0.08f, 0.10f, 0.13f, 1.0f), 4.0f);
-                if(node.string_value)
+                String* string_value = node.string_value();
+                if(string_value)
                 {
                     RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
                     RectF text_clip = intersect_rect(clip, text_rect);
-                    f32 text_width = input_text_cursor_x(*node.string_value, node.string_value->size(), 16.0f);
+                    f32 text_width = input_text_cursor_x(*string_value, string_value->size(), 16.0f);
                     RectF arrange_rect(text_rect.offset_x, text_rect.offset_y, max(text_rect.width, text_width + 4.0f), text_rect.height);
                     PersistentItemState& state = get_or_create_persistent_state(node.id);
-                    state.text_cursor = clamp_utf8_cursor(*node.string_value, state.text_cursor);
-                    if(node.id == m_focused_id && input_text_has_selection(*node.string_value, state))
+                    state.text_cursor = clamp_utf8_cursor(*string_value, state.text_cursor);
+                    if(node.id == m_focused_id && input_text_has_selection(*string_value, state))
                     {
                         usize selection_begin = 0;
                         usize selection_end = 0;
-                        input_text_selection_range(*node.string_value, state, selection_begin, selection_end);
-                        f32 selection_x0 = text_rect.offset_x + input_text_cursor_x(*node.string_value, selection_begin, 16.0f);
-                        f32 selection_x1 = text_rect.offset_x + input_text_cursor_x(*node.string_value, selection_end, 16.0f);
+                        input_text_selection_range(*string_value, state, selection_begin, selection_end);
+                        f32 selection_x0 = text_rect.offset_x + input_text_cursor_x(*string_value, selection_begin, 16.0f);
+                        f32 selection_x1 = text_rect.offset_x + input_text_cursor_x(*string_value, selection_end, 16.0f);
                         render_rect(RectF(selection_x0, text_rect.offset_y + 4.0f, max(selection_x1 - selection_x0, 1.0f), max(text_rect.height - 8.0f, 1.0f)),
                             text_clip, Float4U(0.25f, 0.45f, 0.78f, 0.80f), 2.0f);
                     }
-                    render_text(arrange_rect, text_clip, node.string_value->c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                    if(node.id == m_focused_id && !input_text_has_selection(*node.string_value, state))
+                    render_text(arrange_rect, text_clip, string_value->c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
+                    if(node.id == m_focused_id && !input_text_has_selection(*string_value, state))
                     {
                         f64 blink_time = max(m_time - state.text_cursor_blink_start, 0.0);
                         bool cursor_visible = (((u64)(blink_time / 0.5)) & 1) == 0;
                         if(cursor_visible)
                         {
-                            f32 cursor_x = text_rect.offset_x + input_text_cursor_x(*node.string_value, state.text_cursor, 16.0f);
+                            f32 cursor_x = text_rect.offset_x + input_text_cursor_x(*string_value, state.text_cursor, 16.0f);
                             if(cursor_x >= text_clip.offset_x && cursor_x <= text_clip.offset_x + text_clip.width)
                             {
                                 render_rect(RectF(cursor_x, text_rect.offset_y + 5.0f, 1.0f, max(text_rect.height - 10.0f, 1.0f)),
@@ -1044,8 +887,8 @@ namespace Luna
                         }
                     }
                 }
-                break;
-            case NodeKind::color_edit:
+            }
+            else if(node.is_color_edit())
             {
                 f32 label_w = color_edit_label_width(node, rect);
                 if(label_w > 0.0f)
@@ -1059,7 +902,7 @@ namespace Luna
                 RectF swatch(value_rect.offset_x + 4.0f, value_rect.offset_y + (value_rect.height - swatch_size) * 0.5f, swatch_size, swatch_size);
                 render_color_swatch(swatch, clip, color, 4.0f);
                 String hex;
-                if(node.f32_value_count > 3)
+                if(f32_value_count(node) > 3)
                 {
                     strprintf(hex, "#%02X%02X%02X%02X", color_u8(color.x), color_u8(color.y), color_u8(color.z), color_u8(color.w));
                 }
@@ -1070,29 +913,11 @@ namespace Luna
                 render_text(RectF(swatch.offset_x + swatch.width + 8.0f, value_rect.offset_y,
                     max(value_rect.offset_x + value_rect.width - swatch.offset_x - swatch.width - 14.0f, 1.0f), value_rect.height),
                     clip, hex.c_str(), 15.0f, Float4U(0.86f, 0.90f, 0.96f, 1.0f), VG::TextAlignment::begin);
-                break;
             }
-            case NodeKind::color_preview:
+            else if(node.is_color_picker())
             {
                 Float4U color = read_color_value(node);
-                render_color_swatch(rect, clip, color, 5.0f);
-                String text;
-                if(node.f32_value_count > 3)
-                {
-                    strprintf(text, "RGBA %.3f, %.3f, %.3f, %.3f", color.x, color.y, color.z, color.w);
-                }
-                else
-                {
-                    strprintf(text, "RGB %.3f, %.3f, %.3f", color.x, color.y, color.z);
-                }
-                render_text(RectF(rect.offset_x + 10.0f, rect.offset_y, max(rect.width - 20.0f, 1.0f), rect.height),
-                    clip, text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
-                break;
-            }
-            case NodeKind::color_picker:
-            {
-                Float4U color = read_color_value(node);
-                id_t owner_id = node.color_owner_id ? node.color_owner_id : node.id;
+                id_t owner_id = node.color_owner() ? node.color_owner() : node.id;
                 PersistentItemState& state = get_or_create_persistent_state(owner_id);
                 i32 axis = clamp(color_edit_axis_ref(state), 0, 5);
                 f32 picker_x = 0.0f;
@@ -1192,101 +1017,20 @@ namespace Luna
                 render_color_swatch(current_rect, clip, color, 3.0f);
                 render_text(RectF(original_rect.offset_x, original_rect.offset_y - 26.0f, original_rect.width, 22.0f), clip, "Original", 15.0f, Color::white(), VG::TextAlignment::begin);
                 render_color_swatch(original_rect, clip, state.color_edit_original_valid ? state.color_edit_original : color, 3.0f);
-                break;
             }
-            case NodeKind::image:
-                render_rect(rect, clip, Color::white(), 0.0f, node.texture, node.image_flags);
-                break;
-            case NodeKind::collapsing_header:
-                render_rect(rect, clip, hovered ? Float4U(0.22f, 0.27f, 0.34f, 1.0f) : Float4U(0.16f, 0.19f, 0.24f, 1.0f), 4.0f);
-                render_text(RectF(rect.offset_x + 8.0f, rect.offset_y, rect.width - 8.0f, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                break;
-            case NodeKind::tree_node:
-            {
-                bool open = false;
-                auto open_iter = m_current_results.find(node.id);
-                if(open_iter != m_current_results.end())
-                {
-                    auto state_iter = open_iter->second.states.find(Name("gui.open"));
-                    open = state_iter != open_iter->second.states.end() && state_iter->second.as<bool>() && *state_iter->second.as<bool>();
-                }
-                bool leaf = tree_node_is_leaf(node);
-                if(node.selected || hovered || active)
-                {
-                    render_rect(rect, clip, active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
-                        (node.selected ? Float4U(0.16f, 0.25f, 0.38f, 1.0f) :
-                            Float4U(0.18f, 0.24f, 0.32f, 1.0f)), 4.0f);
-                }
-                RectF arrow = tree_node_arrow_rect(node, rect);
-                Float4U icon_color = leaf ? Float4U(0.58f, 0.65f, 0.74f, 1.0f) : Float4U(1.0f);
-                if(leaf)
-                {
-                    f32 dot = 5.0f;
-                    render_circle(RectF(arrow.offset_x + (arrow.width - dot) * 0.5f, arrow.offset_y + (arrow.height - dot) * 0.5f, dot, dot), clip, icon_color);
-                }
-                else if(open)
-                {
-                    f32 cx = arrow.offset_x + arrow.width * 0.5f;
-                    f32 cy = arrow.offset_y + arrow.height * 0.5f + 2.0f;
-                    render_line_segment(Float2U(cx - 5.0f, cy - 3.0f), Float2U(cx, cy + 3.0f), clip, icon_color, 1.8f);
-                    render_line_segment(Float2U(cx, cy + 3.0f), Float2U(cx + 5.0f, cy - 3.0f), clip, icon_color, 1.8f);
-                }
-                else
-                {
-                    f32 cx = arrow.offset_x + arrow.width * 0.5f + 2.0f;
-                    f32 cy = arrow.offset_y + arrow.height * 0.5f;
-                    render_line_segment(Float2U(cx - 3.0f, cy - 5.0f), Float2U(cx + 3.0f, cy), clip, icon_color, 1.8f);
-                    render_line_segment(Float2U(cx + 3.0f, cy), Float2U(cx - 3.0f, cy + 5.0f), clip, icon_color, 1.8f);
-                }
-                f32 label_x = arrow.offset_x + arrow.width + 2.0f;
-                render_text(RectF(label_x, rect.offset_y, max(rect.offset_x + rect.width - label_x - 6.0f, 1.0f), rect.height),
-                    clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
-                break;
-            }
-            case NodeKind::combo:
-            {
-                f32 label_w = combo_label_width(node, rect);
-                render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                RectF value_rect = combo_value_rect(node, rect);
-                PersistentItemState& state = get_or_create_persistent_state(node.id);
-                bool open = state.open && node.id == m_open_combo_id;
-                render_rect(value_rect, clip, open ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : (hovered ? Float4U(0.20f, 0.30f, 0.44f, 1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f)), 4.0f);
-                const c8* item_name = "";
-                if(node.i32_value && *node.i32_value >= 0 && (usize)*node.i32_value < node.items.size())
-                {
-                    item_name = node.items[*node.i32_value].c_str();
-                }
-                render_text(RectF(value_rect.offset_x + 8.0f, value_rect.offset_y, max(value_rect.width - 34.0f, 1.0f), value_rect.height), clip, item_name, 16.0f, Color::white(), VG::TextAlignment::begin);
-                f32 arrow_x = value_rect.offset_x + value_rect.width - 18.0f;
-                f32 arrow_y = value_rect.offset_y + value_rect.height * 0.5f;
-                if(open)
-                {
-                    render_line_segment(Float2U(arrow_x - 5.0f, arrow_y + 3.0f), Float2U(arrow_x, arrow_y - 3.0f), clip, Color::white(), 1.8f);
-                    render_line_segment(Float2U(arrow_x, arrow_y - 3.0f), Float2U(arrow_x + 5.0f, arrow_y + 3.0f), clip, Color::white(), 1.8f);
-                }
-                else
-                {
-                    render_line_segment(Float2U(arrow_x - 5.0f, arrow_y - 3.0f), Float2U(arrow_x, arrow_y + 3.0f), clip, Color::white(), 1.8f);
-                    render_line_segment(Float2U(arrow_x, arrow_y + 3.0f), Float2U(arrow_x + 5.0f, arrow_y - 3.0f), clip, Color::white(), 1.8f);
-                }
-                if(open)
-                {
-                    render_combo_dropdown(node, rect);
-                }
-                break;
-            }
-            case NodeKind::slider_float:
-            case NodeKind::slider_int:
+            else if(node.is_slider_numeric())
             {
                 f32 label_w = numeric_label_width(node, rect);
                 u32 value_count = numeric_value_count(node);
                 for(u32 i = 0; i < value_count; ++i)
                 {
-                    f32 value = is_float_numeric_node(node) ? (node.f32_value ? node.f32_value[i] : 0.0f) : (node.i32_value ? (f32)node.i32_value[i] : 0.0f);
+                    f32* f32_values = node.f32_values();
+                    i32* i32_values = node.i32_values();
+                    f32 value = is_float_numeric_node(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
                     RectF component_rect = numeric_component_rect(node, rect, i);
                     bool active_component = active && (m_active_float_component == U32_MAX || m_active_float_component == i);
-                    f32 denom = max(node.max_value - node.min_value, 0.0001f);
-                    f32 t = clamp((value - node.min_value) / denom, 0.0f, 1.0f);
+                    f32 denom = max(node.max_value() - node.min_value(), 0.0001f);
+                    f32 t = clamp((value - node.min_value()) / denom, 0.0f, 1.0f);
                     f32 track_pad = min(8.0f, component_rect.width * 0.20f);
                     f32 track_x0 = component_rect.offset_x + track_pad;
                     f32 track_x1 = component_rect.offset_x + max(component_rect.width - track_pad, track_pad);
@@ -1305,32 +1049,30 @@ namespace Luna
                 {
                     render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
                 }
-                break;
             }
-            case NodeKind::input_float:
-            case NodeKind::input_int:
-            case NodeKind::drag_float:
-            case NodeKind::drag_int:
+            else if(is_numeric_node(node))
             {
                 f32 label_w = numeric_label_width(node, rect);
                 u32 value_count = numeric_value_count(node);
                 PersistentItemState& state = get_or_create_persistent_state(node.id);
                 for(u32 i = 0; i < value_count; ++i)
                 {
-                    f32 value = is_float_numeric_node(node) ? (node.f32_value ? node.f32_value[i] : 0.0f) : (node.i32_value ? (f32)node.i32_value[i] : 0.0f);
+                    f32* f32_values = node.f32_values();
+                    i32* i32_values = node.i32_values();
+                    f32 value = is_float_numeric_node(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
                     RectF component_rect = numeric_component_rect(node, rect, i);
                     bool editing_component = is_numeric_input_node(node) && node.id == m_focused_id && state.numeric_editing && state.numeric_edit_component == i;
-                    Float4U bg = node.f32_color ? Float4U(
+                    Float4U bg = node.uses_f32_color_components() ? Float4U(
                         i == 0 ? value : 0.10f,
                         i == 1 ? value : 0.10f,
                         i == 2 ? value : 0.10f,
                         1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f);
                     bool active_component = active && (!is_numeric_node(node) || m_active_float_component == U32_MAX || m_active_float_component == i);
                     render_rect(component_rect, clip, (active_component || editing_component) ? Float4U(0.18f, 0.29f, 0.44f, 1.0f) : bg, 4.0f);
-                    if(!editing_component && (node.kind == NodeKind::drag_float || node.kind == NodeKind::drag_int) && node.max_value > node.min_value)
+                    if(!editing_component && node.is_drag_numeric() && node.max_value() > node.min_value())
                     {
-                        f32 denom = max(node.max_value - node.min_value, 0.0001f);
-                        f32 t = clamp((value - node.min_value) / denom, 0.0f, 1.0f);
+                        f32 denom = max(node.max_value() - node.min_value(), 0.0001f);
+                        f32 t = clamp((value - node.min_value()) / denom, 0.0f, 1.0f);
                         render_rect(RectF(component_rect.offset_x, component_rect.offset_y + component_rect.height - 3.0f, component_rect.width * t, 3.0f), clip, Float4U(0.30f, 0.56f, 0.88f, 1.0f), 1.5f);
                     }
                     String value_text = editing_component ? state.numeric_edit_text : numeric_value_text(node, i);
@@ -1363,126 +1105,9 @@ namespace Luna
                     }
                 }
                 render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                break;
-            }
-            case NodeKind::button_group:
-            {
-                u32 count = (u32)node.items.size();
-                if(!count) break;
-                i32 hover_item = hovered ? button_group_item_at(node, rect, m_pointer_pos) : -1;
-                i32 active_item = active ? button_group_item_at(node, rect, m_pointer_pos) : -1;
-                f32 radius = min(5.0f, min(rect.width, rect.height) * 0.5f);
-                RectF inner(rect.offset_x + 1.0f, rect.offset_y + 1.0f, max(rect.width - 2.0f, 1.0f), max(rect.height - 2.0f, 1.0f));
-                f32 inner_radius = max(radius - 1.0f, 0.0f);
-                Float4U border_color = Float4U(0.25f, 0.29f, 0.35f, 1.0f);
-                Float4U bg_color = Float4U(0.07f, 0.08f, 0.10f, 1.0f);
-                Float4U selected_color = Float4U(0.16f, 0.24f, 0.38f, 1.0f);
-                Float4U selected_hot_color = Float4U(0.20f, 0.33f, 0.54f, 1.0f);
-                Float4U hover_color = Float4U(0.14f, 0.17f, 0.22f, 1.0f);
-
-                render_rect(rect, clip, border_color, radius);
-                render_rect(inner, clip, bg_color, inner_radius);
-
-                PersistentItemState& state = get_or_create_persistent_state(node.id);
-                f32 blend = clamp(m_frame_desc.delta_time * 14.0f, 0.0f, 1.0f);
-                bool single_select = node.i32_value != nullptr;
-                if(single_select)
-                {
-                    f32 target = (f32)clamp(*node.i32_value, 0, (i32)count - 1);
-                    if(!state.button_group_selection_animation_initialized)
-                    {
-                        state.button_group_selection_animation = target;
-                        state.button_group_selection_animation_initialized = true;
-                    }
-                    state.button_group_selection_animation += (target - state.button_group_selection_animation) * blend;
-                    f32 item_width = inner.width / (f32)count;
-                    RectF selection(inner.offset_x + item_width * state.button_group_selection_animation, inner.offset_y, item_width, inner.height);
-                    f32 max_x = inner.offset_x + inner.width;
-                    if(selection.offset_x + selection.width > max_x)
-                    {
-                        selection.width = max(max_x - selection.offset_x, 1.0f);
-                    }
-                    render_rect(selection, clip, active_item == (i32)target ? selected_hot_color : selected_color, inner_radius);
-                }
-                else if(node.bool_value)
-                {
-                    if(state.button_group_item_animations.size() != count)
-                    {
-                        state.button_group_item_animations.assign(count, 0.0f);
-                        for(u32 i = 0; i < count; ++i)
-                        {
-                            state.button_group_item_animations[i] = node.bool_value[i] ? 1.0f : 0.0f;
-                        }
-                    }
-                    for(u32 i = 0; i < count; ++i)
-                    {
-                        f32 target = node.bool_value[i] ? 1.0f : 0.0f;
-                        state.button_group_item_animations[i] += (target - state.button_group_item_animations[i]) * blend;
-                        f32 t = clamp(state.button_group_item_animations[i], 0.0f, 1.0f);
-                        RectF item_rect = button_group_item_rect(node, inner, i);
-                        Float4U base_color = bg_color;
-                        if(active_item == (i32)i)
-                        {
-                            base_color = hover_color;
-                        }
-                        else if(hover_item == (i32)i)
-                        {
-                            base_color = hover_color;
-                        }
-                        if(t > 0.001f || hover_item == (i32)i || active_item == (i32)i)
-                        {
-                            Float4U color = lerp_color(base_color, selected_color, t);
-                            render_rect_corners(item_rect, clip, color, inner_radius,
-                                i == 0, i + 1 == count, i + 1 == count, i == 0);
-                        }
-                    }
-                }
-                if(single_select && hover_item >= 0 && hover_item != *node.i32_value)
-                {
-                    RectF item_rect = button_group_item_rect(node, inner, (u32)hover_item);
-                    render_rect_corners(item_rect, clip, hover_color, inner_radius,
-                        hover_item == 0, (u32)hover_item + 1 == count, (u32)hover_item + 1 == count, hover_item == 0);
-                }
-                for(u32 i = 1; i < count; ++i)
-                {
-                    f32 x = rect.offset_x + rect.width * ((f32)i / (f32)count);
-                    render_line_segment(Float2U(x, rect.offset_y + 2.0f), Float2U(x, rect.offset_y + max(rect.height - 2.0f, 2.0f)),
-                        clip, Float4U(0.20f, 0.23f, 0.28f, 0.90f), 1.0f);
-                }
-                for(u32 i = 0; i < count; ++i)
-                {
-                    RectF item_rect = button_group_item_rect(node, inner, i);
-                    bool selected = node.i32_value ? *node.i32_value == (i32)i : (node.bool_value && node.bool_value[i]);
-                    Float4U text_color = selected ? Float4U(1.0f) : Float4U(0.58f, 0.63f, 0.70f, 1.0f);
-                    render_text(RectF(item_rect.offset_x + 8.0f, item_rect.offset_y, max(item_rect.width - 16.0f, 1.0f), item_rect.height),
-                        clip, node.items[i].c_str(), 15.0f, text_color, VG::TextAlignment::center);
-                }
-                break;
-            }
-            case NodeKind::draw_rect:
-                render_rect(rect, clip, node.paint_color, node.paint_radius);
-                break;
-            case NodeKind::draw_circle:
-                render_circle(rect, clip, node.paint_color);
-                break;
-            case NodeKind::draw_line:
-                render_line(node, rect, clip);
-                break;
-            case NodeKind::draw_text:
-                render_text(rect, clip, node.text.c_str(), node.paint_font_size, node.paint_color,
-                    to_vg_text_alignment(node.paint_horizontal_alignment),
-                    to_vg_text_alignment(node.paint_vertical_alignment));
-                break;
-            case NodeKind::draw_image:
-                render_rect(rect, clip, node.paint_color, 0.0f, node.texture, node.image_flags);
-                break;
-            case NodeKind::hit_box:
-                break;
-            default:
-                break;
             }
 
-            if(node.kind == NodeKind::dock_space)
+            if(node.is_dock_space())
             {
                 Vector<u32> floating_children;
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
@@ -1542,7 +1167,7 @@ namespace Luna
             }
             else
             {
-                if(node.kind != NodeKind::tab_item || m_layouts[node_index].tab_content_visible)
+                if(!node.is_tab_item() || m_layouts[node_index].tab_content_visible)
                 {
                     for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                     {
@@ -1550,11 +1175,11 @@ namespace Luna
                     }
                 }
             }
-            if(node.kind == NodeKind::scroll_view)
+            if(node.is_scroll_view())
             {
                 render_scrollbars(node_index);
             }
-            if(node.kind == NodeKind::tab_bar)
+            if(node.is_tab_bar())
             {
                 render_tab_scroll_buttons(node_index);
             }

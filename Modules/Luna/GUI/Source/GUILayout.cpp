@@ -46,6 +46,49 @@ namespace Luna
             return child_count ? min(columns, child_count) : columns;
         }
 
+        struct ContextNodeMeasureContext : NodeMeasureContext
+        {
+            Context* context = nullptr;
+            u32 node_index = U32_MAX;
+
+            virtual const Node* parent() const override
+            {
+                if(!context || node_index >= context->m_submitted_desc.nodes.size()) return nullptr;
+                const Node& node = context->m_submitted_desc.nodes[node_index];
+                if(node.parent == U32_MAX || node.parent >= context->m_submitted_desc.nodes.size()) return nullptr;
+                return &context->m_submitted_desc.nodes[node.parent];
+            }
+
+            virtual Float2U surface_size() const override
+            {
+                return context ? context->m_frame_desc.surface_size : Float2U(0.0f);
+            }
+
+            virtual LayoutMetrics measure_text(const c8* text, usize text_size, f32 font_size, f32 max_width) const override
+            {
+                f32 w = max((f32)text_size * font_size * 0.52f, 1.0f);
+                f32 h = font_size + 4.0f;
+                if(max_width < F32_MAX * 0.5f)
+                {
+                    VG::TextArrangeSection section;
+                    section.font_file = Font::get_default_font();
+                    section.font_index = 0;
+                    section.font_size = font_size;
+                    section.num_chars = text_size;
+                    auto arranged = VG::arrange_text(text, text_size, {&section, 1},
+                        RectF(0.0f, 0.0f, max_width, 100000.0f),
+                        VG::TextAlignment::begin, VG::TextAlignment::begin);
+                    w = max(arranged.bounding_rect.width, 1.0f);
+                    h = max(arranged.bounding_rect.height, h);
+                }
+                LayoutMetrics metrics;
+                metrics.min_size = Float2U(min(w, 32.0f), h);
+                metrics.preferred_size = Float2U(min(w, max_width), h);
+                metrics.max_size = Float2U(max_width, h);
+                return metrics;
+            }
+        };
+
         void Context::measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred)
         {
             const Node& node = m_submitted_desc.nodes[node_index];
@@ -90,8 +133,9 @@ namespace Luna
                 if(row >= rows) break;
                 LayoutMetrics child_metrics = measure_node(child);
                 Float2U child_size = preferred ? child_metrics.preferred_size : child_metrics.min_size;
-                f32 cell_width = child_size.x + node.table_desc.style.padding.left + node.table_desc.style.padding.right;
-                f32 cell_height = child_size.y + node.table_desc.style.padding.top + node.table_desc.style.padding.bottom;
+                const TableStyle& style = table_desc(node).style;
+                f32 cell_width = child_size.x + style.padding.left + style.padding.right;
+                f32 cell_height = child_size.y + style.padding.top + style.padding.bottom;
                 if(!table_track_is_fixed(node, true, col))
                 {
                     out_column_widths[col] = max(out_column_widths[col], cell_width);
@@ -106,7 +150,7 @@ namespace Luna
         LayoutMetrics Context::measure_grid_node(u32 node_index, f32 available_width)
         {
             const Node& node = m_submitted_desc.nodes[node_index];
-            const GridLayoutDesc& desc = node.grid_desc;
+            const GridLayoutDesc& desc = grid_desc(node);
             f32 padding_x = desc.padding.left + desc.padding.right;
             f32 padding_y = desc.padding.top + desc.padding.bottom;
             f32 gap_x = max(desc.gap.x, 0.0f);
@@ -175,202 +219,19 @@ namespace Luna
             LayoutMetrics metrics;
             f32 font_size = 16.0f;
             f32 text_width = (f32)node.text.size() * font_size * 0.52f;
-            switch(node.kind)
+            if(node.uses_node_measure())
             {
-            case NodeKind::text:
-            {
-                f32 w = max(text_width, 1.0f);
-                f32 h = font_size + 4.0f;
-                f32 max_width = F32_MAX;
-                if(node.parent != U32_MAX)
-                {
-                    const Node& parent = m_submitted_desc.nodes[node.parent];
-                    if(parent.kind == NodeKind::tooltip)
-                    {
-                        f32 tooltip_width = parent.requested_size.width > 0.0f ? parent.requested_size.width : parent.tooltip_desc.max_width;
-                        if(tooltip_width <= 0.0f)
-                        {
-                            tooltip_width = m_frame_desc.surface_size.x;
-                        }
-                        tooltip_width = min(tooltip_width, max(m_frame_desc.surface_size.x, 1.0f));
-                        max_width = max(tooltip_width - parent.layout_desc.padding.left - parent.layout_desc.padding.right, 1.0f);
-                        VG::TextArrangeSection section;
-                        section.font_file = Font::get_default_font();
-                        section.font_index = 0;
-                        section.font_size = font_size;
-                        section.num_chars = node.text.size();
-                        auto arranged = VG::arrange_text(node.text.c_str(), node.text.size(), {&section, 1},
-                            RectF(0.0f, 0.0f, max_width, 100000.0f),
-                            VG::TextAlignment::begin, VG::TextAlignment::begin);
-                        w = max(arranged.bounding_rect.width, 1.0f);
-                        h = max(arranged.bounding_rect.height, h);
-                    }
-                }
-                metrics.min_size = Float2U(min(w, 32.0f), h);
-                metrics.preferred_size = Float2U(min(w, max_width), h);
-                metrics.max_size = Float2U(max_width, h);
-                break;
+                ContextNodeMeasureContext node_measure_context;
+                node_measure_context.context = this;
+                node_measure_context.node_index = node_index;
+                metrics = node.measure(node_measure_context);
+                metrics = apply_layout_style(node, metrics);
+                m_layouts[node_index].metrics = metrics;
+                m_layouts[node_index].metrics_valid = true;
+                return metrics;
             }
-            case NodeKind::button:
-            {
-                f32 w = max(text_width + 24.0f, 72.0f);
-                metrics.min_size = Float2U(72.0f, 30.0f);
-                metrics.preferred_size = Float2U(w, 30.0f);
-                metrics.max_size = Float2U(F32_MAX, 30.0f);
-                break;
-            }
-            case NodeKind::selectable:
-            {
-                f32 w = max(text_width + 24.0f, 72.0f);
-                metrics.min_size = Float2U(72.0f, 26.0f);
-                metrics.preferred_size = Float2U(w, 26.0f);
-                metrics.max_size = Float2U(F32_MAX, 26.0f);
-                break;
-            }
-            case NodeKind::menu:
-            {
-                bool top_level = node.parent != U32_MAX && m_submitted_desc.nodes[node.parent].kind == NodeKind::menu_bar;
-                f32 w = top_level ? max(text_width + 22.0f, 42.0f) : max(text_width + 62.0f, 132.0f);
-                f32 h = top_level ? menu_bar_height() - 6.0f : menu_item_height();
-                metrics.min_size = Float2U(top_level ? min(w, 42.0f) : 96.0f, h);
-                metrics.preferred_size = Float2U(w, h);
-                metrics.max_size = Float2U(F32_MAX, h);
-                break;
-            }
-            case NodeKind::menu_item:
-            {
-                f32 shortcut_width = node.shortcut.empty() ? 0.0f : menu_text_width(node.shortcut) + 28.0f;
-                f32 w = max(text_width + shortcut_width + 42.0f, 132.0f);
-                metrics.min_size = Float2U(96.0f, menu_item_height());
-                metrics.preferred_size = Float2U(w, menu_item_height());
-                metrics.max_size = Float2U(F32_MAX, menu_item_height());
-                break;
-            }
-            case NodeKind::menu_separator:
-                metrics.min_size = Float2U(1.0f, menu_separator_height());
-                metrics.preferred_size = Float2U(96.0f, menu_separator_height());
-                metrics.max_size = Float2U(F32_MAX, menu_separator_height());
-                break;
-            case NodeKind::checkbox:
-            {
-                f32 w = max(text_width + 30.0f, 80.0f);
-                metrics.min_size = Float2U(26.0f, 26.0f);
-                metrics.preferred_size = Float2U(w, 26.0f);
-                metrics.max_size = Float2U(F32_MAX, 26.0f);
-                break;
-            }
-            case NodeKind::radio_button:
-            {
-                f32 w = max(text_width + 30.0f, 80.0f);
-                metrics.min_size = Float2U(26.0f, 26.0f);
-                metrics.preferred_size = Float2U(w, 26.0f);
-                metrics.max_size = Float2U(F32_MAX, 26.0f);
-                break;
-            }
-            case NodeKind::toggle_switch:
-            {
-                f32 w = max(text_width + 58.0f, 72.0f);
-                metrics.min_size = Float2U(46.0f, 28.0f);
-                metrics.preferred_size = Float2U(w, 28.0f);
-                metrics.max_size = Float2U(F32_MAX, 28.0f);
-                break;
-            }
-            case NodeKind::input_text:
-                metrics.min_size = Float2U(80.0f, 30.0f);
-                metrics.preferred_size = Float2U(240.0f, 30.0f);
-                metrics.max_size = Float2U(F32_MAX, 30.0f);
-                break;
-            case NodeKind::color_edit:
-            {
-                f32 w = max(text_width + 140.0f, 220.0f);
-                metrics.min_size = Float2U(150.0f, 30.0f);
-                metrics.preferred_size = Float2U(w, 30.0f);
-                metrics.max_size = Float2U(F32_MAX, 30.0f);
-                break;
-            }
-            case NodeKind::color_preview:
-                metrics.min_size = Float2U(120.0f, 44.0f);
-                metrics.preferred_size = Float2U(240.0f, 44.0f);
-                metrics.max_size = Float2U(F32_MAX, 44.0f);
-                break;
-            case NodeKind::color_picker:
-                metrics.min_size = Float2U(360.0f, 240.0f);
-                metrics.preferred_size = Float2U(520.0f, 300.0f);
-                metrics.max_size = Float2U(F32_MAX, 300.0f);
-                break;
-            case NodeKind::image:
-            {
-                Float2U image_size(max(node.requested_size.width, 1.0f), max(node.requested_size.height, 1.0f));
-                metrics.min_size = image_size;
-                metrics.preferred_size = image_size;
-                metrics.max_size = image_size;
-                break;
-            }
-            case NodeKind::collapsing_header:
-            {
-                f32 w = max(text_width + 32.0f, 120.0f);
-                metrics.min_size = Float2U(120.0f, 30.0f);
-                metrics.preferred_size = Float2U(w, 30.0f);
-                metrics.max_size = Float2U(F32_MAX, 30.0f);
-                break;
-            }
-            case NodeKind::tree_node:
-            {
-                f32 indent = tree_node_indent_width() * (f32)node.tree_depth;
-                f32 w = max(text_width + indent + 34.0f, 80.0f);
-                metrics.min_size = Float2U(min(w, 80.0f), 26.0f);
-                metrics.preferred_size = Float2U(w, 26.0f);
-                metrics.max_size = Float2U(F32_MAX, 26.0f);
-                break;
-            }
-            case NodeKind::combo:
-            {
-                f32 w = max(text_width + 160.0f, 220.0f);
-                metrics.min_size = Float2U(140.0f, 30.0f);
-                metrics.preferred_size = Float2U(w, 30.0f);
-                metrics.max_size = Float2U(F32_MAX, 30.0f);
-                break;
-            }
-            case NodeKind::button_group:
-            {
-                f32 width = 0.0f;
-                for(const String& item : node.items)
-                {
-                    width += max((f32)item.size() * font_size * 0.52f + 32.0f, 76.0f);
-                }
-                if(node.items.empty()) width = 76.0f;
-                metrics.min_size = Float2U(max((f32)node.items.size() * 44.0f, 44.0f), 28.0f);
-                metrics.preferred_size = Float2U(max(width, metrics.min_size.x), 28.0f);
-                metrics.max_size = Float2U(F32_MAX, 28.0f);
-                break;
-            }
-            case NodeKind::slider_float:
-            case NodeKind::slider_int:
-            case NodeKind::input_float:
-            case NodeKind::input_int:
-            case NodeKind::drag_float:
-            case NodeKind::drag_int:
-            {
-                f32 w = max(text_width + 220.0f, 280.0f);
-                if(node.color_owner_id)
-                {
-                    metrics.min_size = Float2U(88.0f, 30.0f);
-                    metrics.preferred_size = Float2U(max(text_width + 92.0f, 116.0f), 30.0f);
-                }
-                else
-                {
-                    metrics.min_size = Float2U(180.0f, 30.0f);
-                    metrics.preferred_size = Float2U(w, 30.0f);
-                }
-                metrics.max_size = Float2U(F32_MAX, 30.0f);
-                break;
-            }
-            case NodeKind::hit_box:
-                metrics.min_size = Float2U(1.0f, 1.0f);
-                metrics.preferred_size = Float2U(1.0f, 1.0f);
-                metrics.max_size = Float2U(F32_MAX, F32_MAX);
-                break;
-            case NodeKind::table_layout:
+
+            if(node.is_table_layout())
             {
                 Vector<f32> min_columns;
                 Vector<f32> min_rows;
@@ -378,22 +239,23 @@ namespace Luna
                 Vector<f32> preferred_rows;
                 measure_table_tracks(node_index, min_columns, min_rows, false);
                 measure_table_tracks(node_index, preferred_columns, preferred_rows, true);
-                f32 min_width = node.table_desc.style.border_size * 2.0f;
-                f32 preferred_width = node.table_desc.style.border_size * 2.0f;
+                const TableStyle& style = table_desc(node).style;
+                f32 min_width = style.border_size * 2.0f;
+                f32 preferred_width = style.border_size * 2.0f;
                 for(f32 v : min_columns) min_width += v;
                 for(f32 v : preferred_columns) preferred_width += v;
-                f32 min_height = node.table_desc.style.border_size * 2.0f;
-                f32 preferred_height = node.table_desc.style.border_size * 2.0f;
+                f32 min_height = style.border_size * 2.0f;
+                f32 preferred_height = style.border_size * 2.0f;
                 for(f32 v : min_rows) min_height += v;
                 for(f32 v : preferred_rows) preferred_height += v;
-                f32 separator_size = node.table_desc.style.separator_size;
-                if(node.table_desc.style.column_separators && min_columns.size() > 1)
+                f32 separator_size = style.separator_size;
+                if(style.column_separators && min_columns.size() > 1)
                 {
                     f32 separators = separator_size * (f32)(min_columns.size() - 1);
                     min_width += separators;
                     preferred_width += separators;
                 }
-                if(node.table_desc.style.row_separators && min_rows.size() > 1)
+                if(style.row_separators && min_rows.size() > 1)
                 {
                     f32 separators = separator_size * (f32)(min_rows.size() - 1);
                     min_height += separators;
@@ -402,14 +264,12 @@ namespace Luna
                 metrics.min_size = Float2U(max(min_width, 1.0f), max(min_height, 1.0f));
                 metrics.preferred_size = Float2U(max(preferred_width, 1.0f), max(preferred_height, 1.0f));
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
-                break;
             }
-            case NodeKind::grid_layout:
+            else if(node.is_grid_layout())
             {
                 metrics = measure_grid_node(node_index, F32_MAX);
-                break;
             }
-            case NodeKind::canvas_layout:
+            else if(node.is_canvas_layout())
             {
                 f32 min_width = 1.0f;
                 f32 min_height = 1.0f;
@@ -428,9 +288,8 @@ namespace Luna
                 metrics.min_size = Float2U(min_width, min_height);
                 metrics.preferred_size = Float2U(preferred_width, preferred_height);
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
-                break;
             }
-            case NodeKind::tab_bar:
+            else if(node.is_tab_bar())
             {
                 f32 min_header_width = 0.0f;
                 f32 preferred_header_width = 0.0f;
@@ -439,12 +298,12 @@ namespace Luna
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
                     const Node& child_node = m_submitted_desc.nodes[child];
-                    if(child_node.kind != NodeKind::tab_item) continue;
-                    if(child_node.bool_value && !*child_node.bool_value) continue;
+                    if(!child_node.is_tab_item()) continue;
+                    if(!bool_value_open(child_node)) continue;
                     f32 ideal_width = tab_item_ideal_width(child_node);
                     min_header_width += tab_item_min_width();
                     preferred_header_width += ideal_width;
-                    if(child_node.selected || (get_or_create_persistent_state(node.id).tab_selected_id == child_node.id))
+                    if(child_node.tab_item_selected() || (get_or_create_persistent_state(node.id).tab_selected_id == child_node.id))
                     {
                         content_metrics = measure_node(child);
                         has_content = true;
@@ -460,11 +319,10 @@ namespace Luna
                 metrics.min_size = Float2U(max(min_header_width, 1.0f), header_height + content_metrics.min_size.y);
                 metrics.preferred_size = Float2U(max(preferred_header_width, content_metrics.preferred_size.x), header_height + content_metrics.preferred_size.y);
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
-                break;
             }
-            default:
+            else
             {
-                bool horizontal = node.kind == NodeKind::h_layout || node.kind == NodeKind::menu_bar;
+                bool horizontal = node.is_horizontal_layout();
                 const EdgeInsets& padding = node.layout_desc.padding;
                 f32 gap = node.layout_desc.gap;
                 f32 min_main = 0.0f;
@@ -521,8 +379,6 @@ namespace Luna
                 metrics.min_size = min_size;
                 metrics.preferred_size = preferred_size;
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
-                break;
-            }
             }
 
             metrics = apply_layout_style(node, metrics);
@@ -534,7 +390,7 @@ namespace Luna
         void Context::arrange_grid_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
             Node& node = m_submitted_desc.nodes[node_index];
-            const GridLayoutDesc& desc = node.grid_desc;
+            const GridLayoutDesc& desc = grid_desc(node);
             f32 gap_x = max(desc.gap.x, 0.0f);
             f32 gap_y = max(desc.gap.y, 0.0f);
             RectF content_rect(
@@ -615,7 +471,7 @@ namespace Luna
         void Context::arrange_canvas_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
             Node& node = m_submitted_desc.nodes[node_index];
-            const CanvasLayoutDesc& desc = node.canvas_desc;
+            const CanvasLayoutDesc& desc = canvas_desc(node);
             RectF content_rect(
                 rect.offset_x + desc.padding.left,
                 rect.offset_y + desc.padding.top,
@@ -673,8 +529,8 @@ namespace Luna
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
                 Node& child_node = m_submitted_desc.nodes[child];
-                if(child_node.kind != NodeKind::tab_item) continue;
-                bool open = !child_node.bool_value || *child_node.bool_value;
+                if(!child_node.is_tab_item()) continue;
+                bool open = bool_value_open(child_node);
                 if(!open)
                 {
                     m_layouts[child].tab_content_visible = false;
@@ -683,19 +539,19 @@ namespace Luna
                     continue;
                 }
                 live_tabs.push_back(child);
-                if(!first_open && !test_flags(child_node.tab_item_flags, TabItemFlag::button))
+                if(!first_open && !test_flags(child_node.get_tab_item_flags(), TabItemFlag::button))
                 {
                     first_open = child_node.id;
                 }
-                // node.selected is build-time visibility; persistent selection is authoritative
+                // tab_item_selected is build-time visibility; persistent selection is authoritative
                 // after input-triggered relayouts.
-                if(!selected && child_node.selected && !test_flags(child_node.tab_item_flags, TabItemFlag::button))
+                if(!selected && child_node.tab_item_selected() && !test_flags(child_node.get_tab_item_flags(), TabItemFlag::button))
                 {
                     selected = child_node.id;
                 }
                 if(selected && selected == child_node.id)
                 {
-                    selected_open = !test_flags(child_node.tab_item_flags, TabItemFlag::button);
+                    selected_open = !test_flags(child_node.get_tab_item_flags(), TabItemFlag::button);
                 }
             }
             if(!selected || !selected_open)
@@ -765,7 +621,7 @@ namespace Luna
                 total_width += width;
                 shrink_capacity += max(width - tab_item_min_width(), 0.0f);
             }
-            bool use_scroll = test_flags(node.tab_bar_flags, TabBarFlag::fitting_scroll);
+            bool use_scroll = test_flags(node.get_tab_bar_flags(), TabBarFlag::fitting_scroll);
             if(use_scroll && total_width > header_area_rect.width + 0.5f)
             {
                 f32 button_size = tab_scroll_button_size();
@@ -787,7 +643,7 @@ namespace Luna
                     header_rect.height);
             }
             f32 available_width = max(header_area_rect.width, 1.0f);
-            if(!bar_layout.tab_scrollable && test_flags(node.tab_bar_flags, TabBarFlag::fitting_shrink) &&
+            if(!bar_layout.tab_scrollable && test_flags(node.get_tab_bar_flags(), TabBarFlag::fitting_shrink) &&
                 total_width > available_width && shrink_capacity > 0.0f)
             {
                 f32 deficit = total_width - available_width;
@@ -811,13 +667,13 @@ namespace Luna
                 u32 tab = tabs[i];
                 Node& tab_node = m_submitted_desc.nodes[tab];
                 NodeLayout& tab_layout = m_layouts[tab];
-                bool content_visible = tab_node.id == selected && !test_flags(tab_node.tab_item_flags, TabItemFlag::button);
+                bool content_visible = tab_node.id == selected && !test_flags(tab_node.get_tab_item_flags(), TabItemFlag::button);
                 RectF tab_header(cursor_x, header_rect.offset_y + 3.0f, max(widths[i], 1.0f), max(header_rect.height - 4.0f, 1.0f));
                 tab_layout.tab_header_rect = tab_header;
                 tab_layout.tab_header_clip_rect = header_clip;
                 tab_layout.tab_content_visible = content_visible;
                 tab_layout.tab_close_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-                if(tab_node.bool_value && !test_flags(tab_node.tab_item_flags, TabItemFlag::no_close_button))
+                if(tab_node.bool_value() && !test_flags(tab_node.get_tab_item_flags(), TabItemFlag::no_close_button))
                 {
                     f32 close_size = 18.0f;
                     tab_layout.tab_close_rect = RectF(
@@ -869,10 +725,11 @@ namespace Luna
             layout.table_row_heights = row_heights;
             if(!columns || !rows) return;
 
-            f32 border_size = node.table_desc.style.border_size;
-            f32 separator_size = node.table_desc.style.separator_size;
-            f32 column_separator = node.table_desc.style.column_separators ? separator_size : 0.0f;
-            f32 row_separator = node.table_desc.style.row_separators ? separator_size : 0.0f;
+            const TableStyle& style = table_desc(node).style;
+            f32 border_size = style.border_size;
+            f32 separator_size = style.separator_size;
+            f32 column_separator = style.column_separators ? separator_size : 0.0f;
+            f32 row_separator = style.row_separators ? separator_size : 0.0f;
             f32 cursor_x = rect.offset_x + border_size;
             for(u32 col = 0; col < columns; ++col)
             {
@@ -894,10 +751,10 @@ namespace Luna
                 if(row >= rows) break;
                 RectF cell_rect(layout.table_column_offsets[col], layout.table_row_offsets[row], column_widths[col], row_heights[row]);
                 RectF child_rect(
-                    cell_rect.offset_x + node.table_desc.style.padding.left,
-                    cell_rect.offset_y + node.table_desc.style.padding.top,
-                    max(cell_rect.width - node.table_desc.style.padding.left - node.table_desc.style.padding.right, 1.0f),
-                    max(cell_rect.height - node.table_desc.style.padding.top - node.table_desc.style.padding.bottom, 1.0f));
+                    cell_rect.offset_x + style.padding.left,
+                    cell_rect.offset_y + style.padding.top,
+                    max(cell_rect.width - style.padding.left - style.padding.right, 1.0f),
+                    max(cell_rect.height - style.padding.top - style.padding.bottom, 1.0f));
                 layout_node(child, child_rect, intersect_rect(cell_rect, clip_rect));
             }
         }
@@ -1382,7 +1239,7 @@ namespace Luna
             luassert(layer.root != U32_MAX && layer.root < m_submitted_desc.nodes.size());
             Node& node = m_submitted_desc.nodes[layer.root];
             RectF screen_rect(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
-            if(node.kind == NodeKind::root)
+            if(node.is_root())
             {
                 layer.screen_position = Float2U(0.0f);
                 return screen_rect;
@@ -1395,30 +1252,31 @@ namespace Luna
             height = clamp(height, metrics.min_size.y, min(metrics.max_size.y, max(m_frame_desc.surface_size.y, 1.0f)));
             Float2U position = layer.screen_position;
 
-            if(node.kind == NodeKind::tooltip)
+            if(node.is_tooltip())
             {
-                f32 max_width = node.tooltip_desc.max_width > 0.0f ? node.tooltip_desc.max_width : m_frame_desc.surface_size.x;
+                const TooltipDesc& desc = tooltip_desc(node);
+                f32 max_width = desc.max_width > 0.0f ? desc.max_width : m_frame_desc.surface_size.x;
                 width = min(max(width, 1.0f), min(max_width, max(m_frame_desc.surface_size.x, 1.0f)));
                 height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
-                position.x = m_pointer_pos.x + node.tooltip_desc.offset.x;
-                position.y = m_pointer_pos.y + node.tooltip_desc.offset.y;
-                if(position.x + width > m_frame_desc.surface_size.x && m_pointer_pos.x - width - node.tooltip_desc.offset.x >= 0.0f)
+                position.x = m_pointer_pos.x + desc.offset.x;
+                position.y = m_pointer_pos.y + desc.offset.y;
+                if(position.x + width > m_frame_desc.surface_size.x && m_pointer_pos.x - width - desc.offset.x >= 0.0f)
                 {
-                    position.x = m_pointer_pos.x - width - node.tooltip_desc.offset.x;
+                    position.x = m_pointer_pos.x - width - desc.offset.x;
                 }
-                if(position.y + height > m_frame_desc.surface_size.y && m_pointer_pos.y - height - node.tooltip_desc.offset.y >= 0.0f)
+                if(position.y + height > m_frame_desc.surface_size.y && m_pointer_pos.y - height - desc.offset.y >= 0.0f)
                 {
-                    position.y = m_pointer_pos.y - height - node.tooltip_desc.offset.y;
+                    position.y = m_pointer_pos.y - height - desc.offset.y;
                 }
             }
-            else if(node.kind == NodeKind::popup && node.popup_owner_id)
+            else if(node.is_popup() && node.popup_owner())
             {
-                u32 owner_index = find_submitted_node_index(node.popup_owner_id);
+                u32 owner_index = find_submitted_node_index(node.popup_owner());
                 if(owner_index != U32_MAX)
                 {
                     const Node& owner = m_submitted_desc.nodes[owner_index];
                     const RectF& owner_rect = m_layouts[owner_index].rect;
-                    bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].kind == NodeKind::menu_bar;
+                    bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].is_menu_bar();
                     width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
                     height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
                     if(owner_in_menu_bar)
@@ -1430,7 +1288,7 @@ namespace Luna
                             position.y = owner_rect.offset_y - height - 2.0f;
                         }
                     }
-                    else if(owner.kind == NodeKind::color_edit)
+                    else if(owner.is_color_edit())
                     {
                         PersistentItemState& popup_state = get_or_create_persistent_state(node.id);
                         if(popup_state.popup_anchor_valid)
@@ -1507,34 +1365,34 @@ namespace Luna
             m_layouts[node_index].rect = rect;
             m_layouts[node_index].clip_rect = effective_clip;
 
-            if(node.kind != NodeKind::root)
+            if(!node.is_root())
             {
                 ItemResult& result = get_or_create_current_result(node.id);
                 result.states.insert_or_assign(Name("gui.rect"), Any(rect));
                 result.states.insert_or_assign(Name("gui.clip_rect"), Any(effective_clip));
             }
 
-            if(node.kind == NodeKind::table_layout)
+            if(node.is_table_layout())
             {
                 arrange_table_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.kind == NodeKind::grid_layout)
+            if(node.is_grid_layout())
             {
                 arrange_grid_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.kind == NodeKind::canvas_layout)
+            if(node.is_canvas_layout())
             {
                 arrange_canvas_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.kind == NodeKind::tab_bar)
+            if(node.is_tab_bar())
             {
                 arrange_tab_bar_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.kind == NodeKind::dock_space)
+            if(node.is_dock_space())
             {
                 arrange_dock_space_node(node_index, rect, effective_clip);
                 return rect;
@@ -1542,7 +1400,7 @@ namespace Luna
 
             if(node.first_child == U32_MAX) return rect;
 
-            bool horizontal = node.kind == NodeKind::h_layout || node.kind == NodeKind::menu_bar;
+            bool horizontal = node.is_horizontal_layout();
             const EdgeInsets& padding = node.layout_desc.padding;
             RectF content_rect(
                 rect.offset_x + padding.left,
@@ -1573,7 +1431,7 @@ namespace Luna
                     absolute_children.push_back(child);
                     continue;
                 }
-                if(child_node.kind == NodeKind::grid_layout)
+                if(child_node.is_grid_layout())
                 {
                     has_grid_child = true;
                 }
@@ -1599,7 +1457,7 @@ namespace Luna
                 for(usize i = 0; i < children.size(); ++i)
                 {
                     Node& child_node = m_submitted_desc.nodes[children[i]];
-                    LayoutMetrics metrics = child_node.kind == NodeKind::grid_layout ?
+                    LayoutMetrics metrics = child_node.is_grid_layout() ?
                         apply_layout_style(child_node, measure_grid_node(children[i], grid_available_width)) :
                         measure_node(children[i]);
                     child_metrics[i] = metrics;
@@ -1631,32 +1489,33 @@ namespace Luna
                         position.x += layer_position.x;
                         position.y += layer_position.y;
                     }
-                    if(child_node.kind == NodeKind::tooltip)
+                    if(child_node.is_tooltip())
                     {
-                        f32 max_width = child_node.tooltip_desc.max_width > 0.0f ? child_node.tooltip_desc.max_width : m_frame_desc.surface_size.x;
+                        const TooltipDesc& desc = tooltip_desc(child_node);
+                        f32 max_width = desc.max_width > 0.0f ? desc.max_width : m_frame_desc.surface_size.x;
                         width = min(max(width, 1.0f), min(max_width, max(m_frame_desc.surface_size.x, 1.0f)));
                         height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
-                        position.x = m_pointer_pos.x + child_node.tooltip_desc.offset.x;
-                        position.y = m_pointer_pos.y + child_node.tooltip_desc.offset.y;
-                        if(position.x + width > m_frame_desc.surface_size.x && m_pointer_pos.x - width - child_node.tooltip_desc.offset.x >= 0.0f)
+                        position.x = m_pointer_pos.x + desc.offset.x;
+                        position.y = m_pointer_pos.y + desc.offset.y;
+                        if(position.x + width > m_frame_desc.surface_size.x && m_pointer_pos.x - width - desc.offset.x >= 0.0f)
                         {
-                            position.x = m_pointer_pos.x - width - child_node.tooltip_desc.offset.x;
+                            position.x = m_pointer_pos.x - width - desc.offset.x;
                         }
-                        if(position.y + height > m_frame_desc.surface_size.y && m_pointer_pos.y - height - child_node.tooltip_desc.offset.y >= 0.0f)
+                        if(position.y + height > m_frame_desc.surface_size.y && m_pointer_pos.y - height - desc.offset.y >= 0.0f)
                         {
-                            position.y = m_pointer_pos.y - height - child_node.tooltip_desc.offset.y;
+                            position.y = m_pointer_pos.y - height - desc.offset.y;
                         }
                         position.x = clamp(position.x, 0.0f, max(m_frame_desc.surface_size.x - width, 0.0f));
                         position.y = clamp(position.y, 0.0f, max(m_frame_desc.surface_size.y - height, 0.0f));
                     }
-                    else if(child_node.kind == NodeKind::popup && child_node.popup_owner_id)
+                    else if(child_node.is_popup() && child_node.popup_owner())
                     {
-                        u32 owner_index = find_submitted_node_index(child_node.popup_owner_id);
+                        u32 owner_index = find_submitted_node_index(child_node.popup_owner());
                         if(owner_index != U32_MAX)
                         {
                             const Node& owner = m_submitted_desc.nodes[owner_index];
                             const RectF& owner_rect = m_layouts[owner_index].rect;
-                            bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].kind == NodeKind::menu_bar;
+                            bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].is_menu_bar();
                             width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
                             height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
                             if(owner_in_menu_bar)
@@ -1668,7 +1527,7 @@ namespace Luna
                                     position.y = owner_rect.offset_y - height - 2.0f;
                                 }
                             }
-                            else if(owner.kind == NodeKind::color_edit)
+                            else if(owner.is_color_edit())
                             {
                                 PersistentItemState& popup_state = get_or_create_persistent_state(child_node.id);
                                 if(popup_state.popup_anchor_valid)
@@ -1717,7 +1576,7 @@ namespace Luna
 
             if(children.empty())
             {
-                if(node.kind == NodeKind::scroll_view)
+                if(node.is_scroll_view())
                 {
                     NodeLayout& layout = m_layouts[node_index];
                     layout.scroll_viewport_size = Float2U(max(viewport_rect.width, 1.0f), max(viewport_rect.height, 1.0f));
@@ -1734,7 +1593,7 @@ namespace Luna
 
             f32 gap = node.layout_desc.gap;
             f32 total_gap = gap * (f32)(children.size() - 1);
-            if(node.kind == NodeKind::scroll_view)
+            if(node.is_scroll_view())
             {
                 if(has_grid_child)
                 {
@@ -1821,7 +1680,7 @@ namespace Luna
                 content_rect.offset_y -= persistent.scroll_y;
             }
             f32 available_main = horizontal ? content_rect.width : content_rect.height;
-            if(node.kind == NodeKind::scroll_view)
+            if(node.is_scroll_view())
             {
                 available_main = max(available_main, total_base_main + total_gap);
             }
@@ -1873,7 +1732,7 @@ namespace Luna
             f32 cross_start = horizontal ? content_rect.offset_y : content_rect.offset_x;
             f32 available_cross = horizontal ? content_rect.height : content_rect.width;
             RectF child_clip = effective_clip;
-            if(node.kind == NodeKind::scroll_view)
+            if(node.is_scroll_view())
             {
                 const NodeLayout& layout = m_layouts[node_index];
                 child_clip = intersect_rect(

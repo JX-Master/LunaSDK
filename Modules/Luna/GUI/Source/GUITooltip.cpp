@@ -18,12 +18,14 @@ namespace Luna
         ItemHandle Context::begin_tooltip(ItemHandle owner, const c8* label, const TooltipDesc& desc)
         {
             ItemHandle handle;
-            id_t layer_id = allocate_detached_layer_id(NodeKind::tooltip, label ? label : "Tooltip");
+            id_t layer_id = allocate_detached_layer_id(TooltipNode::__guid, label ? label : "Tooltip");
             push_layer_internal(layer_id, Float2U(0.0f));
-            begin_container(NodeKind::tooltip, label ? label : "Tooltip", desc.size, &handle, layer_id);
+            begin_container(Ref<Node>(new_object<TooltipNode>()), label ? label : "Tooltip", desc.size, &handle, layer_id);
             Node& node = m_build_desc.nodes.back();
-            node.popup_owner_id = owner.context == get_object() ? owner.id : 0;
-            node.tooltip_desc = desc;
+            node.set_popup_owner(owner.context == get_object() ? owner.id : 0);
+            TooltipDesc* node_desc = node.get_tooltip_desc();
+            luassert(node_desc);
+            *node_desc = desc;
             node.layout_desc.padding = EdgeInsets::xy(8.0f, 6.0f);
             node.layout_desc.gap = 4.0f;
             return handle;
@@ -34,18 +36,19 @@ namespace Luna
             lutsassert();
             luassert(!m_parent_stack.empty());
             const Node& node = m_build_desc.nodes[m_parent_stack.back()];
-            luassert(node.kind == NodeKind::tooltip);
+            luassert(node.is_tooltip());
             end_container();
             pop_layer();
         }
 
         bool Context::tooltip_node_visible(const Node& node) const
         {
-            if(node.kind != NodeKind::tooltip) return true;
-            if(!node.popup_owner_id || !m_pointer_inside) return false;
+            if(!node.is_tooltip()) return true;
+            id_t owner = node.popup_owner();
+            if(!owner || !m_pointer_inside) return false;
             if(m_drag_drop_active || m_active_id) return false;
-            if(m_hovered_id != node.popup_owner_id || m_tooltip_hovered_id != node.popup_owner_id) return false;
-            return m_time - m_tooltip_hover_start >= max((f64)node.tooltip_desc.delay, 0.0);
+            if(m_hovered_id != owner || m_tooltip_hovered_id != owner) return false;
+            return m_time - m_tooltip_hover_start >= max((f64)tooltip_desc(node).delay, 0.0);
         }
 
         LUNA_GUI_API ItemHandle begin_tooltip(IContext* context, ItemHandle owner, const c8* label, const TooltipDesc& desc)

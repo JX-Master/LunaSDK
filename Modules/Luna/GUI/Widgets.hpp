@@ -41,6 +41,7 @@ namespace Luna
         LUNA_GUI_API void tree_push(IContext* context);
         LUNA_GUI_API void tree_push(IContext* context, ItemHandle node);
         LUNA_GUI_API void tree_pop(IContext* context);
+        LUNA_GUI_API ItemHandle custom_node(IContext* context, Ref<Node> node, const c8* label = nullptr, bool interactive = false);
 
         LUNA_GUI_API void set_next_item_layout(IContext* context, const LayoutStyle& style);
         LUNA_GUI_API void set_next_canvas_item_layout(IContext* context, const CanvasItemLayout& layout);

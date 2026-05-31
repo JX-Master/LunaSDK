@@ -62,9 +62,8 @@ namespace Luna
             m_build_desc.layers.push_back(default_layer);
             m_layer_stack.push_back(0);
 
-            Node root;
+            RootNode root;
             root.id = 1;
-            root.kind = NodeKind::root;
             root.layer = 0;
             root.parent = U32_MAX;
             root.depth = 0;
@@ -94,17 +93,18 @@ namespace Luna
             return m_layer_stack.back();
         }
 
-        id_t Context::make_node_id(id_t parent_id, NodeKind kind, u32 ordinal, const c8* text) const
+        id_t Context::make_node_id(id_t parent_id, const Guid& node_type, u32 ordinal, const c8* text) const
         {
             u64 h = hash_u64(parent_id);
             h = hash_u64(m_id_stack.empty() ? 0 : m_id_stack.back(), h);
-            h = hash_u64((u64)kind, h);
+            h = hash_u64(node_type.high, h);
+            h = hash_u64(node_type.low, h);
             h = hash_u64((u64)ordinal, h);
             h = hash_cstr(text, h);
             return h ? h : 1;
         }
 
-        id_t Context::allocate_detached_layer_id(NodeKind kind, const c8* text)
+        id_t Context::allocate_detached_layer_id(const Guid& node_type, const c8* text)
         {
             luassert(!m_parent_stack.empty());
             u32 parent = m_parent_stack.back();
@@ -121,7 +121,7 @@ namespace Luna
                 parent_id = m_build_desc.nodes[parent].id;
                 ordinal = m_child_ordinals[parent]++;
             }
-            return make_node_id(parent_id, kind, ordinal, text);
+            return make_node_id(parent_id, node_type, ordinal, text);
         }
 
         void Context::push_layer_internal(id_t id, const Float2U& screen_position)
@@ -186,14 +186,15 @@ namespace Luna
                 }
                 PersistentItemState& state = get_or_create_persistent_state(node.id);
                 f32 font_size = 16.0f;
-                if(node.kind == NodeKind::input_text && node.string_value)
+                String* string_value = node.string_value();
+                if(node.is_input_text() && string_value)
                 {
                     const RectF& rect = m_layouts[i].rect;
-                    state.text_cursor = clamp_utf8_cursor(*node.string_value, state.text_cursor);
+                    state.text_cursor = clamp_utf8_cursor(*string_value, state.text_cursor);
                     RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
                     ret.active = true;
                     ret.rect = text_rect;
-                    ret.cursor = (i32)(input_text_cursor_x(*node.string_value, state.text_cursor, font_size) + 0.5f);
+                    ret.cursor = (i32)(input_text_cursor_x(*string_value, state.text_cursor, font_size) + 0.5f);
                     return ret;
                 }
                 if(is_numeric_input_node(node) && state.numeric_editing)
@@ -216,10 +217,18 @@ namespace Luna
             return m_build_desc;
         }
 
-        ItemHandle Context::add_node(NodeKind kind, const c8* text, bool interactive, id_t forced_id)
+        ItemHandle Context::add_node(Ref<Node> node, const c8* label, bool interactive)
         {
             lutsassert();
+            return add_node_internal(move(node), label, interactive, 0);
+        }
+
+        ItemHandle Context::add_node_internal(Ref<Node> node_ref, const c8* text, bool interactive, id_t forced_id)
+        {
+            lutsassert();
+            luassert(node_ref);
             luassert(!m_parent_stack.empty());
+            Node& node = *node_ref.get();
             u32 parent = m_parent_stack.back();
             u32 layer_index = current_layer_index();
             luassert(layer_index < m_build_desc.layers.size());
@@ -237,19 +246,16 @@ namespace Luna
                 ordinal = m_child_ordinals[parent]++;
             }
 
-            Node node;
-            node.id = forced_id ? forced_id : make_node_id(parent_id, kind, ordinal, text);
-            node.kind = kind;
+            node.id = forced_id ? forced_id : (node.id ? node.id : make_node_id(parent_id, node.type_guid(), ordinal, text));
             node.layer = layer_index;
             node.parent = layer_root ? U32_MAX : parent;
             node.depth = layer_root ? 0 : m_build_desc.nodes[parent].depth + 1;
             node.text = text ? text : "";
-            node.interactive = interactive;
-            if(!layer_root && m_build_desc.nodes[parent].kind == NodeKind::dock_space)
+            node.interactive = node.interactive || interactive || node.default_interactive();
+            if(!layer_root && m_build_desc.nodes[parent].is_dock_space())
             {
                 node.interactive = true;
             }
-            node.layout_style = default_layout_style(kind);
             if(!m_clip_stack.empty())
             {
                 node.has_user_clip_rect = true;
@@ -272,7 +278,7 @@ namespace Luna
                 node.table_cell_color = m_next_table_cell_color;
                 m_has_next_table_cell_color = false;
             }
-            if(!layer_root && m_has_next_dock_panel_style && m_build_desc.nodes[parent].kind == NodeKind::dock_space)
+            if(!layer_root && m_has_next_dock_panel_style && m_build_desc.nodes[parent].is_dock_space())
             {
                 node.has_dock_panel_style = true;
                 node.dock_panel_style = m_next_dock_panel_style;
@@ -287,7 +293,7 @@ namespace Luna
             }
 
             u32 index = (u32)m_build_desc.nodes.size();
-            m_build_desc.nodes.push_back(node);
+            m_build_desc.nodes.push_back(move(node_ref));
             m_child_ordinals.push_back(0);
 
             if(layer_root)
@@ -308,41 +314,18 @@ namespace Luna
                 parent_node.last_child = index;
             }
 
-            m_last_item_id = node.id;
-            return ItemHandle{get_object(), node.id, m_generation};
+            m_last_item_id = m_build_desc.nodes[index].id;
+            return ItemHandle{get_object(), m_build_desc.nodes[index].id, m_generation};
         }
 
-        void Context::begin_container(NodeKind kind, const c8* label, const Size& size, ItemHandle* out_handle, id_t forced_id)
+        void Context::begin_container(Ref<Node> node, const c8* label, const Size& size, ItemHandle* out_handle, id_t forced_id)
         {
-            bool interactive = kind == NodeKind::scroll_view || kind == NodeKind::popup || kind == NodeKind::menu_bar || kind == NodeKind::table_layout || kind == NodeKind::tab_bar;
-            ItemHandle handle = add_node(kind, label, interactive, forced_id);
+            luassert(node);
+            bool interactive = node->default_interactive();
+            ItemHandle handle = add_node_internal(move(node), label, interactive, forced_id);
             u32 index = (u32)m_build_desc.nodes.size() - 1;
             apply_requested_size(m_build_desc.nodes[index], size);
-            if(kind == NodeKind::window || kind == NodeKind::scroll_view)
-            {
-                m_build_desc.nodes[index].layout_desc.padding = EdgeInsets::all(8.0f);
-            }
-            if(kind == NodeKind::dock_space)
-            {
-                m_build_desc.nodes[index].layout_desc.padding = EdgeInsets::all(0.0f);
-                m_build_desc.nodes[index].layout_desc.gap = 0.0f;
-            }
-            if(kind == NodeKind::tab_bar)
-            {
-                m_build_desc.nodes[index].layout_desc.padding = EdgeInsets::all(0.0f);
-                m_build_desc.nodes[index].layout_desc.gap = 0.0f;
-            }
-            if(kind == NodeKind::canvas_layout)
-            {
-                m_build_desc.nodes[index].layout_desc.padding = EdgeInsets::all(0.0f);
-                m_build_desc.nodes[index].layout_desc.gap = 0.0f;
-            }
-            if(kind == NodeKind::menu_bar)
-            {
-                m_build_desc.nodes[index].layout_desc.padding = EdgeInsets::xy(4.0f, 2.0f);
-                m_build_desc.nodes[index].layout_desc.gap = 2.0f;
-                m_build_desc.nodes[index].layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::center;
-            }
+            m_build_desc.nodes[index].apply_container_defaults(m_build_desc.nodes[index].layout_desc);
             m_parent_stack.push_back(index);
             m_id_stack.push_back(handle.id);
             if(out_handle) *out_handle = handle;
@@ -438,7 +421,7 @@ namespace Luna
             u64 preview_layer_id = hash_u64(source.id);
             preview_layer_id = hash_cstr("DragDropPreview", preview_layer_id);
             push_layer_internal(preview_layer_id, preview_pos);
-            begin_container(NodeKind::popup, "DragDropPreview", Size(), &preview, preview_layer_id);
+            begin_container(Ref<Node>(new_object<PopupNode>()), "DragDropPreview", Size(), &preview, preview_layer_id);
             Node& preview_node = m_build_desc.nodes.back();
             preview_node.layout_desc.padding = EdgeInsets::all(6.0f);
             preview_node.layout_desc.gap = 2.0f;
@@ -613,10 +596,73 @@ namespace Luna
             {
                 for(const Node& node : m_build_desc.nodes)
                 {
-                    if(node.id != handle.id || node.kind != NodeKind::tree_node) continue;
+                    if(node.id != handle.id) continue;
                     ItemResult& fallback = get_or_create_current_result(handle.id);
-                    bool default_open = !tree_node_is_leaf(node) && test_flags(node.tree_flags, TreeNodeFlag::default_open);
-                    fallback.states.insert_or_assign(key, Any(default_open));
+                    struct BuildStateInputContext : NodeInputContext
+                    {
+                        Context* context = nullptr;
+                        ItemResult* result = nullptr;
+                        id_t node_id = 0;
+
+                        virtual Float2U pointer_position() const override
+                        {
+                            return context ? context->m_pointer_pos : Float2U(0.0f);
+                        }
+
+                        virtual RectF rect() const override
+                        {
+                            return RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                        }
+
+                        virtual const Any* get_persistent_state(const Name& key) const override
+                        {
+                            if(!context || !node_id) return nullptr;
+                            PersistentItemState& state = context->get_or_create_persistent_state(node_id);
+                            auto iter = state.custom_states.find(key);
+                            return iter == state.custom_states.end() ? nullptr : &iter->second;
+                        }
+
+                        virtual void set_persistent_state(const Name& key, const Any& value) override
+                        {
+                            if(!context || !node_id) return;
+                            PersistentItemState& state = context->get_or_create_persistent_state(node_id);
+                            state.custom_states.insert_or_assign(key, value);
+                        }
+
+                        virtual void set_state(const Name& key, const Any& value) override
+                        {
+                            if(result)
+                            {
+                                result->states.insert_or_assign(key, value);
+                            }
+                        }
+
+                        virtual bool is_popup_open(id_t popup_id) const override
+                        {
+                            return context && popup_id ? context->is_popup_open(popup_id) : false;
+                        }
+
+                        virtual bool is_combo_open(id_t combo_id) const override
+                        {
+                            if(!context || !combo_id || context->m_open_combo_id != combo_id)
+                            {
+                                return false;
+                            }
+                            PersistentItemState& state = context->get_or_create_persistent_state(combo_id);
+                            return state.open;
+                        }
+
+                        virtual void open_combo_dropdown(id_t combo_id) override {}
+                        virtual void close_combo_dropdown(id_t combo_id) override {}
+                        virtual void open_menu_popup(id_t menu_id) override {}
+                        virtual void close_popup(id_t popup_id) override {}
+                        virtual void close_all_popups() override {}
+                    };
+                    BuildStateInputContext node_context;
+                    node_context.context = this;
+                    node_context.result = &fallback;
+                    node_context.node_id = node.id;
+                    node.update_state(node_context);
                     result = &fallback;
                     break;
                 }

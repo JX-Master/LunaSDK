@@ -24,6 +24,12 @@ namespace Luna
     {
         struct Context;
 
+        enum class HitTestFilter : u8
+        {
+            none,
+            scroll_view
+        };
+
         inline Context* context_from_interface(IContext* context)
         {
             luassert_msg(context, "GUI context must not be null.");
@@ -104,7 +110,42 @@ namespace Luna
 
         inline u32 table_columns(const Node& node)
         {
-            return max(node.table_desc.columns, 1u);
+            const TableDesc* desc = node.get_table_desc();
+            return desc ? max(desc->columns, 1u) : 1u;
+        }
+
+        inline const TableDesc& table_desc(const Node& node)
+        {
+            const TableDesc* desc = node.get_table_desc();
+            luassert(desc);
+            return *desc;
+        }
+
+        inline const GridLayoutDesc& grid_desc(const Node& node)
+        {
+            const GridLayoutDesc* desc = node.get_grid_desc();
+            luassert(desc);
+            return *desc;
+        }
+
+        inline const CanvasLayoutDesc& canvas_desc(const Node& node)
+        {
+            const CanvasLayoutDesc* desc = node.get_canvas_desc();
+            luassert(desc);
+            return *desc;
+        }
+
+        inline const TooltipDesc& tooltip_desc(const Node& node)
+        {
+            const TooltipDesc* desc = node.get_tooltip_desc();
+            luassert(desc);
+            return *desc;
+        }
+
+        inline bool bool_value_open(const Node& node)
+        {
+            bool* value = node.bool_value();
+            return !value || *value;
         }
 
         inline u32 table_child_count(const Description& desc, const Node& node)
@@ -121,13 +162,16 @@ namespace Luna
         {
             u32 columns = table_columns(node);
             u32 child_count = table_child_count(desc, node);
-            return max((child_count + columns - 1) / columns, (u32)node.table_desc.row_sizes.size());
+            const TableDesc* table_desc = node.get_table_desc();
+            return max((child_count + columns - 1) / columns, table_desc ? (u32)table_desc->row_sizes.size() : 0u);
         }
 
         inline const TableTrackSize& table_track_size(const Node& node, bool column, u32 index)
         {
             static TableTrackSize default_size;
-            const Vector<TableTrackSize>& sizes = column ? node.table_desc.column_sizes : node.table_desc.row_sizes;
+            const TableDesc* desc = node.get_table_desc();
+            if(!desc) return default_size;
+            const Vector<TableTrackSize>& sizes = column ? desc->column_sizes : desc->row_sizes;
             return index < sizes.size() ? sizes[index] : default_size;
         }
 
@@ -138,7 +182,7 @@ namespace Luna
 
         inline bool window_has_title_bar(const Node& node)
         {
-            return node.kind == NodeKind::window && node.bool_value;
+            return node.is_window() && node.bool_value();
         }
 
         inline f32 window_title_bar_height()
@@ -148,26 +192,22 @@ namespace Luna
 
         inline u32 f32_value_count(const Node& node)
         {
-            return clamp((u32)node.f32_value_count, 1u, 4u);
+            return clamp((u32)node.f32_values_count(), 1u, 4u);
         }
 
         inline u32 i32_value_count(const Node& node)
         {
-            return clamp((u32)node.i32_value_count, 1u, 4u);
+            return clamp((u32)node.i32_values_count(), 1u, 4u);
         }
 
         inline bool is_float_numeric_node(const Node& node)
         {
-            return node.kind == NodeKind::slider_float ||
-                node.kind == NodeKind::input_float ||
-                node.kind == NodeKind::drag_float;
+            return node.is_float_numeric();
         }
 
         inline bool is_int_numeric_node(const Node& node)
         {
-            return node.kind == NodeKind::slider_int ||
-                node.kind == NodeKind::input_int ||
-                node.kind == NodeKind::drag_int;
+            return node.is_int_numeric();
         }
 
         inline bool is_numeric_node(const Node& node)
@@ -177,18 +217,12 @@ namespace Luna
 
         inline bool is_numeric_input_node(const Node& node)
         {
-            return node.kind == NodeKind::input_float ||
-                node.kind == NodeKind::input_int ||
-                ((node.kind == NodeKind::drag_float || node.kind == NodeKind::drag_int) &&
-                    test_flags(node.numeric_flags, NumericEditFlag::input_on_double_click));
+            return node.is_numeric_input();
         }
 
         inline bool is_numeric_pointer_edit_node(const Node& node)
         {
-            return node.kind == NodeKind::slider_float ||
-                node.kind == NodeKind::slider_int ||
-                node.kind == NodeKind::drag_float ||
-                node.kind == NodeKind::drag_int;
+            return node.is_numeric_pointer_edit();
         }
 
         inline u32 numeric_value_count(const Node& node)
@@ -199,7 +233,7 @@ namespace Luna
         inline f32 numeric_label_width(const Node& node, const RectF& rect)
         {
             if(node.text.empty()) return 0.0f;
-            if(node.color_owner_id) return 48.0f;
+            if(node.color_owner()) return 48.0f;
             return min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
         }
 
@@ -220,12 +254,14 @@ namespace Luna
             String value_text;
             if(is_float_numeric_node(node))
             {
-                f32 value = node.f32_value ? node.f32_value[min(component, f32_value_count(node) - 1)] : 0.0f;
+                f32* values = node.f32_values();
+                f32 value = values ? values[min(component, f32_value_count(node) - 1)] : 0.0f;
                 strprintf(value_text, "%.3f", value);
             }
             else
             {
-                i32 value = node.i32_value ? node.i32_value[min(component, i32_value_count(node) - 1)] : 0;
+                i32* values = node.i32_values();
+                i32 value = values ? values[min(component, i32_value_count(node) - 1)] : 0;
                 strprintf(value_text, "%d", value);
             }
             return value_text;
@@ -243,30 +279,34 @@ namespace Luna
 
         inline Float4U read_color_value(const Node& node)
         {
-            if(node.color_value_type == ColorValueType::u8 && node.u8_value)
+            u8* u8_values = node.u8_values();
+            u32* rgba8_value = node.u32_value();
+            f32* f32_values = node.f32_values();
+            u32 value_count = f32_value_count(node);
+            if(node.color_type() == ColorValueType::u8 && u8_values)
             {
                 return Float4U(
-                    color_u8_to_channel(node.u8_value[0]),
-                    color_u8_to_channel(node.u8_value[1]),
-                    color_u8_to_channel(node.u8_value[2]),
-                    node.f32_value_count > 3 ? color_u8_to_channel(node.u8_value[3]) : 1.0f);
+                    color_u8_to_channel(u8_values[0]),
+                    color_u8_to_channel(u8_values[1]),
+                    color_u8_to_channel(u8_values[2]),
+                    value_count > 3 ? color_u8_to_channel(u8_values[3]) : 1.0f);
             }
-            if(node.color_value_type == ColorValueType::rgba8 && node.u32_value)
+            if(node.color_type() == ColorValueType::rgba8 && rgba8_value)
             {
-                u32 value = *node.u32_value;
+                u32 value = *rgba8_value;
                 return Float4U(
                     color_u8_to_channel((u8)(value & 0xffu)),
                     color_u8_to_channel((u8)((value >> 8) & 0xffu)),
                     color_u8_to_channel((u8)((value >> 16) & 0xffu)),
-                    node.f32_value_count > 3 ? color_u8_to_channel((u8)((value >> 24) & 0xffu)) : 1.0f);
+                    value_count > 3 ? color_u8_to_channel((u8)((value >> 24) & 0xffu)) : 1.0f);
             }
-            if(node.f32_value)
+            if(f32_values)
             {
                 return Float4U(
-                    clamp(node.f32_value[0], 0.0f, 1.0f),
-                    clamp(node.f32_value_count > 1 ? node.f32_value[1] : 0.0f, 0.0f, 1.0f),
-                    clamp(node.f32_value_count > 2 ? node.f32_value[2] : 0.0f, 0.0f, 1.0f),
-                    clamp(node.f32_value_count > 3 ? node.f32_value[3] : 1.0f, 0.0f, 1.0f));
+                    clamp(f32_values[0], 0.0f, 1.0f),
+                    clamp(value_count > 1 ? f32_values[1] : 0.0f, 0.0f, 1.0f),
+                    clamp(value_count > 2 ? f32_values[2] : 0.0f, 0.0f, 1.0f),
+                    clamp(value_count > 3 ? f32_values[3] : 1.0f, 0.0f, 1.0f));
             }
             return Float4U(0.0f, 0.0f, 0.0f, 1.0f);
         }
@@ -276,28 +316,32 @@ namespace Luna
             color.x = clamp(color.x, 0.0f, 1.0f);
             color.y = clamp(color.y, 0.0f, 1.0f);
             color.z = clamp(color.z, 0.0f, 1.0f);
-            color.w = node.f32_value_count > 3 ? clamp(color.w, 0.0f, 1.0f) : 1.0f;
-            if(node.color_value_type == ColorValueType::u8 && node.u8_value)
+            u32 value_count = f32_value_count(node);
+            color.w = value_count > 3 ? clamp(color.w, 0.0f, 1.0f) : 1.0f;
+            u8* u8_values = node.u8_values();
+            u32* rgba8_value = node.u32_value();
+            f32* f32_values = node.f32_values();
+            if(node.color_type() == ColorValueType::u8 && u8_values)
             {
-                node.u8_value[0] = color_channel_to_u8(color.x);
-                node.u8_value[1] = color_channel_to_u8(color.y);
-                node.u8_value[2] = color_channel_to_u8(color.z);
-                if(node.f32_value_count > 3) node.u8_value[3] = color_channel_to_u8(color.w);
+                u8_values[0] = color_channel_to_u8(color.x);
+                u8_values[1] = color_channel_to_u8(color.y);
+                u8_values[2] = color_channel_to_u8(color.z);
+                if(value_count > 3) u8_values[3] = color_channel_to_u8(color.w);
             }
-            else if(node.color_value_type == ColorValueType::rgba8 && node.u32_value)
+            else if(node.color_type() == ColorValueType::rgba8 && rgba8_value)
             {
                 u32 r = (u32)color_channel_to_u8(color.x);
                 u32 g = (u32)color_channel_to_u8(color.y);
                 u32 b = (u32)color_channel_to_u8(color.z);
-                u32 a = node.f32_value_count > 3 ? (u32)color_channel_to_u8(color.w) : 255u;
-                *node.u32_value = r | (g << 8) | (b << 16) | (a << 24);
+                u32 a = value_count > 3 ? (u32)color_channel_to_u8(color.w) : 255u;
+                *rgba8_value = r | (g << 8) | (b << 16) | (a << 24);
             }
-            else if(node.f32_value)
+            else if(f32_values)
             {
-                node.f32_value[0] = color.x;
-                node.f32_value[1] = color.y;
-                node.f32_value[2] = color.z;
-                if(node.f32_value_count > 3) node.f32_value[3] = color.w;
+                f32_values[0] = color.x;
+                f32_values[1] = color.y;
+                f32_values[2] = color.z;
+                if(value_count > 3) f32_values[3] = color.w;
             }
         }
 
@@ -432,31 +476,6 @@ namespace Luna
             return RectF(rect.offset_x + label_w, rect.offset_y, max(rect.width - label_w, 1.0f), rect.height);
         }
 
-        inline bool radio_button_selected(const Node& node)
-        {
-            if(node.i32_value) return *node.i32_value == node.item_value;
-            if(node.bool_value) return *node.bool_value;
-            return node.selected;
-        }
-
-        inline RectF button_group_item_rect(const Node& node, const RectF& rect, u32 index)
-        {
-            u32 count = max((u32)node.items.size(), 1u);
-            f32 item_width = rect.width / (f32)count;
-            f32 x = rect.offset_x + item_width * (f32)index;
-            f32 w = index + 1 == count ? max(rect.offset_x + rect.width - x, 1.0f) : max(item_width, 1.0f);
-            return RectF(x, rect.offset_y, w, rect.height);
-        }
-
-        inline i32 button_group_item_at(const Node& node, const RectF& rect, const Float2U& pos)
-        {
-            u32 count = (u32)node.items.size();
-            if(!count || !point_in_rect(pos, rect)) return -1;
-            f32 item_width = max(rect.width / (f32)count, 1.0f);
-            i32 index = (i32)((pos.x - rect.offset_x) / item_width);
-            return index >= 0 && (u32)index < count ? index : (i32)count - 1;
-        }
-
         inline f32 combo_item_height()
         {
             return 26.0f;
@@ -467,7 +486,7 @@ namespace Luna
             RectF value = combo_value_rect(node, rect);
             f32 item_height = combo_item_height();
             f32 dropdown_width = max(value.width, 120.0f);
-            f32 dropdown_height = max((f32)node.items.size() * item_height, item_height);
+            f32 dropdown_height = max((f32)node.combo_item_count() * item_height, item_height);
             dropdown_width = min(dropdown_width, max(surface_size.x, 1.0f));
             dropdown_height = min(dropdown_height, max(surface_size.y, item_height));
             f32 x = min(value.offset_x, max(surface_size.x - dropdown_width, 0.0f));
@@ -482,14 +501,14 @@ namespace Luna
 
         inline i32 combo_dropdown_item_at(const Node& node, const RectF& dropdown_rect, const Float2U& pos)
         {
-            if(!point_in_rect(pos, dropdown_rect) || node.items.empty()) return -1;
+            if(!point_in_rect(pos, dropdown_rect) || !node.combo_item_count()) return -1;
             i32 index = (i32)((pos.y - dropdown_rect.offset_y) / combo_item_height());
-            return index >= 0 && (usize)index < node.items.size() ? index : -1;
+            return index >= 0 && (usize)index < node.combo_item_count() ? index : -1;
         }
 
         inline bool is_absolute_node(const Node& node)
         {
-            return node.absolute_position || node.kind == NodeKind::popup || node.kind == NodeKind::tooltip;
+            return node.absolute_position || node.is_popup() || node.is_tooltip();
         }
 
         inline bool contains_name(const Vector<Name>& names, const Name& name)
@@ -499,23 +518,6 @@ namespace Luna
                 if(item == name) return true;
             }
             return false;
-        }
-
-        inline bool tree_node_is_leaf(const Node& node)
-        {
-            return test_flags(node.tree_flags, TreeNodeFlag::leaf);
-        }
-
-        inline f32 tree_node_indent_width()
-        {
-            return 18.0f;
-        }
-
-        inline RectF tree_node_arrow_rect(const Node& node, const RectF& rect)
-        {
-            f32 x = rect.offset_x + 4.0f + tree_node_indent_width() * (f32)node.tree_depth;
-            f32 y = rect.offset_y + max((rect.height - 18.0f) * 0.5f, 0.0f);
-            return RectF(x, y, 18.0f, 18.0f);
         }
 
         inline f32 tab_bar_header_height()
@@ -537,8 +539,8 @@ namespace Luna
         {
             f32 font_size = 15.0f;
             f32 text_width = (f32)node.text.size() * font_size * 0.52f;
-            f32 close_width = (node.bool_value && !test_flags(node.tab_item_flags, TabItemFlag::no_close_button)) ? 22.0f : 0.0f;
-            f32 unsaved_width = test_flags(node.tab_item_flags, TabItemFlag::unsaved_document) ? 12.0f : 0.0f;
+            f32 close_width = (node.bool_value() && !test_flags(node.get_tab_item_flags(), TabItemFlag::no_close_button)) ? 22.0f : 0.0f;
+            f32 unsaved_width = test_flags(node.get_tab_item_flags(), TabItemFlag::unsaved_document) ? 12.0f : 0.0f;
             return max(text_width + 24.0f + close_width + unsaved_width, tab_item_min_width());
         }
 
@@ -585,40 +587,6 @@ namespace Luna
                 set_axis_value(metrics.max_size, x_axis, max_size);
             }
             return metrics;
-        }
-
-        inline LayoutStyle default_layout_style(NodeKind kind)
-        {
-            LayoutStyle style;
-            if(kind == NodeKind::input_text ||
-                kind == NodeKind::input_float ||
-                kind == NodeKind::input_int ||
-                kind == NodeKind::color_edit ||
-                kind == NodeKind::color_preview ||
-                kind == NodeKind::color_picker ||
-                kind == NodeKind::combo ||
-                kind == NodeKind::slider_float ||
-                kind == NodeKind::slider_int ||
-                kind == NodeKind::drag_float ||
-                kind == NodeKind::drag_int ||
-                kind == NodeKind::menu_bar ||
-                kind == NodeKind::menu_item ||
-                kind == NodeKind::menu_separator ||
-                kind == NodeKind::selectable ||
-                kind == NodeKind::tree_node ||
-                kind == NodeKind::table_layout ||
-                kind == NodeKind::grid_layout ||
-                kind == NodeKind::canvas_layout ||
-                kind == NodeKind::dock_space ||
-                kind == NodeKind::tab_bar)
-            {
-                style.width_policy = SizePolicy::fill;
-            }
-            if(kind == NodeKind::dock_space || kind == NodeKind::tab_bar)
-            {
-                style.height_policy = SizePolicy::fill;
-            }
-            return style;
         }
 
         inline f32 menu_bar_height()
@@ -860,6 +828,7 @@ namespace Luna
             f32 scroll_x = 0.0f;
             f32 scroll_y = 0.0f;
             f32 scrollbar_opacity = 0.35f;
+            HashMap<Name, Any> custom_states;
             f32 switch_animation = 0.0f;
             bool switch_animation_initialized = false;
             f32 button_group_selection_animation = 0.0f;
@@ -1314,6 +1283,7 @@ namespace Luna
             virtual void add_input_events(Span<const InputEvent> events) override;
             virtual void push_layer(id_t id, const Float2U& screen_position = Float2U(0.0f)) override;
             virtual void pop_layer() override;
+            virtual ItemHandle add_node(Ref<Node> node, const c8* label = nullptr, bool interactive = false) override;
             virtual R<Description> end_build() override;
             virtual RV submit(const Description& desc) override;
             virtual void set_clipboard_io(const ClipboardIO& io) override;
@@ -1321,11 +1291,11 @@ namespace Luna
             virtual RV render(RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target) override;
 
             u32 current_layer_index() const;
-            id_t make_node_id(id_t parent_id, NodeKind kind, u32 ordinal, const c8* text) const;
-            id_t allocate_detached_layer_id(NodeKind kind, const c8* text);
+            id_t make_node_id(id_t parent_id, const Guid& node_type, u32 ordinal, const c8* text) const;
+            id_t allocate_detached_layer_id(const Guid& node_type, const c8* text);
             void push_layer_internal(id_t id, const Float2U& screen_position);
-            ItemHandle add_node(NodeKind kind, const c8* text, bool interactive, id_t forced_id = 0);
-            void begin_container(NodeKind kind, const c8* label, const Size& size, ItemHandle* out_handle, id_t forced_id = 0);
+            ItemHandle add_node_internal(Ref<Node> node, const c8* text, bool interactive, id_t forced_id = 0);
+            void begin_container(Ref<Node> node, const c8* label, const Size& size, ItemHandle* out_handle, id_t forced_id = 0);
             void end_container();
             ItemHandle begin_popup(const c8* label, const PopupDesc& desc);
             void end_popup();
@@ -1431,10 +1401,10 @@ namespace Luna
             id_t fallback_tab_item(id_t tab_bar_id, id_t excluded_tab_item_id) const;
             bool reorder_tab_item_from_pointer(id_t tab_bar_id, id_t tab_item_id, const Float2U& pos);
             void scroll_tab_bar(id_t tab_bar_id, f32 delta);
-            id_t hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, NodeKind kind) const;
+            id_t hit_test_node(u32 node_index, const Float2U& pos, HitTestFilter filter) const;
             u32 hit_test_layer_index(const Float2U& pos) const;
             id_t hit_test(const Float2U& pos) const;
-            id_t hit_test_node_kind(const Float2U& pos, NodeKind kind) const;
+            id_t hit_test_filtered(const Float2U& pos, HitTestFilter filter) const;
             Node* find_node(id_t id);
             u32 hit_test_numeric_component(const Node& node, const RectF& rect, const Float2U& pos) const;
             void update_numeric_node_from_pointer(id_t id, const Float2U& pos, const Float2U* old_pos = nullptr);
@@ -1449,7 +1419,6 @@ namespace Luna
             void mark_value_changed(id_t id);
             void process_input_events();
             void render_node(u32 node_index);
-            void render_combo_dropdown(const Node& node, const RectF& rect);
             void render_drag_drop_overlay();
             void render_scrollbars(u32 node_index);
             void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
@@ -1461,7 +1430,6 @@ namespace Luna
             void render_color_swatch(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius);
             void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color);
             void render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width);
-            void render_line(const Node& node, const RectF& rect, const RectF& clip_rect);
             void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment = VG::TextAlignment::center);
             RectF to_vg_rect(const RectF& rect) const;
         };

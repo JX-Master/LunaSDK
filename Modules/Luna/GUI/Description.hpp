@@ -14,53 +14,12 @@ namespace Luna
 {
     namespace GUI
     {
-        enum class NodeKind : u8
-        {
-            root,
-            v_layout,
-            h_layout,
-            scroll_view,
-            window,
-            popup,
-            tooltip,
-            menu_bar,
-            menu,
-            menu_item,
-            menu_separator,
-            table_layout,
-            grid_layout,
-            canvas_layout,
-            text,
-            button,
-            selectable,
-            checkbox,
-            radio_button,
-            input_text,
-            input_float,
-            input_int,
-            color_edit,
-            color_preview,
-            color_picker,
-            image,
-            collapsing_header,
-            combo,
-            slider_float,
-            slider_int,
-            drag_float,
-            drag_int,
-            tree_node,
-            hit_box,
-            draw_rect,
-            draw_circle,
-            draw_line,
-            draw_text,
-            draw_image,
-            toggle_switch,
-            dock_space,
-            tab_bar,
-            tab_item,
-            button_group
-        };
+        struct IDrawList;
+        struct Node;
+
+        struct NodeInputContext;
+        struct NodeMeasureContext;
+        struct NodeRenderContext;
 
         enum class ColorValueType : u8
         {
@@ -82,10 +41,345 @@ namespace Luna
             flip_y = 0x01
         };
 
+        struct NodeRenderState
+        {
+            bool hovered = false;
+            bool active = false;
+            bool focused = false;
+            Float2U surface_size = Float2U(0.0f);
+            Float2U pointer_position = Float2U(0.0f);
+            f32 delta_time = 1.0f / 60.0f;
+        };
+
+        struct NodeRenderContext
+        {
+            virtual ~NodeRenderContext() = default;
+            virtual IDrawList* draw_list() = 0;
+            virtual const Any* get_persistent_state(const Name& key) const = 0;
+            virtual void set_persistent_state(const Name& key, const Any& value) = 0;
+            virtual bool is_popup_open(id_t popup_id) const = 0;
+            virtual bool is_combo_open(id_t combo_id) const = 0;
+            virtual void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius = 0.0f,
+                RHI::ITexture* texture = nullptr, ImageFlag image_flags = ImageFlag::none) = 0;
+            virtual void render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
+                bool top_left, bool top_right, bool bottom_right, bool bottom_left) = 0;
+            virtual void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color) = 0;
+            virtual void render_line(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width = 1.0f) = 0;
+            virtual void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
+                TextAlignment horizontal_alignment = TextAlignment::begin,
+                TextAlignment vertical_alignment = TextAlignment::center) = 0;
+        };
+
+        struct NodeMeasureContext
+        {
+            virtual ~NodeMeasureContext() = default;
+            virtual const Node* parent() const = 0;
+            virtual Float2U surface_size() const = 0;
+            virtual LayoutMetrics measure_text(const c8* text, usize text_size, f32 font_size, f32 max_width) const = 0;
+        };
+
+        struct NodeInputContext
+        {
+            virtual ~NodeInputContext() = default;
+            virtual Float2U pointer_position() const = 0;
+            virtual RectF rect() const = 0;
+            virtual const Any* get_persistent_state(const Name& key) const = 0;
+            virtual void set_persistent_state(const Name& key, const Any& value) = 0;
+            virtual void set_state(const Name& key, const Any& value) = 0;
+            virtual bool is_popup_open(id_t popup_id) const = 0;
+            virtual bool is_combo_open(id_t combo_id) const = 0;
+            virtual void open_combo_dropdown(id_t combo_id) = 0;
+            virtual void close_combo_dropdown(id_t combo_id) = 0;
+            virtual void open_menu_popup(id_t menu_id) = 0;
+            virtual void close_popup(id_t popup_id) = 0;
+            virtual void close_all_popups() = 0;
+        };
+
         struct Node
         {
+            lustruct("GUI::Node", "{AD82DACD-76EC-4EE5-8A82-0A6C4CC8BD5C}");
+
+            virtual ~Node() = default;
+            virtual Guid type_guid() const = 0;
+            virtual Ref<Node> clone() const = 0;
+            virtual LayoutMetrics measure() const
+            {
+                LayoutMetrics metrics;
+                metrics.min_size = Float2U(1.0f);
+                metrics.preferred_size = Float2U(1.0f);
+                metrics.max_size = Float2U(F32_MAX, F32_MAX);
+                return metrics;
+            }
+            virtual LayoutMetrics measure(NodeMeasureContext& ctx) const
+            {
+                return measure();
+            }
+            virtual bool is_menu() const
+            {
+                return false;
+            }
+            virtual bool is_combo() const
+            {
+                return false;
+            }
+            virtual bool is_root() const
+            {
+                return false;
+            }
+            virtual bool is_window() const
+            {
+                return false;
+            }
+            virtual bool is_scroll_view() const
+            {
+                return false;
+            }
+            virtual bool is_popup() const
+            {
+                return false;
+            }
+            virtual bool is_tooltip() const
+            {
+                return false;
+            }
+            virtual bool is_menu_bar() const
+            {
+                return false;
+            }
+            virtual bool is_table_layout() const
+            {
+                return false;
+            }
+            virtual bool is_grid_layout() const
+            {
+                return false;
+            }
+            virtual bool is_canvas_layout() const
+            {
+                return false;
+            }
+            virtual bool is_dock_space() const
+            {
+                return false;
+            }
+            virtual bool is_tab_bar() const
+            {
+                return false;
+            }
+            virtual bool is_tab_item() const
+            {
+                return false;
+            }
+            virtual bool is_input_text() const
+            {
+                return false;
+            }
+            virtual bool is_color_edit() const
+            {
+                return false;
+            }
+            virtual bool is_color_picker() const
+            {
+                return false;
+            }
+            virtual bool is_float_numeric() const
+            {
+                return false;
+            }
+            virtual bool is_int_numeric() const
+            {
+                return false;
+            }
+            virtual bool is_numeric_input() const
+            {
+                return false;
+            }
+            virtual bool is_numeric_pointer_edit() const
+            {
+                return false;
+            }
+            virtual bool is_slider_numeric() const
+            {
+                return false;
+            }
+            virtual bool is_drag_numeric() const
+            {
+                return false;
+            }
+            virtual bool is_horizontal_layout() const
+            {
+                return false;
+            }
+            virtual bool default_interactive() const
+            {
+                return false;
+            }
+            virtual bool uses_node_measure() const
+            {
+                return true;
+            }
+            virtual bool uses_context_render() const
+            {
+                return false;
+            }
+            virtual void apply_container_defaults(LayoutDesc& desc) const {}
+            virtual i32* combo_current_item() const
+            {
+                return nullptr;
+            }
+            virtual usize combo_item_count() const
+            {
+                return 0;
+            }
+            virtual const c8* combo_item_text(usize index) const
+            {
+                return "";
+            }
+            virtual bool is_enabled() const
+            {
+                return true;
+            }
+            virtual bool* bool_value() const
+            {
+                return nullptr;
+            }
+            virtual String* string_value() const
+            {
+                return nullptr;
+            }
+            virtual f32* f32_values() const
+            {
+                return nullptr;
+            }
+            virtual i32* i32_values() const
+            {
+                return nullptr;
+            }
+            virtual u8 f32_values_count() const
+            {
+                return 1;
+            }
+            virtual u8 i32_values_count() const
+            {
+                return 1;
+            }
+            virtual u8* u8_values() const
+            {
+                return nullptr;
+            }
+            virtual u32* u32_value() const
+            {
+                return nullptr;
+            }
+            virtual ColorValueType color_type() const
+            {
+                return ColorValueType::f32;
+            }
+            virtual id_t color_owner() const
+            {
+                return 0;
+            }
+            virtual ColorEditPart color_part() const
+            {
+                return ColorEditPart::none;
+            }
+            virtual bool uses_f32_color_components() const
+            {
+                return false;
+            }
+            virtual f32 min_value() const
+            {
+                return 0.0f;
+            }
+            virtual f32 max_value() const
+            {
+                return 0.0f;
+            }
+            virtual f32 step_value() const
+            {
+                return 0.0f;
+            }
+            virtual NumericEditFlag numeric_edit_flags() const
+            {
+                return NumericEditFlag::none;
+            }
+            virtual TabBarFlag get_tab_bar_flags() const
+            {
+                return TabBarFlag::none;
+            }
+            virtual TabItemFlag get_tab_item_flags() const
+            {
+                return TabItemFlag::none;
+            }
+            virtual bool tab_item_selected() const
+            {
+                return false;
+            }
+            virtual void set_tab_item_selected(bool value) {}
+            virtual id_t menu_popup() const
+            {
+                return 0;
+            }
+            virtual void set_menu_popup(id_t value) {}
+            virtual PopupFlag get_popup_flags() const
+            {
+                return PopupFlag::none;
+            }
+            virtual id_t popup_parent() const
+            {
+                return 0;
+            }
+            virtual id_t popup_owner() const
+            {
+                return 0;
+            }
+            virtual void set_popup_parent(id_t value) {}
+            virtual void set_popup_owner(id_t value) {}
+            virtual const TooltipDesc* get_tooltip_desc() const
+            {
+                return nullptr;
+            }
+            virtual TooltipDesc* get_tooltip_desc()
+            {
+                return nullptr;
+            }
+            virtual const TableDesc* get_table_desc() const
+            {
+                return nullptr;
+            }
+            virtual TableDesc* get_table_desc()
+            {
+                return nullptr;
+            }
+            virtual const GridLayoutDesc* get_grid_desc() const
+            {
+                return nullptr;
+            }
+            virtual GridLayoutDesc* get_grid_desc()
+            {
+                return nullptr;
+            }
+            virtual const CanvasLayoutDesc* get_canvas_desc() const
+            {
+                return nullptr;
+            }
+            virtual CanvasLayoutDesc* get_canvas_desc()
+            {
+                return nullptr;
+            }
+            virtual bool hit_test(const RectF& rect, const RectF& clip_rect, const Float2U& pos) const
+            {
+                return interactive &&
+                    pos.x >= rect.offset_x && pos.x <= rect.offset_x + rect.width &&
+                    pos.y >= rect.offset_y && pos.y <= rect.offset_y + rect.height &&
+                    pos.x >= clip_rect.offset_x && pos.x <= clip_rect.offset_x + clip_rect.width &&
+                    pos.y >= clip_rect.offset_y && pos.y <= clip_rect.offset_y + clip_rect.height;
+            }
+            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const {}
+            virtual void update_state(NodeInputContext& ctx) const {}
+            virtual void on_click(NodeInputContext& ctx) {}
+
             id_t id = 0;
-            NodeKind kind = NodeKind::root;
             u32 layer = U32_MAX;
             u32 parent = U32_MAX;
             u32 first_child = U32_MAX;
@@ -93,67 +387,155 @@ namespace Luna
             u32 next_sibling = U32_MAX;
             u32 depth = 0;
             String text;
-            String shortcut;
-            Ref<RHI::ITexture> texture;
             Size requested_size;
             LayoutStyle layout_style;
             LayoutDesc layout_desc;
             bool has_dock_panel_style = false;
             DockPanelStyle dock_panel_style;
             bool* dock_panel_open = nullptr;
-            TabBarFlag tab_bar_flags = TabBarFlag::none;
-            TabItemFlag tab_item_flags = TabItemFlag::none;
-            PopupFlag popup_flags = PopupFlag::none;
-            NumericEditFlag numeric_flags = NumericEditFlag::none;
-            TooltipDesc tooltip_desc;
-            id_t popup_parent_id = 0;
-            id_t popup_owner_id = 0;
-            id_t menu_popup_id = 0;
-            TableDesc table_desc;
-            GridLayoutDesc grid_desc;
-            CanvasLayoutDesc canvas_desc;
             bool has_canvas_item_layout = false;
             CanvasItemLayout canvas_item_layout;
             bool has_table_cell_color = false;
             Float4U table_cell_color = Float4U(0.0f);
-            TreeNodeFlag tree_flags = TreeNodeFlag::none;
-            u32 tree_depth = 0;
             bool absolute_position = false;
             Float2U position = Float2U(0.0f);
             bool has_user_clip_rect = false;
             RectF user_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-            bool selected = false;
-            bool enabled = true;
-            ImageFlag image_flags = ImageFlag::none;
-            RectF paint_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-            Float2U paint_line_begin = Float2U(0.0f);
-            Float2U paint_line_end = Float2U(0.0f);
-            Float4U paint_color = Float4U(1.0f);
-            f32 paint_radius = 0.0f;
-            f32 paint_line_width = 1.0f;
-            f32 paint_font_size = 16.0f;
-            TextAlignment paint_horizontal_alignment = TextAlignment::begin;
-            TextAlignment paint_vertical_alignment = TextAlignment::center;
-            bool* bool_value = nullptr;
-            String* string_value = nullptr;
-            i32* i32_value = nullptr;
-            u8 i32_value_count = 1;
-            i32 item_value = 0;
-            f32* f32_value = nullptr;
-            u8 f32_value_count = 1;
-            u8* u8_value = nullptr;
-            u32* u32_value = nullptr;
-            ColorValueType color_value_type = ColorValueType::f32;
-            id_t color_owner_id = 0;
-            ColorEditPart color_edit_part = ColorEditPart::none;
-            bool f32_color = false;
-            f32 min_value = 0.0f;
-            f32 max_value = 0.0f;
-            f32 step_value = 0.0f;
-            Vector<String> items;
             Vector<Name> drag_drop_source_types;
             Vector<Name> drag_drop_target_types;
             bool interactive = false;
+        };
+
+        struct NodeArray
+        {
+            Vector<Ref<Node>> data;
+
+            struct Iterator
+            {
+                NodeArray* owner = nullptr;
+                usize index = 0;
+
+                Node& operator*() const { return owner->operator[](index); }
+                Iterator& operator++()
+                {
+                    ++index;
+                    return *this;
+                }
+                bool operator!=(const Iterator& rhs) const
+                {
+                    return owner != rhs.owner || index != rhs.index;
+                }
+            };
+
+            struct ConstIterator
+            {
+                const NodeArray* owner = nullptr;
+                usize index = 0;
+
+                const Node& operator*() const { return owner->operator[](index); }
+                ConstIterator& operator++()
+                {
+                    ++index;
+                    return *this;
+                }
+                bool operator!=(const ConstIterator& rhs) const
+                {
+                    return owner != rhs.owner || index != rhs.index;
+                }
+            };
+
+            NodeArray() = default;
+            NodeArray(NodeArray&&) = default;
+            NodeArray& operator=(NodeArray&&) = default;
+
+            NodeArray(const NodeArray& rhs)
+            {
+                copy_from(rhs);
+            }
+
+            NodeArray& operator=(const NodeArray& rhs)
+            {
+                if(this != &rhs)
+                {
+                    clear();
+                    copy_from(rhs);
+                }
+                return *this;
+            }
+
+            void copy_from(const NodeArray& rhs)
+            {
+                data.reserve(rhs.data.size());
+                for(const Ref<Node>& node : rhs.data)
+                {
+                    data.push_back(node ? node->clone() : Ref<Node>());
+                }
+            }
+
+            void clear()
+            {
+                data.clear();
+            }
+
+            bool empty() const
+            {
+                return data.empty();
+            }
+
+            usize size() const
+            {
+                return data.size();
+            }
+
+            void push_back(const Node& node)
+            {
+                data.push_back(node.clone());
+            }
+
+            void push_back(Ref<Node> node)
+            {
+                data.push_back(move(node));
+            }
+
+            Node& operator[](usize index)
+            {
+                return *data[index].get();
+            }
+
+            const Node& operator[](usize index) const
+            {
+                return *data[index].get();
+            }
+
+            Node& back()
+            {
+                return *data.back().get();
+            }
+
+            const Node& back() const
+            {
+                return *data.back().get();
+            }
+
+            Iterator begin()
+            {
+                return Iterator{this, 0};
+            }
+
+            Iterator end()
+            {
+                return Iterator{this, data.size()};
+            }
+
+            ConstIterator begin() const
+            {
+                return ConstIterator{this, 0};
+            }
+
+            ConstIterator end() const
+            {
+                return ConstIterator{this, data.size()};
+            }
         };
 
         struct Layer
@@ -167,7 +549,7 @@ namespace Luna
         {
             u64 generation = 0;
             Vector<Layer> layers;
-            Vector<Node> nodes;
+            NodeArray nodes;
         };
     }
 }
