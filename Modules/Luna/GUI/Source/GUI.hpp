@@ -492,11 +492,6 @@ namespace Luna
             return node.absolute_position || node.kind == NodeKind::popup || node.kind == NodeKind::tooltip;
         }
 
-        inline bool is_overlay_node(const Node& node)
-        {
-            return node.render_layer == RenderLayer::overlay;
-        }
-
         inline bool contains_name(const Vector<Name>& names, const Name& name)
         {
             for(const Name& item : names)
@@ -1215,6 +1210,7 @@ namespace Luna
             Vector<NodeLayout> m_layouts;
             Vector<InputEvent> m_input_events;
             Vector<u32> m_parent_stack;
+            Vector<u32> m_layer_stack;
             Vector<id_t> m_id_stack;
             Vector<RectF> m_clip_stack;
             Vector<u32> m_child_ordinals;
@@ -1303,8 +1299,8 @@ namespace Luna
             u64 m_generation = 0;
             f64 m_time = 0.0;
             Ref<VG::IShapeDrawList> m_shape_draw_list;
-            Ref<IDrawList> m_main_draw_list;
-            Ref<IDrawList> m_overlay_draw_list;
+            Ref<IDrawList> m_feedback_draw_list;
+            Vector<Ref<IDrawList>> m_layer_draw_lists;
             IDrawList* m_active_draw_list = nullptr;
             Ref<VG::IShapeRenderer> m_shape_renderer;
             Ref<VG::IFontAtlas> m_font_atlas;
@@ -1314,14 +1310,20 @@ namespace Luna
             virtual void begin_frame(const FrameDesc& desc) override;
             virtual void add_input_event(const InputEvent& event) override;
             virtual void add_input_events(Span<const InputEvent> events) override;
+            virtual void push_layer(id_t id, const Float2U& screen_position = Float2U(0.0f)) override;
+            virtual void pop_layer() override;
             virtual R<Description> end_build() override;
             virtual RV submit(const Description& desc) override;
             virtual void set_clipboard_io(const ClipboardIO& io) override;
             virtual TextInputState get_text_input_state() override;
             virtual RV render(RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target) override;
 
-            ItemHandle add_node(NodeKind kind, const c8* text, bool interactive);
-            void begin_container(NodeKind kind, const c8* label, const Size& size, ItemHandle* out_handle);
+            u32 current_layer_index() const;
+            id_t make_node_id(id_t parent_id, NodeKind kind, u32 ordinal, const c8* text) const;
+            id_t allocate_detached_layer_id(NodeKind kind, const c8* text);
+            void push_layer_internal(id_t id, const Float2U& screen_position);
+            ItemHandle add_node(NodeKind kind, const c8* text, bool interactive, id_t forced_id = 0);
+            void begin_container(NodeKind kind, const c8* label, const Size& size, ItemHandle* out_handle, id_t forced_id = 0);
             void end_container();
             ItemHandle begin_popup(const c8* label, const PopupDesc& desc);
             void end_popup();
@@ -1382,6 +1384,8 @@ namespace Luna
             void dock_tree_prune_missing(PersistentItemState& dock_state, const HashSet<id_t, IdHash>& live_panels);
             id_t dock_tree_selected_panel(PersistentItemState& dock_state, u32 leaf_index);
             void arrange_dock_tree_node(id_t dock_space_id, u32 node_index, const RectF& rect, const RectF& clip_rect, const HashMap<id_t, u32, IdHash>& panel_indices);
+            RectF layout_layer_root_rect(u32 layer_index);
+            void layout_layers();
             RectF layout_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             LayoutMetrics measure_node(u32 node_index);
             LayoutMetrics measure_grid_node(u32 node_index, f32 available_width);
@@ -1425,6 +1429,7 @@ namespace Luna
             bool reorder_tab_item_from_pointer(id_t tab_bar_id, id_t tab_item_id, const Float2U& pos);
             void scroll_tab_bar(id_t tab_bar_id, f32 delta);
             id_t hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, NodeKind kind) const;
+            u32 hit_test_layer_index(const Float2U& pos) const;
             id_t hit_test(const Float2U& pos) const;
             id_t hit_test_node_kind(const Float2U& pos, NodeKind kind) const;
             Node* find_node(id_t id);

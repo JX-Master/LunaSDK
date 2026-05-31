@@ -36,6 +36,16 @@ namespace Luna
             context_from_interface(context)->pop_id();
         }
 
+        LUNA_GUI_API void push_layer(IContext* context, id_t id, const Float2U& screen_position)
+        {
+            context_from_interface(context)->push_layer(id, screen_position);
+        }
+
+        LUNA_GUI_API void pop_layer(IContext* context)
+        {
+            context_from_interface(context)->pop_layer();
+        }
+
         LUNA_GUI_API void push_clip_rect(IContext* context, const RectF& rect)
         {
             context_from_interface(context)->push_clip_rect(rect);

@@ -19,8 +19,7 @@ namespace Luna
         Context::Context()
         {
             m_shape_draw_list = VG::new_shape_draw_list(m_device);
-            m_main_draw_list = new_draw_list();
-            m_overlay_draw_list = new_draw_list();
+            m_feedback_draw_list = new_draw_list();
             m_shape_renderer = VG::new_fill_shape_renderer();
             m_font_atlas = VG::new_font_atlas();
         }
@@ -39,6 +38,7 @@ namespace Luna
             m_build_desc = Description();
             m_build_desc.generation = m_generation;
             m_parent_stack.clear();
+            m_layer_stack.clear();
             m_id_stack.clear();
             m_clip_stack.clear();
             m_child_ordinals.clear();
@@ -56,14 +56,21 @@ namespace Luna
                 m_drag_drop_payload_data.clear();
             }
 
+            Layer default_layer;
+            default_layer.id = 1;
+            default_layer.screen_position = Float2U(0.0f);
+            m_build_desc.layers.push_back(default_layer);
+            m_layer_stack.push_back(0);
+
             Node root;
             root.id = 1;
             root.kind = NodeKind::root;
-            root.render_layer = RenderLayer::main;
+            root.layer = 0;
             root.parent = U32_MAX;
             root.depth = 0;
             apply_requested_size(root, Size::fixed(desc.surface_size.x, desc.surface_size.y));
             m_build_desc.nodes.push_back(root);
+            m_build_desc.layers[0].root = 0;
             m_child_ordinals.push_back(0);
             m_parent_stack.push_back(0);
             m_id_stack.push_back(root.id);
@@ -79,6 +86,81 @@ namespace Luna
         {
             lutsassert();
             m_input_events.insert(m_input_events.end(), events.begin(), events.end());
+        }
+
+        u32 Context::current_layer_index() const
+        {
+            luassert(!m_layer_stack.empty());
+            return m_layer_stack.back();
+        }
+
+        id_t Context::make_node_id(id_t parent_id, NodeKind kind, u32 ordinal, const c8* text) const
+        {
+            u64 h = hash_u64(parent_id);
+            h = hash_u64(m_id_stack.empty() ? 0 : m_id_stack.back(), h);
+            h = hash_u64((u64)kind, h);
+            h = hash_u64((u64)ordinal, h);
+            h = hash_cstr(text, h);
+            return h ? h : 1;
+        }
+
+        id_t Context::allocate_detached_layer_id(NodeKind kind, const c8* text)
+        {
+            luassert(!m_parent_stack.empty());
+            u32 parent = m_parent_stack.back();
+            id_t parent_id = 0;
+            u32 ordinal = 0;
+            if(parent == U32_MAX)
+            {
+                u32 layer_index = current_layer_index();
+                parent_id = m_build_desc.layers[layer_index].id;
+                ordinal = 0;
+            }
+            else
+            {
+                parent_id = m_build_desc.nodes[parent].id;
+                ordinal = m_child_ordinals[parent]++;
+            }
+            return make_node_id(parent_id, kind, ordinal, text);
+        }
+
+        void Context::push_layer_internal(id_t id, const Float2U& screen_position)
+        {
+            luassert(id != 0);
+            for(const Layer& layer : m_build_desc.layers)
+            {
+                luassert_msg(layer.id != id, "Duplicate GUI layer ID detected.");
+            }
+            Layer layer;
+            layer.id = id;
+            layer.screen_position = screen_position;
+            u32 layer_index = (u32)m_build_desc.layers.size();
+            m_build_desc.layers.push_back(layer);
+            m_layer_stack.push_back(layer_index);
+            m_parent_stack.push_back(U32_MAX);
+            u64 h = hash_u64(m_id_stack.empty() ? 0 : m_id_stack.back());
+            h = hash_u64(id, h);
+            m_id_stack.push_back(h);
+        }
+
+        void Context::push_layer(id_t id, const Float2U& screen_position)
+        {
+            lutsassert();
+            push_layer_internal(id, screen_position);
+        }
+
+        void Context::pop_layer()
+        {
+            lutsassert();
+            luassert(m_layer_stack.size() > 1);
+            u32 layer_index = m_layer_stack.back();
+            luassert(layer_index < m_build_desc.layers.size());
+            luassert_msg(m_build_desc.layers[layer_index].root != U32_MAX, "GUI layer must have a root widget.");
+            luassert(!m_parent_stack.empty() && m_parent_stack.back() == U32_MAX);
+            luassert(m_id_stack.size() > 1);
+            m_parent_stack.pop_back();
+            m_layer_stack.pop_back();
+            m_id_stack.pop_back();
         }
 
         void Context::set_clipboard_io(const ClipboardIO& io)
@@ -134,27 +216,36 @@ namespace Luna
             return m_build_desc;
         }
 
-        ItemHandle Context::add_node(NodeKind kind, const c8* text, bool interactive)
+        ItemHandle Context::add_node(NodeKind kind, const c8* text, bool interactive, id_t forced_id)
         {
             lutsassert();
             luassert(!m_parent_stack.empty());
             u32 parent = m_parent_stack.back();
-            u32 ordinal = m_child_ordinals[parent]++;
-            u64 h = hash_u64(m_build_desc.nodes[parent].id);
-            h = hash_u64(m_id_stack.empty() ? 0 : m_id_stack.back(), h);
-            h = hash_u64((u64)kind, h);
-            h = hash_u64((u64)ordinal, h);
-            h = hash_cstr(text, h);
+            u32 layer_index = current_layer_index();
+            luassert(layer_index < m_build_desc.layers.size());
+            bool layer_root = parent == U32_MAX;
+            u32 ordinal = 0;
+            id_t parent_id = m_build_desc.layers[layer_index].id;
+            if(layer_root)
+            {
+                luassert_msg(m_build_desc.layers[layer_index].root == U32_MAX, "GUI layer can only have one root widget.");
+            }
+            else
+            {
+                luassert(parent < m_build_desc.nodes.size());
+                parent_id = m_build_desc.nodes[parent].id;
+                ordinal = m_child_ordinals[parent]++;
+            }
 
             Node node;
-            node.id = h ? h : 1;
+            node.id = forced_id ? forced_id : make_node_id(parent_id, kind, ordinal, text);
             node.kind = kind;
-            node.render_layer = m_build_desc.nodes[parent].render_layer;
-            node.parent = parent;
-            node.depth = m_build_desc.nodes[parent].depth + 1;
+            node.layer = layer_index;
+            node.parent = layer_root ? U32_MAX : parent;
+            node.depth = layer_root ? 0 : m_build_desc.nodes[parent].depth + 1;
             node.text = text ? text : "";
             node.interactive = interactive;
-            if(m_build_desc.nodes[parent].kind == NodeKind::dock_space)
+            if(!layer_root && m_build_desc.nodes[parent].kind == NodeKind::dock_space)
             {
                 node.interactive = true;
             }
@@ -181,7 +272,7 @@ namespace Luna
                 node.table_cell_color = m_next_table_cell_color;
                 m_has_next_table_cell_color = false;
             }
-            if(m_has_next_dock_panel_style && m_build_desc.nodes[parent].kind == NodeKind::dock_space)
+            if(!layer_root && m_has_next_dock_panel_style && m_build_desc.nodes[parent].kind == NodeKind::dock_space)
             {
                 node.has_dock_panel_style = true;
                 node.dock_panel_style = m_next_dock_panel_style;
@@ -199,25 +290,32 @@ namespace Luna
             m_build_desc.nodes.push_back(node);
             m_child_ordinals.push_back(0);
 
-            Node& parent_node = m_build_desc.nodes[parent];
-            if(parent_node.first_child == U32_MAX)
+            if(layer_root)
             {
-                parent_node.first_child = index;
+                m_build_desc.layers[layer_index].root = index;
             }
             else
             {
-                m_build_desc.nodes[parent_node.last_child].next_sibling = index;
+                Node& parent_node = m_build_desc.nodes[parent];
+                if(parent_node.first_child == U32_MAX)
+                {
+                    parent_node.first_child = index;
+                }
+                else
+                {
+                    m_build_desc.nodes[parent_node.last_child].next_sibling = index;
+                }
+                parent_node.last_child = index;
             }
-            parent_node.last_child = index;
 
             m_last_item_id = node.id;
             return ItemHandle{get_object(), node.id, m_generation};
         }
 
-        void Context::begin_container(NodeKind kind, const c8* label, const Size& size, ItemHandle* out_handle)
+        void Context::begin_container(NodeKind kind, const c8* label, const Size& size, ItemHandle* out_handle, id_t forced_id)
         {
             bool interactive = kind == NodeKind::scroll_view || kind == NodeKind::popup || kind == NodeKind::menu_bar || kind == NodeKind::table_layout || kind == NodeKind::tab_bar;
-            ItemHandle handle = add_node(kind, label, interactive);
+            ItemHandle handle = add_node(kind, label, interactive, forced_id);
             u32 index = (u32)m_build_desc.nodes.size() - 1;
             apply_requested_size(m_build_desc.nodes[index], size);
             if(kind == NodeKind::window || kind == NodeKind::scroll_view)
@@ -337,11 +435,11 @@ namespace Luna
             Float2U preview_pos(
                 min(m_pointer_pos.x + 14.0f, max(m_frame_desc.surface_size.x - 8.0f, 0.0f)),
                 min(m_pointer_pos.y + 18.0f, max(m_frame_desc.surface_size.y - 8.0f, 0.0f)));
-            begin_container(NodeKind::popup, "DragDropPreview", Size(), &preview);
+            u64 preview_layer_id = hash_u64(source.id);
+            preview_layer_id = hash_cstr("DragDropPreview", preview_layer_id);
+            push_layer_internal(preview_layer_id, preview_pos);
+            begin_container(NodeKind::popup, "DragDropPreview", Size(), &preview, preview_layer_id);
             Node& preview_node = m_build_desc.nodes.back();
-            preview_node.render_layer = RenderLayer::overlay;
-            preview_node.absolute_position = true;
-            preview_node.position = preview_pos;
             preview_node.layout_desc.padding = EdgeInsets::all(6.0f);
             preview_node.layout_desc.gap = 2.0f;
             return true;
@@ -363,6 +461,7 @@ namespace Luna
         {
             lutsassert();
             end_container();
+            pop_layer();
         }
 
         bool Context::begin_drag_drop_target(ItemHandle target, const Name& payload_type)

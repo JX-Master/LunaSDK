@@ -21,6 +21,8 @@ namespace Luna
             virtual void begin_frame(const FrameDesc& desc) = 0;
             virtual void add_input_event(const InputEvent& event) = 0;
             virtual void add_input_events(Span<const InputEvent> events) = 0;
+            virtual void push_layer(id_t id, const Float2U& screen_position = Float2U(0.0f)) = 0;
+            virtual void pop_layer() = 0;
             virtual R<Description> end_build() = 0;
             virtual RV submit(const Description& desc) = 0;
             virtual void set_clipboard_io(const ClipboardIO& io) = 0;

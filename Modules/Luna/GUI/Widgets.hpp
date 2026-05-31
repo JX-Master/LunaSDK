@@ -34,6 +34,8 @@ namespace Luna
         LUNA_GUI_API void push_id(IContext* context, const void* ptr);
         LUNA_GUI_API void push_id(IContext* context, const c8* str);
         LUNA_GUI_API void pop_id(IContext* context);
+        LUNA_GUI_API void push_layer(IContext* context, id_t id, const Float2U& screen_position = Float2U(0.0f));
+        LUNA_GUI_API void pop_layer(IContext* context);
         LUNA_GUI_API void push_clip_rect(IContext* context, const RectF& rect);
         LUNA_GUI_API void pop_clip_rect(IContext* context);
         LUNA_GUI_API void tree_push(IContext* context);

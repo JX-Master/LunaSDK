@@ -1269,7 +1269,6 @@ namespace Luna
                     dock_panel_close_rect(panel_layout.dock_panel_title_rect) :
                     RectF(0.0f, 0.0f, 0.0f, 0.0f);
                 panel_layout.dock_panel_resize_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-                panel_node.render_layer = RenderLayer::main;
                 if(selected)
                 {
                     RectF content_rect = dock_panel_content_rect(rect, style);
@@ -1333,13 +1332,11 @@ namespace Luna
                 }
                 if(panel_state.mode == DockPanelMode::floating)
                 {
-                    child_node.render_layer = RenderLayer::overlay;
                     floating_children.push_back(child);
                     dock_tree_remove_panel(dock_state, child_node.id);
                 }
                 else
                 {
-                    child_node.render_layer = node.render_layer;
                     docking_panel_indices.insert_or_assign(child_node.id, child);
                     live_docking_panels.insert(child_node.id);
                     dock_tree_add_panel(dock_state, child_node.id);
@@ -1378,13 +1375,134 @@ namespace Luna
             }
         }
 
+        RectF Context::layout_layer_root_rect(u32 layer_index)
+        {
+            luassert(layer_index < m_submitted_desc.layers.size());
+            Layer& layer = m_submitted_desc.layers[layer_index];
+            luassert(layer.root != U32_MAX && layer.root < m_submitted_desc.nodes.size());
+            Node& node = m_submitted_desc.nodes[layer.root];
+            RectF screen_rect(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
+            if(node.kind == NodeKind::root)
+            {
+                layer.screen_position = Float2U(0.0f);
+                return screen_rect;
+            }
+
+            LayoutMetrics metrics = measure_node(layer.root);
+            f32 width = resolve_base_axis_size(node, metrics, true);
+            f32 height = resolve_base_axis_size(node, metrics, false);
+            width = clamp(width, metrics.min_size.x, min(metrics.max_size.x, max(m_frame_desc.surface_size.x, 1.0f)));
+            height = clamp(height, metrics.min_size.y, min(metrics.max_size.y, max(m_frame_desc.surface_size.y, 1.0f)));
+            Float2U position = layer.screen_position;
+
+            if(node.kind == NodeKind::tooltip)
+            {
+                f32 max_width = node.tooltip_desc.max_width > 0.0f ? node.tooltip_desc.max_width : m_frame_desc.surface_size.x;
+                width = min(max(width, 1.0f), min(max_width, max(m_frame_desc.surface_size.x, 1.0f)));
+                height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
+                position.x = m_pointer_pos.x + node.tooltip_desc.offset.x;
+                position.y = m_pointer_pos.y + node.tooltip_desc.offset.y;
+                if(position.x + width > m_frame_desc.surface_size.x && m_pointer_pos.x - width - node.tooltip_desc.offset.x >= 0.0f)
+                {
+                    position.x = m_pointer_pos.x - width - node.tooltip_desc.offset.x;
+                }
+                if(position.y + height > m_frame_desc.surface_size.y && m_pointer_pos.y - height - node.tooltip_desc.offset.y >= 0.0f)
+                {
+                    position.y = m_pointer_pos.y - height - node.tooltip_desc.offset.y;
+                }
+            }
+            else if(node.kind == NodeKind::popup && node.popup_owner_id)
+            {
+                u32 owner_index = find_submitted_node_index(node.popup_owner_id);
+                if(owner_index != U32_MAX)
+                {
+                    const Node& owner = m_submitted_desc.nodes[owner_index];
+                    const RectF& owner_rect = m_layouts[owner_index].rect;
+                    bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].kind == NodeKind::menu_bar;
+                    width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
+                    height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
+                    if(owner_in_menu_bar)
+                    {
+                        position.x = owner_rect.offset_x;
+                        position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
+                        if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
+                        {
+                            position.y = owner_rect.offset_y - height - 2.0f;
+                        }
+                    }
+                    else if(owner.kind == NodeKind::color_edit)
+                    {
+                        PersistentItemState& popup_state = get_or_create_persistent_state(node.id);
+                        if(popup_state.popup_anchor_valid)
+                        {
+                            Float2U anchor = popup_state.popup_anchor_position;
+                            position.x = anchor.x;
+                            position.y = anchor.y + 8.0f;
+                            if(position.x + width > m_frame_desc.surface_size.x && anchor.x - width >= 0.0f)
+                            {
+                                position.x = anchor.x - width;
+                            }
+                            if(position.y + height > m_frame_desc.surface_size.y && anchor.y - height - 8.0f >= 0.0f)
+                            {
+                                position.y = anchor.y - height - 8.0f;
+                            }
+                        }
+                        else
+                        {
+                            f32 label_w = owner.text.empty() ? 0.0f :
+                                min(max((f32)owner.text.size() * 8.0f + 8.0f, 80.0f), owner_rect.width * 0.45f);
+                            position.x = owner_rect.offset_x + label_w;
+                            position.y = owner_rect.offset_y + owner_rect.height + 4.0f;
+                            if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 4.0f >= 0.0f)
+                            {
+                                position.y = owner_rect.offset_y - height - 4.0f;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        position.x = owner_rect.offset_x + owner_rect.width - 2.0f;
+                        position.y = owner_rect.offset_y - 5.0f;
+                        if(position.x + width > m_frame_desc.surface_size.x && owner_rect.offset_x - width + 2.0f >= 0.0f)
+                        {
+                            position.x = owner_rect.offset_x - width + 2.0f;
+                        }
+                    }
+                }
+            }
+
+            position.x = clamp(position.x, 0.0f, max(m_frame_desc.surface_size.x - width, 0.0f));
+            position.y = clamp(position.y, 0.0f, max(m_frame_desc.surface_size.y - height, 0.0f));
+            layer.screen_position = position;
+            return RectF(position.x, position.y, max(width, 1.0f), max(height, 1.0f));
+        }
+
+        void Context::layout_layers()
+        {
+            RectF screen_rect(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
+            for(u32 i = 0; i < (u32)m_submitted_desc.layers.size(); ++i)
+            {
+                const Layer& layer = m_submitted_desc.layers[i];
+                if(layer.root == U32_MAX || layer.root >= m_submitted_desc.nodes.size()) continue;
+                RectF layer_rect = layout_layer_root_rect(i);
+                layout_node(layer.root, layer_rect, screen_rect);
+            }
+        }
+
         RectF Context::layout_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
             Node& node = m_submitted_desc.nodes[node_index];
             RectF effective_clip = intersect_rect(rect, clip_rect);
             if(node.has_user_clip_rect)
             {
-                effective_clip = intersect_rect(effective_clip, node.user_clip_rect);
+                RectF user_clip = node.user_clip_rect;
+                if(node.layer < m_submitted_desc.layers.size())
+                {
+                    const Float2U& layer_position = m_submitted_desc.layers[node.layer].screen_position;
+                    user_clip.offset_x += layer_position.x;
+                    user_clip.offset_y += layer_position.y;
+                }
+                effective_clip = intersect_rect(effective_clip, user_clip);
             }
             m_layouts[node_index].rect = rect;
             m_layouts[node_index].clip_rect = effective_clip;
@@ -1507,6 +1625,12 @@ namespace Luna
                     f32 width = resolve_base_axis_size(child_node, metrics, true);
                     f32 height = resolve_base_axis_size(child_node, metrics, false);
                     Float2U position = child_node.position;
+                    if(child_node.layer < m_submitted_desc.layers.size())
+                    {
+                        const Float2U& layer_position = m_submitted_desc.layers[child_node.layer].screen_position;
+                        position.x += layer_position.x;
+                        position.y += layer_position.y;
+                    }
                     if(child_node.kind == NodeKind::tooltip)
                     {
                         f32 max_width = child_node.tooltip_desc.max_width > 0.0f ? child_node.tooltip_desc.max_width : m_frame_desc.surface_size.x;

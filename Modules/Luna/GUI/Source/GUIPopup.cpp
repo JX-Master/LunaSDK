@@ -33,11 +33,10 @@ namespace Luna
         ItemHandle Context::begin_popup(const c8* label, const PopupDesc& desc)
         {
             ItemHandle handle;
-            begin_container(NodeKind::popup, label ? label : "Popup", desc.size, &handle);
+            id_t layer_id = allocate_detached_layer_id(NodeKind::popup, label ? label : "Popup");
+            push_layer_internal(layer_id, desc.position);
+            begin_container(NodeKind::popup, label ? label : "Popup", desc.size, &handle, layer_id);
             Node& node = m_build_desc.nodes.back();
-            node.render_layer = RenderLayer::overlay;
-            node.absolute_position = true;
-            node.position = desc.position;
             node.popup_flags = desc.flags;
             node.popup_parent_id = m_popup_build_stack.empty() ? 0 : m_popup_build_stack.back();
             node.layout_desc.padding = EdgeInsets::all(6.0f);
@@ -57,6 +56,7 @@ namespace Luna
                 m_popup_build_stack.pop_back();
             }
             end_container();
+            pop_layer();
         }
 
         i32 Context::popup_stack_index(id_t id) const

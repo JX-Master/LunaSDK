@@ -18,10 +18,10 @@ namespace Luna
         ItemHandle Context::begin_tooltip(ItemHandle owner, const c8* label, const TooltipDesc& desc)
         {
             ItemHandle handle;
-            begin_container(NodeKind::tooltip, label ? label : "Tooltip", desc.size, &handle);
+            id_t layer_id = allocate_detached_layer_id(NodeKind::tooltip, label ? label : "Tooltip");
+            push_layer_internal(layer_id, Float2U(0.0f));
+            begin_container(NodeKind::tooltip, label ? label : "Tooltip", desc.size, &handle, layer_id);
             Node& node = m_build_desc.nodes.back();
-            node.render_layer = RenderLayer::overlay;
-            node.absolute_position = true;
             node.popup_owner_id = owner.context == get_object() ? owner.id : 0;
             node.tooltip_desc = desc;
             node.layout_desc.padding = EdgeInsets::xy(8.0f, 6.0f);
@@ -36,6 +36,7 @@ namespace Luna
             const Node& node = m_build_desc.nodes[m_parent_stack.back()];
             luassert(node.kind == NodeKind::tooltip);
             end_container();
+            pop_layer();
         }
 
         bool Context::tooltip_node_visible(const Node& node) const

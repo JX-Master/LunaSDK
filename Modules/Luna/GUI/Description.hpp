@@ -62,12 +62,6 @@ namespace Luna
             button_group
         };
 
-        enum class RenderLayer : u8
-        {
-            main,
-            overlay
-        };
-
         enum class ColorValueType : u8
         {
             f32,
@@ -92,7 +86,7 @@ namespace Luna
         {
             id_t id = 0;
             NodeKind kind = NodeKind::root;
-            RenderLayer render_layer = RenderLayer::main;
+            u32 layer = U32_MAX;
             u32 parent = U32_MAX;
             u32 first_child = U32_MAX;
             u32 last_child = U32_MAX;
@@ -162,9 +156,17 @@ namespace Luna
             bool interactive = false;
         };
 
+        struct Layer
+        {
+            id_t id = 0;
+            u32 root = U32_MAX;
+            Float2U screen_position = Float2U(0.0f);
+        };
+
         struct Description
         {
             u64 generation = 0;
+            Vector<Layer> layers;
             Vector<Node> nodes;
         };
     }

@@ -146,9 +146,12 @@ namespace Luna
 
         bool Context::hit_test_table_separator(const Float2U& pos, id_t& out_id, bool& out_column, u32& out_index) const
         {
+            u32 hit_layer = hit_test_layer_index(pos);
+            if(hit_layer == U32_MAX) return false;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& node = m_submitted_desc.nodes[i];
+                if(node.layer != hit_layer) continue;
                 if(node.kind != NodeKind::table_layout) continue;
                 const NodeLayout& layout = m_layouts[i];
                 const RectF& clip = layout.clip_rect;
@@ -257,9 +260,12 @@ namespace Luna
             bool found = false;
             u32 best_z = 0;
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            u32 hit_layer = hit_test_layer_index(pos);
+            if(hit_layer == U32_MAX) return false;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.layer != hit_layer) continue;
                 if(dock_node.kind != NodeKind::dock_space) continue;
                 if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
                 for(u32 child = dock_node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
@@ -287,9 +293,12 @@ namespace Luna
             out_resize = false;
             out_close = false;
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            u32 hit_layer = hit_test_layer_index(pos);
+            if(hit_layer == U32_MAX) return false;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.layer != hit_layer) continue;
                 if(dock_node.kind != NodeKind::dock_space) continue;
                 if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
                 for(u32 child = dock_node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
@@ -321,6 +330,8 @@ namespace Luna
             bool found = false;
             u32 best_z = 0;
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            u32 hit_layer = hit_test_layer_index(pos);
+            if(hit_layer == U32_MAX) return false;
             id_t top_space = 0;
             id_t top_panel = 0;
             if(hit_test_dock_panel(pos, top_space, top_panel))
@@ -336,6 +347,7 @@ namespace Luna
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.layer != hit_layer) continue;
                 if(dock_node.kind != NodeKind::dock_space) continue;
                 auto dock_state_iter = m_persistent_states.find(dock_node.id);
                 if(dock_state_iter == m_persistent_states.end()) continue;
@@ -370,6 +382,8 @@ namespace Luna
         bool Context::hit_test_dock_splitter(const Float2U& pos, id_t& out_space_id, u32& out_node_index, DockSplitAxis& out_axis) const
         {
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            u32 hit_layer = hit_test_layer_index(pos);
+            if(hit_layer == U32_MAX) return false;
             id_t top_space = 0;
             id_t top_panel = 0;
             if(hit_test_dock_panel(pos, top_space, top_panel))
@@ -385,6 +399,7 @@ namespace Luna
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.layer != hit_layer) continue;
                 if(dock_node.kind != NodeKind::dock_space) continue;
                 auto dock_state_iter = m_persistent_states.find(dock_node.id);
                 if(dock_state_iter == m_persistent_states.end()) continue;
@@ -431,9 +446,12 @@ namespace Luna
         bool Context::find_dock_drop_target(id_t payload_panel, const Float2U& pos, id_t& out_space_id, u32& out_leaf_index, DockDropDirection& out_direction) const
         {
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            u32 hit_layer = hit_test_layer_index(pos);
+            if(hit_layer == U32_MAX) return false;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.layer != hit_layer) continue;
                 if(dock_node.kind != NodeKind::dock_space) continue;
                 auto dock_state_iter = m_persistent_states.find(dock_node.id);
                 if(dock_state_iter == m_persistent_states.end()) continue;
@@ -602,10 +620,13 @@ namespace Luna
         bool Context::hit_test_scrollbar(const Float2U& pos, id_t& out_id, bool& out_vertical, RectF& out_thumb_rect) const
         {
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            u32 hit_layer = hit_test_layer_index(pos);
+            if(hit_layer == U32_MAX) return false;
             for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
             {
                 u32 node_index = (u32)(i - 1);
                 const Node& node = m_submitted_desc.nodes[node_index];
+                if(node.layer != hit_layer) continue;
                 if(node.kind != NodeKind::scroll_view) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
@@ -689,6 +710,12 @@ namespace Luna
                 if(iter == m_persistent_states.end() || !iter->second.open) continue;
                 RectF dropdown = combo_dropdown_rect(node, m_layouts[node_index].rect, m_frame_desc.surface_size);
                 if(!point_in_rect(pos, dropdown)) continue;
+                for(usize layer_iter = m_submitted_desc.layers.size(); layer_iter > (usize)node.layer + 1; --layer_iter)
+                {
+                    const Layer& layer = m_submitted_desc.layers[layer_iter - 1];
+                    if(layer.root == U32_MAX || layer.root >= m_submitted_desc.nodes.size()) continue;
+                    if(hit_test_node(layer.root, pos, false, NodeKind::root)) return false;
+                }
                 out_id = node.id;
                 out_item = combo_dropdown_item_at(node, dropdown, pos);
                 return true;
@@ -714,10 +741,13 @@ namespace Luna
         bool Context::hit_test_tab_header(const Float2U& pos, id_t& out_tab_bar_id, id_t& out_tab_item_id, bool& out_close) const
         {
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            u32 hit_layer = hit_test_layer_index(pos);
+            if(hit_layer == U32_MAX) return false;
             for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
             {
                 u32 node_index = (u32)(i - 1);
                 const Node& node = m_submitted_desc.nodes[node_index];
+                if(node.layer != hit_layer) continue;
                 if(node.kind != NodeKind::tab_item) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(layout.tab_header_rect.width <= 0.0f || layout.tab_header_rect.height <= 0.0f) continue;
@@ -738,10 +768,13 @@ namespace Luna
         bool Context::hit_test_tab_scroll_button(const Float2U& pos, id_t& out_tab_bar_id, bool& out_left) const
         {
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            u32 hit_layer = hit_test_layer_index(pos);
+            if(hit_layer == U32_MAX) return false;
             for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
             {
                 u32 node_index = (u32)(i - 1);
                 const Node& node = m_submitted_desc.nodes[node_index];
+                if(node.layer != hit_layer) continue;
                 if(node.kind != NodeKind::tab_bar) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(!layout.tab_scrollable) continue;
@@ -764,10 +797,13 @@ namespace Luna
         id_t Context::hit_test_tab_scroll_area(const Float2U& pos) const
         {
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return 0;
+            u32 hit_layer = hit_test_layer_index(pos);
+            if(hit_layer == U32_MAX) return 0;
             for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
             {
                 u32 node_index = (u32)(i - 1);
                 const Node& node = m_submitted_desc.nodes[node_index];
+                if(node.layer != hit_layer) continue;
                 if(node.kind != NodeKind::tab_bar) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(!layout.tab_scrollable) continue;
@@ -998,45 +1034,67 @@ namespace Luna
         {
             if(m_layouts.size() == m_submitted_desc.nodes.size())
             {
-                for(usize i = m_open_popup_stack.size(); i > 0; --i)
+                for(usize i = m_submitted_desc.layers.size(); i > 0; --i)
                 {
-                    auto iter = m_popup_node_indices.find(m_open_popup_stack[i - 1].id);
-                    if(iter == m_popup_node_indices.end()) continue;
-                    id_t popup_hit = hit_test_node(iter->second, pos, false, NodeKind::root);
-                    if(popup_hit) return popup_hit;
+                    const Layer& layer = m_submitted_desc.layers[i - 1];
+                    if(layer.root == U32_MAX || layer.root >= m_submitted_desc.nodes.size()) continue;
+                    id_t layer_hit = hit_test_node(layer.root, pos, false, NodeKind::root);
+                    if(layer_hit) return layer_hit;
                 }
             }
-            return m_submitted_desc.nodes.empty() ? 0 : hit_test_node(0, pos, false, NodeKind::root);
+            return 0;
+        }
+
+        u32 Context::hit_test_layer_index(const Float2U& pos) const
+        {
+            if(m_layouts.size() == m_submitted_desc.nodes.size())
+            {
+                for(usize i = m_submitted_desc.layers.size(); i > 0; --i)
+                {
+                    const Layer& layer = m_submitted_desc.layers[i - 1];
+                    if(layer.root == U32_MAX || layer.root >= m_submitted_desc.nodes.size()) continue;
+                    if(hit_test_node(layer.root, pos, false, NodeKind::root))
+                    {
+                        return (u32)(i - 1);
+                    }
+                }
+            }
+            return U32_MAX;
         }
 
         id_t Context::hit_test_node_kind(const Float2U& pos, NodeKind kind) const
         {
             if(m_layouts.size() == m_submitted_desc.nodes.size())
             {
-                for(usize i = m_open_popup_stack.size(); i > 0; --i)
+                for(usize i = m_submitted_desc.layers.size(); i > 0; --i)
                 {
-                    auto iter = m_popup_node_indices.find(m_open_popup_stack[i - 1].id);
-                    if(iter == m_popup_node_indices.end()) continue;
-                    id_t popup_hit = hit_test_node(iter->second, pos, true, kind);
-                    if(popup_hit) return popup_hit;
+                    const Layer& layer = m_submitted_desc.layers[i - 1];
+                    if(layer.root == U32_MAX || layer.root >= m_submitted_desc.nodes.size()) continue;
+                    id_t layer_hit = hit_test_node(layer.root, pos, true, kind);
+                    if(layer_hit) return layer_hit;
                 }
             }
-            return m_submitted_desc.nodes.empty() ? 0 : hit_test_node(0, pos, true, kind);
+            return 0;
         }
 
         id_t Context::hit_test_drag_drop_source(const Float2U& pos, Name& out_type) const
         {
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return 0;
-            for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
+            for(usize layer_iter = m_submitted_desc.layers.size(); layer_iter > 0; --layer_iter)
             {
-                u32 node_index = (u32)(i - 1);
-                const Node& node = m_submitted_desc.nodes[node_index];
-                if(node.drag_drop_source_types.empty()) continue;
-                const NodeLayout& layout = m_layouts[node_index];
-                if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
-                if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
-                out_type = node.drag_drop_source_types[0];
-                return node.id;
+                u32 layer_index = (u32)(layer_iter - 1);
+                for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
+                {
+                    u32 node_index = (u32)(i - 1);
+                    const Node& node = m_submitted_desc.nodes[node_index];
+                    if(node.layer != layer_index) continue;
+                    if(node.drag_drop_source_types.empty()) continue;
+                    const NodeLayout& layout = m_layouts[node_index];
+                    if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
+                    if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
+                    out_type = node.drag_drop_source_types[0];
+                    return node.id;
+                }
             }
             return 0;
         }
@@ -1044,24 +1102,30 @@ namespace Luna
         id_t Context::hit_test_drag_drop_target(const Name& type, const Float2U& pos) const
         {
             if(!type || m_layouts.size() != m_submitted_desc.nodes.size()) return 0;
-            id_t best = 0;
-            f32 best_area = F32_MAX;
-            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            for(usize layer_iter = m_submitted_desc.layers.size(); layer_iter > 0; --layer_iter)
             {
-                const Node& node = m_submitted_desc.nodes[i];
-                if(!contains_name(node.drag_drop_target_types, type)) continue;
-                if(node.id == m_drag_drop_source_id) continue;
-                const NodeLayout& layout = m_layouts[i];
-                if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
-                if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
-                f32 area = max(layout.rect.width, 1.0f) * max(layout.rect.height, 1.0f);
-                if(area < best_area)
+                u32 layer_index = (u32)(layer_iter - 1);
+                id_t best = 0;
+                f32 best_area = F32_MAX;
+                for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                 {
-                    best = node.id;
-                    best_area = area;
+                    const Node& node = m_submitted_desc.nodes[i];
+                    if(node.layer != layer_index) continue;
+                    if(!contains_name(node.drag_drop_target_types, type)) continue;
+                    if(node.id == m_drag_drop_source_id) continue;
+                    const NodeLayout& layout = m_layouts[i];
+                    if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
+                    if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
+                    f32 area = max(layout.rect.width, 1.0f) * max(layout.rect.height, 1.0f);
+                    if(area < best_area)
+                    {
+                        best = node.id;
+                        best_area = area;
+                    }
                 }
+                if(best) return best;
             }
-            return best;
+            return 0;
         }
 
         void Context::start_drag_drop(id_t source_id, const Name& type)
@@ -2799,9 +2863,8 @@ namespace Luna
                         clear_drag_drop();
                     }
                 }
-                RectF root_rect(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
                 m_layout_dirty = false;
-                layout_node(0, root_rect, root_rect);
+                layout_layers();
                 process_input_events();
                 if(tooltip_submitted)
                 {
@@ -2813,7 +2876,7 @@ namespace Luna
                     {
                         layout.metrics_valid = false;
                     }
-                    layout_node(0, root_rect, root_rect);
+                    layout_layers();
                     if(m_pointer_inside)
                     {
                         id_t combo_id = 0;

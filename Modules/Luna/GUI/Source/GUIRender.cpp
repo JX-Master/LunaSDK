@@ -270,8 +270,18 @@ namespace Luna
             u32 pop_id = m_active_draw_list->push_state(&state);
             auto& points = m_active_draw_list->get_shape_buffer()->get_shape_points(true);
             u32 begin = (u32)points.size();
-            Float2U p1(node.paint_line_begin.x - rect.offset_x, rect.height - (node.paint_line_begin.y - rect.offset_y));
-            Float2U p2(node.paint_line_end.x - rect.offset_x, rect.height - (node.paint_line_end.y - rect.offset_y));
+            Float2U line_begin = node.paint_line_begin;
+            Float2U line_end = node.paint_line_end;
+            if(node.layer < m_submitted_desc.layers.size())
+            {
+                const Float2U& layer_position = m_submitted_desc.layers[node.layer].screen_position;
+                line_begin.x += layer_position.x;
+                line_begin.y += layer_position.y;
+                line_end.x += layer_position.x;
+                line_end.y += layer_position.y;
+            }
+            Float2U p1(line_begin.x - rect.offset_x, rect.height - (line_begin.y - rect.offset_y));
+            Float2U p2(line_end.x - rect.offset_x, rect.height - (line_end.y - rect.offset_y));
             VG::ShapeBuilder::add_line(points, p1.x, p1.y, p2.x, p2.y, node.paint_line_width);
             u32 end = (u32)points.size();
             m_active_draw_list->add_shape(begin, end - begin,
@@ -790,8 +800,6 @@ namespace Luna
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
             IDrawList* previous_draw_list = m_active_draw_list;
-            bool force_overlay = previous_draw_list == m_overlay_draw_list.get() || m_layouts[node_index].dock_panel_floating;
-            m_active_draw_list = (force_overlay || is_overlay_node(node)) ? m_overlay_draw_list.get() : m_main_draw_list.get();
             u32 dock_panel_layer_pop = U32_MAX;
             if(m_layouts[node_index].dock_panel_child && !m_layouts[node_index].dock_panel_visible)
             {
@@ -1263,10 +1271,7 @@ namespace Luna
                 }
                 if(open)
                 {
-                    IDrawList* combo_draw_list = m_active_draw_list;
-                    m_active_draw_list = m_overlay_draw_list.get();
                     render_combo_dropdown(node, rect);
-                    m_active_draw_list = combo_draw_list;
                 }
                 break;
             }
@@ -1563,20 +1568,31 @@ namespace Luna
         RV Context::render(RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target)
         {
             lutsassert();
-            if(!render_target || m_submitted_desc.nodes.empty()) return ok;
+            if(!render_target || m_submitted_desc.nodes.empty() || m_submitted_desc.layers.empty()) return ok;
             lutry
             {
                 m_shape_draw_list->reset();
-                m_main_draw_list->begin(m_shape_draw_list);
-                m_overlay_draw_list->begin(m_shape_draw_list);
-                m_active_draw_list = m_main_draw_list.get();
-                render_node(0);
-                m_active_draw_list = m_overlay_draw_list.get();
+                while(m_layer_draw_lists.size() < m_submitted_desc.layers.size())
+                {
+                    m_layer_draw_lists.push_back(new_draw_list());
+                }
+                m_feedback_draw_list->begin(m_shape_draw_list);
+                for(usize i = 0; i < m_submitted_desc.layers.size(); ++i)
+                {
+                    const Layer& layer = m_submitted_desc.layers[i];
+                    if(layer.root == U32_MAX || layer.root >= m_submitted_desc.nodes.size()) continue;
+                    IDrawList* draw_list = m_layer_draw_lists[i].get();
+                    draw_list->begin(m_shape_draw_list);
+                    m_active_draw_list = draw_list;
+                    render_node(layer.root);
+                    m_active_draw_list = nullptr;
+                    draw_list->end();
+                }
+                m_active_draw_list = m_feedback_draw_list.get();
                 render_dock_preview();
                 render_drag_drop_overlay();
                 m_active_draw_list = nullptr;
-                m_main_draw_list->end();
-                m_overlay_draw_list->end();
+                m_feedback_draw_list->end();
                 luexp(m_shape_draw_list->compile());
                 luexp(m_shape_renderer->begin(render_target));
                 Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, m_frame_desc.surface_size.x, 0.0f, m_frame_desc.surface_size.y, 0.0f, 1.0f);
