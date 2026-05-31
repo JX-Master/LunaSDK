@@ -19,8 +19,6 @@ namespace Luna
 {
     namespace GUI
     {
-        Context* g_current_context = nullptr;
-
         namespace State
         {
             LUNA_GUI_API StateKey<bool> clicked() { return {Name("gui.clicked"), false}; }
@@ -41,22 +39,6 @@ namespace Luna
             ctx->m_device = device ? device : RHI::get_main_device();
             ctx->m_shape_draw_list = VG::new_shape_draw_list(ctx->m_device);
             return Ref<IContext>(ctx);
-        }
-
-        LUNA_GUI_API void set_current_context(IContext* context)
-        {
-            g_current_context = context ? (Context*)context->get_object() : nullptr;
-        }
-
-        LUNA_GUI_API IContext* get_current_context()
-        {
-            return g_current_context;
-        }
-
-        Context* require_current_context()
-        {
-            luassert_msg(g_current_context, "No current GUI context. Call IContext::begin_frame first.");
-            return g_current_context;
         }
 
         struct ModuleImpl : public Module

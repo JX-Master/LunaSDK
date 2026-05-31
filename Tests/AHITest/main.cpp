@@ -293,9 +293,9 @@ namespace Luna
                 GUI::ItemHandle add_audio_source_button;
                 Vector<GUI::ItemHandle> apply_audio_source_buttons;
 
-                GUI::begin_window("AHITest", GUI::Size::fixed((f32)sz.x, (f32)sz.y));
+                GUI::begin_window(app.gui, "AHITest", GUI::Size::fixed((f32)sz.x, (f32)sz.y));
                 {
-                    GUI::ItemHandle adapters_header = GUI::collapsing_header("Adapters and formats");
+                    GUI::ItemHandle adapters_header = GUI::collapsing_header(app.gui, "Adapters and formats");
                     if(GUI::get_item_state(adapters_header, GUI::State::open()))
                     {
                         Vector<const c8*> playback_adapter_names;
@@ -309,18 +309,18 @@ namespace Luna
                         {
                             capture_adapter_names.push_back(adapter->get_name());
                         }
-                        GUI::combo("Playback Adapters", &current_playback_adapter, Span<const c8*>(playback_adapter_names.data(), playback_adapter_names.size()));
-                        GUI::combo("Capture Adapters", &current_capture_adapter, Span<const c8*>(capture_adapter_names.data(), capture_adapter_names.size()));
+                        GUI::combo(app.gui, "Playback Adapters", &current_playback_adapter, Span<const c8*>(playback_adapter_names.data(), playback_adapter_names.size()));
+                        GUI::combo(app.gui, "Capture Adapters", &current_capture_adapter, Span<const c8*>(capture_adapter_names.data(), capture_adapter_names.size()));
                         if((usize)current_playback_adapter < app.playback_adapters.size() && (usize)current_capture_adapter < app.capture_adapters.size())
                         {
                             if(!app.device)
                             {
-                                create_device_button = GUI::button("Create Device");
+                                create_device_button = GUI::button(app.gui, "Create Device");
                             }
                         }
                         if(app.device)
                         {
-                            GUI::ItemHandle device_header = GUI::collapsing_header("Device");
+                            GUI::ItemHandle device_header = GUI::collapsing_header(app.gui, "Device");
                             if(GUI::get_item_state(device_header, GUI::State::open()))
                             {
                                 {
@@ -337,7 +337,7 @@ namespace Luna
                                     }
                                     String text;
                                     strprintf(text, "Playback: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_playback_num_channels());
-                                    GUI::text(text.c_str());
+                                    GUI::text(app.gui, text.c_str());
                                     bd = app.device->get_capture_bit_depth();
                                     switch(bd)
                                     {
@@ -349,11 +349,11 @@ namespace Luna
                                         default: bit_depth = "unknown"; break;
                                     }
                                     strprintf(text, "Capture: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_capture_num_channels());
-                                    GUI::text(text.c_str());
+                                    GUI::text(app.gui, text.c_str());
                                 }
 
-                                GUI::slider_float("Input Audio Level", &input_audio_level, 0.0f, 1.0f);
-                                add_audio_source_button = GUI::button("Add Audio Source");
+                                GUI::slider_float(app.gui, "Input Audio Level", &input_audio_level, 0.0f, 1.0f);
+                                add_audio_source_button = GUI::button(app.gui, "Add Audio Source");
                                 if(!app.audio_sources.empty())
                                 {
                                     GUI::TableDesc source_table;
@@ -372,24 +372,24 @@ namespace Luna
                                     source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(control_w));
                                     source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(control_w));
                                     source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(80.0f));
-                                    GUI::begin_table_layout("Audio Sources", source_table);
+                                    GUI::begin_table_layout(app.gui, "Audio Sources", source_table);
                                     for (usize i = 0; i < app.audio_sources.size(); ++i)
                                     {
                                         AudioSource& source = app.audio_sources[i];
-                                        GUI::push_id((u64)i);
-                                        GUI::text("Audio Source");
-                                        GUI::drag_float("Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
-                                        GUI::slider_float("Volume", &source.volume, 0.0f, 1.0f);
-                                        apply_audio_source_buttons.push_back(GUI::button("Apply"));
-                                        GUI::pop_id();
+                                        GUI::push_id(app.gui, (u64)i);
+                                        GUI::text(app.gui, "Audio Source");
+                                        GUI::drag_float(app.gui, "Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
+                                        GUI::slider_float(app.gui, "Volume", &source.volume, 0.0f, 1.0f);
+                                        apply_audio_source_buttons.push_back(GUI::button(app.gui, "Apply"));
+                                        GUI::pop_id(app.gui);
                                     }
-                                    GUI::end_table_layout();
+                                    GUI::end_table_layout(app.gui);
                                 }
                             }
                         }
                     }
                 }
-                GUI::end_window();
+                GUI::end_window(app.gui);
 
                 lulet(gui_desc, app.gui->end_build());
                 luexp(app.gui->submit(gui_desc));

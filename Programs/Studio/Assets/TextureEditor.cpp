@@ -22,14 +22,14 @@ namespace Luna
 
         TextureEditor() {}
 
-        virtual void on_render() override;
+        virtual void on_render(GUI::IContext* context) override;
         virtual bool closed() override
         {
             return !m_open;
         }
     };
 
-    void TextureEditor::on_render()
+    void TextureEditor::on_render(GUI::IContext* context)
     {
         Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(m_tex);
         if (!tex)
@@ -46,30 +46,30 @@ namespace Luna
         lutry
         {
             auto desc = tex->get_desc();
-            GUI::begin_window(name, &m_open, GUI::Size::fixed(max((f32)desc.width + 16.0f, 220.0f), max((f32)desc.height + 46.0f, 120.0f)));
-            GUI::image(tex.get(), GUI::Size::fixed((f32)desc.width, (f32)desc.height));
-            GUI::end_window();
+            GUI::begin_window(context, name, &m_open, GUI::Size::fixed(max((f32)desc.width + 16.0f, 220.0f), max((f32)desc.height + 46.0f, 120.0f)));
+            GUI::image(context, tex.get(), GUI::Size::fixed((f32)desc.width, (f32)desc.height));
+            GUI::end_window(context);
         }
         lucatch
         {
-            GUI::begin_window(name, &m_open, GUI::Size::fixed(260.0f, 120.0f));
-            GUI::text("Texture Unavailable.");
-            GUI::end_window();
+            GUI::begin_window(context, name, &m_open, GUI::Size::fixed(260.0f, 120.0f));
+            GUI::text(context, "Texture Unavailable.");
+            GUI::end_window(context);
         }
     }
-    static void on_draw_tex_tile(object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
+    static void on_draw_tex_tile(GUI::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
     {
         if (Asset::get_asset_state(asset) == Asset::AssetState::loaded)
         {
             Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
             if (tex)
             {
-                GUI::draw_image(tex.get(), draw_rect);
+                GUI::draw_image(context, tex.get(), draw_rect);
             }
         }
         else
         {
-            GUI::draw_text(draw_rect, "Texture", Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
+            GUI::draw_text(context, draw_rect, "Texture", Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
         }
     }
     static Ref<IAssetEditor> new_tex_editor(object_t userdata, Asset::asset_t editing_asset)

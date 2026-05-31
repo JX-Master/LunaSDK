@@ -47,21 +47,21 @@ namespace Luna
             return m_time - m_tooltip_hover_start >= max((f64)node.tooltip_desc.delay, 0.0);
         }
 
-        LUNA_GUI_API ItemHandle begin_tooltip(ItemHandle owner, const c8* label, const TooltipDesc& desc)
+        LUNA_GUI_API ItemHandle begin_tooltip(IContext* context, ItemHandle owner, const c8* label, const TooltipDesc& desc)
         {
-            return require_current_context()->begin_tooltip(owner, label, desc);
+            return context_from_interface(context)->begin_tooltip(owner, label, desc);
         }
 
-        LUNA_GUI_API void end_tooltip()
+        LUNA_GUI_API void end_tooltip(IContext* context)
         {
-            require_current_context()->end_tooltip();
+            context_from_interface(context)->end_tooltip();
         }
 
-        LUNA_GUI_API ItemHandle set_item_tooltip(ItemHandle owner, const c8* content, const TooltipDesc& desc)
+        LUNA_GUI_API ItemHandle set_item_tooltip(IContext* context, ItemHandle owner, const c8* content, const TooltipDesc& desc)
         {
-            ItemHandle handle = begin_tooltip(owner, "Tooltip", desc);
-            text(content ? content : "");
-            end_tooltip();
+            ItemHandle handle = begin_tooltip(context, owner, "Tooltip", desc);
+            text(context, content ? content : "");
+            end_tooltip(context);
             return handle;
         }
     }

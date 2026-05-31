@@ -30,14 +30,14 @@ namespace Luna
 
         ModelEditor() {}
 
-        virtual void on_render() override;
+        virtual void on_render(GUI::IContext* context) override;
         virtual bool closed() override
         {
             return !m_open;
         }
     };
 
-    void ModelEditor::on_render()
+    void ModelEditor::on_render(GUI::IContext* context)
     {
         char title[256];
         auto path = Asset::get_asset_path(m_model);
@@ -50,16 +50,16 @@ namespace Luna
             snprintf(title, 256, "Model Editor###%d", (u32)(usize)this);
         }
         if(!m_open) return;
-        GUI::begin_window(title, &m_open, GUI::Size::fixed(760.0f, 620.0f));
+        GUI::begin_window(context, title, &m_open, GUI::Size::fixed(760.0f, 620.0f));
 
         Ref<Model> model = get_asset_or_async_load_if_not_ready<Model>(m_model);
         if (!model || (Asset::get_asset_state(m_model) != Asset::AssetState::loaded))
         {
-            GUI::text("Model Asset is not loaded.");
+            GUI::text(context, "Model Asset is not loaded.");
         }
         else
         {
-            if (GUI::is_item_clicked(GUI::button("Save")))
+            if (GUI::is_item_clicked(GUI::button(context, "Save")))
             {
                 lutry
                 {
@@ -71,7 +71,7 @@ namespace Luna
                 }
             }
 
-            gui_edit_asset_path("Mesh Asset", model->mesh, m_mesh_name, "Failed to set mesh asset reference");
+            gui_edit_asset_path(context, "Mesh Asset", model->mesh, m_mesh_name, "Failed to set mesh asset reference");
             if (model->mesh)
             {
                 Ref<Mesh> mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
@@ -79,7 +79,7 @@ namespace Luna
                 {
                     char mesh_info[64];
                     snprintf(mesh_info, 64, "This mesh requires %u material(s).", (u32)mesh->pieces.size());
-                    GUI::text(mesh_info);
+                    GUI::text(context, mesh_info);
                 }
             }
 
@@ -91,16 +91,16 @@ namespace Luna
             {
                 char mat_name[32];
                 snprintf(mat_name, 32, "Material slot %u", i);
-                GUI::push_id(i);
+                GUI::push_id(context, i);
                 GUI::LayoutDesc row;
                 row.gap = 8.0f;
                 row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
-                GUI::begin_h_layout("Material Slot Row", row);
-                GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
-                gui_edit_asset_path(mat_name, model->materials[i], m_mat_names[i], "Failed to set material asset reference");
-                GUI::ItemHandle remove_button = GUI::button("Remove current slot");
-                GUI::ItemHandle add_button = GUI::button("Add before this");
-                GUI::end_h_layout();
+                GUI::begin_h_layout(context, "Material Slot Row", row);
+                GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
+                gui_edit_asset_path(context, mat_name, model->materials[i], m_mat_names[i], "Failed to set material asset reference");
+                GUI::ItemHandle remove_button = GUI::button(context, "Remove current slot");
+                GUI::ItemHandle add_button = GUI::button(context, "Add before this");
+                GUI::end_h_layout(context);
                 if (GUI::is_item_clicked(remove_button))
                 {
                     remove_index = i;
@@ -109,7 +109,7 @@ namespace Luna
                 {
                     add_index = i;
                 }
-                GUI::pop_id();
+                GUI::pop_id(context);
             }
             if (remove_index >= 0)
             {
@@ -119,13 +119,13 @@ namespace Luna
             {
                 model->materials.insert(model->materials.begin() + add_index, Asset::asset_t());
             }
-            if (GUI::is_item_clicked(GUI::button("Add a new material slot")))
+            if (GUI::is_item_clicked(GUI::button(context, "Add a new material slot")))
             {
                 model->materials.push_back(Asset::asset_t());
             }
         }
 
-        GUI::end_window();
+        GUI::end_window(context);
     }
     Ref<IAssetEditor> new_model_editor(object_t userdata, Asset::asset_t editing_asset)
     {

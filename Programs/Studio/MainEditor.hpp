@@ -161,7 +161,7 @@ namespace Luna
 
     void run_main_editor(const Path& project_path);
 
-    void draw_asset_tile(Asset::asset_t asset, const RectF& draw_rect);
+    void draw_asset_tile(GUI::IContext* context, Asset::asset_t asset, const RectF& draw_rect);
 
     extern MainEditor* g_main_editor;
 }

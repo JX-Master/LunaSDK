@@ -42,49 +42,52 @@ namespace Luna
 
         struct SceneGUIFlowScope
         {
-            SceneGUIFlowScope()
+            GUI::IContext* context;
+
+            SceneGUIFlowScope(GUI::IContext* ctx) :
+                context(ctx)
             {
                 ++g_scene_gui_flow_depth;
-                push_edit_object_gui_flow_layout();
+                push_edit_object_gui_flow_layout(context);
             }
 
             ~SceneGUIFlowScope()
             {
-                pop_edit_object_gui_flow_layout();
+                pop_edit_object_gui_flow_layout(context);
                 luassert(g_scene_gui_flow_depth);
                 --g_scene_gui_flow_depth;
             }
         };
 
-        SceneGUIRow begin_scene_gui_row(const c8* label, f32 height = 30.0f)
+        SceneGUIRow begin_scene_gui_row(GUI::IContext* context, const c8* label, f32 height = 30.0f)
         {
             (void)g_scene_gui_flow_depth;
             GUI::LayoutStyle row_style = GUI::LayoutStyle::fill_width();
             row_style.height_policy = GUI::SizePolicy::fixed;
             row_style.fixed_height_value = height;
-            GUI::set_next_item_layout(row_style);
+            GUI::set_next_item_layout(context, row_style);
             GUI::LayoutDesc row;
             row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::stretch;
-            GUI::begin_h_layout(label, row);
-            GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
+            GUI::begin_h_layout(context, label, row);
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
             return SceneGUIRow { Float2(0.0f, height) };
         }
 
-        bool end_scene_gui_row(const SceneGUIRow& row, GUI::ItemHandle item)
+        bool end_scene_gui_row(GUI::IContext* context, const SceneGUIRow& row, GUI::ItemHandle item)
         {
             (void)row;
-            GUI::end_h_layout();
+            GUI::end_h_layout(context);
             return GUI::get_item_state(item, GUI::State::value_changed());
         }
 
-        void draw_scene_gui_text_line(const c8* text, f32 height = 24.0f)
+        void draw_scene_gui_text_line(GUI::IContext* context, const c8* text, f32 height = 24.0f)
         {
             (void)g_scene_gui_flow_depth;
             GUI::LayoutStyle text_style = GUI::LayoutStyle::fill_width();
             text_style.height_policy = GUI::SizePolicy::fixed;
             text_style.fixed_height_value = height;
-            GUI::set_next_item_layout(text_style);
-            GUI::text(text);
+            GUI::set_next_item_layout(context, text_style);
+            GUI::text(context, text);
         }
 
         template <typename _Ty>
@@ -175,14 +178,14 @@ namespace Luna
         void on_actor_edit_component(SceneActor& scene_actor, typeinfo_t component);
 
         void edit_scene();
-        void draw_actor_list(const RectF& rect);
-        void draw_actor_tree_node(Actor* actor, bool& open_actor_list_popup);
-        void draw_scene_settings(const RectF& rect);
-        void draw_scene(const RectF& rect);
+        void draw_actor_list(GUI::IContext* context, const RectF& rect);
+        void draw_actor_tree_node(GUI::IContext* context, Actor* actor, bool& open_actor_list_popup);
+        void draw_scene_settings(GUI::IContext* context, const RectF& rect);
+        void draw_scene(GUI::IContext* context, const RectF& rect);
 
-        void draw_components_grid(const RectF& rect);
+        void draw_components_grid(GUI::IContext* context, const RectF& rect);
 
-        virtual void on_render() override;
+        virtual void on_render(GUI::IContext* context) override;
         virtual bool closed() override
         {
             return !m_open;
@@ -309,7 +312,7 @@ namespace Luna
         copy_assign_type(component, data, src);
     }
 
-    void SceneEditor::draw_actor_list(const RectF& rect)
+    void SceneEditor::draw_actor_list(GUI::IContext* context, const RectF& rect)
     {
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
 
@@ -318,12 +321,12 @@ namespace Luna
         constexpr f32 panel_gap = 6.0f;
         GUI::LayoutDesc header_layout;
         header_layout.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::stretch;
-        GUI::begin_h_layout("Actor List Header", RectF(rect.offset_x, rect.offset_y, rect.width, header_height), header_layout);
-        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(96.0f));
-        GUI::text("Actor List");
-        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(110.0f));
-        GUI::ItemHandle new_actor_button = GUI::button("New Actor");
-        GUI::end_h_layout();
+        GUI::begin_h_layout(context, "Actor List Header", RectF(rect.offset_x, rect.offset_y, rect.width, header_height), header_layout);
+        GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(96.0f));
+        GUI::text(context, "Actor List");
+        GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(110.0f));
+        GUI::ItemHandle new_actor_button = GUI::button(context, "New Actor");
+        GUI::end_h_layout(context);
 
         if (GUI::is_item_clicked(new_actor_button))
         {
@@ -336,20 +339,20 @@ namespace Luna
         RectF list_rect(rect.offset_x, rect.offset_y + header_height + panel_gap, rect.width,
             max(rect.height - header_height - panel_gap, 1.0f));
 
-        GUI::push_id(this);
-        GUI::draw_rect(list_rect, Float4U(0.16f, 0.19f, 0.24f, 1.0f), 5.0f);
-        GUI::draw_rect(RectF(list_rect.offset_x + 1.0f, list_rect.offset_y + 1.0f, max(list_rect.width - 2.0f, 1.0f), max(list_rect.height - 2.0f, 1.0f)),
+        GUI::push_id(context, this);
+        GUI::draw_rect(context, list_rect, Float4U(0.16f, 0.19f, 0.24f, 1.0f), 5.0f);
+        GUI::draw_rect(context, RectF(list_rect.offset_x + 1.0f, list_rect.offset_y + 1.0f, max(list_rect.width - 2.0f, 1.0f), max(list_rect.height - 2.0f, 1.0f)),
             Float4U(0.04f, 0.05f, 0.06f, 1.0f), 4.0f);
 
         GUI::LayoutDesc list_host_layout;
         list_host_layout.padding = GUI::EdgeInsets::all(1.0f);
         list_host_layout.gap = 0.0f;
-        GUI::begin_v_layout("Actor List Host", list_rect, list_host_layout);
-        GUI::begin_scroll_view("Actor List", GUI::Size::fixed(max(list_rect.width - 2.0f, 1.0f), max(list_rect.height - 2.0f, 1.0f)));
+        GUI::begin_v_layout(context, "Actor List Host", list_rect, list_host_layout);
+        GUI::begin_scroll_view(context, "Actor List", GUI::Size::fixed(max(list_rect.width - 2.0f, 1.0f), max(list_rect.height - 2.0f, 1.0f)));
 
         if (s->actors.empty())
         {
-            GUI::text("No actor in the scene.");
+            GUI::text(context, "No actor in the scene.");
         }
         else
         {
@@ -360,21 +363,21 @@ namespace Luna
                 Actor* a = m_world.get_actor(actor.guid);
                 if(a->get_actor_info()->get_parent() == nullptr)
                 {
-                    draw_actor_tree_node(a, open_actor_list_popup);
+                    draw_actor_tree_node(context, a, open_actor_list_popup);
                 }
             }
 
             if(open_actor_list_popup)
             {
                 m_actor_popup_open = true;
-                m_actor_popup_position = GUI::get_pointer_position();
+                m_actor_popup_position = GUI::get_pointer_position(context);
             }
 
             if (m_actor_popup_open)
             {
-                GUI::begin_popup("Actor Popup", m_actor_popup_position, GUI::Size::fixed(150.0f, 42.0f));
-                GUI::ItemHandle remove_item = GUI::selectable("Remove");
-                GUI::end_popup();
+                GUI::begin_popup(context, "Actor Popup", m_actor_popup_position, GUI::Size::fixed(150.0f, 42.0f));
+                GUI::ItemHandle remove_item = GUI::selectable(context, "Remove");
+                GUI::end_popup(context);
                 if (GUI::is_item_clicked(remove_item))
                 {
                     usize remove_index = 0;
@@ -393,12 +396,12 @@ namespace Luna
             }
         }
 
-        GUI::end_scroll_view();
-        GUI::end_v_layout();
-        GUI::pop_id();
+        GUI::end_scroll_view(context);
+        GUI::end_v_layout(context);
+        GUI::pop_id(context);
     }
 
-    void SceneEditor::draw_actor_tree_node(Actor* actor, bool& open_popup)
+    void SceneEditor::draw_actor_tree_node(GUI::IContext* context, Actor* actor, bool& open_popup)
     {
         ActorInfo* info = actor->get_actor_info();
         GUI::TreeNodeFlag flags = GUI::TreeNodeFlag::open_on_arrow;
@@ -419,9 +422,9 @@ namespace Luna
         {
             flags |= GUI::TreeNodeFlag::default_open;
         }
-        GUI::push_id((u64)hash);
-        GUI::ItemHandle tree_node = GUI::tree_node(name.c_str(), flags);
-        GUI::pop_id();
+        GUI::push_id(context, (u64)hash);
+        GUI::ItemHandle tree_node = GUI::tree_node(context, name.c_str(), flags);
+        GUI::pop_id(context);
         if(GUI::is_item_clicked(tree_node))
         {
             m_editing_actor_guid = info->get_guid();
@@ -434,59 +437,59 @@ namespace Luna
         bool opened = GUI::get_item_state(tree_node, GUI::State::open());
         if(opened)
         {
-            GUI::tree_push(tree_node);
+            GUI::tree_push(context, tree_node);
             for(Actor* child : children)
             {
-                draw_actor_tree_node(child, open_popup);
+                draw_actor_tree_node(context, child, open_popup);
             }
-            GUI::tree_pop();
+            GUI::tree_pop(context);
         }
 
         Name actor_ref_payload_type("Actor Ref");
-        if(GUI::begin_drag_drop_source(tree_node, actor_ref_payload_type))
+        if(GUI::begin_drag_drop_source(context, tree_node, actor_ref_payload_type))
         {
-            GUI::set_drag_drop_payload(&guid, sizeof(guid));
-            GUI::text(name.c_str());
-            GUI::end_drag_drop_source();
+            GUI::set_drag_drop_payload(context, &guid, sizeof(guid));
+            GUI::text(context, name.c_str());
+            GUI::end_drag_drop_source(context);
         }
 
     }
 
-    void SceneEditor::draw_scene_settings(const RectF& rect)
+    void SceneEditor::draw_scene_settings(GUI::IContext* context, const RectF& rect)
     {
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
         constexpr f32 title_height = 24.0f;
         constexpr f32 panel_gap = 6.0f;
-        GUI::draw_text(RectF(rect.offset_x, rect.offset_y, rect.width, title_height), "Scene Settings", Color::white(), 16.0f,
+        GUI::draw_text(context, RectF(rect.offset_x, rect.offset_y, rect.width, title_height), "Scene Settings", Color::white(), 16.0f,
             GUI::TextAlignment::begin, GUI::TextAlignment::center);
 
         RectF panel_rect(rect.offset_x, rect.offset_y + title_height + panel_gap, rect.width,
             max(rect.height - title_height - panel_gap, 1.0f));
 
-        GUI::draw_rect(panel_rect, Float4U(0.16f, 0.19f, 0.24f, 1.0f), 5.0f);
-        GUI::draw_rect(RectF(panel_rect.offset_x + 1.0f, panel_rect.offset_y + 1.0f, max(panel_rect.width - 2.0f, 1.0f), max(panel_rect.height - 2.0f, 1.0f)),
+        GUI::draw_rect(context, panel_rect, Float4U(0.16f, 0.19f, 0.24f, 1.0f), 5.0f);
+        GUI::draw_rect(context, RectF(panel_rect.offset_x + 1.0f, panel_rect.offset_y + 1.0f, max(panel_rect.width - 2.0f, 1.0f), max(panel_rect.height - 2.0f, 1.0f)),
             Float4U(0.04f, 0.05f, 0.06f, 1.0f), 4.0f);
 
         GUI::LayoutDesc panel_layout;
         panel_layout.padding = GUI::EdgeInsets::all(6.0f);
         panel_layout.gap = 0.0f;
-        GUI::begin_v_layout("Scene Settings Panel", panel_rect, panel_layout);
-        GUI::begin_scroll_view("Scene Settings Scroll", GUI::Size::fixed(max(panel_rect.width - 12.0f, 1.0f), max(panel_rect.height - 12.0f, 1.0f)));
+        GUI::begin_v_layout(context, "Scene Settings Panel", panel_rect, panel_layout);
+        GUI::begin_scroll_view(context, "Scene Settings Scroll", GUI::Size::fixed(max(panel_rect.width - 12.0f, 1.0f), max(panel_rect.height - 12.0f, 1.0f)));
         {
-            SceneGUIFlowScope flow;
-            edit_scene_object(&m_world, typeof<SceneSettings>(), &(s->settings));
+            SceneGUIFlowScope flow(context);
+            edit_scene_object(context, &m_world, typeof<SceneSettings>(), &(s->settings));
         }
-        GUI::end_scroll_view();
-        GUI::end_v_layout();
+        GUI::end_scroll_view(context);
+        GUI::end_v_layout(context);
     }
 
-    void SceneEditor::draw_scene(const RectF& rect)
+    void SceneEditor::draw_scene(GUI::IContext* context, const RectF& rect)
     {
         lutry
         {
             constexpr f32 title_height = 24.0f;
             constexpr f32 panel_gap = 6.0f;
-            GUI::draw_text(RectF(rect.offset_x, rect.offset_y, rect.width, title_height), "Scene", Color::white(), 16.0f,
+            GUI::draw_text(context, RectF(rect.offset_x, rect.offset_y, rect.width, title_height), "Scene", Color::white(), 16.0f,
                 GUI::TextAlignment::begin, GUI::TextAlignment::center);
             RectF viewport_rect(rect.offset_x, rect.offset_y + title_height + panel_gap, rect.width,
                 max(rect.height - title_height - panel_gap, 1.0f));
@@ -497,14 +500,14 @@ namespace Luna
             Actor* camera_actor = m_world.get_actor(s->settings.camera_actor.guid);
             if(!camera_actor)
             {
-                GUI::draw_text(viewport_rect, "Set a camera in scene settings to start.", Color::white(), 16.0f,
+                GUI::draw_text(context, viewport_rect, "Set a camera in scene settings to start.", Color::white(), 16.0f,
                     GUI::TextAlignment::begin, GUI::TextAlignment::begin);
                 return;
             }
             Camera* camera_component = camera_actor->get_component<Camera>();
             if(!camera_component)
             {
-                GUI::draw_text(viewport_rect, "Actor camera actor does not have a camera component", Color::white(), 16.0f,
+                GUI::draw_text(context, viewport_rect, "Actor camera actor does not have a camera component", Color::white(), 16.0f,
                     GUI::TextAlignment::begin, GUI::TextAlignment::begin);
                 return;
             }
@@ -557,39 +560,39 @@ namespace Luna
             String render_mode_label;
             strprintf(render_mode_label, "Render: %s", current_name.c_str());
 
-            GUI::push_id(this);
-            GUI::begin_canvas_layout("Scene Viewport Canvas", RectF(viewport_pos.x, viewport_pos.y, viewport_size.x, viewport_size.y));
+            GUI::push_id(context, this);
+            GUI::begin_canvas_layout(context, "Scene Viewport Canvas", RectF(viewport_pos.x, viewport_pos.y, viewport_size.x, viewport_size.y));
             GUI::CanvasItemLayout toolbar_canvas;
             toolbar_canvas.anchor_min = Float2U(0.0f, 0.0f);
             toolbar_canvas.anchor_max = Float2U(1.0f, 0.0f);
             toolbar_canvas.offset_min = Float2U(0.0f, 0.0f);
             toolbar_canvas.offset_max = Float2U(0.0f, toolbar_height);
-            GUI::set_next_canvas_item_layout(toolbar_canvas);
+            GUI::set_next_canvas_item_layout(context, toolbar_canvas);
             GUI::LayoutDesc toolbar_layout;
             toolbar_layout.gap = 6.0f;
             toolbar_layout.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::stretch;
-            GUI::begin_h_layout("Scene Viewport Toolbar", toolbar_layout);
-            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(190.0f));
-            GUI::slider_float("Camera Speed", &m_camera_speed, 0.1f, 10.0f);
-            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(84.0f));
-            GUI::text("Mode");
-            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(64.0f));
-            GUI::ItemHandle local_mode = GUI::selectable("Local", m_gizmo_mode == GUI::GizmoMode::local);
-            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(64.0f));
-            GUI::ItemHandle world_mode = GUI::selectable("World", m_gizmo_mode == GUI::GizmoMode::world);
-            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(72.0f));
-            GUI::text("Operation");
-            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(90.0f));
-            GUI::ItemHandle translate_op = GUI::selectable("Translate", m_gizmo_op == GUI::GizmoOperation::translate);
-            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(72.0f));
-            GUI::ItemHandle rotate_op = GUI::selectable("Rotate", m_gizmo_op == GUI::GizmoOperation::rotate);
-            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(64.0f));
-            GUI::ItemHandle scale_op = GUI::selectable("Scale", m_gizmo_op == GUI::GizmoOperation::scale);
-            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(170.0f));
-            GUI::ItemHandle render_mode_button = GUI::button(render_mode_label.c_str());
-            GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(140.0f));
-            GUI::ItemHandle profiling_button = GUI::selectable("Time Profiling", settings.frame_profiling);
-            GUI::end_h_layout();
+            GUI::begin_h_layout(context, "Scene Viewport Toolbar", toolbar_layout);
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(190.0f));
+            GUI::slider_float(context, "Camera Speed", &m_camera_speed, 0.1f, 10.0f);
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(84.0f));
+            GUI::text(context, "Mode");
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(64.0f));
+            GUI::ItemHandle local_mode = GUI::selectable(context, "Local", m_gizmo_mode == GUI::GizmoMode::local);
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(64.0f));
+            GUI::ItemHandle world_mode = GUI::selectable(context, "World", m_gizmo_mode == GUI::GizmoMode::world);
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(72.0f));
+            GUI::text(context, "Operation");
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(90.0f));
+            GUI::ItemHandle translate_op = GUI::selectable(context, "Translate", m_gizmo_op == GUI::GizmoOperation::translate);
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(72.0f));
+            GUI::ItemHandle rotate_op = GUI::selectable(context, "Rotate", m_gizmo_op == GUI::GizmoOperation::rotate);
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(64.0f));
+            GUI::ItemHandle scale_op = GUI::selectable(context, "Scale", m_gizmo_op == GUI::GizmoOperation::scale);
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(170.0f));
+            GUI::ItemHandle render_mode_button = GUI::button(context, render_mode_label.c_str());
+            GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(140.0f));
+            GUI::ItemHandle profiling_button = GUI::selectable(context, "Time Profiling", settings.frame_profiling);
+            GUI::end_h_layout(context);
 
             if(GUI::is_item_clicked(local_mode)) m_gizmo_mode = GUI::GizmoMode::local;
             if(GUI::is_item_clicked(world_mode)) m_gizmo_mode = GUI::GizmoMode::world;
@@ -610,7 +613,7 @@ namespace Luna
             scene_sz.x = max(scene_sz.x - 1.0f, 1.0f);
             scene_sz.y = max(scene_sz.y - 5.0f, 1.0f);
 
-            GUI::FrameDesc gui_frame = GUI::get_frame_desc();
+            GUI::FrameDesc gui_frame = GUI::get_frame_desc(context);
             f32 dpi_scale = max(gui_frame.dpi_scale, 1.0f);
             settings.screen_size = UInt2U((u32)(scene_sz.x * dpi_scale), (u32)(scene_sz.y * dpi_scale));
 
@@ -622,8 +625,8 @@ namespace Luna
             scene_canvas.anchor_max = Float2U(1.0f, 1.0f);
             scene_canvas.offset_min = Float2U(0.0f, toolbar_height);
             scene_canvas.offset_max = Float2U(-1.0f, -5.0f);
-            GUI::set_next_canvas_item_layout(scene_canvas);
-            GUI::image(m_renderer.render_texture.get(), GUI::Size(), GUI::ImageFlag::flip_y);
+            GUI::set_next_canvas_item_layout(context, scene_canvas);
+            GUI::image(context, m_renderer.render_texture.get(), GUI::Size(), GUI::ImageFlag::flip_y);
 
             auto& scene_settings = s->settings;
 
@@ -635,7 +638,7 @@ namespace Luna
                 {
                     Float4x4 world_mat = actor->get_local_to_world_matrix();
                     bool edited = false;
-                    GUI::gizmo("Scene Transform Gizmo", world_mat, camera_actor->get_world_to_local_matrix(), camera_component->get_projection_matrix(),
+                    GUI::gizmo(context, "Scene Transform Gizmo", world_mat, camera_actor->get_world_to_local_matrix(), camera_component->get_projection_matrix(),
                         RectF(scene_pos.x, scene_pos.y, scene_sz.x, scene_sz.y), m_gizmo_op, m_gizmo_mode, 0.0f, true, false, nullptr, nullptr, nullptr, &edited);
                     if (edited)
                     {
@@ -651,7 +654,7 @@ namespace Luna
                     f32 debug_y = scene_pos.y + 6.0f;
                     auto draw_debug_text = [&](const c8* text)
                     {
-                        GUI::draw_text(RectF(scene_pos.x + 8.0f, debug_y, max(scene_sz.x - 16.0f, 1.0f), 18.0f),
+                        GUI::draw_text(context, RectF(scene_pos.x + 8.0f, debug_y, max(scene_sz.x - 16.0f, 1.0f), 18.0f),
                             text, Color::white(), 14.0f, GUI::TextAlignment::begin, GUI::TextAlignment::center);
                         debug_y += 18.0f;
                     };
@@ -712,29 +715,29 @@ namespace Luna
                     for (auto& line : lines)
                     {
                         // Revert y axis because GUI surface coordinates point downward.
-                        GUI::draw_line(origin_point, origin_point + Float2(line.line.x, -line.line.y), line.color, 5.0f);
+                        GUI::draw_line(context, origin_point, origin_point + Float2(line.line.x, -line.line.y), line.color, 5.0f);
                     }
                 }
             }
-            GUI::end_canvas_layout();
-            GUI::pop_id();
+            GUI::end_canvas_layout(context);
+            GUI::pop_id(context);
 
-            bool scene_pointer_hovered = in_bounds(GUI::get_pointer_position(), scene_pos, scene_pos + scene_sz);
+            bool scene_pointer_hovered = in_bounds(GUI::get_pointer_position(context), scene_pos, scene_pos + scene_sz);
             bool navigation_started = false;
-            if (!m_navigating && GUI::is_pointer_button_down(GUI::PointerButton::right) && scene_pointer_hovered)
+            if (!m_navigating && GUI::is_pointer_button_down(context, GUI::PointerButton::right) && scene_pointer_hovered)
             {
                 m_navigating = true;
                 navigation_started = true;
             }
 
-            if (m_navigating && !GUI::is_pointer_button_down(GUI::PointerButton::right))
+            if (m_navigating && !GUI::is_pointer_button_down(context, GUI::PointerButton::right))
             {
                 m_navigating = false;
             }
 
             if (m_navigating)
             {
-                Float2U mouse_delta = navigation_started ? Float2U(0.0f) : GUI::get_pointer_delta();
+                Float2U mouse_delta = navigation_started ? Float2U(0.0f) : GUI::get_pointer_delta(context);
                 // Rotate camera based on mouse delta.
                 Transform* camera_transform = camera_actor->get_transform();
                 auto rot = camera_transform->rotation;
@@ -746,32 +749,32 @@ namespace Luna
                 auto up = AffineMatrix::up(rot_mat);
 
                 f32 camera_speed = m_camera_speed;
-                if (((u8)GUI::get_key_modifiers() & (u8)GUI::KeyModifierFlag::shift) != 0)
+                if (((u8)GUI::get_key_modifiers(context) & (u8)GUI::KeyModifierFlag::shift) != 0)
                 {
                     camera_speed *= 2.0f;
                 }
 
-                if (GUI::is_key_down(GUI::Key::w))
+                if (GUI::is_key_down(context, GUI::Key::w))
                 {
                     camera_transform->position += forward * 0.1f * camera_speed;
                 }
-                if (GUI::is_key_down(GUI::Key::a))
+                if (GUI::is_key_down(context, GUI::Key::a))
                 {
                     camera_transform->position += + left * 0.1f * camera_speed;
                 }
-                if (GUI::is_key_down(GUI::Key::s))
+                if (GUI::is_key_down(context, GUI::Key::s))
                 {
                     camera_transform->position += - forward * 0.1f * camera_speed;
                 }
-                if (GUI::is_key_down(GUI::Key::d))
+                if (GUI::is_key_down(context, GUI::Key::d))
                 {
                     camera_transform->position += - left * 0.1f * camera_speed;
                 }
-                if (GUI::is_key_down(GUI::Key::q))
+                if (GUI::is_key_down(context, GUI::Key::q))
                 {
                     camera_transform->position += - up * 0.1f * camera_speed;
                 }
-                if (GUI::is_key_down(GUI::Key::e))
+                if (GUI::is_key_down(context, GUI::Key::e))
                 {
                     camera_transform->position += + up * 0.1f * camera_speed;
                 }
@@ -799,23 +802,23 @@ namespace Luna
         }
         lucatch
         {
-            GUI::draw_text(rect, explain(luerr), Color::white(), 16.0f,
+            GUI::draw_text(context, rect, explain(luerr), Color::white(), 16.0f,
                 GUI::TextAlignment::begin, GUI::TextAlignment::begin);
         }
     }
 
-    static bool edit_transform(Transform* t)
+    static bool edit_transform(GUI::IContext* context, Transform* t)
     {
         bool edited = false;
 
-        SceneGUIRow position_row = begin_scene_gui_row("Position");
-        GUI::ItemHandle position_item = GUI::drag_float3("Position", t->position.m, 0.01f, 0.0f, 0.0f);
-        edited = edited || end_scene_gui_row(position_row, position_item);
+        SceneGUIRow position_row = begin_scene_gui_row(context, "Position");
+        GUI::ItemHandle position_item = GUI::drag_float3(context, "Position", t->position.m, 0.01f, 0.0f, 0.0f);
+        edited = edited || end_scene_gui_row(context, position_row, position_item);
 
         Float3& euler = get_scene_edit_buffer(g_transform_rotation_edit_buffers, (usize)t, transform_rotation_to_euler_degrees(t));
-        SceneGUIRow rotation_row = begin_scene_gui_row("Rotation");
-        GUI::ItemHandle rotation_item = GUI::drag_float3("Rotation", euler.m, 0.1f, 0.0f, 0.0f);
-        bool rotation_edited = end_scene_gui_row(rotation_row, rotation_item);
+        SceneGUIRow rotation_row = begin_scene_gui_row(context, "Rotation");
+        GUI::ItemHandle rotation_item = GUI::drag_float3(context, "Rotation", euler.m, 0.1f, 0.0f, 0.0f);
+        bool rotation_edited = end_scene_gui_row(context, rotation_row, rotation_item);
         if (rotation_edited)
         {
             Float3 radians = euler * (PI / 180.0f);
@@ -827,42 +830,42 @@ namespace Luna
             euler = transform_rotation_to_euler_degrees(t);
         }
 
-        SceneGUIRow scale_row = begin_scene_gui_row("Scale");
-        GUI::ItemHandle scale_item = GUI::drag_float3("Scale", t->scale.m, 0.01f, 0.0f, 0.0f);
-        edited = edited || end_scene_gui_row(scale_row, scale_item);
+        SceneGUIRow scale_row = begin_scene_gui_row(context, "Scale");
+        GUI::ItemHandle scale_item = GUI::drag_float3(context, "Scale", t->scale.m, 0.01f, 0.0f, 0.0f);
+        edited = edited || end_scene_gui_row(context, scale_row, scale_item);
 
         return edited;
     }
 
-    void SceneEditor::draw_components_grid(const RectF& rect)
+    void SceneEditor::draw_components_grid(GUI::IContext* context, const RectF& rect)
     {
         // Draw component property grid.
 
         constexpr f32 title_height = 24.0f;
         constexpr f32 panel_gap = 6.0f;
-        GUI::draw_text(RectF(rect.offset_x, rect.offset_y, rect.width, title_height), "Components Grid", Color::white(), 16.0f,
+        GUI::draw_text(context, RectF(rect.offset_x, rect.offset_y, rect.width, title_height), "Components Grid", Color::white(), 16.0f,
             GUI::TextAlignment::begin, GUI::TextAlignment::center);
 
         RectF panel_rect(rect.offset_x, rect.offset_y + title_height + panel_gap, rect.width,
             max(rect.height - title_height - panel_gap, 1.0f));
 
-        GUI::draw_rect(panel_rect, Float4U(0.16f, 0.19f, 0.24f, 1.0f), 5.0f);
-        GUI::draw_rect(RectF(panel_rect.offset_x + 1.0f, panel_rect.offset_y + 1.0f, max(panel_rect.width - 2.0f, 1.0f), max(panel_rect.height - 2.0f, 1.0f)),
+        GUI::draw_rect(context, panel_rect, Float4U(0.16f, 0.19f, 0.24f, 1.0f), 5.0f);
+        GUI::draw_rect(context, RectF(panel_rect.offset_x + 1.0f, panel_rect.offset_y + 1.0f, max(panel_rect.width - 2.0f, 1.0f), max(panel_rect.height - 2.0f, 1.0f)),
             Float4U(0.04f, 0.05f, 0.06f, 1.0f), 4.0f);
 
         GUI::LayoutDesc panel_layout;
         panel_layout.padding = GUI::EdgeInsets::all(6.0f);
         panel_layout.gap = 0.0f;
-        GUI::begin_v_layout("Components Grid Panel", panel_rect, panel_layout);
-        GUI::begin_scroll_view("Components Grid Scroll", GUI::Size::fixed(max(panel_rect.width - 12.0f, 1.0f), max(panel_rect.height - 12.0f, 1.0f)));
+        GUI::begin_v_layout(context, "Components Grid Panel", panel_rect, panel_layout);
+        GUI::begin_scroll_view(context, "Components Grid Scroll", GUI::Size::fixed(max(panel_rect.width - 12.0f, 1.0f), max(panel_rect.height - 12.0f, 1.0f)));
 
         Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
         {
-            SceneGUIFlowScope flow;
+            SceneGUIFlowScope flow(context);
 
             if(!s)
             {
-                draw_scene_gui_text_line("Scene Loading");
+                draw_scene_gui_text_line(context, "Scene Loading");
             }
             else
             {
@@ -876,18 +879,18 @@ namespace Luna
                         m_actor_name_editing_guid = actor->guid;
                         m_actor_name_editing_text = actor->name.c_str();
                     }
-                    SceneGUIRow name_row = begin_scene_gui_row("Actor Name");
-                    GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(72.0f));
-                    GUI::text("Name");
-                    GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
-                    GUI::ItemHandle name_item = GUI::input_text("Actor Name", m_actor_name_editing_text);
-                    if(end_scene_gui_row(name_row, name_item))
+                    SceneGUIRow name_row = begin_scene_gui_row(context, "Actor Name");
+                    GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(72.0f));
+                    GUI::text(context, "Name");
+                    GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
+                    GUI::ItemHandle name_item = GUI::input_text(context, "Actor Name", m_actor_name_editing_text);
+                    if(end_scene_gui_row(context, name_row, name_item))
                     {
                         actor->name = m_actor_name_editing_text;
                         on_edit_actor_info(*actor);
                     }
                     // Draw transform.
-                    if(edit_transform(&actor->transform))
+                    if(edit_transform(context, &actor->transform))
                     {
                         on_edit_actor_transform(*actor);
                     }
@@ -896,7 +899,7 @@ namespace Luna
 
                     if (components.empty())
                     {
-                        draw_scene_gui_text_line("No components");
+                        draw_scene_gui_text_line(context, "No components");
                     }
                     else
                     {
@@ -906,26 +909,26 @@ namespace Luna
                         {
                             auto& obj = *iter;
                             Name type_name = get_type_name(obj.type());
-                            GUI::push_id((const void*)obj.type().handle);
-                            SceneGUIRow header_row = begin_scene_gui_row(type_name.c_str());
-                            GUI::ItemHandle header = GUI::collapsing_header(type_name.c_str());
+                            GUI::push_id(context, (const void*)obj.type().handle);
+                            SceneGUIRow header_row = begin_scene_gui_row(context, type_name.c_str());
+                            GUI::ItemHandle header = GUI::collapsing_header(context, type_name.c_str());
                             bool open = GUI::get_item_state(header, GUI::State::open());
-                            end_scene_gui_row(header_row, header);
+                            end_scene_gui_row(context, header_row, header);
                             bool remove_component = false;
                             if (open)
                             {
-                                bool edited = edit_scene_object(&m_world, obj.type(), obj.get());
+                                bool edited = edit_scene_object(context, &m_world, obj.type(), obj.get());
                                 if(edited)
                                 {
                                     on_actor_edit_component(*actor, obj.type());
                                 }
 
-                                SceneGUIRow remove_row = begin_scene_gui_row("Remove Component", 28.0f);
-                                GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(120.0f));
-                                GUI::ItemHandle remove_button = GUI::button("Remove");
-                                remove_component = end_scene_gui_row(remove_row, remove_button);
+                                SceneGUIRow remove_row = begin_scene_gui_row(context, "Remove Component", 28.0f);
+                                GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(120.0f));
+                                GUI::ItemHandle remove_button = GUI::button(context, "Remove");
+                                remove_component = end_scene_gui_row(context, remove_row, remove_button);
                             }
-                            GUI::pop_id();
+                            GUI::pop_id(context);
 
                             if (remove_component)
                             {
@@ -939,20 +942,20 @@ namespace Luna
                         }
                     }
 
-                    SceneGUIRow new_component_row = begin_scene_gui_row("New Component", 30.0f);
-                    GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(150.0f));
-                    GUI::ItemHandle new_component_button = GUI::button("New Component");
-                    end_scene_gui_row(new_component_row, new_component_button);
+                    SceneGUIRow new_component_row = begin_scene_gui_row(context, "New Component", 30.0f);
+                    GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(150.0f));
+                    GUI::ItemHandle new_component_button = GUI::button(context, "New Component");
+                    end_scene_gui_row(context, new_component_row, new_component_button);
                     if(GUI::is_item_clicked(new_component_button))
                     {
                         m_new_component_popup_open = !m_new_component_popup_open;
-                        m_new_component_popup_position = GUI::get_pointer_position();
+                        m_new_component_popup_position = GUI::get_pointer_position(context);
                     }
                     if(m_new_component_popup_open)
                     {
                         f32 popup_width = 240.0f;
                         f32 popup_height = max((f32)g_env->component_types.size() * 26.0f + 10.0f, 36.0f);
-                        GUI::begin_popup("New Component Popup", m_new_component_popup_position, GUI::Size::fixed(popup_width, popup_height));
+                        GUI::begin_popup(context, "New Component Popup", m_new_component_popup_position, GUI::Size::fixed(popup_width, popup_height));
                         Vector<Pair<typeinfo_t, GUI::ItemHandle>> component_items;
                         component_items.reserve(g_env->component_types.size());
                         for (auto& i : g_env->component_types)
@@ -969,14 +972,14 @@ namespace Luna
                             auto comp_name = get_type_name(i);
                             if (!exists)
                             {
-                                component_items.push_back(make_pair(i, GUI::selectable(comp_name.c_str())));
+                                component_items.push_back(make_pair(i, GUI::selectable(context, comp_name.c_str())));
                             }
                             else
                             {
-                                GUI::text(comp_name.c_str());
+                                GUI::text(context, comp_name.c_str());
                             }
                         }
-                        GUI::end_popup();
+                        GUI::end_popup(context);
                         for(auto& item : component_items)
                         {
                             if(GUI::is_item_clicked(item.second))
@@ -994,45 +997,45 @@ namespace Luna
                 }
                 else
                 {
-                    draw_scene_gui_text_line("Select an entity to see components.");
+                    draw_scene_gui_text_line(context, "Select an entity to see components.");
                 }
             }
         }
-        GUI::end_scroll_view();
-        GUI::end_v_layout();
+        GUI::end_scroll_view(context);
+        GUI::end_v_layout(context);
     }
-    void SceneEditor::on_render()
+    void SceneEditor::on_render(GUI::IContext* context)
     {
         if(!m_open)
         {
             return;
         }
 
-        GUI::push_id(this);
+        GUI::push_id(context, this);
         GUI::DockPanelStyle panel_style;
         panel_style.floating_size = Float2U(1000.0f, 500.0f);
         panel_style.min_floating_size = Float2U(420.0f, 260.0f);
         GUI::LayoutDesc panel_layout;
         panel_layout.padding = GUI::EdgeInsets::all(0.0f);
         panel_layout.gap = 0.0f;
-        GUI::ItemHandle panel = GUI::begin_dock_panel("Scene Editor", &m_open, panel_style, panel_layout);
+        GUI::ItemHandle panel = GUI::begin_dock_panel(context, "Scene Editor", &m_open, panel_style, panel_layout);
         RectF panel_rect = GUI::get_item_state(panel, GUI::State::rect());
         if(panel_rect.width <= 1.0f || panel_rect.height <= 1.0f)
         {
-            GUI::text("Scene Editor");
-            GUI::end_dock_panel();
-            GUI::pop_id();
+            GUI::text(context, "Scene Editor");
+            GUI::end_dock_panel(context);
+            GUI::pop_id(context);
             return;
         }
-        GUI::push_clip_rect(panel_rect);
+        GUI::push_clip_rect(context, panel_rect);
 
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
         if (!s)
         {
-            draw_scene_gui_text_line("Asset Unloaded");
-            GUI::pop_clip_rect();
-            GUI::end_dock_panel();
-            GUI::pop_id();
+            draw_scene_gui_text_line(context, "Asset Unloaded");
+            GUI::pop_clip_rect(context);
+            GUI::end_dock_panel(context);
+            GUI::pop_id(context);
             return;
         }
         if(!m_world_initialized)
@@ -1046,10 +1049,10 @@ namespace Luna
         }
         if (Asset::get_asset_state(m_scene) != Asset::AssetState::loaded)
         {
-            draw_scene_gui_text_line("Scene Loading");
-            GUI::pop_clip_rect();
-            GUI::end_dock_panel();
-            GUI::pop_id();
+            draw_scene_gui_text_line(context, "Scene Loading");
+            GUI::pop_clip_rect(context);
+            GUI::end_dock_panel(context);
+            GUI::pop_id(context);
             return;
         }
 
@@ -1058,14 +1061,14 @@ namespace Luna
 
         constexpr f32 menu_height = 30.0f;
         constexpr f32 content_gap = 6.0f;
-        GUI::begin_menu_bar("Scene Editor Menu Bar", RectF(panel_rect.offset_x, panel_rect.offset_y, min(panel_rect.width, 138.0f), menu_height));
-        GUI::begin_menu("File");
-        GUI::ItemHandle save_item = GUI::menu_item("Save");
-        GUI::end_menu();
-        GUI::begin_menu("Tools");
-        GUI::ItemHandle capture_item = GUI::menu_item("Capture scene");
-        GUI::end_menu();
-        GUI::end_menu_bar();
+        GUI::begin_menu_bar(context, "Scene Editor Menu Bar", RectF(panel_rect.offset_x, panel_rect.offset_y, min(panel_rect.width, 138.0f), menu_height));
+        GUI::begin_menu(context, "File");
+        GUI::ItemHandle save_item = GUI::menu_item(context, "Save");
+        GUI::end_menu(context);
+        GUI::begin_menu(context, "Tools");
+        GUI::ItemHandle capture_item = GUI::menu_item(context, "Capture scene");
+        GUI::end_menu(context);
+        GUI::end_menu_bar(context);
 
         if(GUI::is_item_clicked(save_item))
         {
@@ -1120,14 +1123,14 @@ namespace Luna
         RectF scene_settings_rect(left_rect.offset_x, left_rect.offset_y + actor_list_height + column_gap, left_rect.width,
             max(left_rect.height - actor_list_height - column_gap, 1.0f));
 
-        draw_actor_list(actor_list_rect);
-        draw_scene_settings(scene_settings_rect);
-        draw_scene(center_rect);
-        draw_components_grid(right_rect);
+        draw_actor_list(context, actor_list_rect);
+        draw_scene_settings(context, scene_settings_rect);
+        draw_scene(context, center_rect);
+        draw_components_grid(context, right_rect);
 
-        GUI::pop_clip_rect();
-        GUI::end_dock_panel();
-        GUI::pop_id();
+        GUI::pop_clip_rect(context);
+        GUI::end_dock_panel(context);
+        GUI::pop_id(context);
 
         if(capture_scene)
         {

@@ -194,28 +194,28 @@ namespace Luna
                 Vector<GUI::ItemHandle> recent_open_buttons;
                 Vector<GUI::ItemHandle> recent_remove_buttons;
 
-                GUI::begin_window("Luna Studio Project Selector", GUI::Size::fixed((f32)sz.x, (f32)sz.y));
+                GUI::begin_window(gui, "Luna Studio Project Selector", GUI::Size::fixed((f32)sz.x, (f32)sz.y));
                 {
-                    GUI::ItemHandle new_project = GUI::collapsing_header("New Project");
+                    GUI::ItemHandle new_project = GUI::collapsing_header(gui, "New Project");
                     if (GUI::get_item_state(new_project, GUI::State::open()))
                     {
-                        GUI::text("Project Name");
-                        GUI::input_text("Project Name", new_solution_name);
-                        GUI::checkbox("Create Project Folder", &create_dir);
-                        create_project_button = GUI::button("Create New Project");
+                        GUI::text(gui, "Project Name");
+                        GUI::input_text(gui, "Project Name", new_solution_name);
+                        GUI::checkbox(gui, "Create Project Folder", &create_dir);
+                        create_project_button = GUI::button(gui, "Create New Project");
                     }
 
-                    GUI::ItemHandle open_project = GUI::collapsing_header("Open Existing Project");
+                    GUI::ItemHandle open_project = GUI::collapsing_header(gui, "Open Existing Project");
                     if (GUI::get_item_state(open_project, GUI::State::open()))
                     {
-                        browse_project_button = GUI::button("Browse Project File");
+                        browse_project_button = GUI::button(gui, "Browse Project File");
 
                         if (!recents.empty())
                         {
-                            GUI::text("Recent Projects");
+                            GUI::text(gui, "Recent Projects");
                             f32 recent_h = max((f32)sz.y - 260.0f, 120.0f);
                             f32 recent_w = max((f32)sz.x - 32.0f, 120.0f);
-                            GUI::begin_scroll_view("Recent Projects", GUI::Size::fixed(recent_w, recent_h));
+                            GUI::begin_scroll_view(gui, "Recent Projects", GUI::Size::fixed(recent_w, recent_h));
                             GUI::TableDesc recent_table;
                             recent_table.columns = 4;
                             recent_table.style.padding = GUI::EdgeInsets::xy(8.0f, 4.0f);
@@ -231,29 +231,29 @@ namespace Luna
                             recent_table.column_sizes.push_back(GUI::TableTrackSize::fixed(120.0f));
                             recent_table.column_sizes.push_back(GUI::TableTrackSize::fixed(72.0f));
                             recent_table.column_sizes.push_back(GUI::TableTrackSize::fixed(88.0f));
-                            GUI::begin_table_layout("Recent Project Table", recent_table);
+                            GUI::begin_table_layout(gui, "Recent Project Table", recent_table);
                             for(usize i = 0; i < recents.size(); ++i)
                             {
                                 DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(recents[i].m_last_use_time));
                                 String time_text;
                                 strprintf(time_text, "%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
-                                GUI::push_id((u64)i);
-                                GUI::text(recents[i].m_path.encode().c_str());
-                                GUI::text(time_text.c_str());
-                                recent_open_buttons.push_back(GUI::button("Open"));
-                                recent_remove_buttons.push_back(GUI::button("Remove"));
-                                GUI::pop_id();
+                                GUI::push_id(gui, (u64)i);
+                                GUI::text(gui, recents[i].m_path.encode().c_str());
+                                GUI::text(gui, time_text.c_str());
+                                recent_open_buttons.push_back(GUI::button(gui, "Open"));
+                                recent_remove_buttons.push_back(GUI::button(gui, "Remove"));
+                                GUI::pop_id(gui);
                             }
-                            GUI::end_table_layout();
-                            GUI::end_scroll_view();
+                            GUI::end_table_layout(gui);
+                            GUI::end_scroll_view(gui);
                         }
                         else
                         {
-                            GUI::text("No recent projects.");
+                            GUI::text(gui, "No recent projects.");
                         }
                     }
                 }
-                GUI::end_window();
+                GUI::end_window(gui);
 
                 lulet(gui_desc, gui->end_build());
                 luexp(gui->submit(gui_desc));

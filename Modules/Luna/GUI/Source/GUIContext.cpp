@@ -67,7 +67,6 @@ namespace Luna
             m_child_ordinals.push_back(0);
             m_parent_stack.push_back(0);
             m_id_stack.push_back(root.id);
-            set_current_context(this);
         }
 
         void Context::add_input_event(const InputEvent& event)

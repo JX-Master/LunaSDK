@@ -30,9 +30,6 @@ namespace Luna
 
         LUNA_GUI_API Ref<IContext> new_context(RHI::IDevice* device = nullptr);
 
-        LUNA_GUI_API void set_current_context(IContext* context);
-        LUNA_GUI_API IContext* get_current_context();
-
         LUNA_GUI_API Module* module_gui();
     }
 }

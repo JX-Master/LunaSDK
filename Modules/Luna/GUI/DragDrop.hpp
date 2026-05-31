@@ -8,7 +8,7 @@
 * @date 2026/5/26
 */
 #pragma once
-#include "Base.hpp"
+#include "Context.hpp"
 
 namespace Luna
 {
@@ -31,16 +31,16 @@ namespace Luna
             }
         };
 
-        LUNA_GUI_API bool begin_drag_drop_source(ItemHandle source, const Name& payload_type);
-        LUNA_GUI_API void set_drag_drop_payload(const void* data, usize data_size);
-        LUNA_GUI_API void end_drag_drop_source();
+        LUNA_GUI_API bool begin_drag_drop_source(IContext* context, ItemHandle source, const Name& payload_type);
+        LUNA_GUI_API void set_drag_drop_payload(IContext* context, const void* data, usize data_size);
+        LUNA_GUI_API void end_drag_drop_source(IContext* context);
 
-        LUNA_GUI_API bool begin_drag_drop_target(ItemHandle target, const Name& payload_type);
-        LUNA_GUI_API const DragDropPayload* accept_drag_drop_payload(const Name& payload_type);
-        LUNA_GUI_API const DragDropPayload* accept_drag_drop_payload(ItemHandle target, const Name& payload_type);
-        LUNA_GUI_API void end_drag_drop_target();
+        LUNA_GUI_API bool begin_drag_drop_target(IContext* context, ItemHandle target, const Name& payload_type);
+        LUNA_GUI_API const DragDropPayload* accept_drag_drop_payload(IContext* context, const Name& payload_type);
+        LUNA_GUI_API const DragDropPayload* accept_drag_drop_payload(IContext* context, ItemHandle target, const Name& payload_type);
+        LUNA_GUI_API void end_drag_drop_target(IContext* context);
 
-        LUNA_GUI_API bool is_drag_drop_active();
-        LUNA_GUI_API const DragDropPayload* get_drag_drop_payload();
+        LUNA_GUI_API bool is_drag_drop_active(IContext* context);
+        LUNA_GUI_API const DragDropPayload* get_drag_drop_payload(IContext* context);
     }
 }

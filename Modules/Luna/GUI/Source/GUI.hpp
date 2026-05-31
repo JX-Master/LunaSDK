@@ -24,7 +24,11 @@ namespace Luna
     {
         struct Context;
 
-        extern Context* g_current_context;
+        inline Context* context_from_interface(IContext* context)
+        {
+            luassert_msg(context, "GUI context must not be null.");
+            return (Context*)context->get_object();
+        }
 
         inline constexpr u64 FNV_OFFSET = 14695981039346656037ull;
         inline constexpr u64 FNV_PRIME = 1099511628211ull;
@@ -1454,6 +1458,5 @@ namespace Luna
             RectF to_vg_rect(const RectF& rect) const;
         };
 
-        Context* require_current_context();
     }
 }

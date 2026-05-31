@@ -34,7 +34,7 @@ namespace Luna
 
         bool m_open = true;
 
-        virtual void on_render() override;
+        virtual void on_render(GUI::IContext* context) override;
         virtual bool closed() override
         {
             return !m_open;
@@ -225,15 +225,15 @@ namespace Luna
         }
     }
 
-    void MeshImporter::on_render()
+    void MeshImporter::on_render(GUI::IContext* context)
     {
         char title[32];
         snprintf(title, 32, "Obj Mesh Importer###%d", (u32)(usize)this);
 
         if(!m_open) return;
 
-        GUI::begin_window(title, &m_open, GUI::Size::fixed(620.0f, 720.0f));
-        GUI::ItemHandle select_source = GUI::button("Select Source File");
+        GUI::begin_window(context, title, &m_open, GUI::Size::fixed(620.0f, 720.0f));
+        GUI::ItemHandle select_source = GUI::button(context, "Select Source File");
 
         if (GUI::is_item_clicked(select_source))
         {
@@ -286,13 +286,13 @@ namespace Luna
 
         if (m_source_file_path.empty())
         {
-            GUI::text("No obj file selected.");
+            GUI::text(context, "No obj file selected.");
         }
         else
         {
-            GUI::begin_scroll_view("Obj Mesh Importer Content", GUI::Size::fixed(604.0f, 650.0f));
-            GUI::text(m_source_file_path.encode().c_str());
-            GUI::text("Object Information:");
+            GUI::begin_scroll_view(context, "Obj Mesh Importer Content", GUI::Size::fixed(604.0f, 650.0f));
+            GUI::text(context, m_source_file_path.encode().c_str());
+            GUI::text(context, "Object Information:");
 
             String vertex_count;
             String normal_count;
@@ -302,21 +302,21 @@ namespace Luna
             strprintf(normal_count, "Normal entries count: %u", (u32)m_obj_file.attributes.normals.size());
             strprintf(texcoord_count, "TexCoord entries count: %u", (u32)m_obj_file.attributes.texcoords.size());
             strprintf(color_count, "Color entries count: %u", (u32)m_obj_file.attributes.colors.size());
-            GUI::text(vertex_count.c_str());
-            GUI::text(normal_count.c_str());
-            GUI::text(texcoord_count.c_str());
-            GUI::text(color_count.c_str());
+            GUI::text(context, vertex_count.c_str());
+            GUI::text(context, normal_count.c_str());
+            GUI::text(context, texcoord_count.c_str());
+            GUI::text(context, color_count.c_str());
 
             if (m_obj_file.shapes.empty())
             {
-                GUI::text("No Shape information detected, this model cannot be imported.");
+                GUI::text(context, "No Shape information detected, this model cannot be imported.");
             }
             else
             {
                 String mesh_count;
                 strprintf(mesh_count, "%u meshes found", (u32)m_obj_file.shapes.size());
-                GUI::text(mesh_count.c_str());
-                if(GUI::is_item_clicked(GUI::button("Import All")))
+                GUI::text(context, mesh_count.c_str());
+                if(GUI::is_item_clicked(GUI::button(context, "Import All")))
                 {
                     for (u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
                     {
@@ -328,7 +328,7 @@ namespace Luna
                         }
                     }
                 }
-                GUI::ItemHandle shapes_header = GUI::collapsing_header("Shapes");
+                GUI::ItemHandle shapes_header = GUI::collapsing_header(context, "Shapes");
                 if (GUI::get_item_state(shapes_header, GUI::State::open()))
                 {
                     for (u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
@@ -337,30 +337,30 @@ namespace Luna
                         String face_count;
                         strprintf(shape_name, "Name: %s", m_obj_file.shapes[i].name.c_str());
                         strprintf(face_count, "Faces: %u", (u32)m_obj_file.shapes[i].mesh.num_face_vertices.size());
-                        GUI::text(shape_name.c_str());
-                        GUI::text(face_count.c_str());
+                        GUI::text(context, shape_name.c_str());
+                        GUI::text(context, face_count.c_str());
 
-                        GUI::push_id(i);
-                        GUI::input_text("Asset Name", m_import_names[i]);
+                        GUI::push_id(context, i);
+                        GUI::input_text(context, "Asset Name", m_import_names[i]);
                         if (!m_import_names[i].empty())
                         {
                             Path file_path = m_create_dir;
                             file_path.push_back(m_import_names[i]);
                             String import_path;
                             strprintf(import_path, "The mesh will be imported as: %s", file_path.encode().c_str());
-                            GUI::text(import_path.c_str());
-                            if (GUI::is_item_clicked(GUI::button("Import")))
+                            GUI::text(context, import_path.c_str());
+                            if (GUI::is_item_clicked(GUI::button(context, "Import")))
                             {
                                 import_static_mesh(file_path, m_obj_file, i);
                             }
                         }
-                        GUI::pop_id();
+                        GUI::pop_id(context);
                     }
                 }
             }
-            GUI::end_scroll_view();
+            GUI::end_scroll_view(context);
         }
-        GUI::end_window();
+        GUI::end_window(context);
     }
 
     static Ref<IAssetEditor> new_static_mesh_importer(const Path& create_dir)

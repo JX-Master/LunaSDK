@@ -12,25 +12,25 @@
 
 namespace Luna
 {
-    bool gui_edit_asset_path(const c8* label, Asset::asset_t& asset, String& path_text, const c8* failure_title)
+    bool gui_edit_asset_path(GUI::IContext* context, const c8* label, Asset::asset_t& asset, String& path_text, const c8* failure_title)
     {
         if(asset && path_text.empty())
         {
             path_text = Asset::get_asset_path(asset).encode();
         }
 
-        GUI::push_id(label);
+        GUI::push_id(context, label);
         GUI::LayoutDesc row;
         row.gap = 8.0f;
         row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
-        GUI::begin_h_layout(label, row);
-        GUI::set_next_item_layout(GUI::LayoutStyle::fixed_width(112.0f));
-        GUI::text(label);
-        GUI::set_next_item_layout(GUI::LayoutStyle::fill_width());
-        GUI::input_text("Path", path_text);
-        GUI::ItemHandle set_button = GUI::button("Set");
-        GUI::ItemHandle clear_button = GUI::button("Clear");
-        GUI::end_h_layout();
+        GUI::begin_h_layout(context, label, row);
+        GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(112.0f));
+        GUI::text(context, label);
+        GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
+        GUI::input_text(context, "Path", path_text);
+        GUI::ItemHandle set_button = GUI::button(context, "Set");
+        GUI::ItemHandle clear_button = GUI::button(context, "Clear");
+        GUI::end_h_layout(context);
 
         bool edited = false;
         if(GUI::is_item_clicked(set_button))
@@ -62,7 +62,7 @@ namespace Luna
             path_text.clear();
             edited = true;
         }
-        GUI::pop_id();
+        GUI::pop_id(context);
         return edited;
     }
 }

@@ -70,7 +70,7 @@ namespace Luna
         if(iter == m_memory_blocks.end()) return;
         iter->second.domain = move(d);
     }
-    void MemoryProfiler::render()
+    void MemoryProfiler::render(GUI::IContext* context)
     {
         LockGuard guard(m_lock);
         m_snapshoting = true;
@@ -101,11 +101,11 @@ namespace Luna
             iter2->second.first += b.second.size;
             iter2->second.second += 1;
         }
-        GUI::begin_window("Memory Usages", GUI::Size::fixed(500.0f, 1000.0f));
-        GUI::begin_scroll_view("Memory Usage List", GUI::Size::fixed(484.0f, 940.0f));
+        GUI::begin_window(context, "Memory Usages", GUI::Size::fixed(500.0f, 1000.0f));
+        GUI::begin_scroll_view(context, "Memory Usage List", GUI::Size::fixed(484.0f, 940.0f));
         for(auto& h : heaps)
         {
-            GUI::ItemHandle heap_header = GUI::collapsing_header(h.first.c_str());
+            GUI::ItemHandle heap_header = GUI::collapsing_header(context, h.first.c_str());
             if(GUI::get_item_state(heap_header, GUI::State::open()))
             {
                 GUI::TableDesc table;
@@ -121,25 +121,25 @@ namespace Luna
                 table.column_sizes.push_back(GUI::TableTrackSize::fixed(240.0f));
                 table.column_sizes.push_back(GUI::TableTrackSize::fixed(110.0f));
                 table.column_sizes.push_back(GUI::TableTrackSize::fixed(120.0f));
-                GUI::begin_table_layout(h.first.c_str(), table);
+                GUI::begin_table_layout(context, h.first.c_str(), table);
                 {
-                    GUI::text("Type");
-                    GUI::text("Size");
-                    GUI::text("Allocation Count");
+                    GUI::text(context, "Type");
+                    GUI::text(context, "Size");
+                    GUI::text(context, "Allocation Count");
                     for(auto& a : h.second)
                     {
                         String count_text;
                         strprintf(count_text, "%llu", (u64)a.second.second);
-                        GUI::text(a.first.c_str());
-                        GUI::text(memory_size_text(a.second.first).c_str());
-                        GUI::text(count_text.c_str());
+                        GUI::text(context, a.first.c_str());
+                        GUI::text(context, memory_size_text(a.second.first).c_str());
+                        GUI::text(context, count_text.c_str());
                     }
-                    GUI::end_table_layout();
+                    GUI::end_table_layout(context);
                 }
             }
         }
-        GUI::end_scroll_view();
-        GUI::end_window();
+        GUI::end_scroll_view(context);
+        GUI::end_window(context);
     }
     void MemoryProfilerCallback::operator()(const ProfilerEvent& event)
     {
