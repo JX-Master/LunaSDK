@@ -62,29 +62,29 @@ namespace Luna
                 return state.open;
             }
 
-            virtual void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
+            virtual void draw_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
                 RHI::ITexture* texture, ImageFlag image_flags) override
             {
                 context->render_rect(rect, clip_rect, color, radius, texture, image_flags);
             }
 
-            virtual void render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
+            virtual void draw_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
                 bool top_left, bool top_right, bool bottom_right, bool bottom_left) override
             {
                 context->render_rect_corners(rect, clip_rect, color, radius, top_left, top_right, bottom_right, bottom_left);
             }
 
-            virtual void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color) override
+            virtual void draw_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color) override
             {
                 context->render_circle(rect, clip_rect, color);
             }
 
-            virtual void render_line(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width) override
+            virtual void draw_line(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width) override
             {
                 context->render_line_segment(begin, end, clip_rect, color, width);
             }
 
-            virtual void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
+            virtual void draw_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
                 TextAlignment horizontal_alignment, TextAlignment vertical_alignment) override
             {
                 context->render_text(rect, clip_rect, text, font_size, color,

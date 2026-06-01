@@ -29,8 +29,8 @@ namespace Luna
         {
             Float4U color = state.active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
                 (state.hovered ? Float4U(0.26f, 0.43f, 0.72f, 1.0f) : Float4U(0.18f, 0.28f, 0.45f, 1.0f));
-            ctx.render_rect(rect, clip_rect, color, 5.0f);
-            ctx.render_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
+            ctx.draw_rect(rect, clip_rect, color, 5.0f);
+            ctx.draw_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
                 clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::center);
         }
 
@@ -70,7 +70,7 @@ namespace Luna
 
         void TextNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_text(rect, clip_rect, text.c_str(), font_size, color, TextAlignment::begin);
+            ctx.draw_text(rect, clip_rect, text.c_str(), font_size, color, TextAlignment::begin);
         }
 
         SelectableNode::SelectableNode()
@@ -104,9 +104,9 @@ namespace Luna
             {
                 Float4U color = state.active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
                     (state.hovered ? Float4U(0.20f, 0.30f, 0.44f, 1.0f) : Float4U(0.16f, 0.25f, 0.38f, 1.0f));
-                ctx.render_rect(rect, clip_rect, color, 4.0f);
+                ctx.draw_rect(rect, clip_rect, color, 4.0f);
             }
-            ctx.render_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
+            ctx.draw_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
                 clip_rect, text.c_str(), 15.0f, Float4U(1.0f), TextAlignment::begin);
         }
 
@@ -134,17 +134,17 @@ namespace Luna
         {
             RectF box(rect.offset_x + 2.0f, rect.offset_y + 4.0f, 18.0f, 18.0f);
             bool checked = value && *value;
-            ctx.render_rect(RectF(box.offset_x - 1.0f, box.offset_y - 1.0f, box.width + 2.0f, box.height + 2.0f),
+            ctx.draw_rect(RectF(box.offset_x - 1.0f, box.offset_y - 1.0f, box.width + 2.0f, box.height + 2.0f),
                 clip_rect, state.hovered ? Float4U(0.34f, 0.39f, 0.46f, 1.0f) : Float4U(0.25f, 0.29f, 0.35f, 1.0f), 4.0f);
-            ctx.render_rect(box, clip_rect, checked ? Float4U(0.22f, 0.55f, 0.32f, 1.0f) : Float4U(0.18f, 0.20f, 0.23f, 1.0f), 3.0f);
+            ctx.draw_rect(box, clip_rect, checked ? Float4U(0.22f, 0.55f, 0.32f, 1.0f) : Float4U(0.18f, 0.20f, 0.23f, 1.0f), 3.0f);
             if(checked)
             {
-                ctx.render_line(Float2U(box.offset_x + 4.0f, box.offset_y + 9.5f),
+                ctx.draw_line(Float2U(box.offset_x + 4.0f, box.offset_y + 9.5f),
                     Float2U(box.offset_x + 7.5f, box.offset_y + 13.0f), clip_rect, Float4U(1.0f), 2.4f);
-                ctx.render_line(Float2U(box.offset_x + 7.5f, box.offset_y + 13.0f),
+                ctx.draw_line(Float2U(box.offset_x + 7.5f, box.offset_y + 13.0f),
                     Float2U(box.offset_x + 14.5f, box.offset_y + 5.5f), clip_rect, Float4U(1.0f), 2.4f);
             }
-            ctx.render_text(RectF(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height),
+            ctx.draw_text(RectF(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height),
                 clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
         }
 
@@ -197,14 +197,14 @@ namespace Luna
             RectF track(rect.offset_x + 2.0f, rect.offset_y + 3.0f, 44.0f, 22.0f);
             Float4U off_track = state.hovered ? Float4U(0.18f, 0.20f, 0.23f, 1.0f) : Float4U(0.12f, 0.14f, 0.16f, 1.0f);
             Float4U on_track = state.hovered ? Float4U(0.25f, 0.62f, 0.38f, 1.0f) : Float4U(0.20f, 0.55f, 0.32f, 1.0f);
-            ctx.render_rect(track, clip_rect, smooth_color(off_track, on_track, animation), track.height * 0.5f);
+            ctx.draw_rect(track, clip_rect, smooth_color(off_track, on_track, animation), track.height * 0.5f);
 
             f32 knob_size = 18.0f;
             f32 knob_x = track.offset_x + 2.0f + (track.width - knob_size - 4.0f) * animation;
             RectF knob(knob_x, track.offset_y + 2.0f, knob_size, knob_size);
-            ctx.render_circle(knob, clip_rect, smooth_color(Float4U(0.78f, 0.80f, 0.84f, 1.0f), Float4U(1.0f), animation));
+            ctx.draw_circle(knob, clip_rect, smooth_color(Float4U(0.78f, 0.80f, 0.84f, 1.0f), Float4U(1.0f), animation));
 
-            ctx.render_text(RectF(rect.offset_x + 56.0f, rect.offset_y, max(rect.width - 56.0f, 1.0f), rect.height),
+            ctx.draw_text(RectF(rect.offset_x + 56.0f, rect.offset_y, max(rect.width - 56.0f, 1.0f), rect.height),
                 clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
         }
 
@@ -245,8 +245,8 @@ namespace Luna
 
         void CollapsingHeaderNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, state.hovered ? Float4U(0.22f, 0.27f, 0.34f, 1.0f) : Float4U(0.16f, 0.19f, 0.24f, 1.0f), 4.0f);
-            ctx.render_text(RectF(rect.offset_x + 8.0f, rect.offset_y, rect.width - 8.0f, rect.height),
+            ctx.draw_rect(rect, clip_rect, state.hovered ? Float4U(0.22f, 0.27f, 0.34f, 1.0f) : Float4U(0.16f, 0.19f, 0.24f, 1.0f), 4.0f);
+            ctx.draw_text(RectF(rect.offset_x + 8.0f, rect.offset_y, rect.width - 8.0f, rect.height),
                 clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
         }
 
@@ -325,7 +325,7 @@ namespace Luna
             }
             if(selected || state.hovered || state.active)
             {
-                ctx.render_rect(rect, clip_rect, state.active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
+                ctx.draw_rect(rect, clip_rect, state.active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
                     (selected ? Float4U(0.16f, 0.25f, 0.38f, 1.0f) : Float4U(0.18f, 0.24f, 0.32f, 1.0f)), 4.0f);
             }
             RectF arrow = arrow_rect(rect);
@@ -333,25 +333,25 @@ namespace Luna
             if(is_leaf())
             {
                 f32 dot = 5.0f;
-                ctx.render_circle(RectF(arrow.offset_x + (arrow.width - dot) * 0.5f, arrow.offset_y + (arrow.height - dot) * 0.5f, dot, dot),
+                ctx.draw_circle(RectF(arrow.offset_x + (arrow.width - dot) * 0.5f, arrow.offset_y + (arrow.height - dot) * 0.5f, dot, dot),
                     clip_rect, icon_color);
             }
             else if(node_open)
             {
                 f32 cx = arrow.offset_x + arrow.width * 0.5f;
                 f32 cy = arrow.offset_y + arrow.height * 0.5f + 2.0f;
-                ctx.render_line(Float2U(cx - 5.0f, cy - 3.0f), Float2U(cx, cy + 3.0f), clip_rect, icon_color, 1.8f);
-                ctx.render_line(Float2U(cx, cy + 3.0f), Float2U(cx + 5.0f, cy - 3.0f), clip_rect, icon_color, 1.8f);
+                ctx.draw_line(Float2U(cx - 5.0f, cy - 3.0f), Float2U(cx, cy + 3.0f), clip_rect, icon_color, 1.8f);
+                ctx.draw_line(Float2U(cx, cy + 3.0f), Float2U(cx + 5.0f, cy - 3.0f), clip_rect, icon_color, 1.8f);
             }
             else
             {
                 f32 cx = arrow.offset_x + arrow.width * 0.5f + 2.0f;
                 f32 cy = arrow.offset_y + arrow.height * 0.5f;
-                ctx.render_line(Float2U(cx - 3.0f, cy - 5.0f), Float2U(cx + 3.0f, cy), clip_rect, icon_color, 1.8f);
-                ctx.render_line(Float2U(cx + 3.0f, cy), Float2U(cx - 3.0f, cy + 5.0f), clip_rect, icon_color, 1.8f);
+                ctx.draw_line(Float2U(cx - 3.0f, cy - 5.0f), Float2U(cx + 3.0f, cy), clip_rect, icon_color, 1.8f);
+                ctx.draw_line(Float2U(cx + 3.0f, cy), Float2U(cx - 3.0f, cy + 5.0f), clip_rect, icon_color, 1.8f);
             }
             f32 label_x = arrow.offset_x + arrow.width + 2.0f;
-            ctx.render_text(RectF(label_x, rect.offset_y, max(rect.offset_x + rect.width - label_x - 6.0f, 1.0f), rect.height),
+            ctx.draw_text(RectF(label_x, rect.offset_y, max(rect.offset_x + rect.width - label_x - 6.0f, 1.0f), rect.height),
                 clip_rect, text.c_str(), 15.0f, Float4U(1.0f), TextAlignment::begin);
         }
 
@@ -411,15 +411,15 @@ namespace Luna
         void RadioButtonNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
             RectF outer(rect.offset_x + 2.0f, rect.offset_y + 4.0f, 18.0f, 18.0f);
-            ctx.render_circle(RectF(outer.offset_x - 1.0f, outer.offset_y - 1.0f, outer.width + 2.0f, outer.height + 2.0f),
+            ctx.draw_circle(RectF(outer.offset_x - 1.0f, outer.offset_y - 1.0f, outer.width + 2.0f, outer.height + 2.0f),
                 clip_rect, state.hovered ? Float4U(0.38f, 0.43f, 0.50f, 1.0f) : Float4U(0.27f, 0.31f, 0.37f, 1.0f));
-            ctx.render_circle(outer, clip_rect, Float4U(0.10f, 0.12f, 0.15f, 1.0f));
+            ctx.draw_circle(outer, clip_rect, Float4U(0.10f, 0.12f, 0.15f, 1.0f));
             if(is_selected())
             {
-                ctx.render_circle(RectF(outer.offset_x + 5.0f, outer.offset_y + 5.0f, 8.0f, 8.0f),
+                ctx.draw_circle(RectF(outer.offset_x + 5.0f, outer.offset_y + 5.0f, 8.0f, 8.0f),
                     clip_rect, Float4U(0.34f, 0.58f, 0.92f, 1.0f));
             }
-            ctx.render_text(RectF(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height),
+            ctx.draw_text(RectF(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height),
                 clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
         }
 

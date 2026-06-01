@@ -101,41 +101,41 @@ namespace Luna
             f32 label_w = label_width(*this, rect);
             if(label_w > 0.0f)
             {
-                ctx.render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip_rect,
+                ctx.draw_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip_rect,
                     text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
             }
             RectF value = value_rect(*this, rect);
             bool open = ctx.is_combo_open(id);
             Float4U value_color = open ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
                 (state.hovered ? Float4U(0.20f, 0.30f, 0.44f, 1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f));
-            ctx.render_rect(value, clip_rect, value_color, 4.0f);
+            ctx.draw_rect(value, clip_rect, value_color, 4.0f);
 
             const c8* item_name = "";
             if(current_item && *current_item >= 0 && (usize)*current_item < combo_items.size())
             {
                 item_name = combo_items[*current_item].c_str();
             }
-            ctx.render_text(RectF(value.offset_x + 8.0f, value.offset_y, max(value.width - 34.0f, 1.0f), value.height),
+            ctx.draw_text(RectF(value.offset_x + 8.0f, value.offset_y, max(value.width - 34.0f, 1.0f), value.height),
                 clip_rect, item_name, 16.0f, Float4U(1.0f), TextAlignment::begin);
 
             f32 arrow_x = value.offset_x + value.width - 18.0f;
             f32 arrow_y = value.offset_y + value.height * 0.5f;
             if(open)
             {
-                ctx.render_line(Float2U(arrow_x - 5.0f, arrow_y + 3.0f), Float2U(arrow_x, arrow_y - 3.0f), clip_rect, Float4U(1.0f), 1.8f);
-                ctx.render_line(Float2U(arrow_x, arrow_y - 3.0f), Float2U(arrow_x + 5.0f, arrow_y + 3.0f), clip_rect, Float4U(1.0f), 1.8f);
+                ctx.draw_line(Float2U(arrow_x - 5.0f, arrow_y + 3.0f), Float2U(arrow_x, arrow_y - 3.0f), clip_rect, Float4U(1.0f), 1.8f);
+                ctx.draw_line(Float2U(arrow_x, arrow_y - 3.0f), Float2U(arrow_x + 5.0f, arrow_y + 3.0f), clip_rect, Float4U(1.0f), 1.8f);
             }
             else
             {
-                ctx.render_line(Float2U(arrow_x - 5.0f, arrow_y - 3.0f), Float2U(arrow_x, arrow_y + 3.0f), clip_rect, Float4U(1.0f), 1.8f);
-                ctx.render_line(Float2U(arrow_x, arrow_y + 3.0f), Float2U(arrow_x + 5.0f, arrow_y - 3.0f), clip_rect, Float4U(1.0f), 1.8f);
+                ctx.draw_line(Float2U(arrow_x - 5.0f, arrow_y - 3.0f), Float2U(arrow_x, arrow_y + 3.0f), clip_rect, Float4U(1.0f), 1.8f);
+                ctx.draw_line(Float2U(arrow_x, arrow_y + 3.0f), Float2U(arrow_x + 5.0f, arrow_y - 3.0f), clip_rect, Float4U(1.0f), 1.8f);
             }
 
             if(open)
             {
                 RectF surface_clip(0.0f, 0.0f, state.surface_size.x, state.surface_size.y);
                 RectF dropdown = dropdown_rect(*this, rect, state.surface_size);
-                ctx.render_rect(dropdown, surface_clip, Float4U(0.07f, 0.09f, 0.12f, 0.98f), 5.0f);
+                ctx.draw_rect(dropdown, surface_clip, Float4U(0.07f, 0.09f, 0.12f, 0.98f), 5.0f);
                 i32 hovered_item = dropdown_item_at(*this, dropdown, state.pointer_position);
                 i32 selected_item = current_item ? *current_item : -1;
                 for(usize item_index = 0; item_index < combo_items.size(); ++item_index)
@@ -147,18 +147,18 @@ namespace Luna
                     bool item_hovered = hovered_item == (i32)item_index;
                     if(selected || item_hovered)
                     {
-                        ctx.render_rect(item_rect, dropdown,
+                        ctx.draw_rect(item_rect, dropdown,
                             selected ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : Float4U(0.17f, 0.23f, 0.32f, 1.0f),
                             0.0f);
                     }
-                    ctx.render_text(RectF(item_rect.offset_x + 8.0f, item_rect.offset_y, max(item_rect.width - 34.0f, 1.0f), item_rect.height),
+                    ctx.draw_text(RectF(item_rect.offset_x + 8.0f, item_rect.offset_y, max(item_rect.width - 34.0f, 1.0f), item_rect.height),
                         dropdown, combo_items[item_index].c_str(), 15.0f, Float4U(1.0f), TextAlignment::begin);
                     if(selected)
                     {
                         f32 x = item_rect.offset_x + item_rect.width - 20.0f;
                         f32 y = item_rect.offset_y + item_rect.height * 0.5f;
-                        ctx.render_line(Float2U(x, y), Float2U(x + 4.0f, y + 4.0f), dropdown, Float4U(1.0f), 2.0f);
-                        ctx.render_line(Float2U(x + 4.0f, y + 4.0f), Float2U(x + 12.0f, y - 5.0f), dropdown, Float4U(1.0f), 2.0f);
+                        ctx.draw_line(Float2U(x, y), Float2U(x + 4.0f, y + 4.0f), dropdown, Float4U(1.0f), 2.0f);
+                        ctx.draw_line(Float2U(x + 4.0f, y + 4.0f), Float2U(x + 12.0f, y - 5.0f), dropdown, Float4U(1.0f), 2.0f);
                     }
                 }
             }

@@ -72,8 +72,8 @@ namespace Luna
             Float4U selected_hot_color = Float4U(0.20f, 0.33f, 0.54f, 1.0f);
             Float4U hover_color = Float4U(0.14f, 0.17f, 0.22f, 1.0f);
 
-            ctx.render_rect(rect, clip_rect, border_color, radius);
-            ctx.render_rect(inner, clip_rect, bg_color, inner_radius);
+            ctx.draw_rect(rect, clip_rect, border_color, radius);
+            ctx.draw_rect(inner, clip_rect, bg_color, inner_radius);
 
             f32 blend = clamp(state.delta_time * 14.0f, 0.0f, 1.0f);
             if(current_item)
@@ -95,7 +95,7 @@ namespace Luna
                 {
                     selection_rect.width = max(max_x - selection_rect.offset_x, 1.0f);
                 }
-                ctx.render_rect(selection_rect, clip_rect, active_item == (i32)target ? selected_hot_color : selected_color, inner_radius);
+                ctx.draw_rect(selection_rect, clip_rect, active_item == (i32)target ? selected_hot_color : selected_color, inner_radius);
             }
             else if(selected)
             {
@@ -123,7 +123,7 @@ namespace Luna
                     Float4U base_color = (active_item == (i32)i || hover_item == (i32)i) ? hover_color : bg_color;
                     if(t > 0.001f || hover_item == (i32)i || active_item == (i32)i)
                     {
-                        ctx.render_rect_corners(button_rect, clip_rect, smooth_color(base_color, selected_color, t), inner_radius,
+                        ctx.draw_rect_corners(button_rect, clip_rect, smooth_color(base_color, selected_color, t), inner_radius,
                             i == 0, i + 1 == count, i + 1 == count, i == 0);
                     }
                 }
@@ -132,13 +132,13 @@ namespace Luna
             if(current_item && hover_item >= 0 && hover_item != *current_item)
             {
                 RectF button_rect = item_rect(inner, (u32)hover_item);
-                ctx.render_rect_corners(button_rect, clip_rect, hover_color, inner_radius,
+                ctx.draw_rect_corners(button_rect, clip_rect, hover_color, inner_radius,
                     hover_item == 0, (u32)hover_item + 1 == count, (u32)hover_item + 1 == count, hover_item == 0);
             }
             for(u32 i = 1; i < count; ++i)
             {
                 f32 x = rect.offset_x + rect.width * ((f32)i / (f32)count);
-                ctx.render_line(Float2U(x, rect.offset_y + 2.0f), Float2U(x, rect.offset_y + max(rect.height - 2.0f, 2.0f)),
+                ctx.draw_line(Float2U(x, rect.offset_y + 2.0f), Float2U(x, rect.offset_y + max(rect.height - 2.0f, 2.0f)),
                     clip_rect, Float4U(0.20f, 0.23f, 0.28f, 0.90f), 1.0f);
             }
             for(u32 i = 0; i < count; ++i)
@@ -146,7 +146,7 @@ namespace Luna
                 RectF button_rect = item_rect(inner, i);
                 bool item_selected = current_item ? *current_item == (i32)i : (selected && selected[i]);
                 Float4U text_color = item_selected ? Float4U(1.0f) : Float4U(0.58f, 0.63f, 0.70f, 1.0f);
-                ctx.render_text(RectF(button_rect.offset_x + 8.0f, button_rect.offset_y, max(button_rect.width - 16.0f, 1.0f), button_rect.height),
+                ctx.draw_text(RectF(button_rect.offset_x + 8.0f, button_rect.offset_y, max(button_rect.width - 16.0f, 1.0f), button_rect.height),
                     clip_rect, items[i].c_str(), 15.0f, text_color, TextAlignment::center);
             }
         }

@@ -50,7 +50,7 @@ namespace Luna
 
         void ImageNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, Float4U(1.0f), 0.0f, image, flags);
+            ctx.draw_rect(rect, clip_rect, Float4U(1.0f), 0.0f, image, flags);
         }
 
         Guid DrawRectNode::type_guid() const
@@ -75,7 +75,7 @@ namespace Luna
 
         void DrawRectNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, color, radius);
+            ctx.draw_rect(rect, clip_rect, color, radius);
         }
 
         Guid DrawCircleNode::type_guid() const
@@ -100,7 +100,7 @@ namespace Luna
 
         void DrawCircleNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_circle(rect, clip_rect, color);
+            ctx.draw_circle(rect, clip_rect, color);
         }
 
         Guid DrawLineNode::type_guid() const
@@ -125,7 +125,7 @@ namespace Luna
 
         void DrawLineNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_line(begin, end, clip_rect, color, width);
+            ctx.draw_line(begin, end, clip_rect, color, width);
         }
 
         Guid DrawTextNode::type_guid() const
@@ -150,7 +150,7 @@ namespace Luna
 
         void DrawTextNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_text(rect, clip_rect, text.c_str(), font_size, color, horizontal_alignment, vertical_alignment);
+            ctx.draw_text(rect, clip_rect, text.c_str(), font_size, color, horizontal_alignment, vertical_alignment);
         }
 
         Guid DrawImageNode::type_guid() const
@@ -175,7 +175,7 @@ namespace Luna
 
         void DrawImageNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, color, 0.0f, image, flags);
+            ctx.draw_rect(rect, clip_rect, color, 0.0f, image, flags);
         }
 
     }

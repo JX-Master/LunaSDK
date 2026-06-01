@@ -96,7 +96,7 @@ namespace Luna
 
         void ScrollViewNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, Float4U(0.10f, 0.12f, 0.14f, 0.92f), 6.0f);
+            ctx.draw_rect(rect, clip_rect, Float4U(0.10f, 0.12f, 0.14f, 0.92f), 6.0f);
         }
 
         Guid WindowNode::type_guid() const
@@ -141,17 +141,17 @@ namespace Luna
 
         void WindowNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, Float4U(0.10f, 0.12f, 0.14f, 0.92f), 6.0f);
+            ctx.draw_rect(rect, clip_rect, Float4U(0.10f, 0.12f, 0.14f, 0.92f), 6.0f);
             if(!open) return;
             RectF title_rect(rect.offset_x, rect.offset_y, rect.width, title_bar_height());
-            ctx.render_rect(title_rect, clip_rect, Float4U(0.13f, 0.17f, 0.22f, 1.0f), 6.0f);
-            ctx.render_text(RectF(rect.offset_x + 10.0f, rect.offset_y, max(rect.width - 46.0f, 1.0f), title_bar_height()),
+            ctx.draw_rect(title_rect, clip_rect, Float4U(0.13f, 0.17f, 0.22f, 1.0f), 6.0f);
+            ctx.draw_text(RectF(rect.offset_x + 10.0f, rect.offset_y, max(rect.width - 46.0f, 1.0f), title_bar_height()),
                 clip_rect, text.c_str(), 15.0f, Float4U(1.0f), TextAlignment::begin);
             RectF close = close_rect(rect);
             bool close_hovered = state.pointer_position.x >= close.offset_x && state.pointer_position.x <= close.offset_x + close.width &&
                 state.pointer_position.y >= close.offset_y && state.pointer_position.y <= close.offset_y + close.height;
-            ctx.render_rect(close, clip_rect, close_hovered ? Float4U(0.55f, 0.18f, 0.18f, 1.0f) : Float4U(0.23f, 0.27f, 0.33f, 1.0f), 4.0f);
-            ctx.render_text(close, clip_rect, "X", 14.0f, Float4U(1.0f), TextAlignment::center);
+            ctx.draw_rect(close, clip_rect, close_hovered ? Float4U(0.55f, 0.18f, 0.18f, 1.0f) : Float4U(0.23f, 0.27f, 0.33f, 1.0f), 4.0f);
+            ctx.draw_text(close, clip_rect, "X", 14.0f, Float4U(1.0f), TextAlignment::center);
         }
 
         void WindowNode::on_click(NodeInputContext& ctx)
@@ -220,7 +220,7 @@ namespace Luna
 
         void PopupNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, Float4U(0.08f, 0.10f, 0.13f, 0.98f), 5.0f);
+            ctx.draw_rect(rect, clip_rect, Float4U(0.08f, 0.10f, 0.13f, 0.98f), 5.0f);
         }
 
         Guid TooltipNode::type_guid() const
@@ -265,12 +265,12 @@ namespace Luna
 
         void TooltipNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, Float4U(0.05f, 0.06f, 0.07f, 0.97f), 4.0f);
+            ctx.draw_rect(rect, clip_rect, Float4U(0.05f, 0.06f, 0.07f, 0.97f), 4.0f);
             Float4U border(0.28f, 0.33f, 0.40f, 1.0f);
-            ctx.render_rect(RectF(rect.offset_x, rect.offset_y, rect.width, 1.0f), clip_rect, border, 0.0f);
-            ctx.render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - 1.0f, 0.0f), rect.width, 1.0f), clip_rect, border, 0.0f);
-            ctx.render_rect(RectF(rect.offset_x, rect.offset_y, 1.0f, rect.height), clip_rect, border, 0.0f);
-            ctx.render_rect(RectF(rect.offset_x + max(rect.width - 1.0f, 0.0f), rect.offset_y, 1.0f, rect.height), clip_rect, border, 0.0f);
+            ctx.draw_rect(RectF(rect.offset_x, rect.offset_y, rect.width, 1.0f), clip_rect, border, 0.0f);
+            ctx.draw_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - 1.0f, 0.0f), rect.width, 1.0f), clip_rect, border, 0.0f);
+            ctx.draw_rect(RectF(rect.offset_x, rect.offset_y, 1.0f, rect.height), clip_rect, border, 0.0f);
+            ctx.draw_rect(RectF(rect.offset_x + max(rect.width - 1.0f, 0.0f), rect.offset_y, 1.0f, rect.height), clip_rect, border, 0.0f);
         }
 
         MenuBarNode::MenuBarNode()
@@ -317,8 +317,8 @@ namespace Luna
 
         void MenuBarNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, Float4U(0.08f, 0.10f, 0.13f, 0.92f), 0.0f);
-            ctx.render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - 1.0f, 0.0f), rect.width, 1.0f),
+            ctx.draw_rect(rect, clip_rect, Float4U(0.08f, 0.10f, 0.13f, 0.92f), 0.0f);
+            ctx.draw_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - 1.0f, 0.0f), rect.width, 1.0f),
                 clip_rect, Float4U(0.20f, 0.24f, 0.30f, 1.0f), 0.0f);
         }
 
@@ -476,7 +476,7 @@ namespace Luna
 
         void DockSpaceNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, Float4U(0.07f, 0.08f, 0.10f, 1.0f), 0.0f);
+            ctx.draw_rect(rect, clip_rect, Float4U(0.07f, 0.08f, 0.10f, 1.0f), 0.0f);
         }
 
         TabBarNode::TabBarNode()
@@ -522,8 +522,8 @@ namespace Luna
 
         void TabBarNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            ctx.render_rect(rect, clip_rect, Float4U(0.08f, 0.10f, 0.13f, 0.70f), 4.0f);
-            ctx.render_rect(RectF(rect.offset_x, rect.offset_y + 31.0f, rect.width, 1.0f),
+            ctx.draw_rect(rect, clip_rect, Float4U(0.08f, 0.10f, 0.13f, 0.70f), 4.0f);
+            ctx.draw_rect(RectF(rect.offset_x, rect.offset_y + 31.0f, rect.width, 1.0f),
                 clip_rect, Float4U(0.22f, 0.27f, 0.34f, 1.0f), 0.0f);
         }
 

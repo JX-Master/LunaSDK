@@ -59,13 +59,13 @@ namespace Luna
             virtual void set_persistent_state(const Name& key, const Any& value) = 0;
             virtual bool is_popup_open(id_t popup_id) const = 0;
             virtual bool is_combo_open(id_t combo_id) const = 0;
-            virtual void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius = 0.0f,
+            virtual void draw_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius = 0.0f,
                 RHI::ITexture* texture = nullptr, ImageFlag image_flags = ImageFlag::none) = 0;
-            virtual void render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
+            virtual void draw_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
                 bool top_left, bool top_right, bool bottom_right, bool bottom_left) = 0;
-            virtual void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color) = 0;
-            virtual void render_line(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width = 1.0f) = 0;
-            virtual void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
+            virtual void draw_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color) = 0;
+            virtual void draw_line(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width = 1.0f) = 0;
+            virtual void draw_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
                 TextAlignment horizontal_alignment = TextAlignment::begin,
                 TextAlignment vertical_alignment = TextAlignment::center) = 0;
         };
