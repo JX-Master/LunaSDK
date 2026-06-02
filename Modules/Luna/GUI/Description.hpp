@@ -55,8 +55,34 @@ namespace Luna
         {
             virtual ~NodeRenderContext() = default;
             virtual IDrawList* draw_list() = 0;
-            virtual const Any* get_persistent_state(const Name& key) const = 0;
-            virtual void set_persistent_state(const Name& key, const Any& value) = 0;
+            virtual object_t get_state(id_t id) const = 0;
+            virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) = 0;
+            virtual void clear_state(id_t id) = 0;
+            template <typename T>
+            T* get_widget_state(id_t owner_id) const
+            {
+                object_t obj = get_state(make_state_id<T>(owner_id));
+                return obj ? cast_object<T>(obj) : nullptr;
+            }
+            template <typename T>
+            Ref<T> get_or_create_widget_state(id_t owner_id, StateLifetime lifetime = StateLifetime::next_frame)
+            {
+                id_t state_id = make_state_id<T>(owner_id);
+                object_t existing = get_state(state_id);
+                if(existing)
+                {
+                    Ref<T> state;
+                    object_retain(existing);
+                    state.attach(existing);
+                    RV r = set_state(state_id, state.object(), lifetime);
+                    luassert_always(succeeded(r));
+                    return state;
+                }
+                Ref<T> state = new_object<T>();
+                RV r = set_state(state_id, state.object(), lifetime);
+                luassert_always(succeeded(r));
+                return state;
+            }
             virtual bool is_popup_open(id_t popup_id) const = 0;
             virtual bool is_combo_open(id_t combo_id) const = 0;
             virtual void draw_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius = 0.0f,
@@ -83,9 +109,35 @@ namespace Luna
             virtual ~NodeInputContext() = default;
             virtual Float2U pointer_position() const = 0;
             virtual RectF rect() const = 0;
-            virtual const Any* get_persistent_state(const Name& key) const = 0;
-            virtual void set_persistent_state(const Name& key, const Any& value) = 0;
+            virtual object_t get_state(id_t id) const = 0;
+            virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) = 0;
+            virtual void clear_state(id_t id) = 0;
             virtual void set_state(const Name& key, const Any& value) = 0;
+            template <typename T>
+            T* get_widget_state(id_t owner_id) const
+            {
+                object_t obj = get_state(make_state_id<T>(owner_id));
+                return obj ? cast_object<T>(obj) : nullptr;
+            }
+            template <typename T>
+            Ref<T> get_or_create_widget_state(id_t owner_id, StateLifetime lifetime = StateLifetime::next_frame)
+            {
+                id_t state_id = make_state_id<T>(owner_id);
+                object_t existing = get_state(state_id);
+                if(existing)
+                {
+                    Ref<T> state;
+                    object_retain(existing);
+                    state.attach(existing);
+                    RV r = set_state(state_id, state.object(), lifetime);
+                    luassert_always(succeeded(r));
+                    return state;
+                }
+                Ref<T> state = new_object<T>();
+                RV r = set_state(state_id, state.object(), lifetime);
+                luassert_always(succeeded(r));
+                return state;
+            }
             virtual bool is_popup_open(id_t popup_id) const = 0;
             virtual bool is_combo_open(id_t combo_id) const = 0;
             virtual void open_combo_dropdown(id_t combo_id) = 0;

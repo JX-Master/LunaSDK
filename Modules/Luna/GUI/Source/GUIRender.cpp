@@ -32,19 +32,22 @@ namespace Luna
                 return active_draw_list;
             }
 
-            virtual const Any* get_persistent_state(const Name& key) const override
+            virtual object_t get_state(id_t id) const override
             {
-                if(!context || !node_id) return nullptr;
-                PersistentItemState& state = context->get_or_create_persistent_state(node_id);
-                auto iter = state.custom_states.find(key);
-                return iter == state.custom_states.end() ? nullptr : &iter->second;
+                return context ? context->get_state_object(id) : nullptr;
             }
 
-            virtual void set_persistent_state(const Name& key, const Any& value) override
+            virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) override
             {
-                if(!context || !node_id) return;
-                PersistentItemState& state = context->get_or_create_persistent_state(node_id);
-                state.custom_states.insert_or_assign(key, value);
+                return context ? context->set_state(id, data, lifetime) : BasicError::bad_arguments();
+            }
+
+            virtual void clear_state(id_t id) override
+            {
+                if(context)
+                {
+                    context->clear_state(id);
+                }
             }
 
             virtual bool is_popup_open(id_t popup_id) const override
@@ -58,8 +61,8 @@ namespace Luna
                 {
                     return false;
                 }
-                PersistentItemState& state = context->get_or_create_persistent_state(combo_id);
-                return state.open;
+                DisclosureState* state = context->get_widget_state<DisclosureState>(combo_id);
+                return state ? state->open : false;
             }
 
             virtual void draw_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
@@ -453,7 +456,8 @@ namespace Luna
             const NodeLayout& layout = m_layouts[node_index];
             if(!scroll_has_vertical_bar(layout) && !scroll_has_horizontal_bar(layout)) return;
 
-            PersistentItemState& state = get_or_create_persistent_state(node.id);
+            Ref<ScrollState> state_ref = get_or_create_widget_state<ScrollState>(node.id);
+            ScrollState& state = *state_ref;
             bool hovered = false;
             if(m_pointer_inside)
             {
@@ -593,7 +597,8 @@ namespace Luna
             const Node& node = m_submitted_desc.nodes[node_index];
             const NodeLayout& layout = m_layouts[node_index];
             if(!layout.tab_scrollable) return;
-            PersistentItemState& state = get_or_create_persistent_state(node.id);
+            Ref<TabBarState> state_ref = get_or_create_widget_state<TabBarState>(node.id);
+            TabBarState& state = *state_ref;
             auto render_button = [&](const RectF& rect, bool left) {
                 bool enabled = left ? state.tab_scroll_x > 0.5f : state.tab_scroll_x < layout.tab_scroll_max - 0.5f;
                 bool hovered = enabled && m_pointer_inside && point_in_rect(m_pointer_pos, rect);
@@ -634,10 +639,10 @@ namespace Luna
             {
                 render_rect(layout.dock_panel_title_rect, clip, active ? style.active_title_bar_color : style.title_bar_color, 5.0f);
                 const DockTreeNode* leaf = nullptr;
-                auto dock_state_iter = m_persistent_states.find(layout.dock_space_id);
-                if(dock_state_iter != m_persistent_states.end() && layout.dock_leaf_index < dock_state_iter->second.dock_nodes.size())
+                DockSpaceState* dock_state = get_widget_state<DockSpaceState>(layout.dock_space_id);
+                if(dock_state && layout.dock_leaf_index < dock_state->dock_nodes.size())
                 {
-                    const DockTreeNode& dock_leaf = dock_state_iter->second.dock_nodes[layout.dock_leaf_index];
+                    const DockTreeNode& dock_leaf = dock_state->dock_nodes[layout.dock_leaf_index];
                     if(!dock_leaf.split && dock_leaf.tabs.size() > 1)
                     {
                         leaf = &dock_leaf;
@@ -726,9 +731,9 @@ namespace Luna
             }
             else
             {
-                auto dock_state_iter = m_persistent_states.find(target_space_id);
-                if(dock_state_iter == m_persistent_states.end() || target_leaf >= dock_state_iter->second.dock_nodes.size()) return;
-                const DockTreeNode& leaf = dock_state_iter->second.dock_nodes[target_leaf];
+                DockSpaceState* dock_state = get_widget_state<DockSpaceState>(target_space_id);
+                if(!dock_state || target_leaf >= dock_state->dock_nodes.size()) return;
+                const DockTreeNode& leaf = dock_state->dock_nodes[target_leaf];
                 if(leaf.split || leaf.tabs.empty()) return;
                 target_rect = leaf.rect;
             }
@@ -812,15 +817,15 @@ namespace Luna
             bool hovered = false;
             bool active = false;
             bool focused = false;
-            auto iter = m_current_results.find(node.id);
-            if(iter != m_current_results.end())
+            ItemQueryState* query_state = get_widget_state<ItemQueryState>(node.id);
+            if(query_state)
             {
-                auto h = iter->second.states.find(Name("gui.hovered"));
-                hovered = h != iter->second.states.end() && h->second.as<bool>() && *h->second.as<bool>();
-                auto a = iter->second.states.find(Name("gui.active"));
-                active = a != iter->second.states.end() && a->second.as<bool>() && *a->second.as<bool>();
-                auto f = iter->second.states.find(Name("gui.focused"));
-                focused = f != iter->second.states.end() && f->second.as<bool>() && *f->second.as<bool>();
+                auto h = query_state->states.find(Name("gui.hovered"));
+                hovered = h != query_state->states.end() && h->second.as<bool>() && *h->second.as<bool>();
+                auto a = query_state->states.find(Name("gui.active"));
+                active = a != query_state->states.end() && a->second.as<bool>() && *a->second.as<bool>();
+                auto f = query_state->states.find(Name("gui.focused"));
+                focused = f != query_state->states.end() && f->second.as<bool>() && *f->second.as<bool>();
             }
 
             if(m_layouts[node_index].dock_panel_child)
@@ -859,7 +864,8 @@ namespace Luna
                     RectF text_clip = intersect_rect(clip, text_rect);
                     f32 text_width = input_text_cursor_x(*string_value, string_value->size(), 16.0f);
                     RectF arrange_rect(text_rect.offset_x, text_rect.offset_y, max(text_rect.width, text_width + 4.0f), text_rect.height);
-                    PersistentItemState& state = get_or_create_persistent_state(node.id);
+                    Ref<InputEditState> state_ref = get_or_create_widget_state<InputEditState>(node.id);
+                    InputEditState& state = *state_ref;
                     state.text_cursor = clamp_utf8_cursor(*string_value, state.text_cursor);
                     if(node.id == m_focused_id && input_text_has_selection(*string_value, state))
                     {
@@ -918,7 +924,8 @@ namespace Luna
             {
                 Float4U color = read_color_value(node);
                 id_t owner_id = node.color_owner() ? node.color_owner() : node.id;
-                PersistentItemState& state = get_or_create_persistent_state(owner_id);
+                Ref<ColorEditState> state_ref = get_or_create_widget_state<ColorEditState>(owner_id);
+                ColorEditState& state = *state_ref;
                 i32 axis = clamp(color_edit_axis_ref(state), 0, 5);
                 f32 picker_x = 0.0f;
                 f32 picker_y = 0.0f;
@@ -1054,7 +1061,8 @@ namespace Luna
             {
                 f32 label_w = numeric_label_width(node, rect);
                 u32 value_count = numeric_value_count(node);
-                PersistentItemState& state = get_or_create_persistent_state(node.id);
+                Ref<InputEditState> state_ref = get_or_create_widget_state<InputEditState>(node.id);
+                InputEditState& state = *state_ref;
                 for(u32 i = 0; i < value_count; ++i)
                 {
                     f32* f32_values = node.f32_values();
@@ -1122,20 +1130,19 @@ namespace Luna
                         render_node(child);
                     }
                 }
-                auto dock_state_iter = m_persistent_states.find(node.id);
-                if(dock_state_iter != m_persistent_states.end())
+                DockSpaceState* dock_state = get_widget_state<DockSpaceState>(node.id);
+                if(dock_state)
                 {
-                    const PersistentItemState& dock_state = dock_state_iter->second;
-                    if(dock_state.dock_root_node != U32_MAX && dock_state.dock_root_node < dock_state.dock_nodes.size())
+                    if(dock_state->dock_root_node != U32_MAX && dock_state->dock_root_node < dock_state->dock_nodes.size())
                     {
                         Vector<u32> stack;
-                        stack.push_back(dock_state.dock_root_node);
+                        stack.push_back(dock_state->dock_root_node);
                         while(!stack.empty())
                         {
                             u32 dock_node_index = stack.back();
                             stack.pop_back();
-                            if(dock_node_index >= dock_state.dock_nodes.size()) continue;
-                            const DockTreeNode& dock_node = dock_state.dock_nodes[dock_node_index];
+                            if(dock_node_index >= dock_state->dock_nodes.size()) continue;
+                            const DockTreeNode& dock_node = dock_state->dock_nodes[dock_node_index];
                             if(!dock_node.split) continue;
                             stack.push_back(dock_node.child1);
                             stack.push_back(dock_node.child0);

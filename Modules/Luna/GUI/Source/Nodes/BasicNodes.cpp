@@ -4,6 +4,7 @@
 * and license in LICENSE.txt
 */
 #include "../../Nodes/BasicNodes.hpp"
+#include "../../State.hpp"
 
 namespace Luna
 {
@@ -180,19 +181,17 @@ namespace Luna
             bool checked = value && *value;
             f32 target = checked ? 1.0f : 0.0f;
             f32 animation = target;
-            const Any* value_any = ctx.get_persistent_state(Name("gui.switch.animation"));
-            if(value_any)
+            SwitchAnimationState* switch_state = ctx.get_widget_state<SwitchAnimationState>(id);
+            if(switch_state && switch_state->initialized)
             {
-                const f32* typed_value = value_any->as<f32>();
-                if(typed_value)
-                {
-                    animation = *typed_value;
-                }
+                animation = switch_state->animation;
             }
             f32 blend = clamp(state.delta_time * 14.0f, 0.0f, 1.0f);
             animation += (target - animation) * blend;
             animation = clamp(animation, 0.0f, 1.0f);
-            ctx.set_persistent_state(Name("gui.switch.animation"), Any(animation));
+            Ref<SwitchAnimationState> next_state = ctx.get_or_create_widget_state<SwitchAnimationState>(id);
+            next_state->animation = animation;
+            next_state->initialized = true;
 
             RectF track(rect.offset_x + 2.0f, rect.offset_y + 3.0f, 44.0f, 22.0f);
             Float4U off_track = state.hovered ? Float4U(0.18f, 0.20f, 0.23f, 1.0f) : Float4U(0.12f, 0.14f, 0.16f, 1.0f);
@@ -227,10 +226,8 @@ namespace Luna
 
         bool CollapsingHeaderNode::open(NodeInputContext& ctx) const
         {
-            const Any* value = ctx.get_persistent_state(Name("gui.open"));
-            if(!value) return true;
-            const bool* typed_value = value->as<bool>();
-            return typed_value ? *typed_value : true;
+            DisclosureState* state = ctx.get_widget_state<DisclosureState>(id);
+            return state ? state->open : true;
         }
 
         LayoutMetrics CollapsingHeaderNode::measure() const
@@ -252,13 +249,15 @@ namespace Luna
 
         void CollapsingHeaderNode::update_state(NodeInputContext& ctx) const
         {
-            ctx.set_state(Name("gui.open"), Any(open(ctx)));
+            Ref<DisclosureState> state = ctx.get_or_create_widget_state<DisclosureState>(id);
+            state->open = open(ctx);
+            ctx.set_state(Name("gui.open"), Any(state->open));
         }
 
         void CollapsingHeaderNode::on_click(NodeInputContext& ctx)
         {
             bool next_open = !open(ctx);
-            ctx.set_persistent_state(Name("gui.open"), Any(next_open));
+            ctx.get_or_create_widget_state<DisclosureState>(id)->open = next_open;
             ctx.set_state(Name("gui.open"), Any(next_open));
             ctx.set_state(Name("gui.value_changed"), Any(true));
         }
@@ -285,10 +284,8 @@ namespace Luna
 
         bool TreeNodeNode::open(NodeInputContext& ctx) const
         {
-            const Any* value = ctx.get_persistent_state(Name("gui.open"));
-            if(!value) return !is_leaf() && test_flags(flags, TreeNodeFlag::default_open);
-            const bool* typed_value = value->as<bool>();
-            return typed_value ? *typed_value : false;
+            DisclosureState* state = ctx.get_widget_state<DisclosureState>(id);
+            return state ? state->open : (!is_leaf() && test_flags(flags, TreeNodeFlag::default_open));
         }
 
         RectF TreeNodeNode::arrow_rect(const RectF& rect) const
@@ -313,11 +310,10 @@ namespace Luna
         void TreeNodeNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
             bool node_open = false;
-            const Any* open_value = ctx.get_persistent_state(Name("gui.open"));
-            if(open_value)
+            DisclosureState* open_state = ctx.get_widget_state<DisclosureState>(id);
+            if(open_state)
             {
-                const bool* typed_open = open_value->as<bool>();
-                if(typed_open) node_open = *typed_open;
+                node_open = open_state->open;
             }
             else
             {
@@ -358,7 +354,7 @@ namespace Luna
         void TreeNodeNode::update_state(NodeInputContext& ctx) const
         {
             bool node_open = open(ctx);
-            ctx.set_persistent_state(Name("gui.open"), Any(node_open));
+            ctx.get_or_create_widget_state<DisclosureState>(id)->open = node_open;
             ctx.set_state(Name("gui.open"), Any(node_open));
         }
 
@@ -376,7 +372,7 @@ namespace Luna
                 }
             }
             bool next_open = !open(ctx);
-            ctx.set_persistent_state(Name("gui.open"), Any(next_open));
+            ctx.get_or_create_widget_state<DisclosureState>(id)->open = next_open;
             ctx.set_state(Name("gui.open"), Any(next_open));
             ctx.set_state(Name("gui.value_changed"), Any(true));
         }

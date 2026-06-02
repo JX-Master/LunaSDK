@@ -97,16 +97,20 @@ namespace Luna
             out_column_widths.assign(columns, 1.0f);
             out_row_heights.assign(rows, 1.0f);
 
-            PersistentItemState& persistent = get_or_create_persistent_state(node.id);
+            TableLayoutState* persistent = get_widget_state<TableLayoutState>(node.id);
+            if(persistent)
+            {
+                touch_widget_state<TableLayoutState>(node.id);
+            }
             for(u32 col = 0; col < columns; ++col)
             {
                 const TableTrackSize& size = table_track_size(node, true, col);
                 if(size.policy == TableTrackSizePolicy::fixed)
                 {
                     f32 value = size.value;
-                    if(col < persistent.table_column_sizes.size() && persistent.table_column_sizes[col] > 0.0f)
+                    if(persistent && col < persistent->table_column_sizes.size() && persistent->table_column_sizes[col] > 0.0f)
                     {
-                        value = persistent.table_column_sizes[col];
+                        value = persistent->table_column_sizes[col];
                     }
                     out_column_widths[col] = max(value, 1.0f);
                 }
@@ -117,9 +121,9 @@ namespace Luna
                 if(size.policy == TableTrackSizePolicy::fixed)
                 {
                     f32 value = size.value;
-                    if(row < persistent.table_row_sizes.size() && persistent.table_row_sizes[row] > 0.0f)
+                    if(persistent && row < persistent->table_row_sizes.size() && persistent->table_row_sizes[row] > 0.0f)
                     {
-                        value = persistent.table_row_sizes[row];
+                        value = persistent->table_row_sizes[row];
                     }
                     out_row_heights[row] = max(value, 1.0f);
                 }
@@ -303,7 +307,8 @@ namespace Luna
                     f32 ideal_width = tab_item_ideal_width(child_node);
                     min_header_width += tab_item_min_width();
                     preferred_header_width += ideal_width;
-                    if(child_node.tab_item_selected() || (get_or_create_persistent_state(node.id).tab_selected_id == child_node.id))
+                    TabBarState* tab_state = get_widget_state<TabBarState>(node.id);
+                    if(child_node.tab_item_selected() || (tab_state && tab_state->tab_selected_id == child_node.id))
                     {
                         content_metrics = measure_node(child);
                         has_content = true;
@@ -519,10 +524,10 @@ namespace Luna
         void Context::arrange_tab_bar_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
             Node& node = m_submitted_desc.nodes[node_index];
-            PersistentItemState& state = get_or_create_persistent_state(node.id);
+            Ref<TabBarState> state = get_or_create_widget_state<TabBarState>(node.id);
             Vector<u32> live_tabs;
             live_tabs.reserve(8);
-            id_t selected = state.tab_selected_id;
+            id_t selected = state->tab_selected_id;
             id_t first_open = 0;
             bool selected_open = false;
 
@@ -558,7 +563,7 @@ namespace Luna
             {
                 selected = first_open;
             }
-            state.tab_selected_id = selected;
+            state->tab_selected_id = selected;
 
             auto live_tab_index = [&](id_t id) -> u32 {
                 for(u32 tab : live_tabs)
@@ -567,11 +572,11 @@ namespace Luna
                 }
                 return U32_MAX;
             };
-            for(usize i = 0; i < state.tab_order.size();)
+            for(usize i = 0; i < state->tab_order.size();)
             {
-                if(live_tab_index(state.tab_order[i]) == U32_MAX)
+                if(live_tab_index(state->tab_order[i]) == U32_MAX)
                 {
-                    state.tab_order.erase(state.tab_order.begin() + i);
+                    state->tab_order.erase(state->tab_order.begin() + i);
                 }
                 else
                 {
@@ -581,15 +586,15 @@ namespace Luna
             for(u32 tab : live_tabs)
             {
                 id_t id = m_submitted_desc.nodes[tab].id;
-                if(!tab_order_contains(state, id))
+                if(!tab_order_contains(*state, id))
                 {
-                    state.tab_order.push_back(id);
+                    state->tab_order.push_back(id);
                 }
             }
 
             Vector<u32> tabs;
             tabs.reserve(live_tabs.size());
-            for(id_t id : state.tab_order)
+            for(id_t id : state->tab_order)
             {
                 u32 tab = live_tab_index(id);
                 if(tab != U32_MAX) tabs.push_back(tab);
@@ -658,10 +663,10 @@ namespace Luna
 
             bar_layout.tab_header_area_rect = header_area_rect;
             bar_layout.tab_scroll_max = max(total_width - available_width, 0.0f);
-            state.tab_scroll_x = bar_layout.tab_scrollable ? clamp(state.tab_scroll_x, 0.0f, bar_layout.tab_scroll_max) : 0.0f;
+            state->tab_scroll_x = bar_layout.tab_scrollable ? clamp(state->tab_scroll_x, 0.0f, bar_layout.tab_scroll_max) : 0.0f;
 
             RectF header_clip = intersect_rect(header_area_rect, clip_rect);
-            f32 cursor_x = header_area_rect.offset_x - state.tab_scroll_x;
+            f32 cursor_x = header_area_rect.offset_x - state->tab_scroll_x;
             for(usize i = 0; i < tabs.size(); ++i)
             {
                 u32 tab = tabs[i];
@@ -697,14 +702,14 @@ namespace Luna
                     tab_layout.clip_rect = content_clip;
                     tab_layout.metrics = measure_node(tab);
                     tab_layout.metrics_valid = true;
-                    ItemResult& result = get_or_create_current_result(tab_node.id);
-                    result.states.insert_or_assign(Name("gui.rect"), Any(tab_header));
-                    result.states.insert_or_assign(Name("gui.clip_rect"), Any(header_clip));
+                    Ref<ItemQueryState> result = get_or_create_query_state(tab_node.id);
+                    result->states.insert_or_assign(Name("gui.rect"), Any(tab_header));
+                    result->states.insert_or_assign(Name("gui.clip_rect"), Any(header_clip));
                 }
-                ItemResult& result = get_or_create_current_result(tab_node.id);
-                result.states.insert_or_assign(Name("gui.rect"), Any(tab_header));
-                result.states.insert_or_assign(Name("gui.clip_rect"), Any(header_clip));
-                result.states.insert_or_assign(Name("gui.open"), Any(true));
+                Ref<ItemQueryState> result = get_or_create_query_state(tab_node.id);
+                result->states.insert_or_assign(Name("gui.rect"), Any(tab_header));
+                result->states.insert_or_assign(Name("gui.clip_rect"), Any(header_clip));
+                result->states.insert_or_assign(Name("gui.open"), Any(true));
             }
         }
 
@@ -816,7 +821,7 @@ namespace Luna
             }
         }
 
-        u32 Context::new_dock_leaf(PersistentItemState& dock_state, id_t panel_id, u32 parent)
+        u32 Context::new_dock_leaf(DockSpaceState& dock_state, id_t panel_id, u32 parent)
         {
             DockTreeNode leaf;
             leaf.parent = parent;
@@ -830,7 +835,7 @@ namespace Luna
             return index;
         }
 
-        bool Context::dock_tree_contains_panel(const PersistentItemState& dock_state, id_t panel_id) const
+        bool Context::dock_tree_contains_panel(const DockSpaceState& dock_state, id_t panel_id) const
         {
             if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size()) return false;
             Vector<u32> stack;
@@ -855,7 +860,7 @@ namespace Luna
             return false;
         }
 
-        void Context::dock_tree_add_panel(PersistentItemState& dock_state, id_t panel_id)
+        void Context::dock_tree_add_panel(DockSpaceState& dock_state, id_t panel_id)
         {
             if(!panel_id || dock_tree_contains_panel(dock_state, panel_id)) return;
             if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size())
@@ -883,7 +888,7 @@ namespace Luna
             dock_state.dock_root_node = new_dock_leaf(dock_state, panel_id);
         }
 
-        static void dock_tree_replace_node_with_child(PersistentItemState& dock_state, u32 node_index, u32 child_index)
+        static void dock_tree_replace_node_with_child(DockSpaceState& dock_state, u32 node_index, u32 child_index)
         {
             if(node_index >= dock_state.dock_nodes.size() || child_index >= dock_state.dock_nodes.size()) return;
             u32 parent = dock_state.dock_nodes[node_index].parent;
@@ -902,7 +907,7 @@ namespace Luna
             }
         }
 
-        static void dock_tree_remove_empty_leaf(PersistentItemState& dock_state, u32 leaf_index)
+        static void dock_tree_remove_empty_leaf(DockSpaceState& dock_state, u32 leaf_index)
         {
             if(leaf_index >= dock_state.dock_nodes.size()) return;
             u32 parent = dock_state.dock_nodes[leaf_index].parent;
@@ -924,7 +929,7 @@ namespace Luna
             }
         }
 
-        bool Context::dock_tree_remove_panel(PersistentItemState& dock_state, id_t panel_id)
+        bool Context::dock_tree_remove_panel(DockSpaceState& dock_state, id_t panel_id)
         {
             if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size()) return false;
             Vector<u32> stack;
@@ -959,7 +964,7 @@ namespace Luna
             return false;
         }
 
-        void Context::dock_tree_dock_panel(PersistentItemState& dock_state, id_t panel_id, u32 target_leaf, DockDropDirection direction)
+        void Context::dock_tree_dock_panel(DockSpaceState& dock_state, id_t panel_id, u32 target_leaf, DockDropDirection direction)
         {
             if(!panel_id) return;
             dock_tree_remove_panel(dock_state, panel_id);
@@ -1003,7 +1008,7 @@ namespace Luna
             dock_state.dock_nodes[new_child].parent = target_leaf;
         }
 
-        static bool dock_tree_prune_node(PersistentItemState& dock_state, u32 node_index, const HashSet<id_t, IdHash>& live_panels)
+        static bool dock_tree_prune_node(DockSpaceState& dock_state, u32 node_index, const HashSet<id_t, IdHash>& live_panels)
         {
             if(node_index >= dock_state.dock_nodes.size()) return false;
             DockTreeNode& node = dock_state.dock_nodes[node_index];
@@ -1052,7 +1057,7 @@ namespace Luna
             return false;
         }
 
-        void Context::dock_tree_prune_missing(PersistentItemState& dock_state, const HashSet<id_t, IdHash>& live_panels)
+        void Context::dock_tree_prune_missing(DockSpaceState& dock_state, const HashSet<id_t, IdHash>& live_panels)
         {
             if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size()) return;
             if(!dock_tree_prune_node(dock_state, dock_state.dock_root_node, live_panels))
@@ -1061,7 +1066,7 @@ namespace Luna
             }
         }
 
-        id_t Context::dock_tree_selected_panel(PersistentItemState& dock_state, u32 leaf_index)
+        id_t Context::dock_tree_selected_panel(DockSpaceState& dock_state, u32 leaf_index)
         {
             if(leaf_index >= dock_state.dock_nodes.size()) return 0;
             DockTreeNode& leaf = dock_state.dock_nodes[leaf_index];
@@ -1076,7 +1081,8 @@ namespace Luna
 
         void Context::arrange_dock_tree_node(id_t dock_space_id, u32 tree_node_index, const RectF& rect, const RectF& clip_rect, const HashMap<id_t, u32, IdHash>& panel_indices)
         {
-            PersistentItemState& dock_state = get_or_create_persistent_state(dock_space_id);
+            Ref<DockSpaceState> dock_state_ref = get_or_create_widget_state<DockSpaceState>(dock_space_id);
+            DockSpaceState& dock_state = *dock_state_ref;
             if(tree_node_index >= dock_state.dock_nodes.size()) return;
             DockTreeNode& tree_node = dock_state.dock_nodes[tree_node_index];
             tree_node.rect = rect;
@@ -1142,7 +1148,8 @@ namespace Luna
         void Context::arrange_dock_space_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
             Node& node = m_submitted_desc.nodes[node_index];
-            PersistentItemState& dock_state = get_or_create_persistent_state(node.id);
+            Ref<DockSpaceState> dock_state_ref = get_or_create_widget_state<DockSpaceState>(node.id);
+            DockSpaceState& dock_state = *dock_state_ref;
             Vector<u32> floating_children;
             HashMap<id_t, u32, IdHash> docking_panel_indices;
             HashSet<id_t, IdHash> live_docking_panels;
@@ -1169,8 +1176,8 @@ namespace Luna
                     panel_state.closed = false;
                 }
                 bool visible = child_node.dock_panel_open ? *child_node.dock_panel_open : !panel_state.closed;
-                ItemResult& result = get_or_create_current_result(child_node.id);
-                result.states.insert_or_assign(Name("gui.open"), Any(visible));
+                Ref<ItemQueryState> result = get_or_create_query_state(child_node.id);
+                result->states.insert_or_assign(Name("gui.open"), Any(visible));
 
                 NodeLayout& child_layout = m_layouts[child];
                 child_layout.dock_panel_child = true;
@@ -1210,8 +1217,7 @@ namespace Luna
             {
                 Node& child_node = m_submitted_desc.nodes[child];
                 NodeLayout& child_layout = m_layouts[child];
-                PersistentItemState& dock_state_ref = get_or_create_persistent_state(node.id);
-                DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state_ref, child_node.id);
+                DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state, child_node.id);
                 DockPanelStyle style = child_layout.dock_panel_style;
                 panel_state.rect.width = max(panel_state.rect.width, style.min_floating_size.x);
                 panel_state.rect.height = max(panel_state.rect.height, style.min_floating_size.y);
@@ -1290,10 +1296,11 @@ namespace Luna
                     }
                     else if(owner.is_color_edit())
                     {
-                        PersistentItemState& popup_state = get_or_create_persistent_state(node.id);
-                        if(popup_state.popup_anchor_valid)
+                        PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(node.id);
+                        if(popup_state && popup_state->popup_anchor_valid)
                         {
-                            Float2U anchor = popup_state.popup_anchor_position;
+                            touch_widget_state<PopupAnchorState>(node.id);
+                            Float2U anchor = popup_state->popup_anchor_position;
                             position.x = anchor.x;
                             position.y = anchor.y + 8.0f;
                             if(position.x + width > m_frame_desc.surface_size.x && anchor.x - width >= 0.0f)
@@ -1367,9 +1374,9 @@ namespace Luna
 
             if(!node.is_root())
             {
-                ItemResult& result = get_or_create_current_result(node.id);
-                result.states.insert_or_assign(Name("gui.rect"), Any(rect));
-                result.states.insert_or_assign(Name("gui.clip_rect"), Any(effective_clip));
+                Ref<ItemQueryState> result = get_or_create_query_state(node.id);
+                result->states.insert_or_assign(Name("gui.rect"), Any(rect));
+                result->states.insert_or_assign(Name("gui.clip_rect"), Any(effective_clip));
             }
 
             if(node.is_table_layout())
@@ -1529,10 +1536,11 @@ namespace Luna
                             }
                             else if(owner.is_color_edit())
                             {
-                                PersistentItemState& popup_state = get_or_create_persistent_state(child_node.id);
-                                if(popup_state.popup_anchor_valid)
+                                PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(child_node.id);
+                                if(popup_state && popup_state->popup_anchor_valid)
                                 {
-                                    Float2U anchor = popup_state.popup_anchor_position;
+                                    touch_widget_state<PopupAnchorState>(child_node.id);
+                                    Float2U anchor = popup_state->popup_anchor_position;
                                     position.x = anchor.x;
                                     position.y = anchor.y + 8.0f;
                                     if(position.x + width > m_frame_desc.surface_size.x && anchor.x - width >= 0.0f)
@@ -1583,9 +1591,9 @@ namespace Luna
                     layout.scroll_content_size = layout.scroll_viewport_size;
                     layout.scroll_has_vertical = false;
                     layout.scroll_has_horizontal = false;
-                    PersistentItemState& persistent = get_or_create_persistent_state(node.id);
-                    persistent.scroll_x = 0.0f;
-                    persistent.scroll_y = 0.0f;
+                    Ref<ScrollState> persistent = get_or_create_widget_state<ScrollState>(node.id);
+                    persistent->scroll_x = 0.0f;
+                    persistent->scroll_y = 0.0f;
                 }
                 layout_absolute_children();
                 return rect;
@@ -1669,15 +1677,15 @@ namespace Luna
                     max(raw_content_width, padded_viewport_width),
                     max(raw_content_height, padded_viewport_height));
 
-                PersistentItemState& persistent = get_or_create_persistent_state(node.id);
-                persistent.scroll_x = clamp(persistent.scroll_x, 0.0f, scroll_max_x(layout));
-                persistent.scroll_y = clamp(persistent.scroll_y, 0.0f, scroll_max_y(layout));
+                Ref<ScrollState> persistent = get_or_create_widget_state<ScrollState>(node.id);
+                persistent->scroll_x = clamp(persistent->scroll_x, 0.0f, scroll_max_x(layout));
+                persistent->scroll_y = clamp(persistent->scroll_y, 0.0f, scroll_max_y(layout));
 
                 content_rect = viewport_rect;
                 content_rect.width = padded_viewport_width;
                 content_rect.height = padded_viewport_height;
-                content_rect.offset_x -= persistent.scroll_x;
-                content_rect.offset_y -= persistent.scroll_y;
+                content_rect.offset_x -= persistent->scroll_x;
+                content_rect.offset_y -= persistent->scroll_y;
             }
             f32 available_main = horizontal ? content_rect.width : content_rect.height;
             if(node.is_scroll_view())

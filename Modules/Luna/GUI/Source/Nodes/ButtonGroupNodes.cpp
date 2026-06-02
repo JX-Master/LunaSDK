@@ -4,6 +4,7 @@
 * and license in LICENSE.txt
 */
 #include "../../Nodes/ButtonGroupNodes.hpp"
+#include "../../State.hpp"
 
 namespace Luna
 {
@@ -80,14 +81,15 @@ namespace Luna
             {
                 f32 target = (f32)clamp(*current_item, 0, (i32)count - 1);
                 f32 selection_animation = target;
-                const Any* animation_any = ctx.get_persistent_state(Name("gui.button_group.selection_animation"));
-                if(animation_any)
+                ButtonGroupAnimationState* animation_state = ctx.get_widget_state<ButtonGroupAnimationState>(id);
+                if(animation_state && animation_state->selection_animation_initialized)
                 {
-                    const f32* typed_animation = animation_any->as<f32>();
-                    if(typed_animation) selection_animation = *typed_animation;
+                    selection_animation = animation_state->selection_animation;
                 }
                 selection_animation += (target - selection_animation) * blend;
-                ctx.set_persistent_state(Name("gui.button_group.selection_animation"), Any(selection_animation));
+                Ref<ButtonGroupAnimationState> next_animation_state = ctx.get_or_create_widget_state<ButtonGroupAnimationState>(id);
+                next_animation_state->selection_animation = selection_animation;
+                next_animation_state->selection_animation_initialized = true;
                 f32 item_width = inner.width / (f32)count;
                 RectF selection_rect(inner.offset_x + item_width * selection_animation, inner.offset_y, item_width, inner.height);
                 f32 max_x = inner.offset_x + inner.width;
@@ -100,11 +102,10 @@ namespace Luna
             else if(selected)
             {
                 Vector<f32> animations;
-                const Any* animations_any = ctx.get_persistent_state(Name("gui.button_group.item_animations"));
-                if(animations_any)
+                ButtonGroupAnimationState* animation_state = ctx.get_widget_state<ButtonGroupAnimationState>(id);
+                if(animation_state)
                 {
-                    const Vector<f32>* typed_animations = animations_any->as<Vector<f32>>();
-                    if(typed_animations) animations = *typed_animations;
+                    animations = animation_state->item_animations;
                 }
                 if(animations.size() != count)
                 {
@@ -127,7 +128,8 @@ namespace Luna
                             i == 0, i + 1 == count, i + 1 == count, i == 0);
                     }
                 }
-                ctx.set_persistent_state(Name("gui.button_group.item_animations"), Any(animations));
+                Ref<ButtonGroupAnimationState> next_animation_state = ctx.get_or_create_widget_state<ButtonGroupAnimationState>(id);
+                next_animation_state->item_animations = move(animations);
             }
             if(current_item && hover_item >= 0 && hover_item != *current_item)
             {

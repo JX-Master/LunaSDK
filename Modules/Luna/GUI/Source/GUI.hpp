@@ -788,10 +788,29 @@ namespace Luna
             id_t selected_tab = 0;
         };
 
-        struct ItemResult
+        struct StateRecord
         {
-            u64 generation = 0;
-            HashMap<Name, Any> states;
+            ObjRef data;
+            StateLifetime lifetime = StateLifetime::next_frame;
+            u64 last_set_generation = 0;
+        };
+
+        struct InteractionState
+        {
+            lustruct("GUI::InteractionState", "{531E33F1-5236-4E30-8FC6-71D06B8EE0B6}");
+            bool active = false;
+            bool focused = false;
+            bool pointer_down = false;
+            f64 last_click_time = -1000.0;
+            f64 last_right_click_time = -1000.0;
+        };
+
+        struct ScrollState
+        {
+            lustruct("GUI::ScrollState", "{1A6F29FC-6D16-4A44-954E-463563E26428}");
+            f32 scroll_x = 0.0f;
+            f32 scroll_y = 0.0f;
+            f32 scrollbar_opacity = 0.35f;
         };
 
         struct DragDropPayloadStorage
@@ -818,28 +837,18 @@ namespace Luna
             PopupFlag flags = PopupFlag::none;
         };
 
-        struct PersistentItemState
+        struct DockSpaceState
         {
-            bool open = true;
-            bool open_initialized = false;
-            bool active = false;
-            bool focused = false;
-            bool pointer_down = false;
-            f32 scroll_x = 0.0f;
-            f32 scroll_y = 0.0f;
-            f32 scrollbar_opacity = 0.35f;
-            HashMap<Name, Any> custom_states;
-            f32 switch_animation = 0.0f;
-            bool switch_animation_initialized = false;
-            f32 button_group_selection_animation = 0.0f;
-            bool button_group_selection_animation_initialized = false;
-            Vector<f32> button_group_item_animations;
+            lustruct("GUI::DockSpaceState", "{EF185DED-76E2-4448-A137-004051FFFD5B}");
             u32 dock_next_z_order = 1;
             HashMap<id_t, DockPanelPersistentState, IdHash> dock_panels;
             Vector<DockTreeNode> dock_nodes;
             u32 dock_root_node = U32_MAX;
-            f64 last_click_time = -1000.0;
-            f64 last_right_click_time = -1000.0;
+        };
+
+        struct InputEditState
+        {
+            lustruct("GUI::InputEditState", "{DC801B89-9DEE-4456-8036-9F8C9A7C8A8A}");
             usize text_cursor = USIZE_MAX;
             usize text_select_anchor = USIZE_MAX;
             bool text_selecting = false;
@@ -847,21 +856,41 @@ namespace Luna
             u32 numeric_edit_component = 0;
             String numeric_edit_text;
             bool numeric_editing = false;
+        };
+
+        struct TableLayoutState
+        {
+            lustruct("GUI::TableLayoutState", "{79096C88-F7D0-4EF3-9521-7800D6F70F16}");
             Vector<f32> table_column_sizes;
             Vector<f32> table_row_sizes;
+        };
+
+        struct TabBarState
+        {
+            lustruct("GUI::TabBarState", "{AEA771D2-1441-4CE9-9876-38F1787F2C49}");
             id_t tab_selected_id = 0;
             f32 tab_scroll_x = 0.0f;
             Vector<id_t> tab_order;
+        };
+
+        struct ColorEditState
+        {
+            lustruct("GUI::ColorEditState", "{A9483A32-872C-47B0-9AAF-26468F6D411F}");
             Vector<i32> color_edit_axis;
             Vector<i32> color_edit_rgb;
             Vector<i32> color_edit_hsv;
             Float4U color_edit_original = Float4U(0.0f, 0.0f, 0.0f, 1.0f);
             bool color_edit_original_valid = false;
+        };
+
+        struct PopupAnchorState
+        {
+            lustruct("GUI::PopupAnchorState", "{9BEED835-1593-4FAF-B0F7-FC753D462883}");
             Float2U popup_anchor_position = Float2U(0.0f, 0.0f);
             bool popup_anchor_valid = false;
         };
 
-        inline void ensure_color_edit_state_channels(PersistentItemState& state)
+        inline void ensure_color_edit_state_channels(ColorEditState& state)
         {
             if(state.color_edit_axis.size() != 1)
             {
@@ -878,13 +907,13 @@ namespace Luna
             }
         }
 
-        inline i32& color_edit_axis_ref(PersistentItemState& state)
+        inline i32& color_edit_axis_ref(ColorEditState& state)
         {
             ensure_color_edit_state_channels(state);
             return state.color_edit_axis[0];
         }
 
-        inline bool tab_order_contains(const PersistentItemState& state, id_t id)
+        inline bool tab_order_contains(const TabBarState& state, id_t id)
         {
             for(id_t item : state.tab_order)
             {
@@ -903,7 +932,7 @@ namespace Luna
             bool visible_tab_chosen = false;
         };
 
-        inline void input_text_selection_range(const String& value, const PersistentItemState& state, usize& out_begin, usize& out_end)
+        inline void input_text_selection_range(const String& value, const InputEditState& state, usize& out_begin, usize& out_end)
         {
             usize cursor = clamp_utf8_cursor(value, state.text_cursor);
             usize anchor = state.text_select_anchor == USIZE_MAX ? cursor : clamp_utf8_cursor(value, state.text_select_anchor);
@@ -911,7 +940,7 @@ namespace Luna
             out_end = max(cursor, anchor);
         }
 
-        inline bool input_text_has_selection(const String& value, const PersistentItemState& state)
+        inline bool input_text_has_selection(const String& value, const InputEditState& state)
         {
             usize begin = 0;
             usize end = 0;
@@ -919,7 +948,7 @@ namespace Luna
             return begin != end;
         }
 
-        inline void input_text_clear_selection(PersistentItemState& state)
+        inline void input_text_clear_selection(InputEditState& state)
         {
             state.text_select_anchor = USIZE_MAX;
             state.text_selecting = false;
@@ -1147,7 +1176,7 @@ namespace Luna
                 size);
         }
 
-        inline RectF scroll_vertical_thumb_rect(const NodeLayout& layout, const PersistentItemState& state)
+        inline RectF scroll_vertical_thumb_rect(const NodeLayout& layout, const ScrollState& state)
         {
             RectF track = scroll_vertical_track_rect(layout);
             f32 ratio = layout.scroll_content_size.y > 0.0f ? clamp(layout.scroll_viewport_size.y / layout.scroll_content_size.y, 0.0f, 1.0f) : 1.0f;
@@ -1157,7 +1186,7 @@ namespace Luna
             return RectF(track.offset_x, track.offset_y + travel * t, track.width, thumb_height);
         }
 
-        inline RectF scroll_horizontal_thumb_rect(const NodeLayout& layout, const PersistentItemState& state)
+        inline RectF scroll_horizontal_thumb_rect(const NodeLayout& layout, const ScrollState& state)
         {
             RectF track = scroll_horizontal_track_rect(layout);
             f32 ratio = layout.scroll_content_size.x > 0.0f ? clamp(layout.scroll_viewport_size.x / layout.scroll_content_size.x, 0.0f, 1.0f) : 1.0f;
@@ -1184,9 +1213,7 @@ namespace Luna
             Vector<id_t> m_id_stack;
             Vector<RectF> m_clip_stack;
             Vector<u32> m_child_ordinals;
-            HashMap<id_t, ItemResult, IdHash> m_last_results;
-            HashMap<id_t, ItemResult, IdHash> m_current_results;
-            HashMap<id_t, PersistentItemState, IdHash> m_persistent_states;
+            HashMap<id_t, StateRecord, IdHash> m_states;
             ClipboardIO m_clipboard_io;
             id_t m_active_id = 0;
             id_t m_focused_id = 0;
@@ -1284,6 +1311,10 @@ namespace Luna
             virtual void push_layer(id_t id, const Float2U& screen_position = Float2U(0.0f)) override;
             virtual void pop_layer() override;
             virtual ItemHandle add_node(Ref<Node> node, const c8* label = nullptr, bool interactive = false) override;
+            virtual u64 generation() const override;
+            virtual object_t get_state(id_t id) override;
+            virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) override;
+            virtual void clear_state(id_t id) override;
             virtual R<Description> end_build() override;
             virtual RV submit(const Description& desc) override;
             virtual void set_clipboard_io(const ClipboardIO& io) override;
@@ -1319,9 +1350,10 @@ namespace Luna
             void update_menu_hover();
             ItemHandle begin_tooltip(ItemHandle owner, const c8* label, const TooltipDesc& desc);
             void end_tooltip();
-            const Any* get_state(ItemHandle handle, const Name& key);
-            void set_state(ItemHandle handle, const Name& key, const Any& value);
-            void remove_state(ItemHandle handle, const Name& key);
+            const Any* get_item_query_state(ItemHandle handle, const Name& key);
+            void set_item_query_state(ItemHandle handle, const Name& key, const Any& value);
+            void set_item_query_state_if_absent(id_t id, const Name& key, const Any& value);
+            void remove_item_query_state(ItemHandle handle, const Name& key);
             void set_next_item_layout(const LayoutStyle& style);
             void set_next_canvas_item_layout(const CanvasItemLayout& layout);
             void set_next_table_cell_color(const Float4U& color);
@@ -1344,18 +1376,50 @@ namespace Luna
             const DragDropPayload* get_drag_drop_payload();
             const DragDropPayload* make_drag_drop_payload_view(const DragDropPayloadStorage& storage);
 
-            ItemResult* get_query_result(ItemHandle handle);
-            ItemResult& get_or_create_current_result(id_t id);
-            PersistentItemState& get_or_create_persistent_state(id_t id);
+            object_t get_state_object(id_t id) const;
+            void gc_states();
+            ItemQueryState* get_query_state(ItemHandle handle);
+            Ref<ItemQueryState> get_or_create_query_state(id_t id);
+            void touch_state(id_t id, StateLifetime lifetime = StateLifetime::next_frame);
+            template <typename T>
+            void touch_widget_state(id_t owner_id, StateLifetime lifetime = StateLifetime::next_frame)
+            {
+                touch_state(make_state_id<T>(owner_id), lifetime);
+            }
+            template <typename T>
+            T* get_widget_state(id_t owner_id) const
+            {
+                object_t obj = get_state_object(make_state_id<T>(owner_id));
+                return obj ? cast_object<T>(obj) : nullptr;
+            }
+            template <typename T>
+            Ref<T> get_or_create_widget_state(id_t owner_id, StateLifetime lifetime = StateLifetime::next_frame)
+            {
+                id_t state_id = make_state_id<T>(owner_id);
+                object_t existing = get_state_object(state_id);
+                if(existing)
+                {
+                    Ref<T> state;
+                    object_retain(existing);
+                    state.attach(existing);
+                    RV r = set_state(state_id, state.object(), lifetime);
+                    luassert_always(succeeded(r));
+                    return state;
+                }
+                Ref<T> state = new_object<T>();
+                RV r = set_state(state_id, state.object(), lifetime);
+                luassert_always(succeeded(r));
+                return state;
+            }
             Node* find_build_node(ItemHandle handle);
-            DockPanelPersistentState& get_or_create_dock_panel_state(PersistentItemState& dock_state, id_t panel_id);
-            u32 new_dock_leaf(PersistentItemState& dock_state, id_t panel_id, u32 parent = U32_MAX);
-            void dock_tree_add_panel(PersistentItemState& dock_state, id_t panel_id);
-            bool dock_tree_contains_panel(const PersistentItemState& dock_state, id_t panel_id) const;
-            bool dock_tree_remove_panel(PersistentItemState& dock_state, id_t panel_id);
-            void dock_tree_dock_panel(PersistentItemState& dock_state, id_t panel_id, u32 target_leaf, DockDropDirection direction);
-            void dock_tree_prune_missing(PersistentItemState& dock_state, const HashSet<id_t, IdHash>& live_panels);
-            id_t dock_tree_selected_panel(PersistentItemState& dock_state, u32 leaf_index);
+            DockPanelPersistentState& get_or_create_dock_panel_state(DockSpaceState& dock_state, id_t panel_id);
+            u32 new_dock_leaf(DockSpaceState& dock_state, id_t panel_id, u32 parent = U32_MAX);
+            void dock_tree_add_panel(DockSpaceState& dock_state, id_t panel_id);
+            bool dock_tree_contains_panel(const DockSpaceState& dock_state, id_t panel_id) const;
+            bool dock_tree_remove_panel(DockSpaceState& dock_state, id_t panel_id);
+            void dock_tree_dock_panel(DockSpaceState& dock_state, id_t panel_id, u32 target_leaf, DockDropDirection direction);
+            void dock_tree_prune_missing(DockSpaceState& dock_state, const HashSet<id_t, IdHash>& live_panels);
+            id_t dock_tree_selected_panel(DockSpaceState& dock_state, u32 leaf_index);
             void arrange_dock_tree_node(id_t dock_space_id, u32 node_index, const RectF& rect, const RectF& clip_rect, const HashMap<id_t, u32, IdHash>& panel_indices);
             RectF layout_layer_root_rect(u32 layer_index);
             void layout_layers();

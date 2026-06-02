@@ -33,6 +33,14 @@ namespace Luna
             LUNA_GUI_API StateKey<RectF> clip_rect() { return {Name("gui.clip_rect"), RectF(0.0f, 0.0f, 0.0f, 0.0f)}; }
         }
 
+        LUNA_GUI_API id_t make_state_id(id_t owner_id, const Guid& state_type)
+        {
+            u64 h = hash_u64(owner_id);
+            h = hash_u64(state_type.high, h);
+            h = hash_u64(state_type.low, h);
+            return h ? h : 1;
+        }
+
         LUNA_GUI_API Ref<IContext> new_context(RHI::IDevice* device)
         {
             Ref<Context> ctx = new_object<Context>();
@@ -94,6 +102,19 @@ namespace Luna
                 register_struct_type<DrawLineNode>({}, typeof<Node>());
                 register_struct_type<DrawTextNode>({}, typeof<Node>());
                 register_struct_type<DrawImageNode>({}, typeof<Node>());
+                register_struct_type<ItemQueryState>({});
+                register_struct_type<CustomState>({});
+                register_struct_type<DisclosureState>({});
+                register_struct_type<InteractionState>({});
+                register_struct_type<ScrollState>({});
+                register_struct_type<SwitchAnimationState>({});
+                register_struct_type<ButtonGroupAnimationState>({});
+                register_struct_type<DockSpaceState>({});
+                register_struct_type<InputEditState>({});
+                register_struct_type<TableLayoutState>({});
+                register_struct_type<TabBarState>({});
+                register_struct_type<ColorEditState>({});
+                register_struct_type<PopupAnchorState>({});
                 register_boxed_type<Context>();
                 impl_interface_for_type<Context, IContext>();
                 register_boxed_type<DrawList>();

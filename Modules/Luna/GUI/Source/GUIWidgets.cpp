@@ -421,6 +421,7 @@ namespace Luna
                 menu->top_level_menu = parent < ctx->m_build_desc.nodes.size() && ctx->m_build_desc.nodes[parent].is_menu_bar();
             }
             ItemHandle handle = ctx->add_node(Ref<Node>(menu), label ? label : "", enabled);
+            ctx->set_item_query_state_if_absent(handle.id, Name("gui.open"), Any(false));
             u32 menu_index = (u32)ctx->m_build_desc.nodes.size() - 1;
 
             PopupDesc popup_desc;
@@ -476,12 +477,12 @@ namespace Luna
             node->flags = flags;
             ctx->begin_container(Ref<Node>(node), label ? label : "TabBar", Size(), &handle);
 
-            PersistentItemState& state = ctx->get_or_create_persistent_state(handle.id);
+            Ref<TabBarState> state = ctx->get_or_create_widget_state<TabBarState>(handle.id);
             TabBuildScope scope;
             scope.tab_bar_id = handle.id;
-            scope.selected_id = state.tab_selected_id;
+            scope.selected_id = state->tab_selected_id;
             scope.flags = flags;
-            scope.had_existing_tabs = !state.tab_order.empty();
+            scope.had_existing_tabs = !state->tab_order.empty();
             ctx->m_tab_build_stack.push_back(scope);
             return handle;
         }
@@ -494,8 +495,8 @@ namespace Luna
             ctx->m_tab_build_stack.pop_back();
             if(!scope.visible_tab_chosen && scope.first_open_id)
             {
-                PersistentItemState& state = ctx->get_or_create_persistent_state(scope.tab_bar_id);
-                state.tab_selected_id = scope.first_open_id;
+                Ref<TabBarState> state = ctx->get_or_create_widget_state<TabBarState>(scope.tab_bar_id);
+                state->tab_selected_id = scope.first_open_id;
             }
             ctx->end_container();
         }
@@ -517,17 +518,17 @@ namespace Luna
             {
                 scope.first_open_id = handle.id;
             }
-            PersistentItemState& bar_state = ctx->get_or_create_persistent_state(scope.tab_bar_id);
+            Ref<TabBarState> bar_state = ctx->get_or_create_widget_state<TabBarState>(scope.tab_bar_id);
             bool auto_select_new = item_open &&
                 test_flags(scope.flags, TabBarFlag::auto_select_new_tabs) &&
                 scope.had_existing_tabs &&
-                !tab_order_contains(bar_state, handle.id) &&
+                !tab_order_contains(*bar_state, handle.id) &&
                 !test_flags(flags, TabItemFlag::button);
             if(item_open && (test_flags(flags, TabItemFlag::selected) || auto_select_new) &&
                 !test_flags(flags, TabItemFlag::button))
             {
                 scope.selected_id = handle.id;
-                bar_state.tab_selected_id = handle.id;
+                bar_state->tab_selected_id = handle.id;
             }
             bool explicit_selected = item_open && scope.selected_id == handle.id;
             bool visible = item_open && !test_flags(flags, TabItemFlag::button) &&
@@ -676,7 +677,9 @@ namespace Luna
         {
             Context* ctx = context_from_interface(context);
             Ref<CollapsingHeaderNode> node = new_object<CollapsingHeaderNode>();
-            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
+            ItemHandle handle = ctx->add_node(Ref<Node>(node), label ? label : "", true);
+            ctx->set_item_query_state_if_absent(handle.id, Name("gui.open"), Any(true));
+            return handle;
         }
 
         LUNA_GUI_API ItemHandle tree_node(IContext* context, const c8* label, TreeNodeFlag flags)
@@ -686,7 +689,10 @@ namespace Luna
             node->flags = flags;
             node->indent_depth = ctx->m_tree_depth;
             node->selected = test_flags(flags, TreeNodeFlag::selected);
-            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
+            ItemHandle handle = ctx->add_node(Ref<Node>(node), label ? label : "", true);
+            bool default_open = !test_flags(flags, TreeNodeFlag::leaf) && test_flags(flags, TreeNodeFlag::default_open);
+            ctx->set_item_query_state_if_absent(handle.id, Name("gui.open"), Any(default_open));
+            return handle;
         }
 
         LUNA_GUI_API ItemHandle combo(IContext* context, const c8* label, i32* current_item, Span<const c8*> items)
@@ -703,7 +709,9 @@ namespace Luna
             {
                 *current_item = clamp(*current_item, 0, (i32)node->combo_items.size() - 1);
             }
-            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
+            ItemHandle handle = ctx->add_node(Ref<Node>(node), label ? label : "", true);
+            ctx->set_item_query_state_if_absent(handle.id, Name("gui.open"), Any(false));
+            return handle;
         }
 
         LUNA_GUI_API ItemHandle button_group(IContext* context, const c8* label, i32* current_item, Span<const c8*> items)
@@ -1044,7 +1052,7 @@ namespace Luna
             return add_drag_int_node(context, label, value, 4, speed, min_value, max_value, flags);
         }
 
-        static void sync_color_edit_build_state(PersistentItemState& state, const Float4U& color)
+        static void sync_color_edit_build_state(ColorEditState& state, const Float4U& color)
         {
             ensure_color_edit_state_channels(state);
             state.color_edit_rgb[0] = (i32)color_channel_to_u8(color.x);
@@ -1108,10 +1116,10 @@ namespace Luna
             Node& node = ctx->m_build_desc.nodes[color_index];
             write_color_value(node, read_color_value(node));
 
-            PersistentItemState& color_state = ctx->get_or_create_persistent_state(handle.id);
-            color_edit_axis_ref(color_state) = clamp(color_edit_axis_ref(color_state), 0, 5);
-            ensure_color_edit_state_channels(color_state);
-            sync_color_edit_build_state(color_state, read_color_value(node));
+            Ref<ColorEditState> color_state = ctx->get_or_create_widget_state<ColorEditState>(handle.id);
+            color_edit_axis_ref(*color_state) = clamp(color_edit_axis_ref(*color_state), 0, 5);
+            ensure_color_edit_state_channels(*color_state);
+            sync_color_edit_build_state(*color_state, read_color_value(node));
 
             PopupDesc popup_desc;
             popup_desc.size = Size::fixed(476.0f, count == 4 ? 470.0f : 432.0f);
@@ -1129,30 +1137,30 @@ namespace Luna
 
             const c8* axis_items[] = { "H", "S", "V", "R", "G", "B" };
             set_next_item_layout(context, LayoutStyle::fixed_height(28.0f));
-            button_group(context, "Channel", &color_edit_axis_ref(color_state), Span<const c8*>(axis_items, 6));
+            button_group(context, "Channel", &color_edit_axis_ref(*color_state), Span<const c8*>(axis_items, 6));
 
             LayoutDesc row;
             row.gap = 6.0f;
             row.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
             set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
             begin_h_layout(context, "RGB", row);
-            add_color_channel_drag(context, "R", &color_state.color_edit_rgb[0], handle.id, ColorEditPart::rgb);
-            add_color_channel_drag(context, "G", &color_state.color_edit_rgb[1], handle.id, ColorEditPart::rgb);
-            add_color_channel_drag(context, "B", &color_state.color_edit_rgb[2], handle.id, ColorEditPart::rgb);
+            add_color_channel_drag(context, "R", &color_state->color_edit_rgb[0], handle.id, ColorEditPart::rgb);
+            add_color_channel_drag(context, "G", &color_state->color_edit_rgb[1], handle.id, ColorEditPart::rgb);
+            add_color_channel_drag(context, "B", &color_state->color_edit_rgb[2], handle.id, ColorEditPart::rgb);
             end_h_layout(context);
 
             set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
             begin_h_layout(context, "HSV", row);
-            add_color_channel_drag(context, "H", &color_state.color_edit_hsv[0], handle.id, ColorEditPart::hsv);
-            add_color_channel_drag(context, "S", &color_state.color_edit_hsv[1], handle.id, ColorEditPart::hsv);
-            add_color_channel_drag(context, "V", &color_state.color_edit_hsv[2], handle.id, ColorEditPart::hsv);
+            add_color_channel_drag(context, "H", &color_state->color_edit_hsv[0], handle.id, ColorEditPart::hsv);
+            add_color_channel_drag(context, "S", &color_state->color_edit_hsv[1], handle.id, ColorEditPart::hsv);
+            add_color_channel_drag(context, "V", &color_state->color_edit_hsv[2], handle.id, ColorEditPart::hsv);
             end_h_layout(context);
 
             if(count == 4)
             {
                 set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
                 begin_h_layout(context, "Alpha", row);
-                add_color_channel_drag(context, "A", &color_state.color_edit_rgb[3], handle.id, ColorEditPart::rgb);
+                add_color_channel_drag(context, "A", &color_state->color_edit_rgb[3], handle.id, ColorEditPart::rgb);
                 end_h_layout(context);
             }
 
@@ -1553,27 +1561,6 @@ namespace Luna
             apply_requested_size(*node, Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
             ItemHandle handle = ctx->add_node(Ref<Node>(node), label ? label : "HitBox", true);
             return handle;
-        }
-
-        LUNA_GUI_API const Any* get_item_state_any(ItemHandle handle, const Name& key)
-        {
-            if(!handle.context) return nullptr;
-            Context* ctx = (Context*)handle.context;
-            return ctx->get_state(handle, key);
-        }
-
-        LUNA_GUI_API void set_item_state_any(ItemHandle handle, const Name& key, const Any& value)
-        {
-            if(!handle.context) return;
-            Context* ctx = (Context*)handle.context;
-            ctx->set_state(handle, key, value);
-        }
-
-        LUNA_GUI_API void remove_item_state(ItemHandle handle, const Name& key)
-        {
-            if(!handle.context) return;
-            Context* ctx = (Context*)handle.context;
-            ctx->remove_state(handle, key);
         }
 
         LUNA_GUI_API bool is_item_clicked(ItemHandle handle)

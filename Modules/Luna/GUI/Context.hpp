@@ -24,6 +24,10 @@ namespace Luna
             virtual void push_layer(id_t id, const Float2U& screen_position = Float2U(0.0f)) = 0;
             virtual void pop_layer() = 0;
             virtual ItemHandle add_node(Ref<Node> node, const c8* label = nullptr, bool interactive = false) = 0;
+            virtual u64 generation() const = 0;
+            virtual object_t get_state(id_t id) = 0;
+            virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) = 0;
+            virtual void clear_state(id_t id) = 0;
             virtual R<Description> end_build() = 0;
             virtual RV submit(const Description& desc) = 0;
             virtual void set_clipboard_io(const ClipboardIO& io) = 0;

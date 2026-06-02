@@ -155,6 +155,21 @@ namespace Luna
             u64 generation = 0;
         };
 
+        enum class StateLifetime : u8
+        {
+            next_frame,
+            process,
+            persistent
+        };
+
+        LUNA_GUI_API id_t make_state_id(id_t owner_id, const Guid& state_type);
+
+        template <typename T>
+        id_t make_state_id(id_t owner_id)
+        {
+            return make_state_id(owner_id, T::__guid);
+        }
+
         template <typename T>
         struct StateKey
         {

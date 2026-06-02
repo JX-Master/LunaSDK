@@ -30,11 +30,10 @@ namespace Luna
             m_time += desc.delta_time;
             m_frame_desc = desc;
             m_submitted = false;
-            m_last_results = m_current_results;
-            m_current_results.clear();
+            ++m_generation;
+            gc_states();
             m_last_drag_drop_deliveries = m_current_drag_drop_deliveries;
             m_current_drag_drop_deliveries.clear();
-            ++m_generation;
             m_build_desc = Description();
             m_build_desc.generation = m_generation;
             m_parent_stack.clear();
@@ -184,27 +183,27 @@ namespace Luna
                 {
                     continue;
                 }
-                PersistentItemState& state = get_or_create_persistent_state(node.id);
+                Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(node.id);
                 f32 font_size = 16.0f;
                 String* string_value = node.string_value();
                 if(node.is_input_text() && string_value)
                 {
                     const RectF& rect = m_layouts[i].rect;
-                    state.text_cursor = clamp_utf8_cursor(*string_value, state.text_cursor);
+                    state->text_cursor = clamp_utf8_cursor(*string_value, state->text_cursor);
                     RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
                     ret.active = true;
                     ret.rect = text_rect;
-                    ret.cursor = (i32)(input_text_cursor_x(*string_value, state.text_cursor, font_size) + 0.5f);
+                    ret.cursor = (i32)(input_text_cursor_x(*string_value, state->text_cursor, font_size) + 0.5f);
                     return ret;
                 }
-                if(is_numeric_input_node(node) && state.numeric_editing)
+                if(is_numeric_input_node(node) && state->numeric_editing)
                 {
-                    state.text_cursor = clamp_utf8_cursor(state.numeric_edit_text, state.text_cursor);
-                    RectF component = numeric_component_rect(node, m_layouts[i].rect, state.numeric_edit_component);
+                    state->text_cursor = clamp_utf8_cursor(state->numeric_edit_text, state->text_cursor);
+                    RectF component = numeric_component_rect(node, m_layouts[i].rect, state->numeric_edit_component);
                     RectF text_rect(component.offset_x + 6.0f, component.offset_y, max(component.width - 12.0f, 1.0f), component.height);
                     ret.active = true;
                     ret.rect = text_rect;
-                    ret.cursor = (i32)(input_text_cursor_x(state.numeric_edit_text, state.text_cursor, font_size) + 0.5f);
+                    ret.cursor = (i32)(input_text_cursor_x(state->numeric_edit_text, state->text_cursor, font_size) + 0.5f);
                     return ret;
                 }
             }
@@ -531,40 +530,86 @@ namespace Luna
             m_next_dock_panel_open = open;
         }
 
-        ItemResult* Context::get_query_result(ItemHandle handle)
+        u64 Context::generation() const
+        {
+            lutsassert();
+            return m_generation;
+        }
+
+        object_t Context::get_state(id_t id)
+        {
+            lutsassert();
+            return get_state_object(id);
+        }
+
+        RV Context::set_state(id_t id, object_t data, StateLifetime lifetime)
+        {
+            lutsassert();
+            if(!id) return BasicError::bad_arguments();
+            if(!data)
+            {
+                clear_state(id);
+                return ok;
+            }
+            if(lifetime == StateLifetime::persistent)
+            {
+                lifetime = StateLifetime::process;
+            }
+            StateRecord record;
+            record.data = data;
+            record.lifetime = lifetime;
+            record.last_set_generation = m_generation;
+            m_states.insert_or_assign(id, move(record));
+            return ok;
+        }
+
+        void Context::clear_state(id_t id)
+        {
+            lutsassert();
+            m_states.erase(id);
+        }
+
+        object_t Context::get_state_object(id_t id) const
+        {
+            auto iter = m_states.find(id);
+            return iter == m_states.end() ? nullptr : iter->second.data.get();
+        }
+
+        void Context::gc_states()
+        {
+            for(auto iter = m_states.begin(); iter != m_states.end();)
+            {
+                if(iter->second.lifetime == StateLifetime::next_frame && iter->second.last_set_generation + 1 < m_generation)
+                {
+                    iter = m_states.erase(iter);
+                }
+                else
+                {
+                    ++iter;
+                }
+            }
+        }
+
+        void Context::touch_state(id_t id, StateLifetime lifetime)
+        {
+            object_t obj = get_state_object(id);
+            if(obj)
+            {
+                RV r = set_state(id, obj, lifetime);
+                luassert_always(succeeded(r));
+            }
+        }
+
+        ItemQueryState* Context::get_query_state(ItemHandle handle)
         {
             if(handle.context != get_object()) return nullptr;
-            if(m_submitted)
-            {
-                if(handle.generation != m_generation) return nullptr;
-                auto iter = m_current_results.find(handle.id);
-                return iter == m_current_results.end() ? nullptr : &iter->second;
-            }
-            auto iter = m_last_results.find(handle.id);
-            return iter == m_last_results.end() ? nullptr : &iter->second;
+            if(handle.generation != m_generation) return nullptr;
+            return get_widget_state<ItemQueryState>(handle.id);
         }
 
-        ItemResult& Context::get_or_create_current_result(id_t id)
+        Ref<ItemQueryState> Context::get_or_create_query_state(id_t id)
         {
-            auto iter = m_current_results.find(id);
-            if(iter == m_current_results.end())
-            {
-                ItemResult result;
-                result.generation = m_generation;
-                iter = m_current_results.insert(make_pair(id, move(result))).first;
-            }
-            return iter->second;
-        }
-
-        PersistentItemState& Context::get_or_create_persistent_state(id_t id)
-        {
-            auto iter = m_persistent_states.find(id);
-            if(iter == m_persistent_states.end())
-            {
-                PersistentItemState state;
-                iter = m_persistent_states.insert(make_pair(id, state)).first;
-            }
-            return iter->second;
+            return get_or_create_widget_state<ItemQueryState>(id, StateLifetime::next_frame);
         }
 
         Node* Context::find_build_node(ItemHandle handle)
@@ -577,7 +622,7 @@ namespace Luna
             return nullptr;
         }
 
-        DockPanelPersistentState& Context::get_or_create_dock_panel_state(PersistentItemState& dock_state, id_t panel_id)
+        DockPanelPersistentState& Context::get_or_create_dock_panel_state(DockSpaceState& dock_state, id_t panel_id)
         {
             auto iter = dock_state.dock_panels.find(panel_id);
             if(iter == dock_state.dock_panels.end())
@@ -588,105 +633,45 @@ namespace Luna
             return iter->second;
         }
 
-        const Any* Context::get_state(ItemHandle handle, const Name& key)
+        const Any* Context::get_item_query_state(ItemHandle handle, const Name& key)
         {
             lutsassert();
-            ItemResult* result = get_query_result(handle);
-            if(!result && !m_submitted && handle.context == get_object() && handle.generation == m_generation && key == Name("gui.open"))
+            ItemQueryState* state = get_query_state(handle);
+            if(!state) return nullptr;
+            auto iter = state->states.find(key);
+            return iter == state->states.end() ? nullptr : &iter->second;
+        }
+
+        void Context::set_item_query_state(ItemHandle handle, const Name& key, const Any& value)
+        {
+            lutsassert();
+            if(handle.context != get_object() || handle.generation != m_generation) return;
+            Ref<ItemQueryState> state = get_or_create_query_state(handle.id);
+            state->states.insert_or_assign(key, value);
+            RV r = set_state(make_state_id<ItemQueryState>(handle.id), state.object(), StateLifetime::next_frame);
+            luassert_always(succeeded(r));
+        }
+
+        void Context::set_item_query_state_if_absent(id_t id, const Name& key, const Any& value)
+        {
+            lutsassert();
+            if(!id) return;
+            Ref<ItemQueryState> state = get_or_create_query_state(id);
+            if(state->states.find(key) == state->states.end())
             {
-                for(const Node& node : m_build_desc.nodes)
-                {
-                    if(node.id != handle.id) continue;
-                    ItemResult& fallback = get_or_create_current_result(handle.id);
-                    struct BuildStateInputContext : NodeInputContext
-                    {
-                        Context* context = nullptr;
-                        ItemResult* result = nullptr;
-                        id_t node_id = 0;
-
-                        virtual Float2U pointer_position() const override
-                        {
-                            return context ? context->m_pointer_pos : Float2U(0.0f);
-                        }
-
-                        virtual RectF rect() const override
-                        {
-                            return RectF(0.0f, 0.0f, 0.0f, 0.0f);
-                        }
-
-                        virtual const Any* get_persistent_state(const Name& key) const override
-                        {
-                            if(!context || !node_id) return nullptr;
-                            PersistentItemState& state = context->get_or_create_persistent_state(node_id);
-                            auto iter = state.custom_states.find(key);
-                            return iter == state.custom_states.end() ? nullptr : &iter->second;
-                        }
-
-                        virtual void set_persistent_state(const Name& key, const Any& value) override
-                        {
-                            if(!context || !node_id) return;
-                            PersistentItemState& state = context->get_or_create_persistent_state(node_id);
-                            state.custom_states.insert_or_assign(key, value);
-                        }
-
-                        virtual void set_state(const Name& key, const Any& value) override
-                        {
-                            if(result)
-                            {
-                                result->states.insert_or_assign(key, value);
-                            }
-                        }
-
-                        virtual bool is_popup_open(id_t popup_id) const override
-                        {
-                            return context && popup_id ? context->is_popup_open(popup_id) : false;
-                        }
-
-                        virtual bool is_combo_open(id_t combo_id) const override
-                        {
-                            if(!context || !combo_id || context->m_open_combo_id != combo_id)
-                            {
-                                return false;
-                            }
-                            PersistentItemState& state = context->get_or_create_persistent_state(combo_id);
-                            return state.open;
-                        }
-
-                        virtual void open_combo_dropdown(id_t combo_id) override {}
-                        virtual void close_combo_dropdown(id_t combo_id) override {}
-                        virtual void open_menu_popup(id_t menu_id) override {}
-                        virtual void close_popup(id_t popup_id) override {}
-                        virtual void close_all_popups() override {}
-                    };
-                    BuildStateInputContext node_context;
-                    node_context.context = this;
-                    node_context.result = &fallback;
-                    node_context.node_id = node.id;
-                    node.update_state(node_context);
-                    result = &fallback;
-                    break;
-                }
+                state->states.insert(make_pair(key, value));
             }
-            if(!result) return nullptr;
-            auto iter = result->states.find(key);
-            return iter == result->states.end() ? nullptr : &iter->second;
         }
 
-        void Context::set_state(ItemHandle handle, const Name& key, const Any& value)
+        void Context::remove_item_query_state(ItemHandle handle, const Name& key)
         {
             lutsassert();
-            if(handle.context != get_object()) return;
-            ItemResult& result = get_or_create_current_result(handle.id);
-            result.states.insert_or_assign(key, value);
-        }
-
-        void Context::remove_state(ItemHandle handle, const Name& key)
-        {
-            lutsassert();
-            if(handle.context != get_object()) return;
-            auto iter = m_current_results.find(handle.id);
-            if(iter == m_current_results.end()) return;
-            iter->second.states.erase(key);
+            if(handle.context != get_object() || handle.generation != m_generation) return;
+            ItemQueryState* state = get_widget_state<ItemQueryState>(handle.id);
+            if(state)
+            {
+                state->states.erase(key);
+            }
         }
 
         void Context::set_next_item_layout(const LayoutStyle& style)

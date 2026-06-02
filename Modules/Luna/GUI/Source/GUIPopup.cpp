@@ -74,12 +74,14 @@ namespace Luna
 
         id_t Context::current_clicked_item_id() const
         {
-            for(const auto& item : m_current_results)
+            for(const Node& node : m_submitted_desc.nodes)
             {
-                auto iter = item.second.states.find(Name("gui.clicked"));
-                if(iter == item.second.states.end()) continue;
+                const ItemQueryState* state = get_widget_state<ItemQueryState>(node.id);
+                if(!state) continue;
+                auto iter = state->states.find(Name("gui.clicked"));
+                if(iter == state->states.end()) continue;
                 const bool* clicked = iter->second.as<bool>();
-                if(clicked && *clicked) return item.first;
+                if(clicked && *clicked) return node.id;
             }
             return 0;
         }
@@ -132,10 +134,8 @@ namespace Luna
             for(usize i = index; i < m_open_popup_stack.size(); ++i)
             {
                 id_t id = m_open_popup_stack[i].id;
-                PersistentItemState& persistent = get_or_create_persistent_state(id);
-                persistent.open = false;
-                ItemResult& result = get_or_create_current_result(id);
-                result.states.insert_or_assign(Name("gui.open"), Any(false));
+                get_or_create_widget_state<DisclosureState>(id)->open = false;
+                get_or_create_query_state(id)->states.insert_or_assign(Name("gui.open"), Any(false));
             }
             m_open_popup_stack.erase(m_open_popup_stack.begin() + index, m_open_popup_stack.end());
             m_layout_dirty = true;
@@ -169,8 +169,7 @@ namespace Luna
                 }
                 m_open_popup_stack[i].parent_id = node.popup_parent();
                 m_open_popup_stack[i].flags = node.get_popup_flags();
-                PersistentItemState& persistent = get_or_create_persistent_state(node.id);
-                persistent.open = true;
+                get_or_create_widget_state<DisclosureState>(node.id)->open = true;
                 ++i;
             }
         }
@@ -208,10 +207,8 @@ namespace Luna
             if(existing >= 0)
             {
                 close_popup_stack_from((usize)existing + 1);
-                PersistentItemState& persistent = get_or_create_persistent_state(popup.id);
-                persistent.open = true;
-                ItemResult& result = get_or_create_current_result(popup.id);
-                result.states.insert_or_assign(Name("gui.open"), Any(true));
+                get_or_create_widget_state<DisclosureState>(popup.id)->open = true;
+                get_or_create_query_state(popup.id)->states.insert_or_assign(Name("gui.open"), Any(true));
                 if(opener_id)
                 {
                     m_open_popup_stack[(usize)existing].opener_id = opener_id;
@@ -249,10 +246,8 @@ namespace Luna
             entry.opener_id = opener_id;
             entry.flags = flags;
             m_open_popup_stack.push_back(entry);
-            PersistentItemState& persistent = get_or_create_persistent_state(popup.id);
-            persistent.open = true;
-            ItemResult& result = get_or_create_current_result(popup.id);
-            result.states.insert_or_assign(Name("gui.open"), Any(true));
+            get_or_create_widget_state<DisclosureState>(popup.id)->open = true;
+            get_or_create_query_state(popup.id)->states.insert_or_assign(Name("gui.open"), Any(true));
             m_layout_dirty = true;
         }
 
@@ -267,10 +262,8 @@ namespace Luna
             }
             else
             {
-                PersistentItemState& persistent = get_or_create_persistent_state(popup.id);
-                persistent.open = false;
-                ItemResult& result = get_or_create_current_result(popup.id);
-                result.states.insert_or_assign(Name("gui.open"), Any(false));
+                get_or_create_widget_state<DisclosureState>(popup.id)->open = false;
+                get_or_create_query_state(popup.id)->states.insert_or_assign(Name("gui.open"), Any(false));
             }
         }
 
