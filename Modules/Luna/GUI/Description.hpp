@@ -225,10 +225,6 @@ namespace Luna
             {
                 return false;
             }
-            virtual bool accepts_top_level_menus() const
-            {
-                return false;
-            }
             virtual NumericValueKind numeric_value_kind() const
             {
                 return NumericValueKind::none;

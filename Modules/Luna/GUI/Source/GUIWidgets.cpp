@@ -15,6 +15,11 @@ namespace Luna
 {
     namespace GUI
     {
+        static bool is_menu_bar_node(const Node& node)
+        {
+            return node.type_guid() == MenuBarNode::__guid;
+        }
+
         LUNA_GUI_API void push_id(IContext* context, u64 id)
         {
             context_from_interface(context)->push_id(id);
@@ -418,7 +423,7 @@ namespace Luna
             if(!ctx->m_parent_stack.empty() && ctx->m_parent_stack.back() != U32_MAX)
             {
                 u32 parent = ctx->m_parent_stack.back();
-                menu->top_level_menu = parent < ctx->m_build_desc.nodes.size() && ctx->m_build_desc.nodes[parent].accepts_top_level_menus();
+                menu->top_level_menu = parent < ctx->m_build_desc.nodes.size() && is_menu_bar_node(ctx->m_build_desc.nodes[parent]);
             }
             ItemHandle handle = ctx->add_node(Ref<Node>(menu), label ? label : "", enabled);
             ctx->set_item_query_state_if_absent(handle.id, Name("gui.open"), Any(false));

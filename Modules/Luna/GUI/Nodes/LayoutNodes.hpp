@@ -116,7 +116,6 @@ namespace Luna
             MenuBarNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool accepts_top_level_menus() const override;
             virtual NodeLayoutFlow layout_flow() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;

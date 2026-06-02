@@ -26,6 +26,11 @@ namespace Luna
             return count;
         }
 
+        static bool is_menu_bar_node(const Node& node)
+        {
+            return node.type_guid() == MenuBarNode::__guid;
+        }
+
         static u32 grid_row_count(u32 child_count, u32 columns)
         {
             columns = max(columns, 1u);
@@ -1282,7 +1287,7 @@ namespace Luna
                 {
                     const Node& owner = m_submitted_desc.nodes[owner_index];
                     const RectF& owner_rect = m_layouts[owner_index].rect;
-                    bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].accepts_top_level_menus();
+                    bool owner_in_menu_bar = owner.parent != U32_MAX && is_menu_bar_node(m_submitted_desc.nodes[owner.parent]);
                     width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
                     height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
                     PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(node.id);
@@ -1520,7 +1525,7 @@ namespace Luna
                         {
                             const Node& owner = m_submitted_desc.nodes[owner_index];
                             const RectF& owner_rect = m_layouts[owner_index].rect;
-                            bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].accepts_top_level_menus();
+                            bool owner_in_menu_bar = owner.parent != U32_MAX && is_menu_bar_node(m_submitted_desc.nodes[owner.parent]);
                             width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
                             height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
                             PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(child_node.id);

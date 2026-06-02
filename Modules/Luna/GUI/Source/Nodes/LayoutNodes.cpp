@@ -288,11 +288,6 @@ namespace Luna
             return new_object<MenuBarNode>(*this);
         }
 
-        bool MenuBarNode::accepts_top_level_menus() const
-        {
-            return true;
-        }
-
         NodeLayoutFlow MenuBarNode::layout_flow() const
         {
             return NodeLayoutFlow::horizontal;
