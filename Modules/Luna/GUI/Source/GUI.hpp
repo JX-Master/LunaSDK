@@ -1172,6 +1172,93 @@ namespace Luna
             f32 scrollbar_opacity = 0.35f;
         };
 
+        struct NumericInteractionState
+        {
+            lustruct("GUI::NumericInteractionState", "{14494B92-C943-49E6-85EA-7CC0AAE026D0}");
+            u32 active_float_component = U32_MAX;
+            Float2U active_numeric_start_pos = Float2U(0.0f);
+            bool active_numeric_defer_until_drag = false;
+        };
+
+        struct ColorPickerInteractionState
+        {
+            lustruct("GUI::ColorPickerInteractionState", "{E8F4622D-7EBF-46FE-9689-FA7AE1C3CC37}");
+            u32 active_color_part = 0;
+        };
+
+        struct TableResizeInteractionState
+        {
+            lustruct("GUI::TableResizeInteractionState", "{1ADB536C-7F49-48A7-9363-0616CACED450}");
+            id_t active_table_resize_id = 0;
+            bool active_table_resize_column = false;
+            u32 active_table_resize_index = U32_MAX;
+        };
+
+        struct ScrollbarInteractionState
+        {
+            lustruct("GUI::ScrollbarInteractionState", "{52DC17A8-55C6-4873-88A9-F9132874C22D}");
+            id_t active_scrollbar_id = 0;
+            bool active_scrollbar_vertical = false;
+            f32 active_scrollbar_grab_offset = 0.0f;
+        };
+
+        struct DockInteractionState
+        {
+            lustruct("GUI::DockInteractionState", "{778DB35B-0546-4610-916F-842DCD36818B}");
+            id_t active_dock_space_id = 0;
+            id_t active_dock_panel_id = 0;
+            bool active_dock_panel_resize = false;
+            bool active_dock_panel_close = false;
+            bool active_dock_panel_was_floating = false;
+            bool active_dock_panel_title_drag = false;
+            bool active_dock_panel_undocked = false;
+            id_t active_dock_panel_resize_neighbor_id = 0;
+            Float2U active_dock_panel_grab_offset = Float2U(0.0f);
+            RectF active_dock_panel_start_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF active_dock_panel_restore_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF active_dock_panel_start_title_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            f32 active_dock_panel_start_neighbor_height = 0.0f;
+            id_t active_dock_split_space_id = 0;
+            u32 active_dock_split_node = U32_MAX;
+            DockSplitAxis active_dock_split_axis = DockSplitAxis::x;
+            f32 active_dock_split_start_ratio = 0.5f;
+            Float2U active_dock_split_start_pos = Float2U(0.0f);
+        };
+
+        struct TabInteractionState
+        {
+            lustruct("GUI::TabInteractionState", "{DF073278-FA77-4C3B-B33C-36B74AF9EBEE}");
+            id_t active_tab_bar_id = 0;
+            id_t active_tab_item_id = 0;
+            bool active_tab_close = false;
+            bool active_tab_reorder_allowed = false;
+            bool active_tab_reordering = false;
+            Float2U active_tab_start_pos = Float2U(0.0f);
+            id_t active_tab_scroll_id = 0;
+            bool active_tab_scroll_left = false;
+        };
+
+        struct TooltipInteractionState
+        {
+            lustruct("GUI::TooltipInteractionState", "{6FA7C420-CA7E-487C-BFB3-247792931FD7}");
+            id_t tooltip_hovered_id = 0;
+            f64 tooltip_hover_start = 0.0;
+        };
+
+        struct BuildHintState
+        {
+            lustruct("GUI::BuildHintState", "{B11BEC18-AD1E-4A26-8462-F13D9D65AB76}");
+            bool has_next_item_layout = false;
+            LayoutStyle next_item_layout;
+            bool has_next_canvas_item_layout = false;
+            CanvasItemLayout next_canvas_item_layout;
+            bool has_next_table_cell_color = false;
+            Float4U next_table_cell_color = Float4U(0.0f);
+            bool has_next_dock_panel_style = false;
+            DockPanelStyle next_dock_panel_style;
+            bool* next_dock_panel_open = nullptr;
+        };
+
         struct DragDropPayloadStorage
         {
             Name type;
@@ -1188,12 +1275,85 @@ namespace Luna
             Name type;
         };
 
+        struct DragDropManager
+        {
+            id_t candidate_source_id = 0;
+            Name candidate_type;
+            Float2U start_pos = Float2U(0.0f);
+            bool active = false;
+            bool payload_set = false;
+            bool preview_built = false;
+            id_t source_id = 0;
+            Name type;
+            Vector<byte_t> payload_data;
+            HashMap<id_t, DragDropPayloadStorage, IdHash> last_deliveries;
+            HashMap<id_t, DragDropPayloadStorage, IdHash> current_deliveries;
+            Vector<DragDropTargetScope> target_stack;
+            DragDropPayload payload_view;
+
+            void begin_frame()
+            {
+                last_deliveries = current_deliveries;
+                current_deliveries.clear();
+                preview_built = false;
+                target_stack.clear();
+                if(active)
+                {
+                    payload_set = false;
+                    payload_data.clear();
+                }
+            }
+
+            void start(id_t source, const Name& payload_type)
+            {
+                active = true;
+                source_id = source;
+                type = payload_type;
+                payload_set = false;
+                payload_data.clear();
+            }
+
+            void clear()
+            {
+                candidate_source_id = 0;
+                candidate_type.reset();
+                active = false;
+                payload_set = false;
+                source_id = 0;
+                type.reset();
+                payload_data.clear();
+            }
+
+            void set_payload(const void* data, usize data_size)
+            {
+                payload_data.resize(data_size);
+                if(data_size && data)
+                {
+                    memcpy(payload_data.data(), data, data_size);
+                }
+                payload_set = true;
+            }
+        };
+
         struct PopupStackEntry
         {
             id_t id = 0;
             id_t parent_id = 0;
             id_t opener_id = 0;
             PopupFlag flags = PopupFlag::none;
+        };
+
+        struct PopupStackManager
+        {
+            Vector<PopupStackEntry> open_stack;
+            Vector<id_t> build_stack;
+            HashMap<id_t, u32, IdHash> node_indices;
+            id_t next_opener_id = 0;
+
+            void begin_frame()
+            {
+                build_stack.clear();
+            }
         };
 
         struct DockSpaceState
@@ -1296,6 +1456,12 @@ namespace Luna
             TabBarFlag flags = TabBarFlag::none;
             bool had_existing_tabs = false;
             bool visible_tab_chosen = false;
+        };
+
+        struct TabBuildState
+        {
+            lustruct("GUI::TabBuildState", "{9BC38163-D6FD-436F-8087-637E952960A4}");
+            Vector<TabBuildScope> stack;
         };
 
         inline void input_text_selection_range(const String& value, const InputEditState& state, usize& out_begin, usize& out_end)
@@ -1587,75 +1753,12 @@ namespace Luna
             Float2U m_pointer_pos = Float2U(0.0f);
             Float2U m_pointer_delta = Float2U(0.0f);
             bool m_pointer_inside = false;
-            u32 m_active_float_component = U32_MAX;
-            Float2U m_active_numeric_start_pos = Float2U(0.0f);
-            bool m_active_numeric_defer_until_drag = false;
-            u32 m_active_color_part = 0;
             bool m_submitted = false;
-            bool m_has_next_item_layout = false;
-            LayoutStyle m_next_item_layout;
-            bool m_has_next_canvas_item_layout = false;
-            CanvasItemLayout m_next_canvas_item_layout;
-            bool m_has_next_table_cell_color = false;
-            Float4U m_next_table_cell_color = Float4U(0.0f);
-            bool m_has_next_dock_panel_style = false;
-            DockPanelStyle m_next_dock_panel_style;
-            bool* m_next_dock_panel_open = nullptr;
-            Vector<TabBuildScope> m_tab_build_stack;
             id_t m_last_item_id = 0;
             u32 m_tree_depth = 0;
             bool m_layout_dirty = false;
-            id_t m_active_table_resize_id = 0;
-            bool m_active_table_resize_column = false;
-            u32 m_active_table_resize_index = U32_MAX;
-            id_t m_active_scrollbar_id = 0;
-            bool m_active_scrollbar_vertical = false;
-            f32 m_active_scrollbar_grab_offset = 0.0f;
-            id_t m_active_dock_space_id = 0;
-            id_t m_active_dock_panel_id = 0;
-            bool m_active_dock_panel_resize = false;
-            bool m_active_dock_panel_close = false;
-            bool m_active_dock_panel_was_floating = false;
-            bool m_active_dock_panel_title_drag = false;
-            bool m_active_dock_panel_undocked = false;
-            id_t m_active_dock_panel_resize_neighbor_id = 0;
-            Float2U m_active_dock_panel_grab_offset = Float2U(0.0f);
-            RectF m_active_dock_panel_start_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-            RectF m_active_dock_panel_restore_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-            RectF m_active_dock_panel_start_title_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-            f32 m_active_dock_panel_start_neighbor_height = 0.0f;
-            id_t m_active_dock_split_space_id = 0;
-            u32 m_active_dock_split_node = U32_MAX;
-            DockSplitAxis m_active_dock_split_axis = DockSplitAxis::x;
-            f32 m_active_dock_split_start_ratio = 0.5f;
-            Float2U m_active_dock_split_start_pos = Float2U(0.0f);
-            Vector<PopupStackEntry> m_open_popup_stack;
-            Vector<id_t> m_popup_build_stack;
-            HashMap<id_t, u32, IdHash> m_popup_node_indices;
-            id_t m_next_popup_opener_id = 0;
-            id_t m_active_tab_bar_id = 0;
-            id_t m_active_tab_item_id = 0;
-            bool m_active_tab_close = false;
-            bool m_active_tab_reorder_allowed = false;
-            bool m_active_tab_reordering = false;
-            Float2U m_active_tab_start_pos = Float2U(0.0f);
-            id_t m_active_tab_scroll_id = 0;
-            bool m_active_tab_scroll_left = false;
-            id_t m_drag_drop_candidate_source_id = 0;
-            Name m_drag_drop_candidate_type;
-            Float2U m_drag_drop_start_pos = Float2U(0.0f);
-            bool m_drag_drop_active = false;
-            bool m_drag_drop_payload_set = false;
-            bool m_drag_drop_preview_built = false;
-            id_t m_drag_drop_source_id = 0;
-            Name m_drag_drop_type;
-            Vector<byte_t> m_drag_drop_payload_data;
-            HashMap<id_t, DragDropPayloadStorage, IdHash> m_last_drag_drop_deliveries;
-            HashMap<id_t, DragDropPayloadStorage, IdHash> m_current_drag_drop_deliveries;
-            Vector<DragDropTargetScope> m_drag_drop_target_stack;
-            DragDropPayload m_drag_drop_payload_view;
-            id_t m_tooltip_hovered_id = 0;
-            f64 m_tooltip_hover_start = 0.0;
+            PopupStackManager m_popup_stack;
+            DragDropManager m_drag_drop;
             bool m_pointer_button_down[5] = {};
             bool m_key_down[256] = {};
             KeyModifierFlag m_key_modifiers = KeyModifierFlag::none;
@@ -1751,6 +1854,34 @@ namespace Luna
             {
                 touch_state(make_state_id<T>(owner_id), lifetime);
             }
+            template <typename T>
+            T& get_or_create_context_state(StateLifetime lifetime = StateLifetime::process)
+            {
+                return *get_or_create_widget_state<T>(0, lifetime);
+            }
+            template <typename T>
+            const T& get_context_state() const
+            {
+                static T default_state;
+                T* state = get_widget_state<T>(0);
+                return state ? *state : default_state;
+            }
+            NumericInteractionState& numeric_interaction_state() { return get_or_create_context_state<NumericInteractionState>(); }
+            const NumericInteractionState& numeric_interaction_state() const { return get_context_state<NumericInteractionState>(); }
+            ColorPickerInteractionState& color_picker_interaction_state() { return get_or_create_context_state<ColorPickerInteractionState>(); }
+            const ColorPickerInteractionState& color_picker_interaction_state() const { return get_context_state<ColorPickerInteractionState>(); }
+            TableResizeInteractionState& table_resize_interaction_state() { return get_or_create_context_state<TableResizeInteractionState>(); }
+            const TableResizeInteractionState& table_resize_interaction_state() const { return get_context_state<TableResizeInteractionState>(); }
+            ScrollbarInteractionState& scrollbar_interaction_state() { return get_or_create_context_state<ScrollbarInteractionState>(); }
+            const ScrollbarInteractionState& scrollbar_interaction_state() const { return get_context_state<ScrollbarInteractionState>(); }
+            DockInteractionState& dock_interaction_state() { return get_or_create_context_state<DockInteractionState>(); }
+            const DockInteractionState& dock_interaction_state() const { return get_context_state<DockInteractionState>(); }
+            TabInteractionState& tab_interaction_state() { return get_or_create_context_state<TabInteractionState>(); }
+            const TabInteractionState& tab_interaction_state() const { return get_context_state<TabInteractionState>(); }
+            TooltipInteractionState& tooltip_interaction_state() { return get_or_create_context_state<TooltipInteractionState>(); }
+            const TooltipInteractionState& tooltip_interaction_state() const { return get_context_state<TooltipInteractionState>(); }
+            BuildHintState& build_hint_state() { return get_or_create_context_state<BuildHintState>(StateLifetime::current_frame); }
+            TabBuildState& tab_build_state() { return get_or_create_context_state<TabBuildState>(StateLifetime::current_frame); }
             template <typename T>
             T* get_widget_state(id_t owner_id) const
             {

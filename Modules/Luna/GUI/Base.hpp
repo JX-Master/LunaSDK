@@ -157,6 +157,7 @@ namespace Luna
 
         enum class StateLifetime : u8
         {
+            current_frame,
             next_frame,
             process,
             persistent

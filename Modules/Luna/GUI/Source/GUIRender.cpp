@@ -450,7 +450,7 @@ namespace Luna
                     hovered = true;
                 }
             }
-            bool active = m_active_scrollbar_id == node.id;
+            bool active = scrollbar_interaction_state().active_scrollbar_id == node.id;
             f32 target_opacity = (hovered || active) ? 0.92f : 0.35f;
             f32 blend = clamp(m_frame_desc.delta_time * 12.0f, 0.0f, 1.0f);
             state.scrollbar_opacity += (target_opacity - state.scrollbar_opacity) * blend;
@@ -478,13 +478,13 @@ namespace Luna
 
         void Context::render_drag_drop_overlay()
         {
-            if(!m_drag_drop_active || !m_drag_drop_type || m_layouts.size() != m_submitted_desc.nodes.size()) return;
+            if(!m_drag_drop.active || !m_drag_drop.type || m_layouts.size() != m_submitted_desc.nodes.size()) return;
             RectF surface_clip(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
-            id_t hovered_target = hit_test_drag_drop_target(m_drag_drop_type, m_pointer_pos);
+            id_t hovered_target = hit_test_drag_drop_target(m_drag_drop.type, m_pointer_pos);
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& node = m_submitted_desc.nodes[i];
-                if(!contains_name(node.drag_drop_target_types, m_drag_drop_type) || node.id == m_drag_drop_source_id) continue;
+                if(!contains_name(node.drag_drop_target_types, m_drag_drop.type) || node.id == m_drag_drop.source_id) continue;
                 const NodeLayout& layout = m_layouts[i];
                 if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
                 RectF rect = layout.rect;
@@ -503,10 +503,10 @@ namespace Luna
                 render_line_segment(Float2U(l, b), Float2U(l, t), clip, color, width);
             }
 
-            if(!m_drag_drop_preview_built)
+            if(!m_drag_drop.preview_built)
             {
-                const c8* type_name = m_drag_drop_type.c_str();
-                f32 width = max((f32)m_drag_drop_type.size() * 8.0f + 84.0f, 132.0f);
+                const c8* type_name = m_drag_drop.type.c_str();
+                f32 width = max((f32)m_drag_drop.type.size() * 8.0f + 84.0f, 132.0f);
                 RectF rect(
                     min(m_pointer_pos.x + 14.0f, max(m_frame_desc.surface_size.x - width - 8.0f, 0.0f)),
                     min(m_pointer_pos.y + 18.0f, max(m_frame_desc.surface_size.y - 34.0f, 0.0f)),
@@ -584,7 +584,7 @@ namespace Luna
             auto render_button = [&](const RectF& rect, bool left) {
                 bool enabled = left ? state.tab_scroll_x > 0.5f : state.tab_scroll_x < layout.tab_scroll_max - 0.5f;
                 bool hovered = enabled && m_pointer_inside && point_in_rect(m_pointer_pos, rect);
-                bool active = enabled && m_active_tab_scroll_id == node.id && m_active_tab_scroll_left == left;
+                bool active = enabled && tab_interaction_state().active_tab_scroll_id == node.id && tab_interaction_state().active_tab_scroll_left == left;
                 Float4U color = !enabled ? Float4U(0.09f, 0.10f, 0.12f, 0.82f) :
                     (active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
                         (hovered ? Float4U(0.18f, 0.25f, 0.35f, 1.0f) : Float4U(0.11f, 0.14f, 0.19f, 0.95f)));
@@ -615,7 +615,7 @@ namespace Luna
             const DockPanelStyle& style = layout.dock_panel_style;
             const RectF& panel_rect = layout.dock_panel_rect;
             const RectF& clip = layout.dock_panel_clip_rect;
-            bool active = node.id == m_active_dock_panel_id || node.id == m_focused_id;
+            bool active = node.id == dock_interaction_state().active_dock_panel_id || node.id == m_focused_id;
             render_rect(panel_rect, clip, style.background_color, 5.0f);
             if(style.title_bar)
             {
@@ -680,7 +680,7 @@ namespace Luna
             else if(style.resize_border && layout.dock_panel_resize_rect.width > 0.0f && layout.dock_panel_resize_rect.height > 0.0f)
             {
                 RectF r = layout.dock_panel_resize_rect;
-                Float4U color = (m_pointer_inside && point_in_rect(m_pointer_pos, r)) || node.id == m_active_dock_panel_id ?
+                Float4U color = (m_pointer_inside && point_in_rect(m_pointer_pos, r)) || node.id == dock_interaction_state().active_dock_panel_id ?
                     Float4U(0.55f, 0.68f, 0.86f, 1.0f) :
                     Float4U(0.30f, 0.35f, 0.42f, 0.85f);
                 f32 y = r.offset_y + r.height * 0.5f;
@@ -690,14 +690,14 @@ namespace Luna
 
         void Context::render_dock_preview()
         {
-            if(!m_active_dock_panel_id || !m_active_dock_panel_title_drag) return;
-            DockPanelPersistentState* panel_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_id);
+            if(!dock_interaction_state().active_dock_panel_id || !dock_interaction_state().active_dock_panel_title_drag) return;
+            DockPanelPersistentState* panel_state = find_dock_panel_state(dock_interaction_state().active_dock_space_id, dock_interaction_state().active_dock_panel_id);
             if(!panel_state || panel_state->mode != DockPanelMode::floating) return;
 
             id_t target_space_id = 0;
             u32 target_leaf = U32_MAX;
             DockDropDirection direction = DockDropDirection::none;
-            if(!find_dock_drop_target(m_active_dock_panel_id, m_pointer_pos, target_space_id, target_leaf, direction)) return;
+            if(!find_dock_drop_target(dock_interaction_state().active_dock_panel_id, m_pointer_pos, target_space_id, target_leaf, direction)) return;
             RectF target_rect(0.0f, 0.0f, 0.0f, 0.0f);
             bool empty_dock_space = target_leaf == U32_MAX;
             if(empty_dock_space)
@@ -994,7 +994,7 @@ namespace Luna
                     i32* i32_values = binding->i32_value;
                     f32 value = numeric_value_f32(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
                     RectF component_rect = numeric_component_rect(node, rect, i);
-                    bool active_component = active && (m_active_float_component == U32_MAX || m_active_float_component == i);
+                    bool active_component = active && (numeric_interaction_state().active_float_component == U32_MAX || numeric_interaction_state().active_float_component == i);
                     f32 denom = max(binding->max_value - binding->min_value, 0.0001f);
                     f32 t = clamp((value - binding->min_value) / denom, 0.0f, 1.0f);
                     f32 track_pad = min(8.0f, component_rect.width * 0.20f);
@@ -1036,7 +1036,7 @@ namespace Luna
                         i == 1 ? value : 0.10f,
                         i == 2 ? value : 0.10f,
                         1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f);
-                    bool active_component = active && (!numeric_node(node) || m_active_float_component == U32_MAX || m_active_float_component == i);
+                    bool active_component = active && (!numeric_node(node) || numeric_interaction_state().active_float_component == U32_MAX || numeric_interaction_state().active_float_component == i);
                     render_rect(component_rect, clip, (active_component || editing_component) ? Float4U(0.18f, 0.29f, 0.44f, 1.0f) : bg, 4.0f);
                     if(!editing_component && numeric_drag(node) && binding->max_value > binding->min_value)
                     {
@@ -1109,7 +1109,7 @@ namespace Luna
                             stack.push_back(dock_node.child0);
                             if(dock_node.split_rect.width <= 0.0f || dock_node.split_rect.height <= 0.0f) continue;
                             bool hovered_splitter = m_pointer_inside && point_in_rect(m_pointer_pos, dock_node.split_rect);
-                            bool active_splitter = m_active_dock_split_space_id == node.id && m_active_dock_split_node == dock_node_index;
+                            bool active_splitter = dock_interaction_state().active_dock_split_space_id == node.id && dock_interaction_state().active_dock_split_node == dock_node_index;
                             Float4U splitter_color = active_splitter ? Float4U(0.36f, 0.58f, 0.90f, 1.0f) :
                                 (hovered_splitter ? Float4U(0.28f, 0.42f, 0.62f, 0.95f) : Float4U(0.11f, 0.14f, 0.18f, 0.90f));
                             render_rect(dock_node.split_rect, clip, splitter_color, 0.0f);

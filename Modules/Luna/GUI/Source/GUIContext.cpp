@@ -32,8 +32,7 @@ namespace Luna
             m_submitted = false;
             ++m_generation;
             gc_states();
-            m_last_drag_drop_deliveries = m_current_drag_drop_deliveries;
-            m_current_drag_drop_deliveries.clear();
+            m_drag_drop.begin_frame();
             m_build_desc = Description();
             m_build_desc.generation = m_generation;
             m_parent_stack.clear();
@@ -41,19 +40,16 @@ namespace Luna
             m_id_stack.clear();
             m_clip_stack.clear();
             m_child_ordinals.clear();
-            m_has_next_dock_panel_style = false;
-            m_next_dock_panel_open = nullptr;
-            m_tab_build_stack.clear();
-            m_popup_build_stack.clear();
+            BuildHintState& build_hints = build_hint_state();
+            build_hints.has_next_item_layout = false;
+            build_hints.has_next_canvas_item_layout = false;
+            build_hints.has_next_table_cell_color = false;
+            build_hints.has_next_dock_panel_style = false;
+            build_hints.next_dock_panel_open = nullptr;
+            tab_build_state().stack.clear();
+            m_popup_stack.begin_frame();
             m_last_item_id = 0;
             m_tree_depth = 0;
-            m_drag_drop_preview_built = false;
-            m_drag_drop_target_stack.clear();
-            if(m_drag_drop_active)
-            {
-                m_drag_drop_payload_set = false;
-                m_drag_drop_payload_data.clear();
-            }
 
             Layer default_layer;
             default_layer.id = 1;
@@ -260,10 +256,10 @@ namespace Luna
                 node.has_user_clip_rect = true;
                 node.user_clip_rect = m_clip_stack.back();
             }
-            if(m_has_next_item_layout)
+            if(build_hint_state().has_next_item_layout)
             {
-                node.layout_style = m_next_item_layout;
-                m_has_next_item_layout = false;
+                node.layout_style = build_hint_state().next_item_layout;
+                build_hint_state().has_next_item_layout = false;
             }
 
             u32 index = (u32)m_build_desc.nodes.size();
@@ -273,10 +269,10 @@ namespace Luna
             if(layer_root)
             {
                 m_build_desc.layers[layer_index].root = index;
-                m_has_next_canvas_item_layout = false;
-                m_has_next_table_cell_color = false;
-                m_has_next_dock_panel_style = false;
-                m_next_dock_panel_open = nullptr;
+                build_hint_state().has_next_canvas_item_layout = false;
+                build_hint_state().has_next_table_cell_color = false;
+                build_hint_state().has_next_dock_panel_style = false;
+                build_hint_state().next_dock_panel_open = nullptr;
             }
             else
             {
@@ -291,30 +287,30 @@ namespace Luna
                 }
                 parent_node.last_child = index;
 
-                if(m_has_next_canvas_item_layout)
+                if(build_hint_state().has_next_canvas_item_layout)
                 {
                     if(CanvasLayoutNode* canvas = canvas_layout_node(parent_node))
                     {
-                        canvas->item_attachments.push_back(CanvasItemAttachment{index, m_build_desc.nodes[index].id, m_next_canvas_item_layout});
+                        canvas->item_attachments.push_back(CanvasItemAttachment{index, m_build_desc.nodes[index].id, build_hint_state().next_canvas_item_layout});
                     }
-                    m_has_next_canvas_item_layout = false;
+                    build_hint_state().has_next_canvas_item_layout = false;
                 }
-                if(m_has_next_table_cell_color)
+                if(build_hint_state().has_next_table_cell_color)
                 {
                     if(TableLayoutNode* table = table_layout_node(parent_node))
                     {
-                        table->cell_attachments.push_back(TableCellAttachment{index, m_build_desc.nodes[index].id, m_next_table_cell_color});
+                        table->cell_attachments.push_back(TableCellAttachment{index, m_build_desc.nodes[index].id, build_hint_state().next_table_cell_color});
                     }
-                    m_has_next_table_cell_color = false;
+                    build_hint_state().has_next_table_cell_color = false;
                 }
-                if(m_has_next_dock_panel_style)
+                if(build_hint_state().has_next_dock_panel_style)
                 {
                     if(DockSpaceNode* dock_space = cast_node<DockSpaceNode>(parent_node))
                     {
-                        dock_space->panel_attachments.push_back(DockPanelAttachment{index, m_build_desc.nodes[index].id, m_next_dock_panel_style, m_next_dock_panel_open});
+                        dock_space->panel_attachments.push_back(DockPanelAttachment{index, m_build_desc.nodes[index].id, build_hint_state().next_dock_panel_style, build_hint_state().next_dock_panel_open});
                     }
-                    m_has_next_dock_panel_style = false;
-                    m_next_dock_panel_open = nullptr;
+                    build_hint_state().has_next_dock_panel_style = false;
+                    build_hint_state().next_dock_panel_open = nullptr;
                 }
             }
 
@@ -412,12 +408,12 @@ namespace Luna
             {
                 node->drag_drop_source_types.push_back(payload_type);
             }
-            if(!m_drag_drop_active || m_drag_drop_source_id != source.id || m_drag_drop_type != payload_type)
+            if(!m_drag_drop.active || m_drag_drop.source_id != source.id || m_drag_drop.type != payload_type)
             {
                 return false;
             }
 
-            m_drag_drop_preview_built = true;
+            m_drag_drop.preview_built = true;
             ItemHandle preview;
             Float2U preview_pos(
                 min(m_pointer_pos.x + 14.0f, max(m_frame_desc.surface_size.x - 8.0f, 0.0f)),
@@ -435,13 +431,8 @@ namespace Luna
         void Context::set_drag_drop_payload(const void* data, usize data_size)
         {
             lutsassert();
-            if(!m_drag_drop_active) return;
-            m_drag_drop_payload_data.resize(data_size);
-            if(data_size && data)
-            {
-                memcpy(m_drag_drop_payload_data.data(), data, data_size);
-            }
-            m_drag_drop_payload_set = true;
+            if(!m_drag_drop.active) return;
+            m_drag_drop.set_payload(data, data_size);
         }
 
         void Context::end_drag_drop_source()
@@ -461,26 +452,26 @@ namespace Luna
             {
                 node->drag_drop_target_types.push_back(payload_type);
             }
-            if(!m_drag_drop_active || m_drag_drop_type != payload_type)
+            if(!m_drag_drop.active || m_drag_drop.type != payload_type)
             {
                 return false;
             }
-            m_drag_drop_target_stack.push_back({target, payload_type});
+            m_drag_drop.target_stack.push_back({target, payload_type});
             return true;
         }
 
         const DragDropPayload* Context::accept_drag_drop_payload(const Name& payload_type)
         {
             lutsassert();
-            if(m_drag_drop_target_stack.empty()) return nullptr;
-            return accept_drag_drop_payload(m_drag_drop_target_stack.back().target, payload_type);
+            if(m_drag_drop.target_stack.empty()) return nullptr;
+            return accept_drag_drop_payload(m_drag_drop.target_stack.back().target, payload_type);
         }
 
         const DragDropPayload* Context::accept_drag_drop_payload(ItemHandle target, const Name& payload_type)
         {
             lutsassert();
             if(!payload_type || target.context != get_object()) return nullptr;
-            const HashMap<id_t, DragDropPayloadStorage, IdHash>& deliveries = m_submitted ? m_current_drag_drop_deliveries : m_last_drag_drop_deliveries;
+            const HashMap<id_t, DragDropPayloadStorage, IdHash>& deliveries = m_submitted ? m_drag_drop.current_deliveries : m_drag_drop.last_deliveries;
             auto iter = deliveries.find(target.id);
             if(iter == deliveries.end() || iter->second.type != payload_type) return nullptr;
             return make_drag_drop_payload_view(iter->second);
@@ -489,50 +480,50 @@ namespace Luna
         void Context::end_drag_drop_target()
         {
             lutsassert();
-            if(!m_drag_drop_target_stack.empty())
+            if(!m_drag_drop.target_stack.empty())
             {
-                m_drag_drop_target_stack.pop_back();
+                m_drag_drop.target_stack.pop_back();
             }
         }
 
         bool Context::is_drag_drop_active() const
         {
             lutsassert();
-            return m_drag_drop_active;
+            return m_drag_drop.active;
         }
 
         const DragDropPayload* Context::get_drag_drop_payload()
         {
             lutsassert();
-            if(!m_drag_drop_active) return nullptr;
-            m_drag_drop_payload_view.type = m_drag_drop_type;
-            m_drag_drop_payload_view.data = m_drag_drop_payload_data.empty() ? nullptr : m_drag_drop_payload_data.data();
-            m_drag_drop_payload_view.data_size = m_drag_drop_payload_data.size();
-            m_drag_drop_payload_view.source = ItemHandle{get_object(), m_drag_drop_source_id, m_generation};
-            m_drag_drop_payload_view.target = ItemHandle();
-            m_drag_drop_payload_view.preview = true;
-            m_drag_drop_payload_view.delivery = false;
-            return &m_drag_drop_payload_view;
+            if(!m_drag_drop.active) return nullptr;
+            m_drag_drop.payload_view.type = m_drag_drop.type;
+            m_drag_drop.payload_view.data = m_drag_drop.payload_data.empty() ? nullptr : m_drag_drop.payload_data.data();
+            m_drag_drop.payload_view.data_size = m_drag_drop.payload_data.size();
+            m_drag_drop.payload_view.source = ItemHandle{get_object(), m_drag_drop.source_id, m_generation};
+            m_drag_drop.payload_view.target = ItemHandle();
+            m_drag_drop.payload_view.preview = true;
+            m_drag_drop.payload_view.delivery = false;
+            return &m_drag_drop.payload_view;
         }
 
         const DragDropPayload* Context::make_drag_drop_payload_view(const DragDropPayloadStorage& storage)
         {
-            m_drag_drop_payload_view.type = storage.type;
-            m_drag_drop_payload_view.data = storage.data.empty() ? nullptr : storage.data.data();
-            m_drag_drop_payload_view.data_size = storage.data.size();
-            m_drag_drop_payload_view.source = storage.source;
-            m_drag_drop_payload_view.target = storage.target;
-            m_drag_drop_payload_view.preview = storage.preview;
-            m_drag_drop_payload_view.delivery = storage.delivery;
-            return &m_drag_drop_payload_view;
+            m_drag_drop.payload_view.type = storage.type;
+            m_drag_drop.payload_view.data = storage.data.empty() ? nullptr : storage.data.data();
+            m_drag_drop.payload_view.data_size = storage.data.size();
+            m_drag_drop.payload_view.source = storage.source;
+            m_drag_drop.payload_view.target = storage.target;
+            m_drag_drop.payload_view.preview = storage.preview;
+            m_drag_drop.payload_view.delivery = storage.delivery;
+            return &m_drag_drop.payload_view;
         }
 
         void Context::set_next_dock_panel_style(const DockPanelStyle& style, bool* open)
         {
             lutsassert();
-            m_has_next_dock_panel_style = true;
-            m_next_dock_panel_style = style;
-            m_next_dock_panel_open = open;
+            build_hint_state().has_next_dock_panel_style = true;
+            build_hint_state().next_dock_panel_style = style;
+            build_hint_state().next_dock_panel_open = open;
         }
 
         u64 Context::generation() const
@@ -584,7 +575,16 @@ namespace Luna
         {
             for(auto iter = m_states.begin(); iter != m_states.end();)
             {
-                if(iter->second.lifetime == StateLifetime::next_frame && iter->second.last_set_generation + 1 < m_generation)
+                bool expired = false;
+                if(iter->second.lifetime == StateLifetime::current_frame)
+                {
+                    expired = iter->second.last_set_generation < m_generation;
+                }
+                else if(iter->second.lifetime == StateLifetime::next_frame)
+                {
+                    expired = iter->second.last_set_generation + 1 < m_generation;
+                }
+                if(expired)
                 {
                     iter = m_states.erase(iter);
                 }
@@ -682,22 +682,22 @@ namespace Luna
         void Context::set_next_item_layout(const LayoutStyle& style)
         {
             lutsassert();
-            m_next_item_layout = style;
-            m_has_next_item_layout = true;
+            build_hint_state().next_item_layout = style;
+            build_hint_state().has_next_item_layout = true;
         }
 
         void Context::set_next_canvas_item_layout(const CanvasItemLayout& layout)
         {
             lutsassert();
-            m_next_canvas_item_layout = layout;
-            m_has_next_canvas_item_layout = true;
+            build_hint_state().next_canvas_item_layout = layout;
+            build_hint_state().has_next_canvas_item_layout = true;
         }
 
         void Context::set_next_table_cell_color(const Float4U& color)
         {
             lutsassert();
-            m_next_table_cell_color = color;
-            m_has_next_table_cell_color = true;
+            build_hint_state().next_table_cell_color = color;
+            build_hint_state().has_next_table_cell_color = true;
         }
     }
 }

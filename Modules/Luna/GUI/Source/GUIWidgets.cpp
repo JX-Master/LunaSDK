@@ -488,16 +488,16 @@ namespace Luna
             scope.selected_id = state->tab_selected_id;
             scope.flags = flags;
             scope.had_existing_tabs = !state->tab_order.empty();
-            ctx->m_tab_build_stack.push_back(scope);
+            ctx->tab_build_state().stack.push_back(scope);
             return handle;
         }
 
         LUNA_GUI_API void end_tab_bar(IContext* context)
         {
             Context* ctx = context_from_interface(context);
-            luassert(!ctx->m_tab_build_stack.empty());
-            TabBuildScope scope = ctx->m_tab_build_stack.back();
-            ctx->m_tab_build_stack.pop_back();
+            luassert(!ctx->tab_build_state().stack.empty());
+            TabBuildScope scope = ctx->tab_build_state().stack.back();
+            ctx->tab_build_state().stack.pop_back();
             if(!scope.visible_tab_chosen && scope.first_open_id)
             {
                 Ref<TabBarState> state = ctx->get_or_create_widget_state<TabBarState>(scope.tab_bar_id);
@@ -509,7 +509,7 @@ namespace Luna
         LUNA_GUI_API bool begin_tab_item(IContext* context, const c8* label, bool* open, TabItemFlag flags)
         {
             Context* ctx = context_from_interface(context);
-            luassert(!ctx->m_tab_build_stack.empty());
+            luassert(!ctx->tab_build_state().stack.empty());
             Ref<TabItemNode> tab_node = new_object<TabItemNode>();
             tab_node->open = open;
             tab_node->flags = flags;
@@ -518,7 +518,7 @@ namespace Luna
             Node& node = ctx->m_build_desc.nodes[index];
             bool item_open = !open || *open;
 
-            TabBuildScope& scope = ctx->m_tab_build_stack.back();
+            TabBuildScope& scope = ctx->tab_build_state().stack.back();
             if(item_open && !scope.first_open_id)
             {
                 scope.first_open_id = handle.id;

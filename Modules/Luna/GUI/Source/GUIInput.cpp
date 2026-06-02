@@ -282,16 +282,16 @@ namespace Luna
 
         void Context::update_table_resize_from_pointer(const Float2U& pos)
         {
-            if(!m_active_table_resize_id || m_active_table_resize_index == U32_MAX) return;
+            if(!table_resize_interaction_state().active_table_resize_id || table_resize_interaction_state().active_table_resize_index == U32_MAX) return;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 Node& node = m_submitted_desc.nodes[i];
-                if(node.id != m_active_table_resize_id || !table_layout(node)) continue;
+                if(node.id != table_resize_interaction_state().active_table_resize_id || !table_layout(node)) continue;
                 NodeLayout& layout = m_layouts[i];
                 Ref<TableLayoutState> persistent = get_or_create_widget_state<TableLayoutState>(node.id);
-                if(m_active_table_resize_column)
+                if(table_resize_interaction_state().active_table_resize_column)
                 {
-                    u32 col = m_active_table_resize_index;
+                    u32 col = table_resize_interaction_state().active_table_resize_index;
                     if(col >= layout.table_column_offsets.size()) return;
                     if(persistent->table_column_sizes.size() <= col)
                     {
@@ -301,7 +301,7 @@ namespace Luna
                 }
                 else
                 {
-                    u32 row = m_active_table_resize_index;
+                    u32 row = table_resize_interaction_state().active_table_resize_index;
                     if(row >= layout.table_row_offsets.size()) return;
                     if(persistent->table_row_sizes.size() <= row)
                     {
@@ -505,16 +505,16 @@ namespace Luna
 
         void Context::update_dock_splitter_from_pointer(const Float2U& pos)
         {
-            if(!m_active_dock_split_space_id || m_active_dock_split_node == U32_MAX) return;
-            Ref<DockSpaceState> dock_state = get_or_create_widget_state<DockSpaceState>(m_active_dock_split_space_id);
-            if(m_active_dock_split_node >= dock_state->dock_nodes.size()) return;
-            DockTreeNode& tree_node = dock_state->dock_nodes[m_active_dock_split_node];
+            if(!dock_interaction_state().active_dock_split_space_id || dock_interaction_state().active_dock_split_node == U32_MAX) return;
+            Ref<DockSpaceState> dock_state = get_or_create_widget_state<DockSpaceState>(dock_interaction_state().active_dock_split_space_id);
+            if(dock_interaction_state().active_dock_split_node >= dock_state->dock_nodes.size()) return;
+            DockTreeNode& tree_node = dock_state->dock_nodes[dock_interaction_state().active_dock_split_node];
             if(!tree_node.split) return;
             f32 splitter_size = dock_panel_splitter_size();
             f32 axis_size = tree_node.split_axis == DockSplitAxis::x ? tree_node.rect.width : tree_node.rect.height;
             f32 available = max(axis_size - splitter_size, 1.0f);
-            f32 delta = tree_node.split_axis == DockSplitAxis::x ? pos.x - m_active_dock_split_start_pos.x : pos.y - m_active_dock_split_start_pos.y;
-            f32 ratio = m_active_dock_split_start_ratio + delta / available;
+            f32 delta = tree_node.split_axis == DockSplitAxis::x ? pos.x - dock_interaction_state().active_dock_split_start_pos.x : pos.y - dock_interaction_state().active_dock_split_start_pos.y;
+            f32 ratio = dock_interaction_state().active_dock_split_start_ratio + delta / available;
             tree_node.split_ratio = clamp(ratio, 0.08f, 0.92f);
             m_layout_dirty = true;
         }
@@ -587,13 +587,13 @@ namespace Luna
 
         void Context::update_dock_panel_from_pointer(const Float2U& pos)
         {
-            if(!m_active_dock_space_id || !m_active_dock_panel_id) return;
-            DockPanelPersistentState* panel_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_id);
+            if(!dock_interaction_state().active_dock_space_id || !dock_interaction_state().active_dock_panel_id) return;
+            DockPanelPersistentState* panel_state = find_dock_panel_state(dock_interaction_state().active_dock_space_id, dock_interaction_state().active_dock_panel_id);
             if(!panel_state) return;
-            if(m_active_dock_panel_close) return;
-            if(m_active_dock_panel_title_drag && !m_active_dock_panel_was_floating && !m_active_dock_panel_undocked)
+            if(dock_interaction_state().active_dock_panel_close) return;
+            if(dock_interaction_state().active_dock_panel_title_drag && !dock_interaction_state().active_dock_panel_was_floating && !dock_interaction_state().active_dock_panel_undocked)
             {
-                RectF release_rect = m_active_dock_panel_start_title_rect;
+                RectF release_rect = dock_interaction_state().active_dock_panel_start_title_rect;
                 release_rect.offset_x -= 8.0f;
                 release_rect.offset_y -= 8.0f;
                 release_rect.width += 16.0f;
@@ -602,39 +602,39 @@ namespace Luna
                 {
                     return;
                 }
-                Ref<DockSpaceState> dock_state = get_or_create_widget_state<DockSpaceState>(m_active_dock_space_id);
-                dock_tree_remove_panel(*dock_state, m_active_dock_panel_id);
+                Ref<DockSpaceState> dock_state = get_or_create_widget_state<DockSpaceState>(dock_interaction_state().active_dock_space_id);
+                dock_tree_remove_panel(*dock_state, dock_interaction_state().active_dock_panel_id);
                 panel_state->mode = DockPanelMode::floating;
-                panel_state->rect = m_active_dock_panel_restore_rect;
+                panel_state->rect = dock_interaction_state().active_dock_panel_restore_rect;
                 panel_state->rect.width = max(panel_state->rect.width, 1.0f);
                 panel_state->rect.height = max(panel_state->rect.height, 1.0f);
                 panel_state->z_order = dock_state->dock_next_z_order++;
-                m_active_dock_panel_start_rect = panel_state->rect;
-                m_active_dock_panel_grab_offset.x = clamp(m_active_dock_panel_grab_offset.x, 8.0f, max(panel_state->rect.width - 8.0f, 8.0f));
-                m_active_dock_panel_grab_offset.y = clamp(m_active_dock_panel_grab_offset.y, 4.0f, max(panel_state->rect.height - 4.0f, 4.0f));
-                m_active_dock_panel_undocked = true;
+                dock_interaction_state().active_dock_panel_start_rect = panel_state->rect;
+                dock_interaction_state().active_dock_panel_grab_offset.x = clamp(dock_interaction_state().active_dock_panel_grab_offset.x, 8.0f, max(panel_state->rect.width - 8.0f, 8.0f));
+                dock_interaction_state().active_dock_panel_grab_offset.y = clamp(dock_interaction_state().active_dock_panel_grab_offset.y, 4.0f, max(panel_state->rect.height - 4.0f, 4.0f));
+                dock_interaction_state().active_dock_panel_undocked = true;
             }
-            if(m_active_dock_panel_resize && !m_active_dock_panel_was_floating)
+            if(dock_interaction_state().active_dock_panel_resize && !dock_interaction_state().active_dock_panel_was_floating)
             {
-                DockPanelPersistentState* neighbor_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_resize_neighbor_id);
+                DockPanelPersistentState* neighbor_state = find_dock_panel_state(dock_interaction_state().active_dock_space_id, dock_interaction_state().active_dock_panel_resize_neighbor_id);
                 if(!neighbor_state) return;
                 f32 active_min_height = 32.0f;
                 f32 neighbor_min_height = 32.0f;
                 for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                 {
                     const Node& node = m_submitted_desc.nodes[i];
-                    if(node.id == m_active_dock_panel_id)
+                    if(node.id == dock_interaction_state().active_dock_panel_id)
                     {
                         active_min_height = dock_panel_min_height(m_layouts[i].dock_panel_style);
                     }
-                    else if(node.id == m_active_dock_panel_resize_neighbor_id)
+                    else if(node.id == dock_interaction_state().active_dock_panel_resize_neighbor_id)
                     {
                         neighbor_min_height = dock_panel_min_height(m_layouts[i].dock_panel_style);
                     }
                 }
-                f32 total_height = max(m_active_dock_panel_start_rect.height + m_active_dock_panel_start_neighbor_height, 1.0f);
-                f32 delta = pos.y - (m_active_dock_panel_start_rect.offset_y + m_active_dock_panel_start_rect.height);
-                f32 active_height = m_active_dock_panel_start_rect.height + delta;
+                f32 total_height = max(dock_interaction_state().active_dock_panel_start_rect.height + dock_interaction_state().active_dock_panel_start_neighbor_height, 1.0f);
+                f32 delta = pos.y - (dock_interaction_state().active_dock_panel_start_rect.offset_y + dock_interaction_state().active_dock_panel_start_rect.height);
+                f32 active_height = dock_interaction_state().active_dock_panel_start_rect.height + delta;
                 if(total_height <= active_min_height + neighbor_min_height)
                 {
                     active_height = total_height * active_min_height / max(active_min_height + neighbor_min_height, 1.0f);
@@ -650,29 +650,29 @@ namespace Luna
             }
 
             panel_state->mode = DockPanelMode::floating;
-            if(m_active_dock_panel_resize)
+            if(dock_interaction_state().active_dock_panel_resize)
             {
                 f32 min_width = 1.0f;
                 f32 min_height = 1.0f;
                 for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                 {
-                    if(m_submitted_desc.nodes[i].id == m_active_dock_panel_id)
+                    if(m_submitted_desc.nodes[i].id == dock_interaction_state().active_dock_panel_id)
                     {
                         min_width = max(m_layouts[i].dock_panel_style.min_floating_size.x, 1.0f);
                         min_height = dock_panel_min_height(m_layouts[i].dock_panel_style);
                         break;
                     }
                 }
-                panel_state->rect = m_active_dock_panel_start_rect;
-                panel_state->rect.width = max(pos.x - m_active_dock_panel_start_rect.offset_x, min_width);
-                panel_state->rect.height = max(pos.y - m_active_dock_panel_start_rect.offset_y, min_height);
+                panel_state->rect = dock_interaction_state().active_dock_panel_start_rect;
+                panel_state->rect.width = max(pos.x - dock_interaction_state().active_dock_panel_start_rect.offset_x, min_width);
+                panel_state->rect.height = max(pos.y - dock_interaction_state().active_dock_panel_start_rect.offset_y, min_height);
             }
-            else if(!m_active_dock_panel_close)
+            else if(!dock_interaction_state().active_dock_panel_close)
             {
-                panel_state->rect.offset_x = pos.x - m_active_dock_panel_grab_offset.x;
-                panel_state->rect.offset_y = pos.y - m_active_dock_panel_grab_offset.y;
-                panel_state->rect.width = m_active_dock_panel_start_rect.width;
-                panel_state->rect.height = m_active_dock_panel_start_rect.height;
+                panel_state->rect.offset_x = pos.x - dock_interaction_state().active_dock_panel_grab_offset.x;
+                panel_state->rect.offset_y = pos.y - dock_interaction_state().active_dock_panel_grab_offset.y;
+                panel_state->rect.width = dock_interaction_state().active_dock_panel_start_rect.width;
+                panel_state->rect.height = dock_interaction_state().active_dock_panel_start_rect.height;
             }
             m_layout_dirty = true;
         }
@@ -737,21 +737,21 @@ namespace Luna
 
         void Context::update_scrollbar_from_pointer(const Float2U& pos)
         {
-            if(!m_active_scrollbar_id || m_layouts.size() != m_submitted_desc.nodes.size()) return;
+            if(!scrollbar_interaction_state().active_scrollbar_id || m_layouts.size() != m_submitted_desc.nodes.size()) return;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& node = m_submitted_desc.nodes[i];
-                if(node.id != m_active_scrollbar_id || !scroll_layout(node)) continue;
+                if(node.id != scrollbar_interaction_state().active_scrollbar_id || !scroll_layout(node)) continue;
                 const NodeLayout& layout = m_layouts[i];
                 Ref<ScrollState> state = get_or_create_widget_state<ScrollState>(node.id);
                 f32 old_scroll_x = state->scroll_x;
                 f32 old_scroll_y = state->scroll_y;
-                if(m_active_scrollbar_vertical)
+                if(scrollbar_interaction_state().active_scrollbar_vertical)
                 {
                     RectF thumb = scroll_vertical_thumb_rect(layout, *state);
                     RectF track = scroll_vertical_track_rect(layout);
                     f32 travel = max(track.height - thumb.height, 0.0f);
-                    f32 t = travel > 0.0f ? (pos.y - track.offset_y - m_active_scrollbar_grab_offset) / travel : 0.0f;
+                    f32 t = travel > 0.0f ? (pos.y - track.offset_y - scrollbar_interaction_state().active_scrollbar_grab_offset) / travel : 0.0f;
                     state->scroll_y = clamp(t, 0.0f, 1.0f) * scroll_max_y(layout);
                 }
                 else
@@ -759,7 +759,7 @@ namespace Luna
                     RectF thumb = scroll_horizontal_thumb_rect(layout, *state);
                     RectF track = scroll_horizontal_track_rect(layout);
                     f32 travel = max(track.width - thumb.width, 0.0f);
-                    f32 t = travel > 0.0f ? (pos.x - track.offset_x - m_active_scrollbar_grab_offset) / travel : 0.0f;
+                    f32 t = travel > 0.0f ? (pos.x - track.offset_x - scrollbar_interaction_state().active_scrollbar_grab_offset) / travel : 0.0f;
                     state->scroll_x = clamp(t, 0.0f, 1.0f) * scroll_max_x(layout);
                 }
                 clamp_scroll_state(node.id);
@@ -957,7 +957,7 @@ namespace Luna
             Node* menu = find_node(menu_id);
             MenuItemNode* item = menu ? menu_item_node(*menu) : nullptr;
             if(!menu || !item || !item->enabled || !item->popup_id) return;
-            m_next_popup_opener_id = menu_id;
+            m_popup_stack.next_opener_id = menu_id;
             open_popup(ItemHandle{get_object(), item->popup_id, m_generation});
             Ref<ItemQueryState> result = get_or_create_query_state(menu->id);
             result->states.insert_or_assign(Name("gui.open"), Any(true));
@@ -965,7 +965,7 @@ namespace Luna
 
         void Context::update_menu_hover()
         {
-            if(m_open_popup_stack.empty()) return;
+            if(m_popup_stack.open_stack.empty()) return;
             i32 popup_level = popup_level_at_pos(m_pointer_pos);
             Node* hovered = m_hovered_id ? find_node(m_hovered_id) : nullptr;
             MenuItemNode* hovered_menu = hovered ? menu_item_node(*hovered) : nullptr;
@@ -975,7 +975,7 @@ namespace Luna
                 open_menu_popup(hovered->id);
                 return;
             }
-            if(popup_level >= 0 && (usize)popup_level + 1 < m_open_popup_stack.size())
+            if(popup_level >= 0 && (usize)popup_level + 1 < m_popup_stack.open_stack.size())
             {
                 close_popup_stack_from((usize)popup_level + 1);
             }
@@ -1152,7 +1152,7 @@ namespace Luna
                     const Node& node = m_submitted_desc.nodes[i];
                     if(node.layer != layer_index) continue;
                     if(!contains_name(node.drag_drop_target_types, type)) continue;
-                    if(node.id == m_drag_drop_source_id) continue;
+                    if(node.id == m_drag_drop.source_id) continue;
                     const NodeLayout& layout = m_layouts[i];
                     if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
                     if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
@@ -1171,37 +1171,27 @@ namespace Luna
         void Context::start_drag_drop(id_t source_id, const Name& type)
         {
             if(!source_id || !type) return;
-            m_drag_drop_active = true;
-            m_drag_drop_source_id = source_id;
-            m_drag_drop_type = type;
-            m_drag_drop_payload_set = false;
-            m_drag_drop_payload_data.clear();
+            m_drag_drop.start(source_id, type);
             Ref<ItemQueryState> result = get_or_create_query_state(source_id);
             result->states.insert_or_assign(Name("gui.active"), Any(true));
         }
 
         void Context::clear_drag_drop()
         {
-            m_drag_drop_candidate_source_id = 0;
-            m_drag_drop_candidate_type.reset();
-            m_drag_drop_active = false;
-            m_drag_drop_payload_set = false;
-            m_drag_drop_source_id = 0;
-            m_drag_drop_type.reset();
-            m_drag_drop_payload_data.clear();
+            m_drag_drop.clear();
         }
 
         void Context::deliver_drag_drop_payload(id_t target_id)
         {
-            if(!m_drag_drop_active || !target_id || !m_drag_drop_payload_set) return;
+            if(!m_drag_drop.active || !target_id || !m_drag_drop.payload_set) return;
             DragDropPayloadStorage storage;
-            storage.type = m_drag_drop_type;
-            storage.data = m_drag_drop_payload_data;
-            storage.source = ItemHandle{get_object(), m_drag_drop_source_id, m_generation};
+            storage.type = m_drag_drop.type;
+            storage.data = m_drag_drop.payload_data;
+            storage.source = ItemHandle{get_object(), m_drag_drop.source_id, m_generation};
             storage.target = ItemHandle{get_object(), target_id, m_generation};
             storage.preview = true;
             storage.delivery = true;
-            m_current_drag_drop_deliveries.insert_or_assign(target_id, move(storage));
+            m_drag_drop.current_deliveries.insert_or_assign(target_id, move(storage));
             Ref<ItemQueryState> result = get_or_create_query_state(target_id);
             result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
             result->states.insert_or_assign(Name("gui.drag_drop_delivered"), Any(true));
@@ -1313,7 +1303,7 @@ namespace Luna
                 }
             }
             Ref<ColorPickerState> state = get_or_create_widget_state<ColorPickerState>(owner_id);
-            if(m_active_color_part == 3)
+            if(color_picker_interaction_state().active_color_part == 3)
             {
                 if(state->color_picker_original_valid)
                 {
@@ -1329,13 +1319,13 @@ namespace Luna
             f32 bar = 0.0f;
             i32 axis = color_picker_axis_ref(*state);
             color_picker_channels_from_color(axis, color, x, y, bar);
-            if(m_active_color_part == 1)
+            if(color_picker_interaction_state().active_color_part == 1)
             {
                 RectF square = color_picker_square_rect(rect);
                 x = clamp((pos.x - square.offset_x) / max(square.width, 1.0f), 0.0f, 1.0f);
                 y = 1.0f - clamp((pos.y - square.offset_y) / max(square.height, 1.0f), 0.0f, 1.0f);
             }
-            else if(m_active_color_part == 2)
+            else if(color_picker_interaction_state().active_color_part == 2)
             {
                 RectF bar_rect = color_picker_bar_rect(rect);
                 f32 bar_t = clamp((pos.y - bar_rect.offset_y) / max(bar_rect.height, 1.0f), 0.0f, 1.0f);
@@ -1393,9 +1383,9 @@ namespace Luna
             f32 value_area_w = max(rect.width - label_w - 8.0f, 1.0f);
             f32 component_w = max((value_area_w - gap * (f32)(value_count - 1)) / (f32)value_count, 1.0f);
             u32 component = hit_test_numeric_component(*node, rect, pos);
-            if(m_active_id == id && m_active_float_component != U32_MAX)
+            if(m_active_id == id && numeric_interaction_state().active_float_component != U32_MAX)
             {
-                component = min(m_active_float_component, value_count - 1);
+                component = min(numeric_interaction_state().active_float_component, value_count - 1);
             }
             f32 component_x = value_area_x + (component_w + gap) * (f32)component;
             f32 new_value = numeric_value_f32(*node) ? f32_values[component] : (f32)i32_values[component];
@@ -1588,46 +1578,46 @@ namespace Luna
                     Float2U old_pos = m_pointer_pos;
                     m_pointer_inside = true;
                     update_pointer_position(e.position);
-                    if(m_drag_drop_candidate_source_id && !m_drag_drop_active)
+                    if(m_drag_drop.candidate_source_id && !m_drag_drop.active)
                     {
-                        f32 dx = e.position.x - m_drag_drop_start_pos.x;
-                        f32 dy = e.position.y - m_drag_drop_start_pos.y;
+                        f32 dx = e.position.x - m_drag_drop.start_pos.x;
+                        f32 dy = e.position.y - m_drag_drop.start_pos.y;
                         if(dx * dx + dy * dy >= 16.0f)
                         {
-                            start_drag_drop(m_drag_drop_candidate_source_id, m_drag_drop_candidate_type);
+                            start_drag_drop(m_drag_drop.candidate_source_id, m_drag_drop.candidate_type);
                         }
                     }
-                    if(m_active_dock_split_space_id)
+                    if(dock_interaction_state().active_dock_split_space_id)
                     {
                         update_dock_splitter_from_pointer(e.position);
                     }
-                    else if(m_active_dock_panel_id)
+                    else if(dock_interaction_state().active_dock_panel_id)
                     {
                         update_dock_panel_from_pointer(e.position);
                     }
-                    else if(m_active_scrollbar_id)
+                    else if(scrollbar_interaction_state().active_scrollbar_id)
                     {
                         update_scrollbar_from_pointer(e.position);
                     }
-                    else if(m_active_table_resize_id)
+                    else if(table_resize_interaction_state().active_table_resize_id)
                     {
                         update_table_resize_from_pointer(e.position);
                     }
-                    else if(m_active_tab_scroll_id)
+                    else if(tab_interaction_state().active_tab_scroll_id)
                     {
                     }
-                    else if(m_active_tab_item_id)
+                    else if(tab_interaction_state().active_tab_item_id)
                     {
-                        if(m_active_tab_reorder_allowed)
+                        if(tab_interaction_state().active_tab_reorder_allowed)
                         {
-                            f32 dx = e.position.x - m_active_tab_start_pos.x;
-                            f32 dy = e.position.y - m_active_tab_start_pos.y;
-                            if(!m_active_tab_reordering && dx * dx + dy * dy >= 16.0f)
+                            f32 dx = e.position.x - tab_interaction_state().active_tab_start_pos.x;
+                            f32 dy = e.position.y - tab_interaction_state().active_tab_start_pos.y;
+                            if(!tab_interaction_state().active_tab_reordering && dx * dx + dy * dy >= 16.0f)
                             {
-                                m_active_tab_reordering = true;
-                                select_tab_item(m_active_tab_bar_id, m_active_tab_item_id);
+                                tab_interaction_state().active_tab_reordering = true;
+                                select_tab_item(tab_interaction_state().active_tab_bar_id, tab_interaction_state().active_tab_item_id);
                             }
-                            if(m_active_tab_reordering && reorder_tab_item_from_pointer(m_active_tab_bar_id, m_active_tab_item_id, e.position))
+                            if(tab_interaction_state().active_tab_reordering && reorder_tab_item_from_pointer(tab_interaction_state().active_tab_bar_id, tab_interaction_state().active_tab_item_id, e.position))
                             {
                                 m_layout_dirty = true;
                             }
@@ -1644,14 +1634,14 @@ namespace Luna
                         {
                             update_input_text_selection_from_pointer(m_active_id, e.position);
                             update_numeric_text_selection_from_pointer(m_active_id, e.position);
-                            if(m_active_numeric_defer_until_drag)
+                            if(numeric_interaction_state().active_numeric_defer_until_drag)
                             {
-                                f32 dx = e.position.x - m_active_numeric_start_pos.x;
-                                f32 dy = e.position.y - m_active_numeric_start_pos.y;
+                                f32 dx = e.position.x - numeric_interaction_state().active_numeric_start_pos.x;
+                                f32 dy = e.position.y - numeric_interaction_state().active_numeric_start_pos.y;
                                 if(dx * dx + dy * dy >= 16.0f)
                                 {
-                                    Float2U start_pos = m_active_numeric_start_pos;
-                                    m_active_numeric_defer_until_drag = false;
+                                    Float2U start_pos = numeric_interaction_state().active_numeric_start_pos;
+                                    numeric_interaction_state().active_numeric_defer_until_drag = false;
                                     update_numeric_node_from_pointer(m_active_id, e.position, &start_pos);
                                 }
                             }
@@ -1670,9 +1660,9 @@ namespace Luna
                     {
                         m_pointer_button_down[(u32)e.button] = true;
                     }
-                    m_active_float_component = U32_MAX;
-                    m_active_numeric_defer_until_drag = false;
-                    m_active_color_part = 0;
+                    numeric_interaction_state().active_float_component = U32_MAX;
+                    numeric_interaction_state().active_numeric_defer_until_drag = false;
+                    color_picker_interaction_state().active_color_part = 0;
                     id_t old_focused_id = m_focused_id;
                     if(close_popups_for_pointer_down(e.position))
                     {
@@ -1681,9 +1671,9 @@ namespace Luna
                             clear_text_edit_state_for_id(old_focused_id);
                         }
                         m_active_id = 0;
-                        m_active_float_component = U32_MAX;
-                        m_active_numeric_defer_until_drag = false;
-                        m_active_color_part = 0;
+                        numeric_interaction_state().active_float_component = U32_MAX;
+                        numeric_interaction_state().active_numeric_defer_until_drag = false;
+                        color_picker_interaction_state().active_color_part = 0;
                         continue;
                     }
                     if(e.button != PointerButton::left)
@@ -1706,14 +1696,14 @@ namespace Luna
                     {
                         m_active_id = split_space_id;
                         m_focused_id = split_space_id;
-                        m_active_dock_split_space_id = split_space_id;
-                        m_active_dock_split_node = split_node_index;
-                        m_active_dock_split_axis = split_axis;
-                        m_active_dock_split_start_pos = e.position;
+                        dock_interaction_state().active_dock_split_space_id = split_space_id;
+                        dock_interaction_state().active_dock_split_node = split_node_index;
+                        dock_interaction_state().active_dock_split_axis = split_axis;
+                        dock_interaction_state().active_dock_split_start_pos = e.position;
                         Ref<DockSpaceState> dock_state = get_or_create_widget_state<DockSpaceState>(split_space_id);
                         if(split_node_index < dock_state->dock_nodes.size())
                         {
-                            m_active_dock_split_start_ratio = dock_state->dock_nodes[split_node_index].split_ratio;
+                            dock_interaction_state().active_dock_split_start_ratio = dock_state->dock_nodes[split_node_index].split_ratio;
                         }
                         set_interaction_down(split_space_id);
                         continue;
@@ -1730,20 +1720,20 @@ namespace Luna
                         }
                         m_active_id = tab_panel_id;
                         m_focused_id = tab_panel_id;
-                        m_active_dock_space_id = tab_space_id;
-                        m_active_dock_panel_id = tab_panel_id;
-                        m_active_dock_panel_resize = false;
-                        m_active_dock_panel_close = false;
-                        m_active_dock_panel_title_drag = true;
-                        m_active_dock_panel_was_floating = false;
-                        m_active_dock_panel_undocked = false;
-                        m_active_dock_panel_resize_neighbor_id = 0;
-                        m_active_dock_panel_start_neighbor_height = 0.0f;
+                        dock_interaction_state().active_dock_space_id = tab_space_id;
+                        dock_interaction_state().active_dock_panel_id = tab_panel_id;
+                        dock_interaction_state().active_dock_panel_resize = false;
+                        dock_interaction_state().active_dock_panel_close = false;
+                        dock_interaction_state().active_dock_panel_title_drag = true;
+                        dock_interaction_state().active_dock_panel_was_floating = false;
+                        dock_interaction_state().active_dock_panel_undocked = false;
+                        dock_interaction_state().active_dock_panel_resize_neighbor_id = 0;
+                        dock_interaction_state().active_dock_panel_start_neighbor_height = 0.0f;
                         DockPanelPersistentState* panel_state = find_dock_panel_state(tab_space_id, tab_panel_id);
-                        m_active_dock_panel_restore_rect = panel_state ? panel_state->rect : RectF(0.0f, 0.0f, 320.0f, 220.0f);
+                        dock_interaction_state().active_dock_panel_restore_rect = panel_state ? panel_state->rect : RectF(0.0f, 0.0f, 320.0f, 220.0f);
                         if(tab_leaf_index < dock_state->dock_nodes.size())
                         {
-                            m_active_dock_panel_start_rect = dock_state->dock_nodes[tab_leaf_index].rect;
+                            dock_interaction_state().active_dock_panel_start_rect = dock_state->dock_nodes[tab_leaf_index].rect;
                             Node* tab_node = find_node(tab_panel_id);
                             DockPanelStyle style;
                             if(tab_node)
@@ -1757,10 +1747,10 @@ namespace Luna
                                     }
                                 }
                             }
-                            m_active_dock_panel_start_title_rect = dock_panel_title_rect(m_active_dock_panel_start_rect, style);
-                            m_active_dock_panel_grab_offset = Float2U(
-                                e.position.x - m_active_dock_panel_start_rect.offset_x,
-                                e.position.y - m_active_dock_panel_start_rect.offset_y);
+                            dock_interaction_state().active_dock_panel_start_title_rect = dock_panel_title_rect(dock_interaction_state().active_dock_panel_start_rect, style);
+                            dock_interaction_state().active_dock_panel_grab_offset = Float2U(
+                                e.position.x - dock_interaction_state().active_dock_panel_start_rect.offset_x,
+                                e.position.y - dock_interaction_state().active_dock_panel_start_rect.offset_y);
                         }
                         set_interaction_down(tab_panel_id);
                         m_layout_dirty = true;
@@ -1774,34 +1764,34 @@ namespace Luna
                     {
                         m_active_id = dock_panel_id;
                         m_focused_id = dock_panel_id;
-                        m_active_dock_space_id = dock_space_id;
-                        m_active_dock_panel_id = dock_panel_id;
-                        m_active_dock_panel_resize = dock_resize;
-                        m_active_dock_panel_close = dock_close;
-                        m_active_dock_panel_title_drag = !dock_resize && !dock_close;
-                        m_active_dock_panel_was_floating = false;
-                        m_active_dock_panel_undocked = false;
-                        m_active_dock_panel_resize_neighbor_id = 0;
-                        m_active_dock_panel_start_neighbor_height = 0.0f;
+                        dock_interaction_state().active_dock_space_id = dock_space_id;
+                        dock_interaction_state().active_dock_panel_id = dock_panel_id;
+                        dock_interaction_state().active_dock_panel_resize = dock_resize;
+                        dock_interaction_state().active_dock_panel_close = dock_close;
+                        dock_interaction_state().active_dock_panel_title_drag = !dock_resize && !dock_close;
+                        dock_interaction_state().active_dock_panel_was_floating = false;
+                        dock_interaction_state().active_dock_panel_undocked = false;
+                        dock_interaction_state().active_dock_panel_resize_neighbor_id = 0;
+                        dock_interaction_state().active_dock_panel_start_neighbor_height = 0.0f;
                         raise_dock_panel(dock_space_id, dock_panel_id);
                         DockPanelPersistentState* panel_state = find_dock_panel_state(dock_space_id, dock_panel_id);
                         if(panel_state && !dock_close)
                         {
-                            m_active_dock_panel_start_rect = panel_state->rect;
-                            m_active_dock_panel_restore_rect = panel_state->rect;
+                            dock_interaction_state().active_dock_panel_start_rect = panel_state->rect;
+                            dock_interaction_state().active_dock_panel_restore_rect = panel_state->rect;
                         }
                         else
                         {
-                            m_active_dock_panel_restore_rect = RectF(0.0f, 0.0f, 320.0f, 220.0f);
+                            dock_interaction_state().active_dock_panel_restore_rect = RectF(0.0f, 0.0f, 320.0f, 220.0f);
                         }
                         for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                         {
                             if(m_submitted_desc.nodes[i].id == dock_panel_id)
                             {
-                                m_active_dock_panel_start_rect = m_layouts[i].dock_panel_rect;
-                                m_active_dock_panel_start_title_rect = m_layouts[i].dock_panel_title_rect;
-                                m_active_dock_panel_was_floating = m_layouts[i].dock_panel_floating;
-                                m_active_dock_panel_grab_offset = Float2U(
+                                dock_interaction_state().active_dock_panel_start_rect = m_layouts[i].dock_panel_rect;
+                                dock_interaction_state().active_dock_panel_start_title_rect = m_layouts[i].dock_panel_title_rect;
+                                dock_interaction_state().active_dock_panel_was_floating = m_layouts[i].dock_panel_floating;
+                                dock_interaction_state().active_dock_panel_grab_offset = Float2U(
                                     e.position.x - m_layouts[i].dock_panel_rect.offset_x,
                                     e.position.y - m_layouts[i].dock_panel_rect.offset_y);
                                 if(dock_resize && !m_layouts[i].dock_panel_floating)
@@ -1812,8 +1802,8 @@ namespace Luna
                                         {
                                             continue;
                                         }
-                                        m_active_dock_panel_resize_neighbor_id = m_submitted_desc.nodes[sibling].id;
-                                        m_active_dock_panel_start_neighbor_height = m_layouts[sibling].dock_panel_rect.height;
+                                        dock_interaction_state().active_dock_panel_resize_neighbor_id = m_submitted_desc.nodes[sibling].id;
+                                        dock_interaction_state().active_dock_panel_start_neighbor_height = m_layouts[sibling].dock_panel_rect.height;
                                         break;
                                     }
                                 }
@@ -1835,17 +1825,17 @@ namespace Luna
                         {
                             clear_text_edit_state_for_id(old_focused_id);
                         }
-                        m_active_scrollbar_id = scrollbar_id;
-                        m_active_scrollbar_vertical = scrollbar_vertical;
+                        scrollbar_interaction_state().active_scrollbar_id = scrollbar_id;
+                        scrollbar_interaction_state().active_scrollbar_vertical = scrollbar_vertical;
                         if(point_in_rect(e.position, scrollbar_thumb))
                         {
-                            m_active_scrollbar_grab_offset = scrollbar_vertical ?
+                            scrollbar_interaction_state().active_scrollbar_grab_offset = scrollbar_vertical ?
                                 e.position.y - scrollbar_thumb.offset_y :
                                 e.position.x - scrollbar_thumb.offset_x;
                         }
                         else
                         {
-                            m_active_scrollbar_grab_offset = scrollbar_vertical ?
+                            scrollbar_interaction_state().active_scrollbar_grab_offset = scrollbar_vertical ?
                                 scrollbar_thumb.height * 0.5f :
                                 scrollbar_thumb.width * 0.5f;
                         }
@@ -1864,9 +1854,9 @@ namespace Luna
                         {
                             clear_text_edit_state_for_id(old_focused_id);
                         }
-                        m_active_table_resize_id = resize_table;
-                        m_active_table_resize_column = resize_column;
-                        m_active_table_resize_index = resize_index;
+                        table_resize_interaction_state().active_table_resize_id = resize_table;
+                        table_resize_interaction_state().active_table_resize_column = resize_column;
+                        table_resize_interaction_state().active_table_resize_index = resize_index;
                         set_interaction_down(resize_table);
                         continue;
                     }
@@ -1880,8 +1870,8 @@ namespace Luna
                         {
                             clear_text_edit_state_for_id(old_focused_id);
                         }
-                        m_active_tab_scroll_id = tab_scroll_bar_id;
-                        m_active_tab_scroll_left = tab_scroll_left;
+                        tab_interaction_state().active_tab_scroll_id = tab_scroll_bar_id;
+                        tab_interaction_state().active_tab_scroll_left = tab_scroll_left;
                         set_interaction_down(tab_scroll_bar_id);
                         scroll_tab_bar(tab_scroll_bar_id, tab_scroll_left ? -96.0f : 96.0f);
                         continue;
@@ -1897,19 +1887,19 @@ namespace Luna
                         {
                             clear_text_edit_state_for_id(old_focused_id);
                         }
-                        m_active_tab_bar_id = tab_bar_id;
-                        m_active_tab_item_id = tab_item_id;
-                        m_active_tab_close = tab_close;
-                        m_active_tab_start_pos = e.position;
-                        m_active_tab_reordering = false;
-                        m_active_tab_reorder_allowed = false;
+                        tab_interaction_state().active_tab_bar_id = tab_bar_id;
+                        tab_interaction_state().active_tab_item_id = tab_item_id;
+                        tab_interaction_state().active_tab_close = tab_close;
+                        tab_interaction_state().active_tab_start_pos = e.position;
+                        tab_interaction_state().active_tab_reordering = false;
+                        tab_interaction_state().active_tab_reorder_allowed = false;
                         Node* tab_bar = find_node(tab_bar_id);
                         Node* tab_item = find_node(tab_item_id);
                         TabBarNode* tab_bar_typed = tab_bar ? tab_bar_node(*tab_bar) : nullptr;
                         TabItemNode* tab_item_typed = tab_item ? tab_item_node(*tab_item) : nullptr;
                         if(tab_bar_typed && tab_item_typed)
                         {
-                            m_active_tab_reorder_allowed = test_flags(tab_bar_typed->flags, TabBarFlag::reorderable) &&
+                            tab_interaction_state().active_tab_reorder_allowed = test_flags(tab_bar_typed->flags, TabBarFlag::reorderable) &&
                                 !tab_close &&
                                 !test_flags(tab_item_typed->flags, TabItemFlag::button) &&
                                 !test_flags(tab_item_typed->flags, TabItemFlag::no_reorder);
@@ -1920,9 +1910,9 @@ namespace Luna
                     id_t target = hit_test(e.position);
                     Name drag_drop_type;
                     id_t drag_drop_source = hit_test_drag_drop_source(e.position, drag_drop_type);
-                    m_drag_drop_candidate_source_id = drag_drop_source;
-                    m_drag_drop_candidate_type = drag_drop_type;
-                    m_drag_drop_start_pos = e.position;
+                    m_drag_drop.candidate_source_id = drag_drop_source;
+                    m_drag_drop.candidate_type = drag_drop_type;
+                    m_drag_drop.start_pos = e.position;
                     m_active_id = target;
                     m_focused_id = target;
                     if(old_focused_id && old_focused_id != target)
@@ -1956,17 +1946,17 @@ namespace Luna
                             }
                             if(point_in_rect(e.position, color_picker_square_rect(rect)))
                             {
-                                m_active_color_part = 1;
+                                color_picker_interaction_state().active_color_part = 1;
                                 update_color_picker_from_pointer(target, e.position);
                             }
                             else if(point_in_rect(e.position, color_picker_bar_rect(rect)))
                             {
-                                m_active_color_part = 2;
+                                color_picker_interaction_state().active_color_part = 2;
                                 update_color_picker_from_pointer(target, e.position);
                             }
                             else if(point_in_rect(e.position, color_picker_original_rect(rect)))
                             {
-                                m_active_color_part = 3;
+                                color_picker_interaction_state().active_color_part = 3;
                                 update_color_picker_from_pointer(target, e.position);
                             }
                         }
@@ -1977,26 +1967,26 @@ namespace Luna
                             {
                                 if(m_submitted_desc.nodes[i].id == target)
                                 {
-                                    m_active_float_component = hit_test_numeric_component(*node, m_layouts[i].rect, e.position);
+                                    numeric_interaction_state().active_float_component = hit_test_numeric_component(*node, m_layouts[i].rect, e.position);
                                     break;
                                 }
                             }
                             if(numeric_text_editable(*node) && !numeric_pointer_editable(*node))
                             {
-                                begin_numeric_text_edit(target, e.position, m_active_float_component == U32_MAX ? 0 : m_active_float_component, false);
+                                begin_numeric_text_edit(target, e.position, numeric_interaction_state().active_float_component == U32_MAX ? 0 : numeric_interaction_state().active_float_component, false);
                             }
                             else if(input_state->numeric_editing && numeric_text_editable(*node))
                             {
-                                begin_numeric_text_edit(target, e.position, m_active_float_component == U32_MAX ? 0 : m_active_float_component, false);
+                                begin_numeric_text_edit(target, e.position, numeric_interaction_state().active_float_component == U32_MAX ? 0 : numeric_interaction_state().active_float_component, false);
                             }
                             else if(numeric_text_editable(*node))
                             {
-                                m_active_numeric_defer_until_drag = true;
-                                m_active_numeric_start_pos = e.position;
+                                numeric_interaction_state().active_numeric_defer_until_drag = true;
+                                numeric_interaction_state().active_numeric_start_pos = e.position;
                             }
                         }
                         InputEditState* input_state = get_widget_state<InputEditState>(target);
-                        if((!input_state || !input_state->numeric_editing) && !m_active_numeric_defer_until_drag)
+                        if((!input_state || !input_state->numeric_editing) && !numeric_interaction_state().active_numeric_defer_until_drag)
                         {
                             update_numeric_node_from_pointer(target, e.position);
                         }
@@ -2025,9 +2015,9 @@ namespace Luna
                     {
                         continue;
                     }
-                    if(m_drag_drop_active)
+                    if(m_drag_drop.active)
                     {
-                        id_t drop_target = hit_test_drag_drop_target(m_drag_drop_type, e.position);
+                        id_t drop_target = hit_test_drag_drop_target(m_drag_drop.type, e.position);
                         deliver_drag_drop_payload(drop_target);
                         if(m_active_id)
                         {
@@ -2035,30 +2025,30 @@ namespace Luna
                         }
                         clear_drag_drop();
                         m_active_id = 0;
-                        m_active_float_component = U32_MAX;
-                        m_active_numeric_defer_until_drag = false;
+                        numeric_interaction_state().active_float_component = U32_MAX;
+                        numeric_interaction_state().active_numeric_defer_until_drag = false;
                         continue;
                     }
-                    m_drag_drop_candidate_source_id = 0;
-                    m_drag_drop_candidate_type.reset();
-                    if(m_active_dock_split_space_id)
+                    m_drag_drop.candidate_source_id = 0;
+                    m_drag_drop.candidate_type.reset();
+                    if(dock_interaction_state().active_dock_split_space_id)
                     {
-                        clear_interaction_active(m_active_dock_split_space_id);
-                        m_active_dock_split_space_id = 0;
-                        m_active_dock_split_node = U32_MAX;
+                        clear_interaction_active(dock_interaction_state().active_dock_split_space_id);
+                        dock_interaction_state().active_dock_split_space_id = 0;
+                        dock_interaction_state().active_dock_split_node = U32_MAX;
                         m_active_id = 0;
-                        m_active_numeric_defer_until_drag = false;
+                        numeric_interaction_state().active_numeric_defer_until_drag = false;
                         continue;
                     }
-                    if(m_active_dock_panel_id)
+                    if(dock_interaction_state().active_dock_panel_id)
                     {
-                        if(m_active_dock_panel_close)
+                        if(dock_interaction_state().active_dock_panel_close)
                         {
-                            DockPanelPersistentState* panel_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_id);
+                            DockPanelPersistentState* panel_state = find_dock_panel_state(dock_interaction_state().active_dock_space_id, dock_interaction_state().active_dock_panel_id);
                             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                             {
                                 Node& node = m_submitted_desc.nodes[i];
-                                if(node.id != m_active_dock_panel_id) continue;
+                                if(node.id != dock_interaction_state().active_dock_panel_id) continue;
                                 if(point_in_rect(e.position, m_layouts[i].dock_panel_close_rect))
                                 {
                                     const DockPanelAttachment* attachment = nullptr;
@@ -2083,77 +2073,77 @@ namespace Luna
                                 break;
                             }
                         }
-                        else if(m_active_dock_panel_title_drag && !m_active_dock_panel_resize)
+                        else if(dock_interaction_state().active_dock_panel_title_drag && !dock_interaction_state().active_dock_panel_resize)
                         {
                             id_t target_space_id = 0;
                             u32 target_leaf = U32_MAX;
                             DockDropDirection drop_direction = DockDropDirection::none;
-                            DockPanelPersistentState* panel_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_id);
+                            DockPanelPersistentState* panel_state = find_dock_panel_state(dock_interaction_state().active_dock_space_id, dock_interaction_state().active_dock_panel_id);
                             if(panel_state && panel_state->mode == DockPanelMode::floating &&
-                                find_dock_drop_target(m_active_dock_panel_id, e.position, target_space_id, target_leaf, drop_direction) &&
-                                target_space_id == m_active_dock_space_id && drop_direction != DockDropDirection::none)
+                                find_dock_drop_target(dock_interaction_state().active_dock_panel_id, e.position, target_space_id, target_leaf, drop_direction) &&
+                                target_space_id == dock_interaction_state().active_dock_space_id && drop_direction != DockDropDirection::none)
                             {
                                 Ref<DockSpaceState> dock_state = get_or_create_widget_state<DockSpaceState>(target_space_id);
-                                dock_tree_dock_panel(*dock_state, m_active_dock_panel_id, target_leaf, drop_direction);
+                                dock_tree_dock_panel(*dock_state, dock_interaction_state().active_dock_panel_id, target_leaf, drop_direction);
                                 panel_state->mode = DockPanelMode::docking;
                                 panel_state->closed = false;
-                                Ref<ItemQueryState> result = get_or_create_query_state(m_active_dock_panel_id);
+                                Ref<ItemQueryState> result = get_or_create_query_state(dock_interaction_state().active_dock_panel_id);
                                 result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
                                 result->states.insert_or_assign(Name("gui.open"), Any(true));
                                 m_layout_dirty = true;
                             }
                         }
-                        clear_interaction_active(m_active_dock_panel_id);
-                        m_active_dock_space_id = 0;
-                        m_active_dock_panel_id = 0;
-                        m_active_dock_panel_resize = false;
-                        m_active_dock_panel_close = false;
-                        m_active_dock_panel_title_drag = false;
-                        m_active_dock_panel_was_floating = false;
-                        m_active_dock_panel_undocked = false;
-                        m_active_dock_panel_resize_neighbor_id = 0;
-                        m_active_dock_panel_start_neighbor_height = 0.0f;
+                        clear_interaction_active(dock_interaction_state().active_dock_panel_id);
+                        dock_interaction_state().active_dock_space_id = 0;
+                        dock_interaction_state().active_dock_panel_id = 0;
+                        dock_interaction_state().active_dock_panel_resize = false;
+                        dock_interaction_state().active_dock_panel_close = false;
+                        dock_interaction_state().active_dock_panel_title_drag = false;
+                        dock_interaction_state().active_dock_panel_was_floating = false;
+                        dock_interaction_state().active_dock_panel_undocked = false;
+                        dock_interaction_state().active_dock_panel_resize_neighbor_id = 0;
+                        dock_interaction_state().active_dock_panel_start_neighbor_height = 0.0f;
                         m_active_id = 0;
-                        m_active_float_component = U32_MAX;
-                        m_active_numeric_defer_until_drag = false;
+                        numeric_interaction_state().active_float_component = U32_MAX;
+                        numeric_interaction_state().active_numeric_defer_until_drag = false;
                         continue;
                     }
-                    if(m_active_scrollbar_id)
+                    if(scrollbar_interaction_state().active_scrollbar_id)
                     {
-                        clear_interaction_active(m_active_scrollbar_id);
-                        m_active_scrollbar_id = 0;
-                        m_active_scrollbar_vertical = false;
-                        m_active_scrollbar_grab_offset = 0.0f;
+                        clear_interaction_active(scrollbar_interaction_state().active_scrollbar_id);
+                        scrollbar_interaction_state().active_scrollbar_id = 0;
+                        scrollbar_interaction_state().active_scrollbar_vertical = false;
+                        scrollbar_interaction_state().active_scrollbar_grab_offset = 0.0f;
                         m_active_id = 0;
-                        m_active_float_component = U32_MAX;
+                        numeric_interaction_state().active_float_component = U32_MAX;
                         continue;
                     }
-                    if(m_active_table_resize_id)
+                    if(table_resize_interaction_state().active_table_resize_id)
                     {
-                        clear_interaction_active(m_active_table_resize_id);
-                        m_active_table_resize_id = 0;
-                        m_active_table_resize_column = false;
-                        m_active_table_resize_index = U32_MAX;
+                        clear_interaction_active(table_resize_interaction_state().active_table_resize_id);
+                        table_resize_interaction_state().active_table_resize_id = 0;
+                        table_resize_interaction_state().active_table_resize_column = false;
+                        table_resize_interaction_state().active_table_resize_index = U32_MAX;
                         m_active_id = 0;
-                        m_active_float_component = U32_MAX;
+                        numeric_interaction_state().active_float_component = U32_MAX;
                         continue;
                     }
-                    if(m_active_tab_scroll_id)
+                    if(tab_interaction_state().active_tab_scroll_id)
                     {
-                        clear_interaction_active(m_active_tab_scroll_id);
-                        m_active_tab_scroll_id = 0;
-                        m_active_tab_scroll_left = false;
+                        clear_interaction_active(tab_interaction_state().active_tab_scroll_id);
+                        tab_interaction_state().active_tab_scroll_id = 0;
+                        tab_interaction_state().active_tab_scroll_left = false;
                         m_active_id = 0;
-                        m_active_float_component = U32_MAX;
+                        numeric_interaction_state().active_float_component = U32_MAX;
                         continue;
                     }
-                    if(m_active_tab_item_id)
+                    if(tab_interaction_state().active_tab_item_id)
                     {
                         id_t tab_bar_id = 0;
                         id_t tab_item_id = 0;
                         bool tab_close = false;
                         bool hit_tab = hit_test_tab_header(e.position, tab_bar_id, tab_item_id, tab_close);
-                        if(hit_tab && tab_item_id == m_active_tab_item_id && !m_active_tab_reordering)
+                        if(hit_tab && tab_item_id == tab_interaction_state().active_tab_item_id && !tab_interaction_state().active_tab_reordering)
                         {
                             Ref<ItemQueryState> item_result = get_or_create_query_state(tab_item_id);
                             item_result->states.insert_or_assign(Name("gui.clicked"), Any(true));
@@ -2167,7 +2157,7 @@ namespace Luna
                                 TabItemNode* tab = tab_item_node(node);
                                 luassert(tab);
                                 bool* open = tab->open;
-                                if((m_active_tab_close || tab_close) && open && !test_flags(tab->flags, TabItemFlag::no_close_button))
+                                if((tab_interaction_state().active_tab_close || tab_close) && open && !test_flags(tab->flags, TabItemFlag::no_close_button))
                                 {
                                     *open = false;
                                     item_result->states.insert_or_assign(Name("gui.open"), Any(false));
@@ -2187,14 +2177,14 @@ namespace Luna
                                 break;
                             }
                         }
-                        clear_interaction_active(m_active_tab_item_id);
-                        m_active_tab_bar_id = 0;
-                        m_active_tab_item_id = 0;
-                        m_active_tab_close = false;
-                        m_active_tab_reorder_allowed = false;
-                        m_active_tab_reordering = false;
+                        clear_interaction_active(tab_interaction_state().active_tab_item_id);
+                        tab_interaction_state().active_tab_bar_id = 0;
+                        tab_interaction_state().active_tab_item_id = 0;
+                        tab_interaction_state().active_tab_close = false;
+                        tab_interaction_state().active_tab_reorder_allowed = false;
+                        tab_interaction_state().active_tab_reordering = false;
                         m_active_id = 0;
-                        m_active_float_component = U32_MAX;
+                        numeric_interaction_state().active_float_component = U32_MAX;
                         continue;
                     }
                     id_t target = hit_test(e.position);
@@ -2218,7 +2208,7 @@ namespace Luna
                             if(node.id != target) continue;
                             if(numeric_node(node) && numeric_text_editable(node) && dbl)
                             {
-                                begin_numeric_text_edit(target, e.position, m_active_float_component == U32_MAX ? 0 : m_active_float_component, true);
+                                begin_numeric_text_edit(target, e.position, numeric_interaction_state().active_float_component == U32_MAX ? 0 : numeric_interaction_state().active_float_component, true);
                             }
                             else
                             {
@@ -2243,9 +2233,9 @@ namespace Luna
                         }
                     }
                     m_active_id = 0;
-                    m_active_float_component = U32_MAX;
-                    m_active_numeric_defer_until_drag = false;
-                    m_active_color_part = 0;
+                    numeric_interaction_state().active_float_component = U32_MAX;
+                    numeric_interaction_state().active_numeric_defer_until_drag = false;
+                    color_picker_interaction_state().active_color_part = 0;
                 }
                 else if(e.type == InputEventType::pointer_wheel)
                 {
@@ -2331,9 +2321,9 @@ namespace Luna
                         m_key_down[(u32)e.key] = true;
                     }
                     m_key_modifiers = e.modifiers;
-                    if(e.key == Key::esc && !m_open_popup_stack.empty())
+                    if(e.key == Key::esc && !m_popup_stack.open_stack.empty())
                     {
-                        if(test_flags(m_open_popup_stack.back().flags, PopupFlag::close_on_escape))
+                        if(test_flags(m_popup_stack.open_stack.back().flags, PopupFlag::close_on_escape))
                         {
                             close_current_popup();
                         }
@@ -2498,32 +2488,32 @@ namespace Luna
                     }
                     m_focused_id = 0;
                     m_active_id = 0;
-                    m_active_float_component = U32_MAX;
-                    m_active_numeric_defer_until_drag = false;
-                    m_active_table_resize_id = 0;
-                    m_active_table_resize_column = false;
-                    m_active_table_resize_index = U32_MAX;
-                    m_active_scrollbar_id = 0;
-                    m_active_scrollbar_vertical = false;
-                    m_active_scrollbar_grab_offset = 0.0f;
-                    m_active_tab_bar_id = 0;
-                    m_active_tab_item_id = 0;
-                    m_active_tab_close = false;
-                    m_active_tab_reorder_allowed = false;
-                    m_active_tab_reordering = false;
-                    m_active_tab_scroll_id = 0;
-                    m_active_tab_scroll_left = false;
-                    m_active_dock_space_id = 0;
-                    m_active_dock_panel_id = 0;
-                    m_active_dock_panel_resize = false;
-                    m_active_dock_panel_close = false;
-                    m_active_dock_panel_title_drag = false;
-                    m_active_dock_panel_was_floating = false;
-                    m_active_dock_panel_undocked = false;
-                    m_active_dock_panel_resize_neighbor_id = 0;
-                    m_active_dock_panel_start_neighbor_height = 0.0f;
-                    m_active_dock_split_space_id = 0;
-                    m_active_dock_split_node = U32_MAX;
+                    numeric_interaction_state().active_float_component = U32_MAX;
+                    numeric_interaction_state().active_numeric_defer_until_drag = false;
+                    table_resize_interaction_state().active_table_resize_id = 0;
+                    table_resize_interaction_state().active_table_resize_column = false;
+                    table_resize_interaction_state().active_table_resize_index = U32_MAX;
+                    scrollbar_interaction_state().active_scrollbar_id = 0;
+                    scrollbar_interaction_state().active_scrollbar_vertical = false;
+                    scrollbar_interaction_state().active_scrollbar_grab_offset = 0.0f;
+                    tab_interaction_state().active_tab_bar_id = 0;
+                    tab_interaction_state().active_tab_item_id = 0;
+                    tab_interaction_state().active_tab_close = false;
+                    tab_interaction_state().active_tab_reorder_allowed = false;
+                    tab_interaction_state().active_tab_reordering = false;
+                    tab_interaction_state().active_tab_scroll_id = 0;
+                    tab_interaction_state().active_tab_scroll_left = false;
+                    dock_interaction_state().active_dock_space_id = 0;
+                    dock_interaction_state().active_dock_panel_id = 0;
+                    dock_interaction_state().active_dock_panel_resize = false;
+                    dock_interaction_state().active_dock_panel_close = false;
+                    dock_interaction_state().active_dock_panel_title_drag = false;
+                    dock_interaction_state().active_dock_panel_was_floating = false;
+                    dock_interaction_state().active_dock_panel_undocked = false;
+                    dock_interaction_state().active_dock_panel_resize_neighbor_id = 0;
+                    dock_interaction_state().active_dock_panel_start_neighbor_height = 0.0f;
+                    dock_interaction_state().active_dock_split_space_id = 0;
+                    dock_interaction_state().active_dock_split_node = U32_MAX;
                     m_key_modifiers = KeyModifierFlag::none;
                     for(bool& down : m_key_down)
                     {
@@ -2533,9 +2523,9 @@ namespace Luna
                     {
                         down = false;
                     }
-                    for(usize i = 0; i < m_open_popup_stack.size(); ++i)
+                    for(usize i = 0; i < m_popup_stack.open_stack.size(); ++i)
                     {
-                        if(test_flags(m_open_popup_stack[i].flags, PopupFlag::close_on_blur))
+                        if(test_flags(m_popup_stack.open_stack[i].flags, PopupFlag::close_on_blur))
                         {
                             close_popup_stack_from(i);
                             break;
@@ -2597,10 +2587,10 @@ namespace Luna
                 m_hovered_id = 0;
             }
             update_menu_hover();
-            if(m_hovered_id != m_tooltip_hovered_id)
+            if(m_hovered_id != tooltip_interaction_state().tooltip_hovered_id)
             {
-                m_tooltip_hovered_id = m_hovered_id;
-                m_tooltip_hover_start = m_time;
+                tooltip_interaction_state().tooltip_hovered_id = m_hovered_id;
+                tooltip_interaction_state().tooltip_hover_start = m_time;
             }
         }
 
@@ -2658,12 +2648,12 @@ namespace Luna
                         }
                     }
                 }
-                if(m_drag_drop_active)
+                if(m_drag_drop.active)
                 {
                     bool source_live = false;
                     for(const Node& node : m_submitted_desc.nodes)
                     {
-                        if(node.id == m_drag_drop_source_id && contains_name(node.drag_drop_source_types, m_drag_drop_type))
+                        if(node.id == m_drag_drop.source_id && contains_name(node.drag_drop_source_types, m_drag_drop.type))
                         {
                             source_live = true;
                             break;
@@ -2735,10 +2725,10 @@ namespace Luna
                         }
                     }
                 }
-                if(m_hovered_id != m_tooltip_hovered_id)
+                if(m_hovered_id != tooltip_interaction_state().tooltip_hovered_id)
                 {
-                    m_tooltip_hovered_id = m_hovered_id;
-                    m_tooltip_hover_start = m_time;
+                    tooltip_interaction_state().tooltip_hovered_id = m_hovered_id;
+                    tooltip_interaction_state().tooltip_hover_start = m_time;
                 }
                 for(const Node& node : m_submitted_desc.nodes)
                 {

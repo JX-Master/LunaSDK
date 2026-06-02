@@ -37,12 +37,12 @@ namespace Luna
             push_layer_internal(layer_id, desc.position);
             Ref<PopupNode> popup_node = new_object<PopupNode>();
             popup_node->flags = desc.flags;
-            popup_node->parent_popup = m_popup_build_stack.empty() ? 0 : m_popup_build_stack.back();
+            popup_node->parent_popup = m_popup_stack.build_stack.empty() ? 0 : m_popup_stack.build_stack.back();
             begin_container(Ref<Node>(popup_node), label ? label : "Popup", desc.size, &handle, layer_id);
             Node& node = m_build_desc.nodes.back();
             node.layout_desc.padding = EdgeInsets::all(6.0f);
             node.layout_desc.gap = 2.0f;
-            m_popup_build_stack.push_back(handle.id);
+            m_popup_stack.build_stack.push_back(handle.id);
             return handle;
         }
 
@@ -52,9 +52,9 @@ namespace Luna
             luassert(!m_parent_stack.empty());
             const Node& node = m_build_desc.nodes[m_parent_stack.back()];
             luassert(popup_layer(node));
-            if(!m_popup_build_stack.empty() && m_popup_build_stack.back() == node.id)
+            if(!m_popup_stack.build_stack.empty() && m_popup_stack.build_stack.back() == node.id)
             {
-                m_popup_build_stack.pop_back();
+                m_popup_stack.build_stack.pop_back();
             }
             end_container();
             pop_layer();
@@ -62,9 +62,9 @@ namespace Luna
 
         i32 Context::popup_stack_index(id_t id) const
         {
-            for(usize i = 0; i < m_open_popup_stack.size(); ++i)
+            for(usize i = 0; i < m_popup_stack.open_stack.size(); ++i)
             {
-                if(m_open_popup_stack[i].id == id)
+                if(m_popup_stack.open_stack[i].id == id)
                 {
                     return (i32)i;
                 }
@@ -118,35 +118,35 @@ namespace Luna
 
         void Context::rebuild_popup_node_indices()
         {
-            m_popup_node_indices.clear();
+            m_popup_stack.node_indices.clear();
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 if(popup_layer(m_submitted_desc.nodes[i]))
                 {
-                    m_popup_node_indices.insert_or_assign(m_submitted_desc.nodes[i].id, (u32)i);
+                    m_popup_stack.node_indices.insert_or_assign(m_submitted_desc.nodes[i].id, (u32)i);
                 }
             }
         }
 
         void Context::close_popup_stack_from(usize index)
         {
-            if(index >= m_open_popup_stack.size()) return;
-            for(usize i = index; i < m_open_popup_stack.size(); ++i)
+            if(index >= m_popup_stack.open_stack.size()) return;
+            for(usize i = index; i < m_popup_stack.open_stack.size(); ++i)
             {
-                id_t id = m_open_popup_stack[i].id;
+                id_t id = m_popup_stack.open_stack[i].id;
                 get_or_create_widget_state<DisclosureState>(id)->open = false;
                 get_or_create_query_state(id)->states.insert_or_assign(Name("gui.open"), Any(false));
             }
-            m_open_popup_stack.erase(m_open_popup_stack.begin() + index, m_open_popup_stack.end());
+            m_popup_stack.open_stack.erase(m_popup_stack.open_stack.begin() + index, m_popup_stack.open_stack.end());
             m_layout_dirty = true;
         }
 
         void Context::prune_popup_stack()
         {
-            for(usize i = 0; i < m_open_popup_stack.size();)
+            for(usize i = 0; i < m_popup_stack.open_stack.size();)
             {
-                auto iter = m_popup_node_indices.find(m_open_popup_stack[i].id);
-                if(iter == m_popup_node_indices.end())
+                auto iter = m_popup_stack.node_indices.find(m_popup_stack.open_stack[i].id);
+                if(iter == m_popup_stack.node_indices.end())
                 {
                     close_popup_stack_from(i);
                     break;
@@ -161,16 +161,16 @@ namespace Luna
                 }
                 if(parent_id)
                 {
-                    auto parent_iter = m_popup_node_indices.find(parent_id);
-                    if(parent_iter != m_popup_node_indices.end() &&
+                    auto parent_iter = m_popup_stack.node_indices.find(parent_id);
+                    if(parent_iter != m_popup_stack.node_indices.end() &&
                         !popup_node_visible(m_submitted_desc.nodes[parent_iter->second]))
                     {
                         close_popup_stack_from(i);
                         break;
                     }
                 }
-                m_open_popup_stack[i].parent_id = parent_id;
-                m_open_popup_stack[i].flags = flags;
+                m_popup_stack.open_stack[i].parent_id = parent_id;
+                m_popup_stack.open_stack[i].flags = flags;
                 get_or_create_widget_state<DisclosureState>(node.id)->open = true;
                 ++i;
             }
@@ -181,7 +181,7 @@ namespace Luna
             lutsassert();
             if(!popup.id || popup.context != get_object())
             {
-                m_next_popup_opener_id = 0;
+                m_popup_stack.next_opener_id = 0;
                 return;
             }
 
@@ -193,8 +193,8 @@ namespace Luna
 
             PopupFlag flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
             id_t parent_id = 0;
-            id_t opener_id = m_next_popup_opener_id ? m_next_popup_opener_id : current_clicked_item_id();
-            m_next_popup_opener_id = 0;
+            id_t opener_id = m_popup_stack.next_opener_id ? m_popup_stack.next_opener_id : current_clicked_item_id();
+            m_popup_stack.next_opener_id = 0;
             if(node)
             {
                 flags = popup_flags(*node);
@@ -213,7 +213,7 @@ namespace Luna
                 get_or_create_query_state(popup.id)->states.insert_or_assign(Name("gui.open"), Any(true));
                 if(opener_id)
                 {
-                    m_open_popup_stack[(usize)existing].opener_id = opener_id;
+                    m_popup_stack.open_stack[(usize)existing].opener_id = opener_id;
                 }
                 return;
             }
@@ -224,8 +224,8 @@ namespace Luna
                 bool parent_visible = parent_index >= 0;
                 if(!parent_visible)
                 {
-                    auto parent_iter = m_popup_node_indices.find(parent_id);
-                    parent_visible = parent_iter != m_popup_node_indices.end() && popup_node_visible(m_submitted_desc.nodes[parent_iter->second]);
+                    auto parent_iter = m_popup_stack.node_indices.find(parent_id);
+                    parent_visible = parent_iter != m_popup_stack.node_indices.end() && popup_node_visible(m_submitted_desc.nodes[parent_iter->second]);
                 }
                 if(parent_index >= 0)
                 {
@@ -247,7 +247,7 @@ namespace Luna
             entry.parent_id = parent_id;
             entry.opener_id = opener_id;
             entry.flags = flags;
-            m_open_popup_stack.push_back(entry);
+            m_popup_stack.open_stack.push_back(entry);
             get_or_create_widget_state<DisclosureState>(popup.id)->open = true;
             get_or_create_query_state(popup.id)->states.insert_or_assign(Name("gui.open"), Any(true));
             m_layout_dirty = true;
@@ -272,8 +272,8 @@ namespace Luna
         void Context::close_current_popup()
         {
             lutsassert();
-            if(m_open_popup_stack.empty()) return;
-            close_popup_stack_from(m_open_popup_stack.size() - 1);
+            if(m_popup_stack.open_stack.empty()) return;
+            close_popup_stack_from(m_popup_stack.open_stack.size() - 1);
         }
 
         void Context::close_all_popups()
@@ -285,17 +285,17 @@ namespace Luna
         i32 Context::popup_level_at_pos(const Float2U& pos) const
         {
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return -1;
-            for(usize i = m_open_popup_stack.size(); i > 0; --i)
+            for(usize i = m_popup_stack.open_stack.size(); i > 0; --i)
             {
                 usize level = i - 1;
-                auto iter = m_popup_node_indices.find(m_open_popup_stack[level].id);
-                if(iter == m_popup_node_indices.end()) continue;
+                auto iter = m_popup_stack.node_indices.find(m_popup_stack.open_stack[level].id);
+                if(iter == m_popup_stack.node_indices.end()) continue;
                 const NodeLayout& layout = m_layouts[iter->second];
                 if(point_in_rect(pos, layout.rect) && point_in_rect(pos, layout.clip_rect))
                 {
                     return (i32)level;
                 }
-                id_t opener_id = m_open_popup_stack[level].opener_id;
+                id_t opener_id = m_popup_stack.open_stack[level].opener_id;
                 if(opener_id)
                 {
                     for(usize node_index = 0; node_index < m_submitted_desc.nodes.size(); ++node_index)
@@ -315,14 +315,14 @@ namespace Luna
 
         bool Context::close_popups_for_pointer_down(const Float2U& pos)
         {
-            if(m_open_popup_stack.empty()) return false;
+            if(m_popup_stack.open_stack.empty()) return false;
             i32 level = popup_level_at_pos(pos);
             if(level < 0)
             {
                 id_t target = hit_test(pos);
                 Node* target_node = target ? find_node(target) : nullptr;
                 bool menu_target = target_node && menu_node(*target_node);
-                PopupFlag flags = m_open_popup_stack.back().flags;
+                PopupFlag flags = m_popup_stack.open_stack.back().flags;
                 id_t menu_popup_id = target_node ? menu_popup(*target_node) : 0;
                 if(menu_target && menu_popup_id && is_popup_open(menu_popup_id))
                 {
@@ -335,7 +335,7 @@ namespace Luna
                 }
                 return !menu_target;
             }
-            if((usize)level + 1 < m_open_popup_stack.size())
+            if((usize)level + 1 < m_popup_stack.open_stack.size())
             {
                 close_popup_stack_from((usize)level + 1);
             }

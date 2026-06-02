@@ -46,9 +46,9 @@ namespace Luna
             if(!tooltip_layer(node)) return true;
             id_t owner = popup_owner(node);
             if(!owner || !m_pointer_inside) return false;
-            if(m_drag_drop_active || m_active_id) return false;
-            if(m_hovered_id != owner || m_tooltip_hovered_id != owner) return false;
-            return m_time - m_tooltip_hover_start >= max((f64)tooltip_desc(node).delay, 0.0);
+            if(m_drag_drop.active || m_active_id) return false;
+            if(m_hovered_id != owner || tooltip_interaction_state().tooltip_hovered_id != owner) return false;
+            return m_time - tooltip_interaction_state().tooltip_hover_start >= max((f64)tooltip_desc(node).delay, 0.0);
         }
 
         LUNA_GUI_API ItemHandle begin_tooltip(IContext* context, ItemHandle owner, const c8* label, const TooltipDesc& desc)
