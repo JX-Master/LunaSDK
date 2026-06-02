@@ -318,18 +318,17 @@ namespace Luna
             context_from_interface(context)->end_container();
         }
 
-        LUNA_GUI_API ItemHandle begin_popup(IContext* context, const c8* label, const Float2U& position, const Size& size)
+        LUNA_GUI_API bool begin_popup(IContext* context, const c8* label, const Float2U& position, const Size& size, ItemHandle* out_handle)
         {
             PopupDesc desc;
             desc.position = position;
             desc.size = size;
-            desc.flags = PopupFlag::none;
-            return context_from_interface(context)->begin_popup(label, desc);
+            return context_from_interface(context)->begin_popup(label, desc, out_handle);
         }
 
-        LUNA_GUI_API ItemHandle begin_popup(IContext* context, const c8* label, const PopupDesc& desc)
+        LUNA_GUI_API bool begin_popup(IContext* context, const c8* label, const PopupDesc& desc, ItemHandle* out_handle)
         {
-            return context_from_interface(context)->begin_popup(label, desc);
+            return context_from_interface(context)->begin_popup(label, desc, out_handle);
         }
 
         LUNA_GUI_API void end_popup(IContext* context)
@@ -337,9 +336,19 @@ namespace Luna
             context_from_interface(context)->end_popup();
         }
 
+        LUNA_GUI_API void open_popup(IContext* context, const c8* label)
+        {
+            context_from_interface(context)->open_popup(label);
+        }
+
         LUNA_GUI_API void open_popup(IContext* context, ItemHandle popup)
         {
             context_from_interface(context)->open_popup(popup);
+        }
+
+        LUNA_GUI_API void close_popup(IContext* context, const c8* label)
+        {
+            context_from_interface(context)->close_popup(label);
         }
 
         LUNA_GUI_API void close_popup(IContext* context, ItemHandle popup)
@@ -360,6 +369,11 @@ namespace Luna
         LUNA_GUI_API bool is_popup_open(IContext* context, ItemHandle popup)
         {
             return context_from_interface(context)->is_popup_open(popup);
+        }
+
+        LUNA_GUI_API bool is_popup_open(IContext* context, const c8* label)
+        {
+            return context_from_interface(context)->is_popup_open(label);
         }
 
         LUNA_GUI_API ItemHandle begin_menu_bar(IContext* context, const c8* label, const LayoutDesc& desc)
@@ -415,7 +429,7 @@ namespace Luna
             context_from_interface(context)->end_container();
         }
 
-        LUNA_GUI_API ItemHandle begin_menu(IContext* context, const c8* label, bool enabled)
+        LUNA_GUI_API bool begin_menu(IContext* context, const c8* label, bool enabled, ItemHandle* out_handle)
         {
             Context* ctx = context_from_interface(context);
             Ref<MenuItemNode> menu = new_object<MenuItemNode>();
@@ -426,24 +440,36 @@ namespace Luna
                 menu->top_level_menu = parent < ctx->m_build_desc.nodes.size() && is_menu_bar_node(ctx->m_build_desc.nodes[parent]);
             }
             ItemHandle handle = ctx->add_node(Ref<Node>(menu), label ? label : "", enabled);
+            if(out_handle)
+            {
+                *out_handle = handle;
+            }
             ctx->set_item_query_state_if_absent(handle.id, Name("gui.open"), Any(false));
-            u32 menu_index = (u32)ctx->m_build_desc.nodes.size() - 1;
 
             PopupDesc popup_desc;
             popup_desc.flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
-            ItemHandle popup = ctx->begin_popup("##MenuPopup", popup_desc);
+            ctx->push_id(handle.id);
+            ItemHandle popup;
+            bool popup_open = ctx->begin_popup("##MenuPopup", popup_desc, &popup);
+            menu->popup_id = popup.id;
+            if(!popup_open)
+            {
+                ctx->pop_id();
+                return false;
+            }
             Node& popup_node = ctx->m_build_desc.nodes.back();
             set_popup_owner(popup_node, handle.id);
             popup_node.layout_desc.padding = EdgeInsets::xy(6.0f, 5.0f);
             popup_node.layout_desc.gap = 1.0f;
             popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
-            menu->popup_id = popup.id;
-            return handle;
+            return true;
         }
 
         LUNA_GUI_API void end_menu(IContext* context)
         {
-            context_from_interface(context)->end_popup();
+            Context* ctx = context_from_interface(context);
+            ctx->end_popup();
+            ctx->pop_id();
         }
 
         LUNA_GUI_API ItemHandle menu_item(IContext* context, const c8* label, const c8* shortcut, bool selected, bool enabled)

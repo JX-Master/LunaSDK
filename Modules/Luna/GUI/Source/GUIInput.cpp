@@ -2602,6 +2602,11 @@ namespace Luna
                 m_submitted_desc = desc;
                 m_layouts.clear();
                 m_layouts.resize(m_submitted_desc.nodes.size());
+                m_popup_stack.submitted_infos.clear();
+                for(auto& info : m_popup_stack.build_infos)
+                {
+                    m_popup_stack.submitted_infos.insert_or_assign(info.first, info.second);
+                }
                 rebuild_popup_node_indices();
                 prune_popup_stack();
                 HashSet<id_t> ids;

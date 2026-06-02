@@ -150,71 +150,79 @@ namespace Luna
             popup_desc.size = Size::fixed(476.0f, count == 4 ? 470.0f : 432.0f);
             popup_desc.flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
             ctx->push_id(handle.id);
-            ItemHandle popup = ctx->begin_popup("##ColorEditPopup", popup_desc);
-            Node& popup_node = ctx->m_build_desc.nodes.back();
-            set_popup_owner(popup_node, handle.id);
-            popup_node.layout_desc.padding = EdgeInsets::all(10.0f);
-            popup_node.layout_desc.gap = 8.0f;
-            popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
-
-            set_next_item_layout(context, LayoutStyle::fixed_height(300.0f));
-            ItemHandle picker = add_color_picker_node(context, "##ColorPicker", f32_value, u8_value, u32_value, type, count, 0);
-            Ref<ColorPickerState> color_state = ctx->get_or_create_widget_state<ColorPickerState>(picker.id);
-            color_picker_axis_ref(*color_state) = clamp(color_picker_axis_ref(*color_state), 0, 5);
-            ensure_color_picker_state_channels(*color_state);
-            sync_color_picker_build_state(*color_state, read_color_value(binding));
-
+            bool opening = false;
             if(clicked)
             {
-                Ref<PopupAnchorState> popup_state = ctx->get_or_create_widget_state<PopupAnchorState>(popup.id);
-                popup_state->popup_anchor_position = get_pointer_position(context);
-                popup_state->popup_anchor_placement = PopupAnchorPlacement::pointer;
-                popup_state->popup_anchor_valid = true;
-                if(ctx->is_popup_open(popup.id))
+                if(ctx->is_popup_open("##ColorEditPopup"))
                 {
-                    ctx->close_popup(popup);
-                    color_state->color_picker_original_valid = false;
-                    popup_state->popup_anchor_valid = false;
+                    ctx->close_popup("##ColorEditPopup");
                 }
                 else
                 {
-                    color_state->color_picker_original = read_color_value(binding);
-                    color_state->color_picker_original_valid = true;
-                    ctx->open_popup(popup);
+                    ctx->open_popup("##ColorEditPopup");
+                    opening = true;
                 }
             }
-            ctx->get_or_create_query_state(handle.id)->states.insert_or_assign(Name("gui.open"), Any(ctx->is_popup_open(popup.id)));
 
-            const c8* axis_items[] = { "H", "S", "V", "R", "G", "B" };
-            set_next_item_layout(context, LayoutStyle::fixed_height(28.0f));
-            button_group(context, "Channel", &color_picker_axis_ref(*color_state), Span<const c8*>(axis_items, 6));
-
-            LayoutDesc row;
-            row.gap = 6.0f;
-            row.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
-            set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
-            begin_h_layout(context, "RGB", row);
-            add_color_channel_drag(context, "R", &color_state->color_picker_rgb[0], picker.id, ColorChannelPart::rgb);
-            add_color_channel_drag(context, "G", &color_state->color_picker_rgb[1], picker.id, ColorChannelPart::rgb);
-            add_color_channel_drag(context, "B", &color_state->color_picker_rgb[2], picker.id, ColorChannelPart::rgb);
-            end_h_layout(context);
-
-            set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
-            begin_h_layout(context, "HSV", row);
-            add_color_channel_drag(context, "H", &color_state->color_picker_hsv[0], picker.id, ColorChannelPart::hsv);
-            add_color_channel_drag(context, "S", &color_state->color_picker_hsv[1], picker.id, ColorChannelPart::hsv);
-            add_color_channel_drag(context, "V", &color_state->color_picker_hsv[2], picker.id, ColorChannelPart::hsv);
-            end_h_layout(context);
-
-            if(count == 4)
+            ItemHandle popup;
+            if(ctx->begin_popup("##ColorEditPopup", popup_desc, &popup))
             {
+                Node& popup_node = ctx->m_build_desc.nodes.back();
+                set_popup_owner(popup_node, handle.id);
+                popup_node.layout_desc.padding = EdgeInsets::all(10.0f);
+                popup_node.layout_desc.gap = 8.0f;
+                popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
+
+                set_next_item_layout(context, LayoutStyle::fixed_height(300.0f));
+                ItemHandle picker = add_color_picker_node(context, "##ColorPicker", f32_value, u8_value, u32_value, type, count, 0);
+                Ref<ColorPickerState> color_state = ctx->get_or_create_widget_state<ColorPickerState>(picker.id);
+                color_picker_axis_ref(*color_state) = clamp(color_picker_axis_ref(*color_state), 0, 5);
+                ensure_color_picker_state_channels(*color_state);
+                sync_color_picker_build_state(*color_state, read_color_value(binding));
+
+                if(opening)
+                {
+                    Ref<PopupAnchorState> popup_state = ctx->get_or_create_widget_state<PopupAnchorState>(popup.id);
+                    popup_state->popup_anchor_position = get_pointer_position(context);
+                    popup_state->popup_anchor_placement = PopupAnchorPlacement::pointer;
+                    popup_state->popup_anchor_valid = true;
+                    color_state->color_picker_original = read_color_value(binding);
+                    color_state->color_picker_original_valid = true;
+                }
+
+                const c8* axis_items[] = { "H", "S", "V", "R", "G", "B" };
+                set_next_item_layout(context, LayoutStyle::fixed_height(28.0f));
+                button_group(context, "Channel", &color_picker_axis_ref(*color_state), Span<const c8*>(axis_items, 6));
+
+                LayoutDesc row;
+                row.gap = 6.0f;
+                row.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
                 set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
-                begin_h_layout(context, "Alpha", row);
-                add_color_channel_drag(context, "A", &color_state->color_picker_rgb[3], picker.id, ColorChannelPart::rgb);
+                begin_h_layout(context, "RGB", row);
+                add_color_channel_drag(context, "R", &color_state->color_picker_rgb[0], picker.id, ColorChannelPart::rgb);
+                add_color_channel_drag(context, "G", &color_state->color_picker_rgb[1], picker.id, ColorChannelPart::rgb);
+                add_color_channel_drag(context, "B", &color_state->color_picker_rgb[2], picker.id, ColorChannelPart::rgb);
                 end_h_layout(context);
+
+                set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
+                begin_h_layout(context, "HSV", row);
+                add_color_channel_drag(context, "H", &color_state->color_picker_hsv[0], picker.id, ColorChannelPart::hsv);
+                add_color_channel_drag(context, "S", &color_state->color_picker_hsv[1], picker.id, ColorChannelPart::hsv);
+                add_color_channel_drag(context, "V", &color_state->color_picker_hsv[2], picker.id, ColorChannelPart::hsv);
+                end_h_layout(context);
+
+                if(count == 4)
+                {
+                    set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
+                    begin_h_layout(context, "Alpha", row);
+                    add_color_channel_drag(context, "A", &color_state->color_picker_rgb[3], picker.id, ColorChannelPart::rgb);
+                    end_h_layout(context);
+                }
+
+                ctx->end_popup();
             }
 
-            ctx->end_popup();
+            ctx->get_or_create_query_state(handle.id)->states.insert_or_assign(Name("gui.open"), Any(ctx->is_popup_open(popup)));
             ctx->pop_id();
             ctx->m_last_item_id = handle.id;
             return handle;

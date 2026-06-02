@@ -198,23 +198,28 @@ namespace Luna
         constexpr f32 gap = 6.0f;
         RectF menu_rect(host_rect.offset_x, host_rect.offset_y, min(146.0f, host_rect.width), menu_height);
         GUI::begin_menu_bar(context, "Asset Browser Menu Bar", menu_rect);
-        GUI::begin_menu(context, "New");
-        GUI::ItemHandle folder_item = GUI::menu_item(context, "Folder");
+        GUI::ItemHandle folder_item;
         Vector<Pair<Name, GUI::ItemHandle>> asset_items;
-        asset_items.reserve(g_env->new_asset_types.size());
-        for(auto& i : g_env->new_asset_types)
+        if(GUI::begin_menu(context, "New"))
         {
-            asset_items.push_back(make_pair(i, GUI::menu_item(context, i.c_str())));
+            folder_item = GUI::menu_item(context, "Folder");
+            asset_items.reserve(g_env->new_asset_types.size());
+            for(auto& i : g_env->new_asset_types)
+            {
+                asset_items.push_back(make_pair(i, GUI::menu_item(context, i.c_str())));
+            }
+            GUI::end_menu(context);
         }
-        GUI::end_menu(context);
-        GUI::begin_menu(context, "Import");
         Vector<Pair<Name, GUI::ItemHandle>> import_items;
-        import_items.reserve(g_env->importer_types.size());
-        for(auto& i : g_env->importer_types)
+        if(GUI::begin_menu(context, "Import"))
         {
-            import_items.push_back(make_pair(i.first, GUI::menu_item(context, i.first.c_str())));
+            import_items.reserve(g_env->importer_types.size());
+            for(auto& i : g_env->importer_types)
+            {
+                import_items.push_back(make_pair(i.first, GUI::menu_item(context, i.first.c_str())));
+            }
+            GUI::end_menu(context);
         }
-        GUI::end_menu(context);
         GUI::end_menu_bar(context);
 
         if(GUI::is_item_clicked(folder_item))
@@ -556,6 +561,7 @@ namespace Luna
                         m_popup_asset = thumbnail.m_filename;
                         m_asset_popup_open = true;
                         m_asset_popup_position = GUI::get_pointer_position(context);
+                        GUI::open_popup(context, m_asset_popup_handle);
                     }
 
                     if(tile_rect.width <= 1.0f || tile_rect.height <= 1.0f)
@@ -727,19 +733,29 @@ namespace Luna
                     pushed_scroll_clip = false;
                 }
 
-                if(m_asset_popup_open)
                 {
                     constexpr f32 popup_width = 160.0f;
                     constexpr f32 popup_height = 70.0f;
-                    GUI::begin_popup(context, "Asset Popup", m_asset_popup_position, GUI::Size::fixed(popup_width, popup_height));
-                    GUI::ItemHandle rename_item = GUI::selectable(context, "Rename");
-                    GUI::ItemHandle delete_item = GUI::selectable(context, "Delete");
-                    GUI::end_popup(context);
+                    GUI::ItemHandle rename_item;
+                    GUI::ItemHandle delete_item;
+                    bool popup_open = GUI::begin_popup(context, "Asset Popup", m_asset_popup_position, GUI::Size::fixed(popup_width, popup_height), &m_asset_popup_handle);
+                    if(popup_open)
+                    {
+                        m_asset_popup_open = true;
+                        rename_item = GUI::selectable(context, "Rename");
+                        delete_item = GUI::selectable(context, "Delete");
+                        GUI::end_popup(context);
+                    }
+                    else if(m_asset_popup_open && !GUI::is_popup_open(context, m_asset_popup_handle))
+                    {
+                        m_asset_popup_open = false;
+                    }
                     if (GUI::is_item_clicked(rename_item))
                     {
                         m_editing_asset_name = m_popup_asset;
                         m_asset_name_editing_buf = m_popup_asset.c_str();
                         m_asset_popup_open = false;
+                        GUI::close_popup(context, m_asset_popup_handle);
                     }
                     if (GUI::is_item_clicked(delete_item))
                     {
@@ -773,6 +789,7 @@ namespace Luna
                             }
                         }
                         m_asset_popup_open = false;
+                        GUI::close_popup(context, m_asset_popup_handle);
                     }
                 }
             }

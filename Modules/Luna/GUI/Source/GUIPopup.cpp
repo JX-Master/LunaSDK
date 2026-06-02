@@ -28,22 +28,73 @@ namespace Luna
                 }
                 return nullptr;
             }
+
+            const PopupBuildInfo* find_popup_info(const PopupStackManager& popup_stack, id_t id)
+            {
+                auto build_iter = popup_stack.build_infos.find(id);
+                if(build_iter != popup_stack.build_infos.end())
+                {
+                    return &build_iter->second;
+                }
+                auto submitted_iter = popup_stack.submitted_infos.find(id);
+                return submitted_iter == popup_stack.submitted_infos.end() ? nullptr : &submitted_iter->second;
+            }
         }
 
-        ItemHandle Context::begin_popup(const c8* label, const PopupDesc& desc)
+        id_t Context::make_popup_id(const c8* label) const
         {
-            ItemHandle handle;
-            id_t layer_id = allocate_detached_layer_id(PopupNode::__guid, label ? label : "Popup");
+            luassert(!m_parent_stack.empty());
+            u32 parent = m_parent_stack.back();
+            id_t parent_id = 0;
+            if(parent == U32_MAX)
+            {
+                u32 layer_index = current_layer_index();
+                parent_id = m_build_desc.layers[layer_index].id;
+            }
+            else
+            {
+                parent_id = m_build_desc.nodes[parent].id;
+            }
+            return make_node_id(parent_id, PopupNode::__guid, 0, label ? label : "Popup");
+        }
+
+        ItemHandle Context::popup_handle(const c8* label)
+        {
+            return ItemHandle{get_object(), make_popup_id(label), m_generation};
+        }
+
+        bool Context::begin_popup(const c8* label, const PopupDesc& desc, ItemHandle* out_handle)
+        {
+            ItemHandle handle = popup_handle(label);
+            if(out_handle)
+            {
+                *out_handle = handle;
+            }
+            PopupBuildInfo info;
+            info.parent_id = m_popup_stack.build_stack.empty() ? 0 : m_popup_stack.build_stack.back();
+            info.flags = desc.flags;
+            m_popup_stack.build_infos.insert_or_assign(handle.id, info);
+            i32 existing = popup_stack_index(handle.id);
+            if(existing >= 0)
+            {
+                m_popup_stack.open_stack[(usize)existing].parent_id = info.parent_id;
+                m_popup_stack.open_stack[(usize)existing].flags = info.flags;
+            }
+            if(test_flags(desc.flags, PopupFlag::managed) && existing < 0)
+            {
+                return false;
+            }
+            id_t layer_id = handle.id;
             push_layer_internal(layer_id, desc.position);
             Ref<PopupNode> popup_node = new_object<PopupNode>();
             popup_node->flags = desc.flags;
-            popup_node->parent_popup = m_popup_stack.build_stack.empty() ? 0 : m_popup_stack.build_stack.back();
+            popup_node->parent_popup = info.parent_id;
             begin_container(Ref<Node>(popup_node), label ? label : "Popup", desc.size, &handle, layer_id);
             Node& node = m_build_desc.nodes.back();
             node.layout_desc.padding = EdgeInsets::all(6.0f);
             node.layout_desc.gap = 2.0f;
             m_popup_stack.build_stack.push_back(handle.id);
-            return handle;
+            return true;
         }
 
         void Context::end_popup()
@@ -97,6 +148,11 @@ namespace Luna
             return is_popup_open(popup.id);
         }
 
+        bool Context::is_popup_open(const c8* label) const
+        {
+            return is_popup_open(make_popup_id(label));
+        }
+
         bool Context::popup_node_visible(const Node& node) const
         {
             if(!popup_layer(node)) return true;
@@ -138,7 +194,6 @@ namespace Luna
                 get_or_create_query_state(id)->states.insert_or_assign(Name("gui.open"), Any(false));
             }
             m_popup_stack.open_stack.erase(m_popup_stack.open_stack.begin() + index, m_popup_stack.open_stack.end());
-            m_layout_dirty = true;
         }
 
         void Context::prune_popup_stack()
@@ -204,6 +259,15 @@ namespace Luna
                     flags |= PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
                 }
             }
+            else if(const PopupBuildInfo* info = find_popup_info(m_popup_stack, popup.id))
+            {
+                flags = info->flags;
+                parent_id = info->parent_id;
+                if(!test_flags(flags, PopupFlag::managed))
+                {
+                    flags |= PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
+                }
+            }
 
             i32 existing = popup_stack_index(popup.id);
             if(existing >= 0)
@@ -250,7 +314,19 @@ namespace Luna
             m_popup_stack.open_stack.push_back(entry);
             get_or_create_widget_state<DisclosureState>(popup.id)->open = true;
             get_or_create_query_state(popup.id)->states.insert_or_assign(Name("gui.open"), Any(true));
-            m_layout_dirty = true;
+        }
+
+        void Context::open_popup(const c8* label)
+        {
+            ItemHandle popup = popup_handle(label);
+            if(m_popup_stack.build_infos.find(popup.id) == m_popup_stack.build_infos.end())
+            {
+                PopupBuildInfo info;
+                info.parent_id = m_popup_stack.build_stack.empty() ? 0 : m_popup_stack.build_stack.back();
+                info.flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
+                m_popup_stack.build_infos.insert_or_assign(popup.id, info);
+            }
+            open_popup(popup);
         }
 
         void Context::close_popup(ItemHandle popup)
@@ -267,6 +343,11 @@ namespace Luna
                 get_or_create_widget_state<DisclosureState>(popup.id)->open = false;
                 get_or_create_query_state(popup.id)->states.insert_or_assign(Name("gui.open"), Any(false));
             }
+        }
+
+        void Context::close_popup(const c8* label)
+        {
+            close_popup(popup_handle(label));
         }
 
         void Context::close_current_popup()

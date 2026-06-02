@@ -94,6 +94,76 @@ namespace Luna
             }
         };
 
+        static bool resolve_popup_anchor_position(Context& context, const Node& node, f32 width, f32 height, Float2U& position)
+        {
+            bool resolved = false;
+            id_t owner_id = popup_owner(node);
+            u32 owner_index = owner_id ? context.find_submitted_node_index(owner_id) : U32_MAX;
+            PopupAnchorState* popup_state = context.get_widget_state<PopupAnchorState>(node.id);
+            if(popup_state && popup_state->popup_anchor_valid)
+            {
+                context.touch_widget_state<PopupAnchorState>(node.id);
+                if(popup_state->popup_anchor_placement == PopupAnchorPlacement::pointer)
+                {
+                    Float2U anchor = popup_state->popup_anchor_position;
+                    position.x = anchor.x;
+                    position.y = anchor.y + 8.0f;
+                    if(position.x + width > context.m_frame_desc.surface_size.x && anchor.x - width >= 0.0f)
+                    {
+                        position.x = anchor.x - width;
+                    }
+                    if(position.y + height > context.m_frame_desc.surface_size.y && anchor.y - height - 8.0f >= 0.0f)
+                    {
+                        position.y = anchor.y - height - 8.0f;
+                    }
+                    resolved = true;
+                }
+                else if(owner_index != U32_MAX)
+                {
+                    const Node& owner = context.m_submitted_desc.nodes[owner_index];
+                    const RectF& owner_rect = context.m_layouts[owner_index].rect;
+                    position.x = owner_rect.offset_x;
+                    position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
+                    if(position.y + height > context.m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
+                    {
+                        position.y = owner_rect.offset_y - height - 2.0f;
+                    }
+                    resolved = true;
+                }
+            }
+            if(!resolved && owner_index != U32_MAX)
+            {
+                const Node& owner = context.m_submitted_desc.nodes[owner_index];
+                const RectF& owner_rect = context.m_layouts[owner_index].rect;
+                bool owner_in_menu_bar = owner.parent != U32_MAX && is_menu_bar_node(context.m_submitted_desc.nodes[owner.parent]);
+                if(owner_in_menu_bar)
+                {
+                    position.x = owner_rect.offset_x;
+                    position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
+                    if(position.y + height > context.m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
+                    {
+                        position.y = owner_rect.offset_y - height - 2.0f;
+                    }
+                }
+                else
+                {
+                    position.x = owner_rect.offset_x + owner_rect.width - 2.0f;
+                    position.y = owner_rect.offset_y - 5.0f;
+                    if(position.x + width > context.m_frame_desc.surface_size.x && owner_rect.offset_x - width + 2.0f >= 0.0f)
+                    {
+                        position.x = owner_rect.offset_x - width + 2.0f;
+                    }
+                }
+                resolved = true;
+            }
+            if(resolved)
+            {
+                position.x = clamp(position.x, 0.0f, max(context.m_frame_desc.surface_size.x - width, 0.0f));
+                position.y = clamp(position.y, 0.0f, max(context.m_frame_desc.surface_size.y - height, 0.0f));
+            }
+            return resolved;
+        }
+
         void Context::measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred)
         {
             const Node& node = m_submitted_desc.nodes[node_index];
@@ -1290,63 +1360,11 @@ namespace Luna
                     position.y = m_pointer_pos.y - height - desc.offset.y;
                 }
             }
-            else if(popup_layer(node) && popup_owner(node))
+            else if(popup_layer(node))
             {
-                u32 owner_index = find_submitted_node_index(popup_owner(node));
-                if(owner_index != U32_MAX)
-                {
-                    const Node& owner = m_submitted_desc.nodes[owner_index];
-                    const RectF& owner_rect = m_layouts[owner_index].rect;
-                    bool owner_in_menu_bar = owner.parent != U32_MAX && is_menu_bar_node(m_submitted_desc.nodes[owner.parent]);
-                    width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
-                    height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
-                    PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(node.id);
-                    if(popup_state && popup_state->popup_anchor_valid)
-                    {
-                        touch_widget_state<PopupAnchorState>(node.id);
-                        if(popup_state->popup_anchor_placement == PopupAnchorPlacement::owner_down)
-                        {
-                            position.x = owner_rect.offset_x;
-                            position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
-                            if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
-                            {
-                                position.y = owner_rect.offset_y - height - 2.0f;
-                            }
-                        }
-                        else
-                        {
-                            Float2U anchor = popup_state->popup_anchor_position;
-                            position.x = anchor.x;
-                            position.y = anchor.y + 8.0f;
-                            if(position.x + width > m_frame_desc.surface_size.x && anchor.x - width >= 0.0f)
-                            {
-                                position.x = anchor.x - width;
-                            }
-                            if(position.y + height > m_frame_desc.surface_size.y && anchor.y - height - 8.0f >= 0.0f)
-                            {
-                                position.y = anchor.y - height - 8.0f;
-                            }
-                        }
-                    }
-                    else if(owner_in_menu_bar)
-                    {
-                        position.x = owner_rect.offset_x;
-                        position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
-                        if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
-                        {
-                            position.y = owner_rect.offset_y - height - 2.0f;
-                        }
-                    }
-                    else
-                    {
-                        position.x = owner_rect.offset_x + owner_rect.width - 2.0f;
-                        position.y = owner_rect.offset_y - 5.0f;
-                        if(position.x + width > m_frame_desc.surface_size.x && owner_rect.offset_x - width + 2.0f >= 0.0f)
-                        {
-                            position.x = owner_rect.offset_x - width + 2.0f;
-                        }
-                    }
-                }
+                width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
+                height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
+                resolve_popup_anchor_position(*this, node, width, height, position);
             }
 
             position.x = clamp(position.x, 0.0f, max(m_frame_desc.surface_size.x - width, 0.0f));
@@ -1528,65 +1546,11 @@ namespace Luna
                         position.x = clamp(position.x, 0.0f, max(m_frame_desc.surface_size.x - width, 0.0f));
                         position.y = clamp(position.y, 0.0f, max(m_frame_desc.surface_size.y - height, 0.0f));
                     }
-                    else if(popup_layer(child_node) && popup_owner(child_node))
+                    else if(popup_layer(child_node))
                     {
-                        u32 owner_index = find_submitted_node_index(popup_owner(child_node));
-                        if(owner_index != U32_MAX)
-                        {
-                            const Node& owner = m_submitted_desc.nodes[owner_index];
-                            const RectF& owner_rect = m_layouts[owner_index].rect;
-                            bool owner_in_menu_bar = owner.parent != U32_MAX && is_menu_bar_node(m_submitted_desc.nodes[owner.parent]);
-                            width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
-                            height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
-                            PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(child_node.id);
-                            if(popup_state && popup_state->popup_anchor_valid)
-                            {
-                                touch_widget_state<PopupAnchorState>(child_node.id);
-                                if(popup_state->popup_anchor_placement == PopupAnchorPlacement::owner_down)
-                                {
-                                    position.x = owner_rect.offset_x;
-                                    position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
-                                    if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
-                                    {
-                                        position.y = owner_rect.offset_y - height - 2.0f;
-                                    }
-                                }
-                                else
-                                {
-                                    Float2U anchor = popup_state->popup_anchor_position;
-                                    position.x = anchor.x;
-                                    position.y = anchor.y + 8.0f;
-                                    if(position.x + width > m_frame_desc.surface_size.x && anchor.x - width >= 0.0f)
-                                    {
-                                        position.x = anchor.x - width;
-                                    }
-                                    if(position.y + height > m_frame_desc.surface_size.y && anchor.y - height - 8.0f >= 0.0f)
-                                    {
-                                        position.y = anchor.y - height - 8.0f;
-                                    }
-                                }
-                            }
-                            else if(owner_in_menu_bar)
-                            {
-                                position.x = owner_rect.offset_x;
-                                position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
-                                if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
-                                {
-                                    position.y = owner_rect.offset_y - height - 2.0f;
-                                }
-                            }
-                            else
-                            {
-                                position.x = owner_rect.offset_x + owner_rect.width - 2.0f;
-                                position.y = owner_rect.offset_y - 5.0f;
-                                if(position.x + width > m_frame_desc.surface_size.x && owner_rect.offset_x - width + 2.0f >= 0.0f)
-                                {
-                                    position.x = owner_rect.offset_x - width + 2.0f;
-                                }
-                            }
-                            position.x = clamp(position.x, 0.0f, max(m_frame_desc.surface_size.x - width, 0.0f));
-                            position.y = clamp(position.y, 0.0f, max(m_frame_desc.surface_size.y - height, 0.0f));
-                        }
+                        width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
+                        height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
+                        resolve_popup_anchor_position(*this, child_node, width, height, position);
                     }
                     RectF child_rect(position.x, position.y, max(width, 1.0f), max(height, 1.0f));
                     layout_node(child, child_rect, surface_clip);

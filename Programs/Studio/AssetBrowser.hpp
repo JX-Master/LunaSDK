@@ -45,6 +45,7 @@ namespace Luna
         Name m_popup_asset;
         bool m_asset_popup_open = false;
         Float2U m_asset_popup_position = Float2U(0.0f);
+        GUI::ItemHandle m_asset_popup_handle;
         Name m_editing_asset_name;
         String m_asset_name_editing_buf;
         //----- End of States for asset popup menu -----

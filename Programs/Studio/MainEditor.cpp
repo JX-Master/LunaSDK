@@ -50,24 +50,33 @@ namespace Luna
     {
         GUI::set_next_item_layout(m_gui, GUI::LayoutStyle::fixed_height(34.0f));
         GUI::begin_menu_bar(m_gui, "Main Menu Bar");
-        GUI::begin_menu(m_gui, "File");
-        GUI::ItemHandle save_all_item = GUI::menu_item(m_gui, "Save All");
-        GUI::end_menu(m_gui);
-
-        GUI::begin_menu(m_gui, "Edit");
-        GUI::ItemHandle undo_item = GUI::menu_item(m_gui, "Undo", "Ctrl+Z", false, can_undo());
-        GUI::ItemHandle redo_item = GUI::menu_item(m_gui, "Redo", "Ctrl+Shift+Z", false, can_redo());
-        GUI::end_menu(m_gui);
-
-        GUI::begin_menu(m_gui, "View");
-        for(usize i = 0; i < 4; ++i)
+        GUI::ItemHandle save_all_item;
+        if(GUI::begin_menu(m_gui, "File"))
         {
-            c8 buf[32];
-            snprintf(buf, 32, "Asset Browser %u", (u32)i);
-            GUI::menu_item(m_gui, buf, nullptr, &m_asset_browsers_enabled[i]);
+            save_all_item = GUI::menu_item(m_gui, "Save All");
+            GUI::end_menu(m_gui);
         }
-        GUI::menu_item(m_gui, "Memory Profiler", nullptr, &m_memory_profiler_window_enabled);
-        GUI::end_menu(m_gui);
+
+        GUI::ItemHandle undo_item;
+        GUI::ItemHandle redo_item;
+        if(GUI::begin_menu(m_gui, "Edit"))
+        {
+            undo_item = GUI::menu_item(m_gui, "Undo", "Ctrl+Z", false, can_undo());
+            redo_item = GUI::menu_item(m_gui, "Redo", "Ctrl+Shift+Z", false, can_redo());
+            GUI::end_menu(m_gui);
+        }
+
+        if(GUI::begin_menu(m_gui, "View"))
+        {
+            for(usize i = 0; i < 4; ++i)
+            {
+                c8 buf[32];
+                snprintf(buf, 32, "Asset Browser %u", (u32)i);
+                GUI::menu_item(m_gui, buf, nullptr, &m_asset_browsers_enabled[i]);
+            }
+            GUI::menu_item(m_gui, "Memory Profiler", nullptr, &m_memory_profiler_window_enabled);
+            GUI::end_menu(m_gui);
+        }
         GUI::end_menu_bar(m_gui);
 
         if(GUI::is_item_clicked(save_all_item))

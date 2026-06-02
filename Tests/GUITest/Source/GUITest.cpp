@@ -592,20 +592,26 @@ namespace Luna
     {
         demo_section(app, "MenuBar and MenuItem");
         GUI::begin_menu_bar(app.gui, "Demo Menu Bar");
-        GUI::begin_menu(app.gui, "File");
-        handles.menu_new = GUI::menu_item(app.gui, "New Scene", "Ctrl+N");
-        handles.menu_save = GUI::menu_item(app.gui, "Save", "Ctrl+S");
-        GUI::menu_separator(app.gui);
-        GUI::menu_item(app.gui, "Disabled Action", "Ctrl+D", false, false);
-        GUI::end_menu(app.gui);
-        GUI::begin_menu(app.gui, "View");
-        handles.menu_show_grid = GUI::menu_item(app.gui, "Show Grid", nullptr, &app.menu_show_grid);
-        GUI::menu_item(app.gui, "Snap To Grid", nullptr, &app.menu_snap_to_grid);
-        GUI::begin_menu(app.gui, "Theme");
-        handles.menu_theme_dark = GUI::menu_item(app.gui, "Dark");
-        GUI::menu_item(app.gui, "Light", nullptr, false, false);
-        GUI::end_menu(app.gui);
-        GUI::end_menu(app.gui);
+        if(GUI::begin_menu(app.gui, "File"))
+        {
+            handles.menu_new = GUI::menu_item(app.gui, "New Scene", "Ctrl+N");
+            handles.menu_save = GUI::menu_item(app.gui, "Save", "Ctrl+S");
+            GUI::menu_separator(app.gui);
+            GUI::menu_item(app.gui, "Disabled Action", "Ctrl+D", false, false);
+            GUI::end_menu(app.gui);
+        }
+        if(GUI::begin_menu(app.gui, "View"))
+        {
+            handles.menu_show_grid = GUI::menu_item(app.gui, "Show Grid", nullptr, &app.menu_show_grid);
+            GUI::menu_item(app.gui, "Snap To Grid", nullptr, &app.menu_snap_to_grid);
+            if(GUI::begin_menu(app.gui, "Theme"))
+            {
+                handles.menu_theme_dark = GUI::menu_item(app.gui, "Dark");
+                GUI::menu_item(app.gui, "Light", nullptr, false, false);
+                GUI::end_menu(app.gui);
+            }
+            GUI::end_menu(app.gui);
+        }
         GUI::end_menu_bar(app.gui);
 
         demo_section(app, "Popups and context menus");
@@ -617,19 +623,23 @@ namespace Luna
         GUI::PopupDesc popup_desc;
         popup_desc.position = app.popup_position;
         popup_desc.size = GUI::Size::fixed(220.0f, 100.0f);
-        handles.managed_popup = GUI::begin_popup(app.gui, "Managed Popup", popup_desc);
-        GUI::text(app.gui, "Stack-managed popup");
-        handles.managed_popup_action = GUI::selectable(app.gui, "Action");
-        handles.nested_popup_button = GUI::selectable(app.gui, "Open child popup");
+        if(GUI::begin_popup(app.gui, "Managed Popup", popup_desc, &handles.managed_popup))
+        {
+            GUI::text(app.gui, "Stack-managed popup");
+            handles.managed_popup_action = GUI::selectable(app.gui, "Action");
+            handles.nested_popup_button = GUI::selectable(app.gui, "Open child popup");
 
-        GUI::PopupDesc nested_desc;
-        nested_desc.position = Float2U(app.popup_position.x + 180.0f, app.popup_position.y + 34.0f);
-        nested_desc.size = GUI::Size::fixed(190.0f, 72.0f);
-        handles.nested_popup = GUI::begin_popup(app.gui, "Nested Managed Popup", nested_desc);
-        GUI::text(app.gui, "Nested overlay layer");
-        handles.nested_popup_close = GUI::selectable(app.gui, "Close child");
-        GUI::end_popup(app.gui);
-        GUI::end_popup(app.gui);
+            GUI::PopupDesc nested_desc;
+            nested_desc.position = Float2U(app.popup_position.x + 180.0f, app.popup_position.y + 34.0f);
+            nested_desc.size = GUI::Size::fixed(190.0f, 72.0f);
+            if(GUI::begin_popup(app.gui, "Nested Managed Popup", nested_desc, &handles.nested_popup))
+            {
+                GUI::text(app.gui, "Nested overlay layer");
+                handles.nested_popup_close = GUI::selectable(app.gui, "Close child");
+                GUI::end_popup(app.gui);
+            }
+            GUI::end_popup(app.gui);
+        }
     }
 
     void draw_tooltips_tab(App& app, FrameHandles& handles)

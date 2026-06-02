@@ -55,13 +55,16 @@ namespace Luna
         LUNA_GUI_API ItemHandle begin_window(IContext* context, const c8* label, const Size& size = Size());
         LUNA_GUI_API ItemHandle begin_window(IContext* context, const c8* label, bool* open, const Size& size = Size());
         LUNA_GUI_API void end_window(IContext* context);
-        LUNA_GUI_API ItemHandle begin_popup(IContext* context, const c8* label, const Float2U& position, const Size& size = Size());
-        LUNA_GUI_API ItemHandle begin_popup(IContext* context, const c8* label, const PopupDesc& desc);
+        LUNA_GUI_API bool begin_popup(IContext* context, const c8* label, const Float2U& position, const Size& size = Size(), ItemHandle* out_handle = nullptr);
+        LUNA_GUI_API bool begin_popup(IContext* context, const c8* label, const PopupDesc& desc, ItemHandle* out_handle = nullptr);
         LUNA_GUI_API void end_popup(IContext* context);
+        LUNA_GUI_API void open_popup(IContext* context, const c8* label);
         LUNA_GUI_API void open_popup(IContext* context, ItemHandle popup);
+        LUNA_GUI_API void close_popup(IContext* context, const c8* label);
         LUNA_GUI_API void close_popup(IContext* context, ItemHandle popup);
         LUNA_GUI_API void close_current_popup(IContext* context);
         LUNA_GUI_API void close_all_popups(IContext* context);
+        LUNA_GUI_API bool is_popup_open(IContext* context, const c8* label);
         LUNA_GUI_API bool is_popup_open(IContext* context, ItemHandle popup);
         LUNA_GUI_API ItemHandle begin_tooltip(IContext* context, ItemHandle owner, const c8* label = nullptr, const TooltipDesc& desc = TooltipDesc());
         LUNA_GUI_API void end_tooltip(IContext* context);
@@ -69,7 +72,7 @@ namespace Luna
         LUNA_GUI_API ItemHandle begin_menu_bar(IContext* context, const c8* label = nullptr, const LayoutDesc& desc = LayoutDesc());
         LUNA_GUI_API ItemHandle begin_menu_bar(IContext* context, const c8* label, const RectF& rect, const LayoutDesc& desc = LayoutDesc());
         LUNA_GUI_API void end_menu_bar(IContext* context);
-        LUNA_GUI_API ItemHandle begin_menu(IContext* context, const c8* label, bool enabled = true);
+        LUNA_GUI_API bool begin_menu(IContext* context, const c8* label, bool enabled = true, ItemHandle* out_handle = nullptr);
         LUNA_GUI_API void end_menu(IContext* context);
         LUNA_GUI_API ItemHandle menu_item(IContext* context, const c8* label, const c8* shortcut = nullptr, bool selected = false, bool enabled = true);
         LUNA_GUI_API ItemHandle menu_item(IContext* context, const c8* label, const c8* shortcut, bool* selected, bool enabled = true);

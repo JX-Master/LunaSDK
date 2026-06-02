@@ -150,8 +150,10 @@ namespace Luna
         String m_actor_name_editing_text;
         bool m_actor_popup_open = false;
         Float2U m_actor_popup_position = Float2U(0.0f);
+        GUI::ItemHandle m_actor_popup_handle;
         bool m_new_component_popup_open = false;
         Float2U m_new_component_popup_position = Float2U(0.0f);
+        GUI::ItemHandle m_new_component_popup_handle;
 
         // States for scene viewport.
 
@@ -371,13 +373,22 @@ namespace Luna
             {
                 m_actor_popup_open = true;
                 m_actor_popup_position = GUI::get_pointer_position(context);
+                GUI::open_popup(context, m_actor_popup_handle);
             }
 
-            if (m_actor_popup_open)
             {
-                GUI::begin_popup(context, "Actor Popup", m_actor_popup_position, GUI::Size::fixed(150.0f, 42.0f));
-                GUI::ItemHandle remove_item = GUI::selectable(context, "Remove");
-                GUI::end_popup(context);
+                GUI::ItemHandle remove_item;
+                bool popup_open = GUI::begin_popup(context, "Actor Popup", m_actor_popup_position, GUI::Size::fixed(150.0f, 42.0f), &m_actor_popup_handle);
+                if(popup_open)
+                {
+                    m_actor_popup_open = true;
+                    remove_item = GUI::selectable(context, "Remove");
+                    GUI::end_popup(context);
+                }
+                else if(m_actor_popup_open && !GUI::is_popup_open(context, m_actor_popup_handle))
+                {
+                    m_actor_popup_open = false;
+                }
                 if (GUI::is_item_clicked(remove_item))
                 {
                     usize remove_index = 0;
@@ -392,6 +403,7 @@ namespace Luna
                     on_remove_actor(m_editing_actor_guid);
                     s->actors.erase(s->actors.begin() + remove_index);
                     m_actor_popup_open = false;
+                    GUI::close_popup(context, m_actor_popup_handle);
                 }
             }
         }
@@ -950,36 +962,51 @@ namespace Luna
                     {
                         m_new_component_popup_open = !m_new_component_popup_open;
                         m_new_component_popup_position = GUI::get_pointer_position(context);
+                        if(m_new_component_popup_open)
+                        {
+                            GUI::open_popup(context, m_new_component_popup_handle);
+                        }
+                        else
+                        {
+                            GUI::close_popup(context, m_new_component_popup_handle);
+                        }
                     }
-                    if(m_new_component_popup_open)
                     {
                         f32 popup_width = 240.0f;
                         f32 popup_height = max((f32)g_env->component_types.size() * 26.0f + 10.0f, 36.0f);
-                        GUI::begin_popup(context, "New Component Popup", m_new_component_popup_position, GUI::Size::fixed(popup_width, popup_height));
                         Vector<Pair<typeinfo_t, GUI::ItemHandle>> component_items;
-                        component_items.reserve(g_env->component_types.size());
-                        for (auto& i : g_env->component_types)
+                        bool popup_open = GUI::begin_popup(context, "New Component Popup", m_new_component_popup_position, GUI::Size::fixed(popup_width, popup_height), &m_new_component_popup_handle);
+                        if(popup_open)
                         {
-                            bool exists = false;
-                            for(auto& c : components)
+                            m_new_component_popup_open = true;
+                            component_items.reserve(g_env->component_types.size());
+                            for (auto& i : g_env->component_types)
                             {
-                                if(c.type() == i)
+                                bool exists = false;
+                                for(auto& c : components)
                                 {
-                                    exists = true;
-                                    break;
+                                    if(c.type() == i)
+                                    {
+                                        exists = true;
+                                        break;
+                                    }
+                                }
+                                auto comp_name = get_type_name(i);
+                                if (!exists)
+                                {
+                                    component_items.push_back(make_pair(i, GUI::selectable(context, comp_name.c_str())));
+                                }
+                                else
+                                {
+                                    GUI::text(context, comp_name.c_str());
                                 }
                             }
-                            auto comp_name = get_type_name(i);
-                            if (!exists)
-                            {
-                                component_items.push_back(make_pair(i, GUI::selectable(context, comp_name.c_str())));
-                            }
-                            else
-                            {
-                                GUI::text(context, comp_name.c_str());
-                            }
+                            GUI::end_popup(context);
                         }
-                        GUI::end_popup(context);
+                        else if(m_new_component_popup_open && !GUI::is_popup_open(context, m_new_component_popup_handle))
+                        {
+                            m_new_component_popup_open = false;
+                        }
                         for(auto& item : component_items)
                         {
                             if(GUI::is_item_clicked(item.second))
@@ -991,6 +1018,7 @@ namespace Luna
                                 components.push_back(move(comp_obj));
                                 on_actor_add_component(*actor, item.first);
                                 m_new_component_popup_open = false;
+                                GUI::close_popup(context, m_new_component_popup_handle);
                             }
                         }
                     }
@@ -1062,12 +1090,18 @@ namespace Luna
         constexpr f32 menu_height = 30.0f;
         constexpr f32 content_gap = 6.0f;
         GUI::begin_menu_bar(context, "Scene Editor Menu Bar", RectF(panel_rect.offset_x, panel_rect.offset_y, min(panel_rect.width, 138.0f), menu_height));
-        GUI::begin_menu(context, "File");
-        GUI::ItemHandle save_item = GUI::menu_item(context, "Save");
-        GUI::end_menu(context);
-        GUI::begin_menu(context, "Tools");
-        GUI::ItemHandle capture_item = GUI::menu_item(context, "Capture scene");
-        GUI::end_menu(context);
+        GUI::ItemHandle save_item;
+        if(GUI::begin_menu(context, "File"))
+        {
+            save_item = GUI::menu_item(context, "Save");
+            GUI::end_menu(context);
+        }
+        GUI::ItemHandle capture_item;
+        if(GUI::begin_menu(context, "Tools"))
+        {
+            capture_item = GUI::menu_item(context, "Capture scene");
+            GUI::end_menu(context);
+        }
         GUI::end_menu_bar(context);
 
         if(GUI::is_item_clicked(save_item))

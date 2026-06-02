@@ -1351,16 +1351,25 @@ namespace Luna
             PopupFlag flags = PopupFlag::none;
         };
 
+        struct PopupBuildInfo
+        {
+            id_t parent_id = 0;
+            PopupFlag flags = PopupFlag::none;
+        };
+
         struct PopupStackManager
         {
             Vector<PopupStackEntry> open_stack;
             Vector<id_t> build_stack;
             HashMap<id_t, u32, IdHash> node_indices;
+            HashMap<id_t, PopupBuildInfo, IdHash> build_infos;
+            HashMap<id_t, PopupBuildInfo, IdHash> submitted_infos;
             id_t next_opener_id = 0;
 
             void begin_frame()
             {
                 build_stack.clear();
+                build_infos.clear();
             }
         };
 
@@ -1800,16 +1809,21 @@ namespace Luna
             u32 current_layer_index() const;
             id_t make_node_id(id_t parent_id, const Guid& node_type, u32 ordinal, const c8* text) const;
             id_t allocate_detached_layer_id(const Guid& node_type, const c8* text);
+            id_t make_popup_id(const c8* label) const;
+            ItemHandle popup_handle(const c8* label);
             void push_layer_internal(id_t id, const Float2U& screen_position);
             ItemHandle add_node_internal(Ref<Node> node, const c8* text, bool interactive, id_t forced_id = 0);
             void begin_container(Ref<Node> node, const c8* label, const Size& size, ItemHandle* out_handle, id_t forced_id = 0);
             void end_container();
-            ItemHandle begin_popup(const c8* label, const PopupDesc& desc);
+            bool begin_popup(const c8* label, const PopupDesc& desc, ItemHandle* out_handle = nullptr);
             void end_popup();
+            void open_popup(const c8* label);
             void open_popup(ItemHandle popup);
+            void close_popup(const c8* label);
             void close_popup(ItemHandle popup);
             void close_current_popup();
             void close_all_popups();
+            bool is_popup_open(const c8* label) const;
             bool is_popup_open(ItemHandle popup) const;
             bool is_popup_open(id_t id) const;
             bool popup_node_visible(const Node& node) const;

@@ -86,54 +86,54 @@ namespace Luna
             popup_desc.size = Size::fixed(220.0f, max(26.0f, min((f32)items.size() * 26.0f + 10.0f, 320.0f)));
             popup_desc.flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
             ctx->push_id(handle.id);
-            ItemHandle popup = ctx->begin_popup("##ComboPopup", popup_desc);
-            Node& popup_node = ctx->m_build_desc.nodes.back();
-            set_popup_owner(popup_node, handle.id);
-            popup_node.layout_desc.padding = EdgeInsets::xy(6.0f, 5.0f);
-            popup_node.layout_desc.gap = 1.0f;
-            popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
-
-            Ref<PopupAnchorState> popup_state = ctx->get_or_create_widget_state<PopupAnchorState>(popup.id);
-            popup_state->popup_anchor_placement = PopupAnchorPlacement::owner_down;
-            popup_state->popup_anchor_valid = true;
-
-            for(usize i = 0; i < items.size(); ++i)
-            {
-                const c8* item_text = items[i] ? items[i] : "";
-                push_id(context, (u64)i);
-                ItemHandle item = selectable(context, item_text, current_item && *current_item == (i32)i);
-                pop_id(context);
-                if(is_item_clicked(item))
-                {
-                    if(current_item && *current_item != (i32)i)
-                    {
-                        *current_item = (i32)i;
-                        ctx->get_or_create_query_state(handle.id)->states.insert_or_assign(Name("gui.value_changed"), Any(true));
-                    }
-                    ctx->close_popup(popup);
-                }
-            }
-
-            ctx->end_popup();
-            ctx->pop_id();
-
             if(clicked)
             {
-                if(ctx->is_popup_open(popup.id))
+                if(ctx->is_popup_open("##ComboPopup"))
                 {
-                    ctx->close_popup(popup);
+                    ctx->close_popup("##ComboPopup");
                     open = false;
                 }
                 else if(current_item && !items.empty())
                 {
-                    ctx->open_popup(popup);
+                    ctx->open_popup("##ComboPopup");
                     open = true;
                 }
             }
-            else
+
+            ItemHandle popup;
+            if(ctx->begin_popup("##ComboPopup", popup_desc, &popup))
             {
-                open = ctx->is_popup_open(popup.id);
+                Node& popup_node = ctx->m_build_desc.nodes.back();
+                set_popup_owner(popup_node, handle.id);
+                popup_node.layout_desc.padding = EdgeInsets::xy(6.0f, 5.0f);
+                popup_node.layout_desc.gap = 1.0f;
+                popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
+
+                Ref<PopupAnchorState> popup_state = ctx->get_or_create_widget_state<PopupAnchorState>(popup.id);
+                popup_state->popup_anchor_placement = PopupAnchorPlacement::owner_down;
+                popup_state->popup_anchor_valid = true;
+
+                for(usize i = 0; i < items.size(); ++i)
+                {
+                    const c8* item_text = items[i] ? items[i] : "";
+                    push_id(context, (u64)i);
+                    ItemHandle item = selectable(context, item_text, current_item && *current_item == (i32)i);
+                    pop_id(context);
+                    if(is_item_clicked(item))
+                    {
+                        if(current_item && *current_item != (i32)i)
+                        {
+                            *current_item = (i32)i;
+                            ctx->get_or_create_query_state(handle.id)->states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                        }
+                        ctx->close_popup(popup);
+                    }
+                }
+
+                ctx->end_popup();
             }
+            open = ctx->is_popup_open(popup);
+            ctx->pop_id();
 
             Ref<ItemQueryState> result = ctx->get_or_create_query_state(handle.id);
             result->states.insert_or_assign(Name("gui.open"), Any(open));
