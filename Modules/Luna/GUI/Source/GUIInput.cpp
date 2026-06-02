@@ -65,38 +65,6 @@ namespace Luna
                 return context && popup_id ? context->is_popup_open(popup_id) : false;
             }
 
-            virtual bool is_combo_open(id_t combo_id) const override
-            {
-                if(!context || !combo_id || context->m_open_combo_id != combo_id)
-                {
-                    return false;
-                }
-                DisclosureState* state = context->get_widget_state<DisclosureState>(combo_id);
-                return state ? state->open : false;
-            }
-
-            virtual void open_combo_dropdown(id_t combo_id) override
-            {
-                if(context && combo_id)
-                {
-                    context->close_combo_dropdowns_except(combo_id);
-                    context->get_or_create_widget_state<DisclosureState>(combo_id)->open = true;
-                }
-            }
-
-            virtual void close_combo_dropdown(id_t combo_id) override
-            {
-                if(!context || !combo_id) return;
-                if(context->m_open_combo_id == combo_id)
-                {
-                    context->close_combo_dropdowns_except(0);
-                }
-                else
-                {
-                    context->get_or_create_widget_state<DisclosureState>(combo_id)->open = false;
-                }
-            }
-
             virtual void open_menu_popup(id_t menu_id) override
             {
                 if(context)
@@ -803,45 +771,6 @@ namespace Luna
             }
         }
 
-        bool Context::hit_test_combo_dropdown(const Float2U& pos, id_t& out_id, i32& out_item) const
-        {
-            if(!m_open_combo_id || m_layouts.size() != m_submitted_desc.nodes.size()) return false;
-            for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
-            {
-                u32 node_index = (u32)(i - 1);
-                const Node& node = m_submitted_desc.nodes[node_index];
-                if(!combo_node(node) || node.id != m_open_combo_id) continue;
-                DisclosureState* state = get_widget_state<DisclosureState>(node.id);
-                if(!state || !state->open) continue;
-                RectF dropdown = combo_dropdown_rect(node, m_layouts[node_index].rect, m_frame_desc.surface_size);
-                if(!point_in_rect(pos, dropdown)) continue;
-                for(usize layer_iter = m_submitted_desc.layers.size(); layer_iter > (usize)node.layer + 1; --layer_iter)
-                {
-                    const Layer& layer = m_submitted_desc.layers[layer_iter - 1];
-                    if(layer.root == U32_MAX || layer.root >= m_submitted_desc.nodes.size()) continue;
-                    if(hit_test_node(layer.root, pos, HitTestFilter::none)) return false;
-                }
-                out_id = node.id;
-                out_item = combo_dropdown_item_at(node, dropdown, pos);
-                return true;
-            }
-            return false;
-        }
-
-        void Context::close_combo_dropdowns_except(id_t keep_id)
-        {
-            if(m_open_combo_id && m_open_combo_id != keep_id)
-            {
-                get_or_create_widget_state<DisclosureState>(m_open_combo_id)->open = false;
-            }
-            m_open_combo_id = keep_id;
-            for(const Node& node : m_submitted_desc.nodes)
-            {
-                if(!combo_node(node)) continue;
-                get_or_create_widget_state<DisclosureState>(node.id)->open = node.id == keep_id;
-            }
-        }
-
         bool Context::hit_test_tab_header(const Float2U& pos, id_t& out_tab_bar_id, id_t& out_tab_item_id, bool& out_close) const
         {
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
@@ -1290,10 +1219,9 @@ namespace Luna
             Node* node = find_node(id);
             if(node && node->color_owner())
             {
-                apply_color_edit_numeric_state(node->color_owner(), node->color_part());
+                apply_color_picker_numeric_state(node->color_owner(), node->color_part());
                 Ref<ItemQueryState> owner_result = get_or_create_query_state(node->color_owner());
                 owner_result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
-                return;
             }
             while(node && node->parent != U32_MAX)
             {
@@ -1307,52 +1235,52 @@ namespace Luna
             }
         }
 
-        void Context::sync_color_edit_numeric_state(id_t owner_id)
+        void Context::sync_color_picker_numeric_state(id_t owner_id)
         {
             Node* owner = find_node(owner_id);
-            if(!owner || !color_edit_node(*owner)) return;
-            Ref<ColorEditState> state = get_or_create_widget_state<ColorEditState>(owner_id);
-            ensure_color_edit_state_channels(*state);
+            if(!owner || !color_picker_node(*owner)) return;
+            Ref<ColorPickerState> state = get_or_create_widget_state<ColorPickerState>(owner_id);
+            ensure_color_picker_state_channels(*state);
             Float4U color = read_color_value(*owner);
-            state->color_edit_rgb[0] = (i32)color_channel_to_u8(color.x);
-            state->color_edit_rgb[1] = (i32)color_channel_to_u8(color.y);
-            state->color_edit_rgb[2] = (i32)color_channel_to_u8(color.z);
-            state->color_edit_rgb[3] = (i32)color_channel_to_u8(color.w);
+            state->color_picker_rgb[0] = (i32)color_channel_to_u8(color.x);
+            state->color_picker_rgb[1] = (i32)color_channel_to_u8(color.y);
+            state->color_picker_rgb[2] = (i32)color_channel_to_u8(color.z);
+            state->color_picker_rgb[3] = (i32)color_channel_to_u8(color.w);
             f32 h = 0.0f;
             f32 s = 0.0f;
             f32 v = 0.0f;
             color_rgb_to_hsv(color.x, color.y, color.z, h, s, v);
-            state->color_edit_hsv[0] = (i32)color_channel_to_u8(h);
-            state->color_edit_hsv[1] = (i32)color_channel_to_u8(s);
-            state->color_edit_hsv[2] = (i32)color_channel_to_u8(v);
+            state->color_picker_hsv[0] = (i32)color_channel_to_u8(h);
+            state->color_picker_hsv[1] = (i32)color_channel_to_u8(s);
+            state->color_picker_hsv[2] = (i32)color_channel_to_u8(v);
         }
 
-        void Context::apply_color_edit_numeric_state(id_t owner_id, ColorEditPart part)
+        void Context::apply_color_picker_numeric_state(id_t owner_id, ColorChannelPart part)
         {
             Node* owner = find_node(owner_id);
-            if(!owner || !color_edit_node(*owner)) return;
-            Ref<ColorEditState> state = get_or_create_widget_state<ColorEditState>(owner_id);
-            ensure_color_edit_state_channels(*state);
+            if(!owner || !color_picker_node(*owner)) return;
+            Ref<ColorPickerState> state = get_or_create_widget_state<ColorPickerState>(owner_id);
+            ensure_color_picker_state_channels(*state);
             Float4U color = read_color_value(*owner);
-            if(part == ColorEditPart::rgb)
+            if(part == ColorChannelPart::rgb)
             {
-                color.x = color_u8_to_channel((u8)clamp(state->color_edit_rgb[0], 0, 255));
-                color.y = color_u8_to_channel((u8)clamp(state->color_edit_rgb[1], 0, 255));
-                color.z = color_u8_to_channel((u8)clamp(state->color_edit_rgb[2], 0, 255));
+                color.x = color_u8_to_channel((u8)clamp(state->color_picker_rgb[0], 0, 255));
+                color.y = color_u8_to_channel((u8)clamp(state->color_picker_rgb[1], 0, 255));
+                color.z = color_u8_to_channel((u8)clamp(state->color_picker_rgb[2], 0, 255));
                 if(f32_value_count(*owner) > 3)
                 {
-                    color.w = color_u8_to_channel((u8)clamp(state->color_edit_rgb[3], 0, 255));
+                    color.w = color_u8_to_channel((u8)clamp(state->color_picker_rgb[3], 0, 255));
                 }
             }
-            else if(part == ColorEditPart::hsv)
+            else if(part == ColorChannelPart::hsv)
             {
-                f32 h = color_u8_to_channel((u8)clamp(state->color_edit_hsv[0], 0, 255));
-                f32 s = color_u8_to_channel((u8)clamp(state->color_edit_hsv[1], 0, 255));
-                f32 v = color_u8_to_channel((u8)clamp(state->color_edit_hsv[2], 0, 255));
+                f32 h = color_u8_to_channel((u8)clamp(state->color_picker_hsv[0], 0, 255));
+                f32 s = color_u8_to_channel((u8)clamp(state->color_picker_hsv[1], 0, 255));
+                f32 v = color_u8_to_channel((u8)clamp(state->color_picker_hsv[2], 0, 255));
                 color = color_hsv_to_rgb(h, s, v, color.w);
             }
             write_color_value(*owner, color);
-            sync_color_edit_numeric_state(owner_id);
+            sync_color_picker_numeric_state(owner_id);
         }
 
         void Context::update_color_picker_from_pointer(id_t id, const Float2U& pos)
@@ -1371,13 +1299,13 @@ namespace Luna
                     break;
                 }
             }
-            Ref<ColorEditState> state = get_or_create_widget_state<ColorEditState>(owner_id);
+            Ref<ColorPickerState> state = get_or_create_widget_state<ColorPickerState>(owner_id);
             if(m_active_color_part == 3)
             {
-                if(state->color_edit_original_valid)
+                if(state->color_picker_original_valid)
                 {
-                    write_color_value(*owner, state->color_edit_original);
-                    sync_color_edit_numeric_state(owner_id);
+                    write_color_value(*owner, state->color_picker_original);
+                    sync_color_picker_numeric_state(owner_id);
                     mark_value_changed(owner_id);
                 }
                 return;
@@ -1386,7 +1314,7 @@ namespace Luna
             f32 x = 0.0f;
             f32 y = 0.0f;
             f32 bar = 0.0f;
-            i32 axis = color_edit_axis_ref(*state);
+            i32 axis = color_picker_axis_ref(*state);
             color_picker_channels_from_color(axis, color, x, y, bar);
             if(m_active_color_part == 1)
             {
@@ -1406,7 +1334,7 @@ namespace Luna
             }
             color = color_from_picker_channels(axis, x, y, bar, color.w);
             write_color_value(*owner, color);
-            sync_color_edit_numeric_state(owner_id);
+            sync_color_picker_numeric_state(owner_id);
             mark_value_changed(owner_id);
         }
 
@@ -1755,27 +1683,6 @@ namespace Luna
                             }
                         }
                         continue;
-                    }
-                    id_t dropdown_combo = 0;
-                    i32 dropdown_item = -1;
-                    if(hit_test_combo_dropdown(e.position, dropdown_combo, dropdown_item))
-                    {
-                        m_active_id = dropdown_combo;
-                        m_focused_id = dropdown_combo;
-                        if(old_focused_id && old_focused_id != dropdown_combo)
-                        {
-                            clear_text_edit_state_for_id(old_focused_id);
-                        }
-                        set_interaction_down(dropdown_combo);
-                        continue;
-                    }
-                    if(m_open_combo_id)
-                    {
-                        id_t target = hit_test(e.position);
-                        if(target != m_open_combo_id)
-                        {
-                            close_combo_dropdowns_except(0);
-                        }
                     }
                     id_t split_space_id = 0;
                     u32 split_node_index = U32_MAX;
@@ -2188,43 +2095,6 @@ namespace Luna
                         m_active_numeric_defer_until_drag = false;
                         continue;
                     }
-                    id_t dropdown_combo = 0;
-                    i32 dropdown_item = -1;
-                    if(hit_test_combo_dropdown(e.position, dropdown_combo, dropdown_item))
-                    {
-                        if(dropdown_combo && dropdown_combo == m_active_id)
-                        {
-                            Ref<ItemQueryState> result = get_or_create_query_state(dropdown_combo);
-                            result->states.insert_or_assign(Name("gui.clicked"), Any(true));
-                            Ref<InteractionState> state = get_or_create_widget_state<InteractionState>(dropdown_combo);
-                            bool dbl = (m_time - state->last_click_time) <= 0.4;
-                            result->states.insert_or_assign(Name("gui.double_clicked"), Any(dbl));
-                            state->last_click_time = m_time;
-                            for(Node& node : m_submitted_desc.nodes)
-                            {
-                                i32* current_item = node.combo_current_item();
-                                if(node.id != dropdown_combo || !combo_node(node) || !current_item) continue;
-                                if(dropdown_item >= 0 && (usize)dropdown_item < node.combo_item_count())
-                                {
-                                    if(*current_item != dropdown_item)
-                                    {
-                                        *current_item = dropdown_item;
-                                        result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
-                                    }
-                                }
-                                break;
-                            }
-                            close_combo_dropdowns_except(0);
-                        }
-                        if(m_active_id)
-                        {
-                            clear_interaction_active(m_active_id);
-                        }
-                        m_active_id = 0;
-                        m_active_float_component = U32_MAX;
-                        m_active_numeric_defer_until_drag = false;
-                        continue;
-                    }
                     if(m_active_scrollbar_id)
                     {
                         clear_interaction_active(m_active_scrollbar_id);
@@ -2325,29 +2195,6 @@ namespace Luna
                             {
                                 begin_numeric_text_edit(target, e.position, m_active_float_component == U32_MAX ? 0 : m_active_float_component, true);
                             }
-                            else if(color_edit_node(node) && node.menu_popup())
-                            {
-                                id_t popup_id = node.menu_popup();
-                                if(is_popup_open(popup_id))
-                                {
-                                    close_popup(ItemHandle{get_object(), popup_id, m_generation});
-                                    get_or_create_widget_state<ColorEditState>(node.id)->color_edit_original_valid = false;
-                                    get_or_create_widget_state<PopupAnchorState>(popup_id)->popup_anchor_valid = false;
-                                    result->states.insert_or_assign(Name("gui.open"), Any(false));
-                                }
-                                else
-                                {
-                                    Ref<ColorEditState> color_state = get_or_create_widget_state<ColorEditState>(node.id);
-                                    color_state->color_edit_original = read_color_value(node);
-                                    color_state->color_edit_original_valid = true;
-                                    sync_color_edit_numeric_state(node.id);
-                                    Ref<PopupAnchorState> popup_state = get_or_create_widget_state<PopupAnchorState>(popup_id);
-                                    popup_state->popup_anchor_position = e.position;
-                                    popup_state->popup_anchor_valid = true;
-                                    open_popup(ItemHandle{get_object(), popup_id, m_generation});
-                                    result->states.insert_or_assign(Name("gui.open"), Any(true));
-                                }
-                            }
                             else
                             {
                                 ContextNodeInputContext node_input_context;
@@ -2379,12 +2226,6 @@ namespace Luna
                 {
                     m_pointer_inside = true;
                     update_pointer_position(e.position);
-                    id_t dropdown_combo = 0;
-                    i32 dropdown_item = -1;
-                    if(hit_test_combo_dropdown(e.position, dropdown_combo, dropdown_item))
-                    {
-                        continue;
-                    }
                     id_t tab_scroll_area = hit_test_tab_scroll_area(e.position);
                     if(tab_scroll_area)
                     {
@@ -2667,7 +2508,6 @@ namespace Luna
                     {
                         down = false;
                     }
-                    close_combo_dropdowns_except(0);
                     for(usize i = 0; i < m_open_popup_stack.size(); ++i)
                     {
                         if(test_flags(m_open_popup_stack[i].flags, PopupFlag::close_on_blur))
@@ -2683,8 +2523,6 @@ namespace Luna
 
             if(m_pointer_inside)
             {
-                id_t combo_id = 0;
-                i32 combo_item = -1;
                 id_t scrollbar_id = 0;
                 bool scrollbar_vertical = false;
                 RectF scrollbar_thumb;
@@ -2700,11 +2538,7 @@ namespace Luna
                 bool tab_close = false;
                 id_t tab_scroll_bar_id = 0;
                 bool tab_scroll_left = false;
-                if(hit_test_combo_dropdown(m_pointer_pos, combo_id, combo_item))
-                {
-                    m_hovered_id = combo_id;
-                }
-                else if(hit_test_tab_scroll_button(m_pointer_pos, tab_scroll_bar_id, tab_scroll_left))
+                if(hit_test_tab_scroll_button(m_pointer_pos, tab_scroll_bar_id, tab_scroll_left))
                 {
                     m_hovered_id = tab_scroll_bar_id;
                 }
@@ -2756,7 +2590,6 @@ namespace Luna
                 rebuild_popup_node_indices();
                 prune_popup_stack();
                 HashSet<id_t> ids;
-                bool open_combo_submitted = false;
                 bool tooltip_submitted = false;
                 for(const Node& node : m_submitted_desc.nodes)
                 {
@@ -2775,31 +2608,11 @@ namespace Luna
                     result->states.insert_or_assign(Name("gui.active"), Any(false));
                     result->states.insert_or_assign(Name("gui.focused"), Any(false));
                     result->states.insert_or_assign(Name("gui.value_changed"), Any(false));
-                    if(combo_node(node))
-                    {
-                        Ref<DisclosureState> disclosure = get_or_create_widget_state<DisclosureState>(node.id);
-                        if(node.id == m_open_combo_id)
-                        {
-                            open_combo_submitted = true;
-                            disclosure->open = true;
-                        }
-                        else
-                        {
-                            disclosure->open = false;
-                        }
-                        result->states.insert_or_assign(Name("gui.open"), Any(disclosure->open));
-                    }
-                    else if(popup_layer(node))
+                    if(popup_layer(node))
                     {
                         Ref<DisclosureState> disclosure = get_or_create_widget_state<DisclosureState>(node.id);
                         disclosure->open = popup_node_visible(node);
                         result->states.insert_or_assign(Name("gui.open"), Any(disclosure->open));
-                    }
-                    else if(color_edit_node(node))
-                    {
-                        id_t popup_id = node.menu_popup();
-                        bool open = popup_id && is_popup_open(popup_id);
-                        result->states.insert_or_assign(Name("gui.open"), Any(open));
                     }
                     else if(tab_item_layout(node))
                     {
@@ -2819,10 +2632,6 @@ namespace Luna
                             input_state->text_cursor = clamp_utf8_cursor(input_state->numeric_edit_text, input_state->text_cursor);
                         }
                     }
-                }
-                if(m_open_combo_id && !open_combo_submitted)
-                {
-                    m_open_combo_id = 0;
                 }
                 if(m_drag_drop_active)
                 {
@@ -2856,8 +2665,6 @@ namespace Luna
                     layout_layers();
                     if(m_pointer_inside)
                     {
-                        id_t combo_id = 0;
-                        i32 combo_item = -1;
                         id_t scrollbar_id = 0;
                         bool scrollbar_vertical = false;
                         RectF scrollbar_thumb;
@@ -2873,11 +2680,7 @@ namespace Luna
                         bool tab_close = false;
                         id_t tab_scroll_bar_id = 0;
                         bool tab_scroll_left = false;
-                        if(hit_test_combo_dropdown(m_pointer_pos, combo_id, combo_item))
-                        {
-                            m_hovered_id = combo_id;
-                        }
-                        else if(hit_test_tab_scroll_button(m_pointer_pos, tab_scroll_bar_id, tab_scroll_left))
+                        if(hit_test_tab_scroll_button(m_pointer_pos, tab_scroll_bar_id, tab_scroll_left))
                         {
                             m_hovered_id = tab_scroll_bar_id;
                         }
@@ -2931,26 +2734,11 @@ namespace Luna
                     result->states.insert_or_assign(Name("gui.hovered"), Any(node.id == m_hovered_id));
                     result->states.insert_or_assign(Name("gui.active"), Any(node.id == m_active_id || (interaction && interaction->active)));
                     result->states.insert_or_assign(Name("gui.focused"), Any(node.id == m_focused_id));
-                    if(combo_node(node))
-                    {
-                        DisclosureState* disclosure = get_widget_state<DisclosureState>(node.id);
-                        if(disclosure)
-                        {
-                            touch_widget_state<DisclosureState>(node.id);
-                        }
-                        result->states.insert_or_assign(Name("gui.open"), Any(disclosure ? disclosure->open : false));
-                    }
-                    else if(popup_layer(node))
+                    if(popup_layer(node))
                     {
                         Ref<DisclosureState> disclosure = get_or_create_widget_state<DisclosureState>(node.id);
                         disclosure->open = popup_node_visible(node);
                         result->states.insert_or_assign(Name("gui.open"), Any(disclosure->open));
-                    }
-                    else if(color_edit_node(node))
-                    {
-                        id_t popup_id = node.menu_popup();
-                        bool open = popup_id && is_popup_open(popup_id);
-                        result->states.insert_or_assign(Name("gui.open"), Any(open));
                     }
                     else if(tab_item_layout(node))
                     {

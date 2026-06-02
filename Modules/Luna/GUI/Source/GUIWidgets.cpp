@@ -413,7 +413,7 @@ namespace Luna
         LUNA_GUI_API ItemHandle begin_menu(IContext* context, const c8* label, bool enabled)
         {
             Context* ctx = context_from_interface(context);
-            Ref<MenuNode> menu = new_object<MenuNode>();
+            Ref<MenuItemNode> menu = new_object<MenuItemNode>();
             menu->enabled = enabled;
             if(!ctx->m_parent_stack.empty() && ctx->m_parent_stack.back() != U32_MAX)
             {
@@ -747,25 +747,6 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API ItemHandle combo(IContext* context, const c8* label, i32* current_item, Span<const c8*> items)
-        {
-            Context* ctx = context_from_interface(context);
-            Ref<ComboNode> node = new_object<ComboNode>();
-            node->current_item = current_item;
-            node->combo_items.reserve(items.size());
-            for(const c8* item : items)
-            {
-                node->combo_items.push_back(item ? item : "");
-            }
-            if(current_item && !node->combo_items.empty())
-            {
-                *current_item = clamp(*current_item, 0, (i32)node->combo_items.size() - 1);
-            }
-            ItemHandle handle = ctx->add_node(Ref<Node>(node), label ? label : "", true);
-            ctx->set_item_query_state_if_absent(handle.id, Name("gui.open"), Any(false));
-            return handle;
-        }
-
         LUNA_GUI_API ItemHandle button_group(IContext* context, const c8* label, i32* current_item, Span<const c8*> items)
         {
             Context* ctx = context_from_interface(context);
@@ -994,154 +975,6 @@ namespace Luna
         LUNA_GUI_API ItemHandle drag_int4(IContext* context, const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, NumericEditFlag flags)
         {
             return add_drag_int_node(context, label, value, 4, speed, min_value, max_value, flags);
-        }
-
-        static void sync_color_edit_build_state(ColorEditState& state, const Float4U& color)
-        {
-            ensure_color_edit_state_channels(state);
-            state.color_edit_rgb[0] = (i32)color_channel_to_u8(color.x);
-            state.color_edit_rgb[1] = (i32)color_channel_to_u8(color.y);
-            state.color_edit_rgb[2] = (i32)color_channel_to_u8(color.z);
-            state.color_edit_rgb[3] = (i32)color_channel_to_u8(color.w);
-            f32 h = 0.0f;
-            f32 s = 0.0f;
-            f32 v = 0.0f;
-            color_rgb_to_hsv(color.x, color.y, color.z, h, s, v);
-            state.color_edit_hsv[0] = (i32)color_channel_to_u8(h);
-            state.color_edit_hsv[1] = (i32)color_channel_to_u8(s);
-            state.color_edit_hsv[2] = (i32)color_channel_to_u8(v);
-        }
-
-        static void assign_color_binding(ColorBinding& binding, f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count)
-        {
-            binding.f32_value = f32_value;
-            binding.u8_value = u8_value;
-            binding.u32_value = u32_value;
-            binding.type = type;
-            binding.value_count = count;
-        }
-
-        static ItemHandle add_color_picker_node(IContext* context, const c8* label, f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count, id_t owner_id)
-        {
-            Context* ctx = context_from_interface(context);
-            Ref<ColorPickerNode> picker_node = new_object<ColorPickerNode>();
-            assign_color_binding(picker_node->binding, f32_value, u8_value, u32_value, type, count);
-            picker_node->binding.owner_id = owner_id;
-            ItemHandle handle = ctx->add_node(Ref<Node>(picker_node), label ? label : "ColorPicker", true);
-            return handle;
-        }
-
-        static void tag_color_numeric_node(Context* ctx, ItemHandle handle, id_t owner_id, ColorEditPart part)
-        {
-            if(Node* node = ctx->find_build_node(handle))
-            {
-                if(!numeric_drag(*node) || !numeric_value_i32(*node)) return;
-                DragIntNode* drag_node = (DragIntNode*)node;
-                drag_node->binding.color_owner_id = owner_id;
-                drag_node->binding.color_part = part;
-            }
-        }
-
-        static ItemHandle add_color_channel_drag(IContext* context, const c8* label, i32* value, id_t owner_id, ColorEditPart part)
-        {
-            Context* ctx = context_from_interface(context);
-            ItemHandle handle = drag_int(context, label, value, 1.0f, 0, 255, NumericEditFlag::input_on_double_click);
-            tag_color_numeric_node(ctx, handle, owner_id, part);
-            return handle;
-        }
-
-        static ItemHandle add_color_edit_node(IContext* context, const c8* label, f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count)
-        {
-            Context* ctx = context_from_interface(context);
-            Ref<ColorEditNode> edit_node = new_object<ColorEditNode>();
-            assign_color_binding(edit_node->binding, f32_value, u8_value, u32_value, type, count);
-            ItemHandle handle = ctx->add_node(Ref<Node>(edit_node), label ? label : "", true);
-            u32 color_index = (u32)ctx->m_build_desc.nodes.size() - 1;
-            Node& node = ctx->m_build_desc.nodes[color_index];
-            write_color_value(node, read_color_value(node));
-
-            Ref<ColorEditState> color_state = ctx->get_or_create_widget_state<ColorEditState>(handle.id);
-            color_edit_axis_ref(*color_state) = clamp(color_edit_axis_ref(*color_state), 0, 5);
-            ensure_color_edit_state_channels(*color_state);
-            sync_color_edit_build_state(*color_state, read_color_value(node));
-
-            PopupDesc popup_desc;
-            popup_desc.size = Size::fixed(476.0f, count == 4 ? 470.0f : 432.0f);
-            popup_desc.flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
-            ctx->push_id(handle.id);
-            ItemHandle popup = ctx->begin_popup("##ColorEditPopup", popup_desc);
-            Node& popup_node = ctx->m_build_desc.nodes.back();
-            popup_node.set_popup_owner(handle.id);
-            popup_node.layout_desc.padding = EdgeInsets::all(10.0f);
-            popup_node.layout_desc.gap = 8.0f;
-            popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
-
-            set_next_item_layout(context, LayoutStyle::fixed_height(300.0f));
-            add_color_picker_node(context, "##ColorPicker", f32_value, u8_value, u32_value, type, count, handle.id);
-
-            const c8* axis_items[] = { "H", "S", "V", "R", "G", "B" };
-            set_next_item_layout(context, LayoutStyle::fixed_height(28.0f));
-            button_group(context, "Channel", &color_edit_axis_ref(*color_state), Span<const c8*>(axis_items, 6));
-
-            LayoutDesc row;
-            row.gap = 6.0f;
-            row.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
-            set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
-            begin_h_layout(context, "RGB", row);
-            add_color_channel_drag(context, "R", &color_state->color_edit_rgb[0], handle.id, ColorEditPart::rgb);
-            add_color_channel_drag(context, "G", &color_state->color_edit_rgb[1], handle.id, ColorEditPart::rgb);
-            add_color_channel_drag(context, "B", &color_state->color_edit_rgb[2], handle.id, ColorEditPart::rgb);
-            end_h_layout(context);
-
-            set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
-            begin_h_layout(context, "HSV", row);
-            add_color_channel_drag(context, "H", &color_state->color_edit_hsv[0], handle.id, ColorEditPart::hsv);
-            add_color_channel_drag(context, "S", &color_state->color_edit_hsv[1], handle.id, ColorEditPart::hsv);
-            add_color_channel_drag(context, "V", &color_state->color_edit_hsv[2], handle.id, ColorEditPart::hsv);
-            end_h_layout(context);
-
-            if(count == 4)
-            {
-                set_next_item_layout(context, LayoutStyle::fixed_height(30.0f));
-                begin_h_layout(context, "Alpha", row);
-                add_color_channel_drag(context, "A", &color_state->color_edit_rgb[3], handle.id, ColorEditPart::rgb);
-                end_h_layout(context);
-            }
-
-            ctx->end_popup();
-            ctx->pop_id();
-            ctx->m_build_desc.nodes[color_index].set_menu_popup(popup.id);
-            return handle;
-        }
-
-        LUNA_GUI_API ItemHandle color_edit3(IContext* context, const c8* label, f32* value)
-        {
-            return add_color_edit_node(context, label, value, nullptr, nullptr, ColorValueType::f32, 3);
-        }
-
-        LUNA_GUI_API ItemHandle color_edit4(IContext* context, const c8* label, f32* value)
-        {
-            return add_color_edit_node(context, label, value, nullptr, nullptr, ColorValueType::f32, 4);
-        }
-
-        LUNA_GUI_API ItemHandle color_edit3(IContext* context, const c8* label, u8* value)
-        {
-            return add_color_edit_node(context, label, nullptr, value, nullptr, ColorValueType::u8, 3);
-        }
-
-        LUNA_GUI_API ItemHandle color_edit4(IContext* context, const c8* label, u8* value)
-        {
-            return add_color_edit_node(context, label, nullptr, value, nullptr, ColorValueType::u8, 4);
-        }
-
-        LUNA_GUI_API ItemHandle color_edit3(IContext* context, const c8* label, u32* value)
-        {
-            return add_color_edit_node(context, label, nullptr, nullptr, value, ColorValueType::rgba8, 3);
-        }
-
-        LUNA_GUI_API ItemHandle color_edit4(IContext* context, const c8* label, u32* value)
-        {
-            return add_color_edit_node(context, label, nullptr, nullptr, value, ColorValueType::rgba8, 4);
         }
 
         LUNA_GUI_API ItemHandle hit_box(IContext* context, const c8* label, const RectF& rect)

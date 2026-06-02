@@ -74,14 +74,12 @@ namespace Luna
                 register_struct_type<TabBarNode>({}, typeof<Node>());
                 register_struct_type<ButtonNode>({}, typeof<Node>());
                 register_struct_type<TextNode>({}, typeof<Node>());
-                register_struct_type<MenuNode>({}, typeof<Node>());
                 register_struct_type<SelectableNode>({}, typeof<Node>());
                 register_struct_type<CheckboxNode>({}, typeof<Node>());
                 register_struct_type<ToggleSwitchNode>({}, typeof<Node>());
                 register_struct_type<CollapsingHeaderNode>({}, typeof<Node>());
                 register_struct_type<TreeNodeNode>({}, typeof<Node>());
                 register_struct_type<RadioButtonNode>({}, typeof<Node>());
-                register_struct_type<ComboNode>({}, typeof<Node>());
                 register_struct_type<TabItemNode>({}, typeof<Node>());
                 register_struct_type<InputTextNode>({}, typeof<Node>());
                 register_struct_type<SliderFloatNode>({}, typeof<Node>());
@@ -91,7 +89,6 @@ namespace Luna
                 register_struct_type<DragFloatNode>({}, typeof<Node>());
                 register_struct_type<DragIntNode>({}, typeof<Node>());
                 register_struct_type<ColorPickerNode>({}, typeof<Node>());
-                register_struct_type<ColorEditNode>({}, typeof<Node>());
                 register_struct_type<MenuItemNode>({}, typeof<Node>());
                 register_struct_type<MenuSeparatorNode>({}, typeof<Node>());
                 register_struct_type<ButtonGroupNode>({}, typeof<Node>());
@@ -113,7 +110,7 @@ namespace Luna
                 register_struct_type<InputEditState>({});
                 register_struct_type<TableLayoutState>({});
                 register_struct_type<TabBarState>({});
-                register_struct_type<ColorEditState>({});
+                register_struct_type<ColorPickerState>({});
                 register_struct_type<PopupAnchorState>({});
                 register_boxed_type<Context>();
                 impl_interface_for_type<Context, IContext>();

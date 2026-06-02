@@ -94,7 +94,6 @@ namespace Luna
         LUNA_GUI_API ItemHandle image(IContext* context, RHI::ITexture* texture, const Size& size, ImageFlag flags = ImageFlag::none);
         LUNA_GUI_API ItemHandle collapsing_header(IContext* context, const c8* label);
         LUNA_GUI_API ItemHandle tree_node(IContext* context, const c8* label, TreeNodeFlag flags = TreeNodeFlag::none);
-        LUNA_GUI_API ItemHandle combo(IContext* context, const c8* label, i32* current_item, Span<const c8*> items);
         LUNA_GUI_API ItemHandle button_group(IContext* context, const c8* label, i32* current_item, Span<const c8*> items);
         LUNA_GUI_API ItemHandle button_group(IContext* context, const c8* label, Span<bool> selected, Span<const c8*> items);
         LUNA_GUI_API ItemHandle slider_float(IContext* context, const c8* label, f32* value, f32 min_value, f32 max_value);
@@ -113,12 +112,6 @@ namespace Luna
         LUNA_GUI_API ItemHandle drag_int2(IContext* context, const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, NumericEditFlag flags = NumericEditFlag::none);
         LUNA_GUI_API ItemHandle drag_int3(IContext* context, const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, NumericEditFlag flags = NumericEditFlag::none);
         LUNA_GUI_API ItemHandle drag_int4(IContext* context, const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, NumericEditFlag flags = NumericEditFlag::none);
-        LUNA_GUI_API ItemHandle color_edit3(IContext* context, const c8* label, f32* value);
-        LUNA_GUI_API ItemHandle color_edit4(IContext* context, const c8* label, f32* value);
-        LUNA_GUI_API ItemHandle color_edit3(IContext* context, const c8* label, u8* value);
-        LUNA_GUI_API ItemHandle color_edit4(IContext* context, const c8* label, u8* value);
-        LUNA_GUI_API ItemHandle color_edit3(IContext* context, const c8* label, u32* value);
-        LUNA_GUI_API ItemHandle color_edit4(IContext* context, const c8* label, u32* value);
         LUNA_GUI_API ItemHandle hit_box(IContext* context, const c8* label, const RectF& rect);
         LUNA_GUI_API Float2U get_pointer_position(IContext* context);
         LUNA_GUI_API bool is_pointer_button_down(IContext* context, PointerButton button);

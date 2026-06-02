@@ -28,30 +28,7 @@ namespace Luna
             virtual u8 f32_values_count() const override;
             virtual ColorValueType color_type() const override;
             virtual id_t color_owner() const override;
-            virtual ColorEditPart color_part() const override;
-            virtual LayoutMetrics measure() const override;
-        };
-        struct ColorEditNode : Node
-        {
-            lustruct("GUI::ColorEditNode", "{3009B8C8-A0C0-4A6A-B565-CB55217D554E}");
-
-            ColorBinding binding;
-            id_t picker_popup_id = 0;
-
-            ColorEditNode();
-            virtual Guid type_guid() const override;
-            virtual Ref<Node> clone() const override;
-            virtual ColorWidgetKind color_widget_kind() const override;
-            virtual bool uses_context_render() const override;
-            virtual f32* f32_values() const override;
-            virtual u8* u8_values() const override;
-            virtual u32* u32_value() const override;
-            virtual u8 f32_values_count() const override;
-            virtual ColorValueType color_type() const override;
-            virtual id_t color_owner() const override;
-            virtual ColorEditPart color_part() const override;
-            virtual id_t menu_popup() const override;
-            virtual void set_menu_popup(id_t value) override;
+            virtual ColorChannelPart color_part() const override;
             virtual LayoutMetrics measure() const override;
         };
     }

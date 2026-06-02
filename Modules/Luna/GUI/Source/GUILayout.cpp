@@ -1285,21 +1285,21 @@ namespace Luna
                     bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].accepts_top_level_menus();
                     width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
                     height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
-                    if(owner_in_menu_bar)
+                    PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(node.id);
+                    if(popup_state && popup_state->popup_anchor_valid)
                     {
-                        position.x = owner_rect.offset_x;
-                        position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
-                        if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
+                        touch_widget_state<PopupAnchorState>(node.id);
+                        if(popup_state->popup_anchor_placement == PopupAnchorPlacement::owner_down)
                         {
-                            position.y = owner_rect.offset_y - height - 2.0f;
+                            position.x = owner_rect.offset_x;
+                            position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
+                            if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
+                            {
+                                position.y = owner_rect.offset_y - height - 2.0f;
+                            }
                         }
-                    }
-                    else if(color_edit_node(owner))
-                    {
-                        PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(node.id);
-                        if(popup_state && popup_state->popup_anchor_valid)
+                        else
                         {
-                            touch_widget_state<PopupAnchorState>(node.id);
                             Float2U anchor = popup_state->popup_anchor_position;
                             position.x = anchor.x;
                             position.y = anchor.y + 8.0f;
@@ -1312,16 +1312,14 @@ namespace Luna
                                 position.y = anchor.y - height - 8.0f;
                             }
                         }
-                        else
+                    }
+                    else if(owner_in_menu_bar)
+                    {
+                        position.x = owner_rect.offset_x;
+                        position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
+                        if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
                         {
-                            f32 label_w = owner.text.empty() ? 0.0f :
-                                min(max((f32)owner.text.size() * 8.0f + 8.0f, 80.0f), owner_rect.width * 0.45f);
-                            position.x = owner_rect.offset_x + label_w;
-                            position.y = owner_rect.offset_y + owner_rect.height + 4.0f;
-                            if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 4.0f >= 0.0f)
-                            {
-                                position.y = owner_rect.offset_y - height - 4.0f;
-                            }
+                            position.y = owner_rect.offset_y - height - 2.0f;
                         }
                     }
                     else
@@ -1525,21 +1523,21 @@ namespace Luna
                             bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].accepts_top_level_menus();
                             width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
                             height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
-                            if(owner_in_menu_bar)
+                            PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(child_node.id);
+                            if(popup_state && popup_state->popup_anchor_valid)
                             {
-                                position.x = owner_rect.offset_x;
-                                position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
-                                if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
+                                touch_widget_state<PopupAnchorState>(child_node.id);
+                                if(popup_state->popup_anchor_placement == PopupAnchorPlacement::owner_down)
                                 {
-                                    position.y = owner_rect.offset_y - height - 2.0f;
+                                    position.x = owner_rect.offset_x;
+                                    position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
+                                    if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
+                                    {
+                                        position.y = owner_rect.offset_y - height - 2.0f;
+                                    }
                                 }
-                            }
-                            else if(color_edit_node(owner))
-                            {
-                                PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(child_node.id);
-                                if(popup_state && popup_state->popup_anchor_valid)
+                                else
                                 {
-                                    touch_widget_state<PopupAnchorState>(child_node.id);
                                     Float2U anchor = popup_state->popup_anchor_position;
                                     position.x = anchor.x;
                                     position.y = anchor.y + 8.0f;
@@ -1552,16 +1550,14 @@ namespace Luna
                                         position.y = anchor.y - height - 8.0f;
                                     }
                                 }
-                                else
+                            }
+                            else if(owner_in_menu_bar)
+                            {
+                                position.x = owner_rect.offset_x;
+                                position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
+                                if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
                                 {
-                                    f32 label_w = owner.text.empty() ? 0.0f :
-                                        min(max((f32)owner.text.size() * 8.0f + 8.0f, 80.0f), owner_rect.width * 0.45f);
-                                    position.x = owner_rect.offset_x + label_w;
-                                    position.y = owner_rect.offset_y + owner_rect.height + 4.0f;
-                                    if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 4.0f >= 0.0f)
-                                    {
-                                        position.y = owner_rect.offset_y - height - 4.0f;
-                                    }
+                                    position.y = owner_rect.offset_y - height - 2.0f;
                                 }
                             }
                             else

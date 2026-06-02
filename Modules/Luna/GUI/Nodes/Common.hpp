@@ -25,7 +25,7 @@ namespace Luna
             NumericEditFlag flags = NumericEditFlag::none;
             bool f32_color = false;
             id_t color_owner_id = 0;
-            ColorEditPart color_part = ColorEditPart::none;
+            ColorChannelPart color_part = ColorChannelPart::none;
         };
 
         struct ColorBinding
@@ -36,7 +36,7 @@ namespace Luna
             ColorValueType type = ColorValueType::f32;
             u8 value_count = 3;
             id_t owner_id = 0;
-            ColorEditPart part = ColorEditPart::none;
+            ColorChannelPart part = ColorChannelPart::none;
         };
     }
 }

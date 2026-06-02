@@ -296,13 +296,18 @@ namespace Luna
             return (f32)value / 255.0f;
         }
 
-        inline Float4U read_color_value(const Node& node)
+        inline u8 color_value_count(const ColorBinding& binding)
         {
-            u8* u8_values = node.u8_values();
-            u32* rgba8_value = node.u32_value();
-            f32* f32_values = node.f32_values();
-            u32 value_count = f32_value_count(node);
-            if(node.color_type() == ColorValueType::u8 && u8_values)
+            return (u8)clamp((u32)binding.value_count, 1u, 4u);
+        }
+
+        inline Float4U read_color_value(const ColorBinding& binding)
+        {
+            u8* u8_values = binding.u8_value;
+            u32* rgba8_value = binding.u32_value;
+            f32* f32_values = binding.f32_value;
+            u32 value_count = color_value_count(binding);
+            if(binding.type == ColorValueType::u8 && u8_values)
             {
                 return Float4U(
                     color_u8_to_channel(u8_values[0]),
@@ -310,7 +315,7 @@ namespace Luna
                     color_u8_to_channel(u8_values[2]),
                     value_count > 3 ? color_u8_to_channel(u8_values[3]) : 1.0f);
             }
-            if(node.color_type() == ColorValueType::rgba8 && rgba8_value)
+            if(binding.type == ColorValueType::rgba8 && rgba8_value)
             {
                 u32 value = *rgba8_value;
                 return Float4U(
@@ -330,24 +335,24 @@ namespace Luna
             return Float4U(0.0f, 0.0f, 0.0f, 1.0f);
         }
 
-        inline void write_color_value(Node& node, Float4U color)
+        inline void write_color_value(ColorBinding& binding, Float4U color)
         {
             color.x = clamp(color.x, 0.0f, 1.0f);
             color.y = clamp(color.y, 0.0f, 1.0f);
             color.z = clamp(color.z, 0.0f, 1.0f);
-            u32 value_count = f32_value_count(node);
+            u32 value_count = color_value_count(binding);
             color.w = value_count > 3 ? clamp(color.w, 0.0f, 1.0f) : 1.0f;
-            u8* u8_values = node.u8_values();
-            u32* rgba8_value = node.u32_value();
-            f32* f32_values = node.f32_values();
-            if(node.color_type() == ColorValueType::u8 && u8_values)
+            u8* u8_values = binding.u8_value;
+            u32* rgba8_value = binding.u32_value;
+            f32* f32_values = binding.f32_value;
+            if(binding.type == ColorValueType::u8 && u8_values)
             {
                 u8_values[0] = color_channel_to_u8(color.x);
                 u8_values[1] = color_channel_to_u8(color.y);
                 u8_values[2] = color_channel_to_u8(color.z);
                 if(value_count > 3) u8_values[3] = color_channel_to_u8(color.w);
             }
-            else if(node.color_type() == ColorValueType::rgba8 && rgba8_value)
+            else if(binding.type == ColorValueType::rgba8 && rgba8_value)
             {
                 u32 r = (u32)color_channel_to_u8(color.x);
                 u32 g = (u32)color_channel_to_u8(color.y);
@@ -362,6 +367,30 @@ namespace Luna
                 f32_values[2] = color.z;
                 if(value_count > 3) f32_values[3] = color.w;
             }
+        }
+
+        inline ColorBinding color_binding_from_node(const Node& node)
+        {
+            ColorBinding binding;
+            binding.f32_value = node.f32_values();
+            binding.u8_value = node.u8_values();
+            binding.u32_value = node.u32_value();
+            binding.type = node.color_type();
+            binding.value_count = node.f32_values_count();
+            binding.owner_id = node.color_owner();
+            binding.part = node.color_part();
+            return binding;
+        }
+
+        inline Float4U read_color_value(const Node& node)
+        {
+            return read_color_value(color_binding_from_node(node));
+        }
+
+        inline void write_color_value(Node& node, Float4U color)
+        {
+            ColorBinding binding = color_binding_from_node(node);
+            write_color_value(binding, color);
         }
 
         inline void color_rgb_to_hsv(f32 r, f32 g, f32 b, f32& h, f32& s, f32& v)
@@ -484,47 +513,6 @@ namespace Luna
             return RectF(cur.offset_x, cur.offset_y + cur.height + 44.0f, cur.width, cur.height);
         }
 
-        inline f32 combo_label_width(const Node& node, const RectF& rect)
-        {
-            return min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
-        }
-
-        inline RectF combo_value_rect(const Node& node, const RectF& rect)
-        {
-            f32 label_w = combo_label_width(node, rect);
-            return RectF(rect.offset_x + label_w, rect.offset_y, max(rect.width - label_w, 1.0f), rect.height);
-        }
-
-        inline f32 combo_item_height()
-        {
-            return 26.0f;
-        }
-
-        inline RectF combo_dropdown_rect(const Node& node, const RectF& rect, const Float2U& surface_size)
-        {
-            RectF value = combo_value_rect(node, rect);
-            f32 item_height = combo_item_height();
-            f32 dropdown_width = max(value.width, 120.0f);
-            f32 dropdown_height = max((f32)node.combo_item_count() * item_height, item_height);
-            dropdown_width = min(dropdown_width, max(surface_size.x, 1.0f));
-            dropdown_height = min(dropdown_height, max(surface_size.y, item_height));
-            f32 x = min(value.offset_x, max(surface_size.x - dropdown_width, 0.0f));
-            f32 y = value.offset_y + value.height + 2.0f;
-            if(y + dropdown_height > surface_size.y && value.offset_y - dropdown_height - 2.0f >= 0.0f)
-            {
-                y = value.offset_y - dropdown_height - 2.0f;
-            }
-            y = min(y, max(surface_size.y - dropdown_height, 0.0f));
-            return RectF(x, y, dropdown_width, dropdown_height);
-        }
-
-        inline i32 combo_dropdown_item_at(const Node& node, const RectF& dropdown_rect, const Float2U& pos)
-        {
-            if(!point_in_rect(pos, dropdown_rect) || !node.combo_item_count()) return -1;
-            i32 index = (i32)((pos.y - dropdown_rect.offset_y) / combo_item_height());
-            return index >= 0 && (usize)index < node.combo_item_count() ? index : -1;
-        }
-
         inline bool popup_layer(const Node& node)
         {
             return node.layer_role() == NodeLayerRole::popup;
@@ -545,19 +533,9 @@ namespace Luna
             return node.string_value() != nullptr;
         }
 
-        inline bool combo_node(const Node& node)
-        {
-            return node.combo_current_item() != nullptr || node.combo_item_count() > 0;
-        }
-
         inline bool menu_node(const Node& node)
         {
             return node.menu_popup() != 0;
-        }
-
-        inline bool color_edit_node(const Node& node)
-        {
-            return node.color_widget_kind() == ColorWidgetKind::edit;
         }
 
         inline bool color_picker_node(const Node& node)
@@ -972,44 +950,51 @@ namespace Luna
             Vector<id_t> tab_order;
         };
 
-        struct ColorEditState
+        struct ColorPickerState
         {
-            lustruct("GUI::ColorEditState", "{A9483A32-872C-47B0-9AAF-26468F6D411F}");
-            Vector<i32> color_edit_axis;
-            Vector<i32> color_edit_rgb;
-            Vector<i32> color_edit_hsv;
-            Float4U color_edit_original = Float4U(0.0f, 0.0f, 0.0f, 1.0f);
-            bool color_edit_original_valid = false;
+            lustruct("GUI::ColorPickerState", "{A9483A32-872C-47B0-9AAF-26468F6D411F}");
+            Vector<i32> color_picker_axis;
+            Vector<i32> color_picker_rgb;
+            Vector<i32> color_picker_hsv;
+            Float4U color_picker_original = Float4U(0.0f, 0.0f, 0.0f, 1.0f);
+            bool color_picker_original_valid = false;
+        };
+
+        enum class PopupAnchorPlacement : u8
+        {
+            pointer,
+            owner_down
         };
 
         struct PopupAnchorState
         {
             lustruct("GUI::PopupAnchorState", "{9BEED835-1593-4FAF-B0F7-FC753D462883}");
             Float2U popup_anchor_position = Float2U(0.0f, 0.0f);
+            PopupAnchorPlacement popup_anchor_placement = PopupAnchorPlacement::pointer;
             bool popup_anchor_valid = false;
         };
 
-        inline void ensure_color_edit_state_channels(ColorEditState& state)
+        inline void ensure_color_picker_state_channels(ColorPickerState& state)
         {
-            if(state.color_edit_axis.size() != 1)
+            if(state.color_picker_axis.size() != 1)
             {
-                state.color_edit_axis.resize(1, 0);
+                state.color_picker_axis.resize(1, 0);
             }
-            if(state.color_edit_rgb.size() != 4)
+            if(state.color_picker_rgb.size() != 4)
             {
-                state.color_edit_rgb.resize(4, 0);
-                state.color_edit_rgb[3] = 255;
+                state.color_picker_rgb.resize(4, 0);
+                state.color_picker_rgb[3] = 255;
             }
-            if(state.color_edit_hsv.size() != 3)
+            if(state.color_picker_hsv.size() != 3)
             {
-                state.color_edit_hsv.resize(3, 0);
+                state.color_picker_hsv.resize(3, 0);
             }
         }
 
-        inline i32& color_edit_axis_ref(ColorEditState& state)
+        inline i32& color_picker_axis_ref(ColorPickerState& state)
         {
-            ensure_color_edit_state_channels(state);
-            return state.color_edit_axis[0];
+            ensure_color_picker_state_channels(state);
+            return state.color_picker_axis[0];
         }
 
         inline bool tab_order_contains(const TabBarState& state, id_t id)
@@ -1362,7 +1347,6 @@ namespace Luna
             DockSplitAxis m_active_dock_split_axis = DockSplitAxis::x;
             f32 m_active_dock_split_start_ratio = 0.5f;
             Float2U m_active_dock_split_start_pos = Float2U(0.0f);
-            id_t m_open_combo_id = 0;
             Vector<PopupStackEntry> m_open_popup_stack;
             Vector<id_t> m_popup_build_stack;
             HashMap<id_t, u32, IdHash> m_popup_node_indices;
@@ -1555,8 +1539,6 @@ namespace Luna
             void start_drag_drop(id_t source_id, const Name& type);
             void clear_drag_drop();
             void deliver_drag_drop_payload(id_t target_id);
-            bool hit_test_combo_dropdown(const Float2U& pos, id_t& out_id, i32& out_item) const;
-            void close_combo_dropdowns_except(id_t keep_id);
             bool hit_test_tab_header(const Float2U& pos, id_t& out_tab_bar_id, id_t& out_tab_item_id, bool& out_close) const;
             bool hit_test_tab_scroll_button(const Float2U& pos, id_t& out_tab_bar_id, bool& out_left) const;
             id_t hit_test_tab_scroll_area(const Float2U& pos) const;
@@ -1572,8 +1554,8 @@ namespace Luna
             u32 hit_test_numeric_component(const Node& node, const RectF& rect, const Float2U& pos) const;
             void update_numeric_node_from_pointer(id_t id, const Float2U& pos, const Float2U* old_pos = nullptr);
             void update_color_picker_from_pointer(id_t id, const Float2U& pos);
-            void sync_color_edit_numeric_state(id_t owner_id);
-            void apply_color_edit_numeric_state(id_t owner_id, ColorEditPart part);
+            void sync_color_picker_numeric_state(id_t owner_id);
+            void apply_color_picker_numeric_state(id_t owner_id, ColorChannelPart part);
             bool input_text_cursor_from_pointer(id_t id, const Float2U& pos, usize& out_cursor);
             bool update_input_text_selection_from_pointer(id_t id, const Float2U& pos);
             bool numeric_text_cursor_from_pointer(id_t id, const Float2U& pos, usize& out_cursor);

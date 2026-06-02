@@ -28,7 +28,7 @@ namespace Luna
             rgba8
         };
 
-        enum class ColorEditPart : u8
+        enum class ColorChannelPart : u8
         {
             none,
             rgb,
@@ -85,7 +85,6 @@ namespace Luna
         enum class ColorWidgetKind : u8
         {
             none,
-            edit,
             picker
         };
 
@@ -132,7 +131,6 @@ namespace Luna
                 return state;
             }
             virtual bool is_popup_open(id_t popup_id) const = 0;
-            virtual bool is_combo_open(id_t combo_id) const = 0;
             virtual void draw_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius = 0.0f,
                 RHI::ITexture* texture = nullptr, ImageFlag image_flags = ImageFlag::none) = 0;
             virtual void draw_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
@@ -187,9 +185,6 @@ namespace Luna
                 return state;
             }
             virtual bool is_popup_open(id_t popup_id) const = 0;
-            virtual bool is_combo_open(id_t combo_id) const = 0;
-            virtual void open_combo_dropdown(id_t combo_id) = 0;
-            virtual void close_combo_dropdown(id_t combo_id) = 0;
             virtual void open_menu_popup(id_t menu_id) = 0;
             virtual void close_popup(id_t popup_id) = 0;
             virtual void close_all_popups() = 0;
@@ -259,18 +254,6 @@ namespace Luna
                 return false;
             }
             virtual void apply_container_defaults(LayoutDesc& desc) const {}
-            virtual i32* combo_current_item() const
-            {
-                return nullptr;
-            }
-            virtual usize combo_item_count() const
-            {
-                return 0;
-            }
-            virtual const c8* combo_item_text(usize index) const
-            {
-                return "";
-            }
             virtual bool enabled_state() const
             {
                 return true;
@@ -315,9 +298,9 @@ namespace Luna
             {
                 return 0;
             }
-            virtual ColorEditPart color_part() const
+            virtual ColorChannelPart color_part() const
             {
-                return ColorEditPart::none;
+                return ColorChannelPart::none;
             }
             virtual bool uses_f32_color_components() const
             {

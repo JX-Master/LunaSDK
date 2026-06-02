@@ -55,16 +55,6 @@ namespace Luna
                 return context && popup_id ? context->is_popup_open(popup_id) : false;
             }
 
-            virtual bool is_combo_open(id_t combo_id) const override
-            {
-                if(!context || !combo_id || context->m_open_combo_id != combo_id)
-                {
-                    return false;
-                }
-                DisclosureState* state = context->get_widget_state<DisclosureState>(combo_id);
-                return state ? state->open : false;
-            }
-
             virtual void draw_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
                 RHI::ITexture* texture, ImageFlag image_flags) override
             {
@@ -117,17 +107,6 @@ namespace Luna
                 a.y + (b.y - a.y) * t,
                 a.z + (b.z - a.z) * t,
                 a.w + (b.w - a.w) * t);
-        }
-
-        static u32 color_u8(f32 value)
-        {
-            return (u32)color_channel_to_u8(value);
-        }
-
-        static f32 color_edit_label_width(const Node& node, const RectF& rect)
-        {
-            if(node.text.empty()) return 0.0f;
-            return min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
         }
 
         static void add_selective_rounded_rectangle(Vector<f32>& points, f32 width, f32 height, f32 radius,
@@ -894,39 +873,13 @@ namespace Luna
                     }
                 }
             }
-            else if(color_edit_node(node))
-            {
-                f32 label_w = color_edit_label_width(node, rect);
-                if(label_w > 0.0f)
-                {
-                    render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                }
-                Float4U color = read_color_value(node);
-                RectF value_rect(rect.offset_x + label_w, rect.offset_y + 3.0f, max(rect.width - label_w - 8.0f, 1.0f), max(rect.height - 6.0f, 1.0f));
-                render_rect(value_rect, clip, active ? Float4U(0.18f, 0.29f, 0.44f, 1.0f) : (hovered ? Float4U(0.14f, 0.19f, 0.27f, 1.0f) : Float4U(0.08f, 0.10f, 0.13f, 1.0f)), 4.0f);
-                f32 swatch_size = min(max(value_rect.height - 6.0f, 1.0f), 34.0f);
-                RectF swatch(value_rect.offset_x + 4.0f, value_rect.offset_y + (value_rect.height - swatch_size) * 0.5f, swatch_size, swatch_size);
-                render_color_swatch(swatch, clip, color, 4.0f);
-                String hex;
-                if(f32_value_count(node) > 3)
-                {
-                    strprintf(hex, "#%02X%02X%02X%02X", color_u8(color.x), color_u8(color.y), color_u8(color.z), color_u8(color.w));
-                }
-                else
-                {
-                    strprintf(hex, "#%02X%02X%02X", color_u8(color.x), color_u8(color.y), color_u8(color.z));
-                }
-                render_text(RectF(swatch.offset_x + swatch.width + 8.0f, value_rect.offset_y,
-                    max(value_rect.offset_x + value_rect.width - swatch.offset_x - swatch.width - 14.0f, 1.0f), value_rect.height),
-                    clip, hex.c_str(), 15.0f, Float4U(0.86f, 0.90f, 0.96f, 1.0f), VG::TextAlignment::begin);
-            }
             else if(color_picker_node(node))
             {
                 Float4U color = read_color_value(node);
                 id_t owner_id = node.color_owner() ? node.color_owner() : node.id;
-                Ref<ColorEditState> state_ref = get_or_create_widget_state<ColorEditState>(owner_id);
-                ColorEditState& state = *state_ref;
-                i32 axis = clamp(color_edit_axis_ref(state), 0, 5);
+                Ref<ColorPickerState> state_ref = get_or_create_widget_state<ColorPickerState>(owner_id);
+                ColorPickerState& state = *state_ref;
+                i32 axis = clamp(color_picker_axis_ref(state), 0, 5);
                 f32 picker_x = 0.0f;
                 f32 picker_y = 0.0f;
                 f32 picker_bar = 0.0f;
@@ -1023,7 +976,7 @@ namespace Luna
                 render_text(RectF(current_rect.offset_x, current_rect.offset_y - 26.0f, current_rect.width, 22.0f), clip, "Current", 15.0f, Color::white(), VG::TextAlignment::begin);
                 render_color_swatch(current_rect, clip, color, 3.0f);
                 render_text(RectF(original_rect.offset_x, original_rect.offset_y - 26.0f, original_rect.width, 22.0f), clip, "Original", 15.0f, Color::white(), VG::TextAlignment::begin);
-                render_color_swatch(original_rect, clip, state.color_edit_original_valid ? state.color_edit_original : color, 3.0f);
+                render_color_swatch(original_rect, clip, state.color_picker_original_valid ? state.color_picker_original : color, 3.0f);
             }
             else if(numeric_slider(node))
             {
