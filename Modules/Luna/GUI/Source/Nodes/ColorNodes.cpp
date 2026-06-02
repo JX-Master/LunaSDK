@@ -24,49 +24,9 @@ namespace Luna
             return new_object<ColorPickerNode>(*this);
         }
 
-        ColorWidgetKind ColorPickerNode::color_widget_kind() const
-        {
-            return ColorWidgetKind::picker;
-        }
-
         bool ColorPickerNode::uses_context_render() const
         {
             return true;
-        }
-
-        f32* ColorPickerNode::f32_values() const
-        {
-            return binding.f32_value;
-        }
-
-        u8* ColorPickerNode::u8_values() const
-        {
-            return binding.u8_value;
-        }
-
-        u32* ColorPickerNode::u32_value() const
-        {
-            return binding.u32_value;
-        }
-
-        u8 ColorPickerNode::f32_values_count() const
-        {
-            return binding.value_count;
-        }
-
-        ColorValueType ColorPickerNode::color_type() const
-        {
-            return binding.type;
-        }
-
-        id_t ColorPickerNode::color_owner() const
-        {
-            return binding.owner_id;
-        }
-
-        ColorChannelPart ColorPickerNode::color_part() const
-        {
-            return binding.part;
         }
 
         LayoutMetrics ColorPickerNode::measure() const

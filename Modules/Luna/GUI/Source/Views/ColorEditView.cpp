@@ -152,7 +152,7 @@ namespace Luna
             ctx->push_id(handle.id);
             ItemHandle popup = ctx->begin_popup("##ColorEditPopup", popup_desc);
             Node& popup_node = ctx->m_build_desc.nodes.back();
-            popup_node.set_popup_owner(handle.id);
+            set_popup_owner(popup_node, handle.id);
             popup_node.layout_desc.padding = EdgeInsets::all(10.0f);
             popup_node.layout_desc.gap = 8.0f;
             popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;

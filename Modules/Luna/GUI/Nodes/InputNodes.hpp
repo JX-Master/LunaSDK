@@ -20,7 +20,6 @@ namespace Luna
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
             virtual bool uses_context_render() const override;
-            virtual String* string_value() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct SliderFloatNode : Node
@@ -32,15 +31,7 @@ namespace Luna
             SliderFloatNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual NumericValueKind numeric_value_kind() const override;
-            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
-            virtual f32* f32_values() const override;
-            virtual u8 f32_values_count() const override;
-            virtual f32 min_value() const override;
-            virtual f32 max_value() const override;
-            virtual id_t color_owner() const override;
-            virtual ColorChannelPart color_part() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct SliderIntNode : Node
@@ -52,15 +43,7 @@ namespace Luna
             SliderIntNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual NumericValueKind numeric_value_kind() const override;
-            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
-            virtual i32* i32_values() const override;
-            virtual u8 i32_values_count() const override;
-            virtual f32 min_value() const override;
-            virtual f32 max_value() const override;
-            virtual id_t color_owner() const override;
-            virtual ColorChannelPart color_part() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct InputFloatNode : Node
@@ -72,15 +55,7 @@ namespace Luna
             InputFloatNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual NumericValueKind numeric_value_kind() const override;
-            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
-            virtual f32* f32_values() const override;
-            virtual u8 f32_values_count() const override;
-            virtual f32 min_value() const override;
-            virtual f32 max_value() const override;
-            virtual id_t color_owner() const override;
-            virtual ColorChannelPart color_part() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct InputIntNode : Node
@@ -92,15 +67,7 @@ namespace Luna
             InputIntNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual NumericValueKind numeric_value_kind() const override;
-            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
-            virtual i32* i32_values() const override;
-            virtual u8 i32_values_count() const override;
-            virtual f32 min_value() const override;
-            virtual f32 max_value() const override;
-            virtual id_t color_owner() const override;
-            virtual ColorChannelPart color_part() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct DragFloatNode : Node
@@ -112,18 +79,7 @@ namespace Luna
             DragFloatNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual NumericValueKind numeric_value_kind() const override;
-            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
-            virtual f32* f32_values() const override;
-            virtual u8 f32_values_count() const override;
-            virtual bool uses_f32_color_components() const override;
-            virtual f32 min_value() const override;
-            virtual f32 max_value() const override;
-            virtual f32 step_value() const override;
-            virtual NumericEditFlag numeric_edit_flags() const override;
-            virtual id_t color_owner() const override;
-            virtual ColorChannelPart color_part() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct DragIntNode : Node
@@ -135,17 +91,7 @@ namespace Luna
             DragIntNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual NumericValueKind numeric_value_kind() const override;
-            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
-            virtual i32* i32_values() const override;
-            virtual u8 i32_values_count() const override;
-            virtual f32 min_value() const override;
-            virtual f32 max_value() const override;
-            virtual f32 step_value() const override;
-            virtual NumericEditFlag numeric_edit_flags() const override;
-            virtual id_t color_owner() const override;
-            virtual ColorChannelPart color_part() const override;
             virtual LayoutMetrics measure() const override;
         };
     }

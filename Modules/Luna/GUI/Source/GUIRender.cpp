@@ -530,7 +530,9 @@ namespace Luna
             bool hovered = node.id == m_hovered_id;
             bool active = node.id == m_active_id;
             bool selected = layout.tab_content_visible;
-            bool button = test_flags(node.get_tab_item_flags(), TabItemFlag::button);
+            const TabItemNode* tab = tab_item_node(node);
+            luassert(tab);
+            bool button = test_flags(tab->flags, TabItemFlag::button);
             Float4U color = selected ?
                 Float4U(0.17f, 0.27f, 0.42f, 1.0f) :
                 (active ? Float4U(0.17f, 0.24f, 0.34f, 1.0f) :
@@ -551,7 +553,7 @@ namespace Luna
 
             f32 left = rect.offset_x + 9.0f;
             f32 right = rect.offset_x + rect.width - 8.0f;
-            if(test_flags(node.get_tab_item_flags(), TabItemFlag::unsaved_document))
+            if(test_flags(tab->flags, TabItemFlag::unsaved_document))
             {
                 f32 dot = 6.0f;
                 render_circle(RectF(left, rect.offset_y + (rect.height - dot) * 0.5f, dot, dot), clip, Float4U(0.95f, 0.64f, 0.28f, 1.0f));
@@ -836,7 +838,7 @@ namespace Luna
             else if(input_text_node(node))
             {
                 render_rect(rect, clip, node.id == m_focused_id ? Float4U(0.12f, 0.16f, 0.22f, 1.0f) : Float4U(0.08f, 0.10f, 0.13f, 1.0f), 4.0f);
-                String* string_value = node.string_value();
+                const String* string_value = input_text_value(node);
                 if(string_value)
                 {
                     RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
@@ -876,7 +878,8 @@ namespace Luna
             else if(color_picker_node(node))
             {
                 Float4U color = read_color_value(node);
-                id_t owner_id = node.color_owner() ? node.color_owner() : node.id;
+                const ColorBinding* color_picker_binding = color_binding(node);
+                id_t owner_id = color_picker_binding && color_picker_binding->owner_id ? color_picker_binding->owner_id : node.id;
                 Ref<ColorPickerState> state_ref = get_or_create_widget_state<ColorPickerState>(owner_id);
                 ColorPickerState& state = *state_ref;
                 i32 axis = clamp(color_picker_axis_ref(state), 0, 5);
@@ -980,17 +983,19 @@ namespace Luna
             }
             else if(numeric_slider(node))
             {
+                const NumericBinding* binding = numeric_binding(node);
+                luassert(binding);
                 f32 label_w = numeric_label_width(node, rect);
                 u32 value_count = numeric_value_count(node);
                 for(u32 i = 0; i < value_count; ++i)
                 {
-                    f32* f32_values = node.f32_values();
-                    i32* i32_values = node.i32_values();
+                    f32* f32_values = binding->f32_value;
+                    i32* i32_values = binding->i32_value;
                     f32 value = numeric_value_f32(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
                     RectF component_rect = numeric_component_rect(node, rect, i);
                     bool active_component = active && (m_active_float_component == U32_MAX || m_active_float_component == i);
-                    f32 denom = max(node.max_value() - node.min_value(), 0.0001f);
-                    f32 t = clamp((value - node.min_value()) / denom, 0.0f, 1.0f);
+                    f32 denom = max(binding->max_value - binding->min_value, 0.0001f);
+                    f32 t = clamp((value - binding->min_value) / denom, 0.0f, 1.0f);
                     f32 track_pad = min(8.0f, component_rect.width * 0.20f);
                     f32 track_x0 = component_rect.offset_x + track_pad;
                     f32 track_x1 = component_rect.offset_x + max(component_rect.width - track_pad, track_pad);
@@ -1012,28 +1017,30 @@ namespace Luna
             }
             else if(numeric_node(node))
             {
+                const NumericBinding* binding = numeric_binding(node);
+                luassert(binding);
                 f32 label_w = numeric_label_width(node, rect);
                 u32 value_count = numeric_value_count(node);
                 Ref<InputEditState> state_ref = get_or_create_widget_state<InputEditState>(node.id);
                 InputEditState& state = *state_ref;
                 for(u32 i = 0; i < value_count; ++i)
                 {
-                    f32* f32_values = node.f32_values();
-                    i32* i32_values = node.i32_values();
+                    f32* f32_values = binding->f32_value;
+                    i32* i32_values = binding->i32_value;
                     f32 value = numeric_value_f32(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
                     RectF component_rect = numeric_component_rect(node, rect, i);
                     bool editing_component = numeric_text_editable(node) && node.id == m_focused_id && state.numeric_editing && state.numeric_edit_component == i;
-                    Float4U bg = node.uses_f32_color_components() ? Float4U(
+                    Float4U bg = binding->f32_color ? Float4U(
                         i == 0 ? value : 0.10f,
                         i == 1 ? value : 0.10f,
                         i == 2 ? value : 0.10f,
                         1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f);
                     bool active_component = active && (!numeric_node(node) || m_active_float_component == U32_MAX || m_active_float_component == i);
                     render_rect(component_rect, clip, (active_component || editing_component) ? Float4U(0.18f, 0.29f, 0.44f, 1.0f) : bg, 4.0f);
-                    if(!editing_component && numeric_drag(node) && node.max_value() > node.min_value())
+                    if(!editing_component && numeric_drag(node) && binding->max_value > binding->min_value)
                     {
-                        f32 denom = max(node.max_value() - node.min_value(), 0.0001f);
-                        f32 t = clamp((value - node.min_value()) / denom, 0.0f, 1.0f);
+                        f32 denom = max(binding->max_value - binding->min_value, 0.0001f);
+                        f32 t = clamp((value - binding->min_value) / denom, 0.0f, 1.0f);
                         render_rect(RectF(component_rect.offset_x, component_rect.offset_y + component_rect.height - 3.0f, component_rect.width * t, 3.0f), clip, Float4U(0.30f, 0.56f, 0.88f, 1.0f), 1.5f);
                     }
                     String value_text = editing_component ? state.numeric_edit_text : numeric_value_text(node, i);

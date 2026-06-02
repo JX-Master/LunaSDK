@@ -12,8 +12,6 @@ namespace Luna
     {
         Float4U smooth_color(const Float4U& a, const Float4U& b, f32 t);
         LayoutMetrics fixed_height_metrics(f32 min_width, f32 preferred_width, f32 height);
-        LayoutMetrics numeric_edit_metrics(const Node& node);
-
         struct NumericBinding
         {
             f32* f32_value = nullptr;
@@ -27,6 +25,8 @@ namespace Luna
             id_t color_owner_id = 0;
             ColorChannelPart color_part = ColorChannelPart::none;
         };
+
+        LayoutMetrics numeric_edit_metrics(const Node& node, const NumericBinding& binding);
 
         struct ColorBinding
         {

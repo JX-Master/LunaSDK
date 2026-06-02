@@ -185,7 +185,7 @@ namespace Luna
                 }
                 Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(node.id);
                 f32 font_size = 16.0f;
-                String* string_value = node.string_value();
+                const String* string_value = input_text_value(node);
                 if(input_text_node(node) && string_value)
                 {
                     const RectF& rect = m_layouts[i].rect;

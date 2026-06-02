@@ -30,6 +30,14 @@ namespace Luna
             scroll_view
         };
 
+        enum class NumericInteractionKind : u8
+        {
+            none,
+            slider,
+            input,
+            drag
+        };
+
         inline Context* context_from_interface(IContext* context)
         {
             luassert_msg(context, "GUI context must not be null.");
@@ -108,43 +116,271 @@ namespace Luna
             return x_axis ? style.fill_weight_x : style.fill_weight_y;
         }
 
+        template <typename T>
+        inline T* cast_node(Node& node)
+        {
+            return node.type_guid() == T::__guid ? (T*)&node : nullptr;
+        }
+
+        template <typename T>
+        inline const T* cast_node(const Node& node)
+        {
+            return node.type_guid() == T::__guid ? (const T*)&node : nullptr;
+        }
+
+        inline WindowNode* window_node(Node& node)
+        {
+            return cast_node<WindowNode>(node);
+        }
+
+        inline const WindowNode* window_node(const Node& node)
+        {
+            return cast_node<WindowNode>(node);
+        }
+
+        inline PopupNode* popup_node(Node& node)
+        {
+            return cast_node<PopupNode>(node);
+        }
+
+        inline const PopupNode* popup_node(const Node& node)
+        {
+            return cast_node<PopupNode>(node);
+        }
+
+        inline TooltipNode* tooltip_node(Node& node)
+        {
+            return cast_node<TooltipNode>(node);
+        }
+
+        inline const TooltipNode* tooltip_node(const Node& node)
+        {
+            return cast_node<TooltipNode>(node);
+        }
+
+        inline TableLayoutNode* table_layout_node(Node& node)
+        {
+            return cast_node<TableLayoutNode>(node);
+        }
+
+        inline const TableLayoutNode* table_layout_node(const Node& node)
+        {
+            return cast_node<TableLayoutNode>(node);
+        }
+
+        inline GridLayoutNode* grid_layout_node(Node& node)
+        {
+            return cast_node<GridLayoutNode>(node);
+        }
+
+        inline const GridLayoutNode* grid_layout_node(const Node& node)
+        {
+            return cast_node<GridLayoutNode>(node);
+        }
+
+        inline CanvasLayoutNode* canvas_layout_node(Node& node)
+        {
+            return cast_node<CanvasLayoutNode>(node);
+        }
+
+        inline const CanvasLayoutNode* canvas_layout_node(const Node& node)
+        {
+            return cast_node<CanvasLayoutNode>(node);
+        }
+
+        inline TabBarNode* tab_bar_node(Node& node)
+        {
+            return cast_node<TabBarNode>(node);
+        }
+
+        inline const TabBarNode* tab_bar_node(const Node& node)
+        {
+            return cast_node<TabBarNode>(node);
+        }
+
+        inline TabItemNode* tab_item_node(Node& node)
+        {
+            return cast_node<TabItemNode>(node);
+        }
+
+        inline const TabItemNode* tab_item_node(const Node& node)
+        {
+            return cast_node<TabItemNode>(node);
+        }
+
+        inline MenuItemNode* menu_item_node(Node& node)
+        {
+            return cast_node<MenuItemNode>(node);
+        }
+
+        inline const MenuItemNode* menu_item_node(const Node& node)
+        {
+            return cast_node<MenuItemNode>(node);
+        }
+
+        inline InputTextNode* input_text_node_cast(Node& node)
+        {
+            return cast_node<InputTextNode>(node);
+        }
+
+        inline const InputTextNode* input_text_node_cast(const Node& node)
+        {
+            return cast_node<InputTextNode>(node);
+        }
+
+        inline ColorPickerNode* color_picker_node_cast(Node& node)
+        {
+            return cast_node<ColorPickerNode>(node);
+        }
+
+        inline const ColorPickerNode* color_picker_node_cast(const Node& node)
+        {
+            return cast_node<ColorPickerNode>(node);
+        }
+
+        inline NumericBinding* numeric_binding(Node& node)
+        {
+            if(SliderFloatNode* typed = cast_node<SliderFloatNode>(node)) return &typed->binding;
+            if(SliderIntNode* typed = cast_node<SliderIntNode>(node)) return &typed->binding;
+            if(InputFloatNode* typed = cast_node<InputFloatNode>(node)) return &typed->binding;
+            if(InputIntNode* typed = cast_node<InputIntNode>(node)) return &typed->binding;
+            if(DragFloatNode* typed = cast_node<DragFloatNode>(node)) return &typed->binding;
+            if(DragIntNode* typed = cast_node<DragIntNode>(node)) return &typed->binding;
+            return nullptr;
+        }
+
+        inline const NumericBinding* numeric_binding(const Node& node)
+        {
+            if(const SliderFloatNode* typed = cast_node<SliderFloatNode>(node)) return &typed->binding;
+            if(const SliderIntNode* typed = cast_node<SliderIntNode>(node)) return &typed->binding;
+            if(const InputFloatNode* typed = cast_node<InputFloatNode>(node)) return &typed->binding;
+            if(const InputIntNode* typed = cast_node<InputIntNode>(node)) return &typed->binding;
+            if(const DragFloatNode* typed = cast_node<DragFloatNode>(node)) return &typed->binding;
+            if(const DragIntNode* typed = cast_node<DragIntNode>(node)) return &typed->binding;
+            return nullptr;
+        }
+
+        inline NumericInteractionKind numeric_interaction_kind(const Node& node)
+        {
+            if(cast_node<SliderFloatNode>(node) || cast_node<SliderIntNode>(node)) return NumericInteractionKind::slider;
+            if(cast_node<InputFloatNode>(node) || cast_node<InputIntNode>(node)) return NumericInteractionKind::input;
+            if(cast_node<DragFloatNode>(node) || cast_node<DragIntNode>(node)) return NumericInteractionKind::drag;
+            return NumericInteractionKind::none;
+        }
+
+        inline ColorBinding* color_binding(Node& node)
+        {
+            if(ColorPickerNode* typed = color_picker_node_cast(node)) return &typed->binding;
+            return nullptr;
+        }
+
+        inline const ColorBinding* color_binding(const Node& node)
+        {
+            if(const ColorPickerNode* typed = color_picker_node_cast(node)) return &typed->binding;
+            return nullptr;
+        }
+
+        inline String* input_text_value(Node& node)
+        {
+            InputTextNode* typed = input_text_node_cast(node);
+            return typed ? typed->value : nullptr;
+        }
+
+        inline const String* input_text_value(const Node& node)
+        {
+            const InputTextNode* typed = input_text_node_cast(node);
+            return typed ? typed->value : nullptr;
+        }
+
+        inline id_t popup_owner(const Node& node)
+        {
+            if(const PopupNode* popup = popup_node(node)) return popup->owner;
+            if(const TooltipNode* tooltip = tooltip_node(node)) return tooltip->owner;
+            return 0;
+        }
+
+        inline void set_popup_owner(Node& node, id_t value)
+        {
+            if(PopupNode* popup = popup_node(node))
+            {
+                popup->owner = value;
+            }
+            else if(TooltipNode* tooltip = tooltip_node(node))
+            {
+                tooltip->owner = value;
+            }
+        }
+
+        inline PopupFlag popup_flags(const Node& node)
+        {
+            const PopupNode* popup = popup_node(node);
+            return popup ? popup->flags : PopupFlag::none;
+        }
+
+        inline id_t popup_parent(const Node& node)
+        {
+            const PopupNode* popup = popup_node(node);
+            return popup ? popup->parent_popup : 0;
+        }
+
+        inline void set_popup_parent(Node& node, id_t value)
+        {
+            if(PopupNode* popup = popup_node(node))
+            {
+                popup->parent_popup = value;
+            }
+        }
+
+        inline id_t menu_popup(const Node& node)
+        {
+            const MenuItemNode* menu = menu_item_node(node);
+            return menu ? menu->popup_id : 0;
+        }
+
         inline u32 table_columns(const Node& node)
         {
-            const TableDesc* desc = node.get_table_desc();
+            const TableLayoutNode* typed = table_layout_node(node);
+            const TableDesc* desc = typed ? &typed->desc : nullptr;
             return desc ? max(desc->columns, 1u) : 1u;
         }
 
         inline const TableDesc& table_desc(const Node& node)
         {
-            const TableDesc* desc = node.get_table_desc();
-            luassert(desc);
-            return *desc;
+            const TableLayoutNode* typed = table_layout_node(node);
+            luassert(typed);
+            return typed->desc;
         }
 
         inline const GridLayoutDesc& grid_desc(const Node& node)
         {
-            const GridLayoutDesc* desc = node.get_grid_desc();
-            luassert(desc);
-            return *desc;
+            const GridLayoutNode* typed = grid_layout_node(node);
+            luassert(typed);
+            return typed->desc;
         }
 
         inline const CanvasLayoutDesc& canvas_desc(const Node& node)
         {
-            const CanvasLayoutDesc* desc = node.get_canvas_desc();
-            luassert(desc);
-            return *desc;
+            const CanvasLayoutNode* typed = canvas_layout_node(node);
+            luassert(typed);
+            return typed->desc;
         }
 
         inline const TooltipDesc& tooltip_desc(const Node& node)
         {
-            const TooltipDesc* desc = node.get_tooltip_desc();
-            luassert(desc);
-            return *desc;
+            const TooltipNode* typed = tooltip_node(node);
+            luassert(typed);
+            return typed->desc;
         }
 
         inline bool bool_value_open(const Node& node)
         {
-            bool* value = node.bool_value();
+            const TabItemNode* tab = tab_item_node(node);
+            bool* value = tab ? tab->open : nullptr;
+            if(!tab)
+            {
+                const WindowNode* window = window_node(node);
+                value = window ? window->open : nullptr;
+            }
             return !value || *value;
         }
 
@@ -162,14 +398,16 @@ namespace Luna
         {
             u32 columns = table_columns(node);
             u32 child_count = table_child_count(desc, node);
-            const TableDesc* table_desc = node.get_table_desc();
+            const TableLayoutNode* table = table_layout_node(node);
+            const TableDesc* table_desc = table ? &table->desc : nullptr;
             return max((child_count + columns - 1) / columns, table_desc ? (u32)table_desc->row_sizes.size() : 0u);
         }
 
         inline const TableTrackSize& table_track_size(const Node& node, bool column, u32 index)
         {
             static TableTrackSize default_size;
-            const TableDesc* desc = node.get_table_desc();
+            const TableLayoutNode* table = table_layout_node(node);
+            const TableDesc* desc = table ? &table->desc : nullptr;
             if(!desc) return default_size;
             const Vector<TableTrackSize>& sizes = column ? desc->column_sizes : desc->row_sizes;
             return index < sizes.size() ? sizes[index] : default_size;
@@ -182,7 +420,8 @@ namespace Luna
 
         inline bool window_has_title_bar(const Node& node)
         {
-            return node.window_chrome() && node.bool_value();
+            const WindowNode* window = window_node(node);
+            return window && window->open;
         }
 
         inline f32 window_title_bar_height()
@@ -192,51 +431,58 @@ namespace Luna
 
         inline u32 f32_value_count(const Node& node)
         {
-            return clamp((u32)node.f32_values_count(), 1u, 4u);
+            const NumericBinding* numeric = numeric_binding(node);
+            if(numeric) return clamp((u32)numeric->value_count, 1u, 4u);
+            const ColorBinding* color = color_binding(node);
+            return color ? clamp((u32)color->value_count, 1u, 4u) : 1u;
         }
 
         inline u32 i32_value_count(const Node& node)
         {
-            return clamp((u32)node.i32_values_count(), 1u, 4u);
+            const NumericBinding* numeric = numeric_binding(node);
+            return numeric ? clamp((u32)numeric->value_count, 1u, 4u) : 1u;
         }
 
         inline bool numeric_value_f32(const Node& node)
         {
-            return node.numeric_value_kind() == NumericValueKind::f32;
+            const NumericBinding* binding = numeric_binding(node);
+            return binding && binding->f32_value;
         }
 
         inline bool numeric_value_i32(const Node& node)
         {
-            return node.numeric_value_kind() == NumericValueKind::i32;
+            const NumericBinding* binding = numeric_binding(node);
+            return binding && binding->i32_value;
         }
 
         inline bool numeric_node(const Node& node)
         {
-            return node.numeric_value_kind() != NumericValueKind::none;
+            return numeric_binding(node) != nullptr;
         }
 
         inline bool numeric_text_editable(const Node& node)
         {
-            NumericInteractionKind interaction = node.numeric_interaction_kind();
+            NumericInteractionKind interaction = numeric_interaction_kind(node);
+            const NumericBinding* binding = numeric_binding(node);
             if(interaction == NumericInteractionKind::input) return true;
-            return interaction == NumericInteractionKind::drag &&
-                test_flags(node.numeric_edit_flags(), NumericEditFlag::input_on_double_click);
+            return binding && interaction == NumericInteractionKind::drag &&
+                test_flags(binding->flags, NumericEditFlag::input_on_double_click);
         }
 
         inline bool numeric_pointer_editable(const Node& node)
         {
-            NumericInteractionKind interaction = node.numeric_interaction_kind();
+            NumericInteractionKind interaction = numeric_interaction_kind(node);
             return interaction == NumericInteractionKind::slider || interaction == NumericInteractionKind::drag;
         }
 
         inline bool numeric_slider(const Node& node)
         {
-            return node.numeric_interaction_kind() == NumericInteractionKind::slider;
+            return numeric_interaction_kind(node) == NumericInteractionKind::slider;
         }
 
         inline bool numeric_drag(const Node& node)
         {
-            return node.numeric_interaction_kind() == NumericInteractionKind::drag;
+            return numeric_interaction_kind(node) == NumericInteractionKind::drag;
         }
 
         inline u32 numeric_value_count(const Node& node)
@@ -247,7 +493,8 @@ namespace Luna
         inline f32 numeric_label_width(const Node& node, const RectF& rect)
         {
             if(node.text.empty()) return 0.0f;
-            if(node.color_owner()) return 48.0f;
+            const NumericBinding* binding = numeric_binding(node);
+            if(binding && binding->color_owner_id) return 48.0f;
             return min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
         }
 
@@ -266,15 +513,16 @@ namespace Luna
         inline String numeric_value_text(const Node& node, u32 component)
         {
             String value_text;
+            const NumericBinding* binding = numeric_binding(node);
             if(numeric_value_f32(node))
             {
-                f32* values = node.f32_values();
+                f32* values = binding ? binding->f32_value : nullptr;
                 f32 value = values ? values[min(component, f32_value_count(node) - 1)] : 0.0f;
                 strprintf(value_text, "%.3f", value);
             }
             else
             {
-                i32* values = node.i32_values();
+                i32* values = binding ? binding->i32_value : nullptr;
                 i32 value = values ? values[min(component, i32_value_count(node) - 1)] : 0;
                 strprintf(value_text, "%d", value);
             }
@@ -372,13 +620,11 @@ namespace Luna
         inline ColorBinding color_binding_from_node(const Node& node)
         {
             ColorBinding binding;
-            binding.f32_value = node.f32_values();
-            binding.u8_value = node.u8_values();
-            binding.u32_value = node.u32_value();
-            binding.type = node.color_type();
-            binding.value_count = node.f32_values_count();
-            binding.owner_id = node.color_owner();
-            binding.part = node.color_part();
+            const ColorBinding* color = color_binding(node);
+            if(color)
+            {
+                binding = *color;
+            }
             return binding;
         }
 
@@ -530,17 +776,18 @@ namespace Luna
 
         inline bool input_text_node(const Node& node)
         {
-            return node.string_value() != nullptr;
+            return input_text_node_cast(node) != nullptr;
         }
 
         inline bool menu_node(const Node& node)
         {
-            return node.menu_popup() != 0;
+            const MenuItemNode* menu = menu_item_node(node);
+            return menu && menu->popup_id;
         }
 
         inline bool color_picker_node(const Node& node)
         {
-            return node.color_widget_kind() == ColorWidgetKind::picker;
+            return color_picker_node_cast(node) != nullptr;
         }
 
         inline bool scroll_layout(const Node& node)
@@ -614,10 +861,12 @@ namespace Luna
 
         inline f32 tab_item_ideal_width(const Node& node)
         {
+            const TabItemNode* tab = tab_item_node(node);
+            luassert(tab);
             f32 font_size = 15.0f;
             f32 text_width = (f32)node.text.size() * font_size * 0.52f;
-            f32 close_width = (node.bool_value() && !test_flags(node.get_tab_item_flags(), TabItemFlag::no_close_button)) ? 22.0f : 0.0f;
-            f32 unsaved_width = test_flags(node.get_tab_item_flags(), TabItemFlag::unsaved_document) ? 12.0f : 0.0f;
+            f32 close_width = (tab->open && !test_flags(tab->flags, TabItemFlag::no_close_button)) ? 22.0f : 0.0f;
+            f32 unsaved_width = test_flags(tab->flags, TabItemFlag::unsaved_document) ? 12.0f : 0.0f;
             return max(text_width + 24.0f + close_width + unsaved_width, tab_item_min_width());
         }
 

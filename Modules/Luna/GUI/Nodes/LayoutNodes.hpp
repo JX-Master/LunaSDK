@@ -57,9 +57,7 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool window_chrome() const override;
             virtual bool uses_node_measure() const override;
-            virtual bool* bool_value() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
             static f32 title_bar_height();
@@ -83,11 +81,6 @@ namespace Luna
             virtual NodeLayerRole layer_role() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
-            virtual PopupFlag get_popup_flags() const override;
-            virtual id_t popup_parent() const override;
-            virtual id_t popup_owner() const override;
-            virtual void set_popup_parent(id_t value) override;
-            virtual void set_popup_owner(id_t value) override;
 
             virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
@@ -102,10 +95,6 @@ namespace Luna
             virtual Ref<Node> clone() const override;
             virtual NodeLayerRole layer_role() const override;
             virtual bool uses_node_measure() const override;
-            virtual id_t popup_owner() const override;
-            virtual void set_popup_owner(id_t value) override;
-            virtual const TooltipDesc* get_tooltip_desc() const override;
-            virtual TooltipDesc* get_tooltip_desc() override;
 
             virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
@@ -136,8 +125,6 @@ namespace Luna
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
             virtual bool uses_context_render() const override;
-            virtual const TableDesc* get_table_desc() const override;
-            virtual TableDesc* get_table_desc() override;
         };
         struct GridLayoutNode : Node
         {
@@ -150,8 +137,6 @@ namespace Luna
             virtual Ref<Node> clone() const override;
             virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool uses_node_measure() const override;
-            virtual const GridLayoutDesc* get_grid_desc() const override;
-            virtual GridLayoutDesc* get_grid_desc() override;
         };
         struct CanvasLayoutNode : Node
         {
@@ -164,8 +149,6 @@ namespace Luna
             virtual Ref<Node> clone() const override;
             virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool uses_node_measure() const override;
-            virtual const CanvasLayoutDesc* get_canvas_desc() const override;
-            virtual CanvasLayoutDesc* get_canvas_desc() override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
         };
         struct DockSpaceNode : Node
@@ -193,7 +176,6 @@ namespace Luna
             virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
-            virtual TabBarFlag get_tab_bar_flags() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
             virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
@@ -211,10 +193,6 @@ namespace Luna
             virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool uses_node_measure() const override;
             virtual bool uses_context_render() const override;
-            virtual bool* bool_value() const override;
-            virtual TabItemFlag get_tab_item_flags() const override;
-            virtual bool tab_item_selected() const override;
-            virtual void set_tab_item_selected(bool value) override;
         };
     }
 }

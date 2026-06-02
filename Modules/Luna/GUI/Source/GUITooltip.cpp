@@ -22,10 +22,10 @@ namespace Luna
             push_layer_internal(layer_id, Float2U(0.0f));
             begin_container(Ref<Node>(new_object<TooltipNode>()), label ? label : "Tooltip", desc.size, &handle, layer_id);
             Node& node = m_build_desc.nodes.back();
-            node.set_popup_owner(owner.context == get_object() ? owner.id : 0);
-            TooltipDesc* node_desc = node.get_tooltip_desc();
-            luassert(node_desc);
-            *node_desc = desc;
+            set_popup_owner(node, owner.context == get_object() ? owner.id : 0);
+            TooltipNode* tooltip = tooltip_node(node);
+            luassert(tooltip);
+            tooltip->desc = desc;
             node.layout_desc.padding = EdgeInsets::xy(8.0f, 6.0f);
             node.layout_desc.gap = 4.0f;
             return handle;
@@ -44,7 +44,7 @@ namespace Luna
         bool Context::tooltip_node_visible(const Node& node) const
         {
             if(!tooltip_layer(node)) return true;
-            id_t owner = node.popup_owner();
+            id_t owner = popup_owner(node);
             if(!owner || !m_pointer_inside) return false;
             if(m_drag_drop_active || m_active_id) return false;
             if(m_hovered_id != owner || m_tooltip_hovered_id != owner) return false;

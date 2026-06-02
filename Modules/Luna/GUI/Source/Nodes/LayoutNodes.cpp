@@ -109,19 +109,9 @@ namespace Luna
             return new_object<WindowNode>(*this);
         }
 
-        bool WindowNode::window_chrome() const
-        {
-            return true;
-        }
-
         bool WindowNode::uses_node_measure() const
         {
             return false;
-        }
-
-        bool* WindowNode::bool_value() const
-        {
-            return open;
         }
 
         void WindowNode::apply_container_defaults(LayoutDesc& desc) const
@@ -193,31 +183,6 @@ namespace Luna
             return false;
         }
 
-        PopupFlag PopupNode::get_popup_flags() const
-        {
-            return flags;
-        }
-
-        id_t PopupNode::popup_parent() const
-        {
-            return parent_popup;
-        }
-
-        id_t PopupNode::popup_owner() const
-        {
-            return owner;
-        }
-
-        void PopupNode::set_popup_parent(id_t value)
-        {
-            parent_popup = value;
-        }
-
-        void PopupNode::set_popup_owner(id_t value)
-        {
-            owner = value;
-        }
-
         void PopupNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
             ctx.draw_rect(rect, clip_rect, Float4U(0.08f, 0.10f, 0.13f, 0.98f), 5.0f);
@@ -241,26 +206,6 @@ namespace Luna
         bool TooltipNode::uses_node_measure() const
         {
             return false;
-        }
-
-        id_t TooltipNode::popup_owner() const
-        {
-            return owner;
-        }
-
-        void TooltipNode::set_popup_owner(id_t value)
-        {
-            owner = value;
-        }
-
-        const TooltipDesc* TooltipNode::get_tooltip_desc() const
-        {
-            return &desc;
-        }
-
-        TooltipDesc* TooltipNode::get_tooltip_desc()
-        {
-            return &desc;
         }
 
         void TooltipNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
@@ -352,16 +297,6 @@ namespace Luna
             return true;
         }
 
-        const TableDesc* TableLayoutNode::get_table_desc() const
-        {
-            return &desc;
-        }
-
-        TableDesc* TableLayoutNode::get_table_desc()
-        {
-            return &desc;
-        }
-
         GridLayoutNode::GridLayoutNode()
         {
             layout_style = LayoutStyle::fill_width();
@@ -387,16 +322,6 @@ namespace Luna
             return false;
         }
 
-        const GridLayoutDesc* GridLayoutNode::get_grid_desc() const
-        {
-            return &desc;
-        }
-
-        GridLayoutDesc* GridLayoutNode::get_grid_desc()
-        {
-            return &desc;
-        }
-
         CanvasLayoutNode::CanvasLayoutNode()
         {
             layout_style = LayoutStyle::fill_width();
@@ -420,16 +345,6 @@ namespace Luna
         bool CanvasLayoutNode::uses_node_measure() const
         {
             return false;
-        }
-
-        const CanvasLayoutDesc* CanvasLayoutNode::get_canvas_desc() const
-        {
-            return &desc;
-        }
-
-        CanvasLayoutDesc* CanvasLayoutNode::get_canvas_desc()
-        {
-            return &desc;
         }
 
         void CanvasLayoutNode::apply_container_defaults(LayoutDesc& desc) const
@@ -504,11 +419,6 @@ namespace Luna
             return false;
         }
 
-        TabBarFlag TabBarNode::get_tab_bar_flags() const
-        {
-            return flags;
-        }
-
         void TabBarNode::apply_container_defaults(LayoutDesc& desc) const
         {
             desc.padding = EdgeInsets::all(0.0f);
@@ -545,26 +455,6 @@ namespace Luna
         bool TabItemNode::uses_context_render() const
         {
             return true;
-        }
-
-        bool* TabItemNode::bool_value() const
-        {
-            return open;
-        }
-
-        TabItemFlag TabItemNode::get_tab_item_flags() const
-        {
-            return flags;
-        }
-
-        bool TabItemNode::tab_item_selected() const
-        {
-            return content_visible;
-        }
-
-        void TabItemNode::set_tab_item_selected(bool value)
-        {
-            content_visible = value;
         }
 
     }

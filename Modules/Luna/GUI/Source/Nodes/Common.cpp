@@ -29,10 +29,10 @@ namespace Luna
             return metrics;
         }
 
-        LayoutMetrics numeric_edit_metrics(const Node& node)
-{
+        LayoutMetrics numeric_edit_metrics(const Node& node, const NumericBinding& binding)
+	{
             f32 text_width = (f32)node.text.size() * 16.0f * 0.52f;
-            if(node.color_owner())
+            if(binding.color_owner_id)
             {
                 return fixed_height_metrics(88.0f, max(text_width + 92.0f, 116.0f), 30.0f);
             }

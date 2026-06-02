@@ -433,11 +433,11 @@ namespace Luna
             popup_desc.flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
             ItemHandle popup = ctx->begin_popup("##MenuPopup", popup_desc);
             Node& popup_node = ctx->m_build_desc.nodes.back();
-            popup_node.set_popup_owner(handle.id);
+            set_popup_owner(popup_node, handle.id);
             popup_node.layout_desc.padding = EdgeInsets::xy(6.0f, 5.0f);
             popup_node.layout_desc.gap = 1.0f;
             popup_node.layout_desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
-            ctx->m_build_desc.nodes[menu_index].set_menu_popup(popup.id);
+            menu->popup_id = popup.id;
             return handle;
         }
 
@@ -540,7 +540,9 @@ namespace Luna
                 ((scope.selected_id && scope.selected_id == handle.id) ||
                     (!scope.selected_id && !scope.visible_tab_chosen) ||
                     explicit_selected);
-            node.set_tab_item_selected(visible);
+            TabItemNode* built_tab = tab_item_node(node);
+            luassert(built_tab);
+            built_tab->content_visible = visible;
             if(visible)
             {
                 scope.visible_tab_chosen = true;
@@ -574,9 +576,10 @@ namespace Luna
             {
                 Node& node = ctx->m_build_desc.nodes[child];
                 if(!tab_item_layout(node) || strcmp(node.text.c_str(), label ? label : "") != 0) continue;
-                if(node.bool_value())
+                TabItemNode* tab = tab_item_node(node);
+                if(tab && tab->open)
                 {
-                    *node.bool_value() = false;
+                    *tab->open = false;
                 }
                 break;
             }

@@ -178,17 +178,19 @@ namespace Luna
             bool apply_numeric_edit_text(Context& ctx, Node& node, InputEditState& state)
             {
                 if(!numeric_text_editable(node) || !state.numeric_editing) return false;
+                NumericBinding* binding = numeric_binding(node);
+                if(!binding) return false;
                 u32 component = min(state.numeric_edit_component, numeric_value_count(node) - 1);
                 bool changed = false;
                 if(numeric_value_f32(node))
                 {
-                    f32* values = node.f32_values();
+                    f32* values = binding->f32_value;
                     if(!values) return false;
                     f32 value = 0.0f;
                     if(!parse_f32_text(state.numeric_edit_text, value)) return false;
-                    if(node.max_value() > node.min_value())
+                    if(binding->max_value > binding->min_value)
                     {
-                        value = clamp(value, node.min_value(), node.max_value());
+                        value = clamp(value, binding->min_value, binding->max_value);
                     }
                     if(values[component] != value)
                     {
@@ -198,13 +200,13 @@ namespace Luna
                 }
                 else
                 {
-                    i32* values = node.i32_values();
+                    i32* values = binding->i32_value;
                     if(!values) return false;
                     i32 value = 0;
                     if(!parse_i32_text(state.numeric_edit_text, value)) return false;
-                    if(node.max_value() > node.min_value())
+                    if(binding->max_value > binding->min_value)
                     {
-                        value = clamp(value, (i32)node.min_value(), (i32)node.max_value());
+                        value = clamp(value, (i32)binding->min_value, (i32)binding->max_value);
                     }
                     if(values[component] != value)
                     {
@@ -862,7 +864,8 @@ namespace Luna
                 {
                     const Node& tab = m_submitted_desc.nodes[child];
                     if(!tab_item_layout(tab) || tab.id == excluded_tab_item_id) continue;
-                    if(test_flags(tab.get_tab_item_flags(), TabItemFlag::button)) continue;
+                    const TabItemNode* tab_item = tab_item_node(tab);
+                    if(!tab_item || test_flags(tab_item->flags, TabItemFlag::button)) continue;
                     if(!bool_value_open(tab)) continue;
                     fallback = tab.id;
                     break;
@@ -952,9 +955,10 @@ namespace Luna
         void Context::open_menu_popup(id_t menu_id)
         {
             Node* menu = find_node(menu_id);
-            if(!menu || !menu_node(*menu) || !menu->enabled_state() || !menu->menu_popup()) return;
+            MenuItemNode* item = menu ? menu_item_node(*menu) : nullptr;
+            if(!menu || !item || !item->enabled || !item->popup_id) return;
             m_next_popup_opener_id = menu_id;
-            open_popup(ItemHandle{get_object(), menu->menu_popup(), m_generation});
+            open_popup(ItemHandle{get_object(), item->popup_id, m_generation});
             Ref<ItemQueryState> result = get_or_create_query_state(menu->id);
             result->states.insert_or_assign(Name("gui.open"), Any(true));
         }
@@ -964,9 +968,10 @@ namespace Luna
             if(m_open_popup_stack.empty()) return;
             i32 popup_level = popup_level_at_pos(m_pointer_pos);
             Node* hovered = m_hovered_id ? find_node(m_hovered_id) : nullptr;
-            if(hovered && menu_node(*hovered) && hovered->enabled_state() && hovered->menu_popup())
+            MenuItemNode* hovered_menu = hovered ? menu_item_node(*hovered) : nullptr;
+            if(hovered_menu && hovered_menu->enabled && hovered_menu->popup_id)
             {
-                if(is_popup_open(hovered->menu_popup())) return;
+                if(is_popup_open(hovered_menu->popup_id)) return;
                 open_menu_popup(hovered->id);
                 return;
             }
@@ -1217,18 +1222,20 @@ namespace Luna
             Ref<ItemQueryState> result = get_or_create_query_state(id);
             result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
             Node* node = find_node(id);
-            if(node && node->color_owner())
+            NumericBinding* binding = node ? numeric_binding(*node) : nullptr;
+            if(binding && binding->color_owner_id)
             {
-                apply_color_picker_numeric_state(node->color_owner(), node->color_part());
-                Ref<ItemQueryState> owner_result = get_or_create_query_state(node->color_owner());
+                apply_color_picker_numeric_state(binding->color_owner_id, binding->color_part);
+                Ref<ItemQueryState> owner_result = get_or_create_query_state(binding->color_owner_id);
                 owner_result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
             }
             while(node && node->parent != U32_MAX)
             {
                 node = &m_submitted_desc.nodes[node->parent];
-                if(popup_layer(*node) && node->popup_owner())
+                id_t owner = popup_owner(*node);
+                if(popup_layer(*node) && owner)
                 {
-                    Ref<ItemQueryState> owner_result = get_or_create_query_state(node->popup_owner());
+                    Ref<ItemQueryState> owner_result = get_or_create_query_state(owner);
                     owner_result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
                     break;
                 }
@@ -1239,6 +1246,8 @@ namespace Luna
         {
             Node* owner = find_node(owner_id);
             if(!owner || !color_picker_node(*owner)) return;
+            ColorBinding* binding = color_binding(*owner);
+            if(!binding) return;
             Ref<ColorPickerState> state = get_or_create_widget_state<ColorPickerState>(owner_id);
             ensure_color_picker_state_channels(*state);
             Float4U color = read_color_value(*owner);
@@ -1259,6 +1268,8 @@ namespace Luna
         {
             Node* owner = find_node(owner_id);
             if(!owner || !color_picker_node(*owner)) return;
+            ColorBinding* binding = color_binding(*owner);
+            if(!binding) return;
             Ref<ColorPickerState> state = get_or_create_widget_state<ColorPickerState>(owner_id);
             ensure_color_picker_state_channels(*state);
             Float4U color = read_color_value(*owner);
@@ -1287,9 +1298,11 @@ namespace Luna
         {
             Node* node = find_node(id);
             if(!node || !color_picker_node(*node)) return;
-            id_t owner_id = node->color_owner() ? node->color_owner() : id;
+            ColorBinding* node_binding = color_binding(*node);
+            id_t owner_id = node_binding && node_binding->owner_id ? node_binding->owner_id : id;
             Node* owner = find_node(owner_id);
             if(!owner) owner = node;
+            if(!color_binding(*owner)) return;
             RectF rect;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
@@ -1355,10 +1368,12 @@ namespace Luna
         {
             Node* node = find_node(id);
             if(!node || !numeric_pointer_editable(*node)) return;
+            NumericBinding* binding = numeric_binding(*node);
+            if(!binding) return;
             InputEditState* edit_state = get_widget_state<InputEditState>(id);
             if(edit_state && edit_state->numeric_editing) return;
-            f32* f32_values = node->f32_values();
-            i32* i32_values = node->i32_values();
+            f32* f32_values = binding->f32_value;
+            i32* i32_values = binding->i32_value;
             if(numeric_value_f32(*node) && !f32_values) return;
             if(numeric_value_i32(*node) && !i32_values) return;
 
@@ -1387,17 +1402,17 @@ namespace Luna
             if(numeric_drag(*node))
             {
                 if(!old_pos) return;
-                f32 speed = node->step_value() == 0.0f ? 1.0f : node->step_value();
+                f32 speed = binding->step_value == 0.0f ? 1.0f : binding->step_value;
                 new_value += (pos.x - old_pos->x) * speed;
-                if(node->max_value() > node->min_value())
+                if(binding->max_value > binding->min_value)
                 {
-                    new_value = clamp(new_value, node->min_value(), node->max_value());
+                    new_value = clamp(new_value, binding->min_value, binding->max_value);
                 }
             }
             else
             {
                 f32 t = clamp((pos.x - component_x) / component_w, 0.0f, 1.0f);
-                new_value = node->min_value() + (node->max_value() - node->min_value()) * t;
+                new_value = binding->min_value + (binding->max_value - binding->min_value) * t;
             }
             bool changed = false;
             if(numeric_value_f32(*node))
@@ -1411,9 +1426,9 @@ namespace Luna
             else
             {
                 i32 int_value = round_to_i32(new_value);
-                if(node->max_value() > node->min_value())
+                if(binding->max_value > binding->min_value)
                 {
-                    int_value = clamp(int_value, (i32)node->min_value(), (i32)node->max_value());
+                    int_value = clamp(int_value, (i32)binding->min_value, (i32)binding->max_value);
                 }
                 if(i32_values[component] != int_value)
                 {
@@ -1430,7 +1445,7 @@ namespace Luna
         bool Context::input_text_cursor_from_pointer(id_t id, const Float2U& pos, usize& out_cursor)
         {
             Node* node = find_node(id);
-            String* string_value = node ? node->string_value() : nullptr;
+            String* string_value = node ? input_text_value(*node) : nullptr;
             if(!node || !input_text_node(*node) || !string_value) return false;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
@@ -1448,7 +1463,7 @@ namespace Luna
         bool Context::update_input_text_selection_from_pointer(id_t id, const Float2U& pos)
         {
             Node* node = find_node(id);
-            String* string_value = node ? node->string_value() : nullptr;
+            String* string_value = node ? input_text_value(*node) : nullptr;
             if(!node || !input_text_node(*node) || !string_value) return false;
             usize cursor = 0;
             if(!input_text_cursor_from_pointer(id, pos, cursor)) return false;
@@ -1890,12 +1905,14 @@ namespace Luna
                         m_active_tab_reorder_allowed = false;
                         Node* tab_bar = find_node(tab_bar_id);
                         Node* tab_item = find_node(tab_item_id);
-                        if(tab_bar && tab_item && tab_bar_layout(*tab_bar) && tab_item_layout(*tab_item))
+                        TabBarNode* tab_bar_typed = tab_bar ? tab_bar_node(*tab_bar) : nullptr;
+                        TabItemNode* tab_item_typed = tab_item ? tab_item_node(*tab_item) : nullptr;
+                        if(tab_bar_typed && tab_item_typed)
                         {
-                            m_active_tab_reorder_allowed = test_flags(tab_bar->get_tab_bar_flags(), TabBarFlag::reorderable) &&
+                            m_active_tab_reorder_allowed = test_flags(tab_bar_typed->flags, TabBarFlag::reorderable) &&
                                 !tab_close &&
-                                !test_flags(tab_item->get_tab_item_flags(), TabItemFlag::button) &&
-                                !test_flags(tab_item->get_tab_item_flags(), TabItemFlag::no_reorder);
+                                !test_flags(tab_item_typed->flags, TabItemFlag::button) &&
+                                !test_flags(tab_item_typed->flags, TabItemFlag::no_reorder);
                         }
                         set_interaction_down(tab_item_id);
                         continue;
@@ -1916,7 +1933,7 @@ namespace Luna
                     {
                         set_interaction_down(target);
                         Node* node = find_node(target);
-                        if(node && input_text_node(*node) && node->string_value())
+                        if(node && input_text_node(*node) && input_text_value(*node))
                         {
                             Ref<InputEditState> input_state = get_or_create_widget_state<InputEditState>(target);
                             usize cursor = 0;
@@ -2141,8 +2158,10 @@ namespace Luna
                             for(Node& node : m_submitted_desc.nodes)
                             {
                                 if(node.id != tab_item_id || !tab_item_layout(node)) continue;
-                                bool* open = node.bool_value();
-                                if((m_active_tab_close || tab_close) && open && !test_flags(node.get_tab_item_flags(), TabItemFlag::no_close_button))
+                                TabItemNode* tab = tab_item_node(node);
+                                luassert(tab);
+                                bool* open = tab->open;
+                                if((m_active_tab_close || tab_close) && open && !test_flags(tab->flags, TabItemFlag::no_close_button))
                                 {
                                     *open = false;
                                     item_result->states.insert_or_assign(Name("gui.open"), Any(false));
@@ -2155,7 +2174,7 @@ namespace Luna
                                         bar_result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
                                     }
                                 }
-                                else if(!test_flags(node.get_tab_item_flags(), TabItemFlag::button))
+                                else if(!test_flags(tab->flags, TabItemFlag::button))
                                 {
                                     select_tab_item(tab_bar_id, tab_item_id);
                                 }
@@ -2262,7 +2281,7 @@ namespace Luna
                     for(Node& node : m_submitted_desc.nodes)
                     {
                         if(node.id != m_focused_id) continue;
-                        String* string_value = node.string_value();
+                        String* string_value = input_text_value(node);
                         if(input_text_node(node) && string_value)
                         {
                             String filtered = filter_input_text(e.text);
@@ -2318,7 +2337,7 @@ namespace Luna
                     for(Node& node : m_submitted_desc.nodes)
                     {
                         if(node.id != m_focused_id) continue;
-                        String* string_value = node.string_value();
+                        String* string_value = input_text_value(node);
                         bool edit_input_text = input_text_node(node) && string_value;
                         bool edit_numeric = numeric_text_editable(node);
                         if(!edit_input_text && !edit_numeric) continue;
@@ -2619,10 +2638,10 @@ namespace Luna
                         bool open = bool_value_open(node);
                         result->states.insert_or_assign(Name("gui.open"), Any(open));
                     }
-                    else if(input_text_node(node) && node.string_value())
+                    else if(input_text_node(node) && input_text_value(node))
                     {
                         Ref<InputEditState> input_state = get_or_create_widget_state<InputEditState>(node.id);
-                        input_state->text_cursor = clamp_utf8_cursor(*node.string_value(), input_state->text_cursor);
+                        input_state->text_cursor = clamp_utf8_cursor(*input_text_value(node), input_state->text_cursor);
                     }
                     else if(numeric_text_editable(node))
                     {

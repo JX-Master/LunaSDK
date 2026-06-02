@@ -309,11 +309,13 @@ namespace Luna
                     const Node& child_node = m_submitted_desc.nodes[child];
                     if(!tab_item_layout(child_node)) continue;
                     if(!bool_value_open(child_node)) continue;
+                    const TabItemNode* tab_item = tab_item_node(child_node);
+                    luassert(tab_item);
                     f32 ideal_width = tab_item_ideal_width(child_node);
                     min_header_width += tab_item_min_width();
                     preferred_header_width += ideal_width;
                     TabBarState* tab_state = get_widget_state<TabBarState>(node.id);
-                    if(child_node.tab_item_selected() || (tab_state && tab_state->tab_selected_id == child_node.id))
+                    if(tab_item->content_visible || (tab_state && tab_state->tab_selected_id == child_node.id))
                     {
                         content_metrics = measure_node(child);
                         has_content = true;
@@ -540,6 +542,8 @@ namespace Luna
             {
                 Node& child_node = m_submitted_desc.nodes[child];
                 if(!tab_item_layout(child_node)) continue;
+                const TabItemNode* child_tab = tab_item_node(child_node);
+                luassert(child_tab);
                 bool open = bool_value_open(child_node);
                 if(!open)
                 {
@@ -549,19 +553,19 @@ namespace Luna
                     continue;
                 }
                 live_tabs.push_back(child);
-                if(!first_open && !test_flags(child_node.get_tab_item_flags(), TabItemFlag::button))
+                if(!first_open && !test_flags(child_tab->flags, TabItemFlag::button))
                 {
                     first_open = child_node.id;
                 }
                 // tab_item_selected is build-time visibility; persistent selection is authoritative
                 // after input-triggered relayouts.
-                if(!selected && child_node.tab_item_selected() && !test_flags(child_node.get_tab_item_flags(), TabItemFlag::button))
+                if(!selected && child_tab->content_visible && !test_flags(child_tab->flags, TabItemFlag::button))
                 {
                     selected = child_node.id;
                 }
                 if(selected && selected == child_node.id)
                 {
-                    selected_open = !test_flags(child_node.get_tab_item_flags(), TabItemFlag::button);
+                    selected_open = !test_flags(child_tab->flags, TabItemFlag::button);
                 }
             }
             if(!selected || !selected_open)
@@ -631,7 +635,9 @@ namespace Luna
                 total_width += width;
                 shrink_capacity += max(width - tab_item_min_width(), 0.0f);
             }
-            bool use_scroll = test_flags(node.get_tab_bar_flags(), TabBarFlag::fitting_scroll);
+            const TabBarNode* tab_bar = tab_bar_node(node);
+            luassert(tab_bar);
+            bool use_scroll = test_flags(tab_bar->flags, TabBarFlag::fitting_scroll);
             if(use_scroll && total_width > header_area_rect.width + 0.5f)
             {
                 f32 button_size = tab_scroll_button_size();
@@ -653,7 +659,7 @@ namespace Luna
                     header_rect.height);
             }
             f32 available_width = max(header_area_rect.width, 1.0f);
-            if(!bar_layout.tab_scrollable && test_flags(node.get_tab_bar_flags(), TabBarFlag::fitting_shrink) &&
+            if(!bar_layout.tab_scrollable && test_flags(tab_bar->flags, TabBarFlag::fitting_shrink) &&
                 total_width > available_width && shrink_capacity > 0.0f)
             {
                 f32 deficit = total_width - available_width;
@@ -676,14 +682,16 @@ namespace Luna
             {
                 u32 tab = tabs[i];
                 Node& tab_node = m_submitted_desc.nodes[tab];
+                const TabItemNode* tab_item = tab_item_node(tab_node);
+                luassert(tab_item);
                 NodeLayout& tab_layout = m_layouts[tab];
-                bool content_visible = tab_node.id == selected && !test_flags(tab_node.get_tab_item_flags(), TabItemFlag::button);
+                bool content_visible = tab_node.id == selected && !test_flags(tab_item->flags, TabItemFlag::button);
                 RectF tab_header(cursor_x, header_rect.offset_y + 3.0f, max(widths[i], 1.0f), max(header_rect.height - 4.0f, 1.0f));
                 tab_layout.tab_header_rect = tab_header;
                 tab_layout.tab_header_clip_rect = header_clip;
                 tab_layout.tab_content_visible = content_visible;
                 tab_layout.tab_close_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-                if(tab_node.bool_value() && !test_flags(tab_node.get_tab_item_flags(), TabItemFlag::no_close_button))
+                if(tab_item->open && !test_flags(tab_item->flags, TabItemFlag::no_close_button))
                 {
                     f32 close_size = 18.0f;
                     tab_layout.tab_close_rect = RectF(
@@ -1280,9 +1288,9 @@ namespace Luna
                     position.y = m_pointer_pos.y - height - desc.offset.y;
                 }
             }
-            else if(popup_layer(node) && node.popup_owner())
+            else if(popup_layer(node) && popup_owner(node))
             {
-                u32 owner_index = find_submitted_node_index(node.popup_owner());
+                u32 owner_index = find_submitted_node_index(popup_owner(node));
                 if(owner_index != U32_MAX)
                 {
                     const Node& owner = m_submitted_desc.nodes[owner_index];
@@ -1518,9 +1526,9 @@ namespace Luna
                         position.x = clamp(position.x, 0.0f, max(m_frame_desc.surface_size.x - width, 0.0f));
                         position.y = clamp(position.y, 0.0f, max(m_frame_desc.surface_size.y - height, 0.0f));
                     }
-                    else if(popup_layer(child_node) && child_node.popup_owner())
+                    else if(popup_layer(child_node) && popup_owner(child_node))
                     {
-                        u32 owner_index = find_submitted_node_index(child_node.popup_owner());
+                        u32 owner_index = find_submitted_node_index(popup_owner(child_node));
                         if(owner_index != U32_MAX)
                         {
                             const Node& owner = m_submitted_desc.nodes[owner_index];

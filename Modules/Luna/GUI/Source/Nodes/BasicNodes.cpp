@@ -5,6 +5,7 @@
 */
 #include "../../Nodes/BasicNodes.hpp"
 #include "../../State.hpp"
+#include "../GUI.hpp"
 
 namespace Luna
 {
@@ -55,10 +56,10 @@ namespace Luna
         {
             f32 max_width = F32_MAX;
             const Node* parent_node = ctx.parent();
-            if(parent_node && parent_node->layer_role() == NodeLayerRole::tooltip)
+            const TooltipNode* tooltip = parent_node ? tooltip_node(*parent_node) : nullptr;
+            if(tooltip)
             {
-                const TooltipDesc* desc = parent_node->get_tooltip_desc();
-                f32 tooltip_width = parent_node->requested_size.width > 0.0f ? parent_node->requested_size.width : (desc ? desc->max_width : 0.0f);
+                f32 tooltip_width = parent_node->requested_size.width > 0.0f ? parent_node->requested_size.width : tooltip->desc.max_width;
                 if(tooltip_width <= 0.0f)
                 {
                     tooltip_width = ctx.surface_size().x;

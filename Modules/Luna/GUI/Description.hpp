@@ -67,27 +67,6 @@ namespace Luna
             horizontal
         };
 
-        enum class NumericValueKind : u8
-        {
-            none,
-            f32,
-            i32
-        };
-
-        enum class NumericInteractionKind : u8
-        {
-            none,
-            slider,
-            input,
-            drag
-        };
-
-        enum class ColorWidgetKind : u8
-        {
-            none,
-            picker
-        };
-
         struct NodeRenderState
         {
             bool hovered = false;
@@ -221,22 +200,6 @@ namespace Luna
             {
                 return NodeLayoutFlow::vertical;
             }
-            virtual bool window_chrome() const
-            {
-                return false;
-            }
-            virtual NumericValueKind numeric_value_kind() const
-            {
-                return NumericValueKind::none;
-            }
-            virtual NumericInteractionKind numeric_interaction_kind() const
-            {
-                return NumericInteractionKind::none;
-            }
-            virtual ColorWidgetKind color_widget_kind() const
-            {
-                return ColorWidgetKind::none;
-            }
             virtual bool default_interactive() const
             {
                 return false;
@@ -253,134 +216,6 @@ namespace Luna
             virtual bool enabled_state() const
             {
                 return true;
-            }
-            virtual bool* bool_value() const
-            {
-                return nullptr;
-            }
-            virtual String* string_value() const
-            {
-                return nullptr;
-            }
-            virtual f32* f32_values() const
-            {
-                return nullptr;
-            }
-            virtual i32* i32_values() const
-            {
-                return nullptr;
-            }
-            virtual u8 f32_values_count() const
-            {
-                return 1;
-            }
-            virtual u8 i32_values_count() const
-            {
-                return 1;
-            }
-            virtual u8* u8_values() const
-            {
-                return nullptr;
-            }
-            virtual u32* u32_value() const
-            {
-                return nullptr;
-            }
-            virtual ColorValueType color_type() const
-            {
-                return ColorValueType::f32;
-            }
-            virtual id_t color_owner() const
-            {
-                return 0;
-            }
-            virtual ColorChannelPart color_part() const
-            {
-                return ColorChannelPart::none;
-            }
-            virtual bool uses_f32_color_components() const
-            {
-                return false;
-            }
-            virtual f32 min_value() const
-            {
-                return 0.0f;
-            }
-            virtual f32 max_value() const
-            {
-                return 0.0f;
-            }
-            virtual f32 step_value() const
-            {
-                return 0.0f;
-            }
-            virtual NumericEditFlag numeric_edit_flags() const
-            {
-                return NumericEditFlag::none;
-            }
-            virtual TabBarFlag get_tab_bar_flags() const
-            {
-                return TabBarFlag::none;
-            }
-            virtual TabItemFlag get_tab_item_flags() const
-            {
-                return TabItemFlag::none;
-            }
-            virtual bool tab_item_selected() const
-            {
-                return false;
-            }
-            virtual void set_tab_item_selected(bool value) {}
-            virtual id_t menu_popup() const
-            {
-                return 0;
-            }
-            virtual void set_menu_popup(id_t value) {}
-            virtual PopupFlag get_popup_flags() const
-            {
-                return PopupFlag::none;
-            }
-            virtual id_t popup_parent() const
-            {
-                return 0;
-            }
-            virtual id_t popup_owner() const
-            {
-                return 0;
-            }
-            virtual void set_popup_parent(id_t value) {}
-            virtual void set_popup_owner(id_t value) {}
-            virtual const TooltipDesc* get_tooltip_desc() const
-            {
-                return nullptr;
-            }
-            virtual TooltipDesc* get_tooltip_desc()
-            {
-                return nullptr;
-            }
-            virtual const TableDesc* get_table_desc() const
-            {
-                return nullptr;
-            }
-            virtual TableDesc* get_table_desc()
-            {
-                return nullptr;
-            }
-            virtual const GridLayoutDesc* get_grid_desc() const
-            {
-                return nullptr;
-            }
-            virtual GridLayoutDesc* get_grid_desc()
-            {
-                return nullptr;
-            }
-            virtual const CanvasLayoutDesc* get_canvas_desc() const
-            {
-                return nullptr;
-            }
-            virtual CanvasLayoutDesc* get_canvas_desc()
-            {
-                return nullptr;
             }
             virtual bool hit_test(const RectF& rect, const RectF& clip_rect, const Float2U& pos) const
             {

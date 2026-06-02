@@ -60,16 +60,6 @@ namespace Luna
             return enabled;
         }
 
-        id_t MenuItemNode::menu_popup() const
-        {
-            return popup_id;
-        }
-
-        void MenuItemNode::set_menu_popup(id_t value)
-        {
-            popup_id = value;
-        }
-
         bool MenuItemNode::checked() const
         {
             return selected_value ? *selected_value : selected;

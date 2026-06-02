@@ -20,15 +20,7 @@ namespace Luna
             ColorPickerNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual ColorWidgetKind color_widget_kind() const override;
             virtual bool uses_context_render() const override;
-            virtual f32* f32_values() const override;
-            virtual u8* u8_values() const override;
-            virtual u32* u32_value() const override;
-            virtual u8 f32_values_count() const override;
-            virtual ColorValueType color_type() const override;
-            virtual id_t color_owner() const override;
-            virtual ColorChannelPart color_part() const override;
             virtual LayoutMetrics measure() const override;
         };
     }
