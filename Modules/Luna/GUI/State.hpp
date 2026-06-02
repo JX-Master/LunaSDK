@@ -40,12 +40,26 @@ namespace Luna
             bool initialized = false;
         };
 
+        struct ButtonAnimationState
+        {
+            lustruct("GUI::ButtonAnimationState", "{B00FEB21-FE08-459E-87BC-FD15468BB6B6}");
+            Float4U color = Float4U(0.18f, 0.28f, 0.45f, 1.0f);
+            bool initialized = false;
+        };
+
         struct ButtonGroupAnimationState
         {
             lustruct("GUI::ButtonGroupAnimationState", "{2FB79430-D36D-42E1-BF3D-2FDD21D351AF}");
             f32 selection_animation = 0.0f;
             bool selection_animation_initialized = false;
             Vector<f32> item_animations;
+        };
+
+        struct TabBarAnimationState
+        {
+            lustruct("GUI::TabBarAnimationState", "{68A87F19-D1C3-4496-AE46-87A2DFB61E3D}");
+            RectF selection_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            bool selection_rect_initialized = false;
         };
 
         template <typename T>

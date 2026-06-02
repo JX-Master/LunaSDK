@@ -29,8 +29,18 @@ namespace Luna
 
         void ButtonNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            Float4U color = state.active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
+            Float4U target_color = state.active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
                 (state.hovered ? Float4U(0.26f, 0.43f, 0.72f, 1.0f) : Float4U(0.18f, 0.28f, 0.45f, 1.0f));
+            Float4U color = target_color;
+            ButtonAnimationState* animation_state = ctx.get_widget_state<ButtonAnimationState>(id);
+            if(animation_state && animation_state->initialized)
+            {
+                f32 blend = clamp(state.delta_time * 14.0f, 0.0f, 1.0f);
+                color = smooth_color(animation_state->color, target_color, blend);
+            }
+            Ref<ButtonAnimationState> next_animation_state = ctx.get_or_create_widget_state<ButtonAnimationState>(id);
+            next_animation_state->color = color;
+            next_animation_state->initialized = true;
             ctx.draw_rect(rect, clip_rect, color, 5.0f);
             ctx.draw_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
                 clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::center);

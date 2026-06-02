@@ -883,6 +883,7 @@ namespace Luna
             state->tab_selected_id = tab_item_id;
             Ref<ItemQueryState> result = get_or_create_query_state(tab_bar_id);
             result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
+            m_layout_dirty = true;
         }
 
         bool Context::reorder_tab_item_from_pointer(id_t tab_bar_id, id_t tab_item_id, const Float2U& pos)
@@ -2162,12 +2163,14 @@ namespace Luna
                                     *open = false;
                                     item_result->states.insert_or_assign(Name("gui.open"), Any(false));
                                     item_result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                    m_layout_dirty = true;
                                     Ref<TabBarState> bar_state = get_or_create_widget_state<TabBarState>(tab_bar_id);
                                     if(bar_state->tab_selected_id == tab_item_id)
                                     {
                                         bar_state->tab_selected_id = fallback_tab_item(tab_bar_id, tab_item_id);
                                         Ref<ItemQueryState> bar_result = get_or_create_query_state(tab_bar_id);
                                         bar_result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                        m_layout_dirty = true;
                                     }
                                 }
                                 else if(!test_flags(tab->flags, TabItemFlag::button))

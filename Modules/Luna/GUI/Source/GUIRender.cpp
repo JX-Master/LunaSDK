@@ -109,6 +109,17 @@ namespace Luna
                 a.w + (b.w - a.w) * t);
         }
 
+        static RectF lerp_rect(const RectF& a, const RectF& b, f32 t)
+        {
+            t = clamp(t, 0.0f, 1.0f);
+            t = t * t * (3.0f - 2.0f * t);
+            return RectF(
+                a.offset_x + (b.offset_x - a.offset_x) * t,
+                a.offset_y + (b.offset_y - a.offset_y) * t,
+                a.width + (b.width - a.width) * t,
+                a.height + (b.height - a.height) * t);
+        }
+
         static void add_selective_rounded_rectangle(Vector<f32>& points, f32 width, f32 height, f32 radius,
             bool top_left, bool top_right, bool bottom_right, bool bottom_left)
         {
@@ -520,7 +531,56 @@ namespace Luna
             }
         }
 
-        void Context::render_tab_item(u32 node_index)
+        void Context::render_tab_bar_headers(u32 node_index)
+        {
+            const Node& node = m_submitted_desc.nodes[node_index];
+            TabBarState* tab_state = get_widget_state<TabBarState>(node.id);
+            RectF selected_rect(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF selected_clip(0.0f, 0.0f, 0.0f, 0.0f);
+            bool has_selected_rect = false;
+
+            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+            {
+                if(!tab_item_layout(m_submitted_desc.nodes[child])) continue;
+                render_tab_item_background(child, false);
+                const NodeLayout& layout = m_layouts[child];
+                if(tab_state && m_submitted_desc.nodes[child].id == tab_state->tab_selected_id && layout.tab_content_visible &&
+                    layout.tab_header_rect.width > 0.0f && layout.tab_header_rect.height > 0.0f)
+                {
+                    selected_rect = layout.tab_header_rect;
+                    selected_clip = layout.tab_header_clip_rect;
+                    has_selected_rect = true;
+                }
+            }
+
+            if(has_selected_rect)
+            {
+                RectF rect = selected_rect;
+                TabBarAnimationState* animation_state = get_widget_state<TabBarAnimationState>(node.id);
+                if(animation_state && animation_state->selection_rect_initialized)
+                {
+                    rect = lerp_rect(animation_state->selection_rect, selected_rect, clamp(m_frame_desc.delta_time * 14.0f, 0.0f, 1.0f));
+                }
+                Ref<TabBarAnimationState> next_animation_state = get_or_create_widget_state<TabBarAnimationState>(node.id);
+                next_animation_state->selection_rect = rect;
+                next_animation_state->selection_rect_initialized = true;
+
+                Float4U color = Float4U(0.17f, 0.27f, 0.42f, 1.0f);
+                f32 radius = 5.0f;
+                render_rect(rect, selected_clip, color, radius);
+                render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - radius, 0.0f), rect.width, min(radius, rect.height)),
+                    selected_clip, color, 0.0f);
+                render_rect(RectF(rect.offset_x, rect.offset_y, rect.width, 2.0f), selected_clip, Float4U(0.34f, 0.60f, 0.92f, 1.0f), 1.0f);
+            }
+
+            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+            {
+                if(!tab_item_layout(m_submitted_desc.nodes[child])) continue;
+                render_tab_item_foreground(child);
+            }
+        }
+
+        void Context::render_tab_item_background(u32 node_index, bool draw_selected_background)
         {
             const Node& node = m_submitted_desc.nodes[node_index];
             const NodeLayout& layout = m_layouts[node_index];
@@ -534,6 +594,10 @@ namespace Luna
             const TabItemNode* tab = tab_item_node(node);
             luassert(tab);
             bool button = test_flags(tab->flags, TabItemFlag::button);
+            if(selected && !button && !draw_selected_background)
+            {
+                return;
+            }
             Float4U color = selected ?
                 Float4U(0.17f, 0.27f, 0.42f, 1.0f) :
                 (active ? Float4U(0.17f, 0.24f, 0.34f, 1.0f) :
@@ -547,10 +611,22 @@ namespace Luna
             render_rect(rect, clip, color, radius);
             render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - radius, 0.0f), rect.width, min(radius, rect.height)),
                 clip, color, 0.0f);
-            if(selected)
+            if(selected && draw_selected_background)
             {
                 render_rect(RectF(rect.offset_x, rect.offset_y, rect.width, 2.0f), clip, Float4U(0.34f, 0.60f, 0.92f, 1.0f), 1.0f);
             }
+        }
+
+        void Context::render_tab_item_foreground(u32 node_index)
+        {
+            const Node& node = m_submitted_desc.nodes[node_index];
+            const NodeLayout& layout = m_layouts[node_index];
+            RectF rect = layout.tab_header_rect;
+            RectF clip = layout.tab_header_clip_rect;
+            if(rect.width <= 0.0f || rect.height <= 0.0f) return;
+
+            const TabItemNode* tab = tab_item_node(node);
+            luassert(tab);
 
             f32 left = rect.offset_x + 9.0f;
             f32 right = rect.offset_x + rect.width - 8.0f;
@@ -572,6 +648,17 @@ namespace Luna
             }
             render_text(RectF(left, rect.offset_y, max(right - left, 1.0f), rect.height),
                 clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
+        }
+
+        void Context::render_tab_item(u32 node_index)
+        {
+            const Node& node = m_submitted_desc.nodes[node_index];
+            if(node.parent != U32_MAX && tab_bar_layout(m_submitted_desc.nodes[node.parent]))
+            {
+                return;
+            }
+            render_tab_item_background(node_index, true);
+            render_tab_item_foreground(node_index);
         }
 
         void Context::render_tab_scroll_buttons(u32 node_index)
@@ -1074,6 +1161,11 @@ namespace Luna
                     }
                 }
                 render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
+            }
+
+            if(tab_bar_layout(node))
+            {
+                render_tab_bar_headers(node_index);
             }
 
             if(dock_space_layout(node))

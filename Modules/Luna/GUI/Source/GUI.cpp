@@ -113,7 +113,9 @@ namespace Luna
                 register_struct_type<TooltipInteractionState>({});
                 register_struct_type<BuildHintState>({});
                 register_struct_type<SwitchAnimationState>({});
+                register_struct_type<ButtonAnimationState>({});
                 register_struct_type<ButtonGroupAnimationState>({});
+                register_struct_type<TabBarAnimationState>({});
                 register_struct_type<DockSpaceState>({});
                 register_struct_type<InputEditState>({});
                 register_struct_type<TableLayoutState>({});
