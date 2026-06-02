@@ -17,3 +17,4 @@
 #include "DragDrop.hpp"
 #include "Context.hpp"
 #include "Widgets.hpp"
+#include "Views.hpp"

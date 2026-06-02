@@ -281,6 +281,11 @@ namespace Luna
             return value_text;
         }
 
+        ItemHandle add_slider_float_node(IContext* context, const c8* label, f32* value, u8 count, f32 min_value, f32 max_value);
+        ItemHandle add_slider_int_node(IContext* context, const c8* label, i32* value, u8 count, i32 min_value, i32 max_value);
+        ItemHandle add_input_float_node(IContext* context, const c8* label, f32* value, u8 count, f32 min_value, f32 max_value);
+        ItemHandle add_input_int_node(IContext* context, const c8* label, i32* value, u8 count, i32 min_value, i32 max_value);
+
         inline u8 color_channel_to_u8(f32 value)
         {
             return (u8)clamp(value * 255.0f + 0.5f, 0.0f, 255.0f);

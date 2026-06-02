@@ -42,11 +42,20 @@ namespace Luna
             lustruct("GUI::SelectableNode", "{F021AFD7-2AC6-4CCC-B6B5-D4BE6FDDF0E4}");
 
             bool selected = false;
+            bool label_layout = false;
 
             SelectableNode();
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
+
+            virtual NodeLayoutFlow layout_flow() const override;
+
+            virtual bool default_interactive() const override;
+
+            virtual bool uses_node_measure() const override;
+
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
             virtual LayoutMetrics measure() const override;
 
@@ -57,9 +66,18 @@ namespace Luna
             lustruct("GUI::CheckboxNode", "{967B664F-1718-4F2A-8EA0-82879DA3579B}");
 
             bool* value = nullptr;
+            bool label_layout = false;
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
+
+            virtual NodeLayoutFlow layout_flow() const override;
+
+            virtual bool default_interactive() const override;
+
+            virtual bool uses_node_measure() const override;
+
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
             virtual LayoutMetrics measure() const override;
 
@@ -72,9 +90,18 @@ namespace Luna
             lustruct("GUI::ToggleSwitchNode", "{E7794BFA-1A37-4890-BDFD-0C15F5CC8942}");
 
             bool* value = nullptr;
+            bool label_layout = false;
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
+
+            virtual NodeLayoutFlow layout_flow() const override;
+
+            virtual bool default_interactive() const override;
+
+            virtual bool uses_node_measure() const override;
+
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
             virtual LayoutMetrics measure() const override;
 
@@ -134,11 +161,20 @@ namespace Luna
             bool* value = nullptr;
             i32* i32_value = nullptr;
             i32 item_value = 0;
+            bool label_layout = false;
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
             bool selected_state() const;
+
+            virtual NodeLayoutFlow layout_flow() const override;
+
+            virtual bool default_interactive() const override;
+
+            virtual bool uses_node_measure() const override;
+
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
             virtual LayoutMetrics measure() const override;
 

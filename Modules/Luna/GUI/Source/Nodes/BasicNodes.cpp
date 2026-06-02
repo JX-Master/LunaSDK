@@ -89,6 +89,29 @@ namespace Luna
             return new_object<SelectableNode>(*this);
         }
 
+        NodeLayoutFlow SelectableNode::layout_flow() const
+        {
+            return NodeLayoutFlow::horizontal;
+        }
+
+        bool SelectableNode::default_interactive() const
+        {
+            return true;
+        }
+
+        bool SelectableNode::uses_node_measure() const
+        {
+            return !label_layout;
+        }
+
+        void SelectableNode::apply_container_defaults(LayoutDesc& desc) const
+        {
+            if(!label_layout) return;
+            desc.padding = EdgeInsets::xy(8.0f, 3.0f);
+            desc.gap = 0.0f;
+            desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
+        }
+
         LayoutMetrics SelectableNode::measure() const
         {
             f32 text_width = (f32)text.size() * 16.0f * 0.52f;
@@ -107,8 +130,11 @@ namespace Luna
                     (state.hovered ? Float4U(0.20f, 0.30f, 0.44f, 1.0f) : Float4U(0.16f, 0.25f, 0.38f, 1.0f));
                 ctx.draw_rect(rect, clip_rect, color, 4.0f);
             }
-            ctx.draw_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
-                clip_rect, text.c_str(), 15.0f, Float4U(1.0f), TextAlignment::begin);
+            if(!label_layout)
+            {
+                ctx.draw_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
+                    clip_rect, text.c_str(), 15.0f, Float4U(1.0f), TextAlignment::begin);
+            }
         }
 
         Guid CheckboxNode::type_guid() const
@@ -121,19 +147,43 @@ namespace Luna
             return new_object<CheckboxNode>(*this);
         }
 
+        NodeLayoutFlow CheckboxNode::layout_flow() const
+        {
+            return NodeLayoutFlow::horizontal;
+        }
+
+        bool CheckboxNode::default_interactive() const
+        {
+            return true;
+        }
+
+        bool CheckboxNode::uses_node_measure() const
+        {
+            return !label_layout;
+        }
+
+        void CheckboxNode::apply_container_defaults(LayoutDesc& desc) const
+        {
+            if(!label_layout) return;
+            desc.padding.left = 28.0f;
+            desc.padding.top = 3.0f;
+            desc.padding.bottom = 3.0f;
+            desc.gap = 0.0f;
+            desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
+        }
+
         LayoutMetrics CheckboxNode::measure() const
         {
-            f32 text_width = (f32)text.size() * 16.0f * 0.52f;
             LayoutMetrics metrics;
             metrics.min_size = Float2U(26.0f, 26.0f);
-            metrics.preferred_size = Float2U(max(text_width + 30.0f, 80.0f), 26.0f);
-            metrics.max_size = Float2U(F32_MAX, 26.0f);
+            metrics.preferred_size = Float2U(26.0f, 26.0f);
+            metrics.max_size = Float2U(26.0f, 26.0f);
             return metrics;
         }
 
         void CheckboxNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            RectF box(rect.offset_x + 2.0f, rect.offset_y + 4.0f, 18.0f, 18.0f);
+            RectF box(rect.offset_x + 2.0f, rect.offset_y + max((rect.height - 18.0f) * 0.5f, 0.0f), 18.0f, 18.0f);
             bool checked = value && *value;
             ctx.draw_rect(RectF(box.offset_x - 1.0f, box.offset_y - 1.0f, box.width + 2.0f, box.height + 2.0f),
                 clip_rect, state.hovered ? Float4U(0.34f, 0.39f, 0.46f, 1.0f) : Float4U(0.25f, 0.29f, 0.35f, 1.0f), 4.0f);
@@ -145,8 +195,11 @@ namespace Luna
                 ctx.draw_line(Float2U(box.offset_x + 7.5f, box.offset_y + 13.0f),
                     Float2U(box.offset_x + 14.5f, box.offset_y + 5.5f), clip_rect, Float4U(1.0f), 2.4f);
             }
-            ctx.draw_text(RectF(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height),
-                clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
+            if(!label_layout)
+            {
+                ctx.draw_text(RectF(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height),
+                    clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
+            }
         }
 
         void CheckboxNode::on_click(NodeInputContext& ctx)
@@ -166,13 +219,37 @@ namespace Luna
             return new_object<ToggleSwitchNode>(*this);
         }
 
+        NodeLayoutFlow ToggleSwitchNode::layout_flow() const
+        {
+            return NodeLayoutFlow::horizontal;
+        }
+
+        bool ToggleSwitchNode::default_interactive() const
+        {
+            return true;
+        }
+
+        bool ToggleSwitchNode::uses_node_measure() const
+        {
+            return !label_layout;
+        }
+
+        void ToggleSwitchNode::apply_container_defaults(LayoutDesc& desc) const
+        {
+            if(!label_layout) return;
+            desc.padding.left = 56.0f;
+            desc.padding.top = 4.0f;
+            desc.padding.bottom = 4.0f;
+            desc.gap = 0.0f;
+            desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
+        }
+
         LayoutMetrics ToggleSwitchNode::measure() const
         {
-            f32 text_width = (f32)text.size() * 16.0f * 0.52f;
             LayoutMetrics metrics;
             metrics.min_size = Float2U(46.0f, 28.0f);
-            metrics.preferred_size = Float2U(max(text_width + 58.0f, 72.0f), 28.0f);
-            metrics.max_size = Float2U(F32_MAX, 28.0f);
+            metrics.preferred_size = Float2U(46.0f, 28.0f);
+            metrics.max_size = Float2U(46.0f, 28.0f);
             return metrics;
         }
 
@@ -193,7 +270,7 @@ namespace Luna
             next_state->animation = animation;
             next_state->initialized = true;
 
-            RectF track(rect.offset_x + 2.0f, rect.offset_y + 3.0f, 44.0f, 22.0f);
+            RectF track(rect.offset_x + 2.0f, rect.offset_y + max((rect.height - 22.0f) * 0.5f, 0.0f), 44.0f, 22.0f);
             Float4U off_track = state.hovered ? Float4U(0.18f, 0.20f, 0.23f, 1.0f) : Float4U(0.12f, 0.14f, 0.16f, 1.0f);
             Float4U on_track = state.hovered ? Float4U(0.25f, 0.62f, 0.38f, 1.0f) : Float4U(0.20f, 0.55f, 0.32f, 1.0f);
             ctx.draw_rect(track, clip_rect, smooth_color(off_track, on_track, animation), track.height * 0.5f);
@@ -203,8 +280,11 @@ namespace Luna
             RectF knob(knob_x, track.offset_y + 2.0f, knob_size, knob_size);
             ctx.draw_circle(knob, clip_rect, smooth_color(Float4U(0.78f, 0.80f, 0.84f, 1.0f), Float4U(1.0f), animation));
 
-            ctx.draw_text(RectF(rect.offset_x + 56.0f, rect.offset_y, max(rect.width - 56.0f, 1.0f), rect.height),
-                clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
+            if(!label_layout)
+            {
+                ctx.draw_text(RectF(rect.offset_x + 56.0f, rect.offset_y, max(rect.width - 56.0f, 1.0f), rect.height),
+                    clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
+            }
         }
 
         void ToggleSwitchNode::on_click(NodeInputContext& ctx)
@@ -394,19 +474,43 @@ namespace Luna
             return selected;
         }
 
+        NodeLayoutFlow RadioButtonNode::layout_flow() const
+        {
+            return NodeLayoutFlow::horizontal;
+        }
+
+        bool RadioButtonNode::default_interactive() const
+        {
+            return true;
+        }
+
+        bool RadioButtonNode::uses_node_measure() const
+        {
+            return !label_layout;
+        }
+
+        void RadioButtonNode::apply_container_defaults(LayoutDesc& desc) const
+        {
+            if(!label_layout) return;
+            desc.padding.left = 28.0f;
+            desc.padding.top = 3.0f;
+            desc.padding.bottom = 3.0f;
+            desc.gap = 0.0f;
+            desc.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;
+        }
+
         LayoutMetrics RadioButtonNode::measure() const
         {
-            f32 text_width = (f32)text.size() * 16.0f * 0.52f;
             LayoutMetrics metrics;
             metrics.min_size = Float2U(26.0f, 26.0f);
-            metrics.preferred_size = Float2U(max(text_width + 30.0f, 80.0f), 26.0f);
-            metrics.max_size = Float2U(F32_MAX, 26.0f);
+            metrics.preferred_size = Float2U(26.0f, 26.0f);
+            metrics.max_size = Float2U(26.0f, 26.0f);
             return metrics;
         }
 
         void RadioButtonNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
         {
-            RectF outer(rect.offset_x + 2.0f, rect.offset_y + 4.0f, 18.0f, 18.0f);
+            RectF outer(rect.offset_x + 2.0f, rect.offset_y + max((rect.height - 18.0f) * 0.5f, 0.0f), 18.0f, 18.0f);
             ctx.draw_circle(RectF(outer.offset_x - 1.0f, outer.offset_y - 1.0f, outer.width + 2.0f, outer.height + 2.0f),
                 clip_rect, state.hovered ? Float4U(0.38f, 0.43f, 0.50f, 1.0f) : Float4U(0.27f, 0.31f, 0.37f, 1.0f));
             ctx.draw_circle(outer, clip_rect, Float4U(0.10f, 0.12f, 0.15f, 1.0f));
@@ -415,8 +519,11 @@ namespace Luna
                 ctx.draw_circle(RectF(outer.offset_x + 5.0f, outer.offset_y + 5.0f, 8.0f, 8.0f),
                     clip_rect, Float4U(0.34f, 0.58f, 0.92f, 1.0f));
             }
-            ctx.draw_text(RectF(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height),
-                clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
+            if(!label_layout)
+            {
+                ctx.draw_text(RectF(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height),
+                    clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::begin);
+            }
         }
 
         void RadioButtonNode::on_click(NodeInputContext& ctx)
