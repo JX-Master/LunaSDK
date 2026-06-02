@@ -9,6 +9,14 @@
 */
 #pragma once
 #include "../GUI.hpp"
+#include "Nodes/Common.hpp"
+#include "Nodes/LayoutNodes.hpp"
+#include "Nodes/BasicNodes.hpp"
+#include "Nodes/MenuNodes.hpp"
+#include "Nodes/InputNodes.hpp"
+#include "Nodes/ColorNodes.hpp"
+#include "Nodes/ButtonGroupNodes.hpp"
+#include "Nodes/DrawingNodes.hpp"
 #include <Luna/Runtime/HashSet.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
 #include <Luna/Runtime/Unicode.hpp>

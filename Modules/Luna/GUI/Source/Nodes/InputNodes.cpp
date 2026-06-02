@@ -3,7 +3,7 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 */
-#include "../../Nodes/InputNodes.hpp"
+#include "InputNodes.hpp"
 
 namespace Luna
 {

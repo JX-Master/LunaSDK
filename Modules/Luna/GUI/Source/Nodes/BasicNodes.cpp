@@ -3,7 +3,7 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 */
-#include "../../Nodes/BasicNodes.hpp"
+#include "BasicNodes.hpp"
 #include "../../State.hpp"
 #include "../GUI.hpp"
 

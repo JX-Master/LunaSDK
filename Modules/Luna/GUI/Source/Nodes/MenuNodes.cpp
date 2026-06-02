@@ -3,7 +3,7 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 */
-#include "../../Nodes/MenuNodes.hpp"
+#include "MenuNodes.hpp"
 
 namespace Luna
 {
