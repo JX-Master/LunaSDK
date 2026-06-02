@@ -240,13 +240,6 @@ namespace Luna
             Size requested_size;
             LayoutStyle layout_style;
             LayoutDesc layout_desc;
-            bool has_dock_panel_style = false;
-            DockPanelStyle dock_panel_style;
-            bool* dock_panel_open = nullptr;
-            bool has_canvas_item_layout = false;
-            CanvasItemLayout canvas_item_layout;
-            bool has_table_cell_color = false;
-            Float4U table_cell_color = Float4U(0.0f);
             bool absolute_position = false;
             Float2U position = Float2U(0.0f);
             bool has_user_clip_rect = false;

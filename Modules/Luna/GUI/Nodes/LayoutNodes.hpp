@@ -10,6 +10,28 @@ namespace Luna
 {
     namespace GUI
     {
+        struct TableCellAttachment
+        {
+            u32 child_index = U32_MAX;
+            id_t child_id = 0;
+            Float4U color = Float4U(0.0f);
+        };
+
+        struct CanvasItemAttachment
+        {
+            u32 child_index = U32_MAX;
+            id_t child_id = 0;
+            CanvasItemLayout layout;
+        };
+
+        struct DockPanelAttachment
+        {
+            u32 child_index = U32_MAX;
+            id_t child_id = 0;
+            DockPanelStyle style;
+            bool* open = nullptr;
+        };
+
         struct RootNode : Node
         {
             lustruct("GUI::RootNode", "{24EF0005-B823-4C28-929C-987F18238ABF}");
@@ -117,6 +139,7 @@ namespace Luna
             lustruct("GUI::TableLayoutNode", "{173F13E1-D89C-4298-8EA4-74400F85C11F}");
 
             TableDesc desc;
+            Vector<TableCellAttachment> cell_attachments;
 
             TableLayoutNode();
             virtual Guid type_guid() const override;
@@ -143,6 +166,7 @@ namespace Luna
             lustruct("GUI::CanvasLayoutNode", "{3C74E39A-09C3-40C6-A612-DD27B0E4BB9A}");
 
             CanvasLayoutDesc desc;
+            Vector<CanvasItemAttachment> item_attachments;
 
             CanvasLayoutNode();
             virtual Guid type_guid() const override;
@@ -154,6 +178,8 @@ namespace Luna
         struct DockSpaceNode : Node
         {
             lustruct("GUI::DockSpaceNode", "{1FEE4004-7AE1-4B09-A76B-5853159CB940}");
+
+            Vector<DockPanelAttachment> panel_attachments;
 
             DockSpaceNode();
             virtual Guid type_guid() const override;

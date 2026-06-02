@@ -351,6 +351,17 @@ namespace Luna
             return typed->desc;
         }
 
+        inline const TableCellAttachment* table_cell_attachment(const Node& node, u32 child_index)
+        {
+            const TableLayoutNode* table = table_layout_node(node);
+            if(!table) return nullptr;
+            for(const TableCellAttachment& attachment : table->cell_attachments)
+            {
+                if(attachment.child_index == child_index) return &attachment;
+            }
+            return nullptr;
+        }
+
         inline const GridLayoutDesc& grid_desc(const Node& node)
         {
             const GridLayoutNode* typed = grid_layout_node(node);
@@ -363,6 +374,28 @@ namespace Luna
             const CanvasLayoutNode* typed = canvas_layout_node(node);
             luassert(typed);
             return typed->desc;
+        }
+
+        inline const CanvasItemAttachment* canvas_item_attachment(const Node& node, u32 child_index)
+        {
+            const CanvasLayoutNode* canvas = canvas_layout_node(node);
+            if(!canvas) return nullptr;
+            for(const CanvasItemAttachment& attachment : canvas->item_attachments)
+            {
+                if(attachment.child_index == child_index) return &attachment;
+            }
+            return nullptr;
+        }
+
+        inline const DockPanelAttachment* dock_panel_attachment(const Node& node, u32 child_index)
+        {
+            const DockSpaceNode* dock_space = cast_node<DockSpaceNode>(node);
+            if(!dock_space) return nullptr;
+            for(const DockPanelAttachment& attachment : dock_space->panel_attachments)
+            {
+                if(attachment.child_index == child_index) return &attachment;
+            }
+            return nullptr;
         }
 
         inline const TooltipDesc& tooltip_desc(const Node& node)

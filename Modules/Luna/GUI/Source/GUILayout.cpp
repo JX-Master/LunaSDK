@@ -287,7 +287,7 @@ namespace Luna
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
                     const Node& child_node = m_submitted_desc.nodes[child];
-                    if(absolute_node(child_node) && !child_node.has_canvas_item_layout) continue;
+                    if(absolute_node(child_node) && !canvas_item_attachment(node, child)) continue;
                     LayoutMetrics child_metrics = measure_node(child);
                     min_width = max(min_width, child_metrics.min_size.x);
                     min_height = max(min_height, child_metrics.min_size.y);
@@ -497,9 +497,9 @@ namespace Luna
                 Node& child_node = m_submitted_desc.nodes[child];
                 LayoutMetrics metrics = measure_node(child);
                 RectF child_rect;
-                if(child_node.has_canvas_item_layout)
+                if(const CanvasItemAttachment* attachment = canvas_item_attachment(node, child))
                 {
-                    const CanvasItemLayout& item = child_node.canvas_item_layout;
+                    const CanvasItemLayout& item = attachment->layout;
                     f32 anchor_min_x = clamp(item.anchor_min.x, 0.0f, 1.0f);
                     f32 anchor_min_y = clamp(item.anchor_min.y, 0.0f, 1.0f);
                     f32 anchor_max_x = clamp(item.anchor_max.x, 0.0f, 1.0f);
@@ -1170,7 +1170,9 @@ namespace Luna
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
                 Node& child_node = m_submitted_desc.nodes[child];
-                DockPanelStyle style = child_node.has_dock_panel_style ? child_node.dock_panel_style : DockPanelStyle();
+                const DockPanelAttachment* panel_attachment = dock_panel_attachment(node, child);
+                DockPanelStyle style = panel_attachment ? panel_attachment->style : DockPanelStyle();
+                bool* panel_open = panel_attachment ? panel_attachment->open : nullptr;
                 DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state, child_node.id);
                 if(!panel_state.initialized)
                 {
@@ -1184,11 +1186,11 @@ namespace Luna
                         max(style.floating_size.y, style.min_floating_size.y));
                     panel_state.z_order = dock_state.dock_next_z_order++;
                 }
-                if(child_node.dock_panel_open && *child_node.dock_panel_open)
+                if(panel_open && *panel_open)
                 {
                     panel_state.closed = false;
                 }
-                bool visible = child_node.dock_panel_open ? *child_node.dock_panel_open : !panel_state.closed;
+                bool visible = panel_open ? *panel_open : !panel_state.closed;
                 Ref<ItemQueryState> result = get_or_create_query_state(child_node.id);
                 result->states.insert_or_assign(Name("gui.open"), Any(visible));
 

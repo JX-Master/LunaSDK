@@ -2061,9 +2061,15 @@ namespace Luna
                                 if(node.id != m_active_dock_panel_id) continue;
                                 if(point_in_rect(e.position, m_layouts[i].dock_panel_close_rect))
                                 {
-                                    if(node.dock_panel_open)
+                                    const DockPanelAttachment* attachment = nullptr;
+                                    if(node.parent != U32_MAX && node.parent < m_submitted_desc.nodes.size())
                                     {
-                                        *node.dock_panel_open = false;
+                                        attachment = dock_panel_attachment(m_submitted_desc.nodes[node.parent], (u32)i);
+                                    }
+                                    bool* panel_open = attachment ? attachment->open : nullptr;
+                                    if(panel_open)
+                                    {
+                                        *panel_open = false;
                                     }
                                     else if(panel_state)
                                     {

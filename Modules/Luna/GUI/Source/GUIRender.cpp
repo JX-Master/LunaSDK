@@ -356,10 +356,11 @@ namespace Luna
                 {
                     usize cell_index = (usize)row * columns + col;
                     ColorOverride color;
-                    if(child != U32_MAX && m_submitted_desc.nodes[child].has_table_cell_color)
+                    const TableCellAttachment* cell_attachment = child != U32_MAX ? table_cell_attachment(node, child) : nullptr;
+                    if(cell_attachment)
                     {
                         color.enabled = true;
-                        color.color = m_submitted_desc.nodes[child].table_cell_color;
+                        color.color = cell_attachment->color;
                     }
                     else if(cell_index < style.cell_colors.size() && style.cell_colors[cell_index].enabled)
                     {

@@ -265,31 +265,6 @@ namespace Luna
                 node.layout_style = m_next_item_layout;
                 m_has_next_item_layout = false;
             }
-            if(m_has_next_canvas_item_layout)
-            {
-                node.has_canvas_item_layout = true;
-                node.canvas_item_layout = m_next_canvas_item_layout;
-                m_has_next_canvas_item_layout = false;
-            }
-            if(m_has_next_table_cell_color)
-            {
-                node.has_table_cell_color = true;
-                node.table_cell_color = m_next_table_cell_color;
-                m_has_next_table_cell_color = false;
-            }
-            if(!layer_root && m_has_next_dock_panel_style && dock_space_layout(m_build_desc.nodes[parent]))
-            {
-                node.has_dock_panel_style = true;
-                node.dock_panel_style = m_next_dock_panel_style;
-                node.dock_panel_open = m_next_dock_panel_open;
-                m_has_next_dock_panel_style = false;
-                m_next_dock_panel_open = nullptr;
-            }
-            else if(m_has_next_dock_panel_style)
-            {
-                m_has_next_dock_panel_style = false;
-                m_next_dock_panel_open = nullptr;
-            }
 
             u32 index = (u32)m_build_desc.nodes.size();
             m_build_desc.nodes.push_back(move(node_ref));
@@ -298,6 +273,10 @@ namespace Luna
             if(layer_root)
             {
                 m_build_desc.layers[layer_index].root = index;
+                m_has_next_canvas_item_layout = false;
+                m_has_next_table_cell_color = false;
+                m_has_next_dock_panel_style = false;
+                m_next_dock_panel_open = nullptr;
             }
             else
             {
@@ -311,6 +290,32 @@ namespace Luna
                     m_build_desc.nodes[parent_node.last_child].next_sibling = index;
                 }
                 parent_node.last_child = index;
+
+                if(m_has_next_canvas_item_layout)
+                {
+                    if(CanvasLayoutNode* canvas = canvas_layout_node(parent_node))
+                    {
+                        canvas->item_attachments.push_back(CanvasItemAttachment{index, m_build_desc.nodes[index].id, m_next_canvas_item_layout});
+                    }
+                    m_has_next_canvas_item_layout = false;
+                }
+                if(m_has_next_table_cell_color)
+                {
+                    if(TableLayoutNode* table = table_layout_node(parent_node))
+                    {
+                        table->cell_attachments.push_back(TableCellAttachment{index, m_build_desc.nodes[index].id, m_next_table_cell_color});
+                    }
+                    m_has_next_table_cell_color = false;
+                }
+                if(m_has_next_dock_panel_style)
+                {
+                    if(DockSpaceNode* dock_space = cast_node<DockSpaceNode>(parent_node))
+                    {
+                        dock_space->panel_attachments.push_back(DockPanelAttachment{index, m_build_desc.nodes[index].id, m_next_dock_panel_style, m_next_dock_panel_open});
+                    }
+                    m_has_next_dock_panel_style = false;
+                    m_next_dock_panel_open = nullptr;
+                }
             }
 
             m_last_item_id = m_build_desc.nodes[index].id;
