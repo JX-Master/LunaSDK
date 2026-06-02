@@ -186,7 +186,7 @@ namespace Luna
                 Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(node.id);
                 f32 font_size = 16.0f;
                 String* string_value = node.string_value();
-                if(node.is_input_text() && string_value)
+                if(input_text_node(node) && string_value)
                 {
                     const RectF& rect = m_layouts[i].rect;
                     state->text_cursor = clamp_utf8_cursor(*string_value, state->text_cursor);
@@ -196,7 +196,7 @@ namespace Luna
                     ret.cursor = (i32)(input_text_cursor_x(*string_value, state->text_cursor, font_size) + 0.5f);
                     return ret;
                 }
-                if(is_numeric_input_node(node) && state->numeric_editing)
+                if(numeric_text_editable(node) && state->numeric_editing)
                 {
                     state->text_cursor = clamp_utf8_cursor(state->numeric_edit_text, state->text_cursor);
                     RectF component = numeric_component_rect(node, m_layouts[i].rect, state->numeric_edit_component);
@@ -251,7 +251,7 @@ namespace Luna
             node.depth = layer_root ? 0 : m_build_desc.nodes[parent].depth + 1;
             node.text = text ? text : "";
             node.interactive = node.interactive || interactive || node.default_interactive();
-            if(!layer_root && m_build_desc.nodes[parent].is_dock_space())
+            if(!layer_root && dock_space_layout(m_build_desc.nodes[parent]))
             {
                 node.interactive = true;
             }
@@ -277,7 +277,7 @@ namespace Luna
                 node.table_cell_color = m_next_table_cell_color;
                 m_has_next_table_cell_color = false;
             }
-            if(!layer_root && m_has_next_dock_panel_style && m_build_desc.nodes[parent].is_dock_space())
+            if(!layer_root && m_has_next_dock_panel_style && dock_space_layout(m_build_desc.nodes[parent]))
             {
                 node.has_dock_panel_style = true;
                 node.dock_panel_style = m_next_dock_panel_style;

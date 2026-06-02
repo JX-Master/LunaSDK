@@ -20,7 +20,7 @@ namespace Luna
             ColorPickerNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_color_picker() const override;
+            virtual ColorWidgetKind color_widget_kind() const override;
             virtual bool uses_context_render() const override;
             virtual f32* f32_values() const override;
             virtual u8* u8_values() const override;
@@ -41,7 +41,7 @@ namespace Luna
             ColorEditNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_color_edit() const override;
+            virtual ColorWidgetKind color_widget_kind() const override;
             virtual bool uses_context_render() const override;
             virtual f32* f32_values() const override;
             virtual u8* u8_values() const override;

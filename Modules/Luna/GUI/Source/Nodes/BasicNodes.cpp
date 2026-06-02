@@ -55,7 +55,7 @@ namespace Luna
         {
             f32 max_width = F32_MAX;
             const Node* parent_node = ctx.parent();
-            if(parent_node && parent_node->is_tooltip())
+            if(parent_node && parent_node->layer_role() == NodeLayerRole::tooltip)
             {
                 const TooltipDesc* desc = parent_node->get_tooltip_desc();
                 f32 tooltip_width = parent_node->requested_size.width > 0.0f ? parent_node->requested_size.width : (desc ? desc->max_width : 0.0f);
@@ -277,7 +277,7 @@ namespace Luna
             return new_object<TreeNodeNode>(*this);
         }
 
-        bool TreeNodeNode::is_leaf() const
+        bool TreeNodeNode::leaf() const
         {
             return test_flags(flags, TreeNodeFlag::leaf);
         }
@@ -285,7 +285,7 @@ namespace Luna
         bool TreeNodeNode::open(NodeInputContext& ctx) const
         {
             DisclosureState* state = ctx.get_widget_state<DisclosureState>(id);
-            return state ? state->open : (!is_leaf() && test_flags(flags, TreeNodeFlag::default_open));
+            return state ? state->open : (!leaf() && test_flags(flags, TreeNodeFlag::default_open));
         }
 
         RectF TreeNodeNode::arrow_rect(const RectF& rect) const
@@ -317,7 +317,7 @@ namespace Luna
             }
             else
             {
-                node_open = !is_leaf() && test_flags(flags, TreeNodeFlag::default_open);
+                node_open = !leaf() && test_flags(flags, TreeNodeFlag::default_open);
             }
             if(selected || state.hovered || state.active)
             {
@@ -325,8 +325,8 @@ namespace Luna
                     (selected ? Float4U(0.16f, 0.25f, 0.38f, 1.0f) : Float4U(0.18f, 0.24f, 0.32f, 1.0f)), 4.0f);
             }
             RectF arrow = arrow_rect(rect);
-            Float4U icon_color = is_leaf() ? Float4U(0.58f, 0.65f, 0.74f, 1.0f) : Float4U(1.0f);
-            if(is_leaf())
+            Float4U icon_color = leaf() ? Float4U(0.58f, 0.65f, 0.74f, 1.0f) : Float4U(1.0f);
+            if(leaf())
             {
                 f32 dot = 5.0f;
                 ctx.draw_circle(RectF(arrow.offset_x + (arrow.width - dot) * 0.5f, arrow.offset_y + (arrow.height - dot) * 0.5f, dot, dot),
@@ -360,7 +360,7 @@ namespace Luna
 
         void TreeNodeNode::on_click(NodeInputContext& ctx)
         {
-            if(is_leaf()) return;
+            if(leaf()) return;
             if(test_flags(flags, TreeNodeFlag::open_on_arrow))
             {
                 RectF arrow = arrow_rect(ctx.rect());
@@ -387,7 +387,7 @@ namespace Luna
             return new_object<RadioButtonNode>(*this);
         }
 
-        bool RadioButtonNode::is_selected() const
+        bool RadioButtonNode::selected_state() const
         {
             if(i32_value) return *i32_value == item_value;
             if(value) return *value;
@@ -410,7 +410,7 @@ namespace Luna
             ctx.draw_circle(RectF(outer.offset_x - 1.0f, outer.offset_y - 1.0f, outer.width + 2.0f, outer.height + 2.0f),
                 clip_rect, state.hovered ? Float4U(0.38f, 0.43f, 0.50f, 1.0f) : Float4U(0.27f, 0.31f, 0.37f, 1.0f));
             ctx.draw_circle(outer, clip_rect, Float4U(0.10f, 0.12f, 0.15f, 1.0f));
-            if(is_selected())
+            if(selected_state())
             {
                 ctx.draw_circle(RectF(outer.offset_x + 5.0f, outer.offset_y + 5.0f, 8.0f, 8.0f),
                     clip_rect, Float4U(0.34f, 0.58f, 0.92f, 1.0f));

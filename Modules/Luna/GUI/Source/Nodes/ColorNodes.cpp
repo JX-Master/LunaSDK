@@ -24,9 +24,9 @@ namespace Luna
             return new_object<ColorPickerNode>(*this);
         }
 
-        bool ColorPickerNode::is_color_picker() const
+        ColorWidgetKind ColorPickerNode::color_widget_kind() const
         {
-            return true;
+            return ColorWidgetKind::picker;
         }
 
         bool ColorPickerNode::uses_context_render() const
@@ -93,9 +93,9 @@ namespace Luna
             return new_object<ColorEditNode>(*this);
         }
 
-        bool ColorEditNode::is_color_edit() const
+        ColorWidgetKind ColorEditNode::color_widget_kind() const
         {
-            return true;
+            return ColorWidgetKind::edit;
         }
 
         bool ColorEditNode::uses_context_render() const

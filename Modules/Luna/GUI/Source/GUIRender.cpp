@@ -722,7 +722,7 @@ namespace Luna
             {
                 for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                 {
-                    if(m_submitted_desc.nodes[i].id == target_space_id && m_submitted_desc.nodes[i].is_dock_space())
+                    if(m_submitted_desc.nodes[i].id == target_space_id && dock_space_layout(m_submitted_desc.nodes[i]))
                     {
                         target_rect = m_layouts[i].rect;
                         break;
@@ -792,11 +792,11 @@ namespace Luna
         void Context::render_node(u32 node_index)
         {
             const Node& node = m_submitted_desc.nodes[node_index];
-            if(node.is_popup() && !popup_node_visible(node))
+            if(popup_layer(node) && !popup_node_visible(node))
             {
                 return;
             }
-            if(node.is_tooltip() && !tooltip_node_visible(node))
+            if(tooltip_layer(node) && !tooltip_node_visible(node))
             {
                 return;
             }
@@ -846,15 +846,15 @@ namespace Luna
             {
                 render_polymorphic_node();
             }
-            else if(node.is_tab_item())
+            else if(tab_item_layout(node))
             {
                 render_tab_item(node_index);
             }
-            else if(node.is_table_layout())
+            else if(table_layout(node))
             {
                 render_table_node(node_index);
             }
-            else if(node.is_input_text())
+            else if(input_text_node(node))
             {
                 render_rect(rect, clip, node.id == m_focused_id ? Float4U(0.12f, 0.16f, 0.22f, 1.0f) : Float4U(0.08f, 0.10f, 0.13f, 1.0f), 4.0f);
                 String* string_value = node.string_value();
@@ -894,7 +894,7 @@ namespace Luna
                     }
                 }
             }
-            else if(node.is_color_edit())
+            else if(color_edit_node(node))
             {
                 f32 label_w = color_edit_label_width(node, rect);
                 if(label_w > 0.0f)
@@ -920,7 +920,7 @@ namespace Luna
                     max(value_rect.offset_x + value_rect.width - swatch.offset_x - swatch.width - 14.0f, 1.0f), value_rect.height),
                     clip, hex.c_str(), 15.0f, Float4U(0.86f, 0.90f, 0.96f, 1.0f), VG::TextAlignment::begin);
             }
-            else if(node.is_color_picker())
+            else if(color_picker_node(node))
             {
                 Float4U color = read_color_value(node);
                 id_t owner_id = node.color_owner() ? node.color_owner() : node.id;
@@ -1025,7 +1025,7 @@ namespace Luna
                 render_text(RectF(original_rect.offset_x, original_rect.offset_y - 26.0f, original_rect.width, 22.0f), clip, "Original", 15.0f, Color::white(), VG::TextAlignment::begin);
                 render_color_swatch(original_rect, clip, state.color_edit_original_valid ? state.color_edit_original : color, 3.0f);
             }
-            else if(node.is_slider_numeric())
+            else if(numeric_slider(node))
             {
                 f32 label_w = numeric_label_width(node, rect);
                 u32 value_count = numeric_value_count(node);
@@ -1033,7 +1033,7 @@ namespace Luna
                 {
                     f32* f32_values = node.f32_values();
                     i32* i32_values = node.i32_values();
-                    f32 value = is_float_numeric_node(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
+                    f32 value = numeric_value_f32(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
                     RectF component_rect = numeric_component_rect(node, rect, i);
                     bool active_component = active && (m_active_float_component == U32_MAX || m_active_float_component == i);
                     f32 denom = max(node.max_value() - node.min_value(), 0.0001f);
@@ -1057,7 +1057,7 @@ namespace Luna
                     render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
                 }
             }
-            else if(is_numeric_node(node))
+            else if(numeric_node(node))
             {
                 f32 label_w = numeric_label_width(node, rect);
                 u32 value_count = numeric_value_count(node);
@@ -1067,17 +1067,17 @@ namespace Luna
                 {
                     f32* f32_values = node.f32_values();
                     i32* i32_values = node.i32_values();
-                    f32 value = is_float_numeric_node(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
+                    f32 value = numeric_value_f32(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
                     RectF component_rect = numeric_component_rect(node, rect, i);
-                    bool editing_component = is_numeric_input_node(node) && node.id == m_focused_id && state.numeric_editing && state.numeric_edit_component == i;
+                    bool editing_component = numeric_text_editable(node) && node.id == m_focused_id && state.numeric_editing && state.numeric_edit_component == i;
                     Float4U bg = node.uses_f32_color_components() ? Float4U(
                         i == 0 ? value : 0.10f,
                         i == 1 ? value : 0.10f,
                         i == 2 ? value : 0.10f,
                         1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f);
-                    bool active_component = active && (!is_numeric_node(node) || m_active_float_component == U32_MAX || m_active_float_component == i);
+                    bool active_component = active && (!numeric_node(node) || m_active_float_component == U32_MAX || m_active_float_component == i);
                     render_rect(component_rect, clip, (active_component || editing_component) ? Float4U(0.18f, 0.29f, 0.44f, 1.0f) : bg, 4.0f);
-                    if(!editing_component && node.is_drag_numeric() && node.max_value() > node.min_value())
+                    if(!editing_component && numeric_drag(node) && node.max_value() > node.min_value())
                     {
                         f32 denom = max(node.max_value() - node.min_value(), 0.0001f);
                         f32 t = clamp((value - node.min_value()) / denom, 0.0f, 1.0f);
@@ -1115,7 +1115,7 @@ namespace Luna
                 render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
             }
 
-            if(node.is_dock_space())
+            if(dock_space_layout(node))
             {
                 Vector<u32> floating_children;
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
@@ -1174,7 +1174,7 @@ namespace Luna
             }
             else
             {
-                if(!node.is_tab_item() || m_layouts[node_index].tab_content_visible)
+                if(!tab_item_layout(node) || m_layouts[node_index].tab_content_visible)
                 {
                     for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                     {
@@ -1182,11 +1182,11 @@ namespace Luna
                     }
                 }
             }
-            if(node.is_scroll_view())
+            if(scroll_layout(node))
             {
                 render_scrollbars(node_index);
             }
-            if(node.is_tab_bar())
+            if(tab_bar_layout(node))
             {
                 render_tab_scroll_buttons(node_index);
             }

@@ -41,6 +41,54 @@ namespace Luna
             flip_y = 0x01
         };
 
+        enum class NodeLayerRole : u8
+        {
+            normal,
+            root,
+            popup,
+            tooltip
+        };
+
+        enum class NodeLayoutBehavior : u8
+        {
+            linear,
+            scroll,
+            table,
+            grid,
+            canvas,
+            dock_space,
+            tab_bar,
+            tab_item
+        };
+
+        enum class NodeLayoutFlow : u8
+        {
+            vertical,
+            horizontal
+        };
+
+        enum class NumericValueKind : u8
+        {
+            none,
+            f32,
+            i32
+        };
+
+        enum class NumericInteractionKind : u8
+        {
+            none,
+            slider,
+            input,
+            drag
+        };
+
+        enum class ColorWidgetKind : u8
+        {
+            none,
+            edit,
+            picker
+        };
+
         struct NodeRenderState
         {
             bool hovered = false;
@@ -166,101 +214,37 @@ namespace Luna
             {
                 return measure();
             }
-            virtual bool is_menu() const
+            virtual NodeLayerRole layer_role() const
+            {
+                return NodeLayerRole::normal;
+            }
+            virtual NodeLayoutBehavior layout_behavior() const
+            {
+                return NodeLayoutBehavior::linear;
+            }
+            virtual NodeLayoutFlow layout_flow() const
+            {
+                return NodeLayoutFlow::vertical;
+            }
+            virtual bool window_chrome() const
             {
                 return false;
             }
-            virtual bool is_combo() const
+            virtual bool accepts_top_level_menus() const
             {
                 return false;
             }
-            virtual bool is_root() const
+            virtual NumericValueKind numeric_value_kind() const
             {
-                return false;
+                return NumericValueKind::none;
             }
-            virtual bool is_window() const
+            virtual NumericInteractionKind numeric_interaction_kind() const
             {
-                return false;
+                return NumericInteractionKind::none;
             }
-            virtual bool is_scroll_view() const
+            virtual ColorWidgetKind color_widget_kind() const
             {
-                return false;
-            }
-            virtual bool is_popup() const
-            {
-                return false;
-            }
-            virtual bool is_tooltip() const
-            {
-                return false;
-            }
-            virtual bool is_menu_bar() const
-            {
-                return false;
-            }
-            virtual bool is_table_layout() const
-            {
-                return false;
-            }
-            virtual bool is_grid_layout() const
-            {
-                return false;
-            }
-            virtual bool is_canvas_layout() const
-            {
-                return false;
-            }
-            virtual bool is_dock_space() const
-            {
-                return false;
-            }
-            virtual bool is_tab_bar() const
-            {
-                return false;
-            }
-            virtual bool is_tab_item() const
-            {
-                return false;
-            }
-            virtual bool is_input_text() const
-            {
-                return false;
-            }
-            virtual bool is_color_edit() const
-            {
-                return false;
-            }
-            virtual bool is_color_picker() const
-            {
-                return false;
-            }
-            virtual bool is_float_numeric() const
-            {
-                return false;
-            }
-            virtual bool is_int_numeric() const
-            {
-                return false;
-            }
-            virtual bool is_numeric_input() const
-            {
-                return false;
-            }
-            virtual bool is_numeric_pointer_edit() const
-            {
-                return false;
-            }
-            virtual bool is_slider_numeric() const
-            {
-                return false;
-            }
-            virtual bool is_drag_numeric() const
-            {
-                return false;
-            }
-            virtual bool is_horizontal_layout() const
-            {
-                return false;
+                return ColorWidgetKind::none;
             }
             virtual bool default_interactive() const
             {
@@ -287,7 +271,7 @@ namespace Luna
             {
                 return "";
             }
-            virtual bool is_enabled() const
+            virtual bool enabled_state() const
             {
                 return true;
             }

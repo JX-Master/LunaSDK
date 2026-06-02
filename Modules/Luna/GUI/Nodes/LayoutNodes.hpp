@@ -16,7 +16,7 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_root() const override;
+            virtual NodeLayerRole layer_role() const override;
             virtual bool uses_node_measure() const override;
         };
         struct HLayoutNode : Node
@@ -25,7 +25,7 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_horizontal_layout() const override;
+            virtual NodeLayoutFlow layout_flow() const override;
             virtual bool uses_node_measure() const override;
         };
         struct VLayoutNode : Node
@@ -42,7 +42,7 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_scroll_view() const override;
+            virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
@@ -57,7 +57,7 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_window() const override;
+            virtual bool window_chrome() const override;
             virtual bool uses_node_measure() const override;
             virtual bool* bool_value() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
@@ -80,7 +80,7 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_popup() const override;
+            virtual NodeLayerRole layer_role() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
             virtual PopupFlag get_popup_flags() const override;
@@ -100,7 +100,7 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_tooltip() const override;
+            virtual NodeLayerRole layer_role() const override;
             virtual bool uses_node_measure() const override;
             virtual id_t popup_owner() const override;
             virtual void set_popup_owner(id_t value) override;
@@ -116,8 +116,8 @@ namespace Luna
             MenuBarNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_menu_bar() const override;
-            virtual bool is_horizontal_layout() const override;
+            virtual bool accepts_top_level_menus() const override;
+            virtual NodeLayoutFlow layout_flow() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
@@ -133,7 +133,7 @@ namespace Luna
             TableLayoutNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_table_layout() const override;
+            virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
             virtual bool uses_context_render() const override;
@@ -149,7 +149,7 @@ namespace Luna
             GridLayoutNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_grid_layout() const override;
+            virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool uses_node_measure() const override;
             virtual const GridLayoutDesc* get_grid_desc() const override;
             virtual GridLayoutDesc* get_grid_desc() override;
@@ -163,7 +163,7 @@ namespace Luna
             CanvasLayoutNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_canvas_layout() const override;
+            virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool uses_node_measure() const override;
             virtual const CanvasLayoutDesc* get_canvas_desc() const override;
             virtual CanvasLayoutDesc* get_canvas_desc() override;
@@ -176,7 +176,7 @@ namespace Luna
             DockSpaceNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_dock_space() const override;
+            virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool uses_node_measure() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
@@ -191,7 +191,7 @@ namespace Luna
             TabBarNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_tab_bar() const override;
+            virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
             virtual TabBarFlag get_tab_bar_flags() const override;
@@ -209,7 +209,7 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_tab_item() const override;
+            virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool uses_node_measure() const override;
             virtual bool uses_context_render() const override;
             virtual bool* bool_value() const override;

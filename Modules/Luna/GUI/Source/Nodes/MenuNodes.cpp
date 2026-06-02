@@ -19,12 +19,7 @@ namespace Luna
             return new_object<MenuNode>(*this);
         }
 
-        bool MenuNode::is_menu() const
-        {
-            return true;
-        }
-
-        bool MenuNode::is_enabled() const
+        bool MenuNode::enabled_state() const
         {
             return enabled;
         }
@@ -150,7 +145,7 @@ namespace Luna
             return new_object<MenuItemNode>(*this);
         }
 
-        bool MenuItemNode::is_enabled() const
+        bool MenuItemNode::enabled_state() const
         {
             return enabled;
         }

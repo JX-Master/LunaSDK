@@ -20,7 +20,7 @@ namespace Luna
             u32 count = 0;
             for(u32 child = node.first_child; child != U32_MAX; child = desc.nodes[child].next_sibling)
             {
-                if(is_absolute_node(desc.nodes[child])) continue;
+                if(absolute_node(desc.nodes[child])) continue;
                 ++count;
             }
             return count;
@@ -190,7 +190,7 @@ namespace Luna
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
                 const Node& child_node = m_submitted_desc.nodes[child];
-                if(is_absolute_node(child_node)) continue;
+                if(absolute_node(child_node)) continue;
                 LayoutMetrics child_metrics = measure_node(child);
                 u32 row = cell_index / columns;
                 min_cell_width = max(min_cell_width, child_metrics.min_size.x);
@@ -235,7 +235,7 @@ namespace Luna
                 return metrics;
             }
 
-            if(node.is_table_layout())
+            if(table_layout(node))
             {
                 Vector<f32> min_columns;
                 Vector<f32> min_rows;
@@ -269,11 +269,11 @@ namespace Luna
                 metrics.preferred_size = Float2U(max(preferred_width, 1.0f), max(preferred_height, 1.0f));
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
             }
-            else if(node.is_grid_layout())
+            else if(grid_layout(node))
             {
                 metrics = measure_grid_node(node_index, F32_MAX);
             }
-            else if(node.is_canvas_layout())
+            else if(canvas_layout(node))
             {
                 f32 min_width = 1.0f;
                 f32 min_height = 1.0f;
@@ -282,7 +282,7 @@ namespace Luna
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
                     const Node& child_node = m_submitted_desc.nodes[child];
-                    if(is_absolute_node(child_node) && !child_node.has_canvas_item_layout) continue;
+                    if(absolute_node(child_node) && !child_node.has_canvas_item_layout) continue;
                     LayoutMetrics child_metrics = measure_node(child);
                     min_width = max(min_width, child_metrics.min_size.x);
                     min_height = max(min_height, child_metrics.min_size.y);
@@ -293,7 +293,7 @@ namespace Luna
                 metrics.preferred_size = Float2U(preferred_width, preferred_height);
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
             }
-            else if(node.is_tab_bar())
+            else if(tab_bar_layout(node))
             {
                 f32 min_header_width = 0.0f;
                 f32 preferred_header_width = 0.0f;
@@ -302,7 +302,7 @@ namespace Luna
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
                     const Node& child_node = m_submitted_desc.nodes[child];
-                    if(!child_node.is_tab_item()) continue;
+                    if(!tab_item_layout(child_node)) continue;
                     if(!bool_value_open(child_node)) continue;
                     f32 ideal_width = tab_item_ideal_width(child_node);
                     min_header_width += tab_item_min_width();
@@ -327,7 +327,7 @@ namespace Luna
             }
             else
             {
-                bool horizontal = node.is_horizontal_layout();
+                bool horizontal = horizontal_layout(node);
                 const EdgeInsets& padding = node.layout_desc.padding;
                 f32 gap = node.layout_desc.gap;
                 f32 min_main = 0.0f;
@@ -338,7 +338,7 @@ namespace Luna
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
                     const Node& child_node = m_submitted_desc.nodes[child];
-                    if(is_absolute_node(child_node)) continue;
+                    if(absolute_node(child_node)) continue;
                     LayoutMetrics child_metrics = measure_node(child);
                     f32 child_min_main = axis_value(child_metrics.min_size, horizontal);
                     f32 child_preferred_main = resolve_base_axis_size(child_node, child_metrics, horizontal);
@@ -410,7 +410,7 @@ namespace Luna
             absolute_children.reserve(8);
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                if(is_absolute_node(m_submitted_desc.nodes[child]))
+                if(absolute_node(m_submitted_desc.nodes[child]))
                 {
                     absolute_children.push_back(child);
                     continue;
@@ -505,7 +505,7 @@ namespace Luna
                     f32 bottom = content_rect.offset_y + content_rect.height * anchor_max_y + item.offset_max.y;
                     child_rect = RectF(left, top, max(right - left, 1.0f), max(bottom - top, 1.0f));
                 }
-                else if(is_absolute_node(child_node))
+                else if(absolute_node(child_node))
                 {
                     f32 width = max(resolve_base_axis_size(child_node, metrics, true), 1.0f);
                     f32 height = max(resolve_base_axis_size(child_node, metrics, false), 1.0f);
@@ -534,7 +534,7 @@ namespace Luna
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
                 Node& child_node = m_submitted_desc.nodes[child];
-                if(!child_node.is_tab_item()) continue;
+                if(!tab_item_layout(child_node)) continue;
                 bool open = bool_value_open(child_node);
                 if(!open)
                 {
@@ -1245,7 +1245,7 @@ namespace Luna
             luassert(layer.root != U32_MAX && layer.root < m_submitted_desc.nodes.size());
             Node& node = m_submitted_desc.nodes[layer.root];
             RectF screen_rect(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
-            if(node.is_root())
+            if(root_layer(node))
             {
                 layer.screen_position = Float2U(0.0f);
                 return screen_rect;
@@ -1258,7 +1258,7 @@ namespace Luna
             height = clamp(height, metrics.min_size.y, min(metrics.max_size.y, max(m_frame_desc.surface_size.y, 1.0f)));
             Float2U position = layer.screen_position;
 
-            if(node.is_tooltip())
+            if(tooltip_layer(node))
             {
                 const TooltipDesc& desc = tooltip_desc(node);
                 f32 max_width = desc.max_width > 0.0f ? desc.max_width : m_frame_desc.surface_size.x;
@@ -1275,14 +1275,14 @@ namespace Luna
                     position.y = m_pointer_pos.y - height - desc.offset.y;
                 }
             }
-            else if(node.is_popup() && node.popup_owner())
+            else if(popup_layer(node) && node.popup_owner())
             {
                 u32 owner_index = find_submitted_node_index(node.popup_owner());
                 if(owner_index != U32_MAX)
                 {
                     const Node& owner = m_submitted_desc.nodes[owner_index];
                     const RectF& owner_rect = m_layouts[owner_index].rect;
-                    bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].is_menu_bar();
+                    bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].accepts_top_level_menus();
                     width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
                     height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
                     if(owner_in_menu_bar)
@@ -1294,7 +1294,7 @@ namespace Luna
                             position.y = owner_rect.offset_y - height - 2.0f;
                         }
                     }
-                    else if(owner.is_color_edit())
+                    else if(color_edit_node(owner))
                     {
                         PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(node.id);
                         if(popup_state && popup_state->popup_anchor_valid)
@@ -1372,34 +1372,34 @@ namespace Luna
             m_layouts[node_index].rect = rect;
             m_layouts[node_index].clip_rect = effective_clip;
 
-            if(!node.is_root())
+            if(!root_layer(node))
             {
                 Ref<ItemQueryState> result = get_or_create_query_state(node.id);
                 result->states.insert_or_assign(Name("gui.rect"), Any(rect));
                 result->states.insert_or_assign(Name("gui.clip_rect"), Any(effective_clip));
             }
 
-            if(node.is_table_layout())
+            if(table_layout(node))
             {
                 arrange_table_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.is_grid_layout())
+            if(grid_layout(node))
             {
                 arrange_grid_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.is_canvas_layout())
+            if(canvas_layout(node))
             {
                 arrange_canvas_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.is_tab_bar())
+            if(tab_bar_layout(node))
             {
                 arrange_tab_bar_node(node_index, rect, effective_clip);
                 return rect;
             }
-            if(node.is_dock_space())
+            if(dock_space_layout(node))
             {
                 arrange_dock_space_node(node_index, rect, effective_clip);
                 return rect;
@@ -1407,7 +1407,7 @@ namespace Luna
 
             if(node.first_child == U32_MAX) return rect;
 
-            bool horizontal = node.is_horizontal_layout();
+            bool horizontal = horizontal_layout(node);
             const EdgeInsets& padding = node.layout_desc.padding;
             RectF content_rect(
                 rect.offset_x + padding.left,
@@ -1433,12 +1433,12 @@ namespace Luna
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
                 Node& child_node = m_submitted_desc.nodes[child];
-                if(is_absolute_node(child_node))
+                if(absolute_node(child_node))
                 {
                     absolute_children.push_back(child);
                     continue;
                 }
-                if(child_node.is_grid_layout())
+                if(grid_layout(child_node))
                 {
                     has_grid_child = true;
                 }
@@ -1464,7 +1464,7 @@ namespace Luna
                 for(usize i = 0; i < children.size(); ++i)
                 {
                     Node& child_node = m_submitted_desc.nodes[children[i]];
-                    LayoutMetrics metrics = child_node.is_grid_layout() ?
+                    LayoutMetrics metrics = grid_layout(child_node) ?
                         apply_layout_style(child_node, measure_grid_node(children[i], grid_available_width)) :
                         measure_node(children[i]);
                     child_metrics[i] = metrics;
@@ -1496,7 +1496,7 @@ namespace Luna
                         position.x += layer_position.x;
                         position.y += layer_position.y;
                     }
-                    if(child_node.is_tooltip())
+                    if(tooltip_layer(child_node))
                     {
                         const TooltipDesc& desc = tooltip_desc(child_node);
                         f32 max_width = desc.max_width > 0.0f ? desc.max_width : m_frame_desc.surface_size.x;
@@ -1515,14 +1515,14 @@ namespace Luna
                         position.x = clamp(position.x, 0.0f, max(m_frame_desc.surface_size.x - width, 0.0f));
                         position.y = clamp(position.y, 0.0f, max(m_frame_desc.surface_size.y - height, 0.0f));
                     }
-                    else if(child_node.is_popup() && child_node.popup_owner())
+                    else if(popup_layer(child_node) && child_node.popup_owner())
                     {
                         u32 owner_index = find_submitted_node_index(child_node.popup_owner());
                         if(owner_index != U32_MAX)
                         {
                             const Node& owner = m_submitted_desc.nodes[owner_index];
                             const RectF& owner_rect = m_layouts[owner_index].rect;
-                            bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].is_menu_bar();
+                            bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].accepts_top_level_menus();
                             width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
                             height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
                             if(owner_in_menu_bar)
@@ -1534,7 +1534,7 @@ namespace Luna
                                     position.y = owner_rect.offset_y - height - 2.0f;
                                 }
                             }
-                            else if(owner.is_color_edit())
+                            else if(color_edit_node(owner))
                             {
                                 PopupAnchorState* popup_state = get_widget_state<PopupAnchorState>(child_node.id);
                                 if(popup_state && popup_state->popup_anchor_valid)
@@ -1584,7 +1584,7 @@ namespace Luna
 
             if(children.empty())
             {
-                if(node.is_scroll_view())
+                if(scroll_layout(node))
                 {
                     NodeLayout& layout = m_layouts[node_index];
                     layout.scroll_viewport_size = Float2U(max(viewport_rect.width, 1.0f), max(viewport_rect.height, 1.0f));
@@ -1601,7 +1601,7 @@ namespace Luna
 
             f32 gap = node.layout_desc.gap;
             f32 total_gap = gap * (f32)(children.size() - 1);
-            if(node.is_scroll_view())
+            if(scroll_layout(node))
             {
                 if(has_grid_child)
                 {
@@ -1688,7 +1688,7 @@ namespace Luna
                 content_rect.offset_y -= persistent->scroll_y;
             }
             f32 available_main = horizontal ? content_rect.width : content_rect.height;
-            if(node.is_scroll_view())
+            if(scroll_layout(node))
             {
                 available_main = max(available_main, total_base_main + total_gap);
             }
@@ -1740,7 +1740,7 @@ namespace Luna
             f32 cross_start = horizontal ? content_rect.offset_y : content_rect.offset_x;
             f32 available_cross = horizontal ? content_rect.height : content_rect.width;
             RectF child_clip = effective_clip;
-            if(node.is_scroll_view())
+            if(scroll_layout(node))
             {
                 const NodeLayout& layout = m_layouts[node_index];
                 child_clip = intersect_rect(

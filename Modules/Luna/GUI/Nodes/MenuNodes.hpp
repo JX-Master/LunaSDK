@@ -20,8 +20,7 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_menu() const override;
-            virtual bool is_enabled() const override;
+            virtual bool enabled_state() const override;
             virtual id_t menu_popup() const override;
             virtual void set_menu_popup(id_t value) override;
 
@@ -61,7 +60,7 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_enabled() const override;
+            virtual bool enabled_state() const override;
 
             bool checked() const;
 

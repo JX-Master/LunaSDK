@@ -19,9 +19,9 @@ namespace Luna
             return new_object<RootNode>(*this);
         }
 
-        bool RootNode::is_root() const
+        NodeLayerRole RootNode::layer_role() const
         {
-            return true;
+            return NodeLayerRole::root;
         }
 
         bool RootNode::uses_node_measure() const
@@ -39,9 +39,9 @@ namespace Luna
             return new_object<HLayoutNode>(*this);
         }
 
-        bool HLayoutNode::is_horizontal_layout() const
+        NodeLayoutFlow HLayoutNode::layout_flow() const
         {
-            return true;
+            return NodeLayoutFlow::horizontal;
         }
 
         bool HLayoutNode::uses_node_measure() const
@@ -74,9 +74,9 @@ namespace Luna
             return new_object<ScrollViewNode>(*this);
         }
 
-        bool ScrollViewNode::is_scroll_view() const
+        NodeLayoutBehavior ScrollViewNode::layout_behavior() const
         {
-            return true;
+            return NodeLayoutBehavior::scroll;
         }
 
         bool ScrollViewNode::default_interactive() const
@@ -109,7 +109,7 @@ namespace Luna
             return new_object<WindowNode>(*this);
         }
 
-        bool WindowNode::is_window() const
+        bool WindowNode::window_chrome() const
         {
             return true;
         }
@@ -178,9 +178,9 @@ namespace Luna
             return new_object<PopupNode>(*this);
         }
 
-        bool PopupNode::is_popup() const
+        NodeLayerRole PopupNode::layer_role() const
         {
-            return true;
+            return NodeLayerRole::popup;
         }
 
         bool PopupNode::default_interactive() const
@@ -233,9 +233,9 @@ namespace Luna
             return new_object<TooltipNode>(*this);
         }
 
-        bool TooltipNode::is_tooltip() const
+        NodeLayerRole TooltipNode::layer_role() const
         {
-            return true;
+            return NodeLayerRole::tooltip;
         }
 
         bool TooltipNode::uses_node_measure() const
@@ -288,14 +288,14 @@ namespace Luna
             return new_object<MenuBarNode>(*this);
         }
 
-        bool MenuBarNode::is_menu_bar() const
+        bool MenuBarNode::accepts_top_level_menus() const
         {
             return true;
         }
 
-        bool MenuBarNode::is_horizontal_layout() const
+        NodeLayoutFlow MenuBarNode::layout_flow() const
         {
-            return true;
+            return NodeLayoutFlow::horizontal;
         }
 
         bool MenuBarNode::default_interactive() const
@@ -337,9 +337,9 @@ namespace Luna
             return new_object<TableLayoutNode>(*this);
         }
 
-        bool TableLayoutNode::is_table_layout() const
+        NodeLayoutBehavior TableLayoutNode::layout_behavior() const
         {
-            return true;
+            return NodeLayoutBehavior::table;
         }
 
         bool TableLayoutNode::default_interactive() const
@@ -382,9 +382,9 @@ namespace Luna
             return new_object<GridLayoutNode>(*this);
         }
 
-        bool GridLayoutNode::is_grid_layout() const
+        NodeLayoutBehavior GridLayoutNode::layout_behavior() const
         {
-            return true;
+            return NodeLayoutBehavior::grid;
         }
 
         bool GridLayoutNode::uses_node_measure() const
@@ -417,9 +417,9 @@ namespace Luna
             return new_object<CanvasLayoutNode>(*this);
         }
 
-        bool CanvasLayoutNode::is_canvas_layout() const
+        NodeLayoutBehavior CanvasLayoutNode::layout_behavior() const
         {
-            return true;
+            return NodeLayoutBehavior::canvas;
         }
 
         bool CanvasLayoutNode::uses_node_measure() const
@@ -458,9 +458,9 @@ namespace Luna
             return new_object<DockSpaceNode>(*this);
         }
 
-        bool DockSpaceNode::is_dock_space() const
+        NodeLayoutBehavior DockSpaceNode::layout_behavior() const
         {
-            return true;
+            return NodeLayoutBehavior::dock_space;
         }
 
         bool DockSpaceNode::uses_node_measure() const
@@ -494,9 +494,9 @@ namespace Luna
             return new_object<TabBarNode>(*this);
         }
 
-        bool TabBarNode::is_tab_bar() const
+        NodeLayoutBehavior TabBarNode::layout_behavior() const
         {
-            return true;
+            return NodeLayoutBehavior::tab_bar;
         }
 
         bool TabBarNode::default_interactive() const
@@ -537,9 +537,9 @@ namespace Luna
             return new_object<TabItemNode>(*this);
         }
 
-        bool TabItemNode::is_tab_item() const
+        NodeLayoutBehavior TabItemNode::layout_behavior() const
         {
-            return true;
+            return NodeLayoutBehavior::tab_item;
         }
 
         bool TabItemNode::uses_node_measure() const

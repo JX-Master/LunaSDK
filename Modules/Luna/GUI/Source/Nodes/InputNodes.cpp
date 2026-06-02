@@ -24,11 +24,6 @@ namespace Luna
             return new_object<ComboNode>(*this);
         }
 
-        bool ComboNode::is_combo() const
-        {
-            return true;
-        }
-
         i32* ComboNode::combo_current_item() const
         {
             return current_item;
@@ -199,11 +194,6 @@ namespace Luna
             return new_object<InputTextNode>(*this);
         }
 
-        bool InputTextNode::is_input_text() const
-        {
-            return true;
-        }
-
         bool InputTextNode::uses_context_render() const
         {
             return true;
@@ -234,19 +224,14 @@ namespace Luna
             return new_object<SliderFloatNode>(*this);
         }
 
-        bool SliderFloatNode::is_float_numeric() const
+        NumericValueKind SliderFloatNode::numeric_value_kind() const
         {
-            return true;
+            return NumericValueKind::f32;
         }
 
-        bool SliderFloatNode::is_slider_numeric() const
+        NumericInteractionKind SliderFloatNode::numeric_interaction_kind() const
         {
-            return true;
-        }
-
-        bool SliderFloatNode::is_numeric_pointer_edit() const
-        {
-            return true;
+            return NumericInteractionKind::slider;
         }
 
         bool SliderFloatNode::uses_context_render() const
@@ -304,19 +289,14 @@ namespace Luna
             return new_object<SliderIntNode>(*this);
         }
 
-        bool SliderIntNode::is_int_numeric() const
+        NumericValueKind SliderIntNode::numeric_value_kind() const
         {
-            return true;
+            return NumericValueKind::i32;
         }
 
-        bool SliderIntNode::is_slider_numeric() const
+        NumericInteractionKind SliderIntNode::numeric_interaction_kind() const
         {
-            return true;
-        }
-
-        bool SliderIntNode::is_numeric_pointer_edit() const
-        {
-            return true;
+            return NumericInteractionKind::slider;
         }
 
         bool SliderIntNode::uses_context_render() const
@@ -374,14 +354,14 @@ namespace Luna
             return new_object<InputFloatNode>(*this);
         }
 
-        bool InputFloatNode::is_float_numeric() const
+        NumericValueKind InputFloatNode::numeric_value_kind() const
         {
-            return true;
+            return NumericValueKind::f32;
         }
 
-        bool InputFloatNode::is_numeric_input() const
+        NumericInteractionKind InputFloatNode::numeric_interaction_kind() const
         {
-            return true;
+            return NumericInteractionKind::input;
         }
 
         bool InputFloatNode::uses_context_render() const
@@ -439,14 +419,14 @@ namespace Luna
             return new_object<InputIntNode>(*this);
         }
 
-        bool InputIntNode::is_int_numeric() const
+        NumericValueKind InputIntNode::numeric_value_kind() const
         {
-            return true;
+            return NumericValueKind::i32;
         }
 
-        bool InputIntNode::is_numeric_input() const
+        NumericInteractionKind InputIntNode::numeric_interaction_kind() const
         {
-            return true;
+            return NumericInteractionKind::input;
         }
 
         bool InputIntNode::uses_context_render() const
@@ -504,24 +484,14 @@ namespace Luna
             return new_object<DragFloatNode>(*this);
         }
 
-        bool DragFloatNode::is_float_numeric() const
+        NumericValueKind DragFloatNode::numeric_value_kind() const
         {
-            return true;
+            return NumericValueKind::f32;
         }
 
-        bool DragFloatNode::is_drag_numeric() const
+        NumericInteractionKind DragFloatNode::numeric_interaction_kind() const
         {
-            return true;
-        }
-
-        bool DragFloatNode::is_numeric_input() const
-        {
-            return test_flags(binding.flags, NumericEditFlag::input_on_double_click);
-        }
-
-        bool DragFloatNode::is_numeric_pointer_edit() const
-        {
-            return true;
+            return NumericInteractionKind::drag;
         }
 
         bool DragFloatNode::uses_context_render() const
@@ -594,24 +564,14 @@ namespace Luna
             return new_object<DragIntNode>(*this);
         }
 
-        bool DragIntNode::is_int_numeric() const
+        NumericValueKind DragIntNode::numeric_value_kind() const
         {
-            return true;
+            return NumericValueKind::i32;
         }
 
-        bool DragIntNode::is_drag_numeric() const
+        NumericInteractionKind DragIntNode::numeric_interaction_kind() const
         {
-            return true;
-        }
-
-        bool DragIntNode::is_numeric_input() const
-        {
-            return test_flags(binding.flags, NumericEditFlag::input_on_double_click);
-        }
-
-        bool DragIntNode::is_numeric_pointer_edit() const
-        {
-            return true;
+            return NumericInteractionKind::drag;
         }
 
         bool DragIntNode::uses_context_render() const

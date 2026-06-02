@@ -21,7 +21,7 @@ namespace Luna
             {
                 for(const Node& node : desc.nodes)
                 {
-                    if(node.id == id && node.is_popup())
+                    if(node.id == id && popup_layer(node))
                     {
                         return &node;
                     }
@@ -51,7 +51,7 @@ namespace Luna
             lutsassert();
             luassert(!m_parent_stack.empty());
             const Node& node = m_build_desc.nodes[m_parent_stack.back()];
-            luassert(node.is_popup());
+            luassert(popup_layer(node));
             if(!m_popup_build_stack.empty() && m_popup_build_stack.back() == node.id)
             {
                 m_popup_build_stack.pop_back();
@@ -99,7 +99,7 @@ namespace Luna
 
         bool Context::popup_node_visible(const Node& node) const
         {
-            if(!node.is_popup()) return true;
+            if(!popup_layer(node)) return true;
             if(!test_flags(node.get_popup_flags(), PopupFlag::managed)) return true;
             return is_popup_open(node.id);
         }
@@ -121,7 +121,7 @@ namespace Luna
             m_popup_node_indices.clear();
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
-                if(m_submitted_desc.nodes[i].is_popup())
+                if(popup_layer(m_submitted_desc.nodes[i]))
                 {
                     m_popup_node_indices.insert_or_assign(m_submitted_desc.nodes[i].id, (u32)i);
                 }
@@ -319,7 +319,7 @@ namespace Luna
             {
                 id_t target = hit_test(pos);
                 Node* target_node = target ? find_node(target) : nullptr;
-                bool menu_target = target_node && target_node->is_menu();
+                bool menu_target = target_node && menu_node(*target_node);
                 PopupFlag flags = m_open_popup_stack.back().flags;
                 id_t menu_popup = target_node ? target_node->menu_popup() : 0;
                 if(menu_target && menu_popup && is_popup_open(menu_popup))

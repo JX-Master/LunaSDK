@@ -36,14 +36,14 @@ namespace Luna
             lutsassert();
             luassert(!m_parent_stack.empty());
             const Node& node = m_build_desc.nodes[m_parent_stack.back()];
-            luassert(node.is_tooltip());
+            luassert(tooltip_layer(node));
             end_container();
             pop_layer();
         }
 
         bool Context::tooltip_node_visible(const Node& node) const
         {
-            if(!node.is_tooltip()) return true;
+            if(!tooltip_layer(node)) return true;
             id_t owner = node.popup_owner();
             if(!owner || !m_pointer_inside) return false;
             if(m_drag_drop_active || m_active_id) return false;

@@ -112,7 +112,7 @@ namespace Luna
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
-            bool is_leaf() const;
+            bool leaf() const;
 
             bool open(NodeInputContext& ctx) const;
 
@@ -138,7 +138,7 @@ namespace Luna
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
-            bool is_selected() const;
+            bool selected_state() const;
 
             virtual LayoutMetrics measure() const override;
 

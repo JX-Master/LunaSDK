@@ -209,10 +209,10 @@ namespace Luna
 
             bool apply_numeric_edit_text(Context& ctx, Node& node, InputEditState& state)
             {
-                if(!is_numeric_input_node(node) || !state.numeric_editing) return false;
+                if(!numeric_text_editable(node) || !state.numeric_editing) return false;
                 u32 component = min(state.numeric_edit_component, numeric_value_count(node) - 1);
                 bool changed = false;
-                if(is_float_numeric_node(node))
+                if(numeric_value_f32(node))
                 {
                     f32* values = node.f32_values();
                     if(!values) return false;
@@ -260,7 +260,7 @@ namespace Luna
             {
                 const Node& node = m_submitted_desc.nodes[i];
                 if(node.layer != hit_layer) continue;
-                if(!node.is_table_layout()) continue;
+                if(!table_layout(node)) continue;
                 const NodeLayout& layout = m_layouts[i];
                 const RectF& clip = layout.clip_rect;
                 if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, clip)) continue;
@@ -316,7 +316,7 @@ namespace Luna
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 Node& node = m_submitted_desc.nodes[i];
-                if(node.id != m_active_table_resize_id || !node.is_table_layout()) continue;
+                if(node.id != m_active_table_resize_id || !table_layout(node)) continue;
                 NodeLayout& layout = m_layouts[i];
                 Ref<TableLayoutState> persistent = get_or_create_widget_state<TableLayoutState>(node.id);
                 if(m_active_table_resize_column)
@@ -374,7 +374,7 @@ namespace Luna
             {
                 const Node& dock_node = m_submitted_desc.nodes[i];
                 if(dock_node.layer != hit_layer) continue;
-                if(!dock_node.is_dock_space()) continue;
+                if(!dock_space_layout(dock_node)) continue;
                 if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
                 for(u32 child = dock_node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
@@ -407,7 +407,7 @@ namespace Luna
             {
                 const Node& dock_node = m_submitted_desc.nodes[i];
                 if(dock_node.layer != hit_layer) continue;
-                if(!dock_node.is_dock_space()) continue;
+                if(!dock_space_layout(dock_node)) continue;
                 if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
                 for(u32 child = dock_node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
@@ -456,7 +456,7 @@ namespace Luna
             {
                 const Node& dock_node = m_submitted_desc.nodes[i];
                 if(dock_node.layer != hit_layer) continue;
-                if(!dock_node.is_dock_space()) continue;
+                if(!dock_space_layout(dock_node)) continue;
                 const DockSpaceState* dock_state = get_widget_state<DockSpaceState>(dock_node.id);
                 if(!dock_state) continue;
                 if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
@@ -507,7 +507,7 @@ namespace Luna
             {
                 const Node& dock_node = m_submitted_desc.nodes[i];
                 if(dock_node.layer != hit_layer) continue;
-                if(!dock_node.is_dock_space()) continue;
+                if(!dock_space_layout(dock_node)) continue;
                 const DockSpaceState* dock_state = get_widget_state<DockSpaceState>(dock_node.id);
                 if(!dock_state) continue;
                 if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
@@ -558,7 +558,7 @@ namespace Luna
             {
                 const Node& dock_node = m_submitted_desc.nodes[i];
                 if(dock_node.layer != hit_layer) continue;
-                if(!dock_node.is_dock_space()) continue;
+                if(!dock_space_layout(dock_node)) continue;
                 const DockSpaceState* dock_state = get_widget_state<DockSpaceState>(dock_node.id);
                 if(!dock_state) continue;
                 if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
@@ -713,7 +713,7 @@ namespace Luna
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& node = m_submitted_desc.nodes[i];
-                if(node.id != id || !node.is_scroll_view()) continue;
+                if(node.id != id || !scroll_layout(node)) continue;
                 const NodeLayout& layout = m_layouts[i];
                 Ref<ScrollState> state = get_or_create_widget_state<ScrollState>(id);
                 state->scroll_x = clamp(state->scroll_x, 0.0f, scroll_max_x(layout));
@@ -732,7 +732,7 @@ namespace Luna
                 u32 node_index = (u32)(i - 1);
                 const Node& node = m_submitted_desc.nodes[node_index];
                 if(node.layer != hit_layer) continue;
-                if(!node.is_scroll_view()) continue;
+                if(!scroll_layout(node)) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
 
@@ -771,7 +771,7 @@ namespace Luna
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& node = m_submitted_desc.nodes[i];
-                if(node.id != m_active_scrollbar_id || !node.is_scroll_view()) continue;
+                if(node.id != m_active_scrollbar_id || !scroll_layout(node)) continue;
                 const NodeLayout& layout = m_layouts[i];
                 Ref<ScrollState> state = get_or_create_widget_state<ScrollState>(node.id);
                 f32 old_scroll_x = state->scroll_x;
@@ -810,7 +810,7 @@ namespace Luna
             {
                 u32 node_index = (u32)(i - 1);
                 const Node& node = m_submitted_desc.nodes[node_index];
-                if(!node.is_combo() || node.id != m_open_combo_id) continue;
+                if(!combo_node(node) || node.id != m_open_combo_id) continue;
                 DisclosureState* state = get_widget_state<DisclosureState>(node.id);
                 if(!state || !state->open) continue;
                 RectF dropdown = combo_dropdown_rect(node, m_layouts[node_index].rect, m_frame_desc.surface_size);
@@ -837,7 +837,7 @@ namespace Luna
             m_open_combo_id = keep_id;
             for(const Node& node : m_submitted_desc.nodes)
             {
-                if(!node.is_combo()) continue;
+                if(!combo_node(node)) continue;
                 get_or_create_widget_state<DisclosureState>(node.id)->open = node.id == keep_id;
             }
         }
@@ -852,7 +852,7 @@ namespace Luna
                 u32 node_index = (u32)(i - 1);
                 const Node& node = m_submitted_desc.nodes[node_index];
                 if(node.layer != hit_layer) continue;
-                if(!node.is_tab_item()) continue;
+                if(!tab_item_layout(node)) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(layout.tab_header_rect.width <= 0.0f || layout.tab_header_rect.height <= 0.0f) continue;
                 if(!point_in_rect(pos, layout.tab_header_rect) || !point_in_rect(pos, layout.tab_header_clip_rect)) continue;
@@ -879,7 +879,7 @@ namespace Luna
                 u32 node_index = (u32)(i - 1);
                 const Node& node = m_submitted_desc.nodes[node_index];
                 if(node.layer != hit_layer) continue;
-                if(!node.is_tab_bar()) continue;
+                if(!tab_bar_layout(node)) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(!layout.tab_scrollable) continue;
                 if(point_in_rect(pos, layout.tab_scroll_left_rect) && point_in_rect(pos, layout.clip_rect))
@@ -908,7 +908,7 @@ namespace Luna
                 u32 node_index = (u32)(i - 1);
                 const Node& node = m_submitted_desc.nodes[node_index];
                 if(node.layer != hit_layer) continue;
-                if(!node.is_tab_bar()) continue;
+                if(!tab_bar_layout(node)) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(!layout.tab_scrollable) continue;
                 if((point_in_rect(pos, layout.tab_header_area_rect) ||
@@ -927,12 +927,12 @@ namespace Luna
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& tab_bar = m_submitted_desc.nodes[i];
-                if(tab_bar.id != tab_bar_id || !tab_bar.is_tab_bar()) continue;
+                if(tab_bar.id != tab_bar_id || !tab_bar_layout(tab_bar)) continue;
                 id_t fallback = 0;
                 for(u32 child = tab_bar.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
                     const Node& tab = m_submitted_desc.nodes[child];
-                    if(!tab.is_tab_item() || tab.id == excluded_tab_item_id) continue;
+                    if(!tab_item_layout(tab) || tab.id == excluded_tab_item_id) continue;
                     if(test_flags(tab.get_tab_item_flags(), TabItemFlag::button)) continue;
                     if(!bool_value_open(tab)) continue;
                     fallback = tab.id;
@@ -976,7 +976,7 @@ namespace Luna
                 for(usize node_index = 0; node_index < m_submitted_desc.nodes.size(); ++node_index)
                 {
                     const Node& node = m_submitted_desc.nodes[node_index];
-                    if(node.id != id || !node.is_tab_item()) continue;
+                    if(node.id != id || !tab_item_layout(node)) continue;
                     if(node.parent == U32_MAX || node.parent >= m_submitted_desc.nodes.size() ||
                         m_submitted_desc.nodes[node.parent].id != tab_bar_id) break;
                     const RectF& rect = m_layouts[node_index].tab_header_rect;
@@ -1004,7 +1004,7 @@ namespace Luna
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const Node& node = m_submitted_desc.nodes[i];
-                if(node.id != tab_bar_id || !node.is_tab_bar()) continue;
+                if(node.id != tab_bar_id || !tab_bar_layout(node)) continue;
                 const NodeLayout& layout = m_layouts[i];
                 if(!layout.tab_scrollable) return;
                 Ref<TabBarState> state = get_or_create_widget_state<TabBarState>(tab_bar_id);
@@ -1023,7 +1023,7 @@ namespace Luna
         void Context::open_menu_popup(id_t menu_id)
         {
             Node* menu = find_node(menu_id);
-            if(!menu || !menu->is_menu() || !menu->is_enabled() || !menu->menu_popup()) return;
+            if(!menu || !menu_node(*menu) || !menu->enabled_state() || !menu->menu_popup()) return;
             m_next_popup_opener_id = menu_id;
             open_popup(ItemHandle{get_object(), menu->menu_popup(), m_generation});
             Ref<ItemQueryState> result = get_or_create_query_state(menu->id);
@@ -1035,7 +1035,7 @@ namespace Luna
             if(m_open_popup_stack.empty()) return;
             i32 popup_level = popup_level_at_pos(m_pointer_pos);
             Node* hovered = m_hovered_id ? find_node(m_hovered_id) : nullptr;
-            if(hovered && hovered->is_menu() && hovered->is_enabled() && hovered->menu_popup())
+            if(hovered && menu_node(*hovered) && hovered->enabled_state() && hovered->menu_popup())
             {
                 if(is_popup_open(hovered->menu_popup())) return;
                 open_menu_popup(hovered->id);
@@ -1051,17 +1051,17 @@ namespace Luna
         {
             id_t ret = 0;
             const Node& node = m_submitted_desc.nodes[node_index];
-            if(node.is_popup() && !popup_node_visible(node))
+            if(popup_layer(node) && !popup_node_visible(node))
             {
                 return 0;
             }
-            if(node.is_tooltip())
+            if(tooltip_layer(node))
             {
                 return 0;
             }
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
-            if(node.is_tab_item())
+            if(tab_item_layout(node))
             {
                 const NodeLayout& layout = m_layouts[node_index];
                 if(filter == HitTestFilter::none && node.interactive &&
@@ -1076,11 +1076,11 @@ namespace Luna
                 }
             }
             else if((filter == HitTestFilter::none && node.hit_test(rect, clip, pos)) ||
-                (filter == HitTestFilter::scroll_view && node.is_scroll_view() && point_in_rect(pos, rect) && point_in_rect(pos, clip)))
+                (filter == HitTestFilter::scroll_view && scroll_layout(node) && point_in_rect(pos, rect) && point_in_rect(pos, clip)))
             {
                 ret = node.id;
             }
-            if(node.is_dock_space())
+            if(dock_space_layout(node))
             {
                 Vector<u32> floating_children;
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
@@ -1117,7 +1117,7 @@ namespace Luna
             }
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                if(is_absolute_node(m_submitted_desc.nodes[child])) continue;
+                if(absolute_node(m_submitted_desc.nodes[child])) continue;
                 id_t child_hit = hit_test_node(child, pos, filter);
                 if(child_hit)
                 {
@@ -1126,7 +1126,7 @@ namespace Luna
             }
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                if(!is_absolute_node(m_submitted_desc.nodes[child])) continue;
+                if(!absolute_node(m_submitted_desc.nodes[child])) continue;
                 id_t child_hit = hit_test_node(child, pos, filter);
                 if(child_hit)
                 {
@@ -1298,7 +1298,7 @@ namespace Luna
             while(node && node->parent != U32_MAX)
             {
                 node = &m_submitted_desc.nodes[node->parent];
-                if(node->is_popup() && node->popup_owner())
+                if(popup_layer(*node) && node->popup_owner())
                 {
                     Ref<ItemQueryState> owner_result = get_or_create_query_state(node->popup_owner());
                     owner_result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
@@ -1310,7 +1310,7 @@ namespace Luna
         void Context::sync_color_edit_numeric_state(id_t owner_id)
         {
             Node* owner = find_node(owner_id);
-            if(!owner || !owner->is_color_edit()) return;
+            if(!owner || !color_edit_node(*owner)) return;
             Ref<ColorEditState> state = get_or_create_widget_state<ColorEditState>(owner_id);
             ensure_color_edit_state_channels(*state);
             Float4U color = read_color_value(*owner);
@@ -1330,7 +1330,7 @@ namespace Luna
         void Context::apply_color_edit_numeric_state(id_t owner_id, ColorEditPart part)
         {
             Node* owner = find_node(owner_id);
-            if(!owner || !owner->is_color_edit()) return;
+            if(!owner || !color_edit_node(*owner)) return;
             Ref<ColorEditState> state = get_or_create_widget_state<ColorEditState>(owner_id);
             ensure_color_edit_state_channels(*state);
             Float4U color = read_color_value(*owner);
@@ -1358,7 +1358,7 @@ namespace Luna
         void Context::update_color_picker_from_pointer(id_t id, const Float2U& pos)
         {
             Node* node = find_node(id);
-            if(!node || !node->is_color_picker()) return;
+            if(!node || !color_picker_node(*node)) return;
             id_t owner_id = node->color_owner() ? node->color_owner() : id;
             Node* owner = find_node(owner_id);
             if(!owner) owner = node;
@@ -1426,13 +1426,13 @@ namespace Luna
         void Context::update_numeric_node_from_pointer(id_t id, const Float2U& pos, const Float2U* old_pos)
         {
             Node* node = find_node(id);
-            if(!node || !is_numeric_pointer_edit_node(*node)) return;
+            if(!node || !numeric_pointer_editable(*node)) return;
             InputEditState* edit_state = get_widget_state<InputEditState>(id);
             if(edit_state && edit_state->numeric_editing) return;
             f32* f32_values = node->f32_values();
             i32* i32_values = node->i32_values();
-            if(is_float_numeric_node(*node) && !f32_values) return;
-            if(is_int_numeric_node(*node) && !i32_values) return;
+            if(numeric_value_f32(*node) && !f32_values) return;
+            if(numeric_value_i32(*node) && !i32_values) return;
 
             RectF rect;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
@@ -1455,8 +1455,8 @@ namespace Luna
                 component = min(m_active_float_component, value_count - 1);
             }
             f32 component_x = value_area_x + (component_w + gap) * (f32)component;
-            f32 new_value = is_float_numeric_node(*node) ? f32_values[component] : (f32)i32_values[component];
-            if(node->is_drag_numeric())
+            f32 new_value = numeric_value_f32(*node) ? f32_values[component] : (f32)i32_values[component];
+            if(numeric_drag(*node))
             {
                 if(!old_pos) return;
                 f32 speed = node->step_value() == 0.0f ? 1.0f : node->step_value();
@@ -1472,7 +1472,7 @@ namespace Luna
                 new_value = node->min_value() + (node->max_value() - node->min_value()) * t;
             }
             bool changed = false;
-            if(is_float_numeric_node(*node))
+            if(numeric_value_f32(*node))
             {
                 if(f32_values[component] != new_value)
                 {
@@ -1503,7 +1503,7 @@ namespace Luna
         {
             Node* node = find_node(id);
             String* string_value = node ? node->string_value() : nullptr;
-            if(!node || !node->is_input_text() || !string_value) return false;
+            if(!node || !input_text_node(*node) || !string_value) return false;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 if(m_submitted_desc.nodes[i].id == id)
@@ -1521,7 +1521,7 @@ namespace Luna
         {
             Node* node = find_node(id);
             String* string_value = node ? node->string_value() : nullptr;
-            if(!node || !node->is_input_text() || !string_value) return false;
+            if(!node || !input_text_node(*node) || !string_value) return false;
             usize cursor = 0;
             if(!input_text_cursor_from_pointer(id, pos, cursor)) return false;
             Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(id);
@@ -1537,7 +1537,7 @@ namespace Luna
         bool Context::numeric_text_cursor_from_pointer(id_t id, const Float2U& pos, usize& out_cursor)
         {
             Node* node = find_node(id);
-            if(!node || !is_numeric_input_node(*node)) return false;
+            if(!node || !numeric_text_editable(*node)) return false;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 if(m_submitted_desc.nodes[i].id == id)
@@ -1555,7 +1555,7 @@ namespace Luna
         bool Context::update_numeric_text_selection_from_pointer(id_t id, const Float2U& pos)
         {
             Node* node = find_node(id);
-            if(!node || !is_numeric_input_node(*node)) return false;
+            if(!node || !numeric_text_editable(*node)) return false;
             Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(id);
             if(!state->numeric_editing) return false;
             usize cursor = 0;
@@ -1572,7 +1572,7 @@ namespace Luna
         void Context::begin_numeric_text_edit(id_t id, const Float2U& pos, u32 component, bool select_all)
         {
             Node* node = find_node(id);
-            if(!node || !is_numeric_input_node(*node)) return;
+            if(!node || !numeric_text_editable(*node)) return;
             Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(id);
             state->numeric_edit_component = min(component, numeric_value_count(*node) - 1);
             state->numeric_edit_text = numeric_value_text(*node, state->numeric_edit_component);
@@ -1693,7 +1693,7 @@ namespace Luna
                     else if(m_active_id)
                     {
                         Node* active_node = find_node(m_active_id);
-                        if(active_node && active_node->is_color_picker())
+                        if(active_node && color_picker_node(*active_node))
                         {
                             update_color_picker_from_pointer(m_active_id, e.position);
                         }
@@ -1983,7 +1983,7 @@ namespace Luna
                         m_active_tab_reorder_allowed = false;
                         Node* tab_bar = find_node(tab_bar_id);
                         Node* tab_item = find_node(tab_item_id);
-                        if(tab_bar && tab_item && tab_bar->is_tab_bar() && tab_item->is_tab_item())
+                        if(tab_bar && tab_item && tab_bar_layout(*tab_bar) && tab_item_layout(*tab_item))
                         {
                             m_active_tab_reorder_allowed = test_flags(tab_bar->get_tab_bar_flags(), TabBarFlag::reorderable) &&
                                 !tab_close &&
@@ -2009,7 +2009,7 @@ namespace Luna
                     {
                         set_interaction_down(target);
                         Node* node = find_node(target);
-                        if(node && node->is_input_text() && node->string_value())
+                        if(node && input_text_node(*node) && node->string_value())
                         {
                             Ref<InputEditState> input_state = get_or_create_widget_state<InputEditState>(target);
                             usize cursor = 0;
@@ -2019,7 +2019,7 @@ namespace Luna
                             input_state->text_selecting = true;
                             input_state->text_cursor_blink_start = m_time;
                         }
-                        if(node && node->is_color_picker())
+                        if(node && color_picker_node(*node))
                         {
                             RectF rect;
                             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
@@ -2046,7 +2046,7 @@ namespace Luna
                                 update_color_picker_from_pointer(target, e.position);
                             }
                         }
-                        if(node && is_numeric_node(*node))
+                        if(node && numeric_node(*node))
                         {
                             Ref<InputEditState> input_state = get_or_create_widget_state<InputEditState>(target);
                             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
@@ -2057,15 +2057,15 @@ namespace Luna
                                     break;
                                 }
                             }
-                            if(node->is_numeric_input() && !node->is_numeric_pointer_edit())
+                            if(numeric_text_editable(*node) && !numeric_pointer_editable(*node))
                             {
                                 begin_numeric_text_edit(target, e.position, m_active_float_component == U32_MAX ? 0 : m_active_float_component, false);
                             }
-                            else if(input_state->numeric_editing && is_numeric_input_node(*node))
+                            else if(input_state->numeric_editing && numeric_text_editable(*node))
                             {
                                 begin_numeric_text_edit(target, e.position, m_active_float_component == U32_MAX ? 0 : m_active_float_component, false);
                             }
-                            else if(is_numeric_input_node(*node))
+                            else if(numeric_text_editable(*node))
                             {
                                 m_active_numeric_defer_until_drag = true;
                                 m_active_numeric_start_pos = e.position;
@@ -2203,7 +2203,7 @@ namespace Luna
                             for(Node& node : m_submitted_desc.nodes)
                             {
                                 i32* current_item = node.combo_current_item();
-                                if(node.id != dropdown_combo || !node.is_combo() || !current_item) continue;
+                                if(node.id != dropdown_combo || !combo_node(node) || !current_item) continue;
                                 if(dropdown_item >= 0 && (usize)dropdown_item < node.combo_item_count())
                                 {
                                     if(*current_item != dropdown_item)
@@ -2270,7 +2270,7 @@ namespace Luna
                             item_state->last_click_time = m_time;
                             for(Node& node : m_submitted_desc.nodes)
                             {
-                                if(node.id != tab_item_id || !node.is_tab_item()) continue;
+                                if(node.id != tab_item_id || !tab_item_layout(node)) continue;
                                 bool* open = node.bool_value();
                                 if((m_active_tab_close || tab_close) && open && !test_flags(node.get_tab_item_flags(), TabItemFlag::no_close_button))
                                 {
@@ -2321,11 +2321,11 @@ namespace Luna
                         {
                             Node& node = m_submitted_desc.nodes[i];
                             if(node.id != target) continue;
-                            if(is_numeric_node(node) && is_numeric_input_node(node) && dbl)
+                            if(numeric_node(node) && numeric_text_editable(node) && dbl)
                             {
                                 begin_numeric_text_edit(target, e.position, m_active_float_component == U32_MAX ? 0 : m_active_float_component, true);
                             }
-                            else if(node.is_color_edit() && node.menu_popup())
+                            else if(color_edit_node(node) && node.menu_popup())
                             {
                                 id_t popup_id = node.menu_popup();
                                 if(is_popup_open(popup_id))
@@ -2422,7 +2422,7 @@ namespace Luna
                     {
                         if(node.id != m_focused_id) continue;
                         String* string_value = node.string_value();
-                        if(node.is_input_text() && string_value)
+                        if(input_text_node(node) && string_value)
                         {
                             String filtered = filter_input_text(e.text);
                             if(!filtered.empty())
@@ -2439,11 +2439,11 @@ namespace Luna
                             }
                             break;
                         }
-                        if(is_numeric_input_node(node))
+                        if(numeric_text_editable(node))
                         {
                             Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(node.id);
                             if(!state->numeric_editing) break;
-                            String filtered = filter_numeric_text(e.text, is_float_numeric_node(node));
+                            String filtered = filter_numeric_text(e.text, numeric_value_f32(node));
                             if(!filtered.empty())
                             {
                                 state->text_cursor = clamp_utf8_cursor(state->numeric_edit_text, state->text_cursor);
@@ -2478,8 +2478,8 @@ namespace Luna
                     {
                         if(node.id != m_focused_id) continue;
                         String* string_value = node.string_value();
-                        bool edit_input_text = node.is_input_text() && string_value;
-                        bool edit_numeric = is_numeric_input_node(node);
+                        bool edit_input_text = input_text_node(node) && string_value;
+                        bool edit_numeric = numeric_text_editable(node);
                         if(!edit_input_text && !edit_numeric) continue;
                         Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(node.id);
                         if(edit_numeric && !state->numeric_editing)
@@ -2513,7 +2513,7 @@ namespace Luna
                                 RV r = m_clipboard_io.get_text(clipboard_text, m_clipboard_io.userdata);
                                 if(succeeded(r))
                                 {
-                                    String filtered = edit_input_text ? filter_input_text(clipboard_text) : filter_numeric_text(clipboard_text, is_float_numeric_node(node));
+                                    String filtered = edit_input_text ? filter_input_text(clipboard_text) : filter_numeric_text(clipboard_text, numeric_value_f32(node));
                                     if(!filtered.empty() || input_text_has_selection(edit_value, *state))
                                     {
                                         delete_input_text_selection(edit_value, *state);
@@ -2760,7 +2760,7 @@ namespace Luna
                 bool tooltip_submitted = false;
                 for(const Node& node : m_submitted_desc.nodes)
                 {
-                    if(node.is_tooltip())
+                    if(tooltip_layer(node))
                     {
                         tooltip_submitted = true;
                     }
@@ -2775,7 +2775,7 @@ namespace Luna
                     result->states.insert_or_assign(Name("gui.active"), Any(false));
                     result->states.insert_or_assign(Name("gui.focused"), Any(false));
                     result->states.insert_or_assign(Name("gui.value_changed"), Any(false));
-                    if(node.is_combo())
+                    if(combo_node(node))
                     {
                         Ref<DisclosureState> disclosure = get_or_create_widget_state<DisclosureState>(node.id);
                         if(node.id == m_open_combo_id)
@@ -2789,29 +2789,29 @@ namespace Luna
                         }
                         result->states.insert_or_assign(Name("gui.open"), Any(disclosure->open));
                     }
-                    else if(node.is_popup())
+                    else if(popup_layer(node))
                     {
                         Ref<DisclosureState> disclosure = get_or_create_widget_state<DisclosureState>(node.id);
                         disclosure->open = popup_node_visible(node);
                         result->states.insert_or_assign(Name("gui.open"), Any(disclosure->open));
                     }
-                    else if(node.is_color_edit())
+                    else if(color_edit_node(node))
                     {
                         id_t popup_id = node.menu_popup();
                         bool open = popup_id && is_popup_open(popup_id);
                         result->states.insert_or_assign(Name("gui.open"), Any(open));
                     }
-                    else if(node.is_tab_item())
+                    else if(tab_item_layout(node))
                     {
                         bool open = bool_value_open(node);
                         result->states.insert_or_assign(Name("gui.open"), Any(open));
                     }
-                    else if(node.is_input_text() && node.string_value())
+                    else if(input_text_node(node) && node.string_value())
                     {
                         Ref<InputEditState> input_state = get_or_create_widget_state<InputEditState>(node.id);
                         input_state->text_cursor = clamp_utf8_cursor(*node.string_value(), input_state->text_cursor);
                     }
-                    else if(is_numeric_input_node(node))
+                    else if(numeric_text_editable(node))
                     {
                         InputEditState* input_state = get_widget_state<InputEditState>(node.id);
                         if(input_state && input_state->numeric_editing)
@@ -2931,7 +2931,7 @@ namespace Luna
                     result->states.insert_or_assign(Name("gui.hovered"), Any(node.id == m_hovered_id));
                     result->states.insert_or_assign(Name("gui.active"), Any(node.id == m_active_id || (interaction && interaction->active)));
                     result->states.insert_or_assign(Name("gui.focused"), Any(node.id == m_focused_id));
-                    if(node.is_combo())
+                    if(combo_node(node))
                     {
                         DisclosureState* disclosure = get_widget_state<DisclosureState>(node.id);
                         if(disclosure)
@@ -2940,19 +2940,19 @@ namespace Luna
                         }
                         result->states.insert_or_assign(Name("gui.open"), Any(disclosure ? disclosure->open : false));
                     }
-                    else if(node.is_popup())
+                    else if(popup_layer(node))
                     {
                         Ref<DisclosureState> disclosure = get_or_create_widget_state<DisclosureState>(node.id);
                         disclosure->open = popup_node_visible(node);
                         result->states.insert_or_assign(Name("gui.open"), Any(disclosure->open));
                     }
-                    else if(node.is_color_edit())
+                    else if(color_edit_node(node))
                     {
                         id_t popup_id = node.menu_popup();
                         bool open = popup_id && is_popup_open(popup_id);
                         result->states.insert_or_assign(Name("gui.open"), Any(open));
                     }
-                    else if(node.is_tab_item())
+                    else if(tab_item_layout(node))
                     {
                         bool open = bool_value_open(node);
                         result->states.insert_or_assign(Name("gui.open"), Any(open));

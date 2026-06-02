@@ -418,7 +418,7 @@ namespace Luna
             if(!ctx->m_parent_stack.empty() && ctx->m_parent_stack.back() != U32_MAX)
             {
                 u32 parent = ctx->m_parent_stack.back();
-                menu->top_level_menu = parent < ctx->m_build_desc.nodes.size() && ctx->m_build_desc.nodes[parent].is_menu_bar();
+                menu->top_level_menu = parent < ctx->m_build_desc.nodes.size() && ctx->m_build_desc.nodes[parent].accepts_top_level_menus();
             }
             ItemHandle handle = ctx->add_node(Ref<Node>(menu), label ? label : "", enabled);
             ctx->set_item_query_state_if_absent(handle.id, Name("gui.open"), Any(false));
@@ -568,7 +568,7 @@ namespace Luna
             for(u32 child = ctx->m_build_desc.nodes[parent].first_child; child != U32_MAX; child = ctx->m_build_desc.nodes[child].next_sibling)
             {
                 Node& node = ctx->m_build_desc.nodes[child];
-                if(!node.is_tab_item() || strcmp(node.text.c_str(), label ? label : "") != 0) continue;
+                if(!tab_item_layout(node) || strcmp(node.text.c_str(), label ? label : "") != 0) continue;
                 if(node.bool_value())
                 {
                     *node.bool_value() = false;
@@ -1091,7 +1091,7 @@ namespace Luna
         {
             if(Node* node = ctx->find_build_node(handle))
             {
-                if(!node->is_drag_numeric() || !node->is_int_numeric()) return;
+                if(!numeric_drag(*node) || !numeric_value_i32(*node)) return;
                 DragIntNode* drag_node = (DragIntNode*)node;
                 drag_node->binding.color_owner_id = owner_id;
                 drag_node->binding.color_part = part;

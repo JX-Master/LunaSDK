@@ -182,7 +182,7 @@ namespace Luna
 
         inline bool window_has_title_bar(const Node& node)
         {
-            return node.is_window() && node.bool_value();
+            return node.window_chrome() && node.bool_value();
         }
 
         inline f32 window_title_bar_height()
@@ -200,34 +200,48 @@ namespace Luna
             return clamp((u32)node.i32_values_count(), 1u, 4u);
         }
 
-        inline bool is_float_numeric_node(const Node& node)
+        inline bool numeric_value_f32(const Node& node)
         {
-            return node.is_float_numeric();
+            return node.numeric_value_kind() == NumericValueKind::f32;
         }
 
-        inline bool is_int_numeric_node(const Node& node)
+        inline bool numeric_value_i32(const Node& node)
         {
-            return node.is_int_numeric();
+            return node.numeric_value_kind() == NumericValueKind::i32;
         }
 
-        inline bool is_numeric_node(const Node& node)
+        inline bool numeric_node(const Node& node)
         {
-            return is_float_numeric_node(node) || is_int_numeric_node(node);
+            return node.numeric_value_kind() != NumericValueKind::none;
         }
 
-        inline bool is_numeric_input_node(const Node& node)
+        inline bool numeric_text_editable(const Node& node)
         {
-            return node.is_numeric_input();
+            NumericInteractionKind interaction = node.numeric_interaction_kind();
+            if(interaction == NumericInteractionKind::input) return true;
+            return interaction == NumericInteractionKind::drag &&
+                test_flags(node.numeric_edit_flags(), NumericEditFlag::input_on_double_click);
         }
 
-        inline bool is_numeric_pointer_edit_node(const Node& node)
+        inline bool numeric_pointer_editable(const Node& node)
         {
-            return node.is_numeric_pointer_edit();
+            NumericInteractionKind interaction = node.numeric_interaction_kind();
+            return interaction == NumericInteractionKind::slider || interaction == NumericInteractionKind::drag;
+        }
+
+        inline bool numeric_slider(const Node& node)
+        {
+            return node.numeric_interaction_kind() == NumericInteractionKind::slider;
+        }
+
+        inline bool numeric_drag(const Node& node)
+        {
+            return node.numeric_interaction_kind() == NumericInteractionKind::drag;
         }
 
         inline u32 numeric_value_count(const Node& node)
         {
-            return is_float_numeric_node(node) ? f32_value_count(node) : i32_value_count(node);
+            return numeric_value_f32(node) ? f32_value_count(node) : i32_value_count(node);
         }
 
         inline f32 numeric_label_width(const Node& node, const RectF& rect)
@@ -252,7 +266,7 @@ namespace Luna
         inline String numeric_value_text(const Node& node, u32 component)
         {
             String value_text;
-            if(is_float_numeric_node(node))
+            if(numeric_value_f32(node))
             {
                 f32* values = node.f32_values();
                 f32 value = values ? values[min(component, f32_value_count(node) - 1)] : 0.0f;
@@ -506,9 +520,89 @@ namespace Luna
             return index >= 0 && (usize)index < node.combo_item_count() ? index : -1;
         }
 
-        inline bool is_absolute_node(const Node& node)
+        inline bool popup_layer(const Node& node)
         {
-            return node.absolute_position || node.is_popup() || node.is_tooltip();
+            return node.layer_role() == NodeLayerRole::popup;
+        }
+
+        inline bool tooltip_layer(const Node& node)
+        {
+            return node.layer_role() == NodeLayerRole::tooltip;
+        }
+
+        inline bool root_layer(const Node& node)
+        {
+            return node.layer_role() == NodeLayerRole::root;
+        }
+
+        inline bool input_text_node(const Node& node)
+        {
+            return node.string_value() != nullptr;
+        }
+
+        inline bool combo_node(const Node& node)
+        {
+            return node.combo_current_item() != nullptr || node.combo_item_count() > 0;
+        }
+
+        inline bool menu_node(const Node& node)
+        {
+            return node.menu_popup() != 0;
+        }
+
+        inline bool color_edit_node(const Node& node)
+        {
+            return node.color_widget_kind() == ColorWidgetKind::edit;
+        }
+
+        inline bool color_picker_node(const Node& node)
+        {
+            return node.color_widget_kind() == ColorWidgetKind::picker;
+        }
+
+        inline bool scroll_layout(const Node& node)
+        {
+            return node.layout_behavior() == NodeLayoutBehavior::scroll;
+        }
+
+        inline bool table_layout(const Node& node)
+        {
+            return node.layout_behavior() == NodeLayoutBehavior::table;
+        }
+
+        inline bool grid_layout(const Node& node)
+        {
+            return node.layout_behavior() == NodeLayoutBehavior::grid;
+        }
+
+        inline bool canvas_layout(const Node& node)
+        {
+            return node.layout_behavior() == NodeLayoutBehavior::canvas;
+        }
+
+        inline bool dock_space_layout(const Node& node)
+        {
+            return node.layout_behavior() == NodeLayoutBehavior::dock_space;
+        }
+
+        inline bool tab_bar_layout(const Node& node)
+        {
+            return node.layout_behavior() == NodeLayoutBehavior::tab_bar;
+        }
+
+        inline bool tab_item_layout(const Node& node)
+        {
+            return node.layout_behavior() == NodeLayoutBehavior::tab_item;
+        }
+
+        inline bool horizontal_layout(const Node& node)
+        {
+            return node.layout_flow() == NodeLayoutFlow::horizontal;
+        }
+
+        inline bool absolute_node(const Node& node)
+        {
+            return node.absolute_position || popup_layer(node) || tooltip_layer(node);
         }
 
         inline bool contains_name(const Vector<Name>& names, const Name& name)

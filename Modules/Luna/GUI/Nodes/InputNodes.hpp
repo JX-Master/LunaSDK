@@ -21,7 +21,6 @@ namespace Luna
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_combo() const override;
             virtual i32* combo_current_item() const override;
             virtual usize combo_item_count() const override;
             virtual const c8* combo_item_text(usize index) const override;
@@ -53,7 +52,6 @@ namespace Luna
             InputTextNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_input_text() const override;
             virtual bool uses_context_render() const override;
             virtual String* string_value() const override;
             virtual LayoutMetrics measure() const override;
@@ -67,9 +65,8 @@ namespace Luna
             SliderFloatNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_float_numeric() const override;
-            virtual bool is_slider_numeric() const override;
-            virtual bool is_numeric_pointer_edit() const override;
+            virtual NumericValueKind numeric_value_kind() const override;
+            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
             virtual f32* f32_values() const override;
             virtual u8 f32_values_count() const override;
@@ -88,9 +85,8 @@ namespace Luna
             SliderIntNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_int_numeric() const override;
-            virtual bool is_slider_numeric() const override;
-            virtual bool is_numeric_pointer_edit() const override;
+            virtual NumericValueKind numeric_value_kind() const override;
+            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
             virtual i32* i32_values() const override;
             virtual u8 i32_values_count() const override;
@@ -109,8 +105,8 @@ namespace Luna
             InputFloatNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_float_numeric() const override;
-            virtual bool is_numeric_input() const override;
+            virtual NumericValueKind numeric_value_kind() const override;
+            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
             virtual f32* f32_values() const override;
             virtual u8 f32_values_count() const override;
@@ -129,8 +125,8 @@ namespace Luna
             InputIntNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_int_numeric() const override;
-            virtual bool is_numeric_input() const override;
+            virtual NumericValueKind numeric_value_kind() const override;
+            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
             virtual i32* i32_values() const override;
             virtual u8 i32_values_count() const override;
@@ -149,10 +145,8 @@ namespace Luna
             DragFloatNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_float_numeric() const override;
-            virtual bool is_drag_numeric() const override;
-            virtual bool is_numeric_input() const override;
-            virtual bool is_numeric_pointer_edit() const override;
+            virtual NumericValueKind numeric_value_kind() const override;
+            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
             virtual f32* f32_values() const override;
             virtual u8 f32_values_count() const override;
@@ -174,10 +168,8 @@ namespace Luna
             DragIntNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool is_int_numeric() const override;
-            virtual bool is_drag_numeric() const override;
-            virtual bool is_numeric_input() const override;
-            virtual bool is_numeric_pointer_edit() const override;
+            virtual NumericValueKind numeric_value_kind() const override;
+            virtual NumericInteractionKind numeric_interaction_kind() const override;
             virtual bool uses_context_render() const override;
             virtual i32* i32_values() const override;
             virtual u8 i32_values_count() const override;
