@@ -1,5 +1,6 @@
 if is_plat("windows", "macosx", "linux") then
     includes("RuntimeTest")
+    includes("HashBenchmark")
     includes("VariantUtilsTest")
     includes("WindowTest")
     includes("RHITests")

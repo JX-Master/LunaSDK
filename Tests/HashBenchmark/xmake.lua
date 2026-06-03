@@ -1,0 +1,6 @@
+target("HashBenchmark")
+    set_luna_sdk_test()
+    set_kind("binary")
+    add_files("Source/*.cpp")
+    add_deps("Runtime")
+target_end()
