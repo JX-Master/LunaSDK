@@ -85,6 +85,26 @@ Force rebuild:
 dotnet run --project LunaBuild.csproj -- build --all --force
 ```
 
+## Running
+
+Run builds the selected executable target first, then launches the produced program from its output directory:
+
+```sh
+dotnet run --project LunaBuild.csproj -- run --target RuntimeTest
+```
+
+The target name can also be written positionally:
+
+```sh
+dotnet run --project LunaBuild.csproj -- run RuntimeTest
+```
+
+Pass program arguments after a second `--` separator:
+
+```sh
+dotnet run --project LunaBuild.csproj -- run RuntimeTest -- --list
+```
+
 ### Common Options
 
 * `--target <name>` builds one target and its dependencies.

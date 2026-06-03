@@ -5,7 +5,7 @@ LunaBuild is the C# front-end for LunaSDK builds.
 The build front-end and back-end are separated in C#:
 
 - `LunaBuild.Core` owns workspace discovery, project target rule loading, build options, and build graph data.
-- `LunaBuild.Cli` exposes `inspect`, `generate`, `build`, `clean`, and `install`.
+- `LunaBuild.Cli` exposes `inspect`, `generate`, `build`, `clean`, `install`, and `run`.
 - `build` passes the in-memory `BuildGraph` object directly to the C# MakeSystem backend.
 - `generate` writes a LunaRules debug dump by default. JSON output is still available for inspection with `--format json`; IDE/project files are available with `--format compile_commands`, `--format vs2022`, `--format vscode`, and `--format xcode`.
 
@@ -32,6 +32,8 @@ dotnet run --project LunaBuild.csproj -- generate --root . --format xcode --plat
 dotnet run --project LunaBuild.csproj -- build --root . --target ObjLoader --output build/LunaBuild/ObjLoader.lunarules
 dotnet run --project LunaBuild.csproj -- build --root . --category Tests
 dotnet run --project LunaBuild.csproj -- build --root . --all --mode Release --api-validation --memory-profiler
+dotnet run --project LunaBuild.csproj -- run --root . --target RuntimeTest
+dotnet run --project LunaBuild.csproj -- run RuntimeTest -- --list
 dotnet run --project LunaBuild.csproj -- clean --root . --all
 dotnet run --project LunaBuild.csproj -- install --root . --all --output ./install/debug
 ```

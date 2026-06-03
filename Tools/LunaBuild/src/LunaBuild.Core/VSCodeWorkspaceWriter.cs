@@ -50,6 +50,10 @@ public static class VSCodeWorkspaceWriter
             tasks.Add(CreateTask($"LunaBuild: build {target.Name}", CommandArgs(workspace, options, "build", target.Name, all: false, force: false)));
             tasks.Add(CreateTask($"LunaBuild: rebuild {target.Name}", CommandArgs(workspace, options, "build", target.Name, all: false, force: true)));
             tasks.Add(CreateTask($"LunaBuild: clean {target.Name}", CommandArgs(workspace, options, "clean", target.Name, all: false, force: false)));
+            if(target.Kind is BuildTargetKind.Executable or BuildTargetKind.DotNetProject)
+            {
+                tasks.Add(CreateTask($"LunaBuild: run {target.Name}", CommandArgs(workspace, options, "run", target.Name, all: false, force: false)));
+            }
         }
 
         root["tasks"] = tasks;

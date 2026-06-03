@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LunaBuild.Core;
 using LunaBuild.Core.MakeSystem;
 
@@ -16,7 +17,14 @@ public static class LunaBuildCli
             }
 
             var command = args[0];
-            var options = CommandLineOptions.Parse(args.Skip(1).ToArray());
+            var commandArguments = args.Skip(1).ToArray();
+            var runArguments = Array.Empty<string>();
+            if(string.Equals(command, "run", StringComparison.OrdinalIgnoreCase))
+            {
+                (commandArguments, runArguments) = SplitRunArguments(commandArguments);
+                commandArguments = NormalizeRunTargetArgument(commandArguments);
+            }
+            var options = CommandLineOptions.Parse(commandArguments);
             return command switch
             {
                 "inspect" => Inspect(options),
@@ -24,6 +32,7 @@ public static class LunaBuildCli
                 "build" => Build(options),
                 "clean" => Clean(options),
                 "install" => Install(options),
+                "run" => RunTarget(options, runArguments),
                 _ => UnknownCommand(command),
             };
         }
@@ -115,19 +124,7 @@ public static class LunaBuildCli
 
         try
         {
-            var makeSystem = new MakeSystemBackend(new IMakeActionExecutor[]
-            {
-                new CppActionExecutor(),
-                new CppslShaderActionExecutor(),
-                new FileCopyActionExecutor(),
-                new BinaryEmbedHeaderActionExecutor(),
-                new DotNetBuildActionExecutor(),
-                new AggregateActionExecutor(),
-            });
-            var result = makeSystem.BuildAsync(
-                workspace,
-                graph,
-                options: new MakeSystemBuildOptions(options.ForceRebuild)).GetAwaiter().GetResult();
+            var result = ExecuteBuild(workspace, graph, options.ForceRebuild);
             Console.WriteLine(result.UpToDate
                 ? $"Up to date. Nodes: {result.NodesVisited}"
                 : $"Build finished. Nodes: {result.NodesVisited}, Actions: {result.ActionsExecuted}");
@@ -139,6 +136,47 @@ public static class LunaBuildCli
             Console.Error.WriteLine("C# MakeSystem backend is wired, but the C++ action executors are not implemented yet.");
             return 2;
         }
+    }
+
+    private static int RunTarget(CommandLineOptions options, IReadOnlyList<string> arguments)
+    {
+        if(string.IsNullOrWhiteSpace(options.TargetName))
+        {
+            throw new ArgumentException("run requires --target <name> or a target name.");
+        }
+        if(options.AllTargets)
+        {
+            throw new ArgumentException("run cannot be combined with --all.");
+        }
+        if(options.TargetCategories.Count > 0)
+        {
+            throw new ArgumentException("run cannot be combined with --category.");
+        }
+
+        var context = CreateBuildContext(options);
+        var workspace = context.Workspace;
+        var target = context.Targets.FirstOrDefault(target => string.Equals(target.Name, options.TargetName, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ArgumentException($"Unknown target: {options.TargetName}");
+        if(target.Kind is not (BuildTargetKind.Executable or BuildTargetKind.DotNetProject))
+        {
+            throw new ArgumentException($"Target `{target.Name}` is {target.Kind} and cannot be run.");
+        }
+
+        var graph = GenerateGraph(workspace, context.BuildOptions, context.Targets, target.Name, allTargets: false);
+        var result = ExecuteBuild(workspace, graph, options.ForceRebuild);
+        Console.WriteLine(result.UpToDate
+            ? $"Up to date. Nodes: {result.NodesVisited}"
+            : $"Build finished. Nodes: {result.NodesVisited}, Actions: {result.ActionsExecuted}");
+
+        var executable = BuildGraphQueries.FindRunnableOutput(workspace, graph, target.Name)
+            ?? throw new InvalidOperationException($"Target `{target.Name}` did not produce a runnable output.");
+        if(!File.Exists(executable))
+        {
+            throw new FileNotFoundException($"Runnable output is missing after build: {executable}", executable);
+        }
+
+        Console.WriteLine($"Running {target.Name}: {executable}");
+        return RunProcess(executable, arguments);
     }
 
     private static int Clean(CommandLineOptions options)
@@ -396,16 +434,72 @@ public static class LunaBuildCli
         };
     }
 
+    private static MakeSystemResult ExecuteBuild(BuildWorkspace workspace, BuildGraph graph, bool forceRebuild)
+    {
+        var makeSystem = new MakeSystemBackend(new IMakeActionExecutor[]
+        {
+            new CppActionExecutor(),
+            new CppslShaderActionExecutor(),
+            new FileCopyActionExecutor(),
+            new BinaryEmbedHeaderActionExecutor(),
+            new DotNetBuildActionExecutor(),
+            new AggregateActionExecutor(),
+        });
+        return makeSystem.BuildAsync(
+            workspace,
+            graph,
+            options: new MakeSystemBuildOptions(forceRebuild)).GetAwaiter().GetResult();
+    }
+
+    private static int RunProcess(string executable, IReadOnlyList<string> arguments)
+    {
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = executable,
+            WorkingDirectory = Path.GetDirectoryName(executable) ?? Environment.CurrentDirectory,
+            UseShellExecute = false,
+        };
+        foreach(var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start();
+        process.WaitForExit();
+        return process.ExitCode;
+    }
+
+    private static (string[] Options, string[] Arguments) SplitRunArguments(string[] args)
+    {
+        var separatorIndex = Array.IndexOf(args, "--");
+        if(separatorIndex < 0)
+        {
+            return (args, Array.Empty<string>());
+        }
+        return (args[..separatorIndex], args[(separatorIndex + 1)..]);
+    }
+
+    private static string[] NormalizeRunTargetArgument(string[] args)
+    {
+        if(args.Length == 0 || args[0].StartsWith("--", StringComparison.Ordinal))
+        {
+            return args;
+        }
+
+        return new[] { "--target", args[0] }.Concat(args.Skip(1)).ToArray();
+    }
+
     private static void PrintUsage()
     {
-        Console.WriteLine("Usage: lunabuild <inspect|generate|build|clean|install> [options]");
+        Console.WriteLine("Usage: lunabuild <inspect|generate|build|clean|install|run> [options]");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --root <path>       LunaSDK repository root. Defaults to auto-discovery.");
         Console.WriteLine("  --output <path>     Graph output path for generate, or optional debug dump for build.");
         Console.WriteLine("  --format <name>     rules, json, compile_commands, vs2022, vscode, or xcode.");
-        Console.WriteLine("  --target <name>     Generate/build one pure C++ target graph.");
-        Console.WriteLine("  --all               Generate/build all discovered targets as a pure C++ graph.");
+        Console.WriteLine("  --target <name>     Select one target.");
+        Console.WriteLine("  --all               Select all discovered targets.");
         Console.WriteLine("  --category <name>   Filter all-target operations by Engine, Tests, or Tools. Can repeat or use commas.");
         Console.WriteLine("  --force             Force build actions to run even when up to date.");
         Console.WriteLine("  --full              Clean the whole build/LunaBuild directory.");
@@ -416,6 +510,10 @@ public static class LunaBuildCli
         Console.WriteLine("  --static            Generate static target configuration.");
         Console.WriteLine("  --property <k=v>    Set one project-defined build property.");
         Console.WriteLine("  --<property>        Set one project-defined boolean property to true.");
+        Console.WriteLine();
+        Console.WriteLine("Run:");
+        Console.WriteLine("  lunabuild run --target <name> -- [program arguments]");
+        Console.WriteLine("  lunabuild run <name> -- [program arguments]");
     }
 
     private sealed record BuildContext(
