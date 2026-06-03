@@ -10,6 +10,7 @@
 #pragma once
 #include "Window.hpp"
 #include "Application.hpp"
+#include <Luna/HID/KeyCode.hpp>
 
 #ifndef LUNA_WINDOW_API
 #define LUNA_WINDOW_API
@@ -172,7 +173,7 @@ namespace Luna
             lustruct("Window::WindowKeyDownEvent", "4ebe2c21-79e9-4ec8-addb-c1fe6e5a9236");
 
             //! The key that is pressed.
-            HID::KeyCode key;
+            KeyCode key;
         };
 
         //! Dispatched when the user releases one key with one window being focused.
@@ -183,7 +184,7 @@ namespace Luna
             lustruct("Window::WindowKeyUpEvent", "9deb9e17-86aa-408c-bb1a-71793646dce5");
 
             //! The key that is released.
-            HID::KeyCode key;
+            KeyCode key;
         };
 
         //! Dispatched when the window receives input text.
@@ -386,4 +387,3 @@ namespace Luna
         //! @}
     }
 }
-

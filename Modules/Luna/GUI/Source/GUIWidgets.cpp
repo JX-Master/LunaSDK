@@ -1128,7 +1128,7 @@ namespace Luna
             return index < 5 ? context_from_interface(context)->m_pointer_button_down[index] : false;
         }
 
-        LUNA_GUI_API bool is_key_down(IContext* context, Key key)
+        LUNA_GUI_API bool is_key_down(IContext* context, KeyCode key)
         {
             u32 index = (u32)key;
             return index < 256 ? context_from_interface(context)->m_key_down[index] : false;

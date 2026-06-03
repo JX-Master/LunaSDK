@@ -270,9 +270,8 @@ namespace Luna
             g_desc_sets.shrink_to_fit();
         }
 
-        inline ImGuiKey hid_key_to_imgui_key(HID::KeyCode key)
+        inline ImGuiKey hid_key_to_imgui_key(KeyCode key)
         {
-            using namespace HID;
             switch (key)
             {
             case KeyCode::tab: return ImGuiKey_Tab;
@@ -382,39 +381,39 @@ namespace Luna
             }
         }
 
-        static void handle_key_state_change(HID::KeyCode key, bool is_key_down)
+        static void handle_key_state_change(KeyCode key, bool is_key_down)
         {
             ImGuiIO& io = ImGui::GetIO();
             // Submit modifiers
-            io.AddKeyEvent(ImGuiMod_Ctrl, HID::get_key_state(HID::KeyCode::ctrl));
-            io.AddKeyEvent(ImGuiMod_Shift, HID::get_key_state(HID::KeyCode::shift));
-            io.AddKeyEvent(ImGuiMod_Alt, HID::get_key_state(HID::KeyCode::menu));
-            io.AddKeyEvent(ImGuiMod_Super, HID::get_key_state(HID::KeyCode::l_system) || HID::get_key_state(HID::KeyCode::r_system));
+            io.AddKeyEvent(ImGuiMod_Ctrl, HID::get_key_state(KeyCode::ctrl));
+            io.AddKeyEvent(ImGuiMod_Shift, HID::get_key_state(KeyCode::shift));
+            io.AddKeyEvent(ImGuiMod_Alt, HID::get_key_state(KeyCode::menu));
+            io.AddKeyEvent(ImGuiMod_Super, HID::get_key_state(KeyCode::l_system) || HID::get_key_state(KeyCode::r_system));
             auto key_id = hid_key_to_imgui_key(key);
             if (key_id != ImGuiKey_None)
             {
                 io.AddKeyEvent(key_id, is_key_down);
             }
             // Submit individual left/right modifier events
-            if (key == HID::KeyCode::shift)
+            if (key == KeyCode::shift)
             {
-                if (HID::get_key_state(HID::KeyCode::l_shift) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftShift, is_key_down);
-                if (HID::get_key_state(HID::KeyCode::r_shift) == is_key_down) io.AddKeyEvent(ImGuiKey_RightShift, is_key_down);
+                if (HID::get_key_state(KeyCode::l_shift) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftShift, is_key_down);
+                if (HID::get_key_state(KeyCode::r_shift) == is_key_down) io.AddKeyEvent(ImGuiKey_RightShift, is_key_down);
             }
-            else if (key == HID::KeyCode::ctrl)
+            else if (key == KeyCode::ctrl)
             {
-                if (HID::get_key_state(HID::KeyCode::l_ctrl) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftCtrl, is_key_down);
-                if (HID::get_key_state(HID::KeyCode::r_ctrl) == is_key_down) io.AddKeyEvent(ImGuiKey_RightCtrl, is_key_down);
+                if (HID::get_key_state(KeyCode::l_ctrl) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftCtrl, is_key_down);
+                if (HID::get_key_state(KeyCode::r_ctrl) == is_key_down) io.AddKeyEvent(ImGuiKey_RightCtrl, is_key_down);
             }
-            else if (key == HID::KeyCode::menu)
+            else if (key == KeyCode::menu)
             {
-                if (HID::get_key_state(HID::KeyCode::l_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftAlt, is_key_down);
-                if (HID::get_key_state(HID::KeyCode::r_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_RightAlt, is_key_down);
+                if (HID::get_key_state(KeyCode::l_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftAlt, is_key_down);
+                if (HID::get_key_state(KeyCode::r_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_RightAlt, is_key_down);
             }
-            else if (key == HID::KeyCode::l_system || key == HID::KeyCode::r_system)
+            else if (key == KeyCode::l_system || key == KeyCode::r_system)
             {
-                if (HID::get_key_state(HID::KeyCode::l_system) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftSuper, is_key_down);
-                if (HID::get_key_state(HID::KeyCode::r_system) == is_key_down) io.AddKeyEvent(ImGuiKey_RightSuper, is_key_down);
+                if (HID::get_key_state(KeyCode::l_system) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftSuper, is_key_down);
+                if (HID::get_key_state(KeyCode::r_system) == is_key_down) io.AddKeyEvent(ImGuiKey_RightSuper, is_key_down);
             }
         }
 

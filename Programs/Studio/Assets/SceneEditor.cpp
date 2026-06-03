@@ -766,27 +766,27 @@ namespace Luna
                     camera_speed *= 2.0f;
                 }
 
-                if (GUI::is_key_down(context, GUI::Key::w))
+                if (GUI::is_key_down(context, KeyCode::w))
                 {
                     camera_transform->position += forward * 0.1f * camera_speed;
                 }
-                if (GUI::is_key_down(context, GUI::Key::a))
+                if (GUI::is_key_down(context, KeyCode::a))
                 {
                     camera_transform->position += + left * 0.1f * camera_speed;
                 }
-                if (GUI::is_key_down(context, GUI::Key::s))
+                if (GUI::is_key_down(context, KeyCode::s))
                 {
                     camera_transform->position += - forward * 0.1f * camera_speed;
                 }
-                if (GUI::is_key_down(context, GUI::Key::d))
+                if (GUI::is_key_down(context, KeyCode::d))
                 {
                     camera_transform->position += - left * 0.1f * camera_speed;
                 }
-                if (GUI::is_key_down(context, GUI::Key::q))
+                if (GUI::is_key_down(context, KeyCode::q))
                 {
                     camera_transform->position += - up * 0.1f * camera_speed;
                 }
-                if (GUI::is_key_down(context, GUI::Key::e))
+                if (GUI::is_key_down(context, KeyCode::e))
                 {
                     camera_transform->position += + up * 0.1f * camera_speed;
                 }

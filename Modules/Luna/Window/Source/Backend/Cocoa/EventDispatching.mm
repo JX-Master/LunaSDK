@@ -25,9 +25,8 @@ namespace Luna
 {
     namespace Window
     {
-        inline HID::KeyCode translate_key(CGKeyCode key)
+        inline KeyCode translate_key(CGKeyCode key)
         {
-            using namespace HID;
             switch(key)
             {
                 case kVK_Escape: return KeyCode::esc;
@@ -199,24 +198,24 @@ namespace Luna
             }
         }
 
-        inline HID::KeyCode encode_flag_key(unsigned int flag)
+        inline KeyCode encode_flag_key(unsigned int flag)
         {
             switch(flag)
             {
-                case NSEventModifierFlagCapsLock: return HID::KeyCode::caps_lock;
-                case NSEventModifierFlagShift: return HID::KeyCode::shift;
-                case NSEventModifierFlagControl: return HID::KeyCode::ctrl;
-                case NSEventModifierFlagOption: return HID::KeyCode::menu;
-                case NSEventModifierFlagCommand: return HID::KeyCode::system;
+                case NSEventModifierFlagCapsLock: return KeyCode::caps_lock;
+                case NSEventModifierFlagShift: return KeyCode::shift;
+                case NSEventModifierFlagControl: return KeyCode::ctrl;
+                case NSEventModifierFlagOption: return KeyCode::menu;
+                case NSEventModifierFlagCommand: return KeyCode::system;
                 default: break;
             }
-            return HID::KeyCode::unknown;
+            return KeyCode::unknown;
         }
 
         inline void dispatch_flag_change_events(IWindow* window, unsigned int old_flags, unsigned int new_flags, unsigned int flag_bit)
         {
             auto key = encode_flag_key(flag_bit);
-            if(key == HID::KeyCode::unknown) return;
+            if(key == KeyCode::unknown) return;
             if((old_flags & flag_bit) && !(new_flags & flag_bit))
             {
                 auto e = new_object<WindowKeyUpEvent>();
@@ -277,7 +276,7 @@ namespace Luna
 
                         case NSEventTypeKeyDown:
                         {
-                            HID::KeyCode key = translate_key([event keyCode]);
+                            KeyCode key = translate_key([event keyCode]);
                             if(window->m_text_input_active)
                             {
                                 LunaTextInputView* view = window->m_input_view;
@@ -287,7 +286,7 @@ namespace Luna
                             }
                             else
                             {
-                                if (key != HID::KeyCode::unknown)
+                                if (key != KeyCode::unknown)
                                 {
                                     auto e = new_object<WindowKeyDownEvent>();
                                     e->window = window;
@@ -300,8 +299,8 @@ namespace Luna
                         
                         case NSEventTypeKeyUp:
                         {
-                            HID::KeyCode key = translate_key([event keyCode]);
-                            if (key != HID::KeyCode::unknown)
+                            KeyCode key = translate_key([event keyCode]);
+                            if (key != KeyCode::unknown)
                             {
                                 auto e = new_object<WindowKeyUpEvent>();
                                 e->window = window;

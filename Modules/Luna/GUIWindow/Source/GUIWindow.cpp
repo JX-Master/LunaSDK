@@ -33,58 +33,13 @@ namespace Luna
             }
         }
 
-        static GUI::Key to_gui_key(HID::KeyCode key)
-        {
-            using namespace HID;
-            switch(key)
-            {
-            case KeyCode::tab: return GUI::Key::tab;
-            case KeyCode::left: return GUI::Key::left;
-            case KeyCode::right: return GUI::Key::right;
-            case KeyCode::up: return GUI::Key::up;
-            case KeyCode::down: return GUI::Key::down;
-            case KeyCode::enter: return GUI::Key::enter;
-            case KeyCode::esc: return GUI::Key::esc;
-            case KeyCode::backspace: return GUI::Key::backspace;
-            case KeyCode::del: return GUI::Key::del;
-            case KeyCode::spacebar: return GUI::Key::space;
-            case KeyCode::a: return GUI::Key::a;
-            case KeyCode::b: return GUI::Key::b;
-            case KeyCode::c: return GUI::Key::c;
-            case KeyCode::d: return GUI::Key::d;
-            case KeyCode::e: return GUI::Key::e;
-            case KeyCode::f: return GUI::Key::f;
-            case KeyCode::g: return GUI::Key::g;
-            case KeyCode::h: return GUI::Key::h;
-            case KeyCode::i: return GUI::Key::i;
-            case KeyCode::j: return GUI::Key::j;
-            case KeyCode::k: return GUI::Key::k;
-            case KeyCode::l: return GUI::Key::l;
-            case KeyCode::m: return GUI::Key::m;
-            case KeyCode::n: return GUI::Key::n;
-            case KeyCode::o: return GUI::Key::o;
-            case KeyCode::p: return GUI::Key::p;
-            case KeyCode::q: return GUI::Key::q;
-            case KeyCode::r: return GUI::Key::r;
-            case KeyCode::s: return GUI::Key::s;
-            case KeyCode::t: return GUI::Key::t;
-            case KeyCode::u: return GUI::Key::u;
-            case KeyCode::v: return GUI::Key::v;
-            case KeyCode::w: return GUI::Key::w;
-            case KeyCode::x: return GUI::Key::x;
-            case KeyCode::y: return GUI::Key::y;
-            case KeyCode::z: return GUI::Key::z;
-            default: return GUI::Key::unknown;
-            }
-        }
-
         static GUI::KeyModifierFlag get_gui_modifiers()
         {
             u8 flags = 0;
-            if(HID::get_key_state(HID::KeyCode::ctrl)) flags |= (u8)GUI::KeyModifierFlag::ctrl;
-            if(HID::get_key_state(HID::KeyCode::shift)) flags |= (u8)GUI::KeyModifierFlag::shift;
-            if(HID::get_key_state(HID::KeyCode::menu)) flags |= (u8)GUI::KeyModifierFlag::alt;
-            if(HID::get_key_state(HID::KeyCode::system)) flags |= (u8)GUI::KeyModifierFlag::system;
+            if(HID::get_key_state(KeyCode::ctrl)) flags |= (u8)GUI::KeyModifierFlag::ctrl;
+            if(HID::get_key_state(KeyCode::shift)) flags |= (u8)GUI::KeyModifierFlag::shift;
+            if(HID::get_key_state(KeyCode::menu)) flags |= (u8)GUI::KeyModifierFlag::alt;
+            if(HID::get_key_state(KeyCode::system)) flags |= (u8)GUI::KeyModifierFlag::system;
             return (GUI::KeyModifierFlag)flags;
         }
 
@@ -187,13 +142,13 @@ namespace Luna
             else if(auto e = cast_object<Window::WindowKeyDownEvent>(event))
             {
                 ge.type = GUI::InputEventType::key_down;
-                ge.key = to_gui_key(e->key);
+                ge.key = e->key;
                 ge.modifiers = get_gui_modifiers();
             }
             else if(auto e = cast_object<Window::WindowKeyUpEvent>(event))
             {
                 ge.type = GUI::InputEventType::key_up;
-                ge.key = to_gui_key(e->key);
+                ge.key = e->key;
                 ge.modifiers = get_gui_modifiers();
             }
             else if(auto e = cast_object<Window::WindowInputTextEvent>(event))

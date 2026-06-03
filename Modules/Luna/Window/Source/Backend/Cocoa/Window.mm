@@ -50,7 +50,7 @@ inline void dispatch_event_to_handler(Luna::object_t event)
         _selectedRange = NSMakeRange(NSNotFound, 0);
         _markedRange = NSMakeRange(NSNotFound, 0);
         _pendingKey = -1;
-        _pendingKeyCode = Luna::HID::KeyCode::unknown;
+        _pendingKeyCode = Luna::KeyCode::unknown;
     }
     return self;
 }
@@ -180,7 +180,7 @@ inline void dispatch_event_to_handler(Luna::object_t event)
     // Can handle non-text input keys here.
 }
 
-- (void)setPendingKey:(int)key keyCode:(Luna::HID::KeyCode)keyCode
+- (void)setPendingKey:(int)key keyCode:(Luna::KeyCode)keyCode
 {
     _pendingKey = key;
     _pendingKeyCode = keyCode;

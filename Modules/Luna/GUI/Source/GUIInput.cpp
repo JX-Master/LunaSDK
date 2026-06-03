@@ -2365,7 +2365,7 @@ namespace Luna
                         m_key_down[(u32)e.key] = true;
                     }
                     m_key_modifiers = e.modifiers;
-                    if(e.key == Key::esc && !m_popup_stack.open_stack.empty())
+                    if(e.key == KeyCode::esc && !m_popup_stack.open_stack.empty())
                     {
                         if(test_flags(m_popup_stack.open_stack.back().flags, PopupFlag::close_on_escape))
                         {
@@ -2393,7 +2393,7 @@ namespace Luna
                         bool changed = false;
                         bool shortcut = has_modifier(e.modifiers, KeyModifierFlag::ctrl) || has_modifier(e.modifiers, KeyModifierFlag::system);
                         bool shift = has_modifier(e.modifiers, KeyModifierFlag::shift);
-                        if(shortcut && e.key == Key::c)
+                        if(shortcut && e.key == KeyCode::c)
                         {
                             if(input_text_has_selection(edit_value, *state) && m_clipboard_io.set_text)
                             {
@@ -2405,7 +2405,7 @@ namespace Luna
                                 (void)clipboard_result;
                             }
                         }
-                        else if(shortcut && e.key == Key::v)
+                        else if(shortcut && e.key == KeyCode::v)
                         {
                             if(m_clipboard_io.get_text)
                             {
@@ -2426,7 +2426,7 @@ namespace Luna
                                 }
                             }
                         }
-                        else if(e.key == Key::backspace)
+                        else if(e.key == KeyCode::backspace)
                         {
                             if(input_text_has_selection(edit_value, *state))
                             {
@@ -2441,7 +2441,7 @@ namespace Luna
                             state->text_cursor_blink_start = m_time;
                             if(edit_numeric) changed = apply_numeric_edit_text(*this, node, *state);
                         }
-                        else if(e.key == Key::del)
+                        else if(e.key == KeyCode::del)
                         {
                             if(input_text_has_selection(edit_value, *state))
                             {
@@ -2456,7 +2456,7 @@ namespace Luna
                             state->text_cursor_blink_start = m_time;
                             if(edit_numeric) changed = apply_numeric_edit_text(*this, node, *state);
                         }
-                        else if(e.key == Key::left)
+                        else if(e.key == KeyCode::left)
                         {
                             if(shift && state->text_select_anchor == USIZE_MAX)
                             {
@@ -2477,7 +2477,7 @@ namespace Luna
                             }
                             state->text_cursor_blink_start = m_time;
                         }
-                        else if(e.key == Key::right)
+                        else if(e.key == KeyCode::right)
                         {
                             if(shift && state->text_select_anchor == USIZE_MAX)
                             {
@@ -2498,7 +2498,7 @@ namespace Luna
                             }
                             state->text_cursor_blink_start = m_time;
                         }
-                        else if(e.key == Key::enter || e.key == Key::esc)
+                        else if(e.key == KeyCode::enter || e.key == KeyCode::esc)
                         {
                             m_focused_id = 0;
                             if(InteractionState* interaction = get_widget_state<InteractionState>(node.id))

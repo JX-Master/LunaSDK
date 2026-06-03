@@ -22,3 +22,15 @@
 #include "Context.hpp"
 #include "Widgets.hpp"
 #include "Views.hpp"
+
+namespace Luna
+{
+    namespace GUI
+    {
+        //! @addtogroup GUI GUI
+        //! Immediate-mode style GUI module built from per-frame descriptions, explicit contexts, layered input routing,
+        //! typed state objects, style-bound render proxies and VG-backed vector drawing.
+        //! @{
+        //! @}
+    }
+}
