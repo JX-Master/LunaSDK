@@ -30,6 +30,11 @@ public sealed class LunaSDKProjectRules : ProjectRules
             defaultValue: false,
             description: "Enable RHI backend debug layers and validation helpers.",
             "rhi-debug");
+        BooleanProperty(
+            "gui_debug",
+            defaultValue: false,
+            description: "Enable Luna GUI debug features.",
+            "gui-debug");
     }
 
     protected override void Configure(BuildWorkspace workspace, BuildOptions options)

@@ -13,7 +13,10 @@
 #include <Luna/Window/Window.hpp>
 #include <Luna/RHI/SwapChain.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/ImGui/ImGui.hpp>
+#include <Luna/GUI/GUI.hpp>
+#include <Luna/GUIWindow/GUIWindow.hpp>
+#include <Luna/Font/Font.hpp>
+#include <Luna/VG/VG.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/AHI/Device.hpp>
 #include <Luna/AHI/Adapter.hpp>
@@ -213,6 +216,7 @@ namespace Luna
         Ref<Window::IWindow> window;
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
+        Ref<GUI::IContext> gui;
         Vector<Ref<AHI::IAdapter>> playback_adapters;
         Vector<Ref<AHI::IAdapter>> capture_adapters;
         Vector<AudioSource> audio_sources;
@@ -225,15 +229,10 @@ namespace Luna
     {
         lutry
         {
-            luexp(add_modules({module_ahi(), module_rhi(), module_window(), module_imgui()}));
+            luexp(add_modules({module_ahi(), module_rhi(), module_window(), module_font(), module_vg(), GUI::module_gui(), GUIWindow::module_gui_window()}));
             luexp(init_modules());
 
             App app;
-
-            Window::set_event_handler([](object_t event, void* userdata)
-            {
-                ImGuiUtils::handle_window_event(event);
-            }, nullptr);
 
             luset(app.window, Window::new_window("Luna Studio - Open Project", Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500));
             auto dev = RHI::get_main_device();
@@ -252,10 +251,13 @@ namespace Luna
             }
             luset(app.swap_chain, dev->new_swap_chain(graphics_queue, app.window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             luset(app.cmdbuf, dev->new_command_buffer(graphics_queue));
+            app.gui = GUI::new_context(dev);
+            GUIWindow::GUIWindowInputAdapter input_adapter;
+            input_adapter.window = app.window;
+            input_adapter.gui = app.gui;
+            GUIWindow::install_window_event_handler(&input_adapter);
             
             luexp(AHI::get_adapters(&app.playback_adapters, &app.capture_adapters));
-
-            ImGuiUtils::set_active_window(app.window);
 
             while(true)
             {
@@ -277,15 +279,24 @@ namespace Luna
                     app.height = fb_sz.y;
                 }
                 auto sz = app.window->get_size();
-                ImGuiUtils::update_io();
-                ImGui::NewFrame();
-                {
-                    using namespace ImGui;
-                    SetNextWindowPos({ 0.0f, 0.0f });
-                    SetNextWindowSize({ (f32)sz.x, (f32)sz.y });
-                    Begin("AHITest", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
-                    if(CollapsingHeader("Adapters and formats"))
+                GUI::FrameDesc frame;
+                frame.surface_size = Float2U((f32)sz.x, (f32)sz.y);
+                frame.framebuffer_size = fb_sz;
+                frame.dpi_scale = app.window->get_dpi_scale_factor();
+                frame.delta_time = 1.0f / 60.0f;
+                app.gui->begin_frame(frame);
+
+                static i32 current_playback_adapter = 0;
+                static i32 current_capture_adapter = 0;
+                GUI::ItemHandle create_device_button;
+                GUI::ItemHandle add_audio_source_button;
+                Vector<GUI::ItemHandle> apply_audio_source_buttons;
+
+                GUI::begin_window(app.gui, "AHITest", GUI::Size::fixed((f32)sz.x, (f32)sz.y));
+                {
+                    GUI::ItemHandle adapters_header = GUI::collapsing_header(app.gui, "Adapters and formats");
+                    if(GUI::get_item_state(adapters_header, GUI::State::open()))
                     {
                         Vector<const c8*> playback_adapter_names;
                         Vector<const c8*> capture_adapter_names;
@@ -298,91 +309,127 @@ namespace Luna
                         {
                             capture_adapter_names.push_back(adapter->get_name());
                         }
-                        static int current_playback_adapter;
-                        static int current_capture_adapter;
-                        Combo("Playback Adapters", &current_playback_adapter, playback_adapter_names.data(), (int)playback_adapter_names.size());
-                        Combo("Capture Adapters", &current_capture_adapter, capture_adapter_names.data(), (int)capture_adapter_names.size());
-                        if(current_playback_adapter < app.playback_adapters.size() && current_capture_adapter < app.capture_adapters.size())
+                        GUI::combo(app.gui, "Playback Adapters", &current_playback_adapter, Span<const c8*>(playback_adapter_names.data(), playback_adapter_names.size()));
+                        GUI::combo(app.gui, "Capture Adapters", &current_capture_adapter, Span<const c8*>(capture_adapter_names.data(), capture_adapter_names.size()));
+                        if((usize)current_playback_adapter < app.playback_adapters.size() && (usize)current_capture_adapter < app.capture_adapters.size())
                         {
-                            if(!app.device && Button("Create Device"))
+                            if(!app.device)
                             {
-                                AHI::DeviceDesc desc;
-                                desc.flags = AHI::DeviceFlag::playback | AHI::DeviceFlag::capture;
-                                desc.sample_rate = 0;
-                                desc.playback.adapter = app.playback_adapters[current_playback_adapter];
-                                desc.playback.bit_depth = AHI::BitDepth::unspecified;
-                                desc.playback.num_channels = 2;
-                                desc.capture.adapter = app.capture_adapters[current_capture_adapter];
-                                desc.capture.bit_depth = AHI::BitDepth::unspecified;
-                                desc.capture.num_channels = 1;
-                                luset(app.device, AHI::new_device(desc));
-                                app.device->add_capture_data_callback(on_capture_data);
+                                create_device_button = GUI::button(app.gui, "Create Device");
                             }
                         }
-                        if(app.device && CollapsingHeader("Device"))
+                        if(app.device)
                         {
+                            GUI::ItemHandle device_header = GUI::collapsing_header(app.gui, "Device");
+                            if(GUI::get_item_state(device_header, GUI::State::open()))
                             {
-                                auto bd = app.device->get_playback_bit_depth();
-                                const c8* bit_depth;
-                                switch(bd)
                                 {
-                                    case AHI::BitDepth::u8: bit_depth = "8bit"; break;
-                                    case AHI::BitDepth::s16: bit_depth = "16bit"; break;
-                                    case AHI::BitDepth::s24: bit_depth = "24bit"; break;
-                                    case AHI::BitDepth::s32: bit_depth = "32bit"; break;
-                                    case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
-                                    default: break;
-                                }
-                                Text("Playback: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_playback_num_channels());
-                                bd = app.device->get_capture_bit_depth();
-                                switch(bd)
-                                {
-                                    case AHI::BitDepth::u8: bit_depth = "8bit"; break;
-                                    case AHI::BitDepth::s16: bit_depth = "16bit"; break;
-                                    case AHI::BitDepth::s24: bit_depth = "24bit"; break;
-                                    case AHI::BitDepth::s32: bit_depth = "32bit"; break;
-                                    case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
-                                    default: break;
-                                }
-                                Text("Capture: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_capture_num_channels());
-                            }
-                            SetNextItemWidth(200.0f);
-                            SliderFloat("Input Audio Level", &input_audio_level, 0.0f, 1.0f);
-                            if(Button("Add Audio Source"))
-                            {
-                                AudioSource source;
-                                app.audio_sources.push_back(source);
-                            }
-                            for (auto& source : app.audio_sources)
-                            {
-                                PushID(&source);
-                                Text("Audio Source");
-                                SameLine();
-                                SetNextItemWidth(100.0f);
-                                DragFloat("Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
-                                SameLine();
-                                SetNextItemWidth(100.0f);
-                                SliderFloat("Volume", &source.volume, 0.0f, 1.0f);
-                                SameLine();
-                                if (Button("Apply"))
-                                {
-                                    AudioSourceCallback callback;
-                                    callback.time = 0.0f;
-                                    callback.freq = source.frequency;
-                                    callback.amp = source.volume;
-                                    if(source.audio_source != USIZE_MAX)
+                                    auto bd = app.device->get_playback_bit_depth();
+                                    const c8* bit_depth = "unknown";
+                                    switch(bd)
                                     {
-                                        app.device->remove_playback_data_callback(source.audio_source);
+                                        case AHI::BitDepth::u8: bit_depth = "8bit"; break;
+                                        case AHI::BitDepth::s16: bit_depth = "16bit"; break;
+                                        case AHI::BitDepth::s24: bit_depth = "24bit"; break;
+                                        case AHI::BitDepth::s32: bit_depth = "32bit"; break;
+                                        case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
+                                        default: break;
                                     }
-                                    source.audio_source = app.device->add_playback_data_callback(callback);
+                                    String text;
+                                    strprintf(text, "Playback: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_playback_num_channels());
+                                    GUI::text(app.gui, text.c_str());
+                                    bd = app.device->get_capture_bit_depth();
+                                    switch(bd)
+                                    {
+                                        case AHI::BitDepth::u8: bit_depth = "8bit"; break;
+                                        case AHI::BitDepth::s16: bit_depth = "16bit"; break;
+                                        case AHI::BitDepth::s24: bit_depth = "24bit"; break;
+                                        case AHI::BitDepth::s32: bit_depth = "32bit"; break;
+                                        case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
+                                        default: bit_depth = "unknown"; break;
+                                    }
+                                    strprintf(text, "Capture: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_capture_num_channels());
+                                    GUI::text(app.gui, text.c_str());
                                 }
-                                PopID();
+
+                                GUI::slider_float(app.gui, "Input Audio Level", &input_audio_level, 0.0f, 1.0f);
+                                add_audio_source_button = GUI::button(app.gui, "Add Audio Source");
+                                if(!app.audio_sources.empty())
+                                {
+                                    GUI::TableDesc source_table;
+                                    source_table.columns = 4;
+                                    source_table.style.padding = GUI::EdgeInsets::xy(8.0f, 4.0f);
+                                    source_table.style.border_size = 1.0f;
+                                    source_table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
+                                    source_table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.72f);
+                                    source_table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.17f, 0.72f);
+                                    source_table.style.row_separators = true;
+                                    source_table.style.column_separators = true;
+                                    source_table.style.resize_fixed_columns = true;
+                                    f32 source_table_w = max((f32)sz.x - 40.0f, 480.0f);
+                                    f32 control_w = max((source_table_w - 226.0f) * 0.5f, 220.0f);
+                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(120.0f));
+                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(control_w));
+                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(control_w));
+                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(80.0f));
+                                    GUI::begin_table_layout(app.gui, "Audio Sources", source_table);
+                                    for (usize i = 0; i < app.audio_sources.size(); ++i)
+                                    {
+                                        AudioSource& source = app.audio_sources[i];
+                                        GUI::push_id(app.gui, (u64)i);
+                                        GUI::text(app.gui, "Audio Source");
+                                        GUI::drag_float(app.gui, "Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
+                                        GUI::slider_float(app.gui, "Volume", &source.volume, 0.0f, 1.0f);
+                                        apply_audio_source_buttons.push_back(GUI::button(app.gui, "Apply"));
+                                        GUI::pop_id(app.gui);
+                                    }
+                                    GUI::end_table_layout(app.gui);
+                                }
                             }
                         }
                     }
-                    End();
                 }
-                ImGui::Render();
+                GUI::end_window(app.gui);
+
+                lulet(gui_desc, app.gui->end_build());
+                luexp(app.gui->submit(gui_desc));
+
+                if(GUI::is_item_clicked(create_device_button))
+                {
+                    AHI::DeviceDesc desc;
+                    desc.flags = AHI::DeviceFlag::playback | AHI::DeviceFlag::capture;
+                    desc.sample_rate = 0;
+                    desc.playback.adapter = app.playback_adapters[current_playback_adapter];
+                    desc.playback.bit_depth = AHI::BitDepth::unspecified;
+                    desc.playback.num_channels = 2;
+                    desc.capture.adapter = app.capture_adapters[current_capture_adapter];
+                    desc.capture.bit_depth = AHI::BitDepth::unspecified;
+                    desc.capture.num_channels = 1;
+                    luset(app.device, AHI::new_device(desc));
+                    app.device->add_capture_data_callback(on_capture_data);
+                }
+                if(GUI::is_item_clicked(add_audio_source_button))
+                {
+                    AudioSource source;
+                    app.audio_sources.push_back(source);
+                }
+                for(usize i = 0; i < apply_audio_source_buttons.size() && i < app.audio_sources.size(); ++i)
+                {
+                    if(GUI::is_item_clicked(apply_audio_source_buttons[i]))
+                    {
+                        AudioSource& source = app.audio_sources[i];
+                        AudioSourceCallback callback;
+                        callback.time = 0.0f;
+                        callback.freq = source.frequency;
+                        callback.amp = source.volume;
+                        if(source.audio_source != USIZE_MAX)
+                        {
+                            app.device->remove_playback_data_callback(source.audio_source);
+                        }
+                        source.audio_source = app.device->add_playback_data_callback(callback);
+                    }
+                }
+
                 Float4U clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
                 RHI::RenderPassDesc render_pass;
@@ -390,7 +437,7 @@ namespace Luna
                 render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
                 app.cmdbuf->begin_render_pass(render_pass);
                 app.cmdbuf->end_render_pass();
-                luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), app.cmdbuf, back_buffer));
+                luexp(app.gui->render(app.cmdbuf, back_buffer));
                 app.cmdbuf->resource_barrier({}, {
                     {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
                     });
@@ -399,6 +446,7 @@ namespace Luna
                 luexp(app.cmdbuf->reset());
                 luexp(app.swap_chain->present());
             }
+            GUIWindow::uninstall_window_event_handler(&input_adapter);
         }
         lucatchret;
         return ok;

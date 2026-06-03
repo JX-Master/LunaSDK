@@ -71,6 +71,17 @@ public sealed class BuildProperties
         return true;
     }
 
+    public bool TryGetString(string name, out string result)
+    {
+        if(!_values.TryGetValue(name, out var value))
+        {
+            result = string.Empty;
+            return false;
+        }
+        result = value.Value;
+        return true;
+    }
+
     public IEnumerable<BuildPropertyValue> NonDefaultValues()
     {
         return Values.Where(value => !value.IsDefault);
@@ -86,4 +97,3 @@ public sealed class BuildProperties
         };
     }
 }
-

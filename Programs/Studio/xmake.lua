@@ -13,7 +13,7 @@ target("Studio")
     add_options("rhi_api")
     add_headerfiles("**.hpp")
     add_files("**.cpp")
-    add_deps("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG", "JobSystem", "ECS")
+    add_deps("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "GUI", "GUIWindow", "Asset", "ObjLoader", "RG", "JobSystem", "ECS")
     
     add_luna_shader("Shaders/SkyboxCS.cxx", {type = "compute", entry_point = "cs_main"})
     add_luna_shader("Shaders/ToneMappingCS.cxx", {type = "compute", entry_point = "cs_main"})

@@ -31,7 +31,7 @@ int luna_main(int argc, const char* argv[])
         {
             if(auto e = cast_object<Window::WindowKeyDownEvent>(event))
             {
-                if(e->key == HID::KeyCode::r)
+                if(e->key == KeyCode::r)
                 {
                     auto style = e->window->get_style();
                     set_flags(style, Window::WindowStyleFlag::resizable, !test_flags(style, Window::WindowStyleFlag::resizable));

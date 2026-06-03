@@ -40,6 +40,7 @@
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/Profiler.hpp>
 #include <Luna/Window/Event.hpp>
+#include <Luna/GUIWindow/GUIWindow.hpp>
 
 namespace Luna
 {
@@ -47,45 +48,48 @@ namespace Luna
 
     void MainEditor::draw_main_menu_bar()
     {
-        // Main menu bar.
-        if(ImGui::BeginMainMenuBar())
+        GUI::set_next_item_layout(m_gui, GUI::LayoutStyle::fixed_height(34.0f));
+        GUI::begin_menu_bar(m_gui, "Main Menu Bar");
+        GUI::ItemHandle save_all_item;
+        if(GUI::begin_menu(m_gui, "File"))
         {
-            if(ImGui::BeginMenu("File"))
+            save_all_item = GUI::menu_item(m_gui, "Save All");
+            GUI::end_menu(m_gui);
+        }
+
+        GUI::ItemHandle undo_item;
+        GUI::ItemHandle redo_item;
+        if(GUI::begin_menu(m_gui, "Edit"))
+        {
+            undo_item = GUI::menu_item(m_gui, "Undo", "Ctrl+Z", false, can_undo());
+            redo_item = GUI::menu_item(m_gui, "Redo", "Ctrl+Shift+Z", false, can_redo());
+            GUI::end_menu(m_gui);
+        }
+
+        if(GUI::begin_menu(m_gui, "View"))
+        {
+            for(usize i = 0; i < 4; ++i)
             {
-                if(ImGui::MenuItem("Save All"))
-                {
-                    auto _ = save_all();
-                }
-                ImGui::EndMenu();
+                c8 buf[32];
+                snprintf(buf, 32, "Asset Browser %u", (u32)i);
+                GUI::menu_item(m_gui, buf, nullptr, &m_asset_browsers_enabled[i]);
             }
-            if(ImGui::BeginMenu("Edit"))
-            {
-                if(ImGui::MenuItem("Undo", "Ctrl+Z", nullptr, can_undo()))
-                {
-                    undo();
-                }
-                if(ImGui::MenuItem("Redo", "Ctrl+Shift+Z", nullptr, can_redo()))
-                {
-                    redo();
-                }
-                ImGui::EndMenu();
-            }
-            if(ImGui::BeginMenu("View"))
-            {
-                if(ImGui::BeginMenu("Asset Browser"))
-                {
-                    for (usize i = 0; i < 4; ++i)
-                    {
-                        c8 buf[32];
-                        snprintf(buf, 32, "Asset Browser %u", (u32)i);
-                        ImGui::Checkbox(buf, &m_asset_browsers_enabled[i]);
-                    }
-                    ImGui::EndMenu();
-                }
-                ImGui::Checkbox("Memory Profiler", &m_memory_profiler_window_enabled);
-                ImGui::EndMenu();
-            }
-            ImGui::EndMainMenuBar();
+            GUI::menu_item(m_gui, "Memory Profiler", nullptr, &m_memory_profiler_window_enabled);
+            GUI::end_menu(m_gui);
+        }
+        GUI::end_menu_bar(m_gui);
+
+        if(GUI::is_item_clicked(save_all_item))
+        {
+            auto _ = save_all();
+        }
+        if(GUI::is_item_clicked(undo_item))
+        {
+            undo();
+        }
+        if(GUI::is_item_clicked(redo_item))
+        {
+            redo();
         }
     }
 
@@ -118,42 +122,38 @@ namespace Luna
 
             Window::set_event_handler([](object_t event, void* userdata){
                 MainEditor* editor = (MainEditor*)userdata;
-                if(!ImGuiUtils::handle_window_event(event))
+                GUIWindow::handle_window_event(event, editor->m_window, editor->m_gui);
+                if(auto e = cast_object<Window::WindowRequestCloseEvent>(event))
                 {
-                    if(auto e = cast_object<Window::WindowRequestCloseEvent>(event))
+                    if(e->window == editor->m_window)
                     {
-                        if(e->window == editor->m_window)
+                        bool should_close = true;
+                        if(editor->has_any_unsaved_changes())
                         {
-                            bool should_close = true;
-                            if(editor->has_any_unsaved_changes())
+                            auto r = Window::message_box("Save changes before closing the current project?", APP_NAME, Window::MessageBoxType::yes_no_cancel, Window::MessageBoxIcon::question);
+                            luassert_always(succeeded(r));
+                            if(r.get() == Window::MessageBoxButton::cancel)
                             {
-                                auto r = Window::message_box("Save changes before closing the current project?", APP_NAME, Window::MessageBoxType::yes_no_cancel, Window::MessageBoxIcon::question);
-                                luassert_always(succeeded(r));
-                                if(r.get() == Window::MessageBoxButton::cancel)
+                                should_close = false;
+                            }
+                            else if(r.get() == Window::MessageBoxButton::yes)
+                            {
+                                // Save document.
+                                RV ret = editor->save_all();
+                                if(failed(ret))
                                 {
                                     should_close = false;
                                 }
-                                else if(r.get() == Window::MessageBoxButton::yes)
-                                {
-                                    // Save document.
-                                    RV ret = editor->save_all();
-                                    if(failed(ret))
-                                    {
-                                        should_close = false;
-                                    }
-                                }
                             }
-                            e->do_close = should_close;
                         }
+                        e->do_close = should_close;
                     }
                 }
             }, this);
 
             luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             luset(m_cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
-
-            // Create ImGui context.
-            ImGuiUtils::set_active_window(m_window);
+            m_gui = GUI::new_context(g_env->device);
 
             // Create asset browser instance.
             for (usize i = 0; i < 4; ++i)
@@ -243,42 +243,37 @@ namespace Luna
                 m_main_window_height = sz.y;
             }
 
-            ImGuiUtils::update_io();
-            ImGui::NewFrame();
-            ImGuizmo::BeginFrame();
+            sz = m_window->get_size();
+            GUI::FrameDesc gui_frame;
+            gui_frame.surface_size = Float2U((f32)sz.x, (f32)sz.y);
+            gui_frame.framebuffer_size = m_window->get_framebuffer_size();
+            gui_frame.dpi_scale = m_window->get_dpi_scale_factor();
+            gui_frame.delta_time = 1.0f / 60.0f;
+            m_gui->begin_frame(gui_frame);
 
             // Main window GUI code goes here.
 
             //m_ctx->show_demo_window();
 
-            // Dock space.
-            sz = m_window->get_size();
-            ImGui::SetNextWindowPos({ 0.0f, 0.0f });
-            ImGui::SetNextWindowSize({ (f32)sz.x, (f32)sz.y });
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
-            ImGui::Begin("DockSpace", nullptr,  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoDocking);
-
-            ImGui::DockSpace(ImGui::GetID("DockSpace Context"));
-
-            ImGui::End();
-            ImGui::PopStyleVar(3);
-
+            GUI::LayoutDesc root_layout;
+            root_layout.padding = GUI::EdgeInsets::all(0.0f);
+            root_layout.gap = 0.0f;
+            GUI::begin_v_layout(m_gui, "Studio Root", RectF(0.0f, 0.0f, (f32)sz.x, (f32)sz.y), root_layout);
             draw_main_menu_bar();
 
+            GUI::set_next_item_layout(m_gui, GUI::LayoutStyle::fill());
+            GUI::begin_dock_space(m_gui, "Studio DockSpace");
             for (usize i = 0; i < 4; ++i)
             {
                 if (m_asset_browsers_enabled[i])
                 {
-                    m_asset_browsers[i]->render();
+                    m_asset_browsers[i]->render(m_gui, &m_asset_browsers_enabled[i]);
                 }
             }
 
             if(m_memory_profiler_window_enabled)
             {
-                m_memory_profiler.render();
+                m_memory_profiler.render(m_gui);
             }
 
             // Draw Editors.
@@ -291,19 +286,23 @@ namespace Luna
                 }
                 else
                 {
-                    (*iter)->on_render();
+                    (*iter)->on_render(m_gui);
                     ++iter;
                 }
             }
+            GUI::end_dock_space(m_gui);
+            GUI::end_v_layout(m_gui);
 
-            ImGui::Render();
+            lulet(gui_desc, m_gui->end_build());
+            luexp(m_gui->submit(gui_desc));
+            luexp(GUIWindow::update_text_input(m_window, m_gui));
             RHI::RenderPassDesc render_pass;
             lulet(back_buffer, m_swap_chain->get_current_back_buffer());
             render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store,
                 { 0.0f, 0.0f, 0.0f, 1.0f });
             m_cmdbuf->begin_render_pass(render_pass);
             m_cmdbuf->end_render_pass();
-            luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), m_cmdbuf, back_buffer));
+            luexp(m_gui->render(m_cmdbuf, back_buffer));
             m_cmdbuf->resource_barrier({}, {
                     {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
                 });
@@ -492,7 +491,7 @@ namespace Luna
         Asset::close();
     }
 
-    void draw_asset_tile(Asset::asset_t asset, const RectF& draw_rect)
+    void draw_asset_tile(GUI::IContext* context, Asset::asset_t asset, const RectF& draw_rect)
     {
         if (asset)
         {
@@ -502,22 +501,15 @@ namespace Luna
             {
                 if (iter->second.on_draw_tile)
                 {
-                    iter->second.on_draw_tile(iter->second.userdata.get(), asset, draw_rect);
+                    iter->second.on_draw_tile(context, iter->second.userdata.get(), asset, draw_rect);
                 }
                 else
                 {
-                    // Draw default tile.
-                    auto text_sz = ImGui::CalcTextSize(asset_type.c_str());
-                    Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
-                    ImGui::SetCursorPos({ center.x - text_sz.x / 2.0f, center.y - text_sz.y / 2.0f });
-                    ImGui::Text("%s", asset_type.c_str());
+                    GUI::draw_text(context, draw_rect, asset_type.c_str(), Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
                 }
                 return;
             }
-            auto text_sz = ImGui::CalcTextSize(asset_type.c_str());
-            Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
-            ImGui::SetCursorPos(center - text_sz / 2.0f);
-            ImGui::Text("%s", asset_type.c_str());
+            GUI::draw_text(context, draw_rect, asset_type.c_str(), Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
         }
     }
 }
