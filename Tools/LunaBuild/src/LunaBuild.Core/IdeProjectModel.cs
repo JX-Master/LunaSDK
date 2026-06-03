@@ -87,7 +87,7 @@ internal static class IdeProjectModel
             targetName,
             all,
             force,
-            Path.Combine(workspace.RootDirectory, "Tools", "LunaBuild", "src", "LunaBuild.Cli", "LunaBuild.Cli.csproj"),
+            Path.Combine(workspace.RootDirectory, "LunaBuild.csproj"),
             workspace.RootDirectory).Select(Quote));
     }
 

@@ -41,7 +41,7 @@ public static class VSCodeWorkspaceWriter
         tasks.Add(CreateTask("LunaBuild: clean all", CommandArgs(workspace, options, "clean", targetName: null, all: true, force: false)));
         tasks.Add(CreateTask("LunaBuild: clean full", new[]
         {
-            "run", "--no-restore", "--project", "${workspaceFolder}/Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj",
+            "run", "--no-restore", "--project", "${workspaceFolder}/LunaBuild.csproj",
             "--", "clean", "--root", "${workspaceFolder}", "--full",
         }));
 
@@ -144,7 +144,7 @@ public static class VSCodeWorkspaceWriter
             targetName,
             all,
             force,
-            "${workspaceFolder}/Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj",
+            "${workspaceFolder}/LunaBuild.csproj",
             "${workspaceFolder}");
     }
 

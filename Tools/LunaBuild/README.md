@@ -23,17 +23,17 @@ The LunaRules debug format is documented in `docs/LunaRules.md`. It is not the n
 Common commands:
 
 ```powershell
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- inspect --root .
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --target ObjLoader --output build/LunaBuild/ObjLoader.lunarules
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --target ObjLoader --format json --output build/LunaBuild/ObjLoader.graph.json
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --format vs2022 --all --platform Windows --arch x64
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --format vscode --all
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --format xcode --platform MacOS --arch arm64
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- build --root . --target ObjLoader --output build/LunaBuild/ObjLoader.lunarules
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- build --root . --category Tests
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- build --root . --all --mode Release --api-validation --memory-profiler
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- clean --root . --all
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- install --root . --all --output ./install/debug
+dotnet run --project LunaBuild.csproj -- inspect --root .
+dotnet run --project LunaBuild.csproj -- generate --root . --target ObjLoader --output build/LunaBuild/ObjLoader.lunarules
+dotnet run --project LunaBuild.csproj -- generate --root . --target ObjLoader --format json --output build/LunaBuild/ObjLoader.graph.json
+dotnet run --project LunaBuild.csproj -- generate --root . --format vs2022 --all --platform Windows --arch x64
+dotnet run --project LunaBuild.csproj -- generate --root . --format vscode --all
+dotnet run --project LunaBuild.csproj -- generate --root . --format xcode --platform MacOS --arch arm64
+dotnet run --project LunaBuild.csproj -- build --root . --target ObjLoader --output build/LunaBuild/ObjLoader.lunarules
+dotnet run --project LunaBuild.csproj -- build --root . --category Tests
+dotnet run --project LunaBuild.csproj -- build --root . --all --mode Release --api-validation --memory-profiler
+dotnet run --project LunaBuild.csproj -- clean --root . --all
+dotnet run --project LunaBuild.csproj -- install --root . --all --output ./install/debug
 ```
 
 Project-specific build switches are declared in project `*.Project.cs` rules,
@@ -50,7 +50,7 @@ back into LunaBuild through the generated `lunabuild-xcode.sh` helper script.
 When running long builds locally, prefer the repository timeout wrapper:
 
 ```powershell
-.\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','Tools\LunaBuild\src\LunaBuild.Cli','--','build','--root','.','--target','RuntimeTest') -TimeoutSeconds 300
+.\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','LunaBuild.csproj','--','build','--root','.','--target','RuntimeTest') -TimeoutSeconds 300
 ```
 
 The C# MakeSystem backend currently owns graph validation, incremental cache

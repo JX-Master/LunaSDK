@@ -378,19 +378,19 @@ them during build, which would make the target rebuild forever.
 Generate a readable graph dump:
 
 ```powershell
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --target RHITest4_Box --output build/LunaBuild/RHITest4_Box.lunarules
+dotnet run --project LunaBuild.csproj -- generate --root . --target RHITest4_Box --output build/LunaBuild/RHITest4_Box.lunarules
 ```
 
 Build and dump at the same time:
 
 ```powershell
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- build --root . --target RHITest4_Box --output build/LunaBuild/RHITest4_Box.lunarules
+dotnet run --project LunaBuild.csproj -- build --root . --target RHITest4_Box --output build/LunaBuild/RHITest4_Box.lunarules
 ```
 
 Use the timeout wrapper for commands that may invoke compilers or tests:
 
 ```powershell
-.\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','Tools\LunaBuild\src\LunaBuild.Cli','--','build','--root','.','--target','RHITest4_Box') -TimeoutSeconds 300
+.\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','LunaBuild.csproj','--','build','--root','.','--target','RHITest4_Box') -TimeoutSeconds 300
 ```
 
 ## Checklist For New Targets

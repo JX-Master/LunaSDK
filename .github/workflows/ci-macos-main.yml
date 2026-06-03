@@ -38,27 +38,27 @@ jobs:
           ./setup.sh
 
       - name: Build LunaBuild
-        run: dotnet build Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj --nologo
+        run: dotnet build LunaBuild.csproj --nologo
 
       - name: Build debug
         run: |
           if [ "${{ matrix.shared }}" = "shared" ]; then linkage="--shared"; else linkage="--static"; fi
-          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --mode Debug --platform MacOS --arch ${{ matrix.arch }} --rhi Metal "$linkage"
+          dotnet run --project LunaBuild.csproj -- build --all --mode Debug --platform MacOS --arch ${{ matrix.arch }} --rhi Metal "$linkage"
 
       - name: Install debug
         run: |
           if [ "${{ matrix.shared }}" = "shared" ]; then linkage="--shared"; else linkage="--static"; fi
-          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- install --all --mode Debug --platform MacOS --arch ${{ matrix.arch }} --rhi Metal "$linkage" --output ./install/${{ matrix.arch }}-debug
+          dotnet run --project LunaBuild.csproj -- install --all --mode Debug --platform MacOS --arch ${{ matrix.arch }} --rhi Metal "$linkage" --output ./install/${{ matrix.arch }}-debug
 
       - name: Build release
         run: |
           if [ "${{ matrix.shared }}" = "shared" ]; then linkage="--shared"; else linkage="--static"; fi
-          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --mode Release --platform MacOS --arch ${{ matrix.arch }} --rhi Metal "$linkage"
+          dotnet run --project LunaBuild.csproj -- build --all --mode Release --platform MacOS --arch ${{ matrix.arch }} --rhi Metal "$linkage"
 
       - name: Install release
         run: |
           if [ "${{ matrix.shared }}" = "shared" ]; then linkage="--shared"; else linkage="--static"; fi
-          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- install --all --mode Release --platform MacOS --arch ${{ matrix.arch }} --rhi Metal "$linkage" --output ./install/${{ matrix.arch }}-release
+          dotnet run --project LunaBuild.csproj -- install --all --mode Release --platform MacOS --arch ${{ matrix.arch }} --rhi Metal "$linkage" --output ./install/${{ matrix.arch }}-release
 
       - name: Collect artifacts debug
         uses: actions/upload-artifact@v4

@@ -141,7 +141,7 @@ The rest part of our `run_app` function simply checks whether the program is exi
 After filling this content, execute the following command on terminal or use the generated IDE build task, you should successfully build the `DemoApp` program:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --target DemoApp
+dotnet run --project LunaBuild.csproj -- build --target DemoApp
 ```
 
 ## Window creation and event handling
