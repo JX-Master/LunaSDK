@@ -34,6 +34,7 @@ dotnet run --project LunaBuild.csproj -- build --root . --all --mode Release --a
 dotnet run --project LunaBuild.csproj -- run --root . --target RuntimeTest
 dotnet run --project LunaBuild.csproj -- run RuntimeTest -- --list
 dotnet run --project LunaBuild.csproj -- package MultiPlatformSample --platform Android --arch arm64-v8a --rhi Vulkan --output build/LunaBuild/AndroidPackages
+dotnet run --project LunaBuild.csproj -- package IOSPackageSmoke --platform IOS --arch arm64 --ios-codesign-identity none --output build/LunaBuild/IOSPackageSmoke.app
 dotnet run --project LunaBuild.csproj -- clean --root . --all
 dotnet run --project LunaBuild.csproj -- install --root . --all --output ./install/debug
 ```
@@ -41,7 +42,8 @@ dotnet run --project LunaBuild.csproj -- install --root . --all --output ./insta
 Project-specific build switches are declared in project `*.Project.cs` rules,
 not in LunaBuild Core. LunaSDK currently declares `--api-validation` (also
 accepted as `--contract-assertion`), `--thread-safe-assertion`,
-`--memory-profiler`, and `--rhi-debug`. The generic spelling
+`--memory-profiler`, `--rhi-debug`, `--apple-sdk`, `--ios-deployment-target`,
+`--ios-codesign-identity`, and `--ios-provisioning-profile`. The generic spelling
 `--property name=value` works for any project-defined property.
 
 The Xcode generator writes an external-build-tool project under
@@ -54,6 +56,17 @@ builds the selected executable target as an Android native shared library,
 copies all required `.so` files into the target's `AndroidProject` `jniLibs`
 directory, then invokes the Gradle wrapper only for APK packaging. Gradle does
 not compile native code.
+
+iOS application packaging is driven by LunaBuild as well. `package` builds the
+selected executable target with the Apple iOS SDK, expands the target's
+`AppleInfoPlist(...)` template, assembles an `.app` bundle, optionally signs it,
+and writes an `.ipa` when `--output` ends in `.ipa`. Shared builds embed Luna
+module dylibs under the app bundle's `Frameworks/` directory; static builds link
+them into the app executable. `--ios-provisioning-profile <file>` embeds a
+profile as `embedded.mobileprovision`; when signing is enabled, LunaBuild also
+decodes the profile, checks it against the bundle id, and signs with generated
+or target-declared entitlements. Device and simulator outputs are kept in
+separate `IOS/iphoneos/...` and `IOS/iphonesimulator/...` build directories.
 
 When running long builds locally, prefer the repository timeout wrapper:
 

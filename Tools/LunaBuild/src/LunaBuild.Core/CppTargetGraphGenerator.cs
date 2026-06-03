@@ -613,10 +613,7 @@ public sealed class CppTargetGraphGenerator
     private static string GetTargetObjectDirectory(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target)
     {
         return Path.Combine(
-            workspace.BuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString(),
+            BuildOutputLayout.ConfigurationDirectory(workspace, options),
             "obj",
             target.Name);
     }
@@ -629,10 +626,7 @@ public sealed class CppTargetGraphGenerator
             ? $"{target.Name}{ExecutableExtension(options.Platform)}"
             : $"Luna{target.Name}{(options.Shared ? SharedLibraryExtension(options.Platform) : StaticLibraryExtension(options.Platform))}";
         return Path.Combine(
-            workspace.BuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString(),
+            BuildOutputLayout.ConfigurationDirectory(workspace, options),
             "bin",
             fileName);
     }
@@ -640,10 +634,7 @@ public sealed class CppTargetGraphGenerator
     private static string GetGeneratedShaderHeaderDirectory(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target)
     {
         return Path.Combine(
-            workspace.BuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString(),
+            BuildOutputLayout.ConfigurationDirectory(workspace, options),
             "generated",
             target.Name,
             "shaders");
@@ -657,10 +648,7 @@ public sealed class CppTargetGraphGenerator
     private static string GetEmbeddedHeaderPath(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target, string headerFile)
     {
         return Path.Combine(
-            workspace.BuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString(),
+            BuildOutputLayout.ConfigurationDirectory(workspace, options),
             "generated",
             target.Name,
             "embedded",

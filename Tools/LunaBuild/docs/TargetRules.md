@@ -342,6 +342,48 @@ RuntimeFiles("luna.png");
 LunaBuild emits `file.copy` graph nodes for these files. They are incremental:
 if the source file changes, the runtime copy is rebuilt.
 
+## Apple Application Bundles
+
+Executable targets that should be packaged as iOS `.app` bundles must declare
+their bundle metadata in target rules:
+
+```csharp
+AppleBundle("com.example.MyApp", "MyApp");
+AppleInfoPlist("Source/Info.plist");
+AppleBundleResources("Assets/**");
+AppleEntitlements("Source/MyApp.entitlements");
+```
+
+`AppleInfoPlist(...)` points at a plist template relative to the target
+directory. LunaBuild expands common Xcode-style variables such as
+`$(EXECUTABLE_NAME)`, `$(PRODUCT_BUNDLE_IDENTIFIER)`, `$(PRODUCT_NAME)`,
+`$(PRODUCT_DISPLAY_NAME)`, `$(PRODUCT_BUNDLE_PACKAGE_TYPE)`, and
+`$(DEVELOPMENT_LANGUAGE)` while packaging.
+
+`AppleBundleResources(...)` copies files into the bundle while preserving their
+paths relative to the target directory. `RuntimeFiles(...)` are also copied into
+the bundle root for app targets. Shared builds embed Luna module dylibs under
+the app bundle's `Frameworks/` directory; static builds link them into the app
+executable.
+
+```powershell
+dotnet run --project LunaBuild.csproj -- package MyApp --platform IOS --arch arm64 --output build/LunaBuild/MyApp.app
+dotnet run --project LunaBuild.csproj -- package MyApp --platform IOS --arch arm64 --static --output build/LunaBuild/MyApp.ipa
+```
+
+Use `--apple-sdk iphonesimulator` for simulator builds and
+`--ios-deployment-target <version>` to change the minimum deployment target.
+Use `--ios-codesign-identity none` to skip signing, or pass a real signing
+identity when producing a device-installable bundle. Use
+`--ios-provisioning-profile <file>` to embed a provisioning profile as
+`embedded.mobileprovision`. When signing with a profile, LunaBuild decodes the
+profile, verifies that its application identifier matches the generated
+`CFBundleIdentifier`, and checks target-declared entitlements against the
+profile's allowed entitlements. If the target does not declare
+`AppleEntitlements(...)`, LunaBuild signs with entitlements generated from the
+profile. LunaBuild keeps device and simulator outputs in separate
+`IOS/iphoneos/...` and `IOS/iphonesimulator/...` build directories.
+
 ## Embedded Headers
 
 Use `EmbeddedHeader(...)` when a binary asset should be compiled into a C++
@@ -399,5 +441,7 @@ Use the timeout wrapper for commands that may invoke compilers or tests:
 - Use `Category = BuildTargetCategory.Tests` for every test and test helper target.
 - Declare target dependencies with `DependsOn(...)`.
 - Declare runtime assets with `RuntimeFiles(...)`, not ad-hoc copy commands.
+- Declare iOS app plist and bundle metadata with `AppleInfoPlist(...)` and
+  `AppleBundle(...)`.
 - Prefer simple patterns and explicit lists for special files.
 - Run `inspect`, then build the target with a timeout.

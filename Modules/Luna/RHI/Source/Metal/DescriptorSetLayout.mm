@@ -28,7 +28,12 @@ namespace Luna
                 case TextureViewType::tex2dms:
                     return MTLTextureType2DMultisample;
                 case TextureViewType::tex2dmsarray:
+#ifdef LUNA_PLATFORM_IOS
+                    lupanic();
+                    return MTLTextureType2DMultisample;
+#else
                     return MTLTextureType2DMultisampleArray;
+#endif
                 case TextureViewType::texcube:
                     return MTLTextureTypeCube;
                 case TextureViewType::texcubearray:

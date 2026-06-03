@@ -13,6 +13,8 @@ public sealed class MultiPlatformSampleTargetRules : TargetRules
         Shader("Source/BoxVert.cxx", "vertex", "vs_main");
         Shader("Source/BoxPixel.cxx", "pixel", "ps_main");
         EmbeddedHeader("Res/luna.png", "LunaTex.hpp", "LUNA_PNG_DATA", "LUNA_PNG_SIZE");
+        AppleBundle("com.lunasdk.MultiPlatformSample", "MultiPlatformSample");
+        AppleInfoPlist("Source/Info.plist");
         DependsOn("Runtime", "Window", "RHI", "RHIUtility", "Image");
     }
 

@@ -16,6 +16,9 @@ internal static class IdeProjectModel
         Add(files, target.SourceFiles);
         Add(files, target.HeaderFiles);
         Add(files, target.RuntimeFiles);
+        Add(files, target.AppleInfoPlistFile);
+        Add(files, target.AppleEntitlementsFile);
+        Add(files, target.AppleBundleResources);
         Add(files, target.EmbeddedHeaders.Select(header => header.SourceFile));
         Add(files, target.Shaders.Select(shader => shader.SourceFile));
         if(target.DotNetProjectFile is not null)
