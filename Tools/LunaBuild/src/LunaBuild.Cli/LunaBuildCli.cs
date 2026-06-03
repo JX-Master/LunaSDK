@@ -24,6 +24,10 @@ public static class LunaBuildCli
                 (commandArguments, runArguments) = SplitRunArguments(commandArguments);
                 commandArguments = NormalizeRunTargetArgument(commandArguments);
             }
+            else if(string.Equals(command, "package", StringComparison.OrdinalIgnoreCase))
+            {
+                commandArguments = NormalizeRunTargetArgument(commandArguments);
+            }
             var options = CommandLineOptions.Parse(commandArguments);
             return command switch
             {
@@ -33,6 +37,7 @@ public static class LunaBuildCli
                 "clean" => Clean(options),
                 "install" => Install(options),
                 "run" => RunTarget(options, runArguments),
+                "package" => Package(options),
                 _ => UnknownCommand(command),
             };
         }
@@ -200,6 +205,45 @@ public static class LunaBuildCli
         var makeSystem = new MakeSystemBackend(Array.Empty<IMakeActionExecutor>());
         var result = makeSystem.Clean(workspace, graph);
         Console.WriteLine($"Clean finished. Nodes: {result.NodesVisited}, Files: {result.FilesDeleted}, Cache records: {result.CacheRecordsRemoved}");
+        return 0;
+    }
+
+    private static int Package(CommandLineOptions options)
+    {
+        if(string.IsNullOrWhiteSpace(options.TargetName))
+        {
+            throw new ArgumentException("package requires --target <name> or a target name.");
+        }
+        if(options.AllTargets)
+        {
+            throw new ArgumentException("package cannot be combined with --all.");
+        }
+        if(options.TargetCategories.Count > 0)
+        {
+            throw new ArgumentException("package cannot be combined with --category.");
+        }
+
+        var context = CreateBuildContext(options);
+        if(context.BuildOptions.Platform != BuildPlatform.Android)
+        {
+            throw new ArgumentException("package currently supports Android targets only. Pass --platform Android.");
+        }
+
+        var target = context.Targets.FirstOrDefault(target => string.Equals(target.Name, options.TargetName, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ArgumentException($"Unknown target: {options.TargetName}");
+        if(target.Kind != BuildTargetKind.Executable)
+        {
+            throw new ArgumentException($"Target `{target.Name}` is {target.Kind} and cannot be packaged as an Android application.");
+        }
+
+        var graph = GenerateGraph(context.Workspace, context.BuildOptions, context.Targets, target.Name, allTargets: false);
+        var result = ExecuteBuild(context.Workspace, graph, options.ForceRebuild);
+        Console.WriteLine(result.UpToDate
+            ? $"Up to date. Nodes: {result.NodesVisited}"
+            : $"Build finished. Nodes: {result.NodesVisited}, Actions: {result.ActionsExecuted}");
+
+        var packageResult = PackageAndroid(context.Workspace, context.BuildOptions, graph, target, options.OutputPath);
+        Console.WriteLine($"Android package finished. Native libraries: {packageResult.NativeLibrariesCopied}, APK: {packageResult.ApkPath}");
         return 0;
     }
 
@@ -470,6 +514,356 @@ public static class LunaBuildCli
         return process.ExitCode;
     }
 
+    private static AndroidPackageResult PackageAndroid(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        BuildGraph graph,
+        BuildTargetDefinition target,
+        string? outputPath)
+    {
+        var androidProject = Path.Combine(target.Directory, "AndroidProject");
+        if(!File.Exists(Path.Combine(androidProject, "settings.gradle")))
+        {
+            throw new DirectoryNotFoundException($"Android project was not found for target `{target.Name}`: {androidProject}");
+        }
+
+        var abi = AndroidAbi(options.Architecture);
+        var jniLibsDirectory = Path.Combine(androidProject, "app", "src", "main", "jniLibs", abi);
+        if(Directory.Exists(jniLibsDirectory))
+        {
+            Directory.Delete(jniLibsDirectory, recursive: true);
+        }
+        Directory.CreateDirectory(jniLibsDirectory);
+
+        var sharedLibraries = FindAndroidSharedLibraries(workspace, graph).ToArray();
+        var targetLibraryName = $"lib{target.Name}.so";
+        if(!sharedLibraries.Any(path => Path.GetFileName(path).Equals(targetLibraryName, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new FileNotFoundException($"Android target `{target.Name}` did not produce `{targetLibraryName}`.");
+        }
+
+        foreach(var library in sharedLibraries)
+        {
+            File.Copy(library, Path.Combine(jniLibsDirectory, Path.GetFileName(library)), overwrite: true);
+        }
+        var cxxRuntime = AndroidNdkToolchainLocator.CxxSharedRuntime(AndroidNdkToolchainLocator.Locate(), options.Architecture);
+        File.Copy(cxxRuntime, Path.Combine(jniLibsDirectory, Path.GetFileName(cxxRuntime)), overwrite: true);
+
+        var buildType = options.Mode == BuildMode.Release ? "Release" : "Debug";
+        var gradleTask = $":app:assemble{buildType}";
+        RunGradle(workspace, androidProject, gradleTask);
+
+        var apkDirectory = Path.Combine(androidProject, "app", "build", "outputs", "apk", buildType.ToLowerInvariant());
+        var apks = Directory.Exists(apkDirectory)
+            ? Directory.GetFiles(apkDirectory, "*.apk").Order(StringComparer.OrdinalIgnoreCase).ToArray()
+            : Array.Empty<string>();
+        if(apks.Length == 0)
+        {
+            throw new FileNotFoundException($"Gradle did not produce an APK under: {apkDirectory}");
+        }
+
+        var apk = apks[0];
+        if(!string.IsNullOrWhiteSpace(outputPath))
+        {
+            var fullOutput = Path.GetFullPath(outputPath);
+            if(Path.GetExtension(fullOutput).Equals(".apk", StringComparison.OrdinalIgnoreCase))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(fullOutput)!);
+                File.Copy(apk, fullOutput, overwrite: true);
+                apk = fullOutput;
+            }
+            else
+            {
+                Directory.CreateDirectory(fullOutput);
+                var copyPath = Path.Combine(fullOutput, Path.GetFileName(apk));
+                File.Copy(apk, copyPath, overwrite: true);
+                apk = copyPath;
+            }
+        }
+
+        return new AndroidPackageResult(sharedLibraries.Length + 1, apk);
+    }
+
+    private static IEnumerable<string> FindAndroidSharedLibraries(BuildWorkspace workspace, BuildGraph graph)
+    {
+        return graph.Nodes
+            .Where(node => node.Kind == BuildGraphNodeKind.File &&
+                node.Path is not null &&
+                node.Command is not null &&
+                node.Path.EndsWith(".so", StringComparison.OrdinalIgnoreCase) &&
+                BuildActionKind.Extract(node.Command) == "cpp.link.shared")
+            .Select(node => workspace.ResolveRepositoryPath(node.Path!))
+            .Where(File.Exists)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static void RunGradle(BuildWorkspace workspace, string androidProject, string task)
+    {
+        var gradlew = Path.Combine(androidProject, OperatingSystem.IsWindows() ? "gradlew.bat" : "gradlew");
+        if(!File.Exists(gradlew))
+        {
+            throw new FileNotFoundException($"Gradle wrapper was not found: {gradlew}", gradlew);
+        }
+
+        var gradleArguments = new[] { task, "--no-daemon", "--stacktrace", "--console=plain" };
+        var startInfo = new ProcessStartInfo
+        {
+            WorkingDirectory = androidProject,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+        if(OperatingSystem.IsWindows())
+        {
+            startInfo.FileName = "cmd.exe";
+            startInfo.Arguments = $"/d /s /c \"\"{gradlew}\" {string.Join(" ", gradleArguments.Select(QuoteCommandArgument))}\"";
+        }
+        else
+        {
+            startInfo.FileName = gradlew;
+            foreach(var argument in gradleArguments)
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+        }
+        ConfigureAndroidGradleEnvironment(startInfo);
+        var gradleUserHome = Path.Combine(workspace.BuildDirectory, "GradleUserHome");
+        Directory.CreateDirectory(gradleUserHome);
+        startInfo.Environment["GRADLE_USER_HOME"] = gradleUserHome;
+        var androidUserHome = Path.Combine(workspace.BuildDirectory, "AndroidUserHome");
+        Directory.CreateDirectory(androidUserHome);
+        startInfo.Environment["ANDROID_USER_HOME"] = androidUserHome;
+        RemoveEnvironmentVariable(startInfo, "ANDROID_SDK_HOME");
+
+        var output = new System.Text.StringBuilder();
+        var outputLock = new object();
+        void RecordOutput(string line, bool isError)
+        {
+            lock(outputLock)
+            {
+                output.AppendLine(line);
+            }
+            if(isError)
+            {
+                Console.Error.WriteLine(line);
+            }
+            else
+            {
+                Console.WriteLine(line);
+            }
+        }
+
+        Console.WriteLine($"Running Gradle: {Path.GetFileName(gradlew)} {string.Join(" ", gradleArguments)}");
+        using var process = new Process();
+        process.StartInfo = startInfo;
+        process.OutputDataReceived += (_, e) =>
+        {
+            if(e.Data is not null)
+            {
+                RecordOutput(e.Data, isError: false);
+            }
+        };
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if(e.Data is not null)
+            {
+                RecordOutput(e.Data, isError: true);
+            }
+        };
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        if(!process.WaitForExit((int)TimeSpan.FromMinutes(5).TotalMilliseconds))
+        {
+            TryKill(process);
+            throw new TimeoutException($"Gradle timed out after 300s: {task}{Environment.NewLine}{LastLines(output.ToString(), 80)}");
+        }
+        process.WaitForExit();
+
+        if(process.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"Gradle task failed with exit code {process.ExitCode}: {task}{Environment.NewLine}{LastLines(output.ToString(), 80)}");
+        }
+    }
+
+    private static void ConfigureAndroidGradleEnvironment(ProcessStartInfo startInfo)
+    {
+        var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
+        if(string.IsNullOrWhiteSpace(javaHome) || !File.Exists(Path.Combine(javaHome, "bin", OperatingSystem.IsWindows() ? "java.exe" : "java")))
+        {
+            javaHome = LocateJavaHome();
+            if(javaHome is not null)
+            {
+                startInfo.Environment["JAVA_HOME"] = javaHome;
+                PrependPath(startInfo, Path.Combine(javaHome, "bin"));
+            }
+        }
+
+        var androidSdk = Environment.GetEnvironmentVariable("ANDROID_HOME") ?? Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT");
+        if(string.IsNullOrWhiteSpace(androidSdk) || !Directory.Exists(androidSdk))
+        {
+            androidSdk = LocateAndroidSdk();
+            if(androidSdk is not null)
+            {
+                startInfo.Environment["ANDROID_HOME"] = androidSdk;
+                startInfo.Environment["ANDROID_SDK_ROOT"] = androidSdk;
+            }
+        }
+    }
+
+    private static string? LocateJavaHome()
+    {
+        var candidates = new List<string>();
+        if(OperatingSystem.IsWindows())
+        {
+            var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            if(!string.IsNullOrWhiteSpace(programFiles))
+            {
+                candidates.Add(Path.Combine(programFiles, "Android", "Android Studio", "jbr"));
+                candidates.AddRange(Directory.Exists(Path.Combine(programFiles, "Java"))
+                    ? Directory.GetDirectories(Path.Combine(programFiles, "Java")).OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                    : Array.Empty<string>());
+                candidates.AddRange(Directory.Exists(Path.Combine(programFiles, "Eclipse Adoptium"))
+                    ? Directory.GetDirectories(Path.Combine(programFiles, "Eclipse Adoptium")).OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                    : Array.Empty<string>());
+            }
+        }
+        else if(OperatingSystem.IsMacOS())
+        {
+            candidates.Add("/Applications/Android Studio.app/Contents/jbr/Contents/Home");
+            candidates.AddRange(Directory.Exists("/Library/Java/JavaVirtualMachines")
+                ? Directory.GetDirectories("/Library/Java/JavaVirtualMachines")
+                    .OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                    .Select(path => Path.Combine(path, "Contents", "Home"))
+                : Array.Empty<string>());
+        }
+        else
+        {
+            candidates.Add("/usr/lib/jvm/default-java");
+            candidates.AddRange(Directory.Exists("/usr/lib/jvm")
+                ? Directory.GetDirectories("/usr/lib/jvm").OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                : Array.Empty<string>());
+        }
+
+        var javaName = OperatingSystem.IsWindows() ? "java.exe" : "java";
+        return candidates.FirstOrDefault(path => File.Exists(Path.Combine(path, "bin", javaName)));
+    }
+
+    private static string? LocateAndroidSdk()
+    {
+        foreach(var name in new[] { "ANDROID_HOME", "ANDROID_SDK_ROOT" })
+        {
+            var value = Environment.GetEnvironmentVariable(name);
+            if(!string.IsNullOrWhiteSpace(value) && Directory.Exists(value))
+            {
+                return Path.GetFullPath(value);
+            }
+        }
+
+        if(OperatingSystem.IsWindows())
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if(!string.IsNullOrWhiteSpace(localAppData))
+            {
+                var sdk = Path.Combine(localAppData, "Android", "Sdk");
+                if(Directory.Exists(sdk))
+                {
+                    return sdk;
+                }
+            }
+        }
+        else if(OperatingSystem.IsMacOS())
+        {
+            var sdk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Android", "sdk");
+            if(Directory.Exists(sdk))
+            {
+                return sdk;
+            }
+        }
+        else
+        {
+            var sdk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Android", "Sdk");
+            if(Directory.Exists(sdk))
+            {
+                return sdk;
+            }
+        }
+        return null;
+    }
+
+    private static void PrependPath(ProcessStartInfo startInfo, string path)
+    {
+        if(!Directory.Exists(path))
+        {
+            return;
+        }
+
+        var key = startInfo.Environment.Keys.FirstOrDefault(key => key.Equals("PATH", StringComparison.OrdinalIgnoreCase)) ?? "PATH";
+        var existing = startInfo.Environment.TryGetValue(key, out var value) ? value : string.Empty;
+        startInfo.Environment[key] = string.IsNullOrWhiteSpace(existing)
+            ? path
+            : path + Path.PathSeparator + existing;
+    }
+
+    private static void RemoveEnvironmentVariable(ProcessStartInfo startInfo, string name)
+    {
+        var key = startInfo.Environment.Keys.FirstOrDefault(key => key.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if(key is not null)
+        {
+            startInfo.Environment.Remove(key);
+        }
+    }
+
+    private static string QuoteCommandArgument(string argument)
+    {
+        if(argument.Length == 0)
+        {
+            return "\"\"";
+        }
+        return argument.Any(char.IsWhiteSpace) || argument.Contains('"')
+            ? "\"" + argument.Replace("\"", "\\\"") + "\""
+            : argument;
+    }
+
+    private static string LastLines(string text, int maxLines)
+    {
+        var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        if(lines.Length <= maxLines)
+        {
+            return text.TrimEnd();
+        }
+        return string.Join(Environment.NewLine, lines.Skip(lines.Length - maxLines)).TrimEnd();
+    }
+
+    private static void TryKill(Process process)
+    {
+        try
+        {
+            if(!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch
+        {
+            // Best effort cleanup after timeout.
+        }
+    }
+
+    private static string AndroidAbi(string architecture)
+    {
+        return architecture.ToLowerInvariant() switch
+        {
+            "arm64" or "aarch64" or "arm64-v8a" => "arm64-v8a",
+            "x64" or "x86_64" => "x86_64",
+            "x86" or "i386" => "x86",
+            "arm" or "armv7" or "armeabi-v7a" => "armeabi-v7a",
+            _ => throw new ArgumentException($"Unsupported Android architecture: {architecture}"),
+        };
+    }
+
     private static (string[] Options, string[] Arguments) SplitRunArguments(string[] args)
     {
         var separatorIndex = Array.IndexOf(args, "--");
@@ -492,7 +886,7 @@ public static class LunaBuildCli
 
     private static void PrintUsage()
     {
-        Console.WriteLine("Usage: lunabuild <inspect|generate|build|clean|install|run> [options]");
+        Console.WriteLine("Usage: lunabuild <inspect|generate|build|clean|install|run|package> [options]");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --root <path>       LunaSDK repository root. Defaults to auto-discovery.");
@@ -514,7 +908,12 @@ public static class LunaBuildCli
         Console.WriteLine("Run:");
         Console.WriteLine("  lunabuild run --target <name> -- [program arguments]");
         Console.WriteLine("  lunabuild run <name> -- [program arguments]");
+        Console.WriteLine();
+        Console.WriteLine("Package:");
+        Console.WriteLine("  lunabuild package <name> --platform Android --arch arm64-v8a [--output <apk-or-dir>]");
     }
+
+    private sealed record AndroidPackageResult(int NativeLibrariesCopied, string ApkPath);
 
     private sealed record BuildContext(
         BuildWorkspace Workspace,

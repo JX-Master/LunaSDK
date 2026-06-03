@@ -22,7 +22,12 @@ xcodebuild -downloadComponent MetalToolchain
 
 ### Android
 
-Android packaging is still on the legacy migration path. The LunaBuild main path currently covers Windows and macOS builds.
+* Android Studio or Android SDK command-line tools.
+* Android SDK platform matching the application `compileSdk`.
+* Android NDK matching the application `ndkVersion`.
+* JDK 17 or the JBR bundled with Android Studio.
+
+LunaBuild builds the native targets. The Android Gradle project is used only for APK packaging and does not run xmake or compile native code.
 
 ### iOS/iPadOS
 
@@ -156,6 +161,22 @@ Build Release Metal static libraries for x86_64:
 ```sh
 dotnet run --project LunaBuild.csproj -- build --all --platform MacOS --arch x86_64 --mode Release --rhi Metal --static
 ```
+
+### Android Examples
+
+Build the native shared library for `MultiPlatformSample`:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --target MultiPlatformSample --platform Android --arch arm64-v8a --mode Debug --rhi Vulkan
+```
+
+Package `MultiPlatformSample` into an APK:
+
+```sh
+dotnet run --project LunaBuild.csproj -- package MultiPlatformSample --platform Android --arch arm64-v8a --mode Debug --rhi Vulkan --output build/LunaBuild/AndroidPackages
+```
+
+The package command builds the selected executable target first, copies the produced native `.so` files into the target's `AndroidProject/app/src/main/jniLibs/<abi>` directory, then invokes the Gradle wrapper for `assembleDebug` or `assembleRelease`. LunaBuild redirects Gradle and Android user-state directories under `build/LunaBuild` so local package runs do not depend on writable user profile cache directories.
 
 ## Cleaning
 

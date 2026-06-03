@@ -64,7 +64,7 @@ public sealed class VolkTargetRules : TargetRules
             rulesPath: "ThirdParty.Target.cs")
     {
         Kind = BuildTargetKind.External;
-        SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.Linux);
+        SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.Linux, BuildPlatform.Android);
         DependsOn("vulkan-headers");
         PublicIncludeDirectories("SDKs/volk/include");
         RequiredFiles(
@@ -82,7 +82,7 @@ public sealed class VulkanHeadersTargetRules : TargetRules
             rulesPath: "ThirdParty.Target.cs")
     {
         Kind = BuildTargetKind.External;
-        SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.Linux);
+        SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.Linux, BuildPlatform.Android);
     }
 
     protected override void Configure(BuildWorkspace workspace, BuildOptions options)
@@ -126,7 +126,7 @@ public sealed class VulkanMemoryAllocatorTargetRules : TargetRules
             rulesPath: "ThirdParty.Target.cs")
     {
         Kind = BuildTargetKind.External;
-        SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.Linux);
+        SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.Linux, BuildPlatform.Android);
         DependsOn("vulkan-headers");
         PublicIncludeDirectories("SDKs/vulkan-memory-allocator/include");
         RequiredFiles("SDKs/vulkan-memory-allocator/include/vk_mem_alloc.h");

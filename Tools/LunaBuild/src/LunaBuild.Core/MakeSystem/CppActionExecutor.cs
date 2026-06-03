@@ -7,6 +7,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
 {
     private readonly Lazy<MsvcToolchain> _msvcToolchain = new(MsvcToolchainLocator.Locate);
     private readonly Lazy<AppleClangToolchain> _appleToolchain = new(AppleClangToolchainLocator.LocateMacOS);
+    private readonly Lazy<AndroidNdkToolchain> _androidToolchain = new(() => AndroidNdkToolchainLocator.Locate());
     private readonly TimeSpan _actionTimeout;
 
     public CppActionExecutor(TimeSpan? actionTimeout = null)
@@ -38,6 +39,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         {
             BuildPlatform.Windows => CompileMsvcAsync(context, cancellationToken),
             BuildPlatform.MacOS => CompileAppleAsync(context, cancellationToken),
+            BuildPlatform.Android => CompileAndroidAsync(context, cancellationToken),
             _ => throw new MakeSystemException($"C++ compile is not implemented for platform {context.Graph.Options.Platform}."),
         };
     }
@@ -48,6 +50,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         {
             BuildPlatform.Windows => LinkMsvcSharedAsync(context, cancellationToken),
             BuildPlatform.MacOS => LinkAppleSharedAsync(context, cancellationToken),
+            BuildPlatform.Android => LinkAndroidSharedAsync(context, cancellationToken),
             _ => throw new MakeSystemException($"C++ shared linking is not implemented for platform {context.Graph.Options.Platform}."),
         };
     }
@@ -58,6 +61,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         {
             BuildPlatform.Windows => LinkMsvcStaticAsync(context, cancellationToken),
             BuildPlatform.MacOS => LinkAppleStaticAsync(context, cancellationToken),
+            BuildPlatform.Android => LinkAndroidStaticAsync(context, cancellationToken),
             _ => throw new MakeSystemException($"C++ static linking is not implemented for platform {context.Graph.Options.Platform}."),
         };
     }
@@ -120,6 +124,31 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var language = payload.Required("language");
         var args = CppCommandLineBuilder.BuildAppleCompileArguments(context.Workspace, payload, _appleToolchain.Value.SdkPath);
         var compiler = CppCommandLineBuilder.UsesCxxCompiler(language) ? _appleToolchain.Value.ClangCxx : _appleToolchain.Value.Clang;
+        var result = await ProcessRunner.RunAsync(compiler, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException(FormatArgumentListFailure(
+                $"C++ compile failed for {source}",
+                context.Workspace.RootDirectory,
+                compiler,
+                args,
+                result.Output));
+        }
+    }
+
+    private async Task CompileAndroidAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        var source = context.Workspace.ResolveRepositoryPath(payload.Required("source"));
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required("object"));
+        var depfile = context.Workspace.ResolveRepositoryPath(payload.Required("depfile"));
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(depfile)!);
+
+        var language = payload.Required("language");
+        var toolchain = _androidToolchain.Value;
+        var args = CppCommandLineBuilder.BuildAndroidCompileArguments(context.Workspace, payload, toolchain.Sysroot, toolchain.ApiLevel);
+        var compiler = CppCommandLineBuilder.UsesCxxCompiler(language) ? toolchain.ClangCxx : toolchain.Clang;
         var result = await ProcessRunner.RunAsync(compiler, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
@@ -330,6 +359,53 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         }
     }
 
+    private async Task LinkAndroidSharedAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+
+        var toolchain = _androidToolchain.Value;
+        var args = AndroidLinkArgs(context, payload, output, toolchain);
+        args.Insert(0, "-shared");
+
+        var result = await ProcessRunner.RunAsync(toolchain.ClangCxx, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException(FormatArgumentListFailure(
+                $"C++ link failed for {output}",
+                context.Workspace.RootDirectory,
+                toolchain.ClangCxx,
+                args,
+                result.Output));
+        }
+    }
+
+    private async Task LinkAndroidStaticAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+
+        var args = new List<string>
+        {
+            "rcs",
+            output,
+        };
+        args.AddRange(LinkInputPaths(context).Where(path => path.EndsWith(".o", StringComparison.OrdinalIgnoreCase)));
+
+        var result = await ProcessRunner.RunAsync(_androidToolchain.Value.Ar, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException(FormatArgumentListFailure(
+                $"C++ static link failed for {output}",
+                context.Workspace.RootDirectory,
+                _androidToolchain.Value.Ar,
+                args,
+                result.Output));
+        }
+    }
+
     private List<string> AppleLinkArgs(MakeActionContext context, ActionPayload payload, string output)
     {
         var args = new List<string>
@@ -351,6 +427,35 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         {
             args.Add("-framework");
             args.Add(framework);
+        }
+        return args;
+    }
+
+    private List<string> AndroidLinkArgs(MakeActionContext context, ActionPayload payload, string output, AndroidNdkToolchain toolchain)
+    {
+        var args = new List<string>
+        {
+            "--target=" + AndroidNdkToolchainLocator.TargetTripleWithApi(payload.Required("arch"), toolchain.ApiLevel),
+            "--sysroot=" + toolchain.Sysroot,
+            "-o",
+            output,
+            "-Wl,--build-id=sha1",
+            "-Wl,-soname," + Path.GetFileName(output),
+        };
+        foreach(var input in LinkInputPaths(context))
+        {
+            if(IsSharedLibrary(input))
+            {
+                AddAndroidSharedLibrary(args, input);
+            }
+            else
+            {
+                args.Add(input);
+            }
+        }
+        foreach(var library in payload.All("library"))
+        {
+            AddAndroidLibrary(args, library);
         }
         return args;
     }
@@ -475,6 +580,54 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             name = name[3..];
         }
         args.Add("-l" + name);
+    }
+
+    private static void AddAndroidLibrary(List<string> args, string library)
+    {
+        if(library.StartsWith("-", StringComparison.Ordinal))
+        {
+            args.Add(library);
+            return;
+        }
+        if(IsSharedLibrary(library))
+        {
+            AddAndroidSharedLibrary(args, library);
+            return;
+        }
+        if(Path.IsPathRooted(library))
+        {
+            args.Add(library);
+            return;
+        }
+
+        var name = library;
+        if(name.EndsWith(".lib", StringComparison.OrdinalIgnoreCase) ||
+            name.EndsWith(".a", StringComparison.OrdinalIgnoreCase))
+        {
+            name = Path.GetFileNameWithoutExtension(name);
+        }
+        if(name.StartsWith("lib", StringComparison.OrdinalIgnoreCase))
+        {
+            name = name[3..];
+        }
+        args.Add("-l" + name);
+    }
+
+    private static void AddAndroidSharedLibrary(List<string> args, string library)
+    {
+        var directory = Path.GetDirectoryName(library);
+        if(!string.IsNullOrWhiteSpace(directory))
+        {
+            args.Add("-L" + directory);
+        }
+        args.Add("-l:" + Path.GetFileName(library));
+    }
+
+    private static bool IsSharedLibrary(string path)
+    {
+        return path.EndsWith(".so", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".dylib", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool UsesCxxCompiler(string language)

@@ -623,7 +623,9 @@ public sealed class CppTargetGraphGenerator
 
     private static string GetTargetBinaryPath(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target)
     {
-        var fileName = target.Kind == BuildTargetKind.Executable
+        var fileName = IsAndroidNativeActivityLibrary(options, target)
+            ? $"lib{target.Name}.so"
+            : target.Kind == BuildTargetKind.Executable
             ? $"{target.Name}{ExecutableExtension(options.Platform)}"
             : $"Luna{target.Name}{(options.Shared ? SharedLibraryExtension(options.Platform) : StaticLibraryExtension(options.Platform))}";
         return Path.Combine(
@@ -864,7 +866,7 @@ public sealed class CppTargetGraphGenerator
         IReadOnlyList<string> inputIds)
     {
         var actionKind = target.Kind == BuildTargetKind.Executable
-            ? "cpp.link.executable"
+            ? IsAndroidNativeActivityLibrary(options, target) ? "cpp.link.shared" : "cpp.link.executable"
             : options.Shared ? "cpp.link.shared" : "cpp.link.static";
         return string.Join('\n',
             $"kind={actionKind}",
@@ -880,6 +882,11 @@ public sealed class CppTargetGraphGenerator
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .Select(framework => $"\nframework={framework}"));
+    }
+
+    private static bool IsAndroidNativeActivityLibrary(BuildOptions options, BuildTargetDefinition target)
+    {
+        return options.Platform == BuildPlatform.Android && target.Kind == BuildTargetKind.Executable;
     }
 
     private static string BuildTargetCommandDescription(

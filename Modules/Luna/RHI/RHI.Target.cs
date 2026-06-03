@@ -51,6 +51,10 @@ public sealed class RHITargetRules : TargetRules
                 Defines("LUNA_RHI_VULKAN");
                 Headers("Source/Vulkan/**.hpp");
                 Sources("Source/Vulkan/**.cpp", "Source/Vulkan/**.c");
+                if(Platform == BuildPlatform.Android)
+                {
+                    SystemLibraries("android", "vulkan");
+                }
                 DependsOn("volk", "vulkan-memory-allocator");
                 break;
             case RhiApi.Metal:
