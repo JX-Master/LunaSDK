@@ -6,6 +6,9 @@ namespace LunaBuild.Core;
 
 public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
 {
+    private Assembly? _assembly;
+    private string? _assemblyWorkspaceRoot;
+
     private static readonly string[] ExcludedTopLevelDirectories =
     {
         ".git",
@@ -17,14 +20,11 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
 
     public IReadOnlyList<TargetRules> GetTargetRules(BuildWorkspace workspace)
     {
-        var ruleFiles = DiscoverRuleFiles(workspace).ToArray();
-        if(ruleFiles.Length == 0)
+        var assembly = LoadRulesAssembly(workspace);
+        if(assembly is null)
         {
             return Array.Empty<TargetRules>();
         }
-
-        var assemblyPath = CompileRulesAssembly(workspace, ruleFiles);
-        var assembly = Assembly.LoadFrom(assemblyPath);
         return assembly.GetTypes()
             .Where(type => type is { IsAbstract: false } && typeof(TargetRules).IsAssignableFrom(type))
             .Select(CreateRules)
@@ -32,9 +32,43 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
             .ToArray();
     }
 
+    public IReadOnlyList<ProjectRules> GetProjectRules(BuildWorkspace workspace)
+    {
+        var assembly = LoadRulesAssembly(workspace);
+        if(assembly is null)
+        {
+            return Array.Empty<ProjectRules>();
+        }
+        return assembly.GetTypes()
+            .Where(type => type is { IsAbstract: false } && typeof(ProjectRules).IsAssignableFrom(type))
+            .Select(CreateProjectRules)
+            .OrderBy(rules => rules.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private Assembly? LoadRulesAssembly(BuildWorkspace workspace)
+    {
+        if(_assembly is not null && string.Equals(_assemblyWorkspaceRoot, workspace.RootDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return _assembly;
+        }
+
+        var ruleFiles = DiscoverRuleFiles(workspace).ToArray();
+        if(ruleFiles.Length == 0)
+        {
+            return null;
+        }
+
+        var assemblyPath = CompileRulesAssembly(workspace, ruleFiles);
+        _assembly = Assembly.LoadFrom(assemblyPath);
+        _assemblyWorkspaceRoot = workspace.RootDirectory;
+        return _assembly;
+    }
+
     private static IEnumerable<string> DiscoverRuleFiles(BuildWorkspace workspace)
     {
-        foreach(var file in Directory.EnumerateFiles(workspace.RootDirectory, "*.Target.cs", SearchOption.AllDirectories))
+        foreach(var file in Directory.EnumerateFiles(workspace.RootDirectory, "*.Target.cs", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(workspace.RootDirectory, "*.Project.cs", SearchOption.AllDirectories)))
         {
             var relative = workspace.ToRepositoryRelativePath(file);
             if(ExcludedTopLevelDirectories.Any(excluded => IsInDirectory(relative, excluded)))
@@ -42,6 +76,18 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
                 continue;
             }
             yield return file;
+        }
+    }
+
+    private static ProjectRules CreateProjectRules(Type type)
+    {
+        try
+        {
+            return (ProjectRules)Activator.CreateInstance(type)!;
+        }
+        catch(Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to create project rules: {type.FullName}", ex);
         }
     }
 

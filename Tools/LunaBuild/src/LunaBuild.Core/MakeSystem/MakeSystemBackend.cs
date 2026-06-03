@@ -270,12 +270,12 @@ public sealed class MakeSystemBackend
             builder.AppendLine($"  node path: {context.Workspace.ResolveRepositoryPath(context.Node.Path)}");
         }
         builder.AppendLine($"  configuration: platform={options.Platform} arch={options.Architecture} mode={options.Mode} linkage={(options.Shared ? "shared" : "static")} rhi={options.RhiApi}");
-        if(options.ProjectOptions.Count > 0)
+        if(options.Properties.Values.Count > 0)
         {
-            builder.AppendLine("  project options:");
-            foreach(var option in options.ProjectOptions.OrderBy(option => option.Key, StringComparer.OrdinalIgnoreCase))
+            builder.AppendLine("  project properties:");
+            foreach(var property in options.Properties.Values.OrderBy(property => property.Name, StringComparer.OrdinalIgnoreCase))
             {
-                builder.AppendLine($"    {option.Key}={option.Value}");
+                builder.AppendLine($"    {property.Name}={property.Value}");
             }
         }
 

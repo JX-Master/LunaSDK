@@ -1,3 +1,7 @@
+// Legacy Android packaging path.
+// The main LunaSDK build, install, IDE generation, and CI paths use LunaBuild.
+// Android Gradle packaging still uses xmake until the Android LunaBuild integration is implemented.
+
 plugins {
     id 'com.android.application'
     id 'org.tboox.gradle-xmake-plugin' version "1.2.3"

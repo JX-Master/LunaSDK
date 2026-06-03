@@ -63,9 +63,9 @@ public sealed class BuildGraphGenerator
             $"category={target.Category}",
             $"rhi={options.RhiApi}",
         };
-        foreach(var option in options.ProjectOptions.OrderBy(option => option.Key, StringComparer.OrdinalIgnoreCase))
+        foreach(var property in options.Properties.Values.OrderBy(property => property.Name, StringComparer.OrdinalIgnoreCase))
         {
-            lines.Add($"project_option.{option.Key}={option.Value}");
+            lines.Add($"project_property.{property.Name}={property.Value}");
         }
         return string.Join('\n', lines);
     }

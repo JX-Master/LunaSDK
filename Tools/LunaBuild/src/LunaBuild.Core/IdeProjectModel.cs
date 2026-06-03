@@ -143,10 +143,10 @@ internal static class IdeProjectModel
             options.RhiApi.ToString(),
             options.Shared ? "--shared" : "--static",
         };
-        foreach(var option in options.ProjectOptions.OrderBy(option => option.Key, StringComparer.OrdinalIgnoreCase))
+        foreach(var property in options.Properties.NonDefaultValues())
         {
-            args.Add("--option");
-            args.Add($"{option.Key}={option.Value}");
+            args.Add("--property");
+            args.Add($"{property.Name}={property.Value}");
         }
         return args;
     }

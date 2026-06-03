@@ -52,14 +52,24 @@ public abstract class TargetRules
 
     protected RhiApi RhiApi => Options.RhiApi;
 
+    protected string ProjectProperty(string name)
+    {
+        return Options.Properties.GetString(name);
+    }
+
+    protected bool ProjectBoolProperty(string name)
+    {
+        return Options.Properties.GetBoolean(name);
+    }
+
     protected string? ProjectOption(string name)
     {
-        return Options.ProjectOption(name);
+        return Options.Properties.TryGetString(name, out var value) ? value : null;
     }
 
     protected bool ProjectBoolOption(string name, bool defaultValue = false)
     {
-        return Options.ProjectBoolOption(name, defaultValue);
+        return Options.Properties.TryGetBoolean(name, out var value) ? value : defaultValue;
     }
 
     public bool SupportsPlatform(BuildPlatform platform)

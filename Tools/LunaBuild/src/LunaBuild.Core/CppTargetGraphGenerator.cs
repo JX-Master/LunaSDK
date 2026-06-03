@@ -724,6 +724,7 @@ public sealed class CppTargetGraphGenerator
             $"define=LUNA_DEBUG_LEVEL={DebugLevel(options.Mode)}",
             options.Shared ? "define=LUNA_BUILD_SHARED_LIB" : "linkage=static",
         };
+        lines.AddRange(options.GlobalDefines.Select(define => $"define={define}"));
         if(target.MsvcRuntimeLibrary is not null)
         {
             lines.Add($"runtime={target.MsvcRuntimeLibrary}");
@@ -734,6 +735,7 @@ public sealed class CppTargetGraphGenerator
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .Select(define => $"define={define}"));
+        lines.AddRange(options.GlobalUndefines.Select(undefine => $"undefine={undefine}"));
         lines.AddRange(target.Undefines.Select(undefine => $"undefine={undefine}"));
         lines.AddRange(dependencyOutputs
             .SelectMany(output => output.PublicUndefines)

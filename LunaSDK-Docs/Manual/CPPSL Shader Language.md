@@ -305,33 +305,34 @@ CPPSL is a controlled C++ subset. Avoid the following:
 
 If multiple shaders share the same resource layout, put the descriptor set layout into a `.hxx` header and include it from all related VS/PS/CS files. This avoids accidentally omitting resources that are not directly used by one shader but are still required by the pipeline layout.
 
-## xmake Integration
+## LunaBuild Integration
 
-Use the `luna.shader` rule in an xmake target, then add `.cxx` shaders through `add_luna_shader`:
+Add `.cxx` shaders in the target's `<Target>.Target.cs` rule through `Shader(sourceFile, stage, entryPoint)`:
 
-```lua
-target("MyProgram")
-    add_rules("luna.shader")
-    add_files("Source/**.cpp")
-    add_luna_shader("Shaders/MyVS.cxx", {type = "vertex", entry_point = "vs_main"})
-    add_luna_shader("Shaders/MyPS.cxx", {type = "pixel", entry_point = "ps_main"})
+```csharp
+namespace LunaBuild.Core.Targets;
+
+public sealed class MyProgramTargetRules : TargetRules
+{
+    public MyProgramTargetRules()
+        : base("MyProgram", "Programs/MyProgram", "Programs/MyProgram/MyProgram.Target.cs")
+    {
+        Kind = BuildTargetKind.Executable;
+        Sources("Source/**.cpp");
+        Shader("Shaders/MyVS.cxx", "vertex", "vs_main");
+        Shader("Shaders/MyPS.cxx", "pixel", "ps_main");
+        DependsOn("Runtime", "RHI", "RHIUtility");
+    }
+}
 ```
 
-`add_luna_shader` selects the output format from the current RHI API:
+`Shader(...)` selects the output format from the current RHI API:
 
 - D3D12: DXIL
 - Vulkan: SPIR-V
 - Metal: metallib
 
-Shader debug information is enabled automatically in `mode.debug` builds. You can override it per shader:
-
-```lua
-add_luna_shader("Shaders/MyPS.cxx", {
-    type = "pixel",
-    entry_point = "ps_main",
-    debug = true
-})
-```
+Shader debug information is enabled automatically in Debug builds.
 
 When debug is enabled, D3D12 keeps DXIL debug information, Vulkan emits SPIR-V nonsemantic debug information with embedded source for tools such as RenderDoc, and Metal emits source line information and records source text in the Metal compilation output.
 

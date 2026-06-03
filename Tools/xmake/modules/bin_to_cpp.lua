@@ -1,3 +1,7 @@
+-- Legacy/reference xmake script.
+-- LunaBuild *.Target.cs rules are authoritative for main-path and CI builds.
+-- Keep this file only as migration reference while old branches are being ported.
+
 function bin_to_cpp(bin_file, cpp_header_file, cpp_source_file)
     local src, errmsg = io.open(bin_file, "rb")
     if src == nil then
