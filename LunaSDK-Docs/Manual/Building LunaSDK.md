@@ -3,7 +3,7 @@
 ### Common
 
 * .NET 9 SDK, check [here](https://dotnet.microsoft.com/download) for installation instructions.
-* LunaBuild is the authoritative build system for LunaSDK. xmake scripts are kept only as legacy migration references and are not used by the main build, install, IDE generation, or CI paths.
+* LunaBuild is the authoritative build system for LunaSDK.
 
 ### Windows
 
@@ -22,7 +22,12 @@ xcodebuild -downloadComponent MetalToolchain
 
 ### Android
 
-Android packaging is still on the legacy migration path. The LunaBuild main path currently covers Windows and macOS builds.
+* Android Studio or Android SDK command-line tools.
+* Android SDK platform matching the application `compileSdk`.
+* Android NDK matching the application `ndkVersion`.
+* JDK 17 or the JBR bundled with Android Studio.
+
+LunaBuild builds the native targets. The Android Gradle project is used only for APK packaging and does not compile native code.
 
 ### iOS/iPadOS
 
@@ -52,37 +57,57 @@ The setup script downloads the platform SDK archive into `SDKs`. LunaBuild does 
 LunaBuild is invoked through the .NET project:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- <command> [options]
+dotnet run --project LunaBuild.csproj -- <command> [options]
 ```
 
 Build the default engine targets for the host platform:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all
+dotnet run --project LunaBuild.csproj -- build --all
 ```
 
 Build one target:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --target ObjLoader
+dotnet run --project LunaBuild.csproj -- build --target ObjLoader
 ```
 
 Build all tests:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --category Tests
+dotnet run --project LunaBuild.csproj -- build --category Tests
 ```
 
 Build all tools:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --category Tools
+dotnet run --project LunaBuild.csproj -- build --category Tools
 ```
 
 Force rebuild:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --force
+dotnet run --project LunaBuild.csproj -- build --all --force
+```
+
+## Running
+
+Run builds the selected executable target first, then launches the produced program from its output directory:
+
+```sh
+dotnet run --project LunaBuild.csproj -- run --target RuntimeTest
+```
+
+The target name can also be written positionally:
+
+```sh
+dotnet run --project LunaBuild.csproj -- run RuntimeTest
+```
+
+Pass program arguments after a second `--` separator:
+
+```sh
+dotnet run --project LunaBuild.csproj -- run RuntimeTest -- --list
 ```
 
 ### Common Options
@@ -108,19 +133,19 @@ dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- b
 Build Debug D3D12 shared libraries:
 
 ```powershell
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --platform Windows --arch x64 --mode Debug --rhi D3D12 --shared
+dotnet run --project LunaBuild.csproj -- build --all --platform Windows --arch x64 --mode Debug --rhi D3D12 --shared
 ```
 
 Build Debug Vulkan shared libraries:
 
 ```powershell
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --platform Windows --arch x64 --mode Debug --rhi Vulkan --shared
+dotnet run --project LunaBuild.csproj -- build --all --platform Windows --arch x64 --mode Debug --rhi Vulkan --shared
 ```
 
 Build Release D3D12 static libraries:
 
 ```powershell
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --platform Windows --arch x64 --mode Release --rhi D3D12 --static
+dotnet run --project LunaBuild.csproj -- build --all --platform Windows --arch x64 --mode Release --rhi D3D12 --static
 ```
 
 ### macOS Examples
@@ -128,33 +153,49 @@ dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- b
 Build Debug Metal shared libraries for Apple Silicon:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --platform MacOS --arch arm64 --mode Debug --rhi Metal --shared
+dotnet run --project LunaBuild.csproj -- build --all --platform MacOS --arch arm64 --mode Debug --rhi Metal --shared
 ```
 
 Build Release Metal static libraries for x86_64:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --platform MacOS --arch x86_64 --mode Release --rhi Metal --static
+dotnet run --project LunaBuild.csproj -- build --all --platform MacOS --arch x86_64 --mode Release --rhi Metal --static
 ```
+
+### Android Examples
+
+Build the native shared library for `MultiPlatformSample`:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --target MultiPlatformSample --platform Android --arch arm64-v8a --mode Debug --rhi Vulkan
+```
+
+Package `MultiPlatformSample` into an APK:
+
+```sh
+dotnet run --project LunaBuild.csproj -- package MultiPlatformSample --platform Android --arch arm64-v8a --mode Debug --rhi Vulkan --output build/LunaBuild/AndroidPackages
+```
+
+The package command builds the selected executable target first, copies the produced native `.so` files into the target's `AndroidProject/app/src/main/jniLibs/<abi>` directory, then invokes the Gradle wrapper for `assembleDebug` or `assembleRelease`. LunaBuild redirects Gradle and Android user-state directories under `build/LunaBuild` so local package runs do not depend on writable user profile cache directories.
 
 ## Cleaning
 
 Clean generated files for the selected graph:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- clean --all
+dotnet run --project LunaBuild.csproj -- clean --all
 ```
 
 Clean one target:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- clean --target ObjLoader
+dotnet run --project LunaBuild.csproj -- clean --target ObjLoader
 ```
 
 Remove the whole LunaBuild output directory:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- clean --full
+dotnet run --project LunaBuild.csproj -- clean --full
 ```
 
 ## Installing Artifacts
@@ -162,7 +203,7 @@ dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- c
 Install build outputs into an artifact directory:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- install --all --mode Debug --output ./install/debug
+dotnet run --project LunaBuild.csproj -- install --all --mode Debug --output ./install/debug
 ```
 
 The install command copies LunaBuild graph outputs and target metadata outputs such as libraries, binaries, runtime files, public headers, and generated headers.
@@ -176,8 +217,8 @@ IDE projects generated by LunaBuild are editing and command-entry projects. They
 Generate VSCode tasks, launch configurations, settings, and compile commands:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- generate --format vscode --all
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- generate --format compile_commands --all
+dotnet run --project LunaBuild.csproj -- generate --format vscode --all
+dotnet run --project LunaBuild.csproj -- generate --format compile_commands --all
 ```
 
 The generated `.vscode/tasks.json` entries are prefixed with `LunaBuild:`. LunaBuild only replaces entries with this prefix and preserves user-defined tasks.
@@ -203,7 +244,7 @@ gen_vs2022.bat
 Or run the command directly:
 
 ```powershell
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- generate --format vs2022 --all --platform Windows --arch x64
+dotnet run --project LunaBuild.csproj -- generate --format vs2022 --all --platform Windows --arch x64
 ```
 
 Open the generated solution under `build/LunaBuild/VS2022`. The projects use NMake-style commands that call LunaBuild for build, rebuild, and clean.
@@ -220,7 +261,7 @@ chmod +x ./gen_xcode.sh
 Or run the command directly:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- generate --format xcode --all --platform MacOS --arch arm64
+dotnet run --project LunaBuild.csproj -- generate --format xcode --all --platform MacOS --arch arm64
 ```
 
 Open the generated project under `build/LunaBuild/Xcode`. Xcode schemes call LunaBuild through the generated `lunabuild-xcode.sh` helper.
@@ -230,9 +271,5 @@ Open the generated project under `build/LunaBuild/Xcode`. Xcode schemes call Lun
 When investigating local build issues, use the timeout wrapper so compiler or toolchain hangs do not leave stale processes running:
 
 ```powershell
-.\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','Tools\LunaBuild\src\LunaBuild.Cli\LunaBuild.Cli.csproj','--','build','--all') -TimeoutSeconds 300
+.\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','LunaBuild.csproj','--','build','--all') -TimeoutSeconds 300
 ```
-
-## Legacy xmake Files
-
-The repository still contains `xmake.lua` files and `Tools/xmake` scripts for migration reference. They are no longer authoritative and are not used by the main development workflow or CI. New targets should be described with project-local `<Target>.Target.cs` files.

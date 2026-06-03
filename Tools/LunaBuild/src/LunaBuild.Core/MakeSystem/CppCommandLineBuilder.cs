@@ -14,7 +14,11 @@ internal static class CppCommandLineBuilder
         string? msvcToolPath = null,
         string? appleClangPath = null,
         string? appleClangCxxPath = null,
-        string? appleSdkPath = null)
+        string? appleSdkPath = null,
+        string? androidClangPath = null,
+        string? androidClangCxxPath = null,
+        string? androidSysroot = null,
+        int androidApiLevel = AndroidNdkToolchainLocator.DefaultApiLevel)
     {
         var payload = ActionPayload.Parse(actionPayload);
         return options.Platform switch
@@ -25,6 +29,9 @@ internal static class CppCommandLineBuilder
             BuildPlatform.MacOS => new CppCommandLine(
                 UsesCxxCompiler(payload.Required("language")) ? appleClangCxxPath ?? "clang++" : appleClangPath ?? "clang",
                 BuildAppleCompileArguments(workspace, payload, appleSdkPath)),
+            BuildPlatform.Android => new CppCommandLine(
+                UsesCxxCompiler(payload.Required("language")) ? androidClangCxxPath ?? "clang++" : androidClangPath ?? "clang",
+                BuildAndroidCompileArguments(workspace, payload, androidSysroot, androidApiLevel)),
             _ => new CppCommandLine(
                 UsesCxxCompiler(payload.Required("language")) ? "clang++" : "clang",
                 BuildClangCompileArguments(workspace, payload)),
@@ -136,6 +143,22 @@ internal static class CppCommandLineBuilder
         AddAppleModeArgs(args, payload.Required("mode"));
         AddCommonClangArgs(workspace, payload, args);
         args.Add(source);
+        return args;
+    }
+
+    public static IReadOnlyList<string> BuildAndroidCompileArguments(
+        BuildWorkspace workspace,
+        ActionPayload payload,
+        string? sysroot,
+        int apiLevel)
+    {
+        var args = BuildClangCompileArguments(workspace, payload).ToList();
+        args.Insert(0, "--target=" + AndroidNdkToolchainLocator.TargetTripleWithApi(payload.Required("arch"), apiLevel));
+        if(!string.IsNullOrWhiteSpace(sysroot))
+        {
+            args.Insert(1, "--sysroot=" + sysroot);
+        }
+        args.Insert(Math.Max(0, args.Count - 1), "-DANDROID");
         return args;
     }
 

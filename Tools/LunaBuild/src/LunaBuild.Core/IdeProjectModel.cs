@@ -72,6 +72,31 @@ internal static class IdeProjectModel
         }
     }
 
+    public static string? FindRunnableOutput(BuildWorkspace workspace, BuildGraph graph, string targetName)
+    {
+        foreach(var node in graph.Nodes)
+        {
+            if(node.Command is null || node.Path is null)
+            {
+                continue;
+            }
+
+            var kind = BuildActionKind.Extract(node.Command);
+            if(kind is not ("cpp.link.executable" or "dotnet.build"))
+            {
+                continue;
+            }
+
+            var payload = ActionPayload.Parse(node.Command);
+            var name = payload.Contains("target") ? payload.Required("target") : payload.Contains("name") ? payload.Required("name") : null;
+            if(string.Equals(name, targetName, StringComparison.OrdinalIgnoreCase))
+            {
+                return workspace.ResolveRepositoryPath(node.Path);
+            }
+        }
+        return null;
+    }
+
     public static string LunaBuildCommand(
         BuildWorkspace workspace,
         string command,
@@ -87,7 +112,7 @@ internal static class IdeProjectModel
             targetName,
             all,
             force,
-            Path.Combine(workspace.RootDirectory, "Tools", "LunaBuild", "src", "LunaBuild.Cli", "LunaBuild.Cli.csproj"),
+            Path.Combine(workspace.RootDirectory, "LunaBuild.csproj"),
             workspace.RootDirectory).Select(Quote));
     }
 

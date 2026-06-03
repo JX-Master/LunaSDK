@@ -40,7 +40,7 @@ sh Tools/CPPSL/native/build-macos-arm64.sh
 Build locally on Windows x64 with LunaBuild:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- \
+dotnet run --project LunaBuild.csproj -- \
   build --target cppsl-native-extractor --platform Windows --arch x64
 ```
 

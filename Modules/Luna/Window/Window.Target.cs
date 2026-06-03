@@ -40,6 +40,7 @@ public sealed class WindowTargetRules : TargetRules
         {
             Headers("Android/**.hpp", "Android/**.h", "Source/Backend/Android/*.hpp");
             Sources("Source/Backend/Android/*.cpp");
+            SystemLibraries("android", "log");
         }
     }
 }

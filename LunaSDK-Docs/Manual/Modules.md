@@ -46,8 +46,6 @@ protected override void Configure(BuildWorkspace workspace, BuildOptions options
 }
 ```
 
-Legacy `xmake.lua` files may still exist in some module directories as migration references. New build logic should be written in `<ModuleName>.Target.cs`.
-
 ## Module namespace
 
 Every module should declare all entities under its own namespace under `Luna` namespace. The namespace name for the module should be concise and may not be equal to the name of the module. Do not declare `using namespace` under module interface header files.

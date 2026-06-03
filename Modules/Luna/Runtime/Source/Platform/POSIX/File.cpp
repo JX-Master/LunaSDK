@@ -20,7 +20,7 @@
 #include <errno.h>
 
 #include <fcntl.h>
-#if defined(LUNA_PLATFORM_LINUX) || defined(LUNA_PLATFORM_ANDROID)
+#if defined(LUNA_PLATFORM_LINUX)
 #define _GNU_SOURCE
 #endif
 #include <unistd.h>
@@ -523,7 +523,7 @@ namespace Luna
                 return encode_errno(errno);
             }
             Result res = Result::success;
-#if defined(LUNA_PLATFORM_LINUX) || defined(LUNA_PLATFORM_ANDROID)
+#if defined(LUNA_PLATFORM_LINUX)
             // copy_file_range: in-kernel copy, no user-space round-trip (Linux 4.5+, glibc 2.27+ / bionic)
             u64 total_copied = 0;
             u64 file_size = attr.size;
@@ -541,6 +541,39 @@ namespace Luna
                 if (n == 0)
                     break;
                 total_copied += (u64)n;
+            }
+#elif defined(LUNA_PLATFORM_ANDROID)
+            c8 buffer[64 * 1024];
+            for(;;)
+            {
+                ssize_t bytes_read = read(src_fd, buffer, sizeof(buffer));
+                if(bytes_read < 0)
+                {
+                    res = encode_errno(errno);
+                    break;
+                }
+                if(bytes_read == 0)
+                {
+                    break;
+                }
+
+                c8* cursor = buffer;
+                ssize_t bytes_remaining = bytes_read;
+                while(bytes_remaining > 0)
+                {
+                    ssize_t bytes_written = write(dst_fd, cursor, (usize)bytes_remaining);
+                    if(bytes_written < 0)
+                    {
+                        res = encode_errno(errno);
+                        break;
+                    }
+                    cursor += bytes_written;
+                    bytes_remaining -= bytes_written;
+                }
+                if(res != Result::success)
+                {
+                    break;
+                }
             }
 #elif defined(LUNA_PLATFORM_APPLE)
             // fcopyfile: native copy on macOS/iOS (copyfile.h)

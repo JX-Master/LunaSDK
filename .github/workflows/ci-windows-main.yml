@@ -38,27 +38,27 @@ jobs:
         run: ./setup.bat
 
       - name: Build LunaBuild
-        run: dotnet build Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj --nologo
+        run: dotnet build LunaBuild.csproj --nologo
 
       - name: Build debug
         run: |
           $linkage = if ("${{ matrix.shared }}" -eq "shared") { "--shared" } else { "--static" }
-          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --mode Debug --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage
+          dotnet run --project LunaBuild.csproj -- build --all --mode Debug --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage
 
       - name: Install debug
         run: |
           $linkage = if ("${{ matrix.shared }}" -eq "shared") { "--shared" } else { "--static" }
-          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- install --all --mode Debug --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage --output ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-debug
+          dotnet run --project LunaBuild.csproj -- install --all --mode Debug --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage --output ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-debug
 
       - name: Build release
         run: |
           $linkage = if ("${{ matrix.shared }}" -eq "shared") { "--shared" } else { "--static" }
-          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --mode Release --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage
+          dotnet run --project LunaBuild.csproj -- build --all --mode Release --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage
 
       - name: Install release
         run: |
           $linkage = if ("${{ matrix.shared }}" -eq "shared") { "--shared" } else { "--static" }
-          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- install --all --mode Release --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage --output ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-release
+          dotnet run --project LunaBuild.csproj -- install --all --mode Release --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage --output ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-release
 
       - name: Collect artifacts debug
         uses: actions/upload-artifact@v4
