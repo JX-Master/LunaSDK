@@ -8,7 +8,7 @@
 * @date 2022/5/1
 */
 #pragma once
-#include "Impl/RobinHoodHashTable.hpp"
+#include "Impl/SparseHashTable.hpp"
 #include "TypeInfo.hpp"
 
 namespace Luna
@@ -16,7 +16,7 @@ namespace Luna
     //! @addtogroup RuntimeContainer
     //! @{
     
-    //! An container that contains a set of unique objects using open-addressing hashing algorithm.
+    //! An container that contains a set of unique objects using sparse-array hashing algorithm.
     //! @remark See remarks of @ref HashMap for details.
     template <
         typename _Kty,
@@ -35,10 +35,10 @@ namespace Luna
         using const_reference = const value_type&;
         using pointer = value_type*;
         using const_pointer = const value_type*;
-        using iterator = RobinHoodHashing::Iterator<value_type, false>;
-        using const_iterator = RobinHoodHashing::Iterator<value_type, true>;
+        using iterator = SparseHashing::Iterator<value_type, false>;
+        using const_iterator = SparseHashing::Iterator<value_type, true>;
     private:
-        using table_type = RobinHoodHashing::HashTable<key_type, value_type, Impl::SetExtractKey<key_type, value_type>, hasher, key_equal, allocator_type>;
+        using table_type = SparseHashing::HashTable<key_type, value_type, Impl::SetExtractKey<key_type, value_type>, hasher, key_equal, allocator_type>;
         table_type m_base;
         HashSet(table_type&& base) :
             m_base(move(base)) {}
@@ -165,7 +165,7 @@ namespace Luna
         //! will expand the hash table to bring more hash table slots.
         //! @param[in] ml The new load factor to set.
         //! @par Valid Usage
-        //! * `ml` must between [`0.0`, `1.0`].
+        //! * `ml` must be greater than `0.0`.
         void max_load_factor(f32 ml)
         {
             m_base.max_load_factor(ml);
@@ -175,8 +175,7 @@ namespace Luna
         {
             m_base.clear();
         }
-        //! Reduces the hash table size to a minimum value that satisfy the maximum load factor limitation.
-        //! @details The hash table size can be computed as: `ceilf((f32)size() / max_load_factor())`.
+        //! Reduces the sparse value array and hash table to the minimum size that satisfies the current element count and maximum load factor limitation.
         void shrink_to_fit()
         {
             m_base.shrink_to_fit();
