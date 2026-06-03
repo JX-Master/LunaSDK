@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Layout.hpp"
+#include "RenderProxy.hpp"
 
 namespace Luna
 {
@@ -84,6 +85,7 @@ namespace Luna
             virtual object_t get_state(id_t id) const = 0;
             virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) = 0;
             virtual void clear_state(id_t id) = 0;
+            virtual StyleValue get_style_value(const Name& style, const Name& entry, const StyleValue& default_value) const = 0;
             template <typename T>
             T* get_widget_state(id_t owner_id) const
             {
@@ -237,6 +239,8 @@ namespace Luna
             u32 next_sibling = U32_MAX;
             u32 depth = 0;
             String text;
+            Name style;
+            RenderProxyDesc render_proxy;
             Size requested_size;
             LayoutStyle layout_style;
             LayoutDesc layout_desc;
@@ -380,6 +384,30 @@ namespace Luna
                 return ConstIterator{this, data.size()};
             }
         };
+
+        inline f32 style_f32(NodeRenderContext& ctx, const Node& node, const Name& entry, f32 default_value)
+        {
+            StyleValue value = ctx.get_style_value(node.style, entry, StyleValue::f32_1(default_value));
+            return value.value.x;
+        }
+
+        inline Float2U style_f32x2(NodeRenderContext& ctx, const Node& node, const Name& entry, const Float2U& default_value)
+        {
+            StyleValue value = ctx.get_style_value(node.style, entry, StyleValue::f32_2(default_value));
+            return Float2U(value.value.x, value.value.y);
+        }
+
+        inline Float3U style_f32x3(NodeRenderContext& ctx, const Node& node, const Name& entry, const Float3U& default_value)
+        {
+            StyleValue value = ctx.get_style_value(node.style, entry, StyleValue::f32_3(default_value));
+            return Float3U(value.value.x, value.value.y, value.value.z);
+        }
+
+        inline Float4U style_f32x4(NodeRenderContext& ctx, const Node& node, const Name& entry, const Float4U& default_value)
+        {
+            StyleValue value = ctx.get_style_value(node.style, entry, StyleValue::f32_4(default_value));
+            return value.value;
+        }
 
         struct Layer
         {

@@ -163,6 +163,28 @@ namespace Luna
         }
     };
 
+    void draw_demo_proxy_button(GUI::NodeRenderContext& ctx, const GUI::Node& node, const RectF& rect, const RectF& clip_rect,
+        const GUI::NodeRenderState& state, void*)
+    {
+        Float4U base = GUI::style_f32x4(ctx, node, Name("demo.proxy.background"), Float4U(0.10f, 0.15f, 0.20f, 1.0f));
+        Float4U accent = GUI::style_f32x4(ctx, node, Name("demo.proxy.accent"), Float4U(0.30f, 0.66f, 0.92f, 1.0f));
+        Float4U color = state.active ? Float4U(accent.x * 0.75f, accent.y * 0.75f, accent.z * 0.75f, accent.w) :
+            (state.hovered ? Float4U(base.x + 0.06f, base.y + 0.08f, base.z + 0.10f, base.w) : base);
+        ctx.draw_rect(rect, clip_rect, color, 6.0f);
+        ctx.draw_line(Float2U(rect.offset_x + 8.0f, rect.offset_y + rect.height - 5.0f),
+            Float2U(rect.offset_x + max(rect.width - 8.0f, 8.0f), rect.offset_y + rect.height - 5.0f),
+            clip_rect, accent, state.active ? 4.0f : 2.0f);
+        ctx.draw_text(RectF(rect.offset_x + 10.0f, rect.offset_y, max(rect.width - 20.0f, 1.0f), rect.height),
+            clip_rect, node.text.c_str(), 16.0f, Color::white(), GUI::TextAlignment::center);
+    }
+
+    GUI::RenderProxyDesc demo_button_render_proxy()
+    {
+        GUI::RenderProxyDesc desc;
+        desc.draw = draw_demo_proxy_button;
+        return desc;
+    }
+
     constexpr const c8* DEMO_TABS[] =
     {
         "Overview",
@@ -173,6 +195,7 @@ namespace Luna
         "Tooltips",
         "Popups",
         "State",
+        "Style",
         "Trees",
         "Tabs",
         "DragDrop"
@@ -189,6 +212,7 @@ namespace Luna
         DEMO_TAB_TOOLTIPS,
         DEMO_TAB_POPUPS,
         DEMO_TAB_STATE,
+        DEMO_TAB_STYLE,
         DEMO_TAB_TREES,
         DEMO_TAB_TABS,
         DEMO_TAB_DRAG_DROP
@@ -841,8 +865,9 @@ namespace Luna
                 snprintf(text, 96, "Document %u body. Close this tab with its X button.", i + 1);
                 GUI::text(app.gui, text);
                 GUI::end_tab_item(app.gui);
-            }
         }
+    }
+
         if(!any_open)
         {
             GUI::tab_item_button(app.gui, "All documents closed");
@@ -882,6 +907,52 @@ namespace Luna
         GUI::end_tab_bar(app.gui);
     }
 
+    void draw_style_tab(App& app)
+    {
+        demo_section(app, "Style inheritance");
+        GUI::define_style(app.gui, Name("demo.button.base"));
+        GUI::set_style_f32x4(app.gui, Name("demo.button.base"), Name("gui.button.background"), Float4U(0.16f, 0.24f, 0.34f, 1.0f));
+        GUI::set_style_f32x4(app.gui, Name("demo.button.base"), Name("gui.button.background_hovered"), Float4U(0.22f, 0.34f, 0.50f, 1.0f));
+        GUI::set_style_f32x4(app.gui, Name("demo.button.base"), Name("gui.button.background_active"), Float4U(0.26f, 0.42f, 0.64f, 1.0f));
+        GUI::set_style_f32(app.gui, Name("demo.button.base"), Name("gui.button.radius"), 8.0f);
+
+        GUI::define_style(app.gui, Name("demo.button.warning"), Name("demo.button.base"));
+        GUI::set_style_f32x4(app.gui, Name("demo.button.warning"), Name("gui.button.background"), Float4U(0.42f, 0.25f, 0.12f, 1.0f));
+        GUI::set_style_f32x4(app.gui, Name("demo.button.warning"), Name("gui.button.background_hovered"), Float4U(0.62f, 0.34f, 0.14f, 1.0f));
+
+        GUI::define_style(app.gui, Name("demo.button.unset_hover"), Name("demo.button.warning"));
+        GUI::unset_style_entry(app.gui, Name("demo.button.unset_hover"), Name("gui.button.background_hovered"));
+
+        GUI::LayoutDesc row;
+        row.gap = 8.0f;
+        row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
+        GUI::begin_h_layout(app.gui, "Styled Buttons", row);
+        GUI::push_style(app.gui, Name("demo.button.base"));
+        GUI::button(app.gui, "Base Style");
+        GUI::pop_style(app.gui);
+        GUI::push_style(app.gui, Name("demo.button.warning"));
+        GUI::button(app.gui, "Child Override");
+        GUI::pop_style(app.gui);
+        GUI::push_style(app.gui, Name("demo.button.unset_hover"));
+        GUI::button(app.gui, "Unset Hover");
+        GUI::pop_style(app.gui);
+        GUI::button(app.gui, "Default Style");
+        GUI::end_h_layout(app.gui);
+
+        demo_section(app, "Render proxy override");
+        GUI::define_style(app.gui, Name("demo.proxy.button"));
+        GUI::set_style_f32x4(app.gui, Name("demo.proxy.button"), Name("demo.proxy.background"), Float4U(0.09f, 0.12f, 0.16f, 1.0f));
+        GUI::set_style_f32x4(app.gui, Name("demo.proxy.button"), Name("demo.proxy.accent"), Float4U(0.38f, 0.74f, 0.98f, 1.0f));
+        GUI::begin_h_layout(app.gui, "Proxy Buttons", row);
+        GUI::push_style(app.gui, Name("demo.proxy.button"));
+        GUI::set_next_item_render_proxy(app.gui, demo_button_render_proxy());
+        GUI::button(app.gui, "Custom Proxy");
+        GUI::set_next_item_render_proxy(app.gui, demo_button_render_proxy());
+        GUI::button(app.gui, "Same Node, Different Draw");
+        GUI::pop_style(app.gui);
+        GUI::end_h_layout(app.gui);
+    }
+
     void draw_showcase_tab(App& app, FrameHandles& handles, u32 tab)
     {
         GUI::begin_scroll_view(app.gui, "Showcase Content", GUI::Size::fixed(app.showcase_content_size.x, app.showcase_content_size.y));
@@ -911,6 +982,9 @@ namespace Luna
             break;
         case DEMO_TAB_STATE:
             draw_state_tab(app, handles);
+            break;
+        case DEMO_TAB_STYLE:
+            draw_style_tab(app);
             break;
         case DEMO_TAB_TREES:
             draw_trees_tab(app, handles);

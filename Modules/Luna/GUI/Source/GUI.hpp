@@ -1265,6 +1265,8 @@ namespace Luna
             bool has_next_dock_panel_style = false;
             DockPanelStyle next_dock_panel_style;
             bool* next_dock_panel_open = nullptr;
+            bool has_next_render_proxy = false;
+            RenderProxyDesc next_render_proxy;
         };
 
         struct DragDropPayloadStorage
@@ -1761,8 +1763,10 @@ namespace Luna
             Vector<u32> m_layer_stack;
             Vector<id_t> m_id_stack;
             Vector<RectF> m_clip_stack;
+            Vector<Name> m_style_stack;
             Vector<u32> m_child_ordinals;
             HashMap<id_t, StateRecord, IdHash> m_states;
+            HashMap<Name, Style> m_styles;
             ClipboardIO m_clipboard_io;
             id_t m_active_id = 0;
             id_t m_focused_id = 0;
@@ -1800,6 +1804,15 @@ namespace Luna
             virtual object_t get_state(id_t id) override;
             virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) override;
             virtual void clear_state(id_t id) override;
+            virtual void define_style(const Name& name, const Name& parent = Name()) override;
+            virtual void set_style_parent(const Name& name, const Name& parent) override;
+            virtual void set_style_value(const Name& style, const Name& entry, const StyleValue& value) override;
+            virtual void inherit_style_entry(const Name& style, const Name& entry) override;
+            virtual void unset_style_entry(const Name& style, const Name& entry) override;
+            virtual StyleValue get_style_value(const Name& style, const Name& entry, const StyleValue& default_value) override;
+            virtual void push_style(const Name& style) override;
+            virtual void pop_style() override;
+            virtual void set_next_item_render_proxy(const RenderProxyDesc& proxy) override;
             virtual R<Description> end_build() override;
             virtual RV submit(const Description& desc) override;
             virtual void set_clipboard_io(const ClipboardIO& io) override;
@@ -1848,6 +1861,7 @@ namespace Luna
             void set_next_canvas_item_layout(const CanvasItemLayout& layout);
             void set_next_table_cell_color(const Float4U& color);
             void set_next_dock_panel_style(const DockPanelStyle& style, bool* open);
+            bool style_parent_cycle(const Name& name, const Name& parent) const;
             void push_id(id_t id);
             void pop_id();
             void push_clip_rect(const RectF& rect);

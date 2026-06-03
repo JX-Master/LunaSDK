@@ -14,6 +14,8 @@ namespace Luna
         {
             lustruct("GUI::ButtonNode", "{1AA61495-B39A-4109-971F-4ABDB810F4EE}");
 
+            ButtonNode();
+
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
@@ -27,6 +29,8 @@ namespace Luna
 
             Float4U color = Float4U(1.0f);
             f32 font_size = 16.0f;
+
+            TextNode();
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;

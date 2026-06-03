@@ -61,6 +61,66 @@ namespace Luna
             context_from_interface(context)->pop_clip_rect();
         }
 
+        LUNA_GUI_API void define_style(IContext* context, const Name& name, const Name& parent)
+        {
+            context_from_interface(context)->define_style(name, parent);
+        }
+
+        LUNA_GUI_API void set_style_parent(IContext* context, const Name& name, const Name& parent)
+        {
+            context_from_interface(context)->set_style_parent(name, parent);
+        }
+
+        LUNA_GUI_API void set_style_value(IContext* context, const Name& style, const Name& entry, const StyleValue& value)
+        {
+            context_from_interface(context)->set_style_value(style, entry, value);
+        }
+
+        LUNA_GUI_API void set_style_f32(IContext* context, const Name& style, const Name& entry, f32 value)
+        {
+            context_from_interface(context)->set_style_value(style, entry, StyleValue::f32_1(value));
+        }
+
+        LUNA_GUI_API void set_style_f32x2(IContext* context, const Name& style, const Name& entry, const Float2U& value)
+        {
+            context_from_interface(context)->set_style_value(style, entry, StyleValue::f32_2(value));
+        }
+
+        LUNA_GUI_API void set_style_f32x3(IContext* context, const Name& style, const Name& entry, const Float3U& value)
+        {
+            context_from_interface(context)->set_style_value(style, entry, StyleValue::f32_3(value));
+        }
+
+        LUNA_GUI_API void set_style_f32x4(IContext* context, const Name& style, const Name& entry, const Float4U& value)
+        {
+            context_from_interface(context)->set_style_value(style, entry, StyleValue::f32_4(value));
+        }
+
+        LUNA_GUI_API void inherit_style_entry(IContext* context, const Name& style, const Name& entry)
+        {
+            context_from_interface(context)->inherit_style_entry(style, entry);
+        }
+
+        LUNA_GUI_API void unset_style_entry(IContext* context, const Name& style, const Name& entry)
+        {
+            context_from_interface(context)->unset_style_entry(style, entry);
+        }
+
+        LUNA_GUI_API StyleValue get_style_value(IContext* context, const Name& style, const Name& entry, const StyleValue& default_value)
+        {
+            return context_from_interface(context)->get_style_value(style, entry, default_value);
+        }
+
+        LUNA_GUI_API void push_style(IContext* context, const Name& style)
+        {
+            context_from_interface(context)->push_style(style);
+        }
+
+        LUNA_GUI_API void pop_style(IContext* context)
+        {
+            context_from_interface(context)->pop_style();
+        }
+
         LUNA_GUI_API void tree_push(IContext* context)
         {
             context_from_interface(context)->tree_push();
@@ -129,6 +189,11 @@ namespace Luna
         LUNA_GUI_API void set_next_item_layout(IContext* context, const LayoutStyle& style)
         {
             context_from_interface(context)->set_next_item_layout(style);
+        }
+
+        LUNA_GUI_API void set_next_item_render_proxy(IContext* context, const RenderProxyDesc& proxy)
+        {
+            context_from_interface(context)->set_next_item_render_proxy(proxy);
         }
 
         LUNA_GUI_API void set_next_canvas_item_layout(IContext* context, const CanvasItemLayout& layout)

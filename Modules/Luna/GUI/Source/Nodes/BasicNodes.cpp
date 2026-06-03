@@ -6,11 +6,17 @@
 #include "BasicNodes.hpp"
 #include "../../State.hpp"
 #include "../GUI.hpp"
+#include "../RenderProxies/BasicRenderProxies.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
+        ButtonNode::ButtonNode()
+        {
+            render_proxy = default_button_render_proxy();
+        }
+
         Guid ButtonNode::type_guid() const
         {
             return __guid;
@@ -44,6 +50,11 @@ namespace Luna
             ctx.draw_rect(rect, clip_rect, color, 5.0f);
             ctx.draw_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
                 clip_rect, text.c_str(), 16.0f, Float4U(1.0f), TextAlignment::center);
+        }
+
+        TextNode::TextNode()
+        {
+            render_proxy = default_text_render_proxy();
         }
 
         Guid TextNode::type_guid() const

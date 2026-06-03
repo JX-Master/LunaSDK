@@ -50,6 +50,11 @@ namespace Luna
                 }
             }
 
+            virtual StyleValue get_style_value(const Name& style, const Name& entry, const StyleValue& default_value) const override
+            {
+                return context ? context->get_style_value(style, entry, default_value) : default_value;
+            }
+
             virtual bool is_popup_open(id_t popup_id) const override
             {
                 return context && popup_id ? context->is_popup_open(popup_id) : false;
@@ -902,16 +907,27 @@ namespace Luna
                 render_dock_panel_chrome(node_index);
             }
 
-            auto render_polymorphic_node = [&]()
+            NodeRenderState render_state{hovered, active, focused, m_frame_desc.surface_size, m_pointer_pos, m_frame_desc.delta_time};
+            auto make_node_render_context = [&]()
             {
                 ContextNodeRenderContext node_render_context;
                 node_render_context.context = this;
                 node_render_context.active_draw_list = m_active_draw_list;
                 node_render_context.node_id = node.id;
-                node.render(node_render_context, rect, clip, NodeRenderState{hovered, active, focused, m_frame_desc.surface_size, m_pointer_pos, m_frame_desc.delta_time});
+                return node_render_context;
+            };
+            auto render_polymorphic_node = [&]()
+            {
+                ContextNodeRenderContext node_render_context = make_node_render_context();
+                node.render(node_render_context, rect, clip, render_state);
             };
 
-            if(!node.uses_context_render())
+            if(node.render_proxy.draw)
+            {
+                ContextNodeRenderContext node_render_context = make_node_render_context();
+                node.render_proxy.draw(node_render_context, node, rect, clip, render_state, node.render_proxy.userdata);
+            }
+            else if(!node.uses_context_render())
             {
                 render_polymorphic_node();
             }
@@ -1234,6 +1250,11 @@ namespace Luna
                         render_node(child);
                     }
                 }
+            }
+            if(node.render_proxy.draw_after_children)
+            {
+                ContextNodeRenderContext node_render_context = make_node_render_context();
+                node.render_proxy.draw_after_children(node_render_context, node, rect, clip, render_state, node.render_proxy.userdata);
             }
             if(scroll_layout(node))
             {

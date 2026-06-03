@@ -39,6 +39,7 @@ namespace Luna
             m_layer_stack.clear();
             m_id_stack.clear();
             m_clip_stack.clear();
+            m_style_stack.clear();
             m_child_ordinals.clear();
             BuildHintState& build_hints = build_hint_state();
             build_hints.has_next_item_layout = false;
@@ -46,6 +47,8 @@ namespace Luna
             build_hints.has_next_table_cell_color = false;
             build_hints.has_next_dock_panel_style = false;
             build_hints.next_dock_panel_open = nullptr;
+            build_hints.has_next_render_proxy = false;
+            build_hints.next_render_proxy = RenderProxyDesc();
             tab_build_state().stack.clear();
             m_popup_stack.begin_frame();
             m_last_item_id = 0;
@@ -246,6 +249,16 @@ namespace Luna
             node.parent = layer_root ? U32_MAX : parent;
             node.depth = layer_root ? 0 : m_build_desc.nodes[parent].depth + 1;
             node.text = text ? text : "";
+            if(!m_style_stack.empty())
+            {
+                node.style = m_style_stack.back();
+            }
+            if(build_hint_state().has_next_render_proxy)
+            {
+                node.render_proxy = build_hint_state().next_render_proxy;
+                build_hint_state().has_next_render_proxy = false;
+                build_hint_state().next_render_proxy = RenderProxyDesc();
+            }
             node.interactive = node.interactive || interactive || node.default_interactive();
             if(!layer_root && dock_space_layout(m_build_desc.nodes[parent]))
             {
@@ -273,6 +286,8 @@ namespace Luna
                 build_hint_state().has_next_table_cell_color = false;
                 build_hint_state().has_next_dock_panel_style = false;
                 build_hint_state().next_dock_panel_open = nullptr;
+                build_hint_state().has_next_render_proxy = false;
+                build_hint_state().next_render_proxy = RenderProxyDesc();
             }
             else
             {
@@ -565,6 +580,142 @@ namespace Luna
             m_states.erase(id);
         }
 
+        void Context::define_style(const Name& name, const Name& parent)
+        {
+            lutsassert();
+            if(!name) return;
+            auto iter = m_styles.find(name);
+            if(iter == m_styles.end())
+            {
+                Style style;
+                style.name = name;
+                style.parent = style_parent_cycle(name, parent) ? Name() : parent;
+                m_styles.insert(make_pair(name, move(style)));
+            }
+            else
+            {
+                iter->second.name = name;
+                if(!style_parent_cycle(name, parent))
+                {
+                    iter->second.parent = parent;
+                }
+            }
+        }
+
+        bool Context::style_parent_cycle(const Name& name, const Name& parent) const
+        {
+            if(!name || !parent) return false;
+            if(name == parent) return true;
+            Name cursor = parent;
+            for(usize i = 0; i < m_styles.size(); ++i)
+            {
+                auto iter = m_styles.find(cursor);
+                if(iter == m_styles.end() || !iter->second.parent)
+                {
+                    return false;
+                }
+                cursor = iter->second.parent;
+                if(cursor == name)
+                {
+                    return true;
+                }
+            }
+            return true;
+        }
+
+        void Context::set_style_parent(const Name& name, const Name& parent)
+        {
+            lutsassert();
+            if(!name) return;
+            define_style(name);
+            auto iter = m_styles.find(name);
+            if(iter != m_styles.end() && !style_parent_cycle(name, parent))
+            {
+                iter->second.parent = parent;
+            }
+        }
+
+        void Context::set_style_value(const Name& style_name, const Name& entry, const StyleValue& value)
+        {
+            lutsassert();
+            if(!style_name || !entry) return;
+            define_style(style_name);
+            auto iter = m_styles.find(style_name);
+            if(iter == m_styles.end()) return;
+            StyleEntry style_entry;
+            style_entry.state = StyleEntryState::set;
+            style_entry.value = value;
+            iter->second.entries.insert_or_assign(entry, move(style_entry));
+        }
+
+        void Context::inherit_style_entry(const Name& style_name, const Name& entry)
+        {
+            lutsassert();
+            if(!style_name || !entry) return;
+            auto iter = m_styles.find(style_name);
+            if(iter == m_styles.end()) return;
+            iter->second.entries.erase(entry);
+        }
+
+        void Context::unset_style_entry(const Name& style_name, const Name& entry)
+        {
+            lutsassert();
+            if(!style_name || !entry) return;
+            define_style(style_name);
+            auto iter = m_styles.find(style_name);
+            if(iter == m_styles.end()) return;
+            StyleEntry style_entry;
+            style_entry.state = StyleEntryState::unset;
+            iter->second.entries.insert_or_assign(entry, move(style_entry));
+        }
+
+        StyleValue Context::get_style_value(const Name& style_name, const Name& entry, const StyleValue& default_value)
+        {
+            lutsassert();
+            if(!style_name || !entry) return default_value;
+            Name cursor = style_name;
+            for(usize i = 0; i < m_styles.size(); ++i)
+            {
+                auto style_iter = m_styles.find(cursor);
+                if(style_iter == m_styles.end())
+                {
+                    return default_value;
+                }
+                auto entry_iter = style_iter->second.entries.find(entry);
+                if(entry_iter != style_iter->second.entries.end())
+                {
+                    if(entry_iter->second.state == StyleEntryState::set)
+                    {
+                        return entry_iter->second.value;
+                    }
+                    if(entry_iter->second.state == StyleEntryState::unset)
+                    {
+                        return default_value;
+                    }
+                }
+                if(!style_iter->second.parent)
+                {
+                    return default_value;
+                }
+                cursor = style_iter->second.parent;
+            }
+            return default_value;
+        }
+
+        void Context::push_style(const Name& style)
+        {
+            lutsassert();
+            luassert(style);
+            m_style_stack.push_back(style);
+        }
+
+        void Context::pop_style()
+        {
+            lutsassert();
+            luassert(!m_style_stack.empty());
+            m_style_stack.pop_back();
+        }
+
         object_t Context::get_state_object(id_t id) const
         {
             auto iter = m_states.find(id);
@@ -684,6 +835,13 @@ namespace Luna
             lutsassert();
             build_hint_state().next_item_layout = style;
             build_hint_state().has_next_item_layout = true;
+        }
+
+        void Context::set_next_item_render_proxy(const RenderProxyDesc& proxy)
+        {
+            lutsassert();
+            build_hint_state().next_render_proxy = proxy;
+            build_hint_state().has_next_render_proxy = true;
         }
 
         void Context::set_next_canvas_item_layout(const CanvasItemLayout& layout)

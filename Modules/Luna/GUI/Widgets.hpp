@@ -23,6 +23,18 @@ namespace Luna
         LUNA_GUI_API void pop_layer(IContext* context);
         LUNA_GUI_API void push_clip_rect(IContext* context, const RectF& rect);
         LUNA_GUI_API void pop_clip_rect(IContext* context);
+        LUNA_GUI_API void define_style(IContext* context, const Name& name, const Name& parent = Name());
+        LUNA_GUI_API void set_style_parent(IContext* context, const Name& name, const Name& parent);
+        LUNA_GUI_API void set_style_value(IContext* context, const Name& style, const Name& entry, const StyleValue& value);
+        LUNA_GUI_API void set_style_f32(IContext* context, const Name& style, const Name& entry, f32 value);
+        LUNA_GUI_API void set_style_f32x2(IContext* context, const Name& style, const Name& entry, const Float2U& value);
+        LUNA_GUI_API void set_style_f32x3(IContext* context, const Name& style, const Name& entry, const Float3U& value);
+        LUNA_GUI_API void set_style_f32x4(IContext* context, const Name& style, const Name& entry, const Float4U& value);
+        LUNA_GUI_API void inherit_style_entry(IContext* context, const Name& style, const Name& entry);
+        LUNA_GUI_API void unset_style_entry(IContext* context, const Name& style, const Name& entry);
+        LUNA_GUI_API StyleValue get_style_value(IContext* context, const Name& style, const Name& entry, const StyleValue& default_value);
+        LUNA_GUI_API void push_style(IContext* context, const Name& style);
+        LUNA_GUI_API void pop_style(IContext* context);
         LUNA_GUI_API void tree_push(IContext* context);
         LUNA_GUI_API void tree_push(IContext* context, ItemHandle node);
         LUNA_GUI_API void tree_pop(IContext* context);
@@ -31,6 +43,7 @@ namespace Luna
         LUNA_GUI_API void set_next_item_layout(IContext* context, const LayoutStyle& style);
         LUNA_GUI_API void set_next_canvas_item_layout(IContext* context, const CanvasItemLayout& layout);
         LUNA_GUI_API void set_next_dock_panel_style(IContext* context, const DockPanelStyle& style, bool* open = nullptr);
+        LUNA_GUI_API void set_next_item_render_proxy(IContext* context, const RenderProxyDesc& proxy);
 
         LUNA_GUI_API ItemHandle begin_h_layout(IContext* context, const c8* label = nullptr, const LayoutDesc& desc = LayoutDesc());
         LUNA_GUI_API ItemHandle begin_h_layout(IContext* context, const c8* label, const RectF& rect, const LayoutDesc& desc = LayoutDesc());

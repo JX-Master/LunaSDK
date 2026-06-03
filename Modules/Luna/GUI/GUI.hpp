@@ -10,6 +10,8 @@
 #pragma once
 #include "Base.hpp"
 #include "Layout.hpp"
+#include "Style.hpp"
+#include "RenderProxy.hpp"
 #include "Description.hpp"
 #include "State.hpp"
 #include "DrawList.hpp"

@@ -28,6 +28,15 @@ namespace Luna
             virtual object_t get_state(id_t id) = 0;
             virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) = 0;
             virtual void clear_state(id_t id) = 0;
+            virtual void define_style(const Name& name, const Name& parent = Name()) = 0;
+            virtual void set_style_parent(const Name& name, const Name& parent) = 0;
+            virtual void set_style_value(const Name& style, const Name& entry, const StyleValue& value) = 0;
+            virtual void inherit_style_entry(const Name& style, const Name& entry) = 0;
+            virtual void unset_style_entry(const Name& style, const Name& entry) = 0;
+            virtual StyleValue get_style_value(const Name& style, const Name& entry, const StyleValue& default_value) = 0;
+            virtual void push_style(const Name& style) = 0;
+            virtual void pop_style() = 0;
+            virtual void set_next_item_render_proxy(const RenderProxyDesc& proxy) = 0;
             virtual R<Description> end_build() = 0;
             virtual RV submit(const Description& desc) = 0;
             virtual void set_clipboard_io(const ClipboardIO& io) = 0;
