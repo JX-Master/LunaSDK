@@ -179,6 +179,19 @@ namespace Luna
                     buckets[i] = EMPTY_SLOT;
                 }
             }
+            void rebuild_bucket_chains(usize* buckets, usize bucket_count)
+            {
+                initialize_bucket_buffer(buckets, bucket_count);
+                for (usize i = 0; i < m_sparse_size; ++i)
+                {
+                    if (bit_test(m_occupied, i))
+                    {
+                        usize bucket = m_hashes[i] % bucket_count;
+                        m_nexts[i] = buckets[bucket];
+                        buckets[bucket] = i;
+                    }
+                }
+            }
             void free_value_storage()
             {
                 if (values())
@@ -445,7 +458,87 @@ namespace Luna
                 m_sparse_size = m_size;
                 m_first_free = EMPTY_SLOT;
                 m_hole_count = 0;
-                rehash(minimum_bucket_count(m_size, m_max_load_factor));
+                usize desired_bucket_count = minimum_bucket_count(m_size, m_max_load_factor);
+                if (desired_bucket_count == m_bucket_count)
+                {
+                    rebuild_bucket_chains(m_buckets, m_bucket_count);
+                }
+                else
+                {
+                    rehash(desired_bucket_count);
+                }
+            }
+            //! Sorts elements by sparse-array iteration order and rebuilds hash bucket chains.
+            //! @remark This invalidates all iterators, references and pointers to elements.
+            template <typename _Compare>
+            void sort(_Compare comp)
+            {
+                if (!m_size || (m_size == 1 && !m_hole_count))
+                {
+                    return;
+                }
+                usize* order = allocate<usize>(m_size);
+                usize order_size = 0;
+                for (usize i = 0; i < m_sparse_size; ++i)
+                {
+                    if (bit_test(m_occupied, i))
+                    {
+                        order[order_size++] = i;
+                    }
+                }
+                luassert(order_size == m_size);
+                if (m_size > 1)
+                {
+                    value_type* old_values = values();
+                    Luna::sort(order, order + m_size, [old_values, comp](usize lhs, usize rhs) {
+                        return comp(old_values[lhs], old_values[rhs]);
+                    });
+                }
+
+                value_type* old_values = values();
+                usize* old_hashes = m_hashes;
+                usize* old_nexts = m_nexts;
+                u8* old_occupied = m_occupied;
+                usize old_capacity = m_capacity;
+                value_type* new_values = allocate<value_type>(m_capacity);
+                usize* new_hashes = allocate<usize>(m_capacity);
+                usize* new_nexts = allocate<usize>(m_capacity);
+                u8* new_occupied = allocate<u8>(bitset_size(m_capacity));
+                memzero(new_occupied, bitset_size(m_capacity));
+                for (usize i = 0; i < m_size; ++i)
+                {
+                    usize old_index = order[i];
+                    copy_relocate(new_values + i, old_values + old_index);
+                    new_hashes[i] = old_hashes[old_index];
+                    bit_set(new_occupied, i);
+                }
+                deallocate<value_type>(old_values, old_capacity);
+                deallocate<usize>(old_hashes, old_capacity);
+                deallocate<usize>(old_nexts, old_capacity);
+                deallocate<u8>(old_occupied, bitset_size(old_capacity));
+                deallocate<usize>(order, m_size);
+
+                m_allocator_and_values.second() = new_values;
+                m_hashes = new_hashes;
+                m_nexts = new_nexts;
+                m_occupied = new_occupied;
+                m_sparse_size = m_size;
+                m_first_free = EMPTY_SLOT;
+                m_hole_count = 0;
+                if (m_bucket_count)
+                {
+                    rebuild_bucket_chains(m_buckets, m_bucket_count);
+                }
+                else
+                {
+                    rehash(minimum_bucket_count(m_size, m_max_load_factor));
+                }
+            }
+            //! Sorts elements in non-descending order.
+            //! @remark This invalidates all iterators, references and pointers to elements.
+            void sort()
+            {
+                sort(less<value_type>());
             }
             hasher hash_function() const
             {
@@ -466,16 +559,7 @@ namespace Luna
                 if (new_bucket_count)
                 {
                     buckets = allocate<usize>(new_bucket_count);
-                    initialize_bucket_buffer(buckets, new_bucket_count);
-                    for (usize i = 0; i < m_sparse_size; ++i)
-                    {
-                        if (bit_test(m_occupied, i))
-                        {
-                            usize bucket = m_hashes[i] % new_bucket_count;
-                            m_nexts[i] = buckets[bucket];
-                            buckets[bucket] = i;
-                        }
-                    }
+                    rebuild_bucket_chains(buckets, new_bucket_count);
                 }
                 free_bucket_storage();
                 m_buckets = buckets;

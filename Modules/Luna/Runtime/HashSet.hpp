@@ -180,6 +180,20 @@ namespace Luna
         {
             m_base.shrink_to_fit();
         }
+        //! Sorts elements in non-descending order.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        void sort()
+        {
+            m_base.sort();
+        }
+        //! Sorts elements using the specified comparison function.
+        //! @param[in] comp The comparison function object, which returns `true` if the first value should be ordered before the second value.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        template <typename _Compare>
+        void sort(_Compare comp)
+        {
+            m_base.sort(comp);
+        }
         //! Gets the hash function used by this set.
         //! @return Returns the hash function used by this set.
         hasher hash_function() const

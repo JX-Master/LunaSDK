@@ -742,6 +742,112 @@ namespace Luna
         }
 
         {
+            HashMap<int, int> h;
+            h.reserve(4);
+            h.insert(make_pair(1, 10));
+            h.insert(make_pair(2, 20));
+            h.insert(make_pair(3, 30));
+            h.insert(make_pair(4, 40));
+            h.erase(2);
+            h.shrink_to_fit();
+            lutest(h.find(1)->second == 10);
+            lutest(h.find(2) == h.end());
+            lutest(h.find(3)->second == 30);
+            lutest(h.find(4)->second == 40);
+        }
+
+        {
+            HashSet<int> h;
+            h.reserve(16);
+            h.insert(4);
+            h.insert(1);
+            h.insert(3);
+            h.insert(2);
+            h.erase(3);
+            h.insert(0);
+
+            h.sort();
+            int expected[] = { 0, 1, 2, 4 };
+            usize index = 0;
+            for (auto iter = h.begin(); iter != h.end(); ++iter)
+            {
+                lutest(*iter == expected[index]);
+                ++index;
+            }
+            lutest(index == 4);
+            for (usize i = 0; i < 4; ++i)
+            {
+                lutest(h.find(expected[i]) != h.end());
+            }
+
+            h.erase(1);
+            h.insert(5);
+            lutest(h.find(5) != h.end());
+            h.sort([](int lhs, int rhs) { return lhs > rhs; });
+            int expected_desc[] = { 5, 4, 2, 0 };
+            index = 0;
+            for (auto iter = h.begin(); iter != h.end(); ++iter)
+            {
+                lutest(*iter == expected_desc[index]);
+                ++index;
+            }
+            lutest(index == 4);
+        }
+
+        {
+            HashMap<int, int> h;
+            h.reserve(16);
+            h.insert(make_pair(5, 50));
+            h.insert(make_pair(1, 10));
+            h.insert(make_pair(3, 30));
+            h.insert(make_pair(2, 20));
+            h.erase(3);
+            h.insert(make_pair(4, 40));
+
+            h.key_sort();
+            int expected_keys[] = { 1, 2, 4, 5 };
+            usize index = 0;
+            for (auto iter = h.begin(); iter != h.end(); ++iter)
+            {
+                lutest(iter->first == expected_keys[index]);
+                lutest(iter->second == expected_keys[index] * 10);
+                ++index;
+            }
+            lutest(index == 4);
+            for (usize i = 0; i < 4; ++i)
+            {
+                auto iter = h.find(expected_keys[i]);
+                lutest(iter != h.end());
+                lutest(iter->second == expected_keys[i] * 10);
+            }
+
+            h.value_sort([](int lhs, int rhs) { return lhs > rhs; });
+            int expected_values[] = { 50, 40, 20, 10 };
+            index = 0;
+            for (auto iter = h.begin(); iter != h.end(); ++iter)
+            {
+                lutest(iter->second == expected_values[index]);
+                ++index;
+            }
+            lutest(index == 4);
+
+            h.sort([](const HashMap<int, int>::value_type& lhs, const HashMap<int, int>::value_type& rhs) {
+                return lhs.second < rhs.second;
+            });
+            int expected_values_asc[] = { 10, 20, 40, 50 };
+            index = 0;
+            for (auto iter = h.begin(); iter != h.end(); ++iter)
+            {
+                lutest(iter->second == expected_values_asc[index]);
+                ++index;
+            }
+            lutest(index == 4);
+
+            h.insert_or_assign(2, 200);
+            lutest(h.find(2)->second == 200);
+        }
+
+        {
             // clone()
             // swap()
             HashSet<int> h1;

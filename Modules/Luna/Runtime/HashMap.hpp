@@ -217,6 +217,46 @@ namespace Luna
         {
             m_base.shrink_to_fit();
         }
+        //! Sorts elements using the specified comparison function.
+        //! @param[in] comp The comparison function object, which returns `true` if the first key-value pair should be ordered before the second key-value pair.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        template <typename _Compare>
+        void sort(_Compare comp)
+        {
+            m_base.sort(comp);
+        }
+        //! Sorts elements by key in non-descending order.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        void key_sort()
+        {
+            key_sort(less<key_type>());
+        }
+        //! Sorts elements by key using the specified comparison function.
+        //! @param[in] comp The comparison function object, which returns `true` if the first key should be ordered before the second key.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        template <typename _Compare>
+        void key_sort(_Compare comp)
+        {
+            m_base.sort([comp](const value_type& lhs, const value_type& rhs) {
+                return comp(lhs.first, rhs.first);
+            });
+        }
+        //! Sorts elements by value in non-descending order.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        void value_sort()
+        {
+            value_sort(less<mapped_type>());
+        }
+        //! Sorts elements by value using the specified comparison function.
+        //! @param[in] comp The comparison function object, which returns `true` if the first value should be ordered before the second value.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        template <typename _Compare>
+        void value_sort(_Compare comp)
+        {
+            m_base.sort([comp](const value_type& lhs, const value_type& rhs) {
+                return comp(lhs.second, rhs.second);
+            });
+        }
         //! Gets the hash function used by this map.
         //! @return Returns the hash function used by this map.
         hasher hash_function() const
