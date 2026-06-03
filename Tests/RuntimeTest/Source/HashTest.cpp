@@ -14,6 +14,8 @@
 #include <Luna/Runtime/UnorderedMultiSet.hpp>
 #include <Luna/Runtime/HashMap.hpp>
 #include <Luna/Runtime/HashSet.hpp>
+#include <Luna/Runtime/RobinMap.hpp>
+#include <Luna/Runtime/RobinSet.hpp>
 #include <Luna/Runtime/Random.hpp>
 
 namespace Luna
@@ -547,13 +549,15 @@ namespace Luna
             }
             lutest(h.size() == 100);
             h.shrink_to_fit();
-            lutest(h.hash_table_size() == 100);
+            usize retained_hash_table_size = h.hash_table_size();
+            lutest(retained_hash_table_size >= h.size());
+            lutest(h.capacity() == h.size());
 
             h.clear();
             lutest(h.empty());
             lutest(h.size() == 0);
             //! When the set gets cleared, it retains the buffer.
-            lutest(h.hash_table_size() == 100);
+            lutest(h.hash_table_size() == retained_hash_table_size);
             //! The bucket can be freed by calling shrink_to_fit.
             h.shrink_to_fit();
             lutest(h.hash_table_size() == 0);
@@ -704,7 +708,7 @@ namespace Luna
             lutest(max_lf == (1.0f));
             h.rehash(10000);
             size_t n = h.hash_table_size();
-            lutest(n == 10000);
+            lutest(n >= 10000);
             for (int i = 0; i < 10000; ++i)
             {
                 h.insert(i);    // This also tests for high loading.
@@ -717,6 +721,130 @@ namespace Luna
             }
             size_t n3 = h.hash_table_size();
             lutest(n3 == n);    // Verify no rehashing has occurred, because all second insertions are failed.
+        }
+
+        {
+            // Sparse-array hashing does not relocate other values when one value is erased.
+            HashMap<int, int> h;
+            h.reserve(8);
+            h.insert(make_pair(1, 10));
+            h.insert(make_pair(2, 20));
+            h.insert(make_pair(3, 30));
+            auto iter = h.find(1);
+            auto value_ptr = &(*iter);
+            h.erase(2);
+            h.insert(make_pair(4, 40));
+            iter = h.find(1);
+            lutest(&(*iter) == value_ptr);
+            lutest(iter->second == 10);
+            lutest(h.find(2) == h.end());
+            lutest(h.find(4)->second == 40);
+        }
+
+        {
+            HashMap<int, int> h;
+            h.reserve(4);
+            h.insert(make_pair(1, 10));
+            h.insert(make_pair(2, 20));
+            h.insert(make_pair(3, 30));
+            h.insert(make_pair(4, 40));
+            h.erase(2);
+            h.shrink_to_fit();
+            lutest(h.find(1)->second == 10);
+            lutest(h.find(2) == h.end());
+            lutest(h.find(3)->second == 30);
+            lutest(h.find(4)->second == 40);
+        }
+
+        {
+            HashSet<int> h;
+            h.reserve(16);
+            h.insert(4);
+            h.insert(1);
+            h.insert(3);
+            h.insert(2);
+            h.erase(3);
+            h.insert(0);
+
+            h.sort();
+            int expected[] = { 0, 1, 2, 4 };
+            usize index = 0;
+            for (auto iter = h.begin(); iter != h.end(); ++iter)
+            {
+                lutest(*iter == expected[index]);
+                ++index;
+            }
+            lutest(index == 4);
+            for (usize i = 0; i < 4; ++i)
+            {
+                lutest(h.find(expected[i]) != h.end());
+            }
+
+            h.erase(1);
+            h.insert(5);
+            lutest(h.find(5) != h.end());
+            h.sort([](int lhs, int rhs) { return lhs > rhs; });
+            int expected_desc[] = { 5, 4, 2, 0 };
+            index = 0;
+            for (auto iter = h.begin(); iter != h.end(); ++iter)
+            {
+                lutest(*iter == expected_desc[index]);
+                ++index;
+            }
+            lutest(index == 4);
+        }
+
+        {
+            HashMap<int, int> h;
+            h.reserve(16);
+            h.insert(make_pair(5, 50));
+            h.insert(make_pair(1, 10));
+            h.insert(make_pair(3, 30));
+            h.insert(make_pair(2, 20));
+            h.erase(3);
+            h.insert(make_pair(4, 40));
+
+            h.key_sort();
+            int expected_keys[] = { 1, 2, 4, 5 };
+            usize index = 0;
+            for (auto iter = h.begin(); iter != h.end(); ++iter)
+            {
+                lutest(iter->first == expected_keys[index]);
+                lutest(iter->second == expected_keys[index] * 10);
+                ++index;
+            }
+            lutest(index == 4);
+            for (usize i = 0; i < 4; ++i)
+            {
+                auto iter = h.find(expected_keys[i]);
+                lutest(iter != h.end());
+                lutest(iter->second == expected_keys[i] * 10);
+            }
+
+            h.value_sort([](int lhs, int rhs) { return lhs > rhs; });
+            int expected_values[] = { 50, 40, 20, 10 };
+            index = 0;
+            for (auto iter = h.begin(); iter != h.end(); ++iter)
+            {
+                lutest(iter->second == expected_values[index]);
+                ++index;
+            }
+            lutest(index == 4);
+
+            h.sort([](const HashMap<int, int>::value_type& lhs, const HashMap<int, int>::value_type& rhs) {
+                return lhs.second < rhs.second;
+            });
+            int expected_values_asc[] = { 10, 20, 40, 50 };
+            index = 0;
+            for (auto iter = h.begin(); iter != h.end(); ++iter)
+            {
+                lutest(iter->second == expected_values_asc[index]);
+                ++index;
+            }
+            lutest(index == 4);
+
+            h.insert_or_assign(2, 200);
+            lutest(h.find(2)->second == 200);
         }
 
         {
@@ -777,7 +905,7 @@ namespace Luna
             // In such case, since old version of robinhood_insert never replaces tombstones when existing_dist == dist, 
             // the search algorithm cannot find one available slot to insert the second value. We change the algorithm so
             // that if the desired pos is a tombstone, the swapping still occurs.
-            HashMap<int, int, round_10_hash> h1;
+            RobinMap<int, int, round_10_hash> h1;
             h1.insert(make_pair(11, 1));
             for (int i = 0; i < 1000; ++i)
             {
@@ -790,7 +918,7 @@ namespace Luna
             // Bug 20220627: robinhood_insert returns wrong pos when the key is not inserted in order.
 
             Vector<u64> ids;
-            HashMap<u64, u64> h;
+            RobinMap<u64, u64> h;
             const usize num_ids = 500;
             for (u64 i = 0; i < num_ids; ++i)
             {
@@ -822,6 +950,17 @@ namespace Luna
                 auto iter = h.find(ids[i]);
                 lutest(iter->second == i);
             }
+        }
+
+        {
+            RobinSet<int> h;
+            h.insert(1);
+            h.insert(2);
+            h.insert(2);
+            lutest(h.size() == 2);
+            lutest(h.find(1) != h.end());
+            lutest(h.erase(1) == 1);
+            lutest(h.find(1) == h.end());
         }
     }
 }
