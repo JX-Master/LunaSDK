@@ -12,6 +12,6 @@ public sealed class AHITestTargetRules : TargetRules
         Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("*.cpp");
-        DependsOn("Runtime", "AHI", "RHI", "Window", "ImGui");
+        DependsOn("Runtime", "AHI", "RHI", "Window", "Font", "VG", "GUI", "GUIWindow");
     }
 }

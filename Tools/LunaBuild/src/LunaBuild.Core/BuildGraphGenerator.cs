@@ -51,7 +51,8 @@ public sealed class BuildGraphGenerator
         BuildOptions options,
         BuildTargetDefinition target)
     {
-        return string.Join('\n',
+        var lines = new List<string>
+        {
             "kind=target.inspect",
             $"name={target.Name}",
             $"script={workspace.ToRepositoryRelativePath(target.ScriptPath)}",
@@ -60,7 +61,13 @@ public sealed class BuildGraphGenerator
             $"arch={options.Architecture}",
             $"shared={options.Shared}",
             $"category={target.Category}",
-            $"rhi={options.RhiApi}");
+            $"rhi={options.RhiApi}",
+        };
+        foreach(var option in options.ProjectOptions.OrderBy(option => option.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            lines.Add($"project_option.{option.Key}={option.Value}");
+        }
+        return string.Join('\n', lines);
     }
 }
 

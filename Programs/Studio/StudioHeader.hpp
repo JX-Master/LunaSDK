@@ -10,7 +10,7 @@
 #pragma once
 #include <Luna/HID/HID.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/ImGui/ImGui.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Image/Image.hpp>
 #include <Luna/Image/DDSImage.hpp>
 #include <Luna/Font/Font.hpp>
@@ -103,7 +103,7 @@ namespace Luna
     {
         luiid("{410f7868-38b5-4e3f-b291-8e58d2cb7372}");
 
-        virtual void on_render() = 0;
+        virtual void on_render(GUI::IContext* context) = 0;
         virtual bool closed() = 0;
     };
 
@@ -111,7 +111,7 @@ namespace Luna
     {
         ObjRef userdata;
         //! Called when the tile is going to be drawn in asset browser.
-        void (*on_draw_tile)(object_t userdata, Asset::asset_t asset, const RectF& draw_rect);
+        void (*on_draw_tile)(GUI::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect);
         //! Called when a new editor is requested to be open for the specified asset.
         Ref<IAssetEditor>(*new_editor)(object_t userdata, Asset::asset_t editing_asset);
     };

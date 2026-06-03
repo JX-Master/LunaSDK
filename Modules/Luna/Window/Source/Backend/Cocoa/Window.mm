@@ -546,15 +546,33 @@ namespace Luna
         Int2U Window::screen_to_client(const Int2U& point)
         {
             lutsassert_main_thread();
-            auto pos = get_position();
-            return Int2U(point.x - pos.x, point.y - pos.y);
+            if (is_closed()) return Int2U(0, 0);
+            @autoreleasepool
+            {
+                NSWindow* window = (NSWindow*)m_window;
+                NSRect frame = [window frame];
+                NSRect contentRect = [window contentRectForFrameRect:frame];
+                NSRect screenFrame = [[window screen] frame];
+                i32 content_x = (i32)contentRect.origin.x;
+                i32 content_y = (i32)(screenFrame.size.height - contentRect.origin.y - contentRect.size.height);
+                return Int2U(point.x - content_x, point.y - content_y);
+            }
         }
 
         Int2U Window::client_to_screen(const Int2U& point)
         {
             lutsassert_main_thread();
-            auto pos = get_position();
-            return Int2U(point.x + pos.x, point.y + pos.y);
+            if (is_closed()) return Int2U(0, 0);
+            @autoreleasepool
+            {
+                NSWindow* window = (NSWindow*)m_window;
+                NSRect frame = [window frame];
+                NSRect contentRect = [window contentRectForFrameRect:frame];
+                NSRect screenFrame = [[window screen] frame];
+                i32 content_x = (i32)contentRect.origin.x;
+                i32 content_y = (i32)(screenFrame.size.height - contentRect.origin.y - contentRect.size.height);
+                return Int2U(point.x + content_x, point.y + content_y);
+            }
         }
 
         id Window::get_nswindow()

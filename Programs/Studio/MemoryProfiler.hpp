@@ -36,7 +36,7 @@ namespace Luna
         void on_set_memory_name(void* ptr, const c8* name);
         void on_set_memory_type(void* ptr, const c8* type);
         void on_set_memory_domain(void* ptr, const c8* domain);
-        void render();
+        void render(GUI::IContext* context);
     };
     struct MemoryProfilerCallback
     {

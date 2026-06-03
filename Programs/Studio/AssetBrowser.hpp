@@ -41,7 +41,11 @@ namespace Luna
         //----- End of States for tile context -----
 
         //----- Begin of States for asset popup menu -----
+        bool m_host_focused = false;
         Name m_popup_asset;
+        bool m_asset_popup_open = false;
+        Float2U m_asset_popup_position = Float2U(0.0f);
+        GUI::ItemHandle m_asset_popup_handle;
         Name m_editing_asset_name;
         String m_asset_name_editing_buf;
         //----- End of States for asset popup menu -----
@@ -57,10 +61,10 @@ namespace Luna
 
         void change_path(const Path& path);
 
-        void render();
+        void render(GUI::IContext* context, bool* open);
 
     private:
-        void navbar();
-        void tile_context();
+        void navbar(GUI::IContext* context, const RectF& rect);
+        void tile_context(GUI::IContext* context, const RectF& rect);
     };
 }

@@ -28,8 +28,24 @@ public sealed record BuildOptions(
     BuildPlatform Platform,
     string Architecture,
     bool Shared,
-    RhiApi RhiApi)
+    RhiApi RhiApi,
+    IReadOnlyDictionary<string, string> ProjectOptions)
 {
+    public string? ProjectOption(string name)
+    {
+        return ProjectOptions.TryGetValue(name, out var value) ? value : null;
+    }
+
+    public bool ProjectBoolOption(string name, bool defaultValue = false)
+    {
+        var value = ProjectOption(name);
+        if(value is null) return defaultValue;
+        return value.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("1", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("on", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static BuildOptions HostDefault()
     {
         var platform = OperatingSystem.IsWindows()
@@ -50,7 +66,8 @@ public sealed record BuildOptions(
             Platform: platform,
             Architecture: HostArchitecture(),
             Shared: true,
-            RhiApi: rhiApi);
+            RhiApi: rhiApi,
+            ProjectOptions: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
     }
 
     private static string HostArchitecture()
