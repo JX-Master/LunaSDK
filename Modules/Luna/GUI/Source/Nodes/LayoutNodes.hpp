@@ -62,6 +62,8 @@ namespace Luna
         {
             lustruct("GUI::ScrollViewNode", "{99956C7E-0997-4E23-8A95-373C5196A7F7}");
 
+            ScrollViewNode();
+
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
             virtual NodeLayoutBehavior layout_behavior() const override;
@@ -69,13 +71,14 @@ namespace Luna
             virtual bool uses_node_measure() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct WindowNode : Node
         {
             lustruct("GUI::WindowNode", "{5EB73D33-D324-43E6-AB3F-502BBCD40CDE}");
 
             bool* open = nullptr;
+
+            WindowNode();
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
@@ -85,8 +88,6 @@ namespace Luna
             static f32 title_bar_height();
 
             static RectF close_rect(const RectF& rect);
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
 
             virtual void on_click(NodeInputContext& ctx) override;
         };
@@ -98,13 +99,14 @@ namespace Luna
             id_t parent_popup = 0;
             id_t owner = 0;
 
+            PopupNode();
+
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
             virtual NodeLayerRole layer_role() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct TooltipNode : Node
         {
@@ -113,12 +115,13 @@ namespace Luna
             TooltipDesc desc;
             id_t owner = 0;
 
+            TooltipNode();
+
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
             virtual NodeLayerRole layer_role() const override;
             virtual bool uses_node_measure() const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct MenuBarNode : Node
         {
@@ -132,7 +135,6 @@ namespace Luna
             virtual bool uses_node_measure() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct TableLayoutNode : Node
         {
@@ -147,7 +149,6 @@ namespace Luna
             virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
-            virtual bool uses_context_render() const override;
         };
         struct GridLayoutNode : Node
         {
@@ -188,7 +189,6 @@ namespace Luna
             virtual bool uses_node_measure() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct TabBarNode : Node
         {
@@ -204,7 +204,6 @@ namespace Luna
             virtual bool uses_node_measure() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct TabItemNode : Node
         {
@@ -214,11 +213,11 @@ namespace Luna
             TabItemFlag flags = TabItemFlag::none;
             bool content_visible = false;
 
+            TabItemNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
             virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool uses_node_measure() const override;
-            virtual bool uses_context_render() const override;
         };
     }
 }

@@ -51,11 +51,16 @@ namespace Luna
         bool dock_panel_b_open = true;
         bool tab_document_open[4] = { true, true, true, true };
         bool floating_window_open = false;
+        i32 style_theme = 0;
+        bool style_preview_checkbox = true;
+        bool style_preview_switch = true;
+        bool style_preview_bool = false;
         Float2U popup_position = Float2U(120.0f, 120.0f);
         String overview_quick_edit_text = "Overview quick edit";
         String widget_input_text = "Widget input";
         String widget_notes_text = "Editable widget notes";
         String layout_column_text = "Layout column input";
+        String style_preview_text = "Theme preview input";
         String popup_text = "No popup action";
         String state_text = "Interact with the controls";
         String dropped_text = "Drop text payload here";
@@ -63,6 +68,8 @@ namespace Luna
         i32 dropped_number = -1;
         i32 radio_choice = 1;
         i32 button_group_choice = 0;
+        i32 style_preview_choice = 1;
+        i32 style_preview_group = 0;
         i32 combo_index = 0;
         i32 slider_int_value = 4;
         i32 slider_int3_value[3] = { 2, 5, 8 };
@@ -74,6 +81,8 @@ namespace Luna
         f32 slider_value = 0.35f;
         Float3 slider3_value = Float3(0.15f, 0.45f, 0.75f);
         f32 slider_with_input_value = 0.72f;
+        f32 style_preview_slider = 0.48f;
+        f32 style_preview_drag = 32.0f;
         f32 drag_value = 42.0f;
         Float2 drag2_value = Float2(1.0f, -2.0f);
         Float3 drag3_value = Float3(0.0f, 1.0f, 2.0f);
@@ -116,9 +125,16 @@ namespace Luna
         GUI::ItemHandle drag_mixed_target;
     };
 
+    GUI::RenderProxyDesc demo_custom_node_render_proxy();
+
     struct DemoCustomNode : GUI::Node
     {
         lustruct("GUITest::DemoCustomNode", "{A7A8030D-AAD4-4374-B967-74AF3DAD0A4D}");
+
+        DemoCustomNode()
+        {
+            render_proxy = demo_custom_node_render_proxy();
+        }
 
         virtual Guid type_guid() const override
         {
@@ -138,30 +154,38 @@ namespace Luna
             metrics.max_size = Float2U(F32_MAX, 38.0f);
             return metrics;
         }
-
-        virtual void render(GUI::NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const GUI::NodeRenderState& state) const override
-        {
-            RectF r(rect.offset_x, state.surface_size.y - rect.offset_y - rect.height, rect.width, rect.height);
-            RectF c(clip_rect.offset_x, state.surface_size.y - clip_rect.offset_y - clip_rect.height, clip_rect.width, clip_rect.height);
-            GUI::IDrawList* draw_list = ctx.draw_list();
-            GUI::DrawListState draw_state = draw_list->get_state();
-            draw_state.shape_buffer = draw_list->get_shape_buffer();
-            draw_state.texture = nullptr;
-            draw_state.clip_rect = c;
-            u32 pop_id = draw_list->push_state(&draw_state);
-            Vector<f32>& points = draw_list->get_shape_buffer()->get_shape_points(true);
-            u32 begin = (u32)points.size();
-            VG::ShapeBuilder::add_rounded_rectangle_filled(points, 0.0f, 0.0f, r.width, r.height, 6.0f);
-            u32 end = (u32)points.size();
-            Float4U color = state.active ? Float4U(0.22f, 0.38f, 0.64f, 1.0f) :
-                (state.hovered ? Float4U(0.24f, 0.34f, 0.50f, 1.0f) : Float4U(0.14f, 0.20f, 0.30f, 1.0f));
-            draw_list->add_shape(begin, end - begin,
-                Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
-                Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
-                color);
-            draw_list->pop_state(pop_id);
-        }
     };
+
+    void draw_demo_custom_node(GUI::NodeRenderContext& ctx, const GUI::Node&, const RectF& rect, const RectF& clip_rect,
+        const GUI::NodeRenderState& state, void*)
+    {
+        RectF r(rect.offset_x, state.surface_size.y - rect.offset_y - rect.height, rect.width, rect.height);
+        RectF c(clip_rect.offset_x, state.surface_size.y - clip_rect.offset_y - clip_rect.height, clip_rect.width, clip_rect.height);
+        GUI::IDrawList* draw_list = ctx.draw_list();
+        GUI::DrawListState draw_state = draw_list->get_state();
+        draw_state.shape_buffer = draw_list->get_shape_buffer();
+        draw_state.texture = nullptr;
+        draw_state.clip_rect = c;
+        u32 pop_id = draw_list->push_state(&draw_state);
+        Vector<f32>& points = draw_list->get_shape_buffer()->get_shape_points(true);
+        u32 begin = (u32)points.size();
+        VG::ShapeBuilder::add_rounded_rectangle_filled(points, 0.0f, 0.0f, r.width, r.height, 6.0f);
+        u32 end = (u32)points.size();
+        Float4U color = state.active ? Float4U(0.22f, 0.38f, 0.64f, 1.0f) :
+            (state.hovered ? Float4U(0.24f, 0.34f, 0.50f, 1.0f) : Float4U(0.14f, 0.20f, 0.30f, 1.0f));
+        draw_list->add_shape(begin, end - begin,
+            Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
+            Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
+            color);
+        draw_list->pop_state(pop_id);
+    }
+
+    GUI::RenderProxyDesc demo_custom_node_render_proxy()
+    {
+        GUI::RenderProxyDesc desc;
+        desc.draw = draw_demo_custom_node;
+        return desc;
+    }
 
     void draw_demo_proxy_button(GUI::NodeRenderContext& ctx, const GUI::Node& node, const RectF& rect, const RectF& clip_rect,
         const GUI::NodeRenderState& state, void*)
@@ -907,6 +931,229 @@ namespace Luna
         GUI::end_tab_bar(app.gui);
     }
 
+    struct DemoThemePalette
+    {
+        const c8* name;
+        Float4U text;
+        Float4U panel;
+        Float4U title;
+        Float4U surface;
+        Float4U surface_focus;
+        Float4U accent;
+        Float4U accent_hover;
+        Float4U accent_active;
+        Float4U border;
+        Float4U subtle;
+        Float4U subtle_hover;
+        Float4U selected;
+        Float4U disabled;
+        Float4U popup;
+        Float4U tooltip;
+    };
+
+    void set_theme_color(App& app, const Name& style, const c8* entry, const Float4U& color)
+    {
+        GUI::set_style_f32x4(app.gui, style, Name(entry), color);
+    }
+
+    void define_demo_theme(App& app, const DemoThemePalette& theme)
+    {
+        Name style(theme.name);
+        GUI::define_style(app.gui, style);
+        set_theme_color(app, style, "gui.text.color", theme.text);
+
+        set_theme_color(app, style, "gui.window.background", theme.panel);
+        set_theme_color(app, style, "gui.window.title_background", theme.title);
+        set_theme_color(app, style, "gui.window.title_color", theme.text);
+        set_theme_color(app, style, "gui.window.close_background", theme.subtle);
+        set_theme_color(app, style, "gui.window.close_hovered", theme.accent_active);
+        set_theme_color(app, style, "gui.scroll_view.background", theme.panel);
+        set_theme_color(app, style, "gui.dock_space.background", theme.panel);
+
+        set_theme_color(app, style, "gui.button.background", theme.accent);
+        set_theme_color(app, style, "gui.button.background_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.button.background_active", theme.accent_active);
+        set_theme_color(app, style, "gui.button.text_color", Float4U(1.0f));
+
+        set_theme_color(app, style, "gui.selectable.background_hovered", theme.subtle_hover);
+        set_theme_color(app, style, "gui.selectable.background_selected", theme.selected);
+        set_theme_color(app, style, "gui.selectable.background_active", theme.accent_active);
+        set_theme_color(app, style, "gui.selectable.text_color", theme.text);
+
+        set_theme_color(app, style, "gui.input_text.background", theme.surface);
+        set_theme_color(app, style, "gui.input_text.background_focused", theme.surface_focus);
+        set_theme_color(app, style, "gui.input_text.text_color", theme.text);
+        set_theme_color(app, style, "gui.input_text.selection", Float4U(theme.accent.x, theme.accent.y, theme.accent.z, 0.72f));
+        set_theme_color(app, style, "gui.input_text.cursor", theme.text);
+
+        set_theme_color(app, style, "gui.numeric.background", theme.surface);
+        set_theme_color(app, style, "gui.numeric.background_active", theme.surface_focus);
+        set_theme_color(app, style, "gui.numeric.text_color", theme.text);
+        set_theme_color(app, style, "gui.numeric.label_color", theme.text);
+        set_theme_color(app, style, "gui.numeric.selection", Float4U(theme.accent.x, theme.accent.y, theme.accent.z, 0.72f));
+        set_theme_color(app, style, "gui.numeric.cursor", theme.text);
+        set_theme_color(app, style, "gui.numeric.slider_track", theme.subtle);
+        set_theme_color(app, style, "gui.numeric.slider_track_hovered", theme.subtle_hover);
+        set_theme_color(app, style, "gui.numeric.slider_fill", theme.accent);
+        set_theme_color(app, style, "gui.numeric.slider_fill_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.numeric.slider_fill_active", theme.accent_active);
+        set_theme_color(app, style, "gui.numeric.drag_fill", theme.accent_hover);
+
+        set_theme_color(app, style, "gui.checkbox.background", theme.surface);
+        set_theme_color(app, style, "gui.checkbox.background_checked", theme.accent_active);
+        set_theme_color(app, style, "gui.checkbox.border", theme.border);
+        set_theme_color(app, style, "gui.checkbox.border_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.checkbox.text_color", theme.text);
+        set_theme_color(app, style, "gui.switch.off_track", theme.subtle);
+        set_theme_color(app, style, "gui.switch.off_track_hovered", theme.subtle_hover);
+        set_theme_color(app, style, "gui.switch.on_track", theme.accent_active);
+        set_theme_color(app, style, "gui.switch.on_track_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.switch.text_color", theme.text);
+        set_theme_color(app, style, "gui.radio_button.background", theme.surface);
+        set_theme_color(app, style, "gui.radio_button.ring", theme.border);
+        set_theme_color(app, style, "gui.radio_button.ring_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.radio_button.selected_color", theme.accent_active);
+        set_theme_color(app, style, "gui.radio_button.text_color", theme.text);
+
+        set_theme_color(app, style, "gui.button_group.background", theme.surface);
+        set_theme_color(app, style, "gui.button_group.border", theme.border);
+        set_theme_color(app, style, "gui.button_group.hover", theme.subtle_hover);
+        set_theme_color(app, style, "gui.button_group.selected", theme.selected);
+        set_theme_color(app, style, "gui.button_group.selected_hot", theme.accent_hover);
+        set_theme_color(app, style, "gui.button_group.separator", theme.border);
+        set_theme_color(app, style, "gui.button_group.text", theme.text);
+        set_theme_color(app, style, "gui.button_group.text_selected", theme.text);
+
+        set_theme_color(app, style, "gui.collapsing_header.background", theme.subtle);
+        set_theme_color(app, style, "gui.collapsing_header.background_hovered", theme.subtle_hover);
+        set_theme_color(app, style, "gui.collapsing_header.text_color", theme.text);
+        set_theme_color(app, style, "gui.tree_node.background_hovered", theme.subtle_hover);
+        set_theme_color(app, style, "gui.tree_node.background_selected", theme.selected);
+        set_theme_color(app, style, "gui.tree_node.background_active", theme.accent_active);
+        set_theme_color(app, style, "gui.tree_node.text_color", theme.text);
+        set_theme_color(app, style, "gui.tree_node.icon_color", theme.accent_active);
+        set_theme_color(app, style, "gui.tree_node.leaf_icon_color", theme.border);
+
+        set_theme_color(app, style, "gui.menu_bar.background", theme.title);
+        set_theme_color(app, style, "gui.menu_bar.border", theme.border);
+        set_theme_color(app, style, "gui.menu_item.background_hovered", theme.subtle_hover);
+        set_theme_color(app, style, "gui.menu_item.background_active", theme.accent_active);
+        set_theme_color(app, style, "gui.menu_item.text_color", theme.text);
+        set_theme_color(app, style, "gui.menu_item.text_disabled", theme.disabled);
+        set_theme_color(app, style, "gui.menu_separator.color", theme.border);
+        set_theme_color(app, style, "gui.popup.background", theme.popup);
+        set_theme_color(app, style, "gui.tooltip.background", theme.tooltip);
+        set_theme_color(app, style, "gui.tooltip.border", theme.border);
+        set_theme_color(app, style, "gui.tab_bar.background", theme.title);
+        set_theme_color(app, style, "gui.tab_bar.header_line", theme.border);
+
+        set_theme_color(app, style, "demo.proxy.background", theme.surface);
+        set_theme_color(app, style, "demo.proxy.accent", theme.accent_hover);
+    }
+
+    void define_demo_theme_styles(App& app)
+    {
+        define_demo_theme(app, DemoThemePalette
+        {
+            "demo.theme.dark",
+            Float4U(0.92f, 0.95f, 0.98f, 1.0f),
+            Float4U(0.08f, 0.10f, 0.13f, 0.98f),
+            Float4U(0.12f, 0.16f, 0.22f, 1.0f),
+            Float4U(0.11f, 0.15f, 0.20f, 1.0f),
+            Float4U(0.14f, 0.20f, 0.29f, 1.0f),
+            Float4U(0.17f, 0.29f, 0.48f, 1.0f),
+            Float4U(0.28f, 0.50f, 0.82f, 1.0f),
+            Float4U(0.22f, 0.38f, 0.62f, 1.0f),
+            Float4U(0.30f, 0.36f, 0.44f, 1.0f),
+            Float4U(0.07f, 0.09f, 0.12f, 1.0f),
+            Float4U(0.16f, 0.23f, 0.32f, 1.0f),
+            Float4U(0.16f, 0.25f, 0.38f, 1.0f),
+            Float4U(0.46f, 0.50f, 0.56f, 1.0f),
+            Float4U(0.07f, 0.09f, 0.12f, 0.98f),
+            Float4U(0.05f, 0.06f, 0.08f, 0.98f)
+        });
+        define_demo_theme(app, DemoThemePalette
+        {
+            "demo.theme.light",
+            Float4U(0.12f, 0.16f, 0.22f, 1.0f),
+            Float4U(0.94f, 0.96f, 0.98f, 0.98f),
+            Float4U(0.84f, 0.89f, 0.96f, 1.0f),
+            Float4U(1.0f, 1.0f, 1.0f, 1.0f),
+            Float4U(0.88f, 0.94f, 1.0f, 1.0f),
+            Float4U(0.24f, 0.45f, 0.78f, 1.0f),
+            Float4U(0.34f, 0.60f, 0.94f, 1.0f),
+            Float4U(0.18f, 0.36f, 0.66f, 1.0f),
+            Float4U(0.62f, 0.68f, 0.76f, 1.0f),
+            Float4U(0.88f, 0.91f, 0.95f, 1.0f),
+            Float4U(0.78f, 0.86f, 0.96f, 1.0f),
+            Float4U(0.70f, 0.82f, 0.96f, 1.0f),
+            Float4U(0.50f, 0.56f, 0.64f, 1.0f),
+            Float4U(0.96f, 0.98f, 1.0f, 0.98f),
+            Float4U(0.98f, 0.99f, 1.0f, 0.98f)
+        });
+    }
+
+    Name active_demo_theme_style(const App& app)
+    {
+        if(app.style_theme == 1) return Name("demo.theme.dark");
+        if(app.style_theme == 2) return Name("demo.theme.light");
+        return Name();
+    }
+
+    void draw_theme_preview(App& app)
+    {
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_height(420.0f));
+        GUI::begin_window(app.gui, "Theme Preview", GUI::Size::fixed(760.0f, 420.0f));
+
+        GUI::begin_menu_bar(app.gui, "Theme Preview Menu");
+        if(GUI::begin_menu(app.gui, "File"))
+        {
+            GUI::menu_item(app.gui, "New", "Ctrl+N");
+            GUI::menu_item(app.gui, "Disabled", nullptr, false, false);
+            GUI::menu_separator(app.gui);
+            GUI::menu_item(app.gui, "Checkable", nullptr, &app.style_preview_bool);
+            GUI::end_menu(app.gui);
+        }
+        GUI::end_menu_bar(app.gui);
+
+        GUI::text(app.gui, "The preview below is rebuilt from ordinary widgets using the selected style.");
+        GUI::LayoutDesc row;
+        row.gap = 8.0f;
+        row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
+        GUI::begin_h_layout(app.gui, "Theme Preview Buttons", row);
+        GUI::button(app.gui, "Primary Button");
+        GUI::selectable(app.gui, "Selectable Row", true);
+        GUI::end_h_layout(app.gui);
+
+        GUI::checkbox(app.gui, "Checkbox", &app.style_preview_checkbox);
+        GUI::toggle_switch(app.gui, "Switch", &app.style_preview_switch);
+        GUI::begin_h_layout(app.gui, "Theme Preview Radio", row);
+        GUI::radio_button(app.gui, "One", &app.style_preview_choice, 0);
+        GUI::radio_button(app.gui, "Two", &app.style_preview_choice, 1);
+        GUI::radio_button(app.gui, "Three", &app.style_preview_choice, 2);
+        GUI::end_h_layout(app.gui);
+
+        const c8* group_items[] = { "Alpha", "Beta", "Gamma" };
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(360.0f));
+        GUI::button_group(app.gui, "Theme Button Group", &app.style_preview_group, Span<const c8*>(group_items, 3));
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
+        GUI::input_text(app.gui, "Theme Input", app.style_preview_text);
+        GUI::slider_float(app.gui, "Theme Slider", &app.style_preview_slider, 0.0f, 1.0f);
+        GUI::drag_float(app.gui, "Theme Drag", &app.style_preview_drag, 1.0f, 0.0f, 100.0f, GUI::NumericEditFlag::input_on_double_click);
+
+        GUI::ItemHandle header = GUI::collapsing_header(app.gui, "Collapsing Header");
+        if(GUI::get_item_state(header, GUI::State::open()))
+        {
+            GUI::tree_push(app.gui);
+            GUI::tree_node(app.gui, "Tree Node", GUI::TreeNodeFlag::selected | GUI::TreeNodeFlag::leaf);
+            GUI::tree_pop(app.gui);
+        }
+
+        GUI::set_next_item_render_proxy(app.gui, demo_button_render_proxy());
+        GUI::button(app.gui, "Render Proxy Styled By Theme");
+        GUI::end_window(app.gui);
+    }
+
     void draw_style_tab(App& app)
     {
         demo_section(app, "Style inheritance");
@@ -951,6 +1198,28 @@ namespace Luna
         GUI::button(app.gui, "Same Node, Different Draw");
         GUI::pop_style(app.gui);
         GUI::end_h_layout(app.gui);
+
+        demo_section(app, "Theme switcher");
+        define_demo_theme_styles(app);
+        const c8* theme_items[] = { "Default", "Dark", "Light" };
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(360.0f));
+        GUI::button_group(app.gui, "Theme Selector", &app.style_theme, Span<const c8*>(theme_items, 3));
+        GUI::text(app.gui, app.style_theme == 0 ?
+            "Default uses the GUI default colors and does not push a style." :
+            (app.style_theme == 1 ? "Dark pushes demo.theme.dark around the preview." :
+                "Light pushes demo.theme.light around the preview."));
+
+        Name theme_style = active_demo_theme_style(app);
+        if(theme_style)
+        {
+            GUI::push_style(app.gui, theme_style);
+            draw_theme_preview(app);
+            GUI::pop_style(app.gui);
+        }
+        else
+        {
+            draw_theme_preview(app);
+        }
     }
 
     void draw_showcase_tab(App& app, FrameHandles& handles, u32 tab)

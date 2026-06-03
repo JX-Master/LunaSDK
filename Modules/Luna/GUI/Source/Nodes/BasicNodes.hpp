@@ -21,7 +21,6 @@ namespace Luna
 
             virtual LayoutMetrics measure() const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct TextNode : Node
         {
@@ -39,7 +38,6 @@ namespace Luna
 
             virtual LayoutMetrics measure(NodeMeasureContext& ctx) const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct SelectableNode : Node
         {
@@ -63,7 +61,6 @@ namespace Luna
 
             virtual LayoutMetrics measure() const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct CheckboxNode : Node
         {
@@ -71,6 +68,8 @@ namespace Luna
 
             bool* value = nullptr;
             bool label_layout = false;
+
+            CheckboxNode();
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
@@ -84,8 +83,6 @@ namespace Luna
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
 
             virtual void on_click(NodeInputContext& ctx) override;
         };
@@ -96,6 +93,8 @@ namespace Luna
             bool* value = nullptr;
             bool label_layout = false;
 
+            ToggleSwitchNode();
+
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
@@ -109,13 +108,13 @@ namespace Luna
 
             virtual LayoutMetrics measure() const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
-
             virtual void on_click(NodeInputContext& ctx) override;
         };
         struct CollapsingHeaderNode : Node
         {
             lustruct("GUI::CollapsingHeaderNode", "{3F6E2788-AE42-4B9C-8309-742C8ACC5933}");
+
+            CollapsingHeaderNode();
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
@@ -123,8 +122,6 @@ namespace Luna
             bool open(NodeInputContext& ctx) const;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
 
             virtual void update_state(NodeInputContext& ctx) const override;
 
@@ -151,8 +148,6 @@ namespace Luna
 
             virtual LayoutMetrics measure() const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
-
             virtual void update_state(NodeInputContext& ctx) const override;
 
             virtual void on_click(NodeInputContext& ctx) override;
@@ -166,6 +161,8 @@ namespace Luna
             i32* i32_value = nullptr;
             i32 item_value = 0;
             bool label_layout = false;
+
+            RadioButtonNode();
 
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
@@ -181,8 +178,6 @@ namespace Luna
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
 
             virtual void on_click(NodeInputContext& ctx) override;
         };

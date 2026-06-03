@@ -4,6 +4,7 @@
 * and license in LICENSE.txt
 */
 #include "ColorNodes.hpp"
+#include "../RenderProxies/ColorRenderProxies.hpp"
 
 namespace Luna
 {
@@ -12,6 +13,7 @@ namespace Luna
         ColorPickerNode::ColorPickerNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_color_picker_render_proxy();
         }
 
         Guid ColorPickerNode::type_guid() const
@@ -22,11 +24,6 @@ namespace Luna
         Ref<Node> ColorPickerNode::clone() const
         {
             return new_object<ColorPickerNode>(*this);
-        }
-
-        bool ColorPickerNode::uses_context_render() const
-        {
-            return true;
         }
 
         LayoutMetrics ColorPickerNode::measure() const

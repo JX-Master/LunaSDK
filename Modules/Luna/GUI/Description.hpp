@@ -76,11 +76,55 @@ namespace Luna
             Float2U surface_size = Float2U(0.0f);
             Float2U pointer_position = Float2U(0.0f);
             f32 delta_time = 1.0f / 60.0f;
+            f64 time = 0.0;
+        };
+
+        struct NodeRenderLayout
+        {
+            RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+
+            Vector<f32> table_column_offsets;
+            Vector<f32> table_column_widths;
+            Vector<f32> table_row_offsets;
+            Vector<f32> table_row_heights;
+            u32 table_columns = 0;
+            u32 table_rows = 0;
+
+            RectF tab_header_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF tab_header_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF tab_close_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF tab_scroll_left_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF tab_scroll_right_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            bool tab_scrollable = false;
+            f32 tab_scroll_max = 0.0f;
+            bool tab_content_visible = true;
+
+            bool dock_panel_child = false;
+            bool dock_panel_visible = true;
+            bool dock_panel_floating = false;
+            id_t dock_space_id = 0;
+            RectF dock_panel_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF dock_panel_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF dock_panel_title_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF dock_panel_close_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF dock_panel_resize_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            DockPanelStyle dock_panel_style;
+            u32 dock_leaf_index = U32_MAX;
+
+            Float2U scroll_content_size = Float2U(0.0f);
+            Float2U scroll_viewport_size = Float2U(0.0f);
+            bool scroll_has_vertical = false;
+            bool scroll_has_horizontal = false;
         };
 
         struct NodeRenderContext
         {
             virtual ~NodeRenderContext() = default;
+            virtual u32 current_node_index() const = 0;
+            virtual const Node* get_node(u32 node_index) const = 0;
+            virtual const Node* find_node(id_t node_id) const = 0;
+            virtual bool get_node_render_layout(u32 node_index, NodeRenderLayout& out_layout) const = 0;
             virtual IDrawList* draw_list() = 0;
             virtual object_t get_state(id_t id) const = 0;
             virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) = 0;
@@ -116,6 +160,8 @@ namespace Luna
                 RHI::ITexture* texture = nullptr, ImageFlag image_flags = ImageFlag::none) = 0;
             virtual void draw_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
                 bool top_left, bool top_right, bool bottom_right, bool bottom_left) = 0;
+            virtual void draw_gradient_rect(const RectF& rect, const RectF& clip_rect,
+                const Float4U& top_left, const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left) = 0;
             virtual void draw_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color) = 0;
             virtual void draw_line(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width = 1.0f) = 0;
             virtual void draw_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
@@ -210,10 +256,6 @@ namespace Luna
             {
                 return true;
             }
-            virtual bool uses_context_render() const
-            {
-                return false;
-            }
             virtual void apply_container_defaults(LayoutDesc& desc) const {}
             virtual bool enabled_state() const
             {
@@ -227,7 +269,6 @@ namespace Luna
                     pos.x >= clip_rect.offset_x && pos.x <= clip_rect.offset_x + clip_rect.width &&
                     pos.y >= clip_rect.offset_y && pos.y <= clip_rect.offset_y + clip_rect.height;
             }
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const {}
             virtual void update_state(NodeInputContext& ctx) const {}
             virtual void on_click(NodeInputContext& ctx) {}
 

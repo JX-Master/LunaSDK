@@ -4,6 +4,7 @@
 * and license in LICENSE.txt
 */
 #include "InputNodes.hpp"
+#include "../RenderProxies/InputRenderProxies.hpp"
 
 namespace Luna
 {
@@ -12,6 +13,7 @@ namespace Luna
         InputTextNode::InputTextNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_input_text_render_proxy();
         }
 
         Guid InputTextNode::type_guid() const
@@ -24,11 +26,6 @@ namespace Luna
             return new_object<InputTextNode>(*this);
         }
 
-        bool InputTextNode::uses_context_render() const
-        {
-            return true;
-        }
-
         LayoutMetrics InputTextNode::measure() const
         {
             return fixed_height_metrics(80.0f, 240.0f, 30.0f);
@@ -37,6 +34,7 @@ namespace Luna
         SliderFloatNode::SliderFloatNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_numeric_render_proxy();
         }
 
         Guid SliderFloatNode::type_guid() const
@@ -49,11 +47,6 @@ namespace Luna
             return new_object<SliderFloatNode>(*this);
         }
 
-        bool SliderFloatNode::uses_context_render() const
-        {
-            return true;
-        }
-
         LayoutMetrics SliderFloatNode::measure() const
         {
             return numeric_edit_metrics(*this, binding);
@@ -62,6 +55,7 @@ namespace Luna
         SliderIntNode::SliderIntNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_numeric_render_proxy();
         }
 
         Guid SliderIntNode::type_guid() const
@@ -74,11 +68,6 @@ namespace Luna
             return new_object<SliderIntNode>(*this);
         }
 
-        bool SliderIntNode::uses_context_render() const
-        {
-            return true;
-        }
-
         LayoutMetrics SliderIntNode::measure() const
         {
             return numeric_edit_metrics(*this, binding);
@@ -87,6 +76,7 @@ namespace Luna
         InputFloatNode::InputFloatNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_numeric_render_proxy();
         }
 
         Guid InputFloatNode::type_guid() const
@@ -99,11 +89,6 @@ namespace Luna
             return new_object<InputFloatNode>(*this);
         }
 
-        bool InputFloatNode::uses_context_render() const
-        {
-            return true;
-        }
-
         LayoutMetrics InputFloatNode::measure() const
         {
             return numeric_edit_metrics(*this, binding);
@@ -112,6 +97,7 @@ namespace Luna
         InputIntNode::InputIntNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_numeric_render_proxy();
         }
 
         Guid InputIntNode::type_guid() const
@@ -124,11 +110,6 @@ namespace Luna
             return new_object<InputIntNode>(*this);
         }
 
-        bool InputIntNode::uses_context_render() const
-        {
-            return true;
-        }
-
         LayoutMetrics InputIntNode::measure() const
         {
             return numeric_edit_metrics(*this, binding);
@@ -137,6 +118,7 @@ namespace Luna
         DragFloatNode::DragFloatNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_numeric_render_proxy();
         }
 
         Guid DragFloatNode::type_guid() const
@@ -149,11 +131,6 @@ namespace Luna
             return new_object<DragFloatNode>(*this);
         }
 
-        bool DragFloatNode::uses_context_render() const
-        {
-            return true;
-        }
-
         LayoutMetrics DragFloatNode::measure() const
         {
             return numeric_edit_metrics(*this, binding);
@@ -162,6 +139,7 @@ namespace Luna
         DragIntNode::DragIntNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_numeric_render_proxy();
         }
 
         Guid DragIntNode::type_guid() const
@@ -172,11 +150,6 @@ namespace Luna
         Ref<Node> DragIntNode::clone() const
         {
             return new_object<DragIntNode>(*this);
-        }
-
-        bool DragIntNode::uses_context_render() const
-        {
-            return true;
         }
 
         LayoutMetrics DragIntNode::measure() const

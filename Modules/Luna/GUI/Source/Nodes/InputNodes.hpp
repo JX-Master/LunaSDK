@@ -19,7 +19,6 @@ namespace Luna
             InputTextNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool uses_context_render() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct SliderFloatNode : Node
@@ -31,7 +30,6 @@ namespace Luna
             SliderFloatNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool uses_context_render() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct SliderIntNode : Node
@@ -43,7 +41,6 @@ namespace Luna
             SliderIntNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool uses_context_render() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct InputFloatNode : Node
@@ -55,7 +52,6 @@ namespace Luna
             InputFloatNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool uses_context_render() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct InputIntNode : Node
@@ -67,7 +63,6 @@ namespace Luna
             InputIntNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool uses_context_render() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct DragFloatNode : Node
@@ -79,7 +74,6 @@ namespace Luna
             DragFloatNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool uses_context_render() const override;
             virtual LayoutMetrics measure() const override;
         };
         struct DragIntNode : Node
@@ -91,7 +85,6 @@ namespace Luna
             DragIntNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
-            virtual bool uses_context_render() const override;
             virtual LayoutMetrics measure() const override;
         };
     }

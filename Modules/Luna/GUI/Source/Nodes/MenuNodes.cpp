@@ -4,6 +4,7 @@
 * and license in LICENSE.txt
 */
 #include "MenuNodes.hpp"
+#include "../RenderProxies/MenuRenderProxies.hpp"
 
 namespace Luna
 {
@@ -12,6 +13,7 @@ namespace Luna
         MenuSeparatorNode::MenuSeparatorNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_menu_separator_render_proxy();
         }
 
         Guid MenuSeparatorNode::type_guid() const
@@ -33,16 +35,10 @@ namespace Luna
             return metrics;
         }
 
-        void MenuSeparatorNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
-        {
-            f32 y = rect.offset_y + rect.height * 0.5f;
-            ctx.draw_line(Float2U(rect.offset_x + 8.0f, y), Float2U(rect.offset_x + max(rect.width - 8.0f, 8.0f), y),
-                clip_rect, Float4U(0.24f, 0.29f, 0.36f, 1.0f), 1.0f);
-        }
-
         MenuItemNode::MenuItemNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_menu_item_render_proxy();
         }
 
         Guid MenuItemNode::type_guid() const
@@ -81,42 +77,6 @@ namespace Luna
         LayoutMetrics MenuItemNode::measure(NodeMeasureContext& ctx) const
         {
             return measure();
-        }
-
-        void MenuItemNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
-        {
-            bool open = popup_id && ctx.is_popup_open(popup_id);
-            Float4U text_color = enabled ? Float4U(1.0f) : Float4U(0.55f, 0.59f, 0.65f, 1.0f);
-            if(open || state.hovered || state.active)
-            {
-                ctx.draw_rect(rect, clip_rect, state.active || open ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : Float4U(0.20f, 0.30f, 0.44f, 1.0f),
-                    top_level_menu ? 4.0f : 3.0f);
-            }
-            if(checked() && !top_level_menu)
-            {
-                f32 x0 = rect.offset_x + 8.0f;
-                f32 y0 = rect.offset_y + rect.height * 0.56f;
-                f32 x1 = rect.offset_x + 13.0f;
-                f32 y1 = rect.offset_y + rect.height * 0.72f;
-                f32 x2 = rect.offset_x + 22.0f;
-                f32 y2 = rect.offset_y + rect.height * 0.32f;
-                ctx.draw_line(Float2U(x0, y0), Float2U(x1, y1), clip_rect, text_color, 2.0f);
-                ctx.draw_line(Float2U(x1, y1), Float2U(x2, y2), clip_rect, text_color, 2.0f);
-            }
-            f32 text_x = top_level_menu ? 10.0f : 30.0f;
-            f32 text_pad_right = top_level_menu ? 20.0f : (popup_id ? 50.0f : 74.0f);
-            ctx.draw_text(RectF(rect.offset_x + text_x, rect.offset_y, max(rect.width - text_x - text_pad_right, 1.0f), rect.height),
-                clip_rect, text.c_str(), 15.0f, text_color, TextAlignment::begin);
-            if(popup_id && !top_level_menu)
-            {
-                ctx.draw_text(RectF(rect.offset_x + max(rect.width - 22.0f, 0.0f), rect.offset_y, 18.0f, rect.height),
-                    clip_rect, ">", 15.0f, text_color, TextAlignment::center);
-            }
-            else if(!shortcut.empty() && !top_level_menu)
-            {
-                ctx.draw_text(RectF(rect.offset_x + max(rect.width - 88.0f, 0.0f), rect.offset_y, 80.0f, rect.height),
-                    clip_rect, shortcut.c_str(), 14.0f, Float4U(text_color.x, text_color.y, text_color.z, 0.72f), TextAlignment::end);
-            }
         }
 
         void MenuItemNode::update_state(NodeInputContext& ctx) const

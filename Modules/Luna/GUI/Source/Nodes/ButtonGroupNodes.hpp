@@ -18,6 +18,8 @@ namespace Luna
             bool* selected = nullptr;
             Vector<String> items;
 
+            ButtonGroupNode();
+
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
@@ -26,8 +28,6 @@ namespace Luna
             i32 item_at(const RectF& rect, const Float2U& pos) const;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
 
             virtual void on_click(NodeInputContext& ctx) override;
         };

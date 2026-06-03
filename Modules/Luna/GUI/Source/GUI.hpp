@@ -1964,13 +1964,6 @@ namespace Luna
             void arrange_canvas_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void arrange_tab_bar_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void arrange_dock_space_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
-            void render_table_node(u32 node_index);
-            void render_tab_bar_headers(u32 node_index);
-            void render_tab_item_background(u32 node_index, bool draw_selected_background);
-            void render_tab_item_foreground(u32 node_index);
-            void render_tab_item(u32 node_index);
-            void render_tab_scroll_buttons(u32 node_index);
-            void render_dock_panel_chrome(u32 node_index);
             bool hit_test_table_separator(const Float2U& pos, id_t& out_id, bool& out_column, u32& out_index) const;
             void update_table_resize_from_pointer(const Float2U& pos);
             bool hit_test_dock_panel(const Float2U& pos, id_t& out_space_id, id_t& out_panel_id) const;
@@ -2017,7 +2010,6 @@ namespace Luna
             void process_input_events();
             void render_node(u32 node_index);
             void render_drag_drop_overlay();
-            void render_scrollbars(u32 node_index);
             void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
                 RHI::ITexture* texture = nullptr, ImageFlag image_flags = ImageFlag::none);
             void render_gradient_rect(const RectF& rect, const RectF& clip_rect,

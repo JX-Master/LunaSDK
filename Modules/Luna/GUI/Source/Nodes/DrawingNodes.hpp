@@ -26,12 +26,11 @@ namespace Luna
             Ref<RHI::ITexture> image;
             ImageFlag flags = ImageFlag::none;
 
+            ImageNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct DrawRectNode : Node
         {
@@ -40,12 +39,11 @@ namespace Luna
             Float4U color = Float4U(1.0f);
             f32 radius = 0.0f;
 
+            DrawRectNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct DrawCircleNode : Node
         {
@@ -53,12 +51,11 @@ namespace Luna
 
             Float4U color = Float4U(1.0f);
 
+            DrawCircleNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct DrawLineNode : Node
         {
@@ -69,12 +66,11 @@ namespace Luna
             Float4U color = Float4U(1.0f);
             f32 width = 1.0f;
 
+            DrawLineNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct DrawTextNode : Node
         {
@@ -85,12 +81,11 @@ namespace Luna
             TextAlignment horizontal_alignment = TextAlignment::begin;
             TextAlignment vertical_alignment = TextAlignment::center;
 
+            DrawTextNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct DrawImageNode : Node
         {
@@ -100,12 +95,11 @@ namespace Luna
             Float4U color = Float4U(1.0f);
             ImageFlag flags = ImageFlag::none;
 
+            DrawImageNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
     }
 }

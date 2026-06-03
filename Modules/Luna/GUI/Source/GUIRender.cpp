@@ -10,6 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
 #include "GUI.hpp"
+#include "RenderProxies/DockRenderProxies.hpp"
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/RHI/RHI.hpp>
@@ -25,7 +26,62 @@ namespace Luna
         {
             Context* context = nullptr;
             IDrawList* active_draw_list = nullptr;
+            u32 node_index = U32_MAX;
             id_t node_id = 0;
+
+            virtual u32 current_node_index() const override
+            {
+                return node_index;
+            }
+
+            virtual const Node* get_node(u32 index) const override
+            {
+                if(!context || index >= context->m_submitted_desc.nodes.size()) return nullptr;
+                return &context->m_submitted_desc.nodes[index];
+            }
+
+            virtual const Node* find_node(id_t id) const override
+            {
+                return context ? context->find_node(id) : nullptr;
+            }
+
+            virtual bool get_node_render_layout(u32 index, NodeRenderLayout& out_layout) const override
+            {
+                if(!context || index >= context->m_layouts.size()) return false;
+                const NodeLayout& layout = context->m_layouts[index];
+                out_layout.rect = layout.rect;
+                out_layout.clip_rect = layout.clip_rect;
+                out_layout.table_column_offsets = layout.table_column_offsets;
+                out_layout.table_column_widths = layout.table_column_widths;
+                out_layout.table_row_offsets = layout.table_row_offsets;
+                out_layout.table_row_heights = layout.table_row_heights;
+                out_layout.table_columns = layout.table_columns;
+                out_layout.table_rows = layout.table_rows;
+                out_layout.tab_header_rect = layout.tab_header_rect;
+                out_layout.tab_header_clip_rect = layout.tab_header_clip_rect;
+                out_layout.tab_close_rect = layout.tab_close_rect;
+                out_layout.tab_scroll_left_rect = layout.tab_scroll_left_rect;
+                out_layout.tab_scroll_right_rect = layout.tab_scroll_right_rect;
+                out_layout.tab_scrollable = layout.tab_scrollable;
+                out_layout.tab_scroll_max = layout.tab_scroll_max;
+                out_layout.tab_content_visible = layout.tab_content_visible;
+                out_layout.dock_panel_child = layout.dock_panel_child;
+                out_layout.dock_panel_visible = layout.dock_panel_visible;
+                out_layout.dock_panel_floating = layout.dock_panel_floating;
+                out_layout.dock_space_id = layout.dock_space_id;
+                out_layout.dock_panel_rect = layout.dock_panel_rect;
+                out_layout.dock_panel_clip_rect = layout.dock_panel_clip_rect;
+                out_layout.dock_panel_title_rect = layout.dock_panel_title_rect;
+                out_layout.dock_panel_close_rect = layout.dock_panel_close_rect;
+                out_layout.dock_panel_resize_rect = layout.dock_panel_resize_rect;
+                out_layout.dock_panel_style = layout.dock_panel_style;
+                out_layout.dock_leaf_index = layout.dock_leaf_index;
+                out_layout.scroll_content_size = layout.scroll_content_size;
+                out_layout.scroll_viewport_size = layout.scroll_viewport_size;
+                out_layout.scroll_has_vertical = layout.scroll_has_vertical;
+                out_layout.scroll_has_horizontal = layout.scroll_has_horizontal;
+                return true;
+            }
 
             virtual IDrawList* draw_list() override
             {
@@ -72,6 +128,12 @@ namespace Luna
                 context->render_rect_corners(rect, clip_rect, color, radius, top_left, top_right, bottom_right, bottom_left);
             }
 
+            virtual void draw_gradient_rect(const RectF& rect, const RectF& clip_rect,
+                const Float4U& top_left, const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left) override
+            {
+                context->render_gradient_rect(rect, clip_rect, top_left, top_right, bottom_right, bottom_left);
+            }
+
             virtual void draw_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color) override
             {
                 context->render_circle(rect, clip_rect, color);
@@ -101,28 +163,6 @@ namespace Luna
             default:
                 return VG::TextAlignment::begin;
             }
-        }
-
-        static Float4U lerp_color(const Float4U& a, const Float4U& b, f32 t)
-        {
-            t = clamp(t, 0.0f, 1.0f);
-            t = t * t * (3.0f - 2.0f * t);
-            return Float4U(
-                a.x + (b.x - a.x) * t,
-                a.y + (b.y - a.y) * t,
-                a.z + (b.z - a.z) * t,
-                a.w + (b.w - a.w) * t);
-        }
-
-        static RectF lerp_rect(const RectF& a, const RectF& b, f32 t)
-        {
-            t = clamp(t, 0.0f, 1.0f);
-            t = t * t * (3.0f - 2.0f * t);
-            return RectF(
-                a.offset_x + (b.offset_x - a.offset_x) * t,
-                a.offset_y + (b.offset_y - a.offset_y) * t,
-                a.width + (b.width - a.width) * t,
-                a.height + (b.height - a.height) * t);
         }
 
         static void add_selective_rounded_rectangle(Vector<f32>& points, f32 width, f32 height, f32 radius,
@@ -354,144 +394,6 @@ namespace Luna
             m_active_draw_list->pop_state(pop_id);
         }
 
-        void Context::render_table_node(u32 node_index)
-        {
-            const Node& node = m_submitted_desc.nodes[node_index];
-            const NodeLayout& layout = m_layouts[node_index];
-            const RectF& rect = layout.rect;
-            const RectF& clip = layout.clip_rect;
-            const TableStyle& style = table_desc(node).style;
-            u32 columns = layout.table_columns;
-            u32 rows = layout.table_rows;
-            if(!columns || !rows) return;
-
-            u32 child = node.first_child;
-            for(u32 row = 0; row < rows; ++row)
-            {
-                for(u32 col = 0; col < columns; ++col)
-                {
-                    usize cell_index = (usize)row * columns + col;
-                    ColorOverride color;
-                    const TableCellAttachment* cell_attachment = child != U32_MAX ? table_cell_attachment(node, child) : nullptr;
-                    if(cell_attachment)
-                    {
-                        color.enabled = true;
-                        color.color = cell_attachment->color;
-                    }
-                    else if(cell_index < style.cell_colors.size() && style.cell_colors[cell_index].enabled)
-                    {
-                        color = style.cell_colors[cell_index];
-                    }
-                    else if(row < style.row_colors.size() && style.row_colors[row].enabled)
-                    {
-                        color = style.row_colors[row];
-                    }
-                    else if(col < style.column_colors.size() && style.column_colors[col].enabled)
-                    {
-                        color = style.column_colors[col];
-                    }
-                    else if(style.background_mode == TableBackgroundMode::solid)
-                    {
-                        color.enabled = true;
-                        color.color = style.background_color;
-                    }
-                    else if(style.background_mode == TableBackgroundMode::alternate_rows)
-                    {
-                        color.enabled = true;
-                        color.color = (row % 2) ? style.alternate_background_color : style.background_color;
-                    }
-                    else if(style.background_mode == TableBackgroundMode::alternate_columns)
-                    {
-                        color.enabled = true;
-                        color.color = (col % 2) ? style.alternate_background_color : style.background_color;
-                    }
-                    if(color.enabled)
-                    {
-                        render_rect(RectF(layout.table_column_offsets[col], layout.table_row_offsets[row], layout.table_column_widths[col], layout.table_row_heights[row]), clip, color.color, 0.0f);
-                    }
-                    if(child != U32_MAX)
-                    {
-                        child = m_submitted_desc.nodes[child].next_sibling;
-                    }
-                }
-            }
-
-            f32 table_top = layout.table_row_offsets[0];
-            f32 table_bottom = layout.table_row_offsets.back() + layout.table_row_heights.back();
-            f32 table_left = layout.table_column_offsets[0];
-            f32 table_right = layout.table_column_offsets.back() + layout.table_column_widths.back();
-            if(style.column_separators && style.separator_size > 0.0f)
-            {
-                for(u32 col = 0; col + 1 < columns; ++col)
-                {
-                    f32 x = layout.table_column_offsets[col] + layout.table_column_widths[col];
-                    render_rect(RectF(x, table_top, style.separator_size, max(table_bottom - table_top, 1.0f)), clip, style.separator_color, 0.0f);
-                }
-            }
-            if(style.row_separators && style.separator_size > 0.0f)
-            {
-                for(u32 row = 0; row + 1 < rows; ++row)
-                {
-                    f32 y = layout.table_row_offsets[row] + layout.table_row_heights[row];
-                    render_rect(RectF(table_left, y, max(table_right - table_left, 1.0f), style.separator_size), clip, style.separator_color, 0.0f);
-                }
-            }
-            if(style.border_size > 0.0f)
-            {
-                f32 b = style.border_size;
-                render_rect(RectF(rect.offset_x, rect.offset_y, rect.width, b), clip, style.border_color, 0.0f);
-                render_rect(RectF(rect.offset_x, rect.offset_y + rect.height - b, rect.width, b), clip, style.border_color, 0.0f);
-                render_rect(RectF(rect.offset_x, rect.offset_y, b, rect.height), clip, style.border_color, 0.0f);
-                render_rect(RectF(rect.offset_x + rect.width - b, rect.offset_y, b, rect.height), clip, style.border_color, 0.0f);
-            }
-        }
-
-        void Context::render_scrollbars(u32 node_index)
-        {
-            const Node& node = m_submitted_desc.nodes[node_index];
-            const NodeLayout& layout = m_layouts[node_index];
-            if(!scroll_has_vertical_bar(layout) && !scroll_has_horizontal_bar(layout)) return;
-
-            Ref<ScrollState> state_ref = get_or_create_widget_state<ScrollState>(node.id);
-            ScrollState& state = *state_ref;
-            bool hovered = false;
-            if(m_pointer_inside)
-            {
-                if(scroll_has_vertical_bar(layout) && point_in_rect(m_pointer_pos, scroll_vertical_track_rect(layout)))
-                {
-                    hovered = true;
-                }
-                if(scroll_has_horizontal_bar(layout) && point_in_rect(m_pointer_pos, scroll_horizontal_track_rect(layout)))
-                {
-                    hovered = true;
-                }
-            }
-            bool active = scrollbar_interaction_state().active_scrollbar_id == node.id;
-            f32 target_opacity = (hovered || active) ? 0.92f : 0.35f;
-            f32 blend = clamp(m_frame_desc.delta_time * 12.0f, 0.0f, 1.0f);
-            state.scrollbar_opacity += (target_opacity - state.scrollbar_opacity) * blend;
-            f32 alpha = clamp(state.scrollbar_opacity, 0.20f, 1.0f);
-            const RectF& clip = layout.clip_rect;
-            f32 radius = scroll_bar_size() * 0.5f;
-            Float4U track_color(0.02f, 0.025f, 0.03f, alpha * 0.45f);
-            Float4U thumb_color(0.58f, 0.68f, 0.80f, alpha);
-
-            if(scroll_has_vertical_bar(layout))
-            {
-                RectF track = scroll_vertical_track_rect(layout);
-                RectF thumb = scroll_vertical_thumb_rect(layout, state);
-                render_rect(track, clip, track_color, radius);
-                render_rect(thumb, clip, thumb_color, radius);
-            }
-            if(scroll_has_horizontal_bar(layout))
-            {
-                RectF track = scroll_horizontal_track_rect(layout);
-                RectF thumb = scroll_horizontal_thumb_rect(layout, state);
-                render_rect(track, clip, track_color, radius);
-                render_rect(thumb, clip, thumb_color, radius);
-            }
-        }
-
         void Context::render_drag_drop_overlay()
         {
             if(!m_drag_drop.active || !m_drag_drop.type || m_layouts.size() != m_submitted_desc.nodes.size()) return;
@@ -533,250 +435,6 @@ namespace Luna
                 strprintf(label, "Payload: %s", type_name);
                 render_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
                     surface_clip, label.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
-            }
-        }
-
-        void Context::render_tab_bar_headers(u32 node_index)
-        {
-            const Node& node = m_submitted_desc.nodes[node_index];
-            TabBarState* tab_state = get_widget_state<TabBarState>(node.id);
-            RectF selected_rect(0.0f, 0.0f, 0.0f, 0.0f);
-            RectF selected_clip(0.0f, 0.0f, 0.0f, 0.0f);
-            bool has_selected_rect = false;
-
-            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
-            {
-                if(!tab_item_layout(m_submitted_desc.nodes[child])) continue;
-                render_tab_item_background(child, false);
-                const NodeLayout& layout = m_layouts[child];
-                if(tab_state && m_submitted_desc.nodes[child].id == tab_state->tab_selected_id && layout.tab_content_visible &&
-                    layout.tab_header_rect.width > 0.0f && layout.tab_header_rect.height > 0.0f)
-                {
-                    selected_rect = layout.tab_header_rect;
-                    selected_clip = layout.tab_header_clip_rect;
-                    has_selected_rect = true;
-                }
-            }
-
-            if(has_selected_rect)
-            {
-                RectF rect = selected_rect;
-                TabBarAnimationState* animation_state = get_widget_state<TabBarAnimationState>(node.id);
-                if(animation_state && animation_state->selection_rect_initialized)
-                {
-                    rect = lerp_rect(animation_state->selection_rect, selected_rect, clamp(m_frame_desc.delta_time * 14.0f, 0.0f, 1.0f));
-                }
-                Ref<TabBarAnimationState> next_animation_state = get_or_create_widget_state<TabBarAnimationState>(node.id);
-                next_animation_state->selection_rect = rect;
-                next_animation_state->selection_rect_initialized = true;
-
-                Float4U color = Float4U(0.17f, 0.27f, 0.42f, 1.0f);
-                f32 radius = 5.0f;
-                render_rect(rect, selected_clip, color, radius);
-                render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - radius, 0.0f), rect.width, min(radius, rect.height)),
-                    selected_clip, color, 0.0f);
-                render_rect(RectF(rect.offset_x, rect.offset_y, rect.width, 2.0f), selected_clip, Float4U(0.34f, 0.60f, 0.92f, 1.0f), 1.0f);
-            }
-
-            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
-            {
-                if(!tab_item_layout(m_submitted_desc.nodes[child])) continue;
-                render_tab_item_foreground(child);
-            }
-        }
-
-        void Context::render_tab_item_background(u32 node_index, bool draw_selected_background)
-        {
-            const Node& node = m_submitted_desc.nodes[node_index];
-            const NodeLayout& layout = m_layouts[node_index];
-            RectF rect = layout.tab_header_rect;
-            RectF clip = layout.tab_header_clip_rect;
-            if(rect.width <= 0.0f || rect.height <= 0.0f) return;
-
-            bool hovered = node.id == m_hovered_id;
-            bool active = node.id == m_active_id;
-            bool selected = layout.tab_content_visible;
-            const TabItemNode* tab = tab_item_node(node);
-            luassert(tab);
-            bool button = test_flags(tab->flags, TabItemFlag::button);
-            if(selected && !button && !draw_selected_background)
-            {
-                return;
-            }
-            Float4U color = selected ?
-                Float4U(0.17f, 0.27f, 0.42f, 1.0f) :
-                (active ? Float4U(0.17f, 0.24f, 0.34f, 1.0f) :
-                    (hovered ? Float4U(0.15f, 0.20f, 0.28f, 1.0f) : Float4U(0.09f, 0.11f, 0.15f, 1.0f)));
-            if(button)
-            {
-                color = active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
-                    (hovered ? Float4U(0.20f, 0.30f, 0.44f, 1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f));
-            }
-            f32 radius = 5.0f;
-            render_rect(rect, clip, color, radius);
-            render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - radius, 0.0f), rect.width, min(radius, rect.height)),
-                clip, color, 0.0f);
-            if(selected && draw_selected_background)
-            {
-                render_rect(RectF(rect.offset_x, rect.offset_y, rect.width, 2.0f), clip, Float4U(0.34f, 0.60f, 0.92f, 1.0f), 1.0f);
-            }
-        }
-
-        void Context::render_tab_item_foreground(u32 node_index)
-        {
-            const Node& node = m_submitted_desc.nodes[node_index];
-            const NodeLayout& layout = m_layouts[node_index];
-            RectF rect = layout.tab_header_rect;
-            RectF clip = layout.tab_header_clip_rect;
-            if(rect.width <= 0.0f || rect.height <= 0.0f) return;
-
-            const TabItemNode* tab = tab_item_node(node);
-            luassert(tab);
-
-            f32 left = rect.offset_x + 9.0f;
-            f32 right = rect.offset_x + rect.width - 8.0f;
-            if(test_flags(tab->flags, TabItemFlag::unsaved_document))
-            {
-                f32 dot = 6.0f;
-                render_circle(RectF(left, rect.offset_y + (rect.height - dot) * 0.5f, dot, dot), clip, Float4U(0.95f, 0.64f, 0.28f, 1.0f));
-                left += dot + 6.0f;
-            }
-            if(layout.tab_close_rect.width > 0.0f)
-            {
-                bool close_hovered = m_pointer_inside && point_in_rect(m_pointer_pos, layout.tab_close_rect);
-                if(close_hovered)
-                {
-                    render_rect(layout.tab_close_rect, clip, Float4U(0.46f, 0.18f, 0.18f, 1.0f), 4.0f);
-                }
-                render_text(layout.tab_close_rect, clip, "X", 12.0f, Color::white(), VG::TextAlignment::center);
-                right = min(right, layout.tab_close_rect.offset_x - 4.0f);
-            }
-            render_text(RectF(left, rect.offset_y, max(right - left, 1.0f), rect.height),
-                clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
-        }
-
-        void Context::render_tab_item(u32 node_index)
-        {
-            const Node& node = m_submitted_desc.nodes[node_index];
-            if(node.parent != U32_MAX && tab_bar_layout(m_submitted_desc.nodes[node.parent]))
-            {
-                return;
-            }
-            render_tab_item_background(node_index, true);
-            render_tab_item_foreground(node_index);
-        }
-
-        void Context::render_tab_scroll_buttons(u32 node_index)
-        {
-            const Node& node = m_submitted_desc.nodes[node_index];
-            const NodeLayout& layout = m_layouts[node_index];
-            if(!layout.tab_scrollable) return;
-            Ref<TabBarState> state_ref = get_or_create_widget_state<TabBarState>(node.id);
-            TabBarState& state = *state_ref;
-            auto render_button = [&](const RectF& rect, bool left) {
-                bool enabled = left ? state.tab_scroll_x > 0.5f : state.tab_scroll_x < layout.tab_scroll_max - 0.5f;
-                bool hovered = enabled && m_pointer_inside && point_in_rect(m_pointer_pos, rect);
-                bool active = enabled && tab_interaction_state().active_tab_scroll_id == node.id && tab_interaction_state().active_tab_scroll_left == left;
-                Float4U color = !enabled ? Float4U(0.09f, 0.10f, 0.12f, 0.82f) :
-                    (active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
-                        (hovered ? Float4U(0.18f, 0.25f, 0.35f, 1.0f) : Float4U(0.11f, 0.14f, 0.19f, 0.95f)));
-                render_rect(rect, layout.clip_rect, color, 4.0f);
-                Float4U arrow_color = enabled ? Float4U(1.0f) : Float4U(0.45f, 0.48f, 0.52f, 1.0f);
-                f32 cx = rect.offset_x + rect.width * 0.5f;
-                f32 cy = rect.offset_y + rect.height * 0.5f;
-                if(left)
-                {
-                    render_line_segment(Float2U(cx + 4.0f, cy - 6.0f), Float2U(cx - 3.0f, cy), layout.clip_rect, arrow_color, 1.8f);
-                    render_line_segment(Float2U(cx - 3.0f, cy), Float2U(cx + 4.0f, cy + 6.0f), layout.clip_rect, arrow_color, 1.8f);
-                }
-                else
-                {
-                    render_line_segment(Float2U(cx - 4.0f, cy - 6.0f), Float2U(cx + 3.0f, cy), layout.clip_rect, arrow_color, 1.8f);
-                    render_line_segment(Float2U(cx + 3.0f, cy), Float2U(cx - 4.0f, cy + 6.0f), layout.clip_rect, arrow_color, 1.8f);
-                }
-            };
-            render_button(layout.tab_scroll_left_rect, true);
-            render_button(layout.tab_scroll_right_rect, false);
-        }
-
-        void Context::render_dock_panel_chrome(u32 node_index)
-        {
-            const Node& node = m_submitted_desc.nodes[node_index];
-            const NodeLayout& layout = m_layouts[node_index];
-            if(!layout.dock_panel_child || !layout.dock_panel_visible) return;
-            const DockPanelStyle& style = layout.dock_panel_style;
-            const RectF& panel_rect = layout.dock_panel_rect;
-            const RectF& clip = layout.dock_panel_clip_rect;
-            bool active = node.id == dock_interaction_state().active_dock_panel_id || node.id == m_focused_id;
-            render_rect(panel_rect, clip, style.background_color, 5.0f);
-            if(style.title_bar)
-            {
-                render_rect(layout.dock_panel_title_rect, clip, active ? style.active_title_bar_color : style.title_bar_color, 5.0f);
-                const DockTreeNode* leaf = nullptr;
-                DockSpaceState* dock_state = get_widget_state<DockSpaceState>(layout.dock_space_id);
-                if(dock_state && layout.dock_leaf_index < dock_state->dock_nodes.size())
-                {
-                    const DockTreeNode& dock_leaf = dock_state->dock_nodes[layout.dock_leaf_index];
-                    if(!dock_leaf.split && dock_leaf.tabs.size() > 1)
-                    {
-                        leaf = &dock_leaf;
-                    }
-                }
-                if(leaf)
-                {
-                    for(usize tab_index = 0; tab_index < leaf->tabs.size(); ++tab_index)
-                    {
-                        id_t tab_id = leaf->tabs[tab_index];
-                        RectF tab_rect = dock_panel_tab_rect(layout.dock_panel_title_rect, tab_index, leaf->tabs.size(), style.close_button);
-                        bool tab_selected = tab_id == leaf->selected_tab;
-                        bool tab_hovered = m_pointer_inside && point_in_rect(m_pointer_pos, tab_rect);
-                        Float4U tab_color = tab_selected ? (active ? style.active_title_bar_color : Float4U(0.16f, 0.21f, 0.28f, 1.0f)) :
-                            (tab_hovered ? Float4U(0.18f, 0.24f, 0.32f, 1.0f) : Float4U(0.10f, 0.13f, 0.17f, 1.0f));
-                        render_rect(tab_rect, clip, tab_color, 4.0f);
-                        Node* tab_node = find_node(tab_id);
-                        const c8* label = tab_node ? tab_node->text.c_str() : "";
-                        render_text(RectF(tab_rect.offset_x + 7.0f, tab_rect.offset_y, max(tab_rect.width - 14.0f, 1.0f), tab_rect.height),
-                            clip, label, 14.0f, Color::white(), VG::TextAlignment::begin);
-                    }
-                }
-                else
-                {
-                    render_text(RectF(layout.dock_panel_title_rect.offset_x + 8.0f, layout.dock_panel_title_rect.offset_y,
-                        max(layout.dock_panel_title_rect.width - 40.0f, 1.0f), layout.dock_panel_title_rect.height),
-                        clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
-                }
-                if(style.close_button)
-                {
-                    bool close_hovered = m_pointer_inside && point_in_rect(m_pointer_pos, layout.dock_panel_close_rect);
-                    render_rect(layout.dock_panel_close_rect, clip,
-                        close_hovered ? Float4U(0.55f, 0.18f, 0.18f, 1.0f) : Float4U(0.23f, 0.27f, 0.33f, 1.0f),
-                        4.0f);
-                    render_text(layout.dock_panel_close_rect, clip, "X", 13.0f, Color::white(), VG::TextAlignment::center);
-                }
-            }
-            if(style.border_size > 0.0f)
-            {
-                f32 b = style.border_size;
-                render_rect(RectF(panel_rect.offset_x, panel_rect.offset_y, panel_rect.width, b), clip, style.border_color, 0.0f);
-                render_rect(RectF(panel_rect.offset_x, panel_rect.offset_y + panel_rect.height - b, panel_rect.width, b), clip, style.border_color, 0.0f);
-                render_rect(RectF(panel_rect.offset_x, panel_rect.offset_y, b, panel_rect.height), clip, style.border_color, 0.0f);
-                render_rect(RectF(panel_rect.offset_x + panel_rect.width - b, panel_rect.offset_y, b, panel_rect.height), clip, style.border_color, 0.0f);
-            }
-            if(style.resize_border && layout.dock_panel_floating)
-            {
-                RectF r = layout.dock_panel_resize_rect;
-                Float4U color = m_pointer_inside && point_in_rect(m_pointer_pos, r) ? Float4U(0.55f, 0.68f, 0.86f, 1.0f) : Float4U(0.36f, 0.42f, 0.50f, 0.85f);
-                render_line_segment(Float2U(r.offset_x + r.width - 2.0f, r.offset_y + 2.0f),
-                    Float2U(r.offset_x + 2.0f, r.offset_y + r.height - 2.0f), clip, color, 1.5f);
-            }
-            else if(style.resize_border && layout.dock_panel_resize_rect.width > 0.0f && layout.dock_panel_resize_rect.height > 0.0f)
-            {
-                RectF r = layout.dock_panel_resize_rect;
-                Float4U color = (m_pointer_inside && point_in_rect(m_pointer_pos, r)) || node.id == dock_interaction_state().active_dock_panel_id ?
-                    Float4U(0.55f, 0.68f, 0.86f, 1.0f) :
-                    Float4U(0.30f, 0.35f, 0.42f, 0.85f);
-                f32 y = r.offset_y + r.height * 0.5f;
-                render_line_segment(Float2U(r.offset_x + 8.0f, y), Float2U(r.offset_x + max(r.width - 8.0f, 8.0f), y), clip, color, 1.5f);
             }
         }
 
@@ -902,286 +560,26 @@ namespace Luna
                 focused = f != query_state->states.end() && f->second.as<bool>() && *f->second.as<bool>();
             }
 
-            if(m_layouts[node_index].dock_panel_child)
-            {
-                render_dock_panel_chrome(node_index);
-            }
-
-            NodeRenderState render_state{hovered, active, focused, m_frame_desc.surface_size, m_pointer_pos, m_frame_desc.delta_time};
+            NodeRenderState render_state{hovered, active, focused, m_frame_desc.surface_size, m_pointer_pos, m_frame_desc.delta_time, m_time};
             auto make_node_render_context = [&]()
             {
                 ContextNodeRenderContext node_render_context;
                 node_render_context.context = this;
                 node_render_context.active_draw_list = m_active_draw_list;
+                node_render_context.node_index = node_index;
                 node_render_context.node_id = node.id;
                 return node_render_context;
             };
-            auto render_polymorphic_node = [&]()
+            if(m_layouts[node_index].dock_panel_child)
             {
                 ContextNodeRenderContext node_render_context = make_node_render_context();
-                node.render(node_render_context, rect, clip, render_state);
-            };
+                draw_dock_panel_chrome(node_render_context, node, render_state);
+            }
 
             if(node.render_proxy.draw)
             {
                 ContextNodeRenderContext node_render_context = make_node_render_context();
                 node.render_proxy.draw(node_render_context, node, rect, clip, render_state, node.render_proxy.userdata);
-            }
-            else if(!node.uses_context_render())
-            {
-                render_polymorphic_node();
-            }
-            else if(tab_item_layout(node))
-            {
-                render_tab_item(node_index);
-            }
-            else if(table_layout(node))
-            {
-                render_table_node(node_index);
-            }
-            else if(input_text_node(node))
-            {
-                render_rect(rect, clip, node.id == m_focused_id ? Float4U(0.12f, 0.16f, 0.22f, 1.0f) : Float4U(0.08f, 0.10f, 0.13f, 1.0f), 4.0f);
-                const String* string_value = input_text_value(node);
-                if(string_value)
-                {
-                    RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
-                    RectF text_clip = intersect_rect(clip, text_rect);
-                    f32 text_width = input_text_cursor_x(*string_value, string_value->size(), 16.0f);
-                    RectF arrange_rect(text_rect.offset_x, text_rect.offset_y, max(text_rect.width, text_width + 4.0f), text_rect.height);
-                    Ref<InputEditState> state_ref = get_or_create_widget_state<InputEditState>(node.id);
-                    InputEditState& state = *state_ref;
-                    state.text_cursor = clamp_utf8_cursor(*string_value, state.text_cursor);
-                    if(node.id == m_focused_id && input_text_has_selection(*string_value, state))
-                    {
-                        usize selection_begin = 0;
-                        usize selection_end = 0;
-                        input_text_selection_range(*string_value, state, selection_begin, selection_end);
-                        f32 selection_x0 = text_rect.offset_x + input_text_cursor_x(*string_value, selection_begin, 16.0f);
-                        f32 selection_x1 = text_rect.offset_x + input_text_cursor_x(*string_value, selection_end, 16.0f);
-                        render_rect(RectF(selection_x0, text_rect.offset_y + 4.0f, max(selection_x1 - selection_x0, 1.0f), max(text_rect.height - 8.0f, 1.0f)),
-                            text_clip, Float4U(0.25f, 0.45f, 0.78f, 0.80f), 2.0f);
-                    }
-                    render_text(arrange_rect, text_clip, string_value->c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                    if(node.id == m_focused_id && !input_text_has_selection(*string_value, state))
-                    {
-                        f64 blink_time = max(m_time - state.text_cursor_blink_start, 0.0);
-                        bool cursor_visible = (((u64)(blink_time / 0.5)) & 1) == 0;
-                        if(cursor_visible)
-                        {
-                            f32 cursor_x = text_rect.offset_x + input_text_cursor_x(*string_value, state.text_cursor, 16.0f);
-                            if(cursor_x >= text_clip.offset_x && cursor_x <= text_clip.offset_x + text_clip.width)
-                            {
-                                render_rect(RectF(cursor_x, text_rect.offset_y + 5.0f, 1.0f, max(text_rect.height - 10.0f, 1.0f)),
-                                    text_clip, Color::white(), 0.0f);
-                            }
-                        }
-                    }
-                }
-            }
-            else if(color_picker_node(node))
-            {
-                Float4U color = read_color_value(node);
-                const ColorBinding* color_picker_binding = color_binding(node);
-                id_t owner_id = color_picker_binding && color_picker_binding->owner_id ? color_picker_binding->owner_id : node.id;
-                Ref<ColorPickerState> state_ref = get_or_create_widget_state<ColorPickerState>(owner_id);
-                ColorPickerState& state = *state_ref;
-                i32 axis = clamp(color_picker_axis_ref(state), 0, 5);
-                f32 picker_x = 0.0f;
-                f32 picker_y = 0.0f;
-                f32 picker_bar = 0.0f;
-                color_picker_channels_from_color(axis, color, picker_x, picker_y, picker_bar);
-
-                RectF square = color_picker_square_rect(rect);
-                RectF bar = color_picker_bar_rect(rect);
-                RectF current_rect = color_picker_current_rect(rect);
-                RectF original_rect = color_picker_original_rect(rect);
-
-                if(axis == 0)
-                {
-                    Float4U hue_color = color_hsv_to_rgb(picker_bar, 1.0f, 1.0f, 1.0f);
-                    render_gradient_rect(square, clip,
-                        Color::white(), hue_color,
-                        hue_color, Color::white());
-                    render_gradient_rect(square, clip,
-                        Float4U(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.0f, 0.0f, 0.0f, 0.0f),
-                        Color::black(), Color::black());
-                }
-                else if(axis == 1)
-                {
-                    for(u32 i = 0; i < 6; ++i)
-                    {
-                        f32 x0 = (f32)i / 6.0f;
-                        f32 x1 = (f32)(i + 1) / 6.0f;
-                        RectF segment(square.offset_x + square.width * x0, square.offset_y,
-                            square.width * (x1 - x0) + 0.5f, square.height);
-                        Float4U left = color_from_picker_channels(axis, x0, 1.0f, picker_bar, 1.0f);
-                        Float4U right = color_from_picker_channels(axis, x1, 1.0f, picker_bar, 1.0f);
-                        render_gradient_rect(segment, clip, left, right, right, left);
-                        render_gradient_rect(segment, clip,
-                            Float4U(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.0f, 0.0f, 0.0f, 0.0f),
-                            Color::black(), Color::black());
-                    }
-                }
-                else if(axis == 2)
-                {
-                    Float4U gray(picker_bar, picker_bar, picker_bar, 1.0f);
-                    for(u32 i = 0; i < 6; ++i)
-                    {
-                        f32 x0 = (f32)i / 6.0f;
-                        f32 x1 = (f32)(i + 1) / 6.0f;
-                        RectF segment(square.offset_x + square.width * x0, square.offset_y,
-                            square.width * (x1 - x0) + 0.5f, square.height);
-                        Float4U left = color_from_picker_channels(axis, x0, 1.0f, picker_bar, 1.0f);
-                        Float4U right = color_from_picker_channels(axis, x1, 1.0f, picker_bar, 1.0f);
-                        render_gradient_rect(segment, clip, left, right, right, left);
-                        render_gradient_rect(segment, clip,
-                            Float4U(gray.x, gray.y, gray.z, 0.0f), Float4U(gray.x, gray.y, gray.z, 0.0f),
-                            gray, gray);
-                    }
-                }
-                else
-                {
-                    render_gradient_rect(square, clip,
-                        color_from_picker_channels(axis, 0.0f, 1.0f, picker_bar, 1.0f),
-                        color_from_picker_channels(axis, 1.0f, 1.0f, picker_bar, 1.0f),
-                        color_from_picker_channels(axis, 1.0f, 0.0f, picker_bar, 1.0f),
-                        color_from_picker_channels(axis, 0.0f, 0.0f, picker_bar, 1.0f));
-                }
-                render_line_segment(Float2U(square.offset_x, square.offset_y), Float2U(square.offset_x + square.width, square.offset_y), clip, Float4U(0.24f, 0.29f, 0.36f, 1.0f), 1.0f);
-                render_line_segment(Float2U(square.offset_x + square.width, square.offset_y), Float2U(square.offset_x + square.width, square.offset_y + square.height), clip, Float4U(0.24f, 0.29f, 0.36f, 1.0f), 1.0f);
-                render_line_segment(Float2U(square.offset_x + square.width, square.offset_y + square.height), Float2U(square.offset_x, square.offset_y + square.height), clip, Float4U(0.24f, 0.29f, 0.36f, 1.0f), 1.0f);
-                render_line_segment(Float2U(square.offset_x, square.offset_y + square.height), Float2U(square.offset_x, square.offset_y), clip, Float4U(0.24f, 0.29f, 0.36f, 1.0f), 1.0f);
-
-                if(axis == 0)
-                {
-                    for(u32 i = 0; i < 6; ++i)
-                    {
-                        f32 y0 = (f32)i / 6.0f;
-                        f32 y1 = (f32)(i + 1) / 6.0f;
-                        RectF segment(bar.offset_x, bar.offset_y + bar.height * y0, bar.width,
-                            bar.height * (y1 - y0) + 0.5f);
-                        Float4U top_color = color_hsv_to_rgb(y0, 1.0f, 1.0f, 1.0f);
-                        Float4U bottom_color = color_hsv_to_rgb(y1, 1.0f, 1.0f, 1.0f);
-                        render_gradient_rect(segment, clip, top_color, top_color, bottom_color, bottom_color);
-                    }
-                }
-                else
-                {
-                    Float4U top_color = color_from_picker_channels(axis, picker_x, picker_y, 1.0f, 1.0f);
-                    Float4U bottom_color = color_from_picker_channels(axis, picker_x, picker_y, 0.0f, 1.0f);
-                    render_gradient_rect(bar, clip, top_color, top_color, bottom_color, bottom_color);
-                }
-
-                f32 cursor_x = square.offset_x + picker_x * square.width;
-                f32 cursor_y = square.offset_y + (1.0f - picker_y) * square.height;
-                render_circle(RectF(cursor_x - 8.0f, cursor_y - 8.0f, 16.0f, 16.0f), clip, Color::white());
-                render_circle(RectF(cursor_x - 5.0f, cursor_y - 5.0f, 10.0f, 10.0f), clip, color);
-                f32 bar_y = bar.offset_y + (axis == 0 ? picker_bar : (1.0f - picker_bar)) * bar.height;
-                render_line_segment(Float2U(bar.offset_x - 5.0f, bar_y), Float2U(bar.offset_x + bar.width + 5.0f, bar_y), clip, Color::white(), 2.0f);
-
-                render_text(RectF(current_rect.offset_x, current_rect.offset_y - 26.0f, current_rect.width, 22.0f), clip, "Current", 15.0f, Color::white(), VG::TextAlignment::begin);
-                render_color_swatch(current_rect, clip, color, 3.0f);
-                render_text(RectF(original_rect.offset_x, original_rect.offset_y - 26.0f, original_rect.width, 22.0f), clip, "Original", 15.0f, Color::white(), VG::TextAlignment::begin);
-                render_color_swatch(original_rect, clip, state.color_picker_original_valid ? state.color_picker_original : color, 3.0f);
-            }
-            else if(numeric_slider(node))
-            {
-                const NumericBinding* binding = numeric_binding(node);
-                luassert(binding);
-                f32 label_w = numeric_label_width(node, rect);
-                u32 value_count = numeric_value_count(node);
-                for(u32 i = 0; i < value_count; ++i)
-                {
-                    f32* f32_values = binding->f32_value;
-                    i32* i32_values = binding->i32_value;
-                    f32 value = numeric_value_f32(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
-                    RectF component_rect = numeric_component_rect(node, rect, i);
-                    bool active_component = active && (numeric_interaction_state().active_float_component == U32_MAX || numeric_interaction_state().active_float_component == i);
-                    f32 denom = max(binding->max_value - binding->min_value, 0.0001f);
-                    f32 t = clamp((value - binding->min_value) / denom, 0.0f, 1.0f);
-                    f32 track_pad = min(8.0f, component_rect.width * 0.20f);
-                    f32 track_x0 = component_rect.offset_x + track_pad;
-                    f32 track_x1 = component_rect.offset_x + max(component_rect.width - track_pad, track_pad);
-                    f32 track_y = component_rect.offset_y + component_rect.height * 0.5f;
-                    Float4U track_color = hovered ? Float4U(0.12f, 0.16f, 0.22f, 1.0f) : Float4U(0.07f, 0.08f, 0.10f, 1.0f);
-                    Float4U fill_color = active_component ? Float4U(0.26f, 0.43f, 0.72f, 1.0f) :
-                        (hovered ? Float4U(0.22f, 0.38f, 0.64f, 1.0f) : Float4U(0.20f, 0.36f, 0.62f, 1.0f));
-                    f32 knob_x = track_x0 + (track_x1 - track_x0) * t;
-                    f32 track_width = active_component ? 3.0f : 2.0f;
-                    render_line_segment(Float2U(track_x0, track_y), Float2U(track_x1, track_y), clip, track_color, track_width);
-                    render_line_segment(Float2U(track_x0, track_y), Float2U(knob_x, track_y), clip, fill_color, track_width);
-                    f32 knob_radius = active_component ? 6.5f : 5.5f;
-                    render_circle(RectF(knob_x - knob_radius, track_y - knob_radius, knob_radius * 2.0f, knob_radius * 2.0f), clip, fill_color);
-                }
-                if(label_w > 0.0f)
-                {
-                    render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                }
-            }
-            else if(numeric_node(node))
-            {
-                const NumericBinding* binding = numeric_binding(node);
-                luassert(binding);
-                f32 label_w = numeric_label_width(node, rect);
-                u32 value_count = numeric_value_count(node);
-                Ref<InputEditState> state_ref = get_or_create_widget_state<InputEditState>(node.id);
-                InputEditState& state = *state_ref;
-                for(u32 i = 0; i < value_count; ++i)
-                {
-                    f32* f32_values = binding->f32_value;
-                    i32* i32_values = binding->i32_value;
-                    f32 value = numeric_value_f32(node) ? (f32_values ? f32_values[i] : 0.0f) : (i32_values ? (f32)i32_values[i] : 0.0f);
-                    RectF component_rect = numeric_component_rect(node, rect, i);
-                    bool editing_component = numeric_text_editable(node) && node.id == m_focused_id && state.numeric_editing && state.numeric_edit_component == i;
-                    Float4U bg = binding->f32_color ? Float4U(
-                        i == 0 ? value : 0.10f,
-                        i == 1 ? value : 0.10f,
-                        i == 2 ? value : 0.10f,
-                        1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f);
-                    bool active_component = active && (!numeric_node(node) || numeric_interaction_state().active_float_component == U32_MAX || numeric_interaction_state().active_float_component == i);
-                    render_rect(component_rect, clip, (active_component || editing_component) ? Float4U(0.18f, 0.29f, 0.44f, 1.0f) : bg, 4.0f);
-                    if(!editing_component && numeric_drag(node) && binding->max_value > binding->min_value)
-                    {
-                        f32 denom = max(binding->max_value - binding->min_value, 0.0001f);
-                        f32 t = clamp((value - binding->min_value) / denom, 0.0f, 1.0f);
-                        render_rect(RectF(component_rect.offset_x, component_rect.offset_y + component_rect.height - 3.0f, component_rect.width * t, 3.0f), clip, Float4U(0.30f, 0.56f, 0.88f, 1.0f), 1.5f);
-                    }
-                    String value_text = editing_component ? state.numeric_edit_text : numeric_value_text(node, i);
-                    RectF text_rect(component_rect.offset_x + 6.0f, component_rect.offset_y, max(component_rect.width - 12.0f, 1.0f), component_rect.height);
-                    RectF text_clip = intersect_rect(clip, text_rect);
-                    if(editing_component && input_text_has_selection(value_text, state))
-                    {
-                        usize selection_begin = 0;
-                        usize selection_end = 0;
-                        input_text_selection_range(value_text, state, selection_begin, selection_end);
-                        f32 selection_x0 = text_rect.offset_x + input_text_cursor_x(value_text, selection_begin, 16.0f);
-                        f32 selection_x1 = text_rect.offset_x + input_text_cursor_x(value_text, selection_end, 16.0f);
-                        render_rect(RectF(selection_x0, text_rect.offset_y + 4.0f, max(selection_x1 - selection_x0, 1.0f), max(text_rect.height - 8.0f, 1.0f)),
-                            text_clip, Float4U(0.25f, 0.45f, 0.78f, 0.80f), 2.0f);
-                    }
-                    render_text(text_rect, text_clip, value_text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
-                    if(editing_component && !input_text_has_selection(value_text, state))
-                    {
-                        f64 blink_time = max(m_time - state.text_cursor_blink_start, 0.0);
-                        bool cursor_visible = (((u64)(blink_time / 0.5)) & 1) == 0;
-                        if(cursor_visible)
-                        {
-                            f32 cursor_x = text_rect.offset_x + input_text_cursor_x(value_text, state.text_cursor, 16.0f);
-                            if(cursor_x >= text_clip.offset_x && cursor_x <= text_clip.offset_x + text_clip.width)
-                            {
-                                render_rect(RectF(cursor_x, text_rect.offset_y + 5.0f, 1.0f, max(text_rect.height - 10.0f, 1.0f)),
-                                    text_clip, Color::white(), 0.0f);
-                            }
-                        }
-                    }
-                }
-                render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-            }
-
-            if(tab_bar_layout(node))
-            {
-                render_tab_bar_headers(node_index);
             }
 
             if(dock_space_layout(node))
@@ -1199,30 +597,9 @@ namespace Luna
                         render_node(child);
                     }
                 }
-                DockSpaceState* dock_state = get_widget_state<DockSpaceState>(node.id);
-                if(dock_state)
                 {
-                    if(dock_state->dock_root_node != U32_MAX && dock_state->dock_root_node < dock_state->dock_nodes.size())
-                    {
-                        Vector<u32> stack;
-                        stack.push_back(dock_state->dock_root_node);
-                        while(!stack.empty())
-                        {
-                            u32 dock_node_index = stack.back();
-                            stack.pop_back();
-                            if(dock_node_index >= dock_state->dock_nodes.size()) continue;
-                            const DockTreeNode& dock_node = dock_state->dock_nodes[dock_node_index];
-                            if(!dock_node.split) continue;
-                            stack.push_back(dock_node.child1);
-                            stack.push_back(dock_node.child0);
-                            if(dock_node.split_rect.width <= 0.0f || dock_node.split_rect.height <= 0.0f) continue;
-                            bool hovered_splitter = m_pointer_inside && point_in_rect(m_pointer_pos, dock_node.split_rect);
-                            bool active_splitter = dock_interaction_state().active_dock_split_space_id == node.id && dock_interaction_state().active_dock_split_node == dock_node_index;
-                            Float4U splitter_color = active_splitter ? Float4U(0.36f, 0.58f, 0.90f, 1.0f) :
-                                (hovered_splitter ? Float4U(0.28f, 0.42f, 0.62f, 0.95f) : Float4U(0.11f, 0.14f, 0.18f, 0.90f));
-                            render_rect(dock_node.split_rect, clip, splitter_color, 0.0f);
-                        }
-                    }
+                    ContextNodeRenderContext node_render_context = make_node_render_context();
+                    draw_dock_space_splitters(node_render_context, node, render_state);
                 }
                 for(usize i = 0; i < floating_children.size(); ++i)
                 {
@@ -1255,14 +632,6 @@ namespace Luna
             {
                 ContextNodeRenderContext node_render_context = make_node_render_context();
                 node.render_proxy.draw_after_children(node_render_context, node, rect, clip, render_state, node.render_proxy.userdata);
-            }
-            if(scroll_layout(node))
-            {
-                render_scrollbars(node_index);
-            }
-            if(tab_bar_layout(node))
-            {
-                render_tab_scroll_buttons(node_index);
             }
             if(dock_panel_layer_pop != U32_MAX)
             {

@@ -4,6 +4,7 @@
 * and license in LICENSE.txt
 */
 #include "DrawingNodes.hpp"
+#include "../RenderProxies/DrawingRenderProxies.hpp"
 
 namespace Luna
 {
@@ -28,6 +29,11 @@ namespace Luna
             return metrics;
         }
 
+        ImageNode::ImageNode()
+        {
+            render_proxy = default_image_render_proxy();
+        }
+
         Guid ImageNode::type_guid() const
         {
             return __guid;
@@ -48,9 +54,9 @@ namespace Luna
             return metrics;
         }
 
-        void ImageNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
+        DrawRectNode::DrawRectNode()
         {
-            ctx.draw_rect(rect, clip_rect, Float4U(1.0f), 0.0f, image, flags);
+            render_proxy = default_draw_rect_render_proxy();
         }
 
         Guid DrawRectNode::type_guid() const
@@ -73,9 +79,9 @@ namespace Luna
             return metrics;
         }
 
-        void DrawRectNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
+        DrawCircleNode::DrawCircleNode()
         {
-            ctx.draw_rect(rect, clip_rect, color, radius);
+            render_proxy = default_draw_circle_render_proxy();
         }
 
         Guid DrawCircleNode::type_guid() const
@@ -98,9 +104,9 @@ namespace Luna
             return metrics;
         }
 
-        void DrawCircleNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
+        DrawLineNode::DrawLineNode()
         {
-            ctx.draw_circle(rect, clip_rect, color);
+            render_proxy = default_draw_line_render_proxy();
         }
 
         Guid DrawLineNode::type_guid() const
@@ -123,9 +129,9 @@ namespace Luna
             return metrics;
         }
 
-        void DrawLineNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
+        DrawTextNode::DrawTextNode()
         {
-            ctx.draw_line(begin, end, clip_rect, color, width);
+            render_proxy = default_draw_text_render_proxy();
         }
 
         Guid DrawTextNode::type_guid() const
@@ -148,9 +154,9 @@ namespace Luna
             return metrics;
         }
 
-        void DrawTextNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
+        DrawImageNode::DrawImageNode()
         {
-            ctx.draw_text(rect, clip_rect, text.c_str(), font_size, color, horizontal_alignment, vertical_alignment);
+            render_proxy = default_draw_image_render_proxy();
         }
 
         Guid DrawImageNode::type_guid() const
@@ -171,11 +177,6 @@ namespace Luna
             metrics.preferred_size = size;
             metrics.max_size = size;
             return metrics;
-        }
-
-        void DrawImageNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
-        {
-            ctx.draw_rect(rect, clip_rect, color, 0.0f, image, flags);
         }
 
     }

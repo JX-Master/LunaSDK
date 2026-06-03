@@ -4,6 +4,8 @@
 * and license in LICENSE.txt
 */
 #include "LayoutNodes.hpp"
+#include "../RenderProxies/LayoutRenderProxies.hpp"
+#include "../RenderProxies/TableRenderProxies.hpp"
 
 namespace Luna
 {
@@ -64,6 +66,11 @@ namespace Luna
             return false;
         }
 
+        ScrollViewNode::ScrollViewNode()
+        {
+            render_proxy = default_scroll_view_render_proxy();
+        }
+
         Guid ScrollViewNode::type_guid() const
         {
             return __guid;
@@ -94,9 +101,9 @@ namespace Luna
             desc.padding = EdgeInsets::all(8.0f);
         }
 
-        void ScrollViewNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
+        WindowNode::WindowNode()
         {
-            ctx.draw_rect(rect, clip_rect, Float4U(0.10f, 0.12f, 0.14f, 0.92f), 6.0f);
+            render_proxy = default_window_render_proxy();
         }
 
         Guid WindowNode::type_guid() const
@@ -129,21 +136,6 @@ namespace Luna
             return RectF(rect.offset_x + max(rect.width - 26.0f, 0.0f), rect.offset_y + 5.0f, 20.0f, 20.0f);
         }
 
-        void WindowNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
-        {
-            ctx.draw_rect(rect, clip_rect, Float4U(0.10f, 0.12f, 0.14f, 0.92f), 6.0f);
-            if(!open) return;
-            RectF title_rect(rect.offset_x, rect.offset_y, rect.width, title_bar_height());
-            ctx.draw_rect(title_rect, clip_rect, Float4U(0.13f, 0.17f, 0.22f, 1.0f), 6.0f);
-            ctx.draw_text(RectF(rect.offset_x + 10.0f, rect.offset_y, max(rect.width - 46.0f, 1.0f), title_bar_height()),
-                clip_rect, text.c_str(), 15.0f, Float4U(1.0f), TextAlignment::begin);
-            RectF close = close_rect(rect);
-            bool close_hovered = state.pointer_position.x >= close.offset_x && state.pointer_position.x <= close.offset_x + close.width &&
-                state.pointer_position.y >= close.offset_y && state.pointer_position.y <= close.offset_y + close.height;
-            ctx.draw_rect(close, clip_rect, close_hovered ? Float4U(0.55f, 0.18f, 0.18f, 1.0f) : Float4U(0.23f, 0.27f, 0.33f, 1.0f), 4.0f);
-            ctx.draw_text(close, clip_rect, "X", 14.0f, Float4U(1.0f), TextAlignment::center);
-        }
-
         void WindowNode::on_click(NodeInputContext& ctx)
         {
             if(!open) return;
@@ -156,6 +148,11 @@ namespace Luna
             }
             *open = false;
             ctx.set_state(Name("gui.value_changed"), Any(true));
+        }
+
+        PopupNode::PopupNode()
+        {
+            render_proxy = default_popup_render_proxy();
         }
 
         Guid PopupNode::type_guid() const
@@ -183,9 +180,9 @@ namespace Luna
             return false;
         }
 
-        void PopupNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
+        TooltipNode::TooltipNode()
         {
-            ctx.draw_rect(rect, clip_rect, Float4U(0.08f, 0.10f, 0.13f, 0.98f), 5.0f);
+            render_proxy = default_tooltip_render_proxy();
         }
 
         Guid TooltipNode::type_guid() const
@@ -208,19 +205,10 @@ namespace Luna
             return false;
         }
 
-        void TooltipNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
-        {
-            ctx.draw_rect(rect, clip_rect, Float4U(0.05f, 0.06f, 0.07f, 0.97f), 4.0f);
-            Float4U border(0.28f, 0.33f, 0.40f, 1.0f);
-            ctx.draw_rect(RectF(rect.offset_x, rect.offset_y, rect.width, 1.0f), clip_rect, border, 0.0f);
-            ctx.draw_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - 1.0f, 0.0f), rect.width, 1.0f), clip_rect, border, 0.0f);
-            ctx.draw_rect(RectF(rect.offset_x, rect.offset_y, 1.0f, rect.height), clip_rect, border, 0.0f);
-            ctx.draw_rect(RectF(rect.offset_x + max(rect.width - 1.0f, 0.0f), rect.offset_y, 1.0f, rect.height), clip_rect, border, 0.0f);
-        }
-
         MenuBarNode::MenuBarNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_menu_bar_render_proxy();
         }
 
         Guid MenuBarNode::type_guid() const
@@ -255,16 +243,10 @@ namespace Luna
             desc.cross_axis_alignment = LayoutCrossAxisAlignment::center;
         }
 
-        void MenuBarNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
-        {
-            ctx.draw_rect(rect, clip_rect, Float4U(0.08f, 0.10f, 0.13f, 0.92f), 0.0f);
-            ctx.draw_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - 1.0f, 0.0f), rect.width, 1.0f),
-                clip_rect, Float4U(0.20f, 0.24f, 0.30f, 1.0f), 0.0f);
-        }
-
         TableLayoutNode::TableLayoutNode()
         {
             layout_style = LayoutStyle::fill_width();
+            render_proxy = default_table_layout_render_proxy();
         }
 
         Guid TableLayoutNode::type_guid() const
@@ -290,11 +272,6 @@ namespace Luna
         bool TableLayoutNode::uses_node_measure() const
         {
             return false;
-        }
-
-        bool TableLayoutNode::uses_context_render() const
-        {
-            return true;
         }
 
         GridLayoutNode::GridLayoutNode()
@@ -356,6 +333,7 @@ namespace Luna
         DockSpaceNode::DockSpaceNode()
         {
             layout_style = LayoutStyle::fill();
+            render_proxy = default_dock_space_render_proxy();
         }
 
         Guid DockSpaceNode::type_guid() const
@@ -384,14 +362,10 @@ namespace Luna
             desc.gap = 0.0f;
         }
 
-        void DockSpaceNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
-        {
-            ctx.draw_rect(rect, clip_rect, Float4U(0.07f, 0.08f, 0.10f, 1.0f), 0.0f);
-        }
-
         TabBarNode::TabBarNode()
         {
             layout_style = LayoutStyle::fill();
+            render_proxy = default_tab_bar_render_proxy();
         }
 
         Guid TabBarNode::type_guid() const
@@ -425,11 +399,9 @@ namespace Luna
             desc.gap = 0.0f;
         }
 
-        void TabBarNode::render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const
+        TabItemNode::TabItemNode()
         {
-            ctx.draw_rect(rect, clip_rect, Float4U(0.08f, 0.10f, 0.13f, 0.70f), 4.0f);
-            ctx.draw_rect(RectF(rect.offset_x, rect.offset_y + 31.0f, rect.width, 1.0f),
-                clip_rect, Float4U(0.22f, 0.27f, 0.34f, 1.0f), 0.0f);
+            render_proxy = default_tab_item_render_proxy();
         }
 
         Guid TabItemNode::type_guid() const
@@ -450,11 +422,6 @@ namespace Luna
         bool TabItemNode::uses_node_measure() const
         {
             return false;
-        }
-
-        bool TabItemNode::uses_context_render() const
-        {
-            return true;
         }
 
     }

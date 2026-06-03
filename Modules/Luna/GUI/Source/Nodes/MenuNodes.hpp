@@ -20,8 +20,6 @@ namespace Luna
             virtual Ref<Node> clone() const override;
 
             virtual LayoutMetrics measure() const override;
-
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
         };
         struct MenuItemNode : Node
         {
@@ -45,7 +43,6 @@ namespace Luna
             virtual LayoutMetrics measure() const override;
             virtual LayoutMetrics measure(NodeMeasureContext& ctx) const override;
 
-            virtual void render(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const NodeRenderState& state) const override;
             virtual void update_state(NodeInputContext& ctx) const override;
 
             virtual void on_click(NodeInputContext& ctx) override;
