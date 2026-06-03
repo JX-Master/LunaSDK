@@ -11,9 +11,8 @@ The build front-end and back-end are separated in C#:
 
 Target configuration lives in project-local C# `TargetRules` classes. A rule
 file must be named `*.Target.cs` and should live in the target's project
-directory. Legacy `xmake.lua` files may still exist next to some targets as
-migration references, but LunaBuild target rules are authoritative. LunaBuild
-scans these project rule files, compiles them into a temporary project rules assembly under
+directory. LunaBuild target rules are the authoritative build definitions.
+LunaBuild scans these project rule files, compiles them into a temporary project rules assembly under
 `build/LunaBuild/ProjectRules`, then loads the resulting `TargetRules` types.
 `Tools/LunaBuild` should stay project-agnostic.
 
@@ -54,7 +53,7 @@ Android application packaging is also driven by LunaBuild. `package` first
 builds the selected executable target as an Android native shared library,
 copies all required `.so` files into the target's `AndroidProject` `jniLibs`
 directory, then invokes the Gradle wrapper only for APK packaging. Gradle does
-not run xmake or compile native code.
+not compile native code.
 
 When running long builds locally, prefer the repository timeout wrapper:
 

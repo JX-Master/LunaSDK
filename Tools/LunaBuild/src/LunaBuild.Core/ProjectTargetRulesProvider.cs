@@ -12,7 +12,6 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
     private static readonly string[] ExcludedTopLevelDirectories =
     {
         ".git",
-        ".xmake",
         "build",
         "SDKs",
         "Tools/LunaBuild",

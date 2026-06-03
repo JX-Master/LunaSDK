@@ -3,7 +3,7 @@
 ### Common
 
 * .NET 9 SDK, check [here](https://dotnet.microsoft.com/download) for installation instructions.
-* LunaBuild is the authoritative build system for LunaSDK. xmake scripts are kept only as legacy migration references and are not used by the main build, install, IDE generation, or CI paths.
+* LunaBuild is the authoritative build system for LunaSDK.
 
 ### Windows
 
@@ -27,7 +27,7 @@ xcodebuild -downloadComponent MetalToolchain
 * Android NDK matching the application `ndkVersion`.
 * JDK 17 or the JBR bundled with Android Studio.
 
-LunaBuild builds the native targets. The Android Gradle project is used only for APK packaging and does not run xmake or compile native code.
+LunaBuild builds the native targets. The Android Gradle project is used only for APK packaging and does not compile native code.
 
 ### iOS/iPadOS
 
@@ -273,7 +273,3 @@ When investigating local build issues, use the timeout wrapper so compiler or to
 ```powershell
 .\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','LunaBuild.csproj','--','build','--all') -TimeoutSeconds 300
 ```
-
-## Legacy xmake Files
-
-The repository still contains `xmake.lua` files and `Tools/xmake` scripts for migration reference. They are no longer authoritative and are not used by the main development workflow or CI. New targets should be described with project-local `<Target>.Target.cs` files.

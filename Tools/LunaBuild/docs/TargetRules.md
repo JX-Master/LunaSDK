@@ -8,9 +8,8 @@ files into a temporary rules assembly, and loads concrete `TargetRules` and
 
 ## Location
 
-Place each target rule file next to the target's project files. Legacy
-`xmake.lua` files may still exist in some directories as migration references,
-but `<TargetName>.Target.cs` is the authoritative LunaBuild rule.
+Place each target rule file next to the target's project files.
+`<TargetName>.Target.cs` is the authoritative LunaBuild rule.
 
 Examples:
 
