@@ -123,6 +123,9 @@ namespace Luna
                 register_struct_type<TabBuildState>({});
                 register_struct_type<ColorPickerState>({});
                 register_struct_type<PopupAnchorState>({});
+#ifdef LUNA_GUI_ENABLE_DEBUG
+                register_struct_type<DebugInspectorState>({});
+#endif
                 register_boxed_type<Context>();
                 impl_interface_for_type<Context, IContext>();
                 register_boxed_type<DrawList>();

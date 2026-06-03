@@ -99,6 +99,10 @@ namespace Luna
         bool clip_enabled = true;
         Float2U showcase_size = Float2U(920.0f, 700.0f);
         Float2U showcase_content_size = Float2U(880.0f, 590.0f);
+#ifdef LUNA_GUI_ENABLE_DEBUG
+        GUI::DebugInfo debug_info;
+        bool has_debug_info = false;
+#endif
     };
 
     struct FrameHandles
@@ -1355,9 +1359,20 @@ namespace Luna
                 FrameHandles handles = {};
                 u32 built_tab = app.selected_tab;
                 draw_showcase(app, handles, frame.surface_size, built_tab);
+#ifdef LUNA_GUI_ENABLE_DEBUG
+                if(app.has_debug_info)
+                {
+                    GUI::show_debug_info(app.gui, app.debug_info);
+                }
+#endif
 
                 lulet(desc, app.gui->end_build());
                 luexp(app.gui->submit(desc));
+#ifdef LUNA_GUI_ENABLE_DEBUG
+                lulet(debug_info, app.gui->dump_debug_info());
+                app.debug_info = move(debug_info);
+                app.has_debug_info = true;
+#endif
                 luexp(GUIWindow::update_text_input(&input_adapter));
 
                 if(built_tab == DEMO_TAB_WIDGETS)

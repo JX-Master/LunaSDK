@@ -9,6 +9,9 @@
 */
 #pragma once
 #include "Description.hpp"
+#ifdef LUNA_GUI_ENABLE_DEBUG
+#include "Debug.hpp"
+#endif
 
 namespace Luna
 {
@@ -41,6 +44,9 @@ namespace Luna
             virtual RV submit(const Description& desc) = 0;
             virtual void set_clipboard_io(const ClipboardIO& io) = 0;
             virtual TextInputState get_text_input_state() = 0;
+#ifdef LUNA_GUI_ENABLE_DEBUG
+            virtual R<DebugInfo> dump_debug_info() = 0;
+#endif
             virtual RV render(RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target) = 0;
         };
 

@@ -93,7 +93,18 @@ namespace Luna
 
         bool ScrollViewNode::uses_node_measure() const
         {
-            return false;
+            return true;
+        }
+
+        LayoutMetrics ScrollViewNode::measure() const
+        {
+            f32 width = requested_size.width > 0.0f ? requested_size.width : 160.0f;
+            f32 height = requested_size.height > 0.0f ? requested_size.height : 120.0f;
+            LayoutMetrics metrics;
+            metrics.min_size = Float2U(min(width, 32.0f), min(height, 32.0f));
+            metrics.preferred_size = Float2U(max(width, 1.0f), max(height, 1.0f));
+            metrics.max_size = Float2U(F32_MAX, F32_MAX);
+            return metrics;
         }
 
         void ScrollViewNode::apply_container_defaults(LayoutDesc& desc) const

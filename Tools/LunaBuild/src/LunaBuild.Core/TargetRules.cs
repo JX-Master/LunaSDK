@@ -52,6 +52,16 @@ public abstract class TargetRules
 
     protected RhiApi RhiApi => Options.RhiApi;
 
+    protected string? ProjectOption(string name)
+    {
+        return Options.ProjectOption(name);
+    }
+
+    protected bool ProjectBoolOption(string name, bool defaultValue = false)
+    {
+        return Options.ProjectBoolOption(name, defaultValue);
+    }
+
     public bool SupportsPlatform(BuildPlatform platform)
     {
         return _supportedPlatforms.Count == 0 || _supportedPlatforms.Contains(platform);

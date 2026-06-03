@@ -333,6 +333,29 @@ namespace Luna
             panel_state.z_order = dock_state->dock_next_z_order++;
         }
 
+        bool Context::hit_test_dock_panel_layer(u32 layer_index, const Float2U& pos) const
+        {
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            if(layer_index >= m_submitted_desc.layers.size()) return false;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const Node& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.layer != layer_index) continue;
+                if(!dock_space_layout(dock_node)) continue;
+                if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
+                for(u32 child = dock_node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    const NodeLayout& layout = m_layouts[child];
+                    if(!layout.dock_panel_child || !layout.dock_panel_visible) continue;
+                    if(point_in_rect(pos, layout.dock_panel_rect) && point_in_rect(pos, layout.dock_panel_clip_rect))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         bool Context::hit_test_dock_panel(const Float2U& pos, id_t& out_space_id, id_t& out_panel_id) const
         {
             bool found = false;
@@ -1081,6 +1104,7 @@ namespace Luna
                     if(layer.root == U32_MAX || layer.root >= m_submitted_desc.nodes.size()) continue;
                     id_t layer_hit = hit_test_node(layer.root, pos, HitTestFilter::none);
                     if(layer_hit) return layer_hit;
+                    if(hit_test_dock_panel_layer((u32)(i - 1), pos)) return 0;
                 }
             }
             return 0;
@@ -1095,6 +1119,10 @@ namespace Luna
                     const Layer& layer = m_submitted_desc.layers[i - 1];
                     if(layer.root == U32_MAX || layer.root >= m_submitted_desc.nodes.size()) continue;
                     if(hit_test_node(layer.root, pos, HitTestFilter::none))
+                    {
+                        return (u32)(i - 1);
+                    }
+                    if(hit_test_dock_panel_layer((u32)(i - 1), pos))
                     {
                         return (u32)(i - 1);
                     }
@@ -1113,6 +1141,7 @@ namespace Luna
                     if(layer.root == U32_MAX || layer.root >= m_submitted_desc.nodes.size()) continue;
                     id_t layer_hit = hit_test_node(layer.root, pos, filter);
                     if(layer_hit) return layer_hit;
+                    if(hit_test_dock_panel_layer((u32)(i - 1), pos)) return 0;
                 }
             }
             return 0;
@@ -1529,6 +1558,18 @@ namespace Luna
         void Context::process_input_events()
         {
             m_pointer_delta = Float2U(0.0f);
+#ifdef LUNA_GUI_ENABLE_DEBUG
+            m_debug_input_events.clear();
+            for(const InputEvent& event : m_input_events)
+            {
+                DebugInputEventInfo debug_event;
+                debug_event.event = event;
+                debug_event.hovered_before = m_hovered_id;
+                debug_event.active_before = m_active_id;
+                debug_event.focused_before = m_focused_id;
+                m_debug_input_events.push_back(move(debug_event));
+            }
+#endif
             auto update_pointer_position = [&](const Float2U& position)
             {
                 m_pointer_delta.x += position.x - m_pointer_pos.x;
@@ -2595,6 +2636,24 @@ namespace Luna
                 tooltip_interaction_state().tooltip_hovered_id = m_hovered_id;
                 tooltip_interaction_state().tooltip_hover_start = m_time;
             }
+#ifdef LUNA_GUI_ENABLE_DEBUG
+            for(DebugInputEventInfo& event_info : m_debug_input_events)
+            {
+                event_info.hovered_after = m_hovered_id;
+                event_info.active_after = m_active_id;
+                event_info.focused_after = m_focused_id;
+                if(event_info.event.type == InputEventType::pointer_enter ||
+                    event_info.event.type == InputEventType::pointer_move ||
+                    event_info.event.type == InputEventType::pointer_down ||
+                    event_info.event.type == InputEventType::pointer_up ||
+                    event_info.event.type == InputEventType::pointer_wheel)
+                {
+                    event_info.hit_node = hit_test(event_info.event.position);
+                    event_info.hit_layer = hit_test_layer_index(event_info.event.position);
+                    event_info.stage = DebugHitTestStage::generic;
+                }
+            }
+#endif
         }
 
         RV Context::submit(const Description& desc)

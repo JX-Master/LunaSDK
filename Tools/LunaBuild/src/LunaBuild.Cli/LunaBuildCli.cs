@@ -369,6 +369,7 @@ public static class LunaBuildCli
         Console.WriteLine("  --platform <name>   Windows, MacOS, Linux, Android, or IOS. Default: host.");
         Console.WriteLine("  --arch <name>       Architecture string. Default: host architecture.");
         Console.WriteLine("  --rhi <name>        D3D12, Vulkan, or Metal. Default: platform default.");
+        Console.WriteLine("  --option <k=v>      Set a project option. Can repeat.");
         Console.WriteLine("  --static            Generate static target configuration.");
     }
 }
@@ -398,6 +399,9 @@ internal sealed class CommandLineOptions
     public string? Architecture { get; private init; }
 
     public RhiApi? RhiApi { get; private init; }
+
+    public IReadOnlyDictionary<string, string> ProjectOptions { get; private init; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     public bool? Shared { get; private init; }
 
@@ -448,6 +452,9 @@ internal sealed class CommandLineOptions
                 case "--rhi":
                     options.RhiApi = ParseEnum<RhiApi>(RequireValue(args, ref i, "--rhi"), "--rhi");
                     break;
+                case "--option":
+                    ParseProjectOption(RequireValue(args, ref i, "--option"), options.ProjectOptions);
+                    break;
                 case "--static":
                     options.Shared = false;
                     break;
@@ -472,14 +479,16 @@ internal sealed class CommandLineOptions
     public BuildOptions ToBuildOptions()
     {
         var defaults = BuildOptions.HostDefault();
+        var mode = Mode ?? defaults.Mode;
         var platform = Platform ?? defaults.Platform;
         return defaults with
         {
-            Mode = Mode ?? defaults.Mode,
+            Mode = mode,
             Platform = platform,
             Architecture = Architecture ?? defaults.Architecture,
             Shared = Shared ?? defaults.Shared,
             RhiApi = RhiApi ?? DefaultRhiApi(platform),
+            ProjectOptions = new Dictionary<string, string>(ProjectOptions, StringComparer.OrdinalIgnoreCase),
         };
     }
 
@@ -511,6 +520,22 @@ internal sealed class CommandLineOptions
             return parsed;
         }
         throw new ArgumentException($"{optionName} has invalid value: {value}");
+    }
+
+    private static void ParseProjectOption(string value, IDictionary<string, string> options)
+    {
+        var separator = value.IndexOf('=');
+        if(separator <= 0)
+        {
+            throw new ArgumentException("--option value must use name=value.");
+        }
+        var name = value[..separator].Trim();
+        var optionValue = value[(separator + 1)..].Trim();
+        if(string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("--option name cannot be empty.");
+        }
+        options[name] = optionValue;
     }
 
     private static IEnumerable<BuildTargetCategory> ParseCategories(string value)
@@ -551,6 +576,7 @@ internal sealed class CommandLineOptions
         public BuildPlatform? Platform { get; set; }
         public string? Architecture { get; set; }
         public RhiApi? RhiApi { get; set; }
+        public Dictionary<string, string> ProjectOptions { get; } = new(StringComparer.OrdinalIgnoreCase);
         public bool? Shared { get; set; }
 
         public CommandLineOptions ToImmutable()
@@ -569,6 +595,7 @@ internal sealed class CommandLineOptions
                 Platform = Platform,
                 Architecture = Architecture,
                 RhiApi = RhiApi,
+                ProjectOptions = new Dictionary<string, string>(ProjectOptions, StringComparer.OrdinalIgnoreCase),
                 Shared = Shared,
             };
         }

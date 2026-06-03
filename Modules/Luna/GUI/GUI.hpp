@@ -13,6 +13,9 @@
 #include "Style.hpp"
 #include "RenderProxy.hpp"
 #include "Description.hpp"
+#ifdef LUNA_GUI_ENABLE_DEBUG
+#include "Debug.hpp"
+#endif
 #include "State.hpp"
 #include "DrawList.hpp"
 #include "DragDrop.hpp"

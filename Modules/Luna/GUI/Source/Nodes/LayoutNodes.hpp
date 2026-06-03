@@ -69,6 +69,7 @@ namespace Luna
             virtual NodeLayoutBehavior layout_behavior() const override;
             virtual bool default_interactive() const override;
             virtual bool uses_node_measure() const override;
+            virtual LayoutMetrics measure() const override;
             virtual void apply_container_defaults(LayoutDesc& desc) const override;
 
         };

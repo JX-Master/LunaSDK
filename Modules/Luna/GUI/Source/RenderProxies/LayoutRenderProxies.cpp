@@ -399,13 +399,6 @@ namespace Luna
                 clip_rect, style_f32x4(ctx, node, Name("gui.menu_bar.border"), Float4U(0.20f, 0.24f, 0.30f, 1.0f)), 0.0f);
         }
 
-        static void draw_default_dock_space(NodeRenderContext& ctx, const Node& node, const RectF& rect, const RectF& clip_rect,
-            const NodeRenderState&, void*)
-        {
-            ctx.draw_rect(rect, clip_rect,
-                style_f32x4(ctx, node, Name("gui.dock_space.background"), Float4U(0.07f, 0.08f, 0.10f, 1.0f)), 0.0f);
-        }
-
         static void draw_default_tab_bar(NodeRenderContext& ctx, const Node& node, const RectF& rect, const RectF& clip_rect,
             const NodeRenderState& state, void*)
         {
@@ -457,7 +450,6 @@ namespace Luna
         RenderProxyDesc default_dock_space_render_proxy()
         {
             RenderProxyDesc desc;
-            desc.draw = draw_default_dock_space;
             return desc;
         }
 

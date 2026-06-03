@@ -1759,6 +1759,9 @@ namespace Luna
             Description m_submitted_desc;
             Vector<NodeLayout> m_layouts;
             Vector<InputEvent> m_input_events;
+#ifdef LUNA_GUI_ENABLE_DEBUG
+            Vector<DebugInputEventInfo> m_debug_input_events;
+#endif
             Vector<u32> m_parent_stack;
             Vector<u32> m_layer_stack;
             Vector<id_t> m_id_stack;
@@ -1817,6 +1820,9 @@ namespace Luna
             virtual RV submit(const Description& desc) override;
             virtual void set_clipboard_io(const ClipboardIO& io) override;
             virtual TextInputState get_text_input_state() override;
+#ifdef LUNA_GUI_ENABLE_DEBUG
+            virtual R<DebugInfo> dump_debug_info() override;
+#endif
             virtual RV render(RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target) override;
 
             u32 current_layer_index() const;
@@ -1966,6 +1972,7 @@ namespace Luna
             void arrange_dock_space_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             bool hit_test_table_separator(const Float2U& pos, id_t& out_id, bool& out_column, u32& out_index) const;
             void update_table_resize_from_pointer(const Float2U& pos);
+            bool hit_test_dock_panel_layer(u32 layer_index, const Float2U& pos) const;
             bool hit_test_dock_panel(const Float2U& pos, id_t& out_space_id, id_t& out_panel_id) const;
             bool hit_test_dock_panel_chrome(const Float2U& pos, id_t& out_space_id, id_t& out_panel_id, bool& out_resize, bool& out_close) const;
             void update_dock_panel_from_pointer(const Float2U& pos);
