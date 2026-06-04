@@ -6,6 +6,12 @@ namespace LunaBuild.Core;
 
 public static class VSCodeWorkspaceWriter
 {
+    private static readonly JsonDocumentOptions JsonDocumentOptions = new()
+    {
+        AllowTrailingCommas = true,
+        CommentHandling = JsonCommentHandling.Skip,
+    };
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -180,8 +186,15 @@ public static class VSCodeWorkspaceWriter
         {
             return new JsonObject();
         }
-        var node = JsonNode.Parse(File.ReadAllText(path));
-        return node as JsonObject ?? new JsonObject();
+        try
+        {
+            var node = JsonNode.Parse(File.ReadAllText(path), documentOptions: JsonDocumentOptions);
+            return node as JsonObject ?? new JsonObject();
+        }
+        catch(JsonException ex)
+        {
+            throw new InvalidOperationException($"Failed to parse VSCode JSON file '{path}': {ex.Message}", ex);
+        }
     }
 
     private static void WriteObject(string path, JsonObject root)
