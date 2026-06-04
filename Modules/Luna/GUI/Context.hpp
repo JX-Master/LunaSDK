@@ -134,6 +134,18 @@ namespace Luna
             //! @param[in] proxy The render proxy callbacks.
             virtual void set_next_item_render_proxy(const RenderProxyDesc& proxy) = 0;
 
+            //! Assigns enabled state to the next node created by widget APIs.
+            //! @param[in] enabled Whether the next item accepts interaction and normal interactive visuals.
+            virtual void set_next_item_enabled(bool enabled) = 0;
+
+            //! Pushes an enabled state onto the build stack.
+            //! @param[in] enabled Whether subsequently created items are enabled while this state is on the stack.
+            //! @remark The effective item enabled state is the logical AND of the enabled stack and any next-item override.
+            virtual void push_enabled(bool enabled) = 0;
+
+            //! Pops the current enabled state from the build stack.
+            virtual void pop_enabled() = 0;
+
             //! Finishes immediate-mode building and returns the description object for the frame.
             //! @return Returns the completed description, or a failure code.
             virtual R<Description> end_build() = 0;

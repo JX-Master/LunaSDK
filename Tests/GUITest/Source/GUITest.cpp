@@ -398,6 +398,18 @@ namespace Luna
         GUI::button_group(app.gui, "Multi Button Group", Span<bool>(app.button_group_multi, 3), Span<const c8*>(group_items, 3));
         GUI::end_h_layout(app.gui);
 
+        GUI::push_enabled(app.gui, false);
+        GUI::begin_h_layout(app.gui, "Disabled Controls", row);
+        GUI::button(app.gui, "Disabled Button");
+        GUI::checkbox(app.gui, "Disabled Check", &app.checkbox_a);
+        GUI::toggle_switch(app.gui, "Disabled Switch", &app.switch_a);
+        GUI::radio_button(app.gui, "Disabled Radio", &app.radio_choice, 2);
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(280.0f));
+        GUI::button_group(app.gui, "Disabled Button Group", &app.button_group_choice, Span<const c8*>(group_items, 3));
+        GUI::selectable(app.gui, "Disabled Selectable", true);
+        GUI::end_h_layout(app.gui);
+        GUI::pop_enabled(app.gui);
+
         GUI::begin_h_layout(app.gui, "Progress Default", row);
         demo_two_column_label(app, "ProgressBar");
         GUI::progress_bar(app.gui, "ProgressBar", app.progress_value);
@@ -1002,6 +1014,7 @@ namespace Luna
         GUI::define_style(app.gui, style);
         GUI::set_style_name(app.gui, style, Name("gui.font"), demo_font_id());
         set_theme_color(app, style, "gui.text.color", theme.text);
+        set_theme_color(app, style, "gui.text.disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.window.background", theme.panel);
         set_theme_color(app, style, "gui.window.title_background", theme.title);
@@ -1014,12 +1027,15 @@ namespace Luna
         set_theme_color(app, style, "gui.button.background", theme.accent);
         set_theme_color(app, style, "gui.button.background_hovered", theme.accent_hover);
         set_theme_color(app, style, "gui.button.background_active", theme.accent_active);
+        set_theme_color(app, style, "gui.button.background_disabled", theme.subtle);
         set_theme_color(app, style, "gui.button.text_color", Float4U(1.0f));
+        set_theme_color(app, style, "gui.button.text_disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.selectable.background_hovered", theme.subtle_hover);
         set_theme_color(app, style, "gui.selectable.background_selected", theme.selected);
         set_theme_color(app, style, "gui.selectable.background_active", theme.accent_active);
         set_theme_color(app, style, "gui.selectable.text_color", theme.text);
+        set_theme_color(app, style, "gui.selectable.text_disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.input_text.background", theme.surface);
         set_theme_color(app, style, "gui.input_text.background_focused", theme.surface_focus);
@@ -1046,38 +1062,60 @@ namespace Luna
 
         set_theme_color(app, style, "gui.checkbox.background", theme.surface);
         set_theme_color(app, style, "gui.checkbox.background_checked", theme.accent_active);
+        set_theme_color(app, style, "gui.checkbox.background_disabled", theme.subtle);
+        set_theme_color(app, style, "gui.checkbox.background_checked_disabled", theme.selected);
         set_theme_color(app, style, "gui.checkbox.border", theme.border);
         set_theme_color(app, style, "gui.checkbox.border_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.checkbox.border_disabled", theme.border);
         set_theme_color(app, style, "gui.checkbox.text_color", theme.text);
+        set_theme_color(app, style, "gui.checkbox.text_disabled", theme.disabled);
         set_theme_color(app, style, "gui.switch.off_track", theme.subtle);
         set_theme_color(app, style, "gui.switch.off_track_hovered", theme.subtle_hover);
         set_theme_color(app, style, "gui.switch.on_track", theme.accent_active);
         set_theme_color(app, style, "gui.switch.on_track_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.switch.track_disabled", theme.subtle);
+        set_theme_color(app, style, "gui.switch.track_checked_disabled", theme.selected);
+        set_theme_color(app, style, "gui.switch.knob_disabled", theme.disabled);
         set_theme_color(app, style, "gui.switch.text_color", theme.text);
+        set_theme_color(app, style, "gui.switch.text_disabled", theme.disabled);
         set_theme_color(app, style, "gui.radio_button.background", theme.surface);
+        set_theme_color(app, style, "gui.radio_button.background_disabled", theme.subtle);
         set_theme_color(app, style, "gui.radio_button.ring", theme.border);
         set_theme_color(app, style, "gui.radio_button.ring_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.radio_button.ring_disabled", theme.border);
         set_theme_color(app, style, "gui.radio_button.selected_color", theme.accent_active);
+        set_theme_color(app, style, "gui.radio_button.selected_disabled", theme.disabled);
         set_theme_color(app, style, "gui.radio_button.text_color", theme.text);
+        set_theme_color(app, style, "gui.radio_button.text_disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.button_group.background", theme.surface);
+        set_theme_color(app, style, "gui.button_group.background_disabled", theme.subtle);
         set_theme_color(app, style, "gui.button_group.border", theme.border);
+        set_theme_color(app, style, "gui.button_group.border_disabled", theme.border);
         set_theme_color(app, style, "gui.button_group.hover", theme.subtle_hover);
         set_theme_color(app, style, "gui.button_group.selected", theme.selected);
         set_theme_color(app, style, "gui.button_group.selected_hot", theme.accent_hover);
+        set_theme_color(app, style, "gui.button_group.selected_disabled", theme.selected);
         set_theme_color(app, style, "gui.button_group.separator", theme.border);
+        set_theme_color(app, style, "gui.button_group.separator_disabled", theme.border);
         set_theme_color(app, style, "gui.button_group.text", theme.text);
         set_theme_color(app, style, "gui.button_group.text_selected", theme.text);
+        set_theme_color(app, style, "gui.button_group.text_disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.collapsing_header.background", theme.subtle);
         set_theme_color(app, style, "gui.collapsing_header.background_hovered", theme.subtle_hover);
+        set_theme_color(app, style, "gui.collapsing_header.background_disabled", theme.subtle);
         set_theme_color(app, style, "gui.collapsing_header.text_color", theme.text);
+        set_theme_color(app, style, "gui.collapsing_header.text_disabled", theme.disabled);
         set_theme_color(app, style, "gui.tree_node.background_hovered", theme.subtle_hover);
         set_theme_color(app, style, "gui.tree_node.background_selected", theme.selected);
         set_theme_color(app, style, "gui.tree_node.background_active", theme.accent_active);
+        set_theme_color(app, style, "gui.tree_node.background_disabled", theme.subtle);
         set_theme_color(app, style, "gui.tree_node.text_color", theme.text);
+        set_theme_color(app, style, "gui.tree_node.text_disabled", theme.disabled);
         set_theme_color(app, style, "gui.tree_node.icon_color", theme.accent_active);
         set_theme_color(app, style, "gui.tree_node.leaf_icon_color", theme.border);
+        set_theme_color(app, style, "gui.tree_node.icon_disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.menu_bar.background", theme.title);
         set_theme_color(app, style, "gui.menu_bar.border", theme.border);

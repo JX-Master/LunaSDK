@@ -1225,6 +1225,8 @@ namespace Luna
             lustruct("GUI::BuildHintState", "{B11BEC18-AD1E-4A26-8462-F13D9D65AB76}");
             bool has_next_item_layout = false;
             LayoutStyle next_item_layout;
+            bool has_next_item_enabled = false;
+            bool next_item_enabled = true;
             bool has_next_canvas_item_layout = false;
             CanvasItemLayout next_canvas_item_layout;
             bool has_next_table_cell_color = false;
@@ -1734,6 +1736,7 @@ namespace Luna
             Vector<id_t> m_id_stack;
             Vector<RectF> m_clip_stack;
             Vector<Name> m_style_stack;
+            Vector<bool> m_enabled_stack;
             Vector<u32> m_child_ordinals;
             HashMap<id_t, StateRecord, IdHash> m_states;
             HashMap<Name, Style> m_styles;
@@ -1786,6 +1789,9 @@ namespace Luna
             virtual RV register_font(const Name& id, Font::IFontFile* font, u32 font_index = 0) override;
             virtual FontDesc get_font(const Name& id) override;
             virtual void set_next_item_render_proxy(const RenderProxyDesc& proxy) override;
+            virtual void set_next_item_enabled(bool enabled) override;
+            virtual void push_enabled(bool enabled) override;
+            virtual void pop_enabled() override;
             virtual R<Description> end_build() override;
             virtual RV submit(const Description& desc) override;
             virtual void set_clipboard_io(const ClipboardIO& io) override;
@@ -1834,6 +1840,7 @@ namespace Luna
             void set_item_query_state_if_absent(id_t id, const Name& key, const Any& value);
             void remove_item_query_state(ItemHandle handle, const Name& key);
             void set_next_item_layout(const LayoutStyle& style);
+            void set_next_item_enabled_internal(bool enabled);
             void set_next_canvas_item_layout(const CanvasItemLayout& layout);
             void set_next_table_cell_color(const Float4U& color);
             void set_next_dock_panel_style(const DockPanelStyle& style, bool* open);

@@ -44,9 +44,12 @@ namespace Luna
             m_id_stack.clear();
             m_clip_stack.clear();
             m_style_stack.clear();
+            m_enabled_stack.clear();
             m_child_ordinals.clear();
             BuildHintState& build_hints = build_hint_state();
             build_hints.has_next_item_layout = false;
+            build_hints.has_next_item_enabled = false;
+            build_hints.next_item_enabled = true;
             build_hints.has_next_canvas_item_layout = false;
             build_hints.has_next_table_cell_color = false;
             build_hints.has_next_dock_panel_style = false;
@@ -254,6 +257,11 @@ namespace Luna
             node.parent = layer_root ? U32_MAX : parent;
             node.depth = layer_root ? 0 : m_build_desc.nodes[parent].depth + 1;
             node.text = text ? text : "";
+            bool stack_enabled = m_enabled_stack.empty() ? true : m_enabled_stack.back();
+            bool next_enabled = build_hint_state().has_next_item_enabled ? build_hint_state().next_item_enabled : true;
+            node.item_enabled = node.item_enabled && stack_enabled && next_enabled;
+            build_hint_state().has_next_item_enabled = false;
+            build_hint_state().next_item_enabled = true;
             if(!m_style_stack.empty())
             {
                 node.style = m_style_stack.back();
@@ -291,6 +299,8 @@ namespace Luna
                 build_hint_state().has_next_table_cell_color = false;
                 build_hint_state().has_next_dock_panel_style = false;
                 build_hint_state().next_dock_panel_open = nullptr;
+                build_hint_state().has_next_item_enabled = false;
+                build_hint_state().next_item_enabled = true;
                 build_hint_state().has_next_render_proxy = false;
                 build_hint_state().next_render_proxy = RenderProxyDesc();
             }
@@ -969,6 +979,33 @@ namespace Luna
             lutsassert();
             build_hint_state().next_render_proxy = proxy;
             build_hint_state().has_next_render_proxy = true;
+        }
+
+        void Context::set_next_item_enabled(bool enabled)
+        {
+            lutsassert();
+            set_next_item_enabled_internal(enabled);
+        }
+
+        void Context::push_enabled(bool enabled)
+        {
+            lutsassert();
+            bool parent_enabled = m_enabled_stack.empty() ? true : m_enabled_stack.back();
+            m_enabled_stack.push_back(parent_enabled && enabled);
+        }
+
+        void Context::pop_enabled()
+        {
+            lutsassert();
+            luassert(!m_enabled_stack.empty());
+            m_enabled_stack.pop_back();
+        }
+
+        void Context::set_next_item_enabled_internal(bool enabled)
+        {
+            lutsassert();
+            build_hint_state().next_item_enabled = enabled;
+            build_hint_state().has_next_item_enabled = true;
         }
 
         void Context::set_next_canvas_item_layout(const CanvasItemLayout& layout)

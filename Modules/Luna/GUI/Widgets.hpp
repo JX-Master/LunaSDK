@@ -92,6 +92,12 @@ namespace Luna
         //! @{
         //! Assigns layout style to the next item.
         LUNA_GUI_API void set_next_item_layout(IContext* context, const LayoutStyle& style);
+        //! Assigns enabled state to the next item.
+        LUNA_GUI_API void set_next_item_enabled(IContext* context, bool enabled);
+        //! Pushes an enabled state for subsequently created items.
+        LUNA_GUI_API void push_enabled(IContext* context, bool enabled);
+        //! Pops the current enabled state.
+        LUNA_GUI_API void pop_enabled(IContext* context);
         //! Assigns canvas placement to the next item created inside a canvas layout.
         LUNA_GUI_API void set_next_canvas_item_layout(IContext* context, const CanvasItemLayout& layout);
         //! Assigns dock panel style and optional open state to the next dock panel item.

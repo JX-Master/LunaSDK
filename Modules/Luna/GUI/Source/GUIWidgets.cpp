@@ -206,6 +206,21 @@ namespace Luna
             context_from_interface(context)->set_next_item_layout(style);
         }
 
+        LUNA_GUI_API void set_next_item_enabled(IContext* context, bool enabled)
+        {
+            context_from_interface(context)->set_next_item_enabled(enabled);
+        }
+
+        LUNA_GUI_API void push_enabled(IContext* context, bool enabled)
+        {
+            context_from_interface(context)->push_enabled(enabled);
+        }
+
+        LUNA_GUI_API void pop_enabled(IContext* context)
+        {
+            context_from_interface(context)->pop_enabled();
+        }
+
         LUNA_GUI_API void set_next_item_render_proxy(IContext* context, const RenderProxyDesc& proxy)
         {
             context_from_interface(context)->set_next_item_render_proxy(proxy);
@@ -509,17 +524,27 @@ namespace Luna
             context_from_interface(context)->end_container();
         }
 
+        static void prepare_menu_item_for_parent(Context* ctx, MenuItemNode& item)
+        {
+            if(!ctx || ctx->m_parent_stack.empty() || ctx->m_parent_stack.back() == U32_MAX)
+            {
+                return;
+            }
+            u32 parent = ctx->m_parent_stack.back();
+            item.top_level_menu = parent < ctx->m_build_desc.nodes.size() && is_menu_bar_node(ctx->m_build_desc.nodes[parent]);
+            if(item.top_level_menu)
+            {
+                item.layout_style = LayoutStyle::hug();
+            }
+        }
+
         LUNA_GUI_API bool begin_menu(IContext* context, const c8* label, bool enabled, ItemHandle* out_handle)
         {
             Context* ctx = context_from_interface(context);
             Ref<MenuItemNode> menu = new_object<MenuItemNode>();
             menu->enabled = enabled;
-            if(!ctx->m_parent_stack.empty() && ctx->m_parent_stack.back() != U32_MAX)
-            {
-                u32 parent = ctx->m_parent_stack.back();
-                menu->top_level_menu = parent < ctx->m_build_desc.nodes.size() && is_menu_bar_node(ctx->m_build_desc.nodes[parent]);
-            }
-            ItemHandle handle = ctx->add_node(Ref<Node>(menu), label ? label : "", enabled);
+            prepare_menu_item_for_parent(ctx, *menu);
+            ItemHandle handle = ctx->add_node(Ref<Node>(menu), label ? label : "", true);
             if(out_handle)
             {
                 *out_handle = handle;
@@ -559,7 +584,8 @@ namespace Luna
             node->shortcut = shortcut ? shortcut : "";
             node->selected = selected;
             node->enabled = enabled;
-            return ctx->add_node(Ref<Node>(node), label ? label : "", enabled);
+            prepare_menu_item_for_parent(ctx, *node);
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle menu_item(IContext* context, const c8* label, const c8* shortcut, bool* selected, bool enabled)
@@ -570,7 +596,8 @@ namespace Luna
             node->selected_value = selected;
             node->selected = selected ? *selected : false;
             node->enabled = enabled;
-            return ctx->add_node(Ref<Node>(node), label ? label : "", enabled);
+            prepare_menu_item_for_parent(ctx, *node);
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle menu_separator(IContext* context)
@@ -740,7 +767,10 @@ namespace Luna
         {
             ItemHandle handle;
             ctx->begin_container(move(node), label ? label : "", Size(), &handle);
+            bool enabled = ctx->m_build_desc.nodes.back().enabled_state();
+            ctx->push_enabled(enabled);
             add_label_text_node(ctx, label, font_size);
+            ctx->pop_enabled();
             ctx->end_container();
             ctx->m_last_item_id = handle.id;
             return handle;

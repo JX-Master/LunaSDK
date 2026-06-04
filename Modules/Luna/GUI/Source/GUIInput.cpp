@@ -231,6 +231,7 @@ namespace Luna
                 const Node& node = m_submitted_desc.nodes[i];
                 if(node.layer != hit_layer) continue;
                 if(!table_layout(node)) continue;
+                if(!node.enabled_state()) continue;
                 const NodeLayout& layout = m_layouts[i];
                 const RectF& clip = layout.clip_rect;
                 if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, clip)) continue;
@@ -726,6 +727,7 @@ namespace Luna
                 const Node& node = m_submitted_desc.nodes[node_index];
                 if(node.layer != hit_layer) continue;
                 if(!scroll_layout(node)) continue;
+                if(!node.enabled_state()) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
 
@@ -807,6 +809,7 @@ namespace Luna
                 const Node& node = m_submitted_desc.nodes[node_index];
                 if(node.layer != hit_layer) continue;
                 if(!tab_item_layout(node)) continue;
+                if(!node.enabled_state()) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(layout.tab_header_rect.width <= 0.0f || layout.tab_header_rect.height <= 0.0f) continue;
                 if(!point_in_rect(pos, layout.tab_header_rect) || !point_in_rect(pos, layout.tab_header_clip_rect)) continue;
@@ -834,6 +837,7 @@ namespace Luna
                 const Node& node = m_submitted_desc.nodes[node_index];
                 if(node.layer != hit_layer) continue;
                 if(!tab_bar_layout(node)) continue;
+                if(!node.enabled_state()) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(!layout.tab_scrollable) continue;
                 if(point_in_rect(pos, layout.tab_scroll_left_rect) && point_in_rect(pos, layout.clip_rect))
@@ -863,6 +867,7 @@ namespace Luna
                 const Node& node = m_submitted_desc.nodes[node_index];
                 if(node.layer != hit_layer) continue;
                 if(!tab_bar_layout(node)) continue;
+                if(!node.enabled_state()) continue;
                 const NodeLayout& layout = m_layouts[node_index];
                 if(!layout.tab_scrollable) continue;
                 if((point_in_rect(pos, layout.tab_header_area_rect) ||
@@ -980,7 +985,7 @@ namespace Luna
         {
             Node* menu = find_node(menu_id);
             MenuItemNode* item = menu ? menu_item_node(*menu) : nullptr;
-            if(!menu || !item || !item->enabled || !item->popup_id) return;
+            if(!menu || !item || !item->enabled_state() || !item->popup_id) return;
             m_popup_stack.next_opener_id = menu_id;
             open_popup(ItemHandle{get_object(), item->popup_id, m_generation});
             Ref<ItemQueryState> result = get_or_create_query_state(menu->id);
@@ -993,7 +998,7 @@ namespace Luna
             i32 popup_level = popup_level_at_pos(m_pointer_pos);
             Node* hovered = m_hovered_id ? find_node(m_hovered_id) : nullptr;
             MenuItemNode* hovered_menu = hovered ? menu_item_node(*hovered) : nullptr;
-            if(hovered_menu && hovered_menu->enabled && hovered_menu->popup_id)
+            if(hovered_menu && hovered_menu->enabled_state() && hovered_menu->popup_id)
             {
                 if(is_popup_open(hovered_menu->popup_id)) return;
                 open_menu_popup(hovered->id);
@@ -1023,6 +1028,7 @@ namespace Luna
             {
                 const NodeLayout& layout = m_layouts[node_index];
                 if(filter == HitTestFilter::none && node.interactive &&
+                    node.enabled_state() &&
                     point_in_rect(pos, layout.tab_header_rect) &&
                     point_in_rect(pos, layout.tab_header_clip_rect))
                 {
@@ -1034,7 +1040,7 @@ namespace Luna
                 }
             }
             else if((filter == HitTestFilter::none && node.hit_test(rect, clip, pos)) ||
-                (filter == HitTestFilter::scroll_view && scroll_layout(node) && point_in_rect(pos, rect) && point_in_rect(pos, clip)))
+                (filter == HitTestFilter::scroll_view && node.enabled_state() && scroll_layout(node) && point_in_rect(pos, rect) && point_in_rect(pos, clip)))
             {
                 ret = node.id;
             }
@@ -1159,6 +1165,7 @@ namespace Luna
                     const Node& node = m_submitted_desc.nodes[node_index];
                     if(node.layer != layer_index) continue;
                     if(node.drag_drop_source_types.empty()) continue;
+                    if(!node.enabled_state()) continue;
                     const NodeLayout& layout = m_layouts[node_index];
                     if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
                     if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
@@ -1182,6 +1189,7 @@ namespace Luna
                     const Node& node = m_submitted_desc.nodes[i];
                     if(node.layer != layer_index) continue;
                     if(!contains_name(node.drag_drop_target_types, type)) continue;
+                    if(!node.enabled_state()) continue;
                     if(node.id == m_drag_drop.source_id) continue;
                     const NodeLayout& layout = m_layouts[i];
                     if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
@@ -2691,6 +2699,7 @@ namespace Luna
                     result->states.insert_or_assign(Name("gui.hovered"), Any(false));
                     result->states.insert_or_assign(Name("gui.active"), Any(false));
                     result->states.insert_or_assign(Name("gui.focused"), Any(false));
+                    result->states.insert_or_assign(Name("gui.enabled"), Any(node.enabled_state()));
                     result->states.insert_or_assign(Name("gui.value_changed"), Any(false));
                     if(popup_layer(node))
                     {
@@ -2815,9 +2824,11 @@ namespace Luna
                     {
                         touch_widget_state<InteractionState>(node.id);
                     }
-                    result->states.insert_or_assign(Name("gui.hovered"), Any(node.id == m_hovered_id));
-                    result->states.insert_or_assign(Name("gui.active"), Any(node.id == m_active_id || (interaction && interaction->active)));
-                    result->states.insert_or_assign(Name("gui.focused"), Any(node.id == m_focused_id));
+                    bool enabled = node.enabled_state();
+                    result->states.insert_or_assign(Name("gui.enabled"), Any(enabled));
+                    result->states.insert_or_assign(Name("gui.hovered"), Any(enabled && node.id == m_hovered_id));
+                    result->states.insert_or_assign(Name("gui.active"), Any(enabled && (node.id == m_active_id || (interaction && interaction->active))));
+                    result->states.insert_or_assign(Name("gui.focused"), Any(enabled && node.id == m_focused_id));
                     if(popup_layer(node))
                     {
                         Ref<DisclosureState> disclosure = get_or_create_widget_state<DisclosureState>(node.id);

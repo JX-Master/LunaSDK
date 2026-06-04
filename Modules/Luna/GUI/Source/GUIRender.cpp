@@ -22,6 +22,21 @@ namespace Luna
     {
         static VG::TextAlignment to_vg_text_alignment(TextAlignment alignment);
 
+        static bool rect_visible_in_clip(const RectF& rect, const RectF& clip_rect)
+        {
+            return rect.width > 0.0f && rect.height > 0.0f &&
+                clip_rect.width > 0.0f && clip_rect.height > 0.0f &&
+                rect.offset_x < clip_rect.offset_x + clip_rect.width &&
+                rect.offset_x + rect.width > clip_rect.offset_x &&
+                rect.offset_y < clip_rect.offset_y + clip_rect.height &&
+                rect.offset_y + rect.height > clip_rect.offset_y;
+        }
+
+        static bool color_visible(const Float4U& color)
+        {
+            return color.w > 0.0f;
+        }
+
         struct ContextNodeRenderContext : NodeRenderContext
         {
             Context* context = nullptr;
@@ -237,6 +252,10 @@ namespace Luna
         void Context::render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
             RHI::ITexture* texture, ImageFlag image_flags)
         {
+            if(!color_visible(color) || !rect_visible_in_clip(rect, clip_rect))
+            {
+                return;
+            }
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
             DrawListState state = m_active_draw_list->get_state();
@@ -274,6 +293,11 @@ namespace Luna
         void Context::render_gradient_rect(const RectF& rect, const RectF& clip_rect,
             const Float4U& top_left, const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left)
         {
+            if(!rect_visible_in_clip(rect, clip_rect) ||
+                (top_left.w <= 0.0f && top_right.w <= 0.0f && bottom_right.w <= 0.0f && bottom_left.w <= 0.0f))
+            {
+                return;
+            }
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
             DrawListState state = m_active_draw_list->get_state();
@@ -302,6 +326,10 @@ namespace Luna
         void Context::render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
             bool top_left, bool top_right, bool bottom_right, bool bottom_left)
         {
+            if(!color_visible(color) || !rect_visible_in_clip(rect, clip_rect))
+            {
+                return;
+            }
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
             DrawListState state = m_active_draw_list->get_state();
@@ -344,6 +372,10 @@ namespace Luna
 
         void Context::render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color)
         {
+            if(!color_visible(color) || !rect_visible_in_clip(rect, clip_rect))
+            {
+                return;
+            }
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
             DrawListState state = m_active_draw_list->get_state();
@@ -365,6 +397,10 @@ namespace Luna
 
         void Context::render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width)
         {
+            if(!color_visible(color) || width <= 0.0f)
+            {
+                return;
+            }
             f32 margin = max(width, 1.0f);
             f32 dx = end.x > begin.x ? end.x - begin.x : begin.x - end.x;
             f32 dy = end.y > begin.y ? end.y - begin.y : begin.y - end.y;
@@ -373,6 +409,10 @@ namespace Luna
                 min(begin.y, end.y) - margin,
                 max(dx + margin * 2.0f, 1.0f),
                 max(dy + margin * 2.0f, 1.0f));
+            if(!rect_visible_in_clip(bounds, clip_rect))
+            {
+                return;
+            }
             RectF r = to_vg_rect(bounds);
             RectF c = to_vg_rect(clip_rect);
             DrawListState state = m_active_draw_list->get_state();
@@ -396,7 +436,10 @@ namespace Luna
         void Context::render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
             VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment, const Name& font_id)
         {
-            if(!text || !text[0]) return;
+            if(!text || !text[0] || font_size <= 0.0f || !color_visible(color) || !rect_visible_in_clip(rect, clip_rect))
+            {
+                return;
+            }
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
             FontDesc font = resolve_font(font_id);
@@ -559,6 +602,17 @@ namespace Luna
             }
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
+            if(!rect_visible_in_clip(rect, clip))
+            {
+                for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    if(absolute_node(m_submitted_desc.nodes[child]))
+                    {
+                        render_node(child);
+                    }
+                }
+                return;
+            }
             IDrawList* previous_draw_list = m_active_draw_list;
             u32 dock_panel_layer_pop = U32_MAX;
             if(m_layouts[node_index].dock_panel_child && !m_layouts[node_index].dock_panel_visible)
@@ -584,8 +638,15 @@ namespace Luna
                 auto f = query_state->states.find(Name("gui.focused"));
                 focused = f != query_state->states.end() && f->second.as<bool>() && *f->second.as<bool>();
             }
+            bool enabled = node.enabled_state();
+            if(!enabled)
+            {
+                hovered = false;
+                active = false;
+                focused = false;
+            }
 
-            NodeRenderState render_state{hovered, active, focused, m_frame_desc.surface_size, m_pointer_pos, m_frame_desc.delta_time, m_time};
+            NodeRenderState render_state{hovered, active, focused, m_frame_desc.surface_size, m_pointer_pos, m_frame_desc.delta_time, m_time, enabled};
             auto make_node_render_context = [&]()
             {
                 ContextNodeRenderContext node_render_context;

@@ -118,6 +118,8 @@ namespace Luna
             f32 delta_time = 1.0f / 60.0f;
             //! The accumulated context time in seconds.
             f64 time = 0.0;
+            //! Whether the item is enabled for interaction.
+            bool enabled = true;
         };
 
         //! Layout data passed to render proxies for one node.
@@ -481,7 +483,7 @@ namespace Luna
             //! @return Returns `true` if this node accepts input.
             virtual bool enabled_state() const
             {
-                return true;
+                return item_enabled;
             }
 
             //! Performs hit testing for this node.
@@ -491,7 +493,7 @@ namespace Luna
             //! @return Returns `true` when the position hits the node.
             virtual bool hit_test(const RectF& rect, const RectF& clip_rect, const Float2U& pos) const
             {
-                return interactive &&
+                return enabled_state() && interactive &&
                     pos.x >= rect.offset_x && pos.x <= rect.offset_x + rect.width &&
                     pos.y >= rect.offset_y && pos.y <= rect.offset_y + rect.height &&
                     pos.x >= clip_rect.offset_x && pos.x <= clip_rect.offset_x + clip_rect.width &&
@@ -546,6 +548,8 @@ namespace Luna
             Vector<Name> drag_drop_target_types;
             //! Whether this node participates in item hit testing.
             bool interactive = false;
+            //! Whether this node is enabled for interaction.
+            bool item_enabled = true;
         };
 
         //! Copyable wrapper around the description node storage.
