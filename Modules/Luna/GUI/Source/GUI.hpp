@@ -46,6 +46,22 @@ namespace Luna
             drag
         };
 
+        inline Name default_font_id()
+        {
+            return Name("gui.default_font");
+        }
+
+        inline Name font_style_entry_name()
+        {
+            return Name("gui.font");
+        }
+
+        struct FontResource
+        {
+            Ref<Font::IFontFile> font;
+            u32 font_index = 0;
+        };
+
         inline Context* context_from_interface(IContext* context)
         {
             luassert_msg(context, "GUI context must not be null.");
@@ -1053,55 +1069,6 @@ namespace Luna
             value.erase(cursor, end - cursor);
         }
 
-        inline VG::TextArrangeResult arrange_input_text_for_cursor(const String& value, f32 font_size)
-        {
-            VG::TextArrangeSection section;
-            section.font_file = Font::get_default_font();
-            section.font_index = 0;
-            section.font_size = font_size;
-            section.num_chars = value.size();
-            return VG::arrange_text(value.c_str(), value.size(), {&section, 1},
-                RectF(0.0f, 0.0f, 1000000.0f, font_size * 2.0f),
-                VG::TextAlignment::center, VG::TextAlignment::begin);
-        }
-
-        inline f32 measure_input_text_width(const String& value, usize bytes, f32 font_size)
-        {
-            bytes = clamp_utf8_cursor(value, bytes);
-            if(!bytes) return 0.0f;
-            String view(value.c_str(), bytes);
-            VG::TextArrangeResult arranged = arrange_input_text_for_cursor(view, font_size);
-            return arranged.bounding_rect.width;
-        }
-
-        inline f32 input_text_cursor_x(const String& value, usize cursor, f32 font_size)
-        {
-            cursor = clamp_utf8_cursor(value, cursor);
-            return measure_input_text_width(value, cursor, font_size);
-        }
-
-        inline usize input_text_cursor_from_x(const String& value, f32 x, f32 font_size)
-        {
-            if(x <= 0.0f) return 0;
-            VG::TextArrangeResult arranged = arrange_input_text_for_cursor(value, font_size);
-            if(arranged.lines.empty()) return value.size();
-            const VG::TextLineArrangeResult& line = arranged.lines[0];
-            if(line.glyphs.empty()) return value.size();
-            for(usize i = 0; i < line.glyphs.size(); ++i)
-            {
-                const VG::TextGlyphArrangeResult& glyph = line.glyphs[i];
-                f32 next_origin = i + 1 < line.glyphs.size() ?
-                    line.glyphs[i + 1].origin_offset :
-                    glyph.origin_offset + glyph.advance_length;
-                f32 threshold = (glyph.origin_offset + next_origin) * 0.5f;
-                if(x < threshold)
-                {
-                    return glyph.index;
-                }
-            }
-            return value.size();
-        }
-
         inline bool has_modifier(KeyModifierFlag flags, KeyModifierFlag flag)
         {
             return (((u8)flags) & ((u8)flag)) != 0;
@@ -1770,6 +1737,7 @@ namespace Luna
             Vector<u32> m_child_ordinals;
             HashMap<id_t, StateRecord, IdHash> m_states;
             HashMap<Name, Style> m_styles;
+            HashMap<Name, FontResource> m_fonts;
             ClipboardIO m_clipboard_io;
             id_t m_active_id = 0;
             id_t m_focused_id = 0;
@@ -1815,6 +1783,8 @@ namespace Luna
             virtual StyleValue get_style_value(const Name& style, const Name& entry, const StyleValue& default_value) override;
             virtual void push_style(const Name& style) override;
             virtual void pop_style() override;
+            virtual RV register_font(const Name& id, Font::IFontFile* font, u32 font_index = 0) override;
+            virtual FontDesc get_font(const Name& id) override;
             virtual void set_next_item_render_proxy(const RenderProxyDesc& proxy) override;
             virtual R<Description> end_build() override;
             virtual RV submit(const Description& desc) override;
@@ -1891,6 +1861,12 @@ namespace Luna
             ItemQueryState* get_query_state(ItemHandle handle);
             Ref<ItemQueryState> get_or_create_query_state(id_t id);
             void touch_state(id_t id, StateLifetime lifetime = StateLifetime::next_frame);
+            StyleValue get_style_value_unlocked(const Name& style, const Name& entry, const StyleValue& default_value) const;
+            Name node_font_id(const Node& node) const;
+            FontDesc resolve_font(const Name& id) const;
+            LayoutMetrics measure_text_with_font(const c8* text, usize text_size, f32 font_size, f32 max_width, const Name& font_id) const;
+            f32 text_cursor_x(const String& value, usize cursor, f32 font_size, const Name& font_id) const;
+            usize text_cursor_from_x(const String& value, f32 x, f32 font_size, const Name& font_id) const;
             template <typename T>
             void touch_widget_state(id_t owner_id, StateLifetime lifetime = StateLifetime::next_frame)
             {
@@ -2026,7 +2002,8 @@ namespace Luna
             void render_color_swatch(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius);
             void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color);
             void render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width);
-            void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment = VG::TextAlignment::center);
+            void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
+                VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment = VG::TextAlignment::center, const Name& font_id = Name());
             RectF to_vg_rect(const RectF& rect) const;
         };
 

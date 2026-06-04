@@ -1473,7 +1473,8 @@ namespace Luna
                 {
                     RectF text_rect(m_layouts[i].rect.offset_x + 8.0f, m_layouts[i].rect.offset_y,
                         max(m_layouts[i].rect.width - 16.0f, 1.0f), m_layouts[i].rect.height);
-                    out_cursor = input_text_cursor_from_x(*string_value, pos.x - text_rect.offset_x, 16.0f);
+                    f32 font_size = get_style_value_unlocked(node->style, Name("gui.input_text.font_size"), StyleValue::f32_1(16.0f)).value.x;
+                    out_cursor = text_cursor_from_x(*string_value, pos.x - text_rect.offset_x, font_size, node_font_id(*node));
                     return true;
                 }
             }
@@ -1508,7 +1509,8 @@ namespace Luna
                     Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(id);
                     RectF component = numeric_component_rect(*node, m_layouts[i].rect, state->numeric_edit_component);
                     RectF text_rect(component.offset_x + 6.0f, component.offset_y, max(component.width - 12.0f, 1.0f), component.height);
-                    out_cursor = input_text_cursor_from_x(state->numeric_edit_text, pos.x - text_rect.offset_x, 16.0f);
+                    f32 font_size = get_style_value_unlocked(node->style, Name("gui.numeric.font_size"), StyleValue::f32_1(15.0f)).value.x;
+                    out_cursor = text_cursor_from_x(state->numeric_edit_text, pos.x - text_rect.offset_x, font_size, node_font_id(*node));
                     return true;
                 }
             }

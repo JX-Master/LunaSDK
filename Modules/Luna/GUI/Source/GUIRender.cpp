@@ -111,6 +111,20 @@ namespace Luna
                 return context ? context->get_style_value(style, entry, default_value) : default_value;
             }
 
+            virtual f32 text_cursor_x(const String& text, usize cursor, f32 font_size) const override
+            {
+                if(!context) return 0.0f;
+                const Node* node = get_node(node_index);
+                return context->text_cursor_x(text, cursor, font_size, node ? context->node_font_id(*node) : Name());
+            }
+
+            virtual usize text_cursor_from_x(const String& text, f32 x, f32 font_size) const override
+            {
+                if(!context) return text.size();
+                const Node* node = get_node(node_index);
+                return context->text_cursor_from_x(text, x, font_size, node ? context->node_font_id(*node) : Name());
+            }
+
             virtual bool is_popup_open(id_t popup_id) const override
             {
                 return context && popup_id ? context->is_popup_open(popup_id) : false;
@@ -147,8 +161,10 @@ namespace Luna
             virtual void draw_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
                 TextAlignment horizontal_alignment, TextAlignment vertical_alignment) override
             {
+                const Node* node = get_node(node_index);
                 context->render_text(rect, clip_rect, text, font_size, color,
-                    to_vg_text_alignment(horizontal_alignment), to_vg_text_alignment(vertical_alignment));
+                    to_vg_text_alignment(horizontal_alignment), to_vg_text_alignment(vertical_alignment),
+                    node ? context->node_font_id(*node) : Name());
             }
         };
 
@@ -370,14 +386,16 @@ namespace Luna
             m_active_draw_list->pop_state(pop_id);
         }
 
-        void Context::render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment)
+        void Context::render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
+            VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment, const Name& font_id)
         {
             if(!text || !text[0]) return;
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
+            FontDesc font = resolve_font(font_id);
             VG::TextArrangeSection section;
-            section.font_file = Font::get_default_font();
-            section.font_index = 0;
+            section.font_file = font.font;
+            section.font_index = font.font_index;
             section.font_size = font_size;
             section.color = color;
             section.num_chars = strlen(text);

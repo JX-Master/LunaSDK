@@ -96,6 +96,11 @@ namespace Luna
             context_from_interface(context)->set_style_value(style, entry, StyleValue::f32_4(value));
         }
 
+        LUNA_GUI_API void set_style_name(IContext* context, const Name& style, const Name& entry, const Name& value)
+        {
+            context_from_interface(context)->set_style_value(style, entry, StyleValue::name(value));
+        }
+
         LUNA_GUI_API void inherit_style_entry(IContext* context, const Name& style, const Name& entry)
         {
             context_from_interface(context)->inherit_style_entry(style, entry);
@@ -119,6 +124,16 @@ namespace Luna
         LUNA_GUI_API void pop_style(IContext* context)
         {
             context_from_interface(context)->pop_style();
+        }
+
+        LUNA_GUI_API RV register_font(IContext* context, const Name& id, Font::IFontFile* font, u32 font_index)
+        {
+            return context_from_interface(context)->register_font(id, font, font_index);
+        }
+
+        LUNA_GUI_API FontDesc get_font(IContext* context, const Name& id)
+        {
+            return context_from_interface(context)->get_font(id);
         }
 
         LUNA_GUI_API void tree_push(IContext* context)
@@ -693,6 +708,20 @@ namespace Luna
             node.position = Float2U(rect.offset_x, rect.offset_y);
             apply_requested_size(node, Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
             return handle;
+        }
+
+        LUNA_GUI_API ItemHandle progress_bar(IContext* context, const c8* label, f32 fraction, const Size& size, const c8* overlay)
+        {
+            Context* ctx = context_from_interface(context);
+            Ref<ProgressBarNode> node = new_object<ProgressBarNode>();
+            node->fraction = clamp(fraction, 0.0f, 1.0f);
+            if(overlay)
+            {
+                node->overlay = overlay;
+                node->has_overlay = true;
+            }
+            apply_requested_size(*node, size);
+            return ctx->add_node(Ref<Node>(node), label ? label : "ProgressBar", false);
         }
 
         static bool has_widget_label(const c8* label)

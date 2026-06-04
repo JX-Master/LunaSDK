@@ -232,6 +232,18 @@ namespace Luna
             //! @param[in] default_value The fallback value.
             //! @return Returns the resolved style value.
             virtual StyleValue get_style_value(const Name& style, const Name& entry, const StyleValue& default_value) const = 0;
+            //! Measures the cursor x offset for a UTF-8 text prefix using the current node's font style.
+            //! @param[in] text The text to measure.
+            //! @param[in] cursor The cursor byte offset.
+            //! @param[in] font_size The font size in logical units.
+            //! @return Returns the cursor x offset in logical units.
+            virtual f32 text_cursor_x(const String& text, usize cursor, f32 font_size) const = 0;
+            //! Converts an x offset to a UTF-8 cursor byte offset using the current node's font style.
+            //! @param[in] text The text to inspect.
+            //! @param[in] x The x offset in logical units.
+            //! @param[in] font_size The font size in logical units.
+            //! @return Returns the nearest cursor byte offset.
+            virtual usize text_cursor_from_x(const String& text, f32 x, f32 font_size) const = 0;
 
             //! Gets a typed widget state object owned by the specified ID.
             //! @param[in] owner_id The owner widget or subsystem ID.
@@ -717,6 +729,13 @@ namespace Luna
         {
             StyleValue value = ctx.get_style_value(node.style, entry, StyleValue::f32_4(default_value));
             return value.value;
+        }
+
+        //! Reads a name style entry for a node.
+        inline Name style_name(NodeRenderContext& ctx, const Node& node, const Name& entry, const Name& default_value = Name())
+        {
+            StyleValue value = ctx.get_style_value(node.style, entry, StyleValue::name(default_value));
+            return value.type == StyleValueType::name ? value.name_value : default_value;
         }
 
         //! Describes one GUI layer in a frame description.

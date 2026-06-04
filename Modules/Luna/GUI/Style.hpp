@@ -27,7 +27,9 @@ namespace Luna
             //! Three f32 components.
             f32_3,
             //! Four f32 components.
-            f32_4
+            f32_4,
+            //! One runtime name value.
+            name
         };
 
         //! Describes how one style entry participates in inheritance.
@@ -48,6 +50,8 @@ namespace Luna
             StyleValueType type = StyleValueType::f32_4;
             //! The stored components.
             Float4U value = Float4U(0.0f);
+            //! The stored name value when @ref type is @ref StyleValueType::name.
+            Name name_value;
 
             //! Creates a scalar style value.
             //! @param[in] x The scalar component.
@@ -90,6 +94,17 @@ namespace Luna
                 StyleValue ret;
                 ret.type = StyleValueType::f32_4;
                 ret.value = v;
+                return ret;
+            }
+
+            //! Creates a name style value.
+            //! @param[in] v The name value.
+            //! @return Returns the created style value.
+            static StyleValue name(const Name& v)
+            {
+                StyleValue ret;
+                ret.type = StyleValueType::name;
+                ret.name_value = v;
                 return ret;
             }
         };

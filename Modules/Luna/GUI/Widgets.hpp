@@ -54,6 +54,8 @@ namespace Luna
         LUNA_GUI_API void set_style_f32x3(IContext* context, const Name& style, const Name& entry, const Float3U& value);
         //! Sets one f32x4 style entry.
         LUNA_GUI_API void set_style_f32x4(IContext* context, const Name& style, const Name& entry, const Float4U& value);
+        //! Sets one name style entry.
+        LUNA_GUI_API void set_style_name(IContext* context, const Name& style, const Name& entry, const Name& value);
         //! Removes a local style entry so the value is inherited from the parent style.
         LUNA_GUI_API void inherit_style_entry(IContext* context, const Name& style, const Name& entry);
         //! Explicitly unsets a style entry and hides inherited values.
@@ -64,6 +66,14 @@ namespace Luna
         LUNA_GUI_API void push_style(IContext* context, const Name& style);
         //! Pops the current build style.
         LUNA_GUI_API void pop_style(IContext* context);
+        //! @}
+
+        //! @name Font helpers
+        //! @{
+        //! Registers a font file in the context.
+        LUNA_GUI_API RV register_font(IContext* context, const Name& id, Font::IFontFile* font, u32 font_index = 0);
+        //! Gets a registered font by ID.
+        LUNA_GUI_API FontDesc get_font(IContext* context, const Name& id);
         //! @}
 
         //! @name Tree and custom node helpers
@@ -206,6 +216,13 @@ namespace Luna
         LUNA_GUI_API ItemHandle button(IContext* context, const c8* label);
         //! Adds an absolute-positioned button.
         LUNA_GUI_API ItemHandle button(IContext* context, const c8* label, const RectF& rect);
+        //! Adds a progress bar.
+        //! @param[in] label The widget label used for ID generation and debug inspection.
+        //! @param[in] fraction The progress fraction in the 0-1 range. Values outside the range are clamped.
+        //! @param[in] size Optional fixed size. Width or height set to 0 uses the progress bar's default layout behavior.
+        //! @param[in] overlay Optional text drawn over the bar. When `nullptr`, the bar displays a percentage.
+        //! @return Returns the created progress bar item handle.
+        LUNA_GUI_API ItemHandle progress_bar(IContext* context, const c8* label, f32 fraction, const Size& size = Size(), const c8* overlay = nullptr);
         //! Adds a selectable item.
         LUNA_GUI_API ItemHandle selectable(IContext* context, const c8* label, bool selected = false);
         //! Adds a text label.

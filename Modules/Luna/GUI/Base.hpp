@@ -22,6 +22,7 @@
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/Runtime/Math/Math.hpp>
 #include <Luna/RHI/RHI.hpp>
+#include <Luna/Font/Font.hpp>
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -164,6 +165,15 @@ namespace Luna
             RV(*get_text)(String& out_text, void* userdata) = nullptr;
             //! Writes UTF-8 clipboard text.
             RV(*set_text)(const c8* text, usize size, void* userdata) = nullptr;
+        };
+
+        //! Describes one font registered in a GUI context.
+        struct FontDesc
+        {
+            //! The font file object. The context keeps a reference to registered font files.
+            Font::IFontFile* font = nullptr;
+            //! The font face index inside @ref font.
+            u32 font_index = 0;
         };
 
         //! Handle returned by widget APIs for querying item state after building or submitting a frame.

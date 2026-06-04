@@ -118,6 +118,18 @@ namespace Luna
             //! Pops the current build style.
             virtual void pop_style() = 0;
 
+            //! Registers a font file for style-based text rendering.
+            //! @param[in] id The unique font ID used by style entries.
+            //! @param[in] font The font file to register. The context retains this object.
+            //! @param[in] font_index The font face index inside `font`.
+            //! @return Returns success or failure code.
+            virtual RV register_font(const Name& id, Font::IFontFile* font, u32 font_index = 0) = 0;
+
+            //! Gets a registered font by ID.
+            //! @param[in] id The font ID.
+            //! @return Returns the font descriptor, or an empty descriptor when the font is not registered.
+            virtual FontDesc get_font(const Name& id) = 0;
+
             //! Assigns a render proxy to the next node created by widget APIs.
             //! @param[in] proxy The render proxy callbacks.
             virtual void set_next_item_render_proxy(const RenderProxyDesc& proxy) = 0;

@@ -73,6 +73,7 @@ namespace Luna
                 register_struct_type<DockSpaceNode>({}, typeof<Node>());
                 register_struct_type<TabBarNode>({}, typeof<Node>());
                 register_struct_type<ButtonNode>({}, typeof<Node>());
+                register_struct_type<ProgressBarNode>({}, typeof<Node>());
                 register_struct_type<TextNode>({}, typeof<Node>());
                 register_struct_type<SelectableNode>({}, typeof<Node>());
                 register_struct_type<CheckboxNode>({}, typeof<Node>());

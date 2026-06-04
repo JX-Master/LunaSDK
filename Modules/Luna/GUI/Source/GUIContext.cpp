@@ -22,6 +22,10 @@ namespace Luna
             m_feedback_draw_list = new_draw_list();
             m_shape_renderer = VG::new_fill_shape_renderer();
             m_font_atlas = VG::new_font_atlas();
+            FontResource default_resource;
+            default_resource.font = Font::get_default_font();
+            default_resource.font_index = 0;
+            m_fonts.insert(make_pair(default_font_id(), move(default_resource)));
         }
 
         void Context::begin_frame(const FrameDesc& desc)
@@ -183,26 +187,27 @@ namespace Luna
                     continue;
                 }
                 Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(node.id);
-                f32 font_size = 16.0f;
                 const String* string_value = input_text_value(node);
                 if(input_text_node(node) && string_value)
                 {
+                    f32 font_size = get_style_value_unlocked(node.style, Name("gui.input_text.font_size"), StyleValue::f32_1(16.0f)).value.x;
                     const RectF& rect = m_layouts[i].rect;
                     state->text_cursor = clamp_utf8_cursor(*string_value, state->text_cursor);
                     RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
                     ret.active = true;
                     ret.rect = text_rect;
-                    ret.cursor = (i32)(input_text_cursor_x(*string_value, state->text_cursor, font_size) + 0.5f);
+                    ret.cursor = (i32)(text_cursor_x(*string_value, state->text_cursor, font_size, node_font_id(node)) + 0.5f);
                     return ret;
                 }
                 if(numeric_text_editable(node) && state->numeric_editing)
                 {
+                    f32 font_size = get_style_value_unlocked(node.style, Name("gui.numeric.font_size"), StyleValue::f32_1(15.0f)).value.x;
                     state->text_cursor = clamp_utf8_cursor(state->numeric_edit_text, state->text_cursor);
                     RectF component = numeric_component_rect(node, m_layouts[i].rect, state->numeric_edit_component);
                     RectF text_rect(component.offset_x + 6.0f, component.offset_y, max(component.width - 12.0f, 1.0f), component.height);
                     ret.active = true;
                     ret.rect = text_rect;
-                    ret.cursor = (i32)(input_text_cursor_x(state->numeric_edit_text, state->text_cursor, font_size) + 0.5f);
+                    ret.cursor = (i32)(text_cursor_x(state->numeric_edit_text, state->text_cursor, font_size, node_font_id(node)) + 0.5f);
                     return ret;
                 }
             }
@@ -672,6 +677,57 @@ namespace Luna
         StyleValue Context::get_style_value(const Name& style_name, const Name& entry, const StyleValue& default_value)
         {
             lutsassert();
+            return get_style_value_unlocked(style_name, entry, default_value);
+        }
+
+        void Context::push_style(const Name& style)
+        {
+            lutsassert();
+            luassert(style);
+            m_style_stack.push_back(style);
+        }
+
+        void Context::pop_style()
+        {
+            lutsassert();
+            luassert(!m_style_stack.empty());
+            m_style_stack.pop_back();
+        }
+
+        RV Context::register_font(const Name& id, Font::IFontFile* font, u32 font_index)
+        {
+            lutsassert();
+            if(!id || !font || font_index >= font->get_num_fonts())
+            {
+                return BasicError::bad_arguments();
+            }
+            if(m_fonts.find(id) != m_fonts.end())
+            {
+                return BasicError::already_exists();
+            }
+            FontResource resource;
+            resource.font = font;
+            resource.font_index = font_index;
+            m_fonts.insert(make_pair(id, move(resource)));
+            return ok;
+        }
+
+        FontDesc Context::get_font(const Name& id)
+        {
+            lutsassert();
+            auto iter = m_fonts.find(id);
+            if(iter == m_fonts.end())
+            {
+                return FontDesc();
+            }
+            FontDesc ret;
+            ret.font = iter->second.font.get();
+            ret.font_index = iter->second.font_index;
+            return ret;
+        }
+
+        StyleValue Context::get_style_value_unlocked(const Name& style_name, const Name& entry, const StyleValue& default_value) const
+        {
             if(!style_name || !entry) return default_value;
             Name cursor = style_name;
             for(usize i = 0; i < m_styles.size(); ++i)
@@ -702,18 +758,89 @@ namespace Luna
             return default_value;
         }
 
-        void Context::push_style(const Name& style)
+        Name Context::node_font_id(const Node& node) const
         {
-            lutsassert();
-            luassert(style);
-            m_style_stack.push_back(style);
+            StyleValue value = get_style_value_unlocked(node.style, font_style_entry_name(), StyleValue::name(Name()));
+            return value.type == StyleValueType::name ? value.name_value : Name();
         }
 
-        void Context::pop_style()
+        FontDesc Context::resolve_font(const Name& id) const
         {
-            lutsassert();
-            luassert(!m_style_stack.empty());
-            m_style_stack.pop_back();
+            Name cursor = id ? id : default_font_id();
+            auto iter = m_fonts.find(cursor);
+            if(iter == m_fonts.end())
+            {
+                iter = m_fonts.find(default_font_id());
+            }
+            if(iter != m_fonts.end())
+            {
+                FontDesc ret;
+                ret.font = iter->second.font.get();
+                ret.font_index = iter->second.font_index;
+                return ret;
+            }
+            FontDesc ret;
+            ret.font = Font::get_default_font();
+            ret.font_index = 0;
+            return ret;
+        }
+
+        LayoutMetrics Context::measure_text_with_font(const c8* text, usize text_size, f32 font_size, f32 max_width, const Name& font_id) const
+        {
+            FontDesc font = resolve_font(font_id);
+            VG::TextArrangeSection section;
+            section.font_file = font.font;
+            section.font_index = font.font_index;
+            section.font_size = font_size;
+            section.num_chars = text_size;
+            f32 arrange_width = max_width < F32_MAX * 0.5f ? max_width : 1000000.0f;
+            auto arranged = VG::arrange_text(text ? text : "", text_size, {&section, 1},
+                RectF(0.0f, 0.0f, arrange_width, 100000.0f),
+                VG::TextAlignment::begin, VG::TextAlignment::begin);
+            f32 w = max(arranged.bounding_rect.width, 1.0f);
+            f32 h = max(arranged.bounding_rect.height, font_size + 4.0f);
+            LayoutMetrics metrics;
+            metrics.min_size = Float2U(min(w, 32.0f), h);
+            metrics.preferred_size = Float2U(min(w, max_width), h);
+            metrics.max_size = Float2U(max_width, h);
+            return metrics;
+        }
+
+        f32 Context::text_cursor_x(const String& value, usize cursor, f32 font_size, const Name& font_id) const
+        {
+            cursor = clamp_utf8_cursor(value, cursor);
+            if(!cursor) return 0.0f;
+            return measure_text_with_font(value.c_str(), cursor, font_size, F32_MAX, font_id).preferred_size.x;
+        }
+
+        usize Context::text_cursor_from_x(const String& value, f32 x, f32 font_size, const Name& font_id) const
+        {
+            if(x <= 0.0f) return 0;
+            FontDesc font = resolve_font(font_id);
+            VG::TextArrangeSection section;
+            section.font_file = font.font;
+            section.font_index = font.font_index;
+            section.font_size = font_size;
+            section.num_chars = value.size();
+            VG::TextArrangeResult arranged = VG::arrange_text(value.c_str(), value.size(), {&section, 1},
+                RectF(0.0f, 0.0f, 1000000.0f, font_size * 2.0f),
+                VG::TextAlignment::center, VG::TextAlignment::begin);
+            if(arranged.lines.empty()) return value.size();
+            const VG::TextLineArrangeResult& line = arranged.lines[0];
+            if(line.glyphs.empty()) return value.size();
+            for(usize i = 0; i < line.glyphs.size(); ++i)
+            {
+                const VG::TextGlyphArrangeResult& glyph = line.glyphs[i];
+                f32 next_origin = i + 1 < line.glyphs.size() ?
+                    line.glyphs[i + 1].origin_offset :
+                    glyph.origin_offset + glyph.advance_length;
+                f32 threshold = (glyph.origin_offset + next_origin) * 0.5f;
+                if(x < threshold)
+                {
+                    return glyph.index;
+                }
+            }
+            return value.size();
         }
 
         object_t Context::get_state_object(id_t id) const

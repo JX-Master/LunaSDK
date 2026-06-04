@@ -83,6 +83,7 @@ namespace Luna
         f32 slider_with_input_value = 0.72f;
         f32 style_preview_slider = 0.48f;
         f32 style_preview_drag = 32.0f;
+        f32 progress_value = 0.62f;
         f32 drag_value = 42.0f;
         Float2 drag2_value = Float2(1.0f, -2.0f);
         Float3 drag3_value = Float3(0.0f, 1.0f, 2.0f);
@@ -389,6 +390,16 @@ namespace Luna
         demo_two_column_label(app, "ButtonGroup multi");
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(360.0f));
         GUI::button_group(app.gui, "Multi Button Group", Span<bool>(app.button_group_multi, 3), Span<const c8*>(group_items, 3));
+        GUI::end_h_layout(app.gui);
+
+        GUI::begin_h_layout(app.gui, "Progress Default", row);
+        demo_two_column_label(app, "ProgressBar");
+        GUI::progress_bar(app.gui, "ProgressBar", app.progress_value);
+        GUI::end_h_layout(app.gui);
+
+        GUI::begin_h_layout(app.gui, "Progress Custom", row);
+        demo_two_column_label(app, "HP bar");
+        GUI::progress_bar(app.gui, "HP ProgressBar", 0.76f, GUI::Size::fixed(320.0f, 24.0f), "HP 76 / 100");
         GUI::end_h_layout(app.gui);
 
         GUI::begin_h_layout(app.gui, "Text Inputs", row);
@@ -960,10 +971,16 @@ namespace Luna
         GUI::set_style_f32x4(app.gui, style, Name(entry), color);
     }
 
+    Name demo_font_id()
+    {
+        return Name("demo.font.default");
+    }
+
     void define_demo_theme(App& app, const DemoThemePalette& theme)
     {
         Name style(theme.name);
         GUI::define_style(app.gui, style);
+        GUI::set_style_name(app.gui, style, Name("gui.font"), demo_font_id());
         set_theme_color(app, style, "gui.text.color", theme.text);
 
         set_theme_color(app, style, "gui.window.background", theme.panel);
@@ -1002,6 +1019,10 @@ namespace Luna
         set_theme_color(app, style, "gui.numeric.slider_fill_hovered", theme.accent_hover);
         set_theme_color(app, style, "gui.numeric.slider_fill_active", theme.accent_active);
         set_theme_color(app, style, "gui.numeric.drag_fill", theme.accent_hover);
+        set_theme_color(app, style, "gui.progress_bar.background", theme.surface);
+        set_theme_color(app, style, "gui.progress_bar.fill", theme.accent_active);
+        set_theme_color(app, style, "gui.progress_bar.border", theme.border);
+        set_theme_color(app, style, "gui.progress_bar.text_color", theme.text);
 
         set_theme_color(app, style, "gui.checkbox.background", theme.surface);
         set_theme_color(app, style, "gui.checkbox.background_checked", theme.accent_active);
@@ -1143,6 +1164,7 @@ namespace Luna
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
         GUI::input_text(app.gui, "Theme Input", app.style_preview_text);
         GUI::slider_float(app.gui, "Theme Slider", &app.style_preview_slider, 0.0f, 1.0f);
+        GUI::progress_bar(app.gui, "Theme Progress", app.style_preview_slider);
         GUI::drag_float(app.gui, "Theme Drag", &app.style_preview_drag, 1.0f, 0.0f, 100.0f, GUI::NumericEditFlag::input_on_double_click);
 
         GUI::ItemHandle header = GUI::collapsing_header(app.gui, "Collapsing Header");
@@ -1325,6 +1347,7 @@ namespace Luna
             luset(app.swap_chain, dev->new_swap_chain(app.queue, app.window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})));
             luset(app.cmdbuf, dev->new_command_buffer(app.queue));
             app.gui = GUI::new_context(dev);
+            luexp(GUI::register_font(app.gui, demo_font_id(), Font::get_default_font()));
             GUIWindow::GUIWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;

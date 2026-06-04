@@ -71,26 +71,9 @@ namespace Luna
 
             virtual LayoutMetrics measure_text(const c8* text, usize text_size, f32 font_size, f32 max_width) const override
             {
-                f32 w = max((f32)text_size * font_size * 0.52f, 1.0f);
-                f32 h = font_size + 4.0f;
-                if(max_width < F32_MAX * 0.5f)
-                {
-                    VG::TextArrangeSection section;
-                    section.font_file = Font::get_default_font();
-                    section.font_index = 0;
-                    section.font_size = font_size;
-                    section.num_chars = text_size;
-                    auto arranged = VG::arrange_text(text, text_size, {&section, 1},
-                        RectF(0.0f, 0.0f, max_width, 100000.0f),
-                        VG::TextAlignment::begin, VG::TextAlignment::begin);
-                    w = max(arranged.bounding_rect.width, 1.0f);
-                    h = max(arranged.bounding_rect.height, h);
-                }
-                LayoutMetrics metrics;
-                metrics.min_size = Float2U(min(w, 32.0f), h);
-                metrics.preferred_size = Float2U(min(w, max_width), h);
-                metrics.max_size = Float2U(max_width, h);
-                return metrics;
+                if(!context) return LayoutMetrics();
+                const Node* node = node_index < context->m_submitted_desc.nodes.size() ? &context->m_submitted_desc.nodes[node_index] : nullptr;
+                return context->measure_text_with_font(text, text_size, font_size, max_width, node ? context->node_font_id(*node) : Name());
             }
         };
 

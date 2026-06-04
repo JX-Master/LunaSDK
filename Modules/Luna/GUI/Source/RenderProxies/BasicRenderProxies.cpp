@@ -8,6 +8,7 @@
 #include "../Nodes/ButtonGroupNodes.hpp"
 #include "../GUI.hpp"
 #include "../../State.hpp"
+#include <cstdio>
 
 namespace Luna
 {
@@ -47,6 +48,53 @@ namespace Luna
             f32 font_size = style_f32(ctx, node, Name("gui.text.font_size"), default_font_size);
             Float4U color = style_f32x4(ctx, node, Name("gui.text.color"), default_color);
             ctx.draw_text(rect, clip_rect, node.text.c_str(), font_size, color, TextAlignment::begin);
+        }
+
+        static void draw_default_progress_bar(NodeRenderContext& ctx, const Node& node, const RectF& rect, const RectF& clip_rect,
+            const NodeRenderState&, void*)
+        {
+            const ProgressBarNode* progress_bar = cast_node<ProgressBarNode>(node);
+            if(!progress_bar) return;
+
+            f32 border_size = style_f32(ctx, node, Name("gui.progress_bar.border_size"), 1.0f);
+            f32 radius = style_f32(ctx, node, Name("gui.progress_bar.radius"), min(rect.height * 0.5f, 5.0f));
+            Float4U border_color = style_f32x4(ctx, node, Name("gui.progress_bar.border"), Float4U(0.25f, 0.29f, 0.35f, 1.0f));
+            Float4U background = style_f32x4(ctx, node, Name("gui.progress_bar.background"), Float4U(0.07f, 0.08f, 0.10f, 1.0f));
+            Float4U fill = style_f32x4(ctx, node, Name("gui.progress_bar.fill"), Float4U(0.20f, 0.36f, 0.62f, 1.0f));
+
+            ctx.draw_rect(rect, clip_rect, border_color, radius);
+            RectF inner(
+                rect.offset_x + border_size,
+                rect.offset_y + border_size,
+                max(rect.width - border_size * 2.0f, 1.0f),
+                max(rect.height - border_size * 2.0f, 1.0f));
+            f32 inner_radius = max(radius - border_size, 0.0f);
+            ctx.draw_rect(inner, clip_rect, background, inner_radius);
+
+            f32 fraction = clamp(progress_bar->fraction, 0.0f, 1.0f);
+            if(fraction > 0.0f)
+            {
+                RectF fill_rect(inner.offset_x, inner.offset_y, max(inner.width * fraction, 1.0f), inner.height);
+                f32 max_x = inner.offset_x + inner.width;
+                if(fill_rect.offset_x + fill_rect.width > max_x)
+                {
+                    fill_rect.width = max(max_x - fill_rect.offset_x, 1.0f);
+                }
+                bool full = fraction >= 0.999f;
+                ctx.draw_rect_corners(fill_rect, clip_rect, fill, inner_radius, true, full, full, true);
+            }
+
+            const c8* overlay = progress_bar->has_overlay ? progress_bar->overlay.c_str() : nullptr;
+            c8 percentage[32];
+            if(!overlay)
+            {
+                snprintf(percentage, sizeof(percentage), "%.0f%%", fraction * 100.0f);
+                overlay = percentage;
+            }
+            f32 font_size = style_f32(ctx, node, Name("gui.progress_bar.font_size"), 14.0f);
+            Float4U text_color = style_f32x4(ctx, node, Name("gui.progress_bar.text_color"), Float4U(1.0f));
+            ctx.draw_text(RectF(inner.offset_x + 6.0f, inner.offset_y, max(inner.width - 12.0f, 1.0f), inner.height),
+                clip_rect, overlay, font_size, text_color, TextAlignment::center);
         }
 
         static void draw_default_selectable(NodeRenderContext& ctx, const Node& node, const RectF& rect, const RectF& clip_rect,
@@ -356,6 +404,13 @@ namespace Luna
         {
             RenderProxyDesc desc;
             desc.draw = draw_default_button;
+            return desc;
+        }
+
+        RenderProxyDesc default_progress_bar_render_proxy()
+        {
+            RenderProxyDesc desc;
+            desc.draw = draw_default_progress_bar;
             return desc;
         }
 
