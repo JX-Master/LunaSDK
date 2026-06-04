@@ -127,6 +127,15 @@ namespace Luna
         //! * END: The end angle of the circle in degrees. The value should be in [90, 180].
         //! See remarks of @ref COMMAND_AXIS_ALIGNED_ELLIPSE_Q1 for details.
         constexpr f32 COMMAND_AXIS_ALIGNED_ELLIPSE_Q4 = 11.0f;
+        //! The command code that draws a cubic Bezier curve to the specified point.
+        //! @details This command takes 7 points: {COMMAND_CUBIC_TO, C1X, C1Y, C2X, C2Y, X, Y}
+        //! * C1X: The x coordinates of the first curve control point.
+        //! * C1Y: The y coordinates of the first curve control point.
+        //! * C2X: The x coordinates of the second curve control point.
+        //! * C2Y: The y coordinates of the second curve control point.
+        //! * X: The x coordinates of the target position.
+        //! * Y: The y coordinates of the target position.
+        constexpr f32 COMMAND_CUBIC_TO = 12.0f;
 
         namespace ShapeBuilder
         {
@@ -150,6 +159,18 @@ namespace Luna
             //! @param[in] x The x coordinates of the target position.
             //! @param[in] y The y coordinates of the target position.
             inline void curve_to(Vector<f32>& points, f32 cx, f32 cy, f32 x, f32 y) { points.insert(points.end(), { COMMAND_CURVE_TO, cx, cy, x, y }); }
+            //! Adds one @ref COMMAND_CUBIC_TO command to shape data points.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] c1x The x coordinates of the first curve control point.
+            //! @param[in] c1y The y coordinates of the first curve control point.
+            //! @param[in] c2x The x coordinates of the second curve control point.
+            //! @param[in] c2y The y coordinates of the second curve control point.
+            //! @param[in] x The x coordinates of the target position.
+            //! @param[in] y The y coordinates of the target position.
+            inline void cubic_to(Vector<f32>& points, f32 c1x, f32 c1y, f32 c2x, f32 c2y, f32 x, f32 y)
+            {
+                points.insert(points.end(), { COMMAND_CUBIC_TO, c1x, c1y, c2x, c2y, x, y });
+            }
             //! Adds commands to draw one circle part to shape data points.
             //! @details If the draw circle part overlaps multiple quadrants, this function
             //! seprates the circle part to multiple @ref COMMAND_CIRCLE_Q1, @ref COMMAND_CIRCLE_Q2,

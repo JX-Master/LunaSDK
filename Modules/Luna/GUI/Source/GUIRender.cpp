@@ -242,6 +242,13 @@ namespace Luna
             DrawListState state = m_active_draw_list->get_state();
             state.shape_buffer = m_active_draw_list->get_shape_buffer();
             state.texture = texture;
+            if(test_flags(image_flags, ImageFlag::nearest))
+            {
+                state.sampler = RHI::SamplerDesc(RHI::Filter::nearest, RHI::Filter::nearest, RHI::Filter::nearest,
+                    RHI::TextureAddressMode::clamp,
+                    RHI::TextureAddressMode::clamp,
+                    RHI::TextureAddressMode::clamp);
+            }
             state.clip_rect = c;
             u32 pop_id = m_active_draw_list->push_state(&state);
             auto& points = m_active_draw_list->get_shape_buffer()->get_shape_points(true);

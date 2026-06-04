@@ -53,7 +53,9 @@ namespace Luna
             //! Default image rendering.
             none = 0x00,
             //! Flip image sampling vertically.
-            flip_y = 0x01
+            flip_y = 0x01,
+            //! Use nearest-neighbor texture sampling.
+            nearest = 0x02
         };
 
         //! Describes the high-level layer role of a node.

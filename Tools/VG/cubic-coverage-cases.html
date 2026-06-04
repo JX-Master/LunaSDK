@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VG Cubic Coverage Cases</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101820;
+      --panel: #16232e;
+      --panel-2: #1c2c39;
+      --line: #375066;
+      --text: #ecf4fb;
+      --muted: #9fb1c0;
+      --accent: #3f8cff;
+      --good: #57d68d;
+      --warn: #ffbf5b;
+      --bad: #ff6b75;
+      --zero: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      border-right: 1px solid var(--line);
+      background: #0e151c;
+      padding: 18px;
+      overflow: auto;
+    }
+
+    main {
+      display: grid;
+      grid-template-rows: auto minmax(420px, 1fr) auto;
+      min-width: 0;
+      padding: 18px;
+      gap: 14px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      font-weight: 650;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 650;
+      color: #d6e6f3;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+    }
+
+    .case-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .case-button {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 10px 12px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .case-button:hover {
+      border-color: #5c7a97;
+      background: #1a2a37;
+    }
+
+    .case-button.active {
+      border-color: var(--accent);
+      background: #24456c;
+    }
+
+    .toolbar,
+    .legend,
+    .result-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 12px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      align-items: center;
+    }
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      width: 150px;
+      accent-color: var(--accent);
+    }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 7px 11px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    .stage {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+        #0b1219;
+      background-size: 32px 32px;
+      overflow: hidden;
+      min-height: 420px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 420px;
+      cursor: crosshair;
+    }
+
+    .result-panel {
+      display: grid;
+      grid-template-columns: minmax(240px, 0.8fr) minmax(320px, 1.2fr);
+      gap: 14px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      background: #101923;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 18px;
+      color: var(--text);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #263849;
+      padding: 7px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #c5d6e5;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    td {
+      color: var(--muted);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-width: 54px;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      color: #071018;
+      font-weight: 650;
+    }
+
+    .pill.plus {
+      background: var(--good);
+    }
+
+    .pill.minus {
+      background: var(--warn);
+    }
+
+    .pill.zero {
+      background: var(--zero);
+    }
+
+    .note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .key {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.5);
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .result-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <h1>VG Cubic Coverage Cases</h1>
+      <p>观察三次 Bézier 与扫描轴的 root 判定。默认展示 FillPS 的 x-axis test：解 y(t)=0，并根据两侧符号给 winding delta。</p>
+      <h2>典型情况</h2>
+      <div id="caseList" class="case-list"></div>
+      <p class="note">拖动画布中的控制点可以观察临界变化。半开区间策略：跳过 t=0，保留 t=1，避免相邻 segment 在共享起点重复计数。</p>
+    </aside>
+    <main>
+      <section class="toolbar">
+        <label>
+          Axis test
+          <select id="axisSelect">
+            <option value="x">X-axis: solve y(t)=0</option>
+            <option value="y">Y-axis: solve x(t)=0</option>
+          </select>
+        </label>
+        <label>
+          pixels/unit
+          <input id="ppu" type="range" min="0.003" max="0.04" step="0.001" value="0.012">
+          <span id="ppuValue">0.012</span>
+        </label>
+        <button id="resetButton" type="button">Reset Case</button>
+      </section>
+      <section class="stage">
+        <canvas id="canvas"></canvas>
+      </section>
+      <section class="result-panel">
+        <div>
+          <h2 id="caseTitle"></h2>
+          <p id="caseDescription"></p>
+          <div class="summary">
+            <div class="metric">
+              <span>Raw roots</span>
+              <strong id="rawRootCount">0</strong>
+            </div>
+            <div class="metric">
+              <span>Accepted</span>
+              <strong id="acceptedCount">0</strong>
+            </div>
+            <div class="metric">
+              <span>Winding</span>
+              <strong id="windingSum">0</strong>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h2>Root 判定</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>t</th>
+                <th>axis value</th>
+                <th>before → after</th>
+                <th>result</th>
+                <th>coverage term</th>
+              </tr>
+            </thead>
+            <tbody id="rootRows"></tbody>
+          </table>
+          <p class="note" id="emptyRoots">没有 root 命中当前 segment。</p>
+        </div>
+      </section>
+      <section class="legend">
+        <span class="key"><span class="swatch" style="background:#3f8cff"></span>cubic curve</span>
+        <span class="key"><span class="swatch" style="background:#8ba6bd"></span>control polygon</span>
+        <span class="key"><span class="swatch" style="background:#57d68d"></span>accepted crossing</span>
+        <span class="key"><span class="swatch" style="background:#94a3b8"></span>tangent / zero delta</span>
+        <span class="key"><span class="swatch" style="background:#ff6b75"></span>skipped endpoint</span>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    "use strict";
+
+    const EPS = 1e-5;
+    const SAMPLE_EPS = 1e-3;
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const caseList = document.getElementById("caseList");
+    const axisSelect = document.getElementById("axisSelect");
+    const ppuInput = document.getElementById("ppu");
+    const ppuValue = document.getElementById("ppuValue");
+    const resetButton = document.getElementById("resetButton");
+    const rootRows = document.getElementById("rootRows");
+    const emptyRoots = document.getElementById("emptyRoots");
+    const caseTitle = document.getElementById("caseTitle");
+    const caseDescription = document.getElementById("caseDescription");
+    const rawRootCount = document.getElementById("rawRootCount");
+    const acceptedCount = document.getElementById("acceptedCount");
+    const windingSum = document.getElementById("windingSum");
+
+    function makePoint(x, y) {
+      return { x, y };
+    }
+
+    function yControlsFromRoots(roots, scale) {
+      const [r0, r1, r2] = roots;
+      const a = scale;
+      const b = -scale * (r0 + r1 + r2);
+      const c = scale * (r0 * r1 + r0 * r2 + r1 * r2);
+      const d = -scale * r0 * r1 * r2;
+      const p0 = d;
+      const p1 = p0 + c / 3;
+      const p2 = (b - 3 * p0 + 6 * p1) / 3;
+      const p3 = a + p0 - 3 * p1 + 3 * p2;
+      return [p0, p1, p2, p3];
+    }
+
+    function cubicFromYValues(y0, y1, y2, y3) {
+      return [
+        makePoint(-280, y0),
+        makePoint(-90, y1),
+        makePoint(90, y2),
+        makePoint(280, y3)
+      ];
+    }
+
+    const threeRootY = yControlsFromRoots([0.18, 0.52, 0.84], -1450);
+    const cases = [
+      {
+        title: "No crossing",
+        description: "四个控制点都在扫描轴同侧，利用 Bézier convex hull 可以直接早退。",
+        points: cubicFromYValues(120, 180, 110, 150)
+      },
+      {
+        title: "Single downward crossing",
+        description: "曲线从 axis 正侧进入负侧，x-axis winding delta 为 +1。",
+        points: cubicFromYValues(150, 130, -90, -140)
+      },
+      {
+        title: "Single upward crossing",
+        description: "曲线从 axis 负侧进入正侧，x-axis winding delta 为 -1。",
+        points: cubicFromYValues(-150, -120, 90, 140)
+      },
+      {
+        title: "Three crossings",
+        description: "S 型 cubic 可以和扫描轴产生三个 real roots，每个 root 都要独立判定方向。",
+        points: [
+          makePoint(-280, threeRootY[0]),
+          makePoint(-90, threeRootY[1]),
+          makePoint(90, threeRootY[2]),
+          makePoint(280, threeRootY[3])
+        ]
+      },
+      {
+        title: "Tangent touch",
+        description: "曲线碰到 axis 后回到同侧，两侧符号不变，不应该改变 winding。",
+        points: cubicFromYValues(110, -36.6667, -36.6667, 110)
+      },
+      {
+        title: "Endpoint root",
+        description: "root 位于 segment 起点。半开区间策略会跳过 t=0，避免和前一段重复计数。",
+        points: cubicFromYValues(0, 160, 90, -130)
+      },
+      {
+        title: "Degenerated quadratic",
+        description: "三次项接近 0 时退化成 quadratic，应该走 quadratic/root fallback。",
+        points: cubicFromYValues(120, -40, -40, 120)
+      },
+      {
+        title: "Degenerated line",
+        description: "控制点共线时退化成 line，最终结果应和 line_test 一致。",
+        points: [
+          makePoint(-280, 140),
+          makePoint(-90, 46.6667),
+          makePoint(90, -46.6667),
+          makePoint(280, -140)
+        ]
+      }
+    ];
+
+    let currentCase = 0;
+    let points = clonePoints(cases[0].points);
+    let draggingIndex = -1;
+    let lastAnalysis = null;
+
+    function clonePoints(src) {
+      return src.map((p) => makePoint(p.x, p.y));
+    }
+
+    function coefficient(p0, p1, p2, p3) {
+      return {
+        a: -p0 + 3 * p1 - 3 * p2 + p3,
+        b: 3 * p0 - 6 * p1 + 3 * p2,
+        c: -3 * p0 + 3 * p1,
+        d: p0
+      };
+    }
+
+    function evalCubic1(p0, p1, p2, p3, t) {
+      const u = 1 - t;
+      return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
+    }
+
+    function evalCubicPoint(ps, t) {
+      return makePoint(
+        evalCubic1(ps[0].x, ps[1].x, ps[2].x, ps[3].x, t),
+        evalCubic1(ps[0].y, ps[1].y, ps[2].y, ps[3].y, t)
+      );
+    }
+
+    function solveQuadratic(a, b, c) {
+      if (Math.abs(a) < EPS) {
+        if (Math.abs(b) < EPS) return [];
+        return [-c / b];
+      }
+      const disc = b * b - 4 * a * c;
+      if (disc < -EPS) return [];
+      if (Math.abs(disc) <= EPS) return [-b / (2 * a)];
+      const rootDisc = Math.sqrt(Math.max(disc, 0));
+      return [(-b - rootDisc) / (2 * a), (-b + rootDisc) / (2 * a)];
+    }
+
+    function solveCubic(a, b, c, d) {
+      if (Math.abs(a) < EPS) {
+        return solveQuadratic(b, c, d);
+      }
+
+      const A = b / a;
+      const B = c / a;
+      const C = d / a;
+      const p = B - A * A / 3;
+      const q = 2 * A * A * A / 27 - A * B / 3 + C;
+      const discriminant = q * q / 4 + p * p * p / 27;
+      const shift = -A / 3;
+
+      if (discriminant > EPS) {
+        const s = Math.sqrt(discriminant);
+        return [Math.cbrt(-q / 2 + s) + Math.cbrt(-q / 2 - s) + shift];
+      }
+
+      if (Math.abs(discriminant) <= EPS) {
+        const u = Math.cbrt(-q / 2);
+        return uniqueSorted([2 * u + shift, -u + shift]);
+      }
+
+      const r = 2 * Math.sqrt(-p / 3);
+      const value = clamp((3 * q / (2 * p)) * Math.sqrt(-3 / p), -1, 1);
+      const phi = Math.acos(value) / 3;
+      const roots = [];
+      for (let k = 0; k < 3; ++k) {
+        roots.push(r * Math.cos(phi - 2 * Math.PI * k / 3) + shift);
+      }
+      return uniqueSorted(roots);
+    }
+
+    function uniqueSorted(values) {
+      const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
+      const ret = [];
+      for (const v of sorted) {
+        if (!ret.length || Math.abs(v - ret[ret.length - 1]) > 1e-4) {
+          ret.push(v);
+        }
+      }
+      return ret;
+    }
+
+    function clamp(v, minValue, maxValue) {
+      return Math.min(maxValue, Math.max(minValue, v));
+    }
+
+    function sign01(v) {
+      return v > 0 ? 1 : 0;
+    }
+
+    function analyze() {
+      const axis = axisSelect.value;
+      const values = axis === "x" ? points.map((p) => p.y) : points.map((p) => p.x);
+      const other = axis === "x" ? points.map((p) => p.x) : points.map((p) => p.y);
+      const coeff = coefficient(values[0], values[1], values[2], values[3]);
+      const rawRoots = solveCubic(coeff.a, coeff.b, coeff.c, coeff.d);
+      const roots = uniqueSorted(rawRoots.filter((t) => t >= -1e-4 && t <= 1 + 1e-4).map((t) => clamp(t, 0, 1)));
+      const ppu = Number(ppuInput.value);
+      const entries = [];
+
+      for (const t of roots) {
+        const accepted = t > 1e-4 && t <= 1 + 1e-4;
+        const beforeT = clamp(t - SAMPLE_EPS, 0, 1);
+        const afterT = clamp(t + SAMPLE_EPS, 0, 1);
+        const beforeValue = evalCubic1(values[0], values[1], values[2], values[3], beforeT);
+        const afterValue = evalCubic1(values[0], values[1], values[2], values[3], afterT);
+        const crossing = axis === "x"
+          ? sign01(beforeValue) - sign01(afterValue)
+          : sign01(afterValue) - sign01(beforeValue);
+        const delta = accepted ? crossing : 0;
+        const otherValue = evalCubic1(other[0], other[1], other[2], other[3], t);
+        const coverage = delta === 0 ? 0 : delta * clamp(otherValue * ppu + 0.5, 0, 1);
+        const axisValue = evalCubic1(values[0], values[1], values[2], values[3], t);
+        entries.push({
+          t,
+          accepted,
+          beforeValue,
+          afterValue,
+          axisValue,
+          otherValue,
+          delta,
+          coverage
+        });
+      }
+
+      return {
+        rawRoots,
+        roots,
+        entries,
+        winding: entries.reduce((sum, e) => sum + e.delta, 0)
+      };
+    }
+
+    function fitCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(320, Math.floor(rect.width * dpr));
+      const h = Math.max(320, Math.floor(rect.height * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function worldToScreen(p) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: rect.width / 2 + p.x,
+        y: rect.height / 2 - p.y
+      };
+    }
+
+    function screenToWorld(x, y) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: x - rect.left - rect.width / 2,
+        y: rect.height / 2 - (y - rect.top)
+      };
+    }
+
+    function draw() {
+      fitCanvas();
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      lastAnalysis = analyze();
+
+      drawAxes(rect);
+      drawControlPolygon();
+      drawCurve();
+      drawRoots(lastAnalysis);
+      drawControlPoints();
+      updatePanel(lastAnalysis);
+    }
+
+    function drawAxes(rect) {
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#375066";
+      ctx.beginPath();
+      ctx.moveTo(0, rect.height / 2);
+      ctx.lineTo(rect.width, rect.height / 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(86, 113, 136, 0.6)";
+      ctx.beginPath();
+      ctx.moveTo(rect.width / 2, 0);
+      ctx.lineTo(rect.width / 2, rect.height);
+      ctx.stroke();
+
+      ctx.fillStyle = "#9fb1c0";
+      ctx.font = "13px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+      ctx.fillText(axisSelect.value === "x" ? "scanline y = 0" : "scanline x = 0", 16, rect.height / 2 - 10);
+      ctx.restore();
+    }
+
+    function drawControlPolygon() {
+      ctx.save();
+      ctx.strokeStyle = "#8ba6bd";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      points.forEach((p, i) => {
+        const s = worldToScreen(p);
+        if (i === 0) ctx.moveTo(s.x, s.y);
+        else ctx.lineTo(s.x, s.y);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawCurve() {
+      ctx.save();
+      ctx.strokeStyle = "#3f8cff";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      for (let i = 0; i <= 160; ++i) {
+        const p = worldToScreen(evalCubicPoint(points, i / 160));
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawRoots(analysis) {
+      ctx.save();
+      ctx.font = "12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+      for (const entry of analysis.entries) {
+        const p = worldToScreen(evalCubicPoint(points, entry.t));
+        let color = "#94a3b8";
+        if (!entry.accepted) color = "#ff6b75";
+        else if (entry.delta !== 0) color = "#57d68d";
+        ctx.fillStyle = color;
+        ctx.strokeStyle = "#f8fbff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#e8f3fb";
+        ctx.fillText(`t=${entry.t.toFixed(3)}`, p.x + 10, p.y - 10);
+      }
+      ctx.restore();
+    }
+
+    function drawControlPoints() {
+      ctx.save();
+      points.forEach((p, i) => {
+        const s = worldToScreen(p);
+        ctx.fillStyle = i === draggingIndex ? "#ffbf5b" : "#d7e5f0";
+        ctx.strokeStyle = "#0b1219";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#0b1219";
+        ctx.font = "11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+        ctx.fillText(String(i), s.x - 3, s.y + 4);
+      });
+      ctx.restore();
+    }
+
+    function updatePanel(analysis) {
+      const c = cases[currentCase];
+      caseTitle.textContent = c.title;
+      caseDescription.textContent = c.description;
+      ppuValue.textContent = Number(ppuInput.value).toFixed(3);
+      rawRootCount.textContent = String(analysis.rawRoots.length);
+      acceptedCount.textContent = String(analysis.entries.filter((e) => e.accepted).length);
+      windingSum.textContent = String(analysis.winding);
+      rootRows.innerHTML = "";
+      emptyRoots.style.display = analysis.entries.length ? "none" : "block";
+      for (const entry of analysis.entries) {
+        const tr = document.createElement("tr");
+        const resultClass = entry.delta > 0 ? "plus" : entry.delta < 0 ? "minus" : "zero";
+        let label = "zero";
+        if (!entry.accepted) label = "skipped";
+        else if (entry.delta > 0) label = "+1";
+        else if (entry.delta < 0) label = "-1";
+        else label = "tangent";
+        tr.innerHTML = `
+          <td>${entry.t.toFixed(5)}</td>
+          <td>${entry.axisValue.toFixed(5)}</td>
+          <td>${entry.beforeValue.toFixed(3)} → ${entry.afterValue.toFixed(3)}</td>
+          <td><span class="pill ${resultClass}">${label}</span></td>
+          <td>${entry.coverage.toFixed(4)}</td>
+        `;
+        rootRows.appendChild(tr);
+      }
+    }
+
+    function rebuildCaseList() {
+      caseList.innerHTML = "";
+      cases.forEach((c, i) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "case-button" + (i === currentCase ? " active" : "");
+        button.innerHTML = `<strong>${c.title}</strong><br><span>${c.description}</span>`;
+        button.addEventListener("click", () => {
+          currentCase = i;
+          points = clonePoints(cases[i].points);
+          rebuildCaseList();
+          draw();
+        });
+        caseList.appendChild(button);
+      });
+    }
+
+    function pickPoint(clientX, clientY) {
+      const world = screenToWorld(clientX, clientY);
+      let best = -1;
+      let bestDist = 16;
+      points.forEach((p, i) => {
+        const dist = Math.hypot(p.x - world.x, p.y - world.y);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = i;
+        }
+      });
+      return best;
+    }
+
+    canvas.addEventListener("pointerdown", (event) => {
+      draggingIndex = pickPoint(event.clientX, event.clientY);
+      if (draggingIndex !== -1) {
+        canvas.setPointerCapture(event.pointerId);
+      }
+      draw();
+    });
+
+    canvas.addEventListener("pointermove", (event) => {
+      if (draggingIndex === -1) return;
+      const world = screenToWorld(event.clientX, event.clientY);
+      points[draggingIndex] = makePoint(clamp(world.x, -360, 360), clamp(world.y, -220, 220));
+      draw();
+    });
+
+    canvas.addEventListener("pointerup", (event) => {
+      if (draggingIndex !== -1) {
+        canvas.releasePointerCapture(event.pointerId);
+      }
+      draggingIndex = -1;
+      draw();
+    });
+
+    canvas.addEventListener("pointercancel", () => {
+      draggingIndex = -1;
+      draw();
+    });
+
+    axisSelect.addEventListener("change", draw);
+    ppuInput.addEventListener("input", draw);
+    resetButton.addEventListener("click", () => {
+      points = clonePoints(cases[currentCase].points);
+      draw();
+    });
+    window.addEventListener("resize", draw);
+
+    rebuildCaseList();
+    draw();
+  </script>
+</body>
+</html>
