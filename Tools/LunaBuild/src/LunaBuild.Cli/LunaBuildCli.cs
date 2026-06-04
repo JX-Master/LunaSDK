@@ -86,6 +86,10 @@ public static class LunaBuildCli
         var targets = context.Targets;
         var format = ResolveOutputFormat(options);
         var categoryFilter = TargetCategoryFilter(options);
+        var graphCategoryFilter = categoryFilter ??
+            (IsIdeOutputFormat(format) && string.IsNullOrWhiteSpace(options.TargetName)
+                ? AllTargetCategories()
+                : null);
         var effectiveAllTargets = options.AllTargets || categoryFilter is not null || (IsIdeOutputFormat(format) && string.IsNullOrWhiteSpace(options.TargetName));
         var graph = GenerateGraph(
             workspace,
@@ -93,7 +97,7 @@ public static class LunaBuildCli
             targets,
             options.TargetName,
             effectiveAllTargets,
-            categoryFilter);
+            graphCategoryFilter);
         var outputTargets = SelectTargetsForOutput(
             targets,
             buildOptions,
@@ -103,7 +107,7 @@ public static class LunaBuildCli
             includeAllDiscoveredWhenUnfiltered: IsIdeOutputFormat(format) && categoryFilter is null && string.IsNullOrWhiteSpace(options.TargetName));
         var outputPath = ResolveOutputPath(workspace, options, format);
 
-        WriteOutput(workspace, buildOptions, graph, outputTargets, outputPath, format);
+        WriteOutput(workspace, buildOptions, graph, outputTargets, outputPath, format, options);
         Console.WriteLine($"Generated {FormatName(format)}: {Path.GetFullPath(outputPath)}");
         Console.WriteLine($"Nodes: {graph.Nodes.Count}, Targets: {graph.Targets.Count}");
         return 0;
@@ -123,7 +127,7 @@ public static class LunaBuildCli
             var format = ResolveOutputFormat(options);
             var outputPath = ResolveOutputPath(workspace, options, format);
             var outputTargets = SelectTargetsForOutput(targets, buildOptions, options.TargetName, options.AllTargets || categoryFilter is not null, categoryFilter);
-            WriteOutput(workspace, buildOptions, graph, outputTargets, outputPath, format);
+            WriteOutput(workspace, buildOptions, graph, outputTargets, outputPath, format, options);
             Console.WriteLine($"Dumped build graph ({format.ToString().ToLowerInvariant()}): {Path.GetFullPath(outputPath)}");
         }
 
@@ -370,6 +374,11 @@ public static class LunaBuildCli
             : options.TargetCategories.ToHashSet();
     }
 
+    private static IReadOnlySet<BuildTargetCategory> AllTargetCategories()
+    {
+        return Enum.GetValues<BuildTargetCategory>().ToHashSet();
+    }
+
     private static BuildGraphOutputFormat ResolveOutputFormat(CommandLineOptions options)
     {
         if(options.OutputFormat is not null)
@@ -427,8 +436,14 @@ public static class LunaBuildCli
         BuildGraph graph,
         IReadOnlyList<BuildTargetDefinition> targets,
         string outputPath,
-        BuildGraphOutputFormat format)
+        BuildGraphOutputFormat format,
+        CommandLineOptions commandLineOptions)
     {
+        if(format != BuildGraphOutputFormat.Vscode && commandLineOptions.VSCodeDebuggerTypes.Count > 0)
+        {
+            throw new ArgumentException("--vscode-debugger can only be used with --format vscode.");
+        }
+
         switch(format)
         {
             case BuildGraphOutputFormat.Json:
@@ -442,7 +457,7 @@ public static class LunaBuildCli
                 VisualStudioSolutionWriter.Write(workspace, buildOptions, graph, targets, outputPath);
                 break;
             case BuildGraphOutputFormat.Vscode:
-                VSCodeWorkspaceWriter.Write(workspace, buildOptions, graph, targets, outputPath);
+                VSCodeWorkspaceWriter.Write(workspace, buildOptions, graph, targets, outputPath, commandLineOptions.ToVSCodeLaunchOptions());
                 break;
             case BuildGraphOutputFormat.Xcode:
                 XcodeProjectWriter.Write(workspace, buildOptions, graph, targets, outputPath);
@@ -892,6 +907,8 @@ public static class LunaBuildCli
         Console.WriteLine("  --root <path>       LunaSDK repository root. Defaults to auto-discovery.");
         Console.WriteLine("  --output <path>     Graph output path for generate, or optional debug dump for build.");
         Console.WriteLine("  --format <name>     rules, json, compile_commands, vs2022, vscode, or xcode.");
+        Console.WriteLine("  --vscode-debugger <name>");
+        Console.WriteLine("                       VSCode launch debugger: cppvsdbg, cppdbg, or lldb-dap. Can repeat or use commas.");
         Console.WriteLine("  --target <name>     Select one target.");
         Console.WriteLine("  --all               Select all discovered targets.");
         Console.WriteLine("  --category <name>   Filter all-target operations by Engine, Tests, or Tools. Can repeat or use commas.");
@@ -950,6 +967,8 @@ internal sealed class CommandLineOptions
 
     public bool? Shared { get; private init; }
 
+    public IReadOnlyList<VSCodeDebuggerType> VSCodeDebuggerTypes { get; private init; } = Array.Empty<VSCodeDebuggerType>();
+
     public IReadOnlyDictionary<string, string?> ProjectPropertyOverrides { get; private init; } = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
     public static CommandLineOptions Parse(string[] args)
@@ -967,6 +986,13 @@ internal sealed class CommandLineOptions
                     break;
                 case "--format":
                     options.OutputFormat = ParseOutputFormat(RequireValue(args, ref i, "--format"));
+                    break;
+                case "--vscode-debugger":
+                case "--vscode-debuggers":
+                    foreach(var debugger in ParseVSCodeDebuggers(RequireValue(args, ref i, args[i])))
+                    {
+                        options.VSCodeDebuggerTypes.Add(debugger);
+                    }
                     break;
                 case "--target":
                     options.TargetName = RequireValue(args, ref i, "--target");
@@ -1044,6 +1070,13 @@ internal sealed class CommandLineOptions
         };
     }
 
+    public VSCodeLaunchOptions? ToVSCodeLaunchOptions()
+    {
+        return VSCodeDebuggerTypes.Count == 0
+            ? null
+            : new VSCodeLaunchOptions(VSCodeDebuggerTypes);
+    }
+
     private static ProjectPropertyOverride ParseProjectPropertyOption(string[] args, ref int index)
     {
         var token = args[index][2..];
@@ -1114,6 +1147,14 @@ internal sealed class CommandLineOptions
         }
     }
 
+    private static IEnumerable<VSCodeDebuggerType> ParseVSCodeDebuggers(string value)
+    {
+        foreach(var part in value.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            yield return VSCodeDebuggerType.Parse(part);
+        }
+    }
+
     private static BuildGraphOutputFormat ParseOutputFormat(string value)
     {
         return value.Replace("-", "_").ToLowerInvariant() switch
@@ -1145,6 +1186,7 @@ internal sealed class CommandLineOptions
         public string? Architecture { get; set; }
         public RhiApi? RhiApi { get; set; }
         public bool? Shared { get; set; }
+        public List<VSCodeDebuggerType> VSCodeDebuggerTypes { get; } = new();
         public Dictionary<string, string?> ProjectPropertyOverrides { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         public CommandLineOptions ToImmutable()
@@ -1164,6 +1206,7 @@ internal sealed class CommandLineOptions
                 Architecture = Architecture,
                 RhiApi = RhiApi,
                 Shared = Shared,
+                VSCodeDebuggerTypes = VSCodeDebuggerTypes.Distinct().ToArray(),
                 ProjectPropertyOverrides = new Dictionary<string, string?>(ProjectPropertyOverrides, StringComparer.OrdinalIgnoreCase),
             };
         }
