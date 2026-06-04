@@ -539,7 +539,7 @@ public static class XcodeProjectWriter
 
     private static string ProductFileType(BuildTargetKind kind, string path)
     {
-        if(kind == BuildTargetKind.Executable)
+        if(kind.ProducesNativeExecutable())
         {
             return "compiled.mach-o.executable";
         }

@@ -16,7 +16,7 @@ public sealed class DemoAppTargetRules : TargetRules
             targetDirectory: "Programs/DemoApp",
             rulesPath: "Programs/DemoApp/DemoApp.Target.cs")
     {
-        Kind = BuildTargetKind.Executable;
+        Kind = BuildTargetKind.Application;
         Sources("**.cpp");
         Shader("DemoAppVS.cxx", "vertex", "vs_main");
         Shader("DemoAppPS.cxx", "pixel", "ps_main");
@@ -26,7 +26,7 @@ public sealed class DemoAppTargetRules : TargetRules
 }
 ```
 
-`Kind = BuildTargetKind.Executable` tells LunaBuild that this target produces a runnable program. `Sources("**.cpp")` adds all C++ source files in the current directory and all subdirectories to this target. `Shader(...)` declares CPPSL shader entry files that will be compiled before the C++ sources. `RuntimeFiles("luna.png")` copies the image next to the produced executable. `DependsOn(...)` lists all libraries that this program links to. In our example, we need to link to the SDK runtime (`Runtime`), the window module (`Window`), the Graphics API module (`RHI`), the RHI utility module (`RHIUtility`) and the image file module (`Image`). If you get unresolved external symbol errors when compiling, make sure you already link correct libraries.
+`Kind = BuildTargetKind.Application` tells LunaBuild that this target is an app-style runnable program. Use `BuildTargetKind.Executable` instead for command-line tools and test binaries. `Sources("**.cpp")` adds all C++ source files in the current directory and all subdirectories to this target. `Shader(...)` declares CPPSL shader entry files that will be compiled before the C++ sources. `RuntimeFiles("luna.png")` copies the image next to the produced executable. `DependsOn(...)` lists all libraries that this program links to. In our example, we need to link to the SDK runtime (`Runtime`), the window module (`Window`), the Graphics API module (`RHI`), the RHI utility module (`RHIUtility`) and the image file module (`Image`). If you get unresolved external symbol errors when compiling, make sure you already link correct libraries.
 
 Then we need to create source CPP files for our program. Since out demo program is simple, we only create one "main. cpp" file to host all source codes. After this, the `DemoApp` directory should looks like this:
 ```

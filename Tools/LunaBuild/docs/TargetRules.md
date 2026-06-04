@@ -69,7 +69,11 @@ Kind = BuildTargetKind.Executable;
 Current common kinds:
 
 - `SharedLibrary`: Luna SDK modules such as `Runtime`, `RHI`, `Image`.
-- `Executable`: tests and programs that produce `.exe` on Windows.
+- `Executable`: command-line tools and tests that produce a native executable
+  such as `.exe` on Windows.
+- `Application`: app-style targets for Windows, macOS, iOS and Android.
+  Application targets build like native runnables, and are the only targets
+  accepted by `lunabuild package`.
 - `DotNetProject`: C# tool targets built through a `dotnet.build` action.
 - `External`: prebuilt or header-only third-party dependencies consumed through
   existing files.
@@ -344,10 +348,11 @@ if the source file changes, the runtime copy is rebuilt.
 
 ## Apple Application Bundles
 
-Executable targets that should be packaged as iOS `.app` bundles must declare
-their bundle metadata in target rules:
+Application targets that should be packaged as Apple `.app` bundles must
+declare their bundle metadata in target rules:
 
 ```csharp
+Kind = BuildTargetKind.Application;
 AppleBundle("com.example.MyApp", "MyApp");
 AppleInfoPlist("Source/Info.plist");
 AppleBundleResources("Assets/**");
@@ -362,14 +367,21 @@ directory. LunaBuild expands common Xcode-style variables such as
 
 `AppleBundleResources(...)` copies files into the bundle while preserving their
 paths relative to the target directory. `RuntimeFiles(...)` are also copied into
-the bundle root for app targets. Shared builds embed Luna module dylibs under
-the app bundle's `Frameworks/` directory; static builds link them into the app
-executable.
+the app bundle: into the iOS bundle root for iOS packages, and into
+`Contents/Resources/` for macOS packages. Shared builds embed Luna module dylibs
+under `Frameworks/` on iOS and `Contents/Frameworks/` on macOS; static builds
+link them into the app executable.
 
 ```powershell
+dotnet run --project LunaBuild.csproj -- package MyApp --platform MacOS --arch arm64 --output build/LunaBuild/MyApp.app
 dotnet run --project LunaBuild.csproj -- package MyApp --platform IOS --arch arm64 --output build/LunaBuild/MyApp.app
 dotnet run --project LunaBuild.csproj -- package MyApp --platform IOS --arch arm64 --static --output build/LunaBuild/MyApp.ipa
 ```
+
+macOS packages use the standard `.app` layout:
+`Contents/MacOS/<Executable>`, `Contents/Frameworks/`, `Contents/Resources/`
+and `Contents/Info.plist`. LunaBuild applies local ad-hoc signing to the macOS
+bundle after packaging.
 
 Use `--apple-sdk iphonesimulator` for simulator builds and
 `--ios-deployment-target <version>` to change the minimum deployment target.

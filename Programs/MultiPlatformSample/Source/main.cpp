@@ -69,7 +69,7 @@ RV DemoApp::init()
         // mobile platforms, the window is already created for us, and we
         // just use that window.
 #if defined(LUNA_PLATFORM_DESKTOP)
-        luset(window, Window::new_window("DemoApp"));
+        luset(window, Window::new_window("MultiPlatformSample"));
 #elif defined(LUNA_PLATFORM_MOBILE)
         window = Window::get_system_window();
 #endif

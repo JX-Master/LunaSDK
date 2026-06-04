@@ -237,7 +237,7 @@ public sealed class CppTargetGraphGenerator
                 Depfiles: Array.Empty<string>()));
 
             var runtimeFileIds = AddRuntimeFileNodes(target, dependencyOutputs.SelectMany(output => output.RuntimeFiles), binaryPath);
-            var linkInputId = target.Kind != BuildTargetKind.Executable && _options.Shared && _options.Platform == BuildPlatform.Windows
+            var linkInputId = !target.Kind.ProducesNativeExecutable() && _options.Shared && _options.Platform == BuildPlatform.Windows
                 ? BuildGraphIds.File(_workspace.ToRepositoryRelativePath(Path.ChangeExtension(binaryPath, ".lib")))
                 : binaryId;
             var targetId = BuildGraphIds.Target(target.Name);
@@ -622,7 +622,7 @@ public sealed class CppTargetGraphGenerator
     {
         var fileName = IsAndroidNativeActivityLibrary(options, target)
             ? $"lib{target.Name}.so"
-            : target.Kind == BuildTargetKind.Executable
+            : target.Kind.ProducesNativeExecutable()
             ? $"{target.Name}{ExecutableExtension(options.Platform)}"
             : $"Luna{target.Name}{(options.Shared ? SharedLibraryExtension(options.Platform) : StaticLibraryExtension(options.Platform))}";
         return Path.Combine(
@@ -868,28 +868,35 @@ public sealed class CppTargetGraphGenerator
         string binaryPath,
         IReadOnlyList<string> inputIds)
     {
-        var actionKind = target.Kind == BuildTargetKind.Executable
+        var actionKind = target.Kind.ProducesNativeExecutable()
             ? IsAndroidNativeActivityLibrary(options, target) ? "cpp.link.shared" : "cpp.link.executable"
             : options.Shared ? "cpp.link.shared" : "cpp.link.static";
-        return string.Join('\n',
+        var lines = new List<string>
+        {
             $"kind={actionKind}",
             $"target={target.Name}",
             $"output={workspace.ToRepositoryRelativePath(binaryPath)}",
             $"mode={options.Mode}",
             $"platform={options.Platform}",
-            $"arch={options.Architecture}")
-            + string.Concat(inputIds.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(id => $"\ninput={id}"))
-            + string.Concat(target.SystemLibraries.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(library => $"\nlibrary={library}"))
-            + string.Concat(target.Frameworks
+            $"arch={options.Architecture}",
+        };
+        if(target.Kind == BuildTargetKind.Application)
+        {
+            lines.Add("application=true");
+        }
+        lines.AddRange(inputIds.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(id => $"input={id}"));
+        lines.AddRange(target.SystemLibraries.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(library => $"library={library}"));
+        lines.AddRange(target.Frameworks
                 .Concat(dependencyFrameworks)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Order(StringComparer.OrdinalIgnoreCase)
-                .Select(framework => $"\nframework={framework}"));
+                .Select(framework => $"framework={framework}"));
+        return string.Join('\n', lines);
     }
 
     private static bool IsAndroidNativeActivityLibrary(BuildOptions options, BuildTargetDefinition target)
     {
-        return options.Platform == BuildPlatform.Android && target.Kind == BuildTargetKind.Executable;
+        return options.Platform == BuildPlatform.Android && target.Kind == BuildTargetKind.Application;
     }
 
     private static string BuildTargetCommandDescription(

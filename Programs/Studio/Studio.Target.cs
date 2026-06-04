@@ -9,7 +9,7 @@ public sealed class StudioTargetRules : TargetRules
             rulesPath: "Programs/Studio/Studio.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        Kind = BuildTargetKind.Executable;
+        Kind = BuildTargetKind.Application;
         Headers("**.hpp", "Shaders/*.hxx");
         Sources("**.cpp");
         Shader("Shaders/SkyboxCS.cxx", "compute", "cs_main");
@@ -45,5 +45,14 @@ public sealed class StudioTargetRules : TargetRules
             "RG",
             "JobSystem",
             "ECS");
+    }
+
+    protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+    {
+        if(Platform == BuildPlatform.MacOS)
+        {
+            AppleBundle("com.lunasdk.Studio", "Studio");
+            AppleInfoPlist("MacOSInfo.plist");
+        }
     }
 }

@@ -432,6 +432,10 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         {
             args.Add("-Wl,-rpath,@executable_path/Frameworks");
         }
+        if(context.Graph.Options.Platform == BuildPlatform.MacOS && payload.Contains("application"))
+        {
+            args.Add("-Wl,-rpath,@executable_path/../Frameworks");
+        }
         if(CppCommandLineBuilder.AppleTargetTriple(context.Graph.Options, payload.Required("arch")) is { } targetTriple)
         {
             args.InsertRange(0, new[] { "-target", targetTriple });

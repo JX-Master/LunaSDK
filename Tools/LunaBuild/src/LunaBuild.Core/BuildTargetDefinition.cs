@@ -6,9 +6,18 @@ public enum BuildTargetKind
     StaticLibrary,
     SharedLibrary,
     Executable,
+    Application,
     HeaderOnly,
     DotNetProject,
     External,
+}
+
+public static class BuildTargetKindExtensions
+{
+    public static bool ProducesNativeExecutable(this BuildTargetKind kind)
+    {
+        return kind is BuildTargetKind.Executable or BuildTargetKind.Application;
+    }
 }
 
 public enum BuildTargetCategory

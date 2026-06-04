@@ -10,7 +10,7 @@ public sealed class IOSPackageSmokeTargetRules : TargetRules
     {
         SupportedPlatforms(BuildPlatform.IOS);
         Category = BuildTargetCategory.Tests;
-        Kind = BuildTargetKind.Executable;
+        Kind = BuildTargetKind.Application;
         Sources("Source/*.cpp");
         AppleBundle("com.lunasdk.IOSPackageSmoke", "IOSPackageSmoke");
         AppleInfoPlist("Source/Info.plist");

@@ -165,7 +165,7 @@ public static class LunaBuildCli
         var workspace = context.Workspace;
         var target = context.Targets.FirstOrDefault(target => string.Equals(target.Name, options.TargetName, StringComparison.OrdinalIgnoreCase))
             ?? throw new ArgumentException($"Unknown target: {options.TargetName}");
-        if(target.Kind is not (BuildTargetKind.Executable or BuildTargetKind.DotNetProject))
+        if(!(target.Kind.ProducesNativeExecutable() || target.Kind == BuildTargetKind.DotNetProject))
         {
             throw new ArgumentException($"Target `{target.Name}` is {target.Kind} and cannot be run.");
         }
@@ -227,16 +227,16 @@ public static class LunaBuildCli
         }
 
         var context = CreateBuildContext(options);
-        if(context.BuildOptions.Platform is not (BuildPlatform.Android or BuildPlatform.IOS))
+        if(context.BuildOptions.Platform is not (BuildPlatform.Android or BuildPlatform.IOS or BuildPlatform.MacOS))
         {
-            throw new ArgumentException("package currently supports Android and IOS targets. Pass --platform Android or --platform IOS.");
+            throw new ArgumentException("package currently supports Android, IOS and MacOS targets. Pass --platform Android, IOS or MacOS.");
         }
 
         var target = context.Targets.FirstOrDefault(target => string.Equals(target.Name, options.TargetName, StringComparison.OrdinalIgnoreCase))
             ?? throw new ArgumentException($"Unknown target: {options.TargetName}");
-        if(target.Kind != BuildTargetKind.Executable)
+        if(target.Kind != BuildTargetKind.Application)
         {
-            throw new ArgumentException($"Target `{target.Name}` is {target.Kind} and cannot be packaged as an application.");
+            throw new ArgumentException($"Target `{target.Name}` is {target.Kind} and cannot be packaged as an application. Use BuildTargetKind.Application for app targets.");
         }
         var graph = GenerateGraph(context.Workspace, context.BuildOptions, context.Targets, target.Name, allTargets: false);
         var result = ExecuteBuild(context.Workspace, graph, options.ForceRebuild);
@@ -248,6 +248,12 @@ public static class LunaBuildCli
         {
             var packageResult = PackageAndroid(context.Workspace, context.BuildOptions, graph, target, options.OutputPath);
             Console.WriteLine($"Android package finished. Native libraries: {packageResult.NativeLibrariesCopied}, APK: {packageResult.ApkPath}");
+            return 0;
+        }
+        if(context.BuildOptions.Platform == BuildPlatform.MacOS)
+        {
+            var packageResult = PackageMacOS(context.Workspace, context.BuildOptions, graph, target, options.OutputPath);
+            Console.WriteLine($"macOS package finished. App: {packageResult.AppPath}, Signed: {packageResult.Signed}");
             return 0;
         }
 
@@ -589,7 +595,7 @@ public static class LunaBuildCli
 
         var infoPlistPath = Path.Combine(packagePaths.AppPath, "Info.plist");
         File.WriteAllText(infoPlistPath, ExpandAppleInfoPlistTemplate(options, target, bundleExecutableName, File.ReadAllText(target.AppleInfoPlistFile)));
-        CopyIOSSharedLibraries(workspace, graph, packagePaths.AppPath);
+        CopyAppleSharedLibraries(workspace, graph, Path.Combine(packagePaths.AppPath, "Frameworks"));
         CopyBundleInputs(target.AppleBundleResources, target.Directory, packagePaths.AppPath, preserveRelativePaths: true);
         CopyBundleInputs(target.RuntimeFiles, target.Directory, packagePaths.AppPath, preserveRelativePaths: false);
         var shouldSign = ShouldSignIOSBundle(options);
@@ -638,6 +644,88 @@ public static class LunaBuildCli
         return new IOSPackagePaths(Path.Combine(fullOutput, target.Name + ".app"), null);
     }
 
+    private static MacOSPackageResult PackageMacOS(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        BuildGraph graph,
+        BuildTargetDefinition target,
+        string? outputPath)
+    {
+        if(!OperatingSystem.IsMacOS())
+        {
+            throw new PlatformNotSupportedException("macOS packaging requires a macOS host with Xcode command line tools.");
+        }
+        if(string.IsNullOrWhiteSpace(target.AppleInfoPlistFile))
+        {
+            throw new ArgumentException($"Target `{target.Name}` does not declare AppleInfoPlist(...).");
+        }
+        if(!File.Exists(target.AppleInfoPlistFile))
+        {
+            throw new FileNotFoundException($"macOS Info.plist was not found for target `{target.Name}`: {target.AppleInfoPlistFile}");
+        }
+
+        var executable = FindLinkedExecutable(workspace, graph, target.Name)
+            ?? throw new FileNotFoundException($"Target `{target.Name}` did not produce an executable for macOS packaging.");
+        var appPath = ResolveMacOSPackagePath(workspace, options, target, outputPath);
+        if(Directory.Exists(appPath))
+        {
+            Directory.Delete(appPath, recursive: true);
+        }
+
+        var contentsPath = Path.Combine(appPath, "Contents");
+        var macOSPath = Path.Combine(contentsPath, "MacOS");
+        var frameworksPath = Path.Combine(contentsPath, "Frameworks");
+        var resourcesPath = Path.Combine(contentsPath, "Resources");
+        Directory.CreateDirectory(macOSPath);
+        Directory.CreateDirectory(resourcesPath);
+
+        var bundleExecutableName = target.Name;
+        var bundleExecutablePath = Path.Combine(macOSPath, bundleExecutableName);
+        File.Copy(executable, bundleExecutablePath, overwrite: true);
+        if(!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(bundleExecutablePath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+                UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        }
+
+        var infoPlistPath = Path.Combine(contentsPath, "Info.plist");
+        File.WriteAllText(infoPlistPath, ExpandAppleInfoPlistTemplate(options, target, bundleExecutableName, File.ReadAllText(target.AppleInfoPlistFile)));
+        CopyAppleSharedLibraries(workspace, graph, frameworksPath);
+        CopyBundleInputs(target.AppleBundleResources, target.Directory, resourcesPath, preserveRelativePaths: true);
+        CopyBundleInputs(target.RuntimeFiles, target.Directory, resourcesPath, preserveRelativePaths: false);
+
+        if(RunProcess("/usr/bin/plutil", new[] { "-lint", infoPlistPath }) != 0)
+        {
+            throw new InvalidOperationException($"Generated Info.plist failed validation: {infoPlistPath}");
+        }
+
+        var signed = SignMacOSBundle(appPath);
+        return new MacOSPackageResult(appPath, signed);
+    }
+
+    private static string ResolveMacOSPackagePath(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        BuildTargetDefinition target,
+        string? outputPath)
+    {
+        var defaultDirectory = Path.Combine(
+            BuildOutputLayout.ConfigurationDirectory(workspace, options),
+            "package");
+        if(string.IsNullOrWhiteSpace(outputPath))
+        {
+            return Path.Combine(defaultDirectory, target.Name + ".app");
+        }
+
+        var fullOutput = Path.GetFullPath(outputPath);
+        if(Path.GetExtension(fullOutput).Equals(".app", StringComparison.OrdinalIgnoreCase))
+        {
+            return fullOutput;
+        }
+        return Path.Combine(fullOutput, target.Name + ".app");
+    }
+
     private static string ExpandAppleInfoPlistTemplate(BuildOptions options, BuildTargetDefinition target, string executableName, string template)
     {
         var productName = target.Name;
@@ -664,7 +752,7 @@ public static class LunaBuildCli
 
     private static string AppleBundleIdentifier(BuildOptions options, BuildTargetDefinition target)
     {
-        if(!string.IsNullOrWhiteSpace(options.Apple.IOSBundleIdentifier))
+        if(options.Platform == BuildPlatform.IOS && !string.IsNullOrWhiteSpace(options.Apple.IOSBundleIdentifier))
         {
             return options.Apple.IOSBundleIdentifier;
         }
@@ -707,23 +795,22 @@ public static class LunaBuildCli
         }
     }
 
-    private static void CopyIOSSharedLibraries(BuildWorkspace workspace, BuildGraph graph, string appPath)
+    private static void CopyAppleSharedLibraries(BuildWorkspace workspace, BuildGraph graph, string destinationDirectory)
     {
-        var libraries = FindIOSSharedLibraries(workspace, graph).ToArray();
+        var libraries = FindAppleSharedLibraries(workspace, graph).ToArray();
         if(libraries.Length == 0)
         {
             return;
         }
 
-        var frameworksPath = Path.Combine(appPath, "Frameworks");
-        Directory.CreateDirectory(frameworksPath);
+        Directory.CreateDirectory(destinationDirectory);
         foreach(var library in libraries)
         {
-            File.Copy(library, Path.Combine(frameworksPath, Path.GetFileName(library)), overwrite: true);
+            File.Copy(library, Path.Combine(destinationDirectory, Path.GetFileName(library)), overwrite: true);
         }
     }
 
-    private static IEnumerable<string> FindIOSSharedLibraries(BuildWorkspace workspace, BuildGraph graph)
+    private static IEnumerable<string> FindAppleSharedLibraries(BuildWorkspace workspace, BuildGraph graph)
     {
         return graph.Nodes
             .Where(node => node.Kind == BuildGraphNodeKind.File &&
@@ -1071,6 +1158,22 @@ public static class LunaBuildCli
         return true;
     }
 
+    private static bool SignMacOSBundle(string appPath)
+    {
+        var frameworksPath = Path.Combine(appPath, "Contents", "Frameworks");
+        if(Directory.Exists(frameworksPath))
+        {
+            foreach(var nestedCode in Directory.EnumerateFiles(frameworksPath, "*", SearchOption.AllDirectories)
+                .Where(IsAppleCodeBundleInput)
+                .Order(StringComparer.OrdinalIgnoreCase))
+            {
+                SignPath("-", nestedCode, entitlementsFile: null);
+            }
+        }
+        SignPath("-", appPath, entitlementsFile: null);
+        return true;
+    }
+
     private static bool IsAppleCodeBundleInput(string path)
     {
         return path.EndsWith(".dylib", StringComparison.OrdinalIgnoreCase) ||
@@ -1093,7 +1196,7 @@ public static class LunaBuildCli
         args.Add(path);
         if(RunProcess("/usr/bin/codesign", args) != 0)
         {
-            throw new InvalidOperationException($"codesign failed for iOS bundle item: {path}");
+            throw new InvalidOperationException($"codesign failed for bundle item: {path}");
         }
     }
 
@@ -1571,11 +1674,14 @@ public static class LunaBuildCli
         Console.WriteLine("  lunabuild run <name> -- [program arguments]");
         Console.WriteLine();
         Console.WriteLine("Package:");
+        Console.WriteLine("  lunabuild package <name> --platform MacOS --arch arm64 [--output <app-or-dir>]");
         Console.WriteLine("  lunabuild package <name> --platform Android --arch arm64-v8a [--output <apk-or-dir>]");
         Console.WriteLine("  lunabuild package <name> --platform IOS --arch arm64 [--static] [--output <app-ipa-or-dir>]");
     }
 
     private sealed record AndroidPackageResult(int NativeLibrariesCopied, string ApkPath);
+
+    private sealed record MacOSPackageResult(string AppPath, bool Signed);
 
     private sealed record CliProcessResult(int ExitCode, string Output);
 

@@ -8,7 +8,7 @@ public sealed class MultiPlatformSampleTargetRules : TargetRules
             targetDirectory: "Programs/MultiPlatformSample",
             rulesPath: "Programs/MultiPlatformSample/MultiPlatformSample.Target.cs")
     {
-        Kind = BuildTargetKind.Executable;
+        Kind = BuildTargetKind.Application;
         Sources("Source/**.cpp");
         Shader("Source/BoxVert.cxx", "vertex", "vs_main");
         Shader("Source/BoxPixel.cxx", "pixel", "ps_main");
@@ -23,6 +23,10 @@ public sealed class MultiPlatformSampleTargetRules : TargetRules
         if(Platform == BuildPlatform.Android)
         {
             SystemLibraries("android", "log");
+        }
+        if(Platform == BuildPlatform.MacOS)
+        {
+            AppleInfoPlist("Source/MacOSInfo.plist");
         }
     }
 }
