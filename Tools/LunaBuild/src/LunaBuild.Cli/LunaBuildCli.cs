@@ -779,6 +779,10 @@ public static class LunaBuildCli
         {
             return null;
         }
+        if(BuildOutputLayout.AppleSdkName(options) == "iphonesimulator" && provisioningProfile is null)
+        {
+            return null;
+        }
 
         XElement? entitlements;
         if(!string.IsNullOrWhiteSpace(target.AppleEntitlementsFile))
