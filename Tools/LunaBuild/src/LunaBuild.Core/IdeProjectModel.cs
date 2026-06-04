@@ -171,6 +171,13 @@ internal static class IdeProjectModel
             options.RhiApi.ToString(),
             options.Shared ? "--shared" : "--static",
         };
+        if(options.Platform == BuildPlatform.IOS)
+        {
+            args.Add("--apple-sdk");
+            args.Add(BuildOutputLayout.AppleSdkName(options));
+            args.Add("--ios-deployment-target");
+            args.Add(options.Apple.IOSDeploymentTarget);
+        }
         foreach(var property in options.Properties.NonDefaultValues())
         {
             args.Add("--property");

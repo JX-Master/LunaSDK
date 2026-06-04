@@ -275,7 +275,7 @@ public sealed class MakeSystemBackend
             builder.AppendLine("  project properties:");
             foreach(var property in options.Properties.Values.OrderBy(property => property.Name, StringComparer.OrdinalIgnoreCase))
             {
-                builder.AppendLine($"    {property.Name}={property.Value}");
+                builder.AppendLine($"    {property.Name}={DisplayBuildPropertyValue(property)}");
             }
         }
 
@@ -303,6 +303,18 @@ public sealed class MakeSystemBackend
             builder.AppendLine("    " + line);
         }
         return builder.ToString().TrimEnd();
+    }
+
+    private static string DisplayBuildPropertyValue(BuildPropertyValue property)
+    {
+        return IsSensitiveBuildProperty(property.Name) ? "<redacted>" : property.Value;
+    }
+
+    private static bool IsSensitiveBuildProperty(string name)
+    {
+        return name.Contains("codesign", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("provisioning_profile", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("bundle_identifier", StringComparison.OrdinalIgnoreCase);
     }
 
     private static Dictionary<string, List<string>> ParsePayloadForDiagnostics(string payload)

@@ -66,7 +66,7 @@ public static class LunaBuildCli
             Console.WriteLine("Project properties:");
             foreach(var property in buildOptions.Properties.Values)
             {
-                Console.WriteLine($"  {property.Name}={property.Value}");
+                Console.WriteLine($"  {property.Name}={DisplayBuildPropertyValue(property)}");
             }
         }
         Console.WriteLine($"Targets: {targets.Count}");
@@ -588,7 +588,7 @@ public static class LunaBuildCli
         }
 
         var infoPlistPath = Path.Combine(packagePaths.AppPath, "Info.plist");
-        File.WriteAllText(infoPlistPath, ExpandAppleInfoPlistTemplate(target, bundleExecutableName, File.ReadAllText(target.AppleInfoPlistFile)));
+        File.WriteAllText(infoPlistPath, ExpandAppleInfoPlistTemplate(options, target, bundleExecutableName, File.ReadAllText(target.AppleInfoPlistFile)));
         CopyIOSSharedLibraries(workspace, graph, packagePaths.AppPath);
         CopyBundleInputs(target.AppleBundleResources, target.Directory, packagePaths.AppPath, preserveRelativePaths: true);
         CopyBundleInputs(target.RuntimeFiles, target.Directory, packagePaths.AppPath, preserveRelativePaths: false);
@@ -638,15 +638,13 @@ public static class LunaBuildCli
         return new IOSPackagePaths(Path.Combine(fullOutput, target.Name + ".app"), null);
     }
 
-    private static string ExpandAppleInfoPlistTemplate(BuildTargetDefinition target, string executableName, string template)
+    private static string ExpandAppleInfoPlistTemplate(BuildOptions options, BuildTargetDefinition target, string executableName, string template)
     {
         var productName = target.Name;
         var displayName = string.IsNullOrWhiteSpace(target.AppleBundleDisplayName)
             ? productName
             : target.AppleBundleDisplayName!;
-        var bundleIdentifier = string.IsNullOrWhiteSpace(target.AppleBundleIdentifier)
-            ? "com.lunasdk." + SanitizeBundleIdentifierComponent(target.Name)
-            : target.AppleBundleIdentifier!;
+        var bundleIdentifier = AppleBundleIdentifier(options, target);
         var replacements = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["DEVELOPMENT_LANGUAGE"] = "en",
@@ -662,6 +660,17 @@ public static class LunaBuildCli
             template = template.Replace("$(" + key + ")", value, StringComparison.Ordinal);
         }
         return template;
+    }
+
+    private static string AppleBundleIdentifier(BuildOptions options, BuildTargetDefinition target)
+    {
+        if(!string.IsNullOrWhiteSpace(options.Apple.IOSBundleIdentifier))
+        {
+            return options.Apple.IOSBundleIdentifier;
+        }
+        return string.IsNullOrWhiteSpace(target.AppleBundleIdentifier)
+            ? "com.lunasdk." + SanitizeBundleIdentifierComponent(target.Name)
+            : target.AppleBundleIdentifier!;
     }
 
     private static string SanitizeBundleIdentifierComponent(string value)
@@ -734,8 +743,8 @@ public static class LunaBuildCli
         string appPath,
         bool requireValidProfile)
     {
-        if(!options.Properties.TryGetString("ios_provisioning_profile", out var configuredProfile) ||
-            string.IsNullOrWhiteSpace(configuredProfile) ||
+        var configuredProfile = options.Apple.IOSProvisioningProfile;
+        if(string.IsNullOrWhiteSpace(configuredProfile) ||
             configuredProfile.Equals("none", StringComparison.OrdinalIgnoreCase))
         {
             return null;
@@ -760,9 +769,7 @@ public static class LunaBuildCli
 
     private static bool ShouldSignIOSBundle(BuildOptions options)
     {
-        var identity = options.Properties.TryGetString("ios_codesign_identity", out var configuredIdentity)
-            ? configuredIdentity
-            : "-";
+        var identity = options.Apple.IOSCodeSignIdentity;
         return !string.IsNullOrWhiteSpace(identity) && !identity.Equals("none", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -1044,9 +1051,7 @@ public static class LunaBuildCli
 
     private static bool SignIOSBundle(BuildOptions options, string appPath, string? entitlementsFile)
     {
-        var identity = options.Properties.TryGetString("ios_codesign_identity", out var configuredIdentity)
-            ? configuredIdentity
-            : "-";
+        var identity = options.Apple.IOSCodeSignIdentity;
         if(string.IsNullOrWhiteSpace(identity) || identity.Equals("none", StringComparison.OrdinalIgnoreCase))
         {
             return false;
@@ -1549,6 +1554,15 @@ public static class LunaBuildCli
         Console.WriteLine("  --arch <name>       Architecture string. Default: host architecture.");
         Console.WriteLine("  --rhi <name>        D3D12, Vulkan, or Metal. Default: platform default.");
         Console.WriteLine("  --static            Generate static target configuration.");
+        Console.WriteLine("  --apple-sdk <name>  Apple SDK name for iOS builds: iphoneos or iphonesimulator.");
+        Console.WriteLine("  --ios-deployment-target <version>");
+        Console.WriteLine("                      Minimum iOS deployment target version. Default: 13.0.");
+        Console.WriteLine("  --ios-bundle-identifier <id>");
+        Console.WriteLine("                      Override the target-declared iOS bundle identifier while packaging.");
+        Console.WriteLine("  --ios-codesign-identity <identity>");
+        Console.WriteLine("                      Code signing identity for iOS app bundles. Use none to skip signing.");
+        Console.WriteLine("  --ios-provisioning-profile <file>");
+        Console.WriteLine("                      Provisioning profile to embed in iOS app bundles.");
         Console.WriteLine("  --property <k=v>    Set one project-defined build property.");
         Console.WriteLine("  --<property>        Set one project-defined boolean property to true.");
         Console.WriteLine();
@@ -1576,6 +1590,18 @@ public static class LunaBuildCli
         string? TeamIdentifier,
         string? ApplicationIdentifier,
         XElement Entitlements);
+
+    private static string DisplayBuildPropertyValue(BuildPropertyValue property)
+    {
+        return IsSensitiveBuildProperty(property.Name) ? "<redacted>" : property.Value;
+    }
+
+    private static bool IsSensitiveBuildProperty(string name)
+    {
+        return name.Contains("codesign", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("provisioning_profile", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("bundle_identifier", StringComparison.OrdinalIgnoreCase);
+    }
 
     private sealed record BuildContext(
         BuildWorkspace Workspace,
@@ -1611,6 +1637,16 @@ internal sealed class CommandLineOptions
     public RhiApi? RhiApi { get; private init; }
 
     public bool? Shared { get; private init; }
+
+    public string? AppleSdkName { get; private init; }
+
+    public string? IOSDeploymentTarget { get; private init; }
+
+    public string? IOSBundleIdentifier { get; private init; }
+
+    public string? IOSCodeSignIdentity { get; private init; }
+
+    public string? IOSProvisioningProfile { get; private init; }
 
     public IReadOnlyDictionary<string, string?> ProjectPropertyOverrides { get; private init; } = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
@@ -1667,6 +1703,21 @@ internal sealed class CommandLineOptions
                 case "--shared":
                     options.Shared = true;
                     break;
+                case "--apple-sdk":
+                    options.AppleSdkName = RequireValue(args, ref i, "--apple-sdk");
+                    break;
+                case "--ios-deployment-target":
+                    options.IOSDeploymentTarget = RequireValue(args, ref i, "--ios-deployment-target");
+                    break;
+                case "--ios-bundle-identifier":
+                    options.IOSBundleIdentifier = RequireValue(args, ref i, "--ios-bundle-identifier");
+                    break;
+                case "--ios-codesign-identity":
+                    options.IOSCodeSignIdentity = RequireValue(args, ref i, "--ios-codesign-identity");
+                    break;
+                case "--ios-provisioning-profile":
+                    options.IOSProvisioningProfile = RequireValue(args, ref i, "--ios-provisioning-profile");
+                    break;
                 case "--property":
                     AddProjectProperty(options.ProjectPropertyOverrides, RequireValue(args, ref i, "--property"));
                     break;
@@ -1695,6 +1746,14 @@ internal sealed class CommandLineOptions
         var defaults = BuildOptions.HostDefault();
         var platform = Platform ?? defaults.Platform;
         var properties = projectDefinition.ResolveProperties(ProjectPropertyOverrides);
+        var appleOptions = defaults.Apple with
+        {
+            SdkName = AppleSdkName ?? defaults.Apple.SdkName,
+            IOSDeploymentTarget = IOSDeploymentTarget ?? defaults.Apple.IOSDeploymentTarget,
+            IOSBundleIdentifier = IOSBundleIdentifier ?? defaults.Apple.IOSBundleIdentifier,
+            IOSCodeSignIdentity = IOSCodeSignIdentity ?? defaults.Apple.IOSCodeSignIdentity,
+            IOSProvisioningProfile = IOSProvisioningProfile ?? defaults.Apple.IOSProvisioningProfile,
+        };
         return defaults with
         {
             Mode = Mode ?? defaults.Mode,
@@ -1702,6 +1761,7 @@ internal sealed class CommandLineOptions
             Architecture = Architecture ?? defaults.Architecture,
             Shared = Shared ?? defaults.Shared,
             RhiApi = RhiApi ?? DefaultRhiApi(platform),
+            Apple = appleOptions,
             Properties = properties,
         };
     }
@@ -1807,6 +1867,11 @@ internal sealed class CommandLineOptions
         public string? Architecture { get; set; }
         public RhiApi? RhiApi { get; set; }
         public bool? Shared { get; set; }
+        public string? AppleSdkName { get; set; }
+        public string? IOSDeploymentTarget { get; set; }
+        public string? IOSBundleIdentifier { get; set; }
+        public string? IOSCodeSignIdentity { get; set; }
+        public string? IOSProvisioningProfile { get; set; }
         public Dictionary<string, string?> ProjectPropertyOverrides { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         public CommandLineOptions ToImmutable()
@@ -1826,6 +1891,11 @@ internal sealed class CommandLineOptions
                 Architecture = Architecture,
                 RhiApi = RhiApi,
                 Shared = Shared,
+                AppleSdkName = AppleSdkName,
+                IOSDeploymentTarget = IOSDeploymentTarget,
+                IOSBundleIdentifier = IOSBundleIdentifier,
+                IOSCodeSignIdentity = IOSCodeSignIdentity,
+                IOSProvisioningProfile = IOSProvisioningProfile,
                 ProjectPropertyOverrides = new Dictionary<string, string?>(ProjectPropertyOverrides, StringComparer.OrdinalIgnoreCase),
             };
         }

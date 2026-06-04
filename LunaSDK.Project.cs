@@ -35,26 +35,6 @@ public sealed class LunaSDKProjectRules : ProjectRules
             defaultValue: false,
             description: "Enable Luna GUI debug features.",
             "gui-debug");
-        StringProperty(
-            "apple_sdk",
-            defaultValue: "iphoneos",
-            description: "Apple SDK name for Apple-platform builds.",
-            "apple-sdk");
-        StringProperty(
-            "ios_deployment_target",
-            defaultValue: "13.0",
-            description: "Minimum iOS deployment target version.",
-            "ios-deployment-target");
-        StringProperty(
-            "ios_codesign_identity",
-            defaultValue: "-",
-            description: "Code signing identity for iOS app bundles. Use none to skip signing.",
-            "ios-codesign-identity");
-        StringProperty(
-            "ios_provisioning_profile",
-            defaultValue: "",
-            description: "Provisioning profile to embed in iOS app bundles.",
-            "ios-provisioning-profile");
     }
 
     protected override void Configure(BuildWorkspace workspace, BuildOptions options)

@@ -373,8 +373,10 @@ dotnet run --project LunaBuild.csproj -- package MyApp --platform IOS --arch arm
 
 Use `--apple-sdk iphonesimulator` for simulator builds and
 `--ios-deployment-target <version>` to change the minimum deployment target.
-Use `--ios-codesign-identity none` to skip signing, or pass a real signing
-identity when producing a device-installable bundle. Use
+Use `--ios-bundle-identifier <id>` to override the target-declared bundle id at
+package time without changing target rules. Use `--ios-codesign-identity none`
+to skip signing, or pass a real signing identity when producing a
+device-installable bundle. Use
 `--ios-provisioning-profile <file>` to embed a provisioning profile as
 `embedded.mobileprovision`. When signing with a profile, LunaBuild decodes the
 profile, verifies that its application identifier matches the generated

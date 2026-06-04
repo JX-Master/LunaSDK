@@ -33,9 +33,7 @@ public static class BuildOutputLayout
             throw new ArgumentException($"Apple SDK is not defined for platform {options.Platform}.");
         }
 
-        var rawValue = options.Properties.TryGetString("apple_sdk", out var configured)
-            ? configured
-            : "iphoneos";
+        var rawValue = options.Apple.SdkName;
         return rawValue.Replace("-", string.Empty, StringComparison.Ordinal).ToLowerInvariant() switch
         {
             "" or "ios" or "iphoneos" or "device" => "iphoneos",

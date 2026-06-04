@@ -42,9 +42,11 @@ dotnet run --project LunaBuild.csproj -- install --root . --all --output ./insta
 Project-specific build switches are declared in project `*.Project.cs` rules,
 not in LunaBuild Core. LunaSDK currently declares `--api-validation` (also
 accepted as `--contract-assertion`), `--thread-safe-assertion`,
-`--memory-profiler`, `--rhi-debug`, `--apple-sdk`, `--ios-deployment-target`,
-`--ios-codesign-identity`, and `--ios-provisioning-profile`. The generic spelling
-`--property name=value` works for any project-defined property.
+`--memory-profiler`, and `--rhi-debug`. Apple and iOS switches such as
+`--apple-sdk`, `--ios-deployment-target`, `--ios-bundle-identifier`,
+`--ios-codesign-identity`, and `--ios-provisioning-profile` are built-in
+LunaBuild options. The generic spelling `--property name=value` works for any
+project-defined property.
 
 The Xcode generator writes an external-build-tool project under
 `build/LunaBuild/Xcode/<repo>.xcodeproj` by default. Xcode owns browsing,

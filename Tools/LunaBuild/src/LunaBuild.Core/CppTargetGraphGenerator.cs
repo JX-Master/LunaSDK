@@ -819,9 +819,9 @@ public sealed class CppTargetGraphGenerator
 
     private static string IOSDeploymentTarget(BuildOptions options)
     {
-        return options.Properties.TryGetString("ios_deployment_target", out var configured) && !string.IsNullOrWhiteSpace(configured)
-            ? configured
-            : "13.0";
+        return string.IsNullOrWhiteSpace(options.Apple.IOSDeploymentTarget)
+            ? "13.0"
+            : options.Apple.IOSDeploymentTarget;
     }
 
     private static string SourceLanguage(string path)

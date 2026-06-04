@@ -67,6 +67,11 @@ public sealed class BuildGraphGenerator
         {
             lines.Add($"project_property.{property.Name}={property.Value}");
         }
+        if(options.Platform == BuildPlatform.IOS)
+        {
+            lines.Add($"apple_sdk={BuildOutputLayout.AppleSdkName(options)}");
+            lines.Add($"ios_deployment_target={options.Apple.IOSDeploymentTarget}");
+        }
         return string.Join('\n', lines);
     }
 }

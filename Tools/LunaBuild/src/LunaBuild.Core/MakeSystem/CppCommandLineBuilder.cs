@@ -225,9 +225,9 @@ internal static class CppCommandLineBuilder
 
     private static string AppleDeploymentTarget(BuildOptions options)
     {
-        return options.Properties.TryGetString("ios_deployment_target", out var configured) && !string.IsNullOrWhiteSpace(configured)
-            ? configured
-            : "13.0";
+        return string.IsNullOrWhiteSpace(options.Apple.IOSDeploymentTarget)
+            ? "13.0"
+            : options.Apple.IOSDeploymentTarget;
     }
 
     private static void AddCommonClangArgs(BuildWorkspace workspace, ActionPayload payload, List<string> args)

@@ -37,6 +37,11 @@ public static class BuildRuleFileWriter
         writer.WriteLine($"option {Q("architecture")} {Q(graph.Options.Architecture)}");
         writer.WriteLine($"option {Q("rhi")} {Q(graph.Options.RhiApi.ToString())}");
         writer.WriteLine($"option {Q("shared")} {JsonSerializer.Serialize(graph.Options.Shared)}");
+        if(graph.Options.Platform == BuildPlatform.IOS)
+        {
+            writer.WriteLine($"option {Q("apple.sdk")} {Q(BuildOutputLayout.AppleSdkName(graph.Options))}");
+            writer.WriteLine($"option {Q("apple.ios_deployment_target")} {Q(graph.Options.Apple.IOSDeploymentTarget)}");
+        }
         foreach(var property in graph.Options.Properties.Values)
         {
             writer.WriteLine($"option {Q("property." + property.Name)} {Q(property.Value)}");
