@@ -26,6 +26,8 @@ using namespace Luna;
 
 namespace Luna
 {
+    constexpr u32 MAX_DEMO_TABS = 16;
+
     struct App
     {
         Ref<Window::IWindow> window;
@@ -103,12 +105,13 @@ namespace Luna
 #ifdef LUNA_GUI_ENABLE_DEBUG
         GUI::DebugInfo debug_info;
         bool has_debug_info = false;
+        bool show_debug_panel = false;
 #endif
     };
 
     struct FrameHandles
     {
-        GUI::ItemHandle tabs[12];
+        GUI::ItemHandle tabs[MAX_DEMO_TABS];
         GUI::ItemHandle tree_nodes[8];
         GUI::ItemHandle primary_button;
         GUI::ItemHandle double_click_item;
@@ -227,10 +230,12 @@ namespace Luna
         "Style",
         "Trees",
         "Tabs",
-        "DragDrop"
+        "DragDrop",
+        "Debug"
     };
 
     constexpr u32 DEMO_TAB_COUNT = (u32)(sizeof(DEMO_TABS) / sizeof(DEMO_TABS[0]));
+    static_assert(DEMO_TAB_COUNT <= MAX_DEMO_TABS);
     enum DemoTab : u32
     {
         DEMO_TAB_OVERVIEW,
@@ -244,9 +249,10 @@ namespace Luna
         DEMO_TAB_STYLE,
         DEMO_TAB_TREES,
         DEMO_TAB_TABS,
-        DEMO_TAB_DRAG_DROP
+        DEMO_TAB_DRAG_DROP,
+        DEMO_TAB_DEBUG
     };
-    static_assert((u32)DEMO_TAB_DRAG_DROP + 1 == DEMO_TAB_COUNT);
+    static_assert((u32)DEMO_TAB_DEBUG + 1 == DEMO_TAB_COUNT);
     constexpr u32 TREE_NODE_COUNT = 8;
 
     void demo_section(App& app, const c8* title)
@@ -946,6 +952,20 @@ namespace Luna
         GUI::end_tab_bar(app.gui);
     }
 
+    void draw_debug_tab(App& app)
+    {
+        demo_section(app, "Debug");
+#ifdef LUNA_GUI_ENABLE_DEBUG
+        GUI::checkbox(app.gui, "Show Debug Panel", &app.show_debug_panel);
+        GUI::text(app.gui, app.show_debug_panel ?
+            "Debug panel is visible. Hover and select nodes to inspect layout, style and input routing." :
+            "Debug panel is hidden. No debug hit-test outlines are drawn.");
+        GUI::text(app.gui, app.has_debug_info ? "Debug snapshot is ready." : "Debug snapshot will be available after the first submitted frame.");
+#else
+        GUI::text(app.gui, "GUI debug support is disabled for this build.");
+#endif
+    }
+
     struct DemoThemePalette
     {
         const c8* name;
@@ -1290,6 +1310,9 @@ namespace Luna
         case DEMO_TAB_DRAG_DROP:
             draw_drag_drop_tab(app, handles);
             break;
+        case DEMO_TAB_DEBUG:
+            draw_debug_tab(app);
+            break;
         default:
             break;
         }
@@ -1383,7 +1406,7 @@ namespace Luna
                 u32 built_tab = app.selected_tab;
                 draw_showcase(app, handles, frame.surface_size, built_tab);
 #ifdef LUNA_GUI_ENABLE_DEBUG
-                if(app.has_debug_info)
+                if(app.show_debug_panel && app.has_debug_info)
                 {
                     GUI::show_debug_info(app.gui, app.debug_info);
                 }
