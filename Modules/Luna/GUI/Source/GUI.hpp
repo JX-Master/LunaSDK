@@ -467,7 +467,8 @@ namespace Luna
             const TableDesc* desc = table ? &table->desc : nullptr;
             if(!desc) return default_size;
             const Vector<TableTrackSize>& sizes = column ? desc->column_sizes : desc->row_sizes;
-            return index < sizes.size() ? sizes[index] : default_size;
+            if(index < sizes.size()) return sizes[index];
+            return column ? desc->default_column_size : desc->default_row_size;
         }
 
         inline bool table_track_is_fixed(const Node& node, bool column, u32 index)
@@ -1765,6 +1766,7 @@ namespace Luna
             IDrawList* m_active_draw_list = nullptr;
             Ref<VG::IShapeRenderer> m_shape_renderer;
             Ref<VG::IFontAtlas> m_font_atlas;
+            PerformanceCounters m_perf_counters;
 
             Context();
 
@@ -1796,6 +1798,7 @@ namespace Luna
             virtual RV submit(const Description& desc) override;
             virtual void set_clipboard_io(const ClipboardIO& io) override;
             virtual TextInputState get_text_input_state() override;
+            virtual PerformanceCounters get_performance_counters() override;
 #ifdef LUNA_GUI_ENABLE_DEBUG
             virtual R<DebugInfo> dump_debug_info() override;
 #endif

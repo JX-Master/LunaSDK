@@ -13,6 +13,7 @@
 #include "RenderProxies/DockRenderProxies.hpp"
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
+#include <Luna/Runtime/Time.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <cstring>
 
@@ -21,6 +22,11 @@ namespace Luna
     namespace GUI
     {
         static VG::TextAlignment to_vg_text_alignment(TextAlignment alignment);
+
+        static f64 perf_elapsed_ms(u64 begin, u64 end)
+        {
+            return (f64)(end - begin) * 1000.0 / get_ticks_per_second();
+        }
 
         static bool rect_visible_in_clip(const RectF& rect, const RectF& clip_rect)
         {
@@ -35,6 +41,35 @@ namespace Luna
         static bool color_visible(const Float4U& color)
         {
             return color.w > 0.0f;
+        }
+
+        static bool axis_range_visible(f32 offset, f32 size, f32 clip_begin, f32 clip_end)
+        {
+            return size > 0.0f && offset < clip_end && offset + size > clip_begin;
+        }
+
+        static void visible_axis_range(const Vector<f32>& offsets, const Vector<f32>& sizes, f32 clip_begin, f32 clip_end,
+            u32& out_begin, u32& out_end)
+        {
+            out_begin = (u32)offsets.size();
+            out_end = (u32)offsets.size();
+            for(u32 i = 0; i < offsets.size() && i < sizes.size(); ++i)
+            {
+                if(axis_range_visible(offsets[i], sizes[i], clip_begin, clip_end))
+                {
+                    if(out_begin == offsets.size()) out_begin = i;
+                    out_end = i + 1;
+                }
+                else if(out_begin != offsets.size() && offsets[i] >= clip_end)
+                {
+                    break;
+                }
+            }
+            if(out_begin == offsets.size())
+            {
+                out_begin = 0;
+                out_end = 0;
+            }
         }
 
         struct ContextNodeRenderContext : NodeRenderContext
@@ -591,6 +626,7 @@ namespace Luna
 
         void Context::render_node(u32 node_index)
         {
+            ++m_perf_counters.rendered_node_count;
             const Node& node = m_submitted_desc.nodes[node_index];
             if(popup_layer(node) && !popup_node_visible(node))
             {
@@ -604,6 +640,7 @@ namespace Luna
             const RectF& clip = m_layouts[node_index].clip_rect;
             if(!rect_visible_in_clip(rect, clip))
             {
+                ++m_perf_counters.render_clip_skipped_node_count;
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
                     if(absolute_node(m_submitted_desc.nodes[child]))
@@ -704,6 +741,39 @@ namespace Luna
                     render_node(child);
                 }
             }
+            else if(table_layout(node))
+            {
+                const NodeLayout& layout = m_layouts[node_index];
+                u32 visible_col_begin = 0;
+                u32 visible_col_end = 0;
+                u32 visible_row_begin = 0;
+                u32 visible_row_end = 0;
+                visible_axis_range(layout.table_column_offsets, layout.table_column_widths,
+                    clip.offset_x, clip.offset_x + clip.width, visible_col_begin, visible_col_end);
+                visible_axis_range(layout.table_row_offsets, layout.table_row_heights,
+                    clip.offset_y, clip.offset_y + clip.height, visible_row_begin, visible_row_end);
+                u32 columns = layout.table_columns;
+                u32 cell_index = 0;
+                for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling, ++cell_index)
+                {
+                    if(!columns)
+                    {
+                        break;
+                    }
+                    u32 row = cell_index / columns;
+                    u32 col = cell_index % columns;
+                    if(row >= layout.table_rows)
+                    {
+                        break;
+                    }
+                    if(row < visible_row_begin || row >= visible_row_end ||
+                        col < visible_col_begin || col >= visible_col_end)
+                    {
+                        continue;
+                    }
+                    render_node(child);
+                }
+            }
             else
             {
                 if(!tab_item_layout(node) || m_layouts[node_index].tab_content_visible)
@@ -732,6 +802,8 @@ namespace Luna
             if(!render_target || m_submitted_desc.nodes.empty() || m_submitted_desc.layers.empty()) return ok;
             lutry
             {
+                u64 render_begin = get_ticks();
+                u64 section_begin = render_begin;
                 m_shape_draw_list->reset();
                 while(m_layer_draw_lists.size() < m_submitted_desc.layers.size())
                 {
@@ -754,13 +826,26 @@ namespace Luna
                 render_drag_drop_overlay();
                 m_active_draw_list = nullptr;
                 m_feedback_draw_list->end();
+                u64 section_end = get_ticks();
+                m_perf_counters.render_record_ms = perf_elapsed_ms(section_begin, section_end);
+                section_begin = get_ticks();
                 luexp(m_shape_draw_list->compile());
+                section_end = get_ticks();
+                m_perf_counters.render_compile_ms = perf_elapsed_ms(section_begin, section_end);
+                m_perf_counters.render_vertex_count = m_shape_draw_list->get_vertex_buffer_size();
+                m_perf_counters.render_index_count = m_shape_draw_list->get_index_buffer_size();
+                Span<const VG::ShapeDrawCall> draw_calls = m_shape_draw_list->get_draw_calls();
+                m_perf_counters.render_draw_call_count = (u32)draw_calls.size();
+                section_begin = get_ticks();
                 luexp(m_shape_renderer->begin(render_target));
                 Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, m_frame_desc.surface_size.x, 0.0f, m_frame_desc.surface_size.y, 0.0f, 1.0f);
                 Float4x4U umat(mat);
-                m_shape_renderer->draw(m_shape_draw_list->get_vertex_buffer(), m_shape_draw_list->get_index_buffer(), m_shape_draw_list->get_draw_calls(), &umat);
+                m_shape_renderer->draw(m_shape_draw_list->get_vertex_buffer(), m_shape_draw_list->get_index_buffer(), draw_calls, &umat);
                 luexp(m_shape_renderer->end());
                 m_shape_renderer->submit(cmdbuf);
+                section_end = get_ticks();
+                m_perf_counters.render_submit_ms = perf_elapsed_ms(section_begin, section_end);
+                m_perf_counters.render_total_ms = perf_elapsed_ms(render_begin, section_end);
             }
             lucatchret;
             return ok;

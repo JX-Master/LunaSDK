@@ -102,6 +102,7 @@ namespace Luna
         bool clip_enabled = true;
         Float2U showcase_size = Float2U(920.0f, 700.0f);
         Float2U showcase_content_size = Float2U(880.0f, 590.0f);
+        GUI::PerformanceCounters perf_counters;
 #ifdef LUNA_GUI_ENABLE_DEBUG
         GUI::DebugInfo debug_info;
         bool has_debug_info = false;
@@ -231,6 +232,7 @@ namespace Luna
         "Trees",
         "Tabs",
         "DragDrop",
+        "Perf",
         "Debug"
     };
 
@@ -250,6 +252,7 @@ namespace Luna
         DEMO_TAB_TREES,
         DEMO_TAB_TABS,
         DEMO_TAB_DRAG_DROP,
+        DEMO_TAB_PERF,
         DEMO_TAB_DEBUG
     };
     static_assert((u32)DEMO_TAB_DEBUG + 1 == DEMO_TAB_COUNT);
@@ -638,6 +641,89 @@ namespace Luna
             GUI::button(app.gui, "Run");
         }
         GUI::end_table_layout(app.gui);
+    }
+
+    void draw_perf_tab(App& app)
+    {
+        demo_section(app, "ScrollView + TableLayout stress");
+        GUI::text(app.gui, "This page builds a 1000-row table inside a scroll view and prints the previous frame GUI counters.");
+
+        const GUI::PerformanceCounters& perf = app.perf_counters;
+        c8 line[256];
+        snprintf(line, 256,
+            "Frame %llu | nodes %u | interactive %u | layers %u | inputs %u",
+            (u64)perf.frame_generation, perf.node_count, perf.interactive_node_count, perf.layer_count, perf.input_event_count);
+        GUI::text(app.gui, line);
+        snprintf(line, 256,
+            "Submit %.3f ms | prepare %.3f | layout %.3f | input %.3f | relayout %.3f | state %.3f",
+            perf.submit_total_ms, perf.submit_prepare_ms, perf.submit_layout_ms, perf.submit_input_ms,
+            perf.submit_relayout_ms, perf.submit_state_ms);
+        GUI::text(app.gui, line);
+        snprintf(line, 256,
+            "Layout passes %u | measured %u | arranged %u | layout clip skipped %u",
+            perf.layout_pass_count, perf.measured_node_count, perf.arranged_node_count,
+            perf.layout_clip_skipped_node_count);
+        GUI::text(app.gui, line);
+        snprintf(line, 256,
+            "Render %.3f ms | record %.3f | compile %.3f | submit %.3f | rendered %u | render clip skipped %u",
+            perf.render_total_ms, perf.render_record_ms, perf.render_compile_ms, perf.render_submit_ms,
+            perf.rendered_node_count, perf.render_clip_skipped_node_count);
+        GUI::text(app.gui, line);
+        snprintf(line, 256,
+            "VG draw calls %u | vertices %u | indices %u",
+            perf.render_draw_call_count, perf.render_vertex_count, perf.render_index_count);
+        GUI::text(app.gui, line);
+
+        GUI::TableDesc table;
+        table.columns = 5;
+        f32 table_width = max(app.showcase_content_size.x - 56.0f, 720.0f);
+        f32 name_width = max(table_width - 420.0f, 180.0f);
+        table.default_row_size = GUI::TableTrackSize::fixed(44.0f);
+        table.column_sizes = {
+            GUI::TableTrackSize::fixed(82.0f),
+            GUI::TableTrackSize::fixed(name_width),
+            GUI::TableTrackSize::fixed(130.0f),
+            GUI::TableTrackSize::fixed(110.0f),
+            GUI::TableTrackSize::fixed(98.0f)
+        };
+        table.style.border_size = 1.0f;
+        table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
+        table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.88f);
+        table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.18f, 0.88f);
+        table.style.row_separators = true;
+        table.style.column_separators = true;
+        table.style.resize_fixed_columns = true;
+        table.style.separator_size = 1.0f;
+
+        f32 stress_height = max(app.showcase_content_size.y - 190.0f, 220.0f);
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
+        GUI::begin_scroll_view(app.gui, "Perf Stress ScrollView", GUI::Size::fixed(table_width + 24.0f, stress_height));
+        GUI::begin_table_layout(app.gui, "Perf Stress Table", table);
+        GUI::text(app.gui, "Index");
+        GUI::text(app.gui, "Name");
+        GUI::text(app.gui, "Category");
+        GUI::text(app.gui, "Value");
+        GUI::text(app.gui, "State");
+        for(u32 row = 0; row < 1000; ++row)
+        {
+            c8 index[32];
+            c8 name[96];
+            c8 category[48];
+            c8 value[48];
+            c8 state[48];
+            snprintf(index, 32, "%04u", row);
+            snprintf(name, 96, "Stress row %04u / generated sample text", row);
+            snprintf(category, 48, "Group %u", row % 17);
+            snprintf(value, 48, "%u.%02u", row * 3u, row % 100u);
+            snprintf(state, 48, "%s", (row % 7u) == 0u ? "Pinned" : ((row % 3u) == 0u ? "Hot" : "Idle"));
+            GUI::text(app.gui, index);
+            GUI::text(app.gui, name);
+            GUI::text(app.gui, category);
+            GUI::text(app.gui, value);
+            GUI::text(app.gui, state);
+        }
+        GUI::end_table_layout(app.gui);
+        GUI::end_scroll_view(app.gui);
     }
 
     void draw_drawing_tab(App& app, FrameHandles& handles)
@@ -1348,6 +1434,9 @@ namespace Luna
         case DEMO_TAB_DRAG_DROP:
             draw_drag_drop_tab(app, handles);
             break;
+        case DEMO_TAB_PERF:
+            draw_perf_tab(app);
+            break;
         case DEMO_TAB_DEBUG:
             draw_debug_tab(app);
             break;
@@ -1614,6 +1703,7 @@ namespace Luna
                 app.cmdbuf->begin_render_pass(render_pass);
                 app.cmdbuf->end_render_pass();
                 luexp(app.gui->render(app.cmdbuf, back_buffer));
+                app.perf_counters = app.gui->get_performance_counters();
                 app.cmdbuf->resource_barrier({}, {
                     {back_buffer, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
                     });

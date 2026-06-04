@@ -35,6 +35,8 @@ namespace Luna
             m_frame_desc = desc;
             m_submitted = false;
             ++m_generation;
+            m_perf_counters = PerformanceCounters();
+            m_perf_counters.frame_generation = m_generation;
             gc_states();
             m_drag_drop.begin_frame();
             m_build_desc = Description();
@@ -215,6 +217,12 @@ namespace Luna
                 }
             }
             return ret;
+        }
+
+        PerformanceCounters Context::get_performance_counters()
+        {
+            lutsassert();
+            return m_perf_counters;
         }
 
         R<Description> Context::end_build()

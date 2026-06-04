@@ -584,9 +584,13 @@ namespace Luna
         {
             //! Number of columns in the table.
             u32 columns = 1;
-            //! Column size rules. Missing entries use hug size.
+            //! Default column size rule used when @ref column_sizes does not provide an entry.
+            TableTrackSize default_column_size = TableTrackSize::hug();
+            //! Default row size rule used when @ref row_sizes does not provide an entry.
+            TableTrackSize default_row_size = TableTrackSize::hug();
+            //! Column size rules. Missing entries use @ref default_column_size.
             Vector<TableTrackSize> column_sizes;
-            //! Row size rules. Missing entries use hug size.
+            //! Row size rules. Missing entries use @ref default_row_size.
             Vector<TableTrackSize> row_sizes;
             //! Visual and interaction style for the table.
             TableStyle style;

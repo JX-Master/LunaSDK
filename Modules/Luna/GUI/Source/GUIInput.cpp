@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #include <Luna/Runtime/StringUtils.hpp>
+#include <Luna/Runtime/Time.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
 #include "GUI.hpp"
 
@@ -16,6 +17,11 @@ namespace Luna
 {
     namespace GUI
     {
+        static f64 perf_elapsed_ms(u64 begin, u64 end)
+        {
+            return (f64)(end - begin) * 1000.0 / get_ticks_per_second();
+        }
+
         struct ContextNodeInputContext : NodeInputContext
         {
             Context* context = nullptr;
@@ -2671,9 +2677,15 @@ namespace Luna
             lutsassert();
             lutry
             {
+                u64 submit_begin = get_ticks();
+                u64 section_begin = submit_begin;
                 m_submitted_desc = desc;
                 m_layouts.clear();
                 m_layouts.resize(m_submitted_desc.nodes.size());
+                m_perf_counters.node_count = (u32)m_submitted_desc.nodes.size();
+                m_perf_counters.layer_count = (u32)m_submitted_desc.layers.size();
+                m_perf_counters.input_event_count = (u32)m_input_events.size();
+                m_perf_counters.interactive_node_count = 0;
                 m_popup_stack.submitted_infos.clear();
                 for(auto& info : m_popup_stack.build_infos)
                 {
@@ -2690,6 +2702,7 @@ namespace Luna
                         tooltip_submitted = true;
                     }
                     if(!node.interactive) continue;
+                    ++m_perf_counters.interactive_node_count;
                     auto r = ids.insert(node.id);
                     luassert_msg(r.second, "Duplicate GUI item ID detected.");
                     Ref<ItemQueryState> result = get_or_create_query_state(node.id);
@@ -2742,15 +2755,24 @@ namespace Luna
                         clear_drag_drop();
                     }
                 }
+                u64 section_end = get_ticks();
+                m_perf_counters.submit_prepare_ms = perf_elapsed_ms(section_begin, section_end);
                 m_layout_dirty = false;
+                section_begin = get_ticks();
                 layout_layers();
+                section_end = get_ticks();
+                m_perf_counters.submit_layout_ms = perf_elapsed_ms(section_begin, section_end);
+                section_begin = get_ticks();
                 process_input_events();
+                section_end = get_ticks();
+                m_perf_counters.submit_input_ms = perf_elapsed_ms(section_begin, section_end);
                 if(tooltip_submitted)
                 {
                     m_layout_dirty = true;
                 }
                 if(m_layout_dirty)
                 {
+                    section_begin = get_ticks();
                     for(NodeLayout& layout : m_layouts)
                     {
                         layout.metrics_valid = false;
@@ -2802,12 +2824,15 @@ namespace Luna
                             m_hovered_id = hit_test(m_pointer_pos);
                         }
                     }
+                    section_end = get_ticks();
+                    m_perf_counters.submit_relayout_ms = perf_elapsed_ms(section_begin, section_end);
                 }
                 if(m_hovered_id != tooltip_interaction_state().tooltip_hovered_id)
                 {
                     tooltip_interaction_state().tooltip_hovered_id = m_hovered_id;
                     tooltip_interaction_state().tooltip_hover_start = m_time;
                 }
+                section_begin = get_ticks();
                 for(const Node& node : m_submitted_desc.nodes)
                 {
                     if(!node.interactive) continue;
@@ -2842,6 +2867,9 @@ namespace Luna
                     }
                 }
                 m_submitted = true;
+                section_end = get_ticks();
+                m_perf_counters.submit_state_ms = perf_elapsed_ms(section_begin, section_end);
+                m_perf_counters.submit_total_ms = perf_elapsed_ms(submit_begin, section_end);
             }
             lucatchret;
             return ok;
