@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "File.hpp"
+#include "FileImpl.hpp"
 
 namespace Luna
 {

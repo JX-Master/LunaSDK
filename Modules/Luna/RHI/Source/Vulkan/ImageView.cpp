@@ -7,8 +7,8 @@
 * @author JXMaster
 * @date 2023/5/4
 */
-#include "ImageView.hpp"
-#include "Resource.hpp"
+#include "VulkanImageView.hpp"
+#include "VulkanResource.hpp"
 
 namespace Luna
 {

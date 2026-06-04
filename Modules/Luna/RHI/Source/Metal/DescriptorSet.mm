@@ -7,8 +7,8 @@
 * @author JXMaster
 * @date 2023/7/17
 */
-#include "DescriptorSet.h"
-#include "Resource.h"
+#include "MetalDescriptorSet.h"
+#include "MetalResource.h"
 #include <Luna/Runtime/StackAllocator.hpp>
 #include <Luna/Runtime/Profiler.hpp>
 

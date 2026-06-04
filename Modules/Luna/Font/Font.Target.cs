@@ -9,7 +9,7 @@ public sealed class FontTargetRules : TargetRules
             rulesPath: "Modules/Luna/Font/Font.Target.cs")
     {
         Headers("*.hpp", "Source/**.hpp");
-        MetaHeaders("Source/FontFileTTF.hpp");
+        MetaHeaders("Font.hpp", "Source/FontFileTTF.hpp");
         Sources("Source/**.cpp");
         DependsOn("Runtime", "stb");
     }

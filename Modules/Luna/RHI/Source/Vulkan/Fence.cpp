@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/4/21
 */
-#include "Fence.hpp"
+#include "VulkanFence.hpp"
 
 namespace Luna
 {

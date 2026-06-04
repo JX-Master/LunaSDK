@@ -18,6 +18,7 @@
 
 #include <Luna/Runtime/StackAllocator.hpp>
 #include "Socket.hpp"
+#include "Network.meta.generated.hpp"
 
 namespace Luna
 {
@@ -163,8 +164,7 @@ namespace Luna
         }
         RV platform_init()
         {
-            register_boxed_type<Socket>();
-            impl_interface_for_type<Socket, ISocket>();
+            Meta::register_Network_types();
             WORD sock_version = MAKEWORD(2, 2);
             WSADATA data;
             auto r = WSAStartup(sock_version, &data);

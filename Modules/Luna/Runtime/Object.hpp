@@ -46,10 +46,10 @@ namespace Luna
         desc.alignment = alignof(_Ty);
         desc.ctor = nullptr;
         desc.dtor = default_dtor<_Ty>;
-        desc.copy_ctor = nullptr;
-        desc.move_ctor = nullptr;
-        desc.copy_assign = nullptr;
-        desc.move_assign = nullptr;
+        desc.copy_ctor = unsupported_copy_ctor;
+        desc.move_ctor = unsupported_move_ctor;
+        desc.copy_assign = unsupported_copy_assign;
+        desc.move_assign = unsupported_move_assign;
         return register_struct_type(desc);
     }
 

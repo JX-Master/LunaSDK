@@ -40,6 +40,7 @@ public sealed class StudioTargetRules : TargetRules
             "Scene.hpp",
             "SceneRenderer.hpp",
             "SceneSettings.hpp",
+            "StudioHeader.hpp",
             "Transform.hpp");
         Sources("**.cpp");
         Shader("Shaders/SkyboxCS.cxx", "compute", "cs_main");

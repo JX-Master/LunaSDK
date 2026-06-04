@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <regex>
@@ -31,6 +32,7 @@ struct Options
     std::string output_dir;
     std::string stamp;
     std::string depfile;
+    std::string target;
     std::string mode;
     std::string platform;
     std::string arch;
@@ -41,6 +43,7 @@ struct Options
 enum class ReflectedDeclKind
 {
     record,
+    interface_,
     enumeration
 };
 
@@ -55,12 +58,16 @@ struct ReflectedDecl
     std::string declaration_attributes;
     std::string enum_underlying_type;
     bool enum_scoped = false;
+    bool has_direct_interface_base = false;
     std::vector<std::string> namespaces;
+    std::vector<std::string> base_qualified_names;
+    std::vector<std::string> interface_qualified_names;
     struct Property
     {
         std::string name;
         std::string type;
         uint64_t offset = 0;
+        std::vector<std::string> type_dependencies;
     };
     struct Option
     {
@@ -122,6 +129,10 @@ Options ParseOptions(int argc, char** argv)
         else if (arg == "--depfile")
         {
             options.depfile = next();
+        }
+        else if (arg == "--target")
+        {
+            options.target = next();
         }
         else if (arg == "--mode")
         {
@@ -201,6 +212,23 @@ std::filesystem::path GeneratedHeaderPath(const Options& options, const std::fil
     return std::filesystem::path(options.output_dir) / GeneratedHeaderName(header);
 }
 
+std::filesystem::path TargetRegistrationHeaderPath(const Options& options)
+{
+    return std::filesystem::path(options.output_dir) / (options.target + ".meta.generated.hpp");
+}
+
+std::string TargetRegistrationSourceExtension(const Options& options)
+{
+    return std::find(options.header_languages.begin(), options.header_languages.end(), "objective-c++20") == options.header_languages.end()
+        ? ".cpp"
+        : ".mm";
+}
+
+std::filesystem::path TargetRegistrationSourcePath(const Options& options)
+{
+    return std::filesystem::path(options.output_dir) / (options.target + ".meta.generated" + TargetRegistrationSourceExtension(options));
+}
+
 std::string EscapeCppString(std::string_view value)
 {
     std::string result;
@@ -256,7 +284,7 @@ bool WriteGeneratedHeader(const std::filesystem::path& path, const std::vector<R
                 }
                 stream << " { ";
             }
-            if (declaration.kind == ReflectedDeclKind::record)
+            if (declaration.kind == ReflectedDeclKind::record || declaration.kind == ReflectedDeclKind::interface_)
             {
                 stream << declaration.declaration_keyword;
                 if (!declaration.declaration_attributes.empty())
@@ -283,6 +311,7 @@ bool WriteGeneratedHeader(const std::filesystem::path& path, const std::vector<R
             {
                 stream << "    template <> struct StructMetaData<" << TypeReference(declaration) << ">\n";
                 stream << "    {\n";
+                stream << "        using LunaStructMetaTag = void;\n";
                 stream << "        static constexpr const c8* __name = \"" << EscapeCppString(declaration.reflection_name) << "\";\n";
                 stream << "        static constexpr Guid __guid { Guid(\"" << EscapeCppString(declaration.guid) << "\") };\n";
                 if (!declaration.properties.empty())
@@ -296,6 +325,14 @@ bool WriteGeneratedHeader(const std::filesystem::path& path, const std::vector<R
                     }
                     stream << "        };\n";
                 }
+                stream << "    };\n";
+            }
+            else if (declaration.kind == ReflectedDeclKind::interface_)
+            {
+                stream << "    template <> struct InterfaceMetaData<" << TypeReference(declaration) << ">\n";
+                stream << "    {\n";
+                stream << "        using LunaInterfaceMetaTag = void;\n";
+                stream << "        static constexpr Guid __guid { Guid(\"" << EscapeCppString(declaration.guid) << "\") };\n";
                 stream << "    };\n";
             }
             else
@@ -319,6 +356,283 @@ bool WriteGeneratedHeader(const std::filesystem::path& path, const std::vector<R
         }
         stream << "}\n";
     }
+    return true;
+}
+
+std::string SanitizeIdentifier(std::string value)
+{
+    for (char& ch : value)
+    {
+        if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_'))
+        {
+            ch = '_';
+        }
+    }
+    if (value.empty() || (value[0] >= '0' && value[0] <= '9'))
+    {
+        value.insert(value.begin(), '_');
+    }
+    return value;
+}
+
+std::string RegisterTypesFunctionName(const Options& options)
+{
+    return "register_" + SanitizeIdentifier(options.target) + "_types";
+}
+
+std::vector<std::string> RecordDependencies(
+    const ReflectedDecl& declaration,
+    const std::set<std::string>& record_names)
+{
+    std::vector<std::string> dependencies;
+    for (const auto& base : declaration.base_qualified_names)
+    {
+        if (record_names.contains(base))
+        {
+            dependencies.push_back(base);
+        }
+    }
+    for (const auto& property : declaration.properties)
+    {
+        for (const auto& dependency : property.type_dependencies)
+        {
+            if (record_names.contains(dependency) &&
+                dependency != declaration.qualified_name &&
+                std::find(dependencies.begin(), dependencies.end(), dependency) == dependencies.end())
+            {
+                dependencies.push_back(dependency);
+            }
+        }
+    }
+    return dependencies;
+}
+
+std::set<std::string> AutoRegisterRecordNames(const std::vector<ReflectedDecl>& declarations)
+{
+    std::set<std::string> record_names;
+    for (const auto& declaration : declarations)
+    {
+        if (declaration.kind == ReflectedDeclKind::record)
+        {
+            record_names.insert(declaration.qualified_name);
+        }
+    }
+
+    std::set<std::string> auto_register_names;
+    for (const auto& declaration : declarations)
+    {
+        if (declaration.kind != ReflectedDeclKind::record || declaration.base_qualified_names.size() > 1)
+        {
+            continue;
+        }
+        bool has_external_base = false;
+        for (const auto& base : declaration.base_qualified_names)
+        {
+            if (!record_names.contains(base))
+            {
+                has_external_base = true;
+                break;
+            }
+        }
+        if (!has_external_base)
+        {
+            auto_register_names.insert(declaration.qualified_name);
+        }
+    }
+
+    bool changed = true;
+    while (changed)
+    {
+        changed = false;
+        for (auto iter = auto_register_names.begin(); iter != auto_register_names.end();)
+        {
+            auto declaration_iter = std::find_if(declarations.begin(), declarations.end(), [&](const ReflectedDecl& declaration) {
+                return declaration.qualified_name == *iter;
+            });
+            bool keep = true;
+            for (const auto& dependency : RecordDependencies(*declaration_iter, record_names))
+            {
+                if (!auto_register_names.contains(dependency))
+                {
+                    keep = false;
+                    break;
+                }
+            }
+            if (!keep)
+            {
+                iter = auto_register_names.erase(iter);
+                changed = true;
+            }
+            else
+            {
+                ++iter;
+            }
+        }
+    }
+    return auto_register_names;
+}
+
+bool VisitRegistrationRecord(
+    const ReflectedDecl& declaration,
+    const std::map<std::string, const ReflectedDecl*>& declarations_by_name,
+    const std::set<std::string>& record_names,
+    const std::set<std::string>& auto_register_names,
+    std::set<std::string>& visited,
+    std::set<std::string>& visiting,
+    std::vector<const ReflectedDecl*>& ordered_records,
+    std::string& error)
+{
+    if (visited.contains(declaration.qualified_name))
+    {
+        return true;
+    }
+    if (visiting.contains(declaration.qualified_name))
+    {
+        error = "cycle detected in generated type registration dependencies: " + declaration.qualified_name;
+        return false;
+    }
+    visiting.insert(declaration.qualified_name);
+    for (const auto& dependency : RecordDependencies(declaration, record_names))
+    {
+        if (!auto_register_names.contains(dependency))
+        {
+            continue;
+        }
+        if (!VisitRegistrationRecord(*declarations_by_name.at(dependency), declarations_by_name, record_names, auto_register_names, visited, visiting, ordered_records, error))
+        {
+            return false;
+        }
+    }
+    visiting.erase(declaration.qualified_name);
+    visited.insert(declaration.qualified_name);
+    ordered_records.push_back(&declaration);
+    return true;
+}
+
+bool BuildRegistrationRecordOrder(
+    const std::vector<ReflectedDecl>& declarations,
+    const std::set<std::string>& auto_register_names,
+    std::vector<const ReflectedDecl*>& ordered_records,
+    std::string& error)
+{
+    std::set<std::string> record_names;
+    std::map<std::string, const ReflectedDecl*> declarations_by_name;
+    for (const auto& declaration : declarations)
+    {
+        if (declaration.kind == ReflectedDeclKind::record)
+        {
+            record_names.insert(declaration.qualified_name);
+            declarations_by_name.emplace(declaration.qualified_name, &declaration);
+        }
+    }
+    std::set<std::string> visited;
+    std::set<std::string> visiting;
+    for (const auto& declaration : declarations)
+    {
+        if (declaration.kind == ReflectedDeclKind::record && auto_register_names.contains(declaration.qualified_name))
+        {
+            if (!VisitRegistrationRecord(declaration, declarations_by_name, record_names, auto_register_names, visited, visiting, ordered_records, error))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool WriteTargetRegistrationFiles(const Options& options, const std::vector<ReflectedDecl>& declarations)
+{
+    auto header_path = TargetRegistrationHeaderPath(options);
+    auto source_path = TargetRegistrationSourcePath(options);
+    std::filesystem::create_directories(header_path.parent_path());
+
+    std::ofstream header(header_path, std::ios::trunc);
+    if (!header)
+    {
+        std::cerr << "error: cannot write generated header: " << header_path.string() << "\n";
+        return false;
+    }
+    header << "// Autogenerated by LunaMetaTool, do not modify.\n";
+    header << "#pragma once\n\n";
+    header << "namespace Luna::Meta\n{\n";
+    header << "    void " << RegisterTypesFunctionName(options) << "();\n";
+    header << "}\n";
+
+    std::ofstream source(source_path, std::ios::trunc);
+    if (!source)
+    {
+        std::cerr << "error: cannot write generated source: " << source_path.string() << "\n";
+        return false;
+    }
+
+    std::set<std::string> qualified_names;
+    for (const auto& declaration : declarations)
+    {
+        if (!qualified_names.insert(declaration.qualified_name).second)
+        {
+            std::cerr << "error: duplicate reflected declaration in target " << options.target << ": " << declaration.qualified_name << "\n";
+            return false;
+        }
+    }
+
+    auto auto_register_names = AutoRegisterRecordNames(declarations);
+    std::vector<const ReflectedDecl*> ordered_records;
+    std::string error;
+    if (!BuildRegistrationRecordOrder(declarations, auto_register_names, ordered_records, error))
+    {
+        std::cerr << "error: " << error << "\n";
+        return false;
+    }
+
+    source << "// Autogenerated by LunaMetaTool, do not modify.\n";
+    source << "#include \"" << EscapeCppString(header_path.filename().string()) << "\"\n";
+    source << "#include <Luna/Runtime/Interface.hpp>\n";
+    source << "#include <Luna/Runtime/Reflection.hpp>\n";
+    for (const auto& header_file : options.headers)
+    {
+        source << "#include \"" << EscapeCppString(std::filesystem::absolute(header_file).string()) << "\"\n";
+    }
+    source << "\nnamespace Luna::Meta\n{\n";
+    source << "    void " << RegisterTypesFunctionName(options) << "()\n";
+    source << "    {\n";
+    for (const auto& declaration : declarations)
+    {
+        if (declaration.kind == ReflectedDeclKind::enumeration)
+        {
+            source << "        (void)::Luna::Meta::register_reflected_enum_type<" << TypeReference(declaration) << ">();\n";
+        }
+    }
+    std::map<std::string, std::string> type_variable_names;
+    for (size_t i = 0; i < ordered_records.size(); ++i)
+    {
+        const auto& declaration = *ordered_records[i];
+        auto variable_name = "type_" + std::to_string(i);
+        type_variable_names.emplace(declaration.qualified_name, variable_name);
+        if (declaration.has_direct_interface_base)
+        {
+            source << "        auto " << variable_name << " = ::Luna::register_boxed_type<" << TypeReference(declaration) << ">();\n";
+        }
+        else
+        {
+            source << "        auto " << variable_name << " = ::Luna::Meta::register_reflected_struct_type<" << TypeReference(declaration) << ">";
+            if (!declaration.base_qualified_names.empty())
+            {
+                source << "(" << type_variable_names.at(declaration.base_qualified_names[0]) << ")";
+            }
+            else
+            {
+                source << "()";
+            }
+            source << ";\n";
+        }
+        source << "        (void)" << variable_name << ";\n";
+        for (const auto& interface_name : declaration.interface_qualified_names)
+        {
+            source << "        ::Luna::impl_interface_for_type<" << TypeReference(declaration) << ", ::" << interface_name << ">();\n";
+        }
+    }
+    source << "    }\n";
+    source << "}\n";
     return true;
 }
 
@@ -473,7 +787,7 @@ bool ExtractLunaAttributes(
     std::vector<ParsedAttribute>& attributes,
     std::string& error)
 {
-    static const std::regex attribute_regex(R"(\[\[\s*luna::(struct|enum)\s*\(([^)]*)\)\s*\]\])");
+    static const std::regex attribute_regex(R"(\[\[\s*(?:Luna|luna)::(struct|enum|interface)\s*\(([^)]*)\)\s*\]\])");
     static const std::regex string_regex(R"meta("((?:\\.|[^"\\])*)")meta");
     for (std::sregex_iterator iter(source_text.begin(), source_text.end(), attribute_regex), end; iter != end; ++iter)
     {
@@ -540,7 +854,7 @@ std::string RecordDeclarationAttributes(const std::string& source_text, std::str
         return {};
     }
     auto attributes = match[1].str();
-    attributes = std::regex_replace(attributes, std::regex(R"(\[\[\s*luna::(struct|enum)\s*\([^)]*\)\s*\]\]\s*)"), "");
+    attributes = std::regex_replace(attributes, std::regex(R"(\[\[\s*(?:Luna|luna)::(struct|enum|interface)\s*\([^)]*\)\s*\]\]\s*)"), "");
     return Trim(attributes);
 }
 
@@ -603,6 +917,75 @@ std::string TypeSourceText(
     return decl->getType().getAsString(policy);
 }
 
+void AddTypeDependency(std::vector<std::string>& dependencies, const std::string& name)
+{
+    if (!name.empty() && std::find(dependencies.begin(), dependencies.end(), name) == dependencies.end())
+    {
+        dependencies.push_back(name);
+    }
+}
+
+void CollectTemplateArgumentTypeDependencies(
+    const clang::TemplateArgumentList& arguments,
+    std::vector<std::string>& dependencies);
+
+void CollectTypeDependencies(clang::QualType type, std::vector<std::string>& dependencies)
+{
+    if (type.isNull())
+    {
+        return;
+    }
+    type = type.getNonReferenceType().getUnqualifiedType();
+    if (const auto* pointer_type = type->getAs<clang::PointerType>())
+    {
+        CollectTypeDependencies(pointer_type->getPointeeType(), dependencies);
+        return;
+    }
+    if (const auto* array_type = llvm::dyn_cast<clang::ArrayType>(type.getTypePtrOrNull()))
+    {
+        CollectTypeDependencies(array_type->getElementType(), dependencies);
+        return;
+    }
+    if (const auto* enum_type = type->getAs<clang::EnumType>())
+    {
+        AddTypeDependency(dependencies, enum_type->getDecl()->getQualifiedNameAsString());
+        return;
+    }
+    if (const auto* record_type = type->getAs<clang::RecordType>())
+    {
+        if (const auto* specialization = llvm::dyn_cast<clang::ClassTemplateSpecializationDecl>(record_type->getDecl()))
+        {
+            CollectTemplateArgumentTypeDependencies(specialization->getTemplateArgs(), dependencies);
+            return;
+        }
+        AddTypeDependency(dependencies, record_type->getDecl()->getQualifiedNameAsString());
+        return;
+    }
+    if (const auto* template_type = type->getAs<clang::TemplateSpecializationType>())
+    {
+        for (const auto& argument : template_type->template_arguments())
+        {
+            if (argument.getKind() == clang::TemplateArgument::Type)
+            {
+                CollectTypeDependencies(argument.getAsType(), dependencies);
+            }
+        }
+    }
+}
+
+void CollectTemplateArgumentTypeDependencies(
+    const clang::TemplateArgumentList& arguments,
+    std::vector<std::string>& dependencies)
+{
+    for (const auto& argument : arguments.asArray())
+    {
+        if (argument.getKind() == clang::TemplateArgument::Type)
+        {
+            CollectTypeDependencies(argument.getAsType(), dependencies);
+        }
+    }
+}
+
 bool CollectRecordProperties(
     const clang::CXXRecordDecl* record,
     const std::string& record_text,
@@ -654,6 +1037,7 @@ bool CollectRecordProperties(
             property.name = field_name;
             property.type = TypeSourceText(field, ast_context);
             property.offset = bit_offset / 8;
+            CollectTypeDependencies(field->getType(), property.type_dependencies);
             properties.push_back(std::move(property));
         }
         return true;
@@ -760,6 +1144,82 @@ bool ValidateSingleAttribute(
     return true;
 }
 
+bool DerivesFromLunaInterface(const clang::CXXRecordDecl* record)
+{
+    if (!record)
+    {
+        return false;
+    }
+    if (record->getQualifiedNameAsString() == "Luna::Interface")
+    {
+        return true;
+    }
+    for (const auto& base : record->bases())
+    {
+        if (DerivesFromLunaInterface(base.getType()->getAsCXXRecordDecl()))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool HasInterfaceAttribute(
+    const clang::CXXRecordDecl* record,
+    const clang::SourceManager& sm,
+    const clang::LangOptions& lang_options)
+{
+    auto source_text = DeclSourceText(record, sm, lang_options);
+    static const std::regex interface_attribute_regex(R"(\[\[\s*(?:Luna|luna)::interface\s*\()");
+    return std::regex_search(source_text, interface_attribute_regex);
+}
+
+bool IsInterfaceDeclaration(
+    const clang::CXXRecordDecl* record,
+    const clang::SourceManager& sm,
+    const clang::LangOptions& lang_options)
+{
+    if (!record)
+    {
+        return false;
+    }
+    if (record->getQualifiedNameAsString() == "Luna::Interface")
+    {
+        return true;
+    }
+    return DerivesFromLunaInterface(record) &&
+        (record->getNameAsString().starts_with("I") || HasInterfaceAttribute(record, sm, lang_options));
+}
+
+void AddUniqueName(std::vector<std::string>& names, const std::string& name)
+{
+    if (!name.empty() && std::find(names.begin(), names.end(), name) == names.end())
+    {
+        names.push_back(name);
+    }
+}
+
+void CollectInterfaceNames(
+    const clang::CXXRecordDecl* record,
+    const clang::SourceManager& sm,
+    const clang::LangOptions& lang_options,
+    std::vector<std::string>& interface_names)
+{
+    if (!record)
+    {
+        return;
+    }
+    const auto qualified_name = record->getQualifiedNameAsString();
+    if (qualified_name != "Luna::Interface" && IsInterfaceDeclaration(record, sm, lang_options))
+    {
+        AddUniqueName(interface_names, qualified_name);
+    }
+    for (const auto& base : record->bases())
+    {
+        CollectInterfaceNames(base.getType()->getAsCXXRecordDecl(), sm, lang_options, interface_names);
+    }
+}
+
 bool AddReflectedRecord(
     const clang::CXXRecordDecl* record,
     const std::vector<ParsedAttribute>& attributes,
@@ -803,10 +1263,91 @@ bool AddReflectedRecord(
     declaration.reflection_name = ReflectionNameFromQualifiedName(declaration.qualified_name);
     declaration.guid = guid;
     declaration.declaration_attributes = RecordDeclarationAttributes(source_text, declaration.declaration_keyword);
+    const auto& lang_options = ast_context.getLangOpts();
+    for (const auto& base : record->bases())
+    {
+        if (const auto* base_record = base.getType()->getAsCXXRecordDecl())
+        {
+            if (IsInterfaceDeclaration(base_record, sm, lang_options))
+            {
+                declaration.has_direct_interface_base = true;
+                CollectInterfaceNames(base_record, sm, lang_options, declaration.interface_qualified_names);
+            }
+            else
+            {
+                declaration.base_qualified_names.push_back(base_record->getQualifiedNameAsString());
+                CollectInterfaceNames(base_record, sm, lang_options, declaration.interface_qualified_names);
+            }
+        }
+    }
     if (!CollectRecordProperties(record, source_text, ast_context, declaration.properties, error))
     {
         return false;
     }
+    if (declaration.has_direct_interface_base && !declaration.properties.empty())
+    {
+        error = "boxed reflected types that implement interfaces cannot declare [[Luna::property]] fields";
+        return false;
+    }
+    if (!BuildNamespaceList(record, declaration.namespaces, error))
+    {
+        return false;
+    }
+    if (!reflected_names.insert(declaration.qualified_name).second)
+    {
+        error = "duplicate reflected declaration: " + declaration.qualified_name;
+        return false;
+    }
+    reflected_decls.push_back(std::move(declaration));
+    return true;
+}
+
+bool AddReflectedInterface(
+    const clang::CXXRecordDecl* record,
+    const std::vector<ParsedAttribute>& attributes,
+    const std::string& source_text,
+    std::vector<ReflectedDecl>& reflected_decls,
+    std::set<std::string>& reflected_names,
+    std::string& error)
+{
+    std::string guid;
+    if (!ValidateSingleAttribute(attributes, "interface", guid, error))
+    {
+        return false;
+    }
+    if (guid.empty())
+    {
+        return true;
+    }
+    if (record->isUnion())
+    {
+        error = "union declarations cannot use [[Luna::interface]]";
+        return false;
+    }
+    if (record->getName().empty())
+    {
+        error = "anonymous record declarations cannot use [[Luna::interface]]";
+        return false;
+    }
+    if (record->getDescribedClassTemplate() || llvm::isa<clang::ClassTemplateSpecializationDecl>(record))
+    {
+        error = "template record declarations cannot use [[Luna::interface]] in this phase";
+        return false;
+    }
+    if (!DerivesFromLunaInterface(record))
+    {
+        error = "[[Luna::interface]] declarations must derive from Luna::Interface";
+        return false;
+    }
+
+    ReflectedDecl declaration;
+    declaration.kind = ReflectedDeclKind::interface_;
+    declaration.declaration_keyword = record->isClass() ? "class" : "struct";
+    declaration.name = record->getNameAsString();
+    declaration.qualified_name = record->getQualifiedNameAsString();
+    declaration.reflection_name = ReflectionNameFromQualifiedName(declaration.qualified_name);
+    declaration.guid = guid;
+    declaration.declaration_attributes = RecordDeclarationAttributes(source_text, declaration.declaration_keyword);
     if (!BuildNamespaceList(record, declaration.namespaces, error))
     {
         return false;
@@ -891,8 +1432,18 @@ bool VisitDecls(
                 auto decl_text = DeclSourceText(record, sm, ast_context.getLangOpts());
                 std::vector<ParsedAttribute> attributes;
                 std::string error;
-                if (!ExtractLunaAttributes(decl_text, attributes, error) ||
-                    !AddReflectedRecord(record, attributes, decl_text, ast_context, sm, reflected_decls, reflected_names, error))
+                if (!ExtractLunaAttributes(decl_text, attributes, error))
+                {
+                    std::cerr << "error: " << DiagnosticLocation(sm, record->getLocation()) << ": " << error << "\n";
+                    return false;
+                }
+                const bool is_interface_attribute = std::any_of(attributes.begin(), attributes.end(), [](const ParsedAttribute& attribute) {
+                    return attribute.kind == "interface";
+                });
+                const bool ok = is_interface_attribute
+                    ? AddReflectedInterface(record, attributes, decl_text, reflected_decls, reflected_names, error)
+                    : AddReflectedRecord(record, attributes, decl_text, ast_context, sm, reflected_decls, reflected_names, error);
+                if (!ok)
                 {
                     std::cerr << "error: " << DiagnosticLocation(sm, record->getLocation()) << ": " << error << "\n";
                     return false;
@@ -979,6 +1530,7 @@ bool ParseHeader(
     const Options& options,
     const std::filesystem::path& header,
     const std::string& language,
+    std::vector<ReflectedDecl>& target_declarations,
     unsigned& reflected_decl_count)
 {
     std::string source_text;
@@ -1018,7 +1570,15 @@ bool ParseHeader(
         return false;
     }
     reflected_decl_count += static_cast<unsigned>(reflected_decls.size());
-    return WriteGeneratedHeader(GeneratedHeaderPath(options, header), reflected_decls);
+    if (!WriteGeneratedHeader(GeneratedHeaderPath(options, header), reflected_decls))
+    {
+        return false;
+    }
+    target_declarations.insert(
+        target_declarations.end(),
+        std::make_move_iterator(reflected_decls.begin()),
+        std::make_move_iterator(reflected_decls.end()));
+    return true;
 }
 
 std::string EscapeDepfilePath(std::string value)
@@ -1076,9 +1636,9 @@ int main(int argc, char** argv)
         std::cerr << "error: missing --header\n";
         return 2;
     }
-    if (options.output_dir.empty() || options.stamp.empty() || options.depfile.empty())
+    if (options.output_dir.empty() || options.stamp.empty() || options.depfile.empty() || options.target.empty())
     {
-        std::cerr << "error: missing --output-dir, --stamp, or --depfile\n";
+        std::cerr << "error: missing --output-dir, --stamp, --depfile, or --target\n";
         return 2;
     }
     if (!options.header_languages.empty() && options.header_languages.size() != options.headers.size())
@@ -1102,11 +1662,12 @@ int main(int argc, char** argv)
 
     unsigned reflected_decl_count = 0;
     bool succeeded = true;
+    std::vector<ReflectedDecl> target_declarations;
     for (size_t i = 0; i < options.headers.size(); ++i)
     {
         const auto& header = options.headers[i];
         const std::string language = options.header_languages.empty() ? "c++20" : options.header_languages[i];
-        if (!ParseHeader(options, header, language, reflected_decl_count))
+        if (!ParseHeader(options, header, language, target_declarations, reflected_decl_count))
         {
             succeeded = false;
         }
@@ -1116,7 +1677,9 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    if (!WriteDepfile(options) || !WriteStamp(options, reflected_decl_count))
+    if (!WriteTargetRegistrationFiles(options, target_declarations) ||
+        !WriteDepfile(options) ||
+        !WriteStamp(options, reflected_decl_count))
     {
         return 1;
     }

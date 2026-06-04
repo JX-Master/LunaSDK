@@ -9,7 +9,7 @@
 */
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "Coroutine.hpp"
+#include "CoroutineImpl.hpp"
 #include "Platform/Thread.hpp"
 
 namespace Luna

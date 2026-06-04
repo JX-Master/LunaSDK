@@ -323,9 +323,6 @@ namespace Luna
     {
         lutry
         {
-            register_boxed_type<ToneMappingPassGlobalData>();
-            register_boxed_type<ToneMappingPass>();
-            impl_interface_for_type<ToneMappingPass, RG::IRenderPass>();
             RG::RenderPassTypeDesc desc;
             desc.name = "ToneMapping";
             desc.desc = "Converts HDR image to LDR image.";

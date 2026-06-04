@@ -10,7 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RUNTIME_API LUNA_EXPORT
 
-#include "Mutex.hpp"
+#include "MutexImpl.hpp"
 namespace Luna
 {
     LUNA_RUNTIME_API Ref<IMutex> new_mutex()

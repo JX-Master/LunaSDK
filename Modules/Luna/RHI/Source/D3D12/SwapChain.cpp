@@ -7,8 +7,8 @@
 * @author JXMaster
 * @date 2019/9/20
 */
-#include "SwapChain.hpp"
-#include "Resource.hpp"
+#include "D3D12SwapChain.hpp"
+#include "D3D12Resource.hpp"
 #include "../../RHI.hpp"
 #include <Luna/Window/Windows/Win32Window.hpp>
 #include <dxgi1_5.h>

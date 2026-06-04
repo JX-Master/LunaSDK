@@ -9,19 +9,19 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
-#include "Device.hpp"
+#include "VulkanDevice.hpp"
 #include "../RHI.hpp"
 #include "Instance.hpp"
-#include "PipelineLayout.hpp"
-#include "DescriptorSetLayout.hpp"
-#include "DescriptorSet.hpp"
-#include "CommandBuffer.hpp"
-#include "Resource.hpp"
-#include "Fence.hpp"
-#include "PipelineState.hpp"
-#include "QueryHeap.hpp"
+#include "VulkanPipelineLayout.hpp"
+#include "VulkanDescriptorSetLayout.hpp"
+#include "VulkanDescriptorSet.hpp"
+#include "VulkanCommandBuffer.hpp"
+#include "VulkanResource.hpp"
+#include "VulkanFence.hpp"
+#include "VulkanPipelineState.hpp"
+#include "VulkanQueryHeap.hpp"
 #include "ResourceStateTrackingSystem.hpp"
-#include "SwapChain.hpp"
+#include "VulkanSwapChain.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna

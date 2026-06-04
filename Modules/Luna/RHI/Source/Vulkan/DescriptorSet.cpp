@@ -7,8 +7,8 @@
 * @author JXMaster
 * @date 2023/4/19
 */
-#include "DescriptorSet.hpp"
-#include "Resource.hpp"
+#include "VulkanDescriptorSet.hpp"
+#include "VulkanResource.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
 namespace Luna
 {

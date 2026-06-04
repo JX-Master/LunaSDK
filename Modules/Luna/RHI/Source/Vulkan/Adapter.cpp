@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
-#include "Adapter.hpp"
+#include "VulkanAdapter.hpp"
 #include "Instance.hpp"
 #include <Luna/Runtime/HashSet.hpp>
 #include "SurfaceBind.hpp"

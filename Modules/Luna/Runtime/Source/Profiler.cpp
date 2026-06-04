@@ -9,7 +9,7 @@
 */
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "Profiler.hpp"
+#include "ProfilerImpl.hpp"
 #include "../Event.hpp"
 #include "../ReadWriteLock.hpp"
 #include "../Time.hpp"

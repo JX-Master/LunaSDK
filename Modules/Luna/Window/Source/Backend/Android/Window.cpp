@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
-#include "Window.hpp"
+#include "AndroidWindowImpl.hpp"
 #include "../../Window.hpp"
 #include "../../../Android/AppMainAndroid.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
@@ -42,8 +42,6 @@ namespace Luna
         {
             lutry
             {
-                register_struct_type<AndroidWindow>();
-                impl_interface_for_type<AndroidWindow, IAndroidWindow, IWindow>();
                 luassert(g_android_app->window);
                 g_window = new_object<AndroidWindow>();
                 g_window->m_window = g_android_app->window;

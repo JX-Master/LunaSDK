@@ -12,6 +12,7 @@
 #include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Ref.hpp>
 #include <Luna/Runtime/Result.hpp>
+#include "JobScheduler.generated.hpp"
 
 #ifndef LUNA_JOBSYSTEM_API
 #define LUNA_JOBSYSTEM_API
@@ -34,10 +35,8 @@ namespace Luna
         //! @interface IJobScheduler
         //! Represents one job scheduler that owns several worker threads and can dispatch jobs to these 
         //! worker threads.
-        struct IJobScheduler : virtual Interface
+        struct [[Luna::interface("{15dfb63a-a3a9-413a-ad6c-d0db846d2e35}")]] IJobScheduler : virtual Interface
         {
-            luiid("{15dfb63a-a3a9-413a-ad6c-d0db846d2e35}");
-
             //! Gets the number of worker threads in this scheduler.
             //! @return Returns the number of worker threads.
             virtual u32 get_num_worker_threads() = 0;

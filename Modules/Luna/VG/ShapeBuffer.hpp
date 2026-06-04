@@ -10,6 +10,7 @@
 #pragma once
 #include <Luna/RHI/Buffer.hpp>
 #include <Luna/Runtime/Ref.hpp>
+#include "ShapeBuffer.generated.hpp"
 
 #ifndef LUNA_VG_API
 #define LUNA_VG_API
@@ -26,10 +27,8 @@ namespace Luna
         //! Represents one buffer that stores shape points. The user can record command points
         //! into the shape buffer then call @ref IShapeBuffer::build to build RHI buffer that stores
         //! shape points.
-        struct IShapeBuffer : virtual Interface
+        struct [[Luna::interface("fc6439a7-ca8f-45fd-aaaa-b753adb94767")]] IShapeBuffer : virtual Interface
         {
-            luiid("fc6439a7-ca8f-45fd-aaaa-b753adb94767");
-
             //! Gets shape points that are recorded in the shape buffer.
             //! @param[in] modify Whether the user will modify shape points in the returned shape points vector.
             //! If this is `true`, the shape buffer will be marked as dirty and will be rebuilt in the next 

@@ -12,10 +12,11 @@
 #include "../RHIUtility.hpp"
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include "ResourceReadContext.hpp"
-#include "ResourceWriteContext.hpp"
-#include "MipmapGenerationContext.hpp"
-#include "BlitContext.hpp"
+#include "ResourceReadContextImpl.hpp"
+#include "ResourceWriteContextImpl.hpp"
+#include "MipmapGenerationContextImpl.hpp"
+#include "BlitContextImpl.hpp"
+#include "RHIUtility.meta.generated.hpp"
 
 namespace Luna
 {
@@ -30,15 +31,7 @@ namespace Luna
             }
             virtual RV on_init() override
             {
-                register_boxed_type<ResourceReadContext>();
-                impl_interface_for_type<ResourceReadContext, IResourceReadContext, RHI::IDeviceChild>();
-                register_boxed_type<ResourceWriteContext>();
-                impl_interface_for_type<ResourceWriteContext, IResourceWriteContext, RHI::IDeviceChild>();
-                register_boxed_type<MipmapGenerationPipelineState>();
-                register_boxed_type<MipmapGenerationContext>();
-                impl_interface_for_type<MipmapGenerationContext, IMipmapGenerationContext, RHI::IDeviceChild>();
-                register_boxed_type<BlitContext>();
-                impl_interface_for_type<BlitContext, IBlitContext, RHI::IDeviceChild>();
+                Meta::register_RHIUtility_types();
                 return ok;
             }
             virtual void on_close() override

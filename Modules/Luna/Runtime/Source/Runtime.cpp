@@ -10,24 +10,25 @@
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include "../Runtime.hpp"
-#include "Name.hpp"
-#include "Module.hpp"
+#include "NameImpl.hpp"
+#include "ModuleImpl.hpp"
 #include "Platform/Init.hpp"
-#include "Memory.hpp"
+#include "MemoryImpl.hpp"
 #include "../Waitable.hpp"
-#include "Signal.hpp"
-#include "Mutex.hpp"
-#include "Semaphore.hpp"
-#include "File.hpp"
-#include "Thread.hpp"
-#include "Fiber.hpp"
-#include "Coroutine.hpp"
-#include "TypeInfo.hpp"
-#include "Interface.hpp"
-#include "Random.hpp"
-#include "ReadWriteLock.hpp"
-#include "StdIO.hpp"
-#include "Profiler.hpp"
+#include "SignalImpl.hpp"
+#include "MutexImpl.hpp"
+#include "SemaphoreImpl.hpp"
+#include "FileImpl.hpp"
+#include "ThreadImpl.hpp"
+#include "FiberImpl.hpp"
+#include "CoroutineImpl.hpp"
+#include "TypeInfoImpl.hpp"
+#include "InterfaceImpl.hpp"
+#include "RandomImpl.hpp"
+#include "ReadWriteLockImpl.hpp"
+#include "StdIOImpl.hpp"
+#include "ProfilerImpl.hpp"
+#include "Runtime.meta.generated.hpp"
 namespace Luna
 {
     bool error_init();
@@ -42,30 +43,7 @@ namespace Luna
 
     void register_types_and_interfaces()
     {
-        register_boxed_type<Signal>();
-        impl_interface_for_type<Signal, IWaitable, ISignal>();
-        register_boxed_type<Mutex>();
-        impl_interface_for_type<Mutex, IWaitable, IMutex>();
-        register_boxed_type<Semaphore>();
-        impl_interface_for_type<Semaphore, IWaitable, ISemaphore>();
-        register_boxed_type<File>();
-        impl_interface_for_type<File, IFile, ISeekableStream, IStream>();
-        register_boxed_type<FileIterator>();
-        impl_interface_for_type<FileIterator, IFileIterator>();
-        auto thread_base_type = register_boxed_type<ThreadBase>();
-        impl_interface_for_type<ThreadBase, IThread>();
-        register_struct_type<Thread>(thread_base_type);
-        impl_interface_for_type<Thread, IWaitable, IThread>();
-        register_boxed_type<Fiber>();
-        impl_interface_for_type<Fiber, IFiber>();
-        register_boxed_type<Coroutine>();
-        impl_interface_for_type<Coroutine, ICoroutine>();
-        register_struct_type<MainThread>(thread_base_type);
-        impl_interface_for_type<MainThread, IWaitable, IThread>();
-        register_boxed_type<ReadWriteLock>();
-        impl_interface_for_type<ReadWriteLock, IReadWriteLock>();
-        register_boxed_type<StdIOStream>();
-        impl_interface_for_type<StdIOStream, IStream>();
+        Meta::register_Runtime_types();
     }
 
     static bool g_initialized = false;

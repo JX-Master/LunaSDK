@@ -996,10 +996,6 @@ namespace Luna
     {
         lutry
         {
-            register_boxed_type<SceneEditorUserData>();
-            register_boxed_type<SceneEditor>();
-            impl_interface_for_type<SceneEditor, IAssetEditor>();
-
             AssetEditorDesc desc;
             desc.new_editor = new_scene_editor;
             desc.on_draw_tile = nullptr;

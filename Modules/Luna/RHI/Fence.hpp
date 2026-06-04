@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "DeviceChild.hpp"
+#include "Fence.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -30,10 +31,8 @@ namespace Luna
         //! the user must ensure that signal operations and wait operations on the same fence should occur in discrete 1:1 pairs 
         //! (every two signal operations should have one wait operations in between, every two wait operations should one signal 
         //! operations in between).
-        struct IFence : virtual IDeviceChild
+        struct [[Luna::interface("{126700A9-A8CC-45FE-AC5F-C68879B8D7FD}")]] IFence : virtual IDeviceChild
         {
-            luiid("{126700A9-A8CC-45FE-AC5F-C68879B8D7FD}");
-
         };
 
         //! @}

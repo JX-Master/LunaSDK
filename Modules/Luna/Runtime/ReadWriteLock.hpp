@@ -10,6 +10,7 @@
 #pragma once
 #include "Interface.hpp"
 #include "Ref.hpp"
+#include "ReadWriteLock.generated.hpp"
 
 namespace Luna
 {
@@ -25,10 +26,8 @@ namespace Luna
     //! all succeeding acquires of read and write ownerships will fail or be blocked until the write ownership is released. The write ownership is not recursive:
     //! succeeding acquire of write ownership from the thread that already acquired the write ownership causes deadlock and shall not be performed.
     //! @threadsafe
-    struct IReadWriteLock : virtual Interface
+    struct [[Luna::interface("{F74B6F8A-AF52-4ABA-B2D7-58EBFBEC7CBA}")]] IReadWriteLock : virtual Interface
     {
-        luiid("{F74B6F8A-AF52-4ABA-B2D7-58EBFBEC7CBA}");
-
         //! Acquires one read ownership of the lock.
         //! @details This operation blocks the current thread until the ownership is acquired.
         virtual void acquire_read() = 0;

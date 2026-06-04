@@ -9,7 +9,7 @@
 */
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "TypeInfo.hpp"
+#include "TypeInfoImpl.hpp"
 #include "../UnorderedMultiMap.hpp"
 #include "../HashMap.hpp"
 #include "Platform/Mutex.hpp"
@@ -38,6 +38,38 @@ namespace Luna
     static typeinfo_t g_c8_type;
     static typeinfo_t g_c16_type;
     static typeinfo_t g_c32_type;
+
+    LUNA_RUNTIME_API void unsupported_copy_ctor(typeinfo_t type, void* dst, const void* src)
+    {
+        (void)type;
+        (void)dst;
+        (void)src;
+        lupanic_msg("Type does not support copy construction.");
+    }
+
+    LUNA_RUNTIME_API void unsupported_move_ctor(typeinfo_t type, void* dst, void* src)
+    {
+        (void)type;
+        (void)dst;
+        (void)src;
+        lupanic_msg("Type does not support move construction.");
+    }
+
+    LUNA_RUNTIME_API void unsupported_copy_assign(typeinfo_t type, void* dst, const void* src)
+    {
+        (void)type;
+        (void)dst;
+        (void)src;
+        lupanic_msg("Type does not support copy assignment.");
+    }
+
+    LUNA_RUNTIME_API void unsupported_move_assign(typeinfo_t type, void* dst, void* src)
+    {
+        (void)type;
+        (void)dst;
+        (void)src;
+        lupanic_msg("Type does not support move assignment.");
+    }
     static typeinfo_t g_boolean_type;
     static typeinfo_t g_typeinfo_type;
 
@@ -252,22 +284,30 @@ namespace Luna
         bool use_default_move_ctor = false;
         bool use_default_copy_assign = false;
         bool use_default_move_assign = false;
+        bool support_copy_ctor = true;
+        bool support_move_ctor = true;
+        bool support_copy_assign = true;
+        bool support_move_assign = true;
         for (auto& i : st->property_descs)
         {
             if (!is_type_trivially_constructable(i.type)) use_default_ctor = true;
             if (!is_type_trivially_destructable(i.type)) use_default_dtor = true;
-            if (!is_type_trivially_copy_constructable(i.type)) use_default_copy_ctor = true;
-            if (!is_type_trivially_move_constructable(i.type)) use_default_move_ctor = true;
-            if (!is_type_trivially_copy_assignable(i.type)) use_default_copy_assign = true;
-            if (!is_type_trivially_move_assignable(i.type)) use_default_move_assign = true;
+            if (!is_type_copy_constructable(i.type)) support_copy_ctor = false;
+            else if (!is_type_trivially_copy_constructable(i.type)) use_default_copy_ctor = true;
+            if (!is_type_move_constructable(i.type)) support_move_ctor = false;
+            else if (!is_type_trivially_move_constructable(i.type)) use_default_move_ctor = true;
+            if (!is_type_copy_assignable(i.type)) support_copy_assign = false;
+            else if (!is_type_trivially_copy_assignable(i.type)) use_default_copy_assign = true;
+            if (!is_type_move_assignable(i.type)) support_move_assign = false;
+            else if (!is_type_trivially_move_assignable(i.type)) use_default_move_assign = true;
         }
         // Adds callback for non-trivial case.
         if (!st->ctor && use_default_ctor) st->ctor = structure_default_construct;
         if (!st->dtor && use_default_dtor) st->dtor = structure_default_destruct;
-        if (!st->copy_ctor && use_default_copy_ctor) st->copy_ctor = structure_default_copy_construct;
-        if (!st->move_ctor && use_default_move_ctor) st->move_ctor = structure_default_move_construct;
-        if (!st->copy_assign && use_default_copy_assign) st->copy_assign = structure_default_copy_assign;
-        if (!st->move_assign && use_default_move_assign) st->move_assign = structure_default_move_assign;
+        if (!st->copy_ctor) st->copy_ctor = support_copy_ctor ? (use_default_copy_ctor ? structure_default_copy_construct : nullptr) : unsupported_copy_ctor;
+        if (!st->move_ctor) st->move_ctor = support_move_ctor ? (use_default_move_ctor ? structure_default_move_construct : nullptr) : unsupported_move_ctor;
+        if (!st->copy_assign) st->copy_assign = support_copy_assign ? (use_default_copy_assign ? structure_default_copy_assign : nullptr) : unsupported_copy_assign;
+        if (!st->move_assign) st->move_assign = support_move_assign ? (use_default_move_assign ? structure_default_move_assign : nullptr) : unsupported_move_assign;
         g_type_registry.push_back(move(t));
         g_type_name_map.insert(make_pair(st->name, (NamedTypeInfo*)st));
         g_type_guid_map.insert(make_pair(st->guid, (NamedTypeInfo*)st));
@@ -419,22 +459,30 @@ namespace Luna
         bool use_default_move_ctor = false;
         bool use_default_copy_assign = false;
         bool use_default_move_assign = false;
+        bool support_copy_ctor = true;
+        bool support_move_ctor = true;
+        bool support_copy_assign = true;
+        bool support_move_assign = true;
         for (auto& i : gt->property_descs)
         {
             if (!is_type_trivially_constructable(i.type)) use_default_ctor = true;
             if (!is_type_trivially_destructable(i.type)) use_default_dtor = true;
-            if (!is_type_trivially_copy_constructable(i.type)) use_default_copy_ctor = true;
-            if (!is_type_trivially_move_constructable(i.type)) use_default_move_ctor = true;
-            if (!is_type_trivially_copy_assignable(i.type)) use_default_copy_assign = true;
-            if (!is_type_trivially_move_assignable(i.type)) use_default_move_assign = true;
+            if (!is_type_copy_constructable(i.type)) support_copy_ctor = false;
+            else if (!is_type_trivially_copy_constructable(i.type)) use_default_copy_ctor = true;
+            if (!is_type_move_constructable(i.type)) support_move_ctor = false;
+            else if (!is_type_trivially_move_constructable(i.type)) use_default_move_ctor = true;
+            if (!is_type_copy_assignable(i.type)) support_copy_assign = false;
+            else if (!is_type_trivially_copy_assignable(i.type)) use_default_copy_assign = true;
+            if (!is_type_move_assignable(i.type)) support_move_assign = false;
+            else if (!is_type_trivially_move_assignable(i.type)) use_default_move_assign = true;
         }
         // Adds callback for non-trivial case.
         if (!gt->ctor && use_default_ctor) gt->ctor = instaced_structure_default_construct;
         if (!gt->dtor && use_default_dtor) gt->dtor = instaced_structure_default_destruct;
-        if (!gt->copy_ctor && use_default_copy_ctor) gt->copy_ctor = instaced_structure_default_copy_construct;
-        if (!gt->move_ctor && use_default_move_ctor) gt->move_ctor = instaced_structure_default_move_construct;
-        if (!gt->copy_assign && use_default_copy_assign) gt->copy_assign = instaced_structure_default_copy_assign;
-        if (!gt->move_assign && use_default_move_assign) gt->move_assign = instaced_structure_default_move_assign;
+        if (!gt->copy_ctor) gt->copy_ctor = support_copy_ctor ? (use_default_copy_ctor ? instaced_structure_default_copy_construct : nullptr) : unsupported_copy_ctor;
+        if (!gt->move_ctor) gt->move_ctor = support_move_ctor ? (use_default_move_ctor ? instaced_structure_default_move_construct : nullptr) : unsupported_move_ctor;
+        if (!gt->copy_assign) gt->copy_assign = support_copy_assign ? (use_default_copy_assign ? instaced_structure_default_copy_assign : nullptr) : unsupported_copy_assign;
+        if (!gt->move_assign) gt->move_assign = support_move_assign ? (use_default_move_assign ? instaced_structure_default_move_assign : nullptr) : unsupported_move_assign;
         g_type_registry.push_back(move(t));
         generic_type->generic_instanced_types.push_back(gt);
         return (typeinfo_t)gt;
@@ -635,6 +683,19 @@ namespace Luna
         }
         return true;
     }
+    LUNA_RUNTIME_API bool is_type_copy_constructable(typeinfo_t type)
+    {
+        TypeInfo* t = (TypeInfo*)type.handle;
+        switch (t->kind)
+        {
+        case TypeKind::primitive: return true;
+        case TypeKind::structure: return ((StructureTypeInfo*)t)->copy_ctor != unsupported_copy_ctor;
+        case TypeKind::enumeration: return true;
+        case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->copy_ctor != unsupported_copy_ctor;
+        default: lupanic();
+        }
+        return true;
+    }
     LUNA_RUNTIME_API bool is_type_trivially_move_constructable(typeinfo_t type)
     {
         TypeInfo* t = (TypeInfo*)type.handle;
@@ -644,6 +705,19 @@ namespace Luna
         case TypeKind::structure: return ((StructureTypeInfo*)t)->move_ctor == nullptr;
         case TypeKind::enumeration: return true;
         case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->move_ctor == nullptr;
+        default: lupanic();
+        }
+        return true;
+    }
+    LUNA_RUNTIME_API bool is_type_move_constructable(typeinfo_t type)
+    {
+        TypeInfo* t = (TypeInfo*)type.handle;
+        switch (t->kind)
+        {
+        case TypeKind::primitive: return true;
+        case TypeKind::structure: return ((StructureTypeInfo*)t)->move_ctor != unsupported_move_ctor;
+        case TypeKind::enumeration: return true;
+        case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->move_ctor != unsupported_move_ctor;
         default: lupanic();
         }
         return true;
@@ -661,6 +735,19 @@ namespace Luna
         }
         return true;
     }
+    LUNA_RUNTIME_API bool is_type_copy_assignable(typeinfo_t type)
+    {
+        TypeInfo* t = (TypeInfo*)type.handle;
+        switch (t->kind)
+        {
+        case TypeKind::primitive: return true;
+        case TypeKind::structure: return ((StructureTypeInfo*)t)->copy_assign != unsupported_copy_assign;
+        case TypeKind::enumeration: return true;
+        case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->copy_assign != unsupported_copy_assign;
+        default: lupanic();
+        }
+        return true;
+    }
     LUNA_RUNTIME_API bool is_type_trivially_move_assignable(typeinfo_t type)
     {
         TypeInfo* t = (TypeInfo*)type.handle;
@@ -670,6 +757,19 @@ namespace Luna
         case TypeKind::structure: return ((StructureTypeInfo*)t)->move_assign == nullptr;
         case TypeKind::enumeration: return true;
         case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->move_assign == nullptr;
+        default: lupanic();
+        }
+        return true;
+    }
+    LUNA_RUNTIME_API bool is_type_move_assignable(typeinfo_t type)
+    {
+        TypeInfo* t = (TypeInfo*)type.handle;
+        switch (t->kind)
+        {
+        case TypeKind::primitive: return true;
+        case TypeKind::structure: return ((StructureTypeInfo*)t)->move_assign != unsupported_move_assign;
+        case TypeKind::enumeration: return true;
+        case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->move_assign != unsupported_move_assign;
         default: lupanic();
         }
         return true;

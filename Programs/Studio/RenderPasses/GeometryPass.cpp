@@ -344,9 +344,6 @@ namespace Luna
     {
         lutry
         {
-            register_boxed_type<GeometryPassGlobalData>();
-            register_boxed_type<GeometryPass>();
-            impl_interface_for_type<GeometryPass, RG::IRenderPass>();
             RG::RenderPassTypeDesc desc;
             desc.name = "Geometry";
             desc.desc = "Writes scene geometry information to the geometry buffer (G-buffer).";

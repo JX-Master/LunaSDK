@@ -9,7 +9,7 @@ public sealed class ECSTargetRules : TargetRules
             rulesPath: "Modules/Luna/ECS/ECS.Target.cs")
     {
         Headers("*.hpp", "Source/**.hpp");
-        MetaHeaders("Source/World.hpp");
+        MetaHeaders("World.hpp", "Source/WorldImpl.hpp");
         Sources("Source/**.cpp");
         DependsOn("Runtime", "JobSystem");
     }

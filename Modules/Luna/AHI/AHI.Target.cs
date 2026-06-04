@@ -10,8 +10,10 @@ public sealed class AHITargetRules : TargetRules
     {
         Headers("*.hpp", "Source/**.hpp");
         MetaHeaders(
-            "Source/MiniAudio/Adapter.hpp",
-            "Source/MiniAudio/Device.hpp");
+            "Adapter.hpp",
+            "Device.hpp",
+            "Source/MiniAudio/AdapterImpl.hpp",
+            "Source/MiniAudio/DeviceImpl.hpp");
         Sources("**.cpp");
         DependsOn("Runtime", "miniaudio");
     }

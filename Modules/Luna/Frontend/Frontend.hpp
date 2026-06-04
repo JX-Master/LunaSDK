@@ -13,6 +13,11 @@
 #include <Luna/Runtime/Name.hpp>
 #include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Ref.hpp>
+#include "Frontend.generated.hpp"
+
+#ifndef LUNA_FRONTEND_API
+#define LUNA_FRONTEND_API
+#endif
 
 namespace Luna
 {
@@ -53,10 +58,8 @@ namespace Luna
         //! @details IFrontend owns one IResourceRegistry and exposes a synchronous message
         //! dispatch interface. Asynchronous use cases are handled by the user by building an
         //! external message queue and calling handle_message at the appropriate time.
-        struct IFrontend : virtual Interface
+        struct [[Luna::interface("{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}")]] IFrontend : virtual Interface
         {
-            luiid("{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}");
-
             //! Calls one registered function in this frontend.
             //! @param[in] url The URL identifying the function.
             //! @param[in] params The parameter to pass to the function.

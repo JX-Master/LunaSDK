@@ -10,13 +10,17 @@ public sealed class VGTargetRules : TargetRules
     {
         Headers("*.hpp", "Source/**.hpp");
         MetaHeaders(
-            "Source/FontAtlas.hpp",
-            "Source/ShapeBuffer.hpp",
-            "Source/ShapeDrawList.hpp",
-            "Source/ShapeRenderer.hpp");
+            "FontAtlas.hpp",
+            "ShapeBuffer.hpp",
+            "ShapeDrawList.hpp",
+            "ShapeRenderer.hpp",
+            "Source/FontAtlasImpl.hpp",
+            "Source/ShapeBufferImpl.hpp",
+            "Source/ShapeDrawListImpl.hpp",
+            "Source/ShapeRendererImpl.hpp");
         Sources("Source/**.cpp");
         Shader("Source/FillVS.cxx", "vertex", "vs_main");
         Shader("Source/FillPS.cxx", "pixel", "ps_main");
-        DependsOn("Runtime", "RHI", "RHIUtility");
+        DependsOn("Runtime", "RHI", "RHIUtility", "Font");
     }
 }

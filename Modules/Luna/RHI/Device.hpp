@@ -16,6 +16,7 @@
 #include "Fence.hpp"
 #include "QueryHeap.hpp"
 #include "Adapter.hpp"
+#include "Device.generated.hpp"
 
 #ifndef LUNA_RHI_API
 #define LUNA_RHI_API
@@ -98,10 +99,8 @@ namespace Luna
 
         //! @interface IDevice
         //! Represents one logical graphic device on the platform.
-        struct IDevice : virtual Interface
+        struct [[Luna::interface("{099AB8FA-7239-41EE-B05C-D36B5DCE1ED7}")]] IDevice : virtual Interface
         {
-            luiid("{099AB8FA-7239-41EE-B05C-D36B5DCE1ED7}");
-
             //! Checks device feature.
             //! @param[in] feature The device feature to check.
             //! @return Returns the device feature check result.

@@ -11,6 +11,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #include "../Window.hpp"
 #include <objc/objc.h>
+#include "CocoaWindow.generated.hpp"
 
 namespace Luna
 {
@@ -21,10 +22,8 @@ namespace Luna
         
         //! @interface ICocoaWindow
         //! Implemented by window object on macOS platform.
-        struct ICocoaWindow : virtual IWindow
+        struct [[Luna::interface("{f9ac2644-eb2d-4394-b653-611bed104bb9}")]] ICocoaWindow : virtual IWindow
         {
-            luiid("{f9ac2644-eb2d-4394-b653-611bed104bb9}");
-
             //! Gets NSWindow* handle of the window object.
             //! @return Returns NSWindow* handle of the window object.
             //! The window handle is owned by the window object, the user cannot increase/decrease the reference

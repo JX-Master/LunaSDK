@@ -9,8 +9,8 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
-#include "DescriptorSet.hpp"
-#include "DescriptorSetLayout.hpp"
+#include "D3D12DescriptorSet.hpp"
+#include "D3D12DescriptorSetLayout.hpp"
 
 namespace Luna
 {

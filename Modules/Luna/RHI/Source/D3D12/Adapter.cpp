@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
-#include "Adapter.hpp"
+#include "D3D12Adapter.hpp"
 
 namespace Luna
 {

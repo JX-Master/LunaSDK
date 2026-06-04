@@ -327,8 +327,6 @@ namespace Luna
 
     void register_static_mesh_importer()
     {
-        register_boxed_type<MeshImporter>();
-        impl_interface_for_type<MeshImporter, IAssetEditor>();
         AssetImporterDesc desc;
         desc.new_importer = new_static_mesh_importer;
         g_env->register_asset_importer_type(get_static_mesh_asset_type(), desc);

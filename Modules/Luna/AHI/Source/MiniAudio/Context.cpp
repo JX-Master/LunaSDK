@@ -9,8 +9,9 @@
 */
 #include "../AHI.hpp"
 #include "Common.hpp"
-#include "Adapter.hpp"
-#include "Device.hpp"
+#include "AdapterImpl.hpp"
+#include "DeviceImpl.hpp"
+#include "AHI.meta.generated.hpp"
 
 namespace Luna
 {
@@ -20,10 +21,7 @@ namespace Luna
 
         RV platform_init()
         {
-            register_boxed_type<Adapter>();
-            impl_interface_for_type<Adapter, IAdapter>();
-            register_boxed_type<Device>();
-            impl_interface_for_type<Device, IDevice>();
+            Meta::register_AHI_types();
             auto r = ma_context_init(NULL, 0, NULL, &g_context);
             if(r != MA_SUCCESS)
             {

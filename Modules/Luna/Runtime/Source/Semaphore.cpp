@@ -10,7 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RUNTIME_API LUNA_EXPORT
 
-#include "Semaphore.hpp"
+#include "SemaphoreImpl.hpp"
 namespace Luna
 {
     LUNA_RUNTIME_API Ref<ISemaphore> new_semaphore(i32 initial_count, i32 max_count)

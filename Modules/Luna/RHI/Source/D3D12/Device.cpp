@@ -9,17 +9,17 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
-#include "Device.hpp"
-#include "PipelineState.hpp"
-#include "Resource.hpp"
-#include "DescriptorSet.hpp"
-#include "PipelineLayout.hpp"
-#include "DescriptorSetLayout.hpp"
-#include "QueryHeap.hpp"
-#include "CommandBuffer.hpp"
-#include "Fence.hpp"
-#include "SwapChain.hpp"
-#include "Adapter.hpp"
+#include "D3D12Device.hpp"
+#include "D3D12PipelineState.hpp"
+#include "D3D12Resource.hpp"
+#include "D3D12DescriptorSet.hpp"
+#include "D3D12PipelineLayout.hpp"
+#include "D3D12DescriptorSetLayout.hpp"
+#include "D3D12QueryHeap.hpp"
+#include "D3D12CommandBuffer.hpp"
+#include "D3D12Fence.hpp"
+#include "D3D12SwapChain.hpp"
+#include "D3D12Adapter.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna

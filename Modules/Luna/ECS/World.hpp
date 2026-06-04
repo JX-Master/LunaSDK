@@ -13,6 +13,7 @@
 #include <Luna/Runtime/Ref.hpp>
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/JobSystem/JobSystem.hpp>
+#include "World.generated.hpp"
 
 namespace Luna
 {
@@ -23,10 +24,8 @@ namespace Luna
         //! @remark The world object implements `IChangeList` as well. In such case, all calls to `IChangeList` behave like being committed immediately 
         //! before return.
         //! The world itself is not thread safe, the user must ensure that modifications to the world are synchronized.
-        struct IWorld : virtual Interface
+        struct [[Luna::interface("{14F85B5E-D509-40A8-A7F6-49778783418A}")]] IWorld : virtual Interface
         {
-            luiid("{14F85B5E-D509-40A8-A7F6-49778783418A}");
-
             //! Gets the cluster by components and tags.
             virtual Cluster* get_cluster(Span<const typeinfo_t> components, Span<const tag_t> tags, 
                 bool create_if_not_exist = true) = 0;

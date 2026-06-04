@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "Random.hpp"
+#include "RandomImpl.hpp"
 #include "../Mutex.hpp"
 #include <Luna/Runtime/Time.hpp>
 namespace Luna
@@ -18,8 +18,6 @@ namespace Luna
     Ref<IMutex> g_random_mutex;
     void random_init()
     {
-        register_boxed_type<Random>();
-        impl_interface_for_type<Random, IRandom>();
         g_random_engine.seed((unsigned int)get_ticks());
         g_random_mutex = new_mutex();
     }

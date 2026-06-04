@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_VG_API LUNA_EXPORT
-#include "ShapeDrawList.hpp"
+#include "ShapeDrawListImpl.hpp"
 #include <Luna/RHI/Device.hpp>
 #include <Luna/RHI/RHI.hpp>
 

@@ -136,16 +136,19 @@ public sealed class CppTargetGraphGenerator
                 return dotNetOutputs;
             }
 
-            var sourceFiles = target.SourceFiles
+            var discoveredSourceFiles = target.SourceFiles
                 .Where(IsBuildSource)
                 .Where(source => IsSourceEnabledForPlatform(_options.Platform, source))
                 .ToArray();
-            if(sourceFiles.Length == 0)
+            if(discoveredSourceFiles.Length == 0)
             {
                 throw new InvalidOperationException($"Target {target.Name} has no C/C++ source files discovered from rules.");
             }
 
             var metaOutputs = AddMetaNodes(target, dependencyOutputs);
+            var sourceFiles = discoveredSourceFiles
+                .Concat(metaOutputs.GeneratedSourceFile is null ? Array.Empty<string>() : new[] { metaOutputs.GeneratedSourceFile })
+                .ToArray();
             var dependencyMetaIds = dependencyOutputs
                 .SelectMany(output => output.PublicMetaDependencyIds)
                 .Distinct(StringComparer.Ordinal)
@@ -478,7 +481,7 @@ public sealed class CppTargetGraphGenerator
         {
             if(target.MetaHeaderFiles.Count == 0)
             {
-                return new LunaMetaBuildOutputs(null, Array.Empty<string>(), Array.Empty<string>());
+                return new LunaMetaBuildOutputs(null, Array.Empty<string>(), Array.Empty<string>(), null);
             }
 
             var generatedDirectory = GetGeneratedMetaHeaderDirectory(_workspace, _options, target);
@@ -526,7 +529,31 @@ public sealed class CppTargetGraphGenerator
                         Depfiles: Array.Empty<string>()));
                     return headerId;
                 })
-                .ToArray();
+                .ToList();
+            var registrationHeaderPath = GetMetaRegistrationHeaderPath(_workspace, _options, target);
+            var registrationHeaderId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(registrationHeaderPath));
+            AddNode(new BuildGraphNode(
+                Id: registrationHeaderId,
+                Kind: BuildGraphNodeKind.File,
+                Path: _workspace.ToRepositoryRelativePath(registrationHeaderPath),
+                Command: null,
+                Dependencies: Array.Empty<string>(),
+                OrderOnlyDependencies: Array.Empty<string>(),
+                Outputs: Array.Empty<string>(),
+                Depfiles: Array.Empty<string>()));
+            generatedHeaderIds.Add(registrationHeaderId);
+
+            var registrationSourcePath = GetMetaRegistrationSourcePath(_workspace, _options, target);
+            var registrationSourceId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(registrationSourcePath));
+            AddNode(new BuildGraphNode(
+                Id: registrationSourceId,
+                Kind: BuildGraphNodeKind.File,
+                Path: _workspace.ToRepositoryRelativePath(registrationSourcePath),
+                Command: null,
+                Dependencies: Array.Empty<string>(),
+                OrderOnlyDependencies: Array.Empty<string>(),
+                Outputs: Array.Empty<string>(),
+                Depfiles: Array.Empty<string>()));
 
             var stampPath = GetMetaStampPath(_workspace, _options, target);
             var stampId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(stampPath));
@@ -553,9 +580,9 @@ public sealed class CppTargetGraphGenerator
                 Command: BuildMetaCommandDescription(_workspace, _options, target, dependencyOutputs, generatedDirectory, stampPath, depfilePath),
                 Dependencies: sourceHeaderIds.Concat(dependencyMetaIds).ToArray(),
                 OrderOnlyDependencies: Array.Empty<string>(),
-                Outputs: generatedHeaderIds,
+                Outputs: generatedHeaderIds.Concat(new[] { registrationSourceId }).ToArray(),
                 Depfiles: new[] { depfileId }));
-            return new LunaMetaBuildOutputs(stampId, generatedHeaderIds, new[] { generatedDirectory });
+            return new LunaMetaBuildOutputs(stampId, generatedHeaderIds, new[] { generatedDirectory }, registrationSourcePath);
         }
 
         private IReadOnlyList<string> AddRuntimeFileNodes(BuildTargetDefinition target, IEnumerable<string> dependencyRuntimeFiles, string binaryPath)
@@ -681,7 +708,8 @@ public sealed class CppTargetGraphGenerator
     private sealed record LunaMetaBuildOutputs(
         string? StampId,
         IReadOnlyList<string> GeneratedHeaderIds,
-        IReadOnlyList<string> PublicIncludeDirectories);
+        IReadOnlyList<string> PublicIncludeDirectories,
+        string? GeneratedSourceFile);
 
     private static bool IsBuildSource(string path)
     {
@@ -793,6 +821,17 @@ public sealed class CppTargetGraphGenerator
     private static string GetMetaGeneratedHeaderPath(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target, string headerFile)
     {
         return Path.Combine(GetGeneratedMetaHeaderDirectory(workspace, options, target), Path.GetFileNameWithoutExtension(headerFile) + ".generated.hpp");
+    }
+
+    private static string GetMetaRegistrationHeaderPath(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target)
+    {
+        return Path.Combine(GetGeneratedMetaHeaderDirectory(workspace, options, target), target.Name + ".meta.generated.hpp");
+    }
+
+    private static string GetMetaRegistrationSourcePath(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target)
+    {
+        var extension = target.MetaHeaderFiles.Any(path => MetaHeaderLanguage(path) == "objective-c++20") ? ".mm" : ".cpp";
+        return Path.Combine(GetGeneratedMetaHeaderDirectory(workspace, options, target), target.Name + ".meta.generated" + extension);
     }
 
     private static string GetMetaStampPath(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target)

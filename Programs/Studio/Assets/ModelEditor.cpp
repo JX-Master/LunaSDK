@@ -110,8 +110,6 @@ namespace Luna
     }
     void register_model_editor()
     {
-        register_boxed_type<ModelEditor>();
-        impl_interface_for_type<ModelEditor, IAssetEditor>();
         AssetEditorDesc desc;
         desc.new_editor = new_model_editor;
         desc.on_draw_tile = nullptr;

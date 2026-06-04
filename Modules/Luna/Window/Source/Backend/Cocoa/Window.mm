@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
-#include "Window.h"
+#include "CocoaWindowImpl.h"
 #include "../../Window.hpp"
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
@@ -633,9 +633,6 @@ namespace Luna
                 // Initialize application if not already done
                 [NSApplication sharedApplication];
                 [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-                
-                register_boxed_type<Window>();
-                impl_interface_for_type<Window, ICocoaWindow, IWindow>();
                 
                 return ok;
             }

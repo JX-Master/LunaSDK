@@ -12,6 +12,7 @@
 #include <Luna/RHI/Texture.hpp>
 #include <Luna/RHI/CommandBuffer.hpp>
 #include <Luna/Runtime/Ref.hpp>
+#include "ResourceReadContext.generated.hpp"
 
 #ifndef LUNA_RHI_UTILITY_API
 #define LUNA_RHI_UTILITY_API
@@ -25,10 +26,8 @@ namespace Luna
         //! @{
 
         //! The utility object to copy data from resource memory to host memory using a temporary readback buffer.
-        struct IResourceReadContext : virtual RHI::IDeviceChild
+        struct [[Luna::interface("31ed53a5-f64c-4d5d-963f-f0cf4566e266")]] IResourceReadContext : virtual RHI::IDeviceChild
         {
-            luiid("31ed53a5-f64c-4d5d-963f-f0cf4566e266");
-            
             //! Resets this context to empty state.
             //! @remarks This clears all recorded copy operations and data, but retains resources allocated so that
             //! they can be reused for a new transmission batch.

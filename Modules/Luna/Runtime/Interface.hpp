@@ -55,7 +55,7 @@ namespace Luna
     {
         InterfaceImplDesc desc;
         desc.type_guid = Meta::StructMetaData<_Ty>::__guid;
-        desc.interface_guid = _Ity1::__guid;
+        desc.interface_guid = Meta::InterfaceMetaData<_Ity1>::__guid;
         desc.cast_to_interface = [](object_t obj) {return (void*)(static_cast<_Ity1*>((_Ty*)obj)); };
         impl_interface_for_type(desc);
         impl_interface_for_type<_Ty, _Itys...>();
@@ -87,7 +87,7 @@ namespace Luna
     template <typename _Ity>
     _Ity* query_interface(object_t object)
     {
-        return object ? (_Ity*)query_interface(object, _Ity::__guid) : nullptr;
+        return object ? (_Ity*)query_interface(object, Meta::InterfaceMetaData<_Ity>::__guid) : nullptr;
     }
 
     //! @interface Interface

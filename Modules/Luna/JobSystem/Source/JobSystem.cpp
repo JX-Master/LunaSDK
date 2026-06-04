@@ -11,7 +11,8 @@
 #define LUNA_JOBSYSTEM_API LUNA_EXPORT
 #include "JobSystem.hpp"
 #include "JobContext.hpp"
-#include "JobScheduler.hpp"
+#include "JobSchedulerImpl.hpp"
+#include "JobSystem.meta.generated.hpp"
 #include <Luna/Runtime/RingDeque.hpp>
 #include <Luna/Runtime/SpinLock.hpp>
 #include <Luna/Runtime/Random.hpp>
@@ -25,8 +26,7 @@ namespace Luna
 
         RV job_system_init()
         {
-            register_boxed_type<JobScheduler>();
-            impl_interface_for_type<JobScheduler, IJobScheduler>();
+            Meta::register_JobSystem_types();
             lutry
             {
                 luset(g_worker_thread_tls, tls_alloc());

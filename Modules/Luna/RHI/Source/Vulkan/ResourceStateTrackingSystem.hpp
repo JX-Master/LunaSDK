@@ -8,8 +8,8 @@
 * @date 2023/4/27
 */
 #pragma once
-#include "Device.hpp"
-#include "Resource.hpp"
+#include "VulkanDevice.hpp"
+#include "VulkanResource.hpp"
 
 namespace Luna
 {

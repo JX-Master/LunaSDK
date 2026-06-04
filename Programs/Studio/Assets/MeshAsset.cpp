@@ -74,7 +74,6 @@ namespace Luna
         set_serializable<Vertex>();
         register_struct_type<MeshPiece>();
         set_serializable<MeshPiece>();
-        register_boxed_type<Mesh>();
         register_struct_type<MeshAsset>();
         set_serializable<MeshAsset>();
         Asset::AssetTypeDesc desc;

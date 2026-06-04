@@ -345,9 +345,6 @@ namespace Luna
     {
         lutry
         {
-            register_boxed_type<BloomPassGlobalData>();
-            register_boxed_type<BloomPass>();
-            impl_interface_for_type<BloomPass, RG::IRenderPass>();
             RG::RenderPassTypeDesc desc;
             desc.name = "Bloom";
             desc.desc = "Add bloom effects to the scene";

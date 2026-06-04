@@ -11,6 +11,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #include "../Window.hpp"
 #include <objc/objc.h>
+#include "UIKitWindow.generated.hpp"
 
 namespace Luna
 {
@@ -21,10 +22,8 @@ namespace Luna
         
         //! @interface IUIKitWindow
         //! Implemented by window object on iOS platform.
-        struct IUIKitWindow : virtual IWindow
+        struct [[Luna::interface("dccb697e-4411-4797-b28d-78d1fcd0339f")]] IUIKitWindow : virtual IWindow
         {
-            luiid("dccb697e-4411-4797-b28d-78d1fcd0339f");
-
             //! Gets UIWIndow* handle of the window object.
             //! @return Returns UIWIndow* handle of the window object.
             //! The window handle is owned by the window object, the user cannot increase/decrease the reference

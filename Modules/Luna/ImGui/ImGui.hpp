@@ -13,6 +13,7 @@
 #include "ImGuizmo.h"
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Font/Font.hpp>
+#include "ImGui.generated.hpp"
 
 #ifndef LUNA_IMGUI_API
 #define LUNA_IMGUI_API
@@ -38,10 +39,8 @@ namespace Luna
 
         LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_default();
 
-        struct ISampledImage : virtual Interface
+        struct [[Luna::interface("7c85e4ac-3cf1-4d18-9a56-1bd8043e3e3f")]] ISampledImage : virtual Interface
         {
-            luiid("7c85e4ac-3cf1-4d18-9a56-1bd8043e3e3f");
-
             virtual RHI::ITexture* get_texture() = 0;
             virtual void set_texture(RHI::ITexture* texture) = 0;
             virtual RHI::SamplerDesc get_sampler() = 0;

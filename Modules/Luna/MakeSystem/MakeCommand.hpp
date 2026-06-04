@@ -12,6 +12,7 @@
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/String.hpp>
+#include "MakeCommand.generated.hpp"
 
 namespace Luna
 {
@@ -33,10 +34,8 @@ namespace Luna
         };
 
         //! Defines a build action that can be executed by the make system.
-        struct IMakeCommand : virtual Interface
+        struct [[Luna::interface("{caec8bd0-9ad4-4660-86e3-8640b240c2a7}")]] IMakeCommand : virtual Interface
         {
-            luiid("{caec8bd0-9ad4-4660-86e3-8640b240c2a7}");
-
             //! Executes the build action for a node.
             //! @param[in] log_handler The log handler that is used to output logs.
             //! @return Returns zero on success, non-zero on failure.

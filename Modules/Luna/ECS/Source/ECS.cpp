@@ -9,7 +9,8 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_ECS_API LUNA_EXPORT
-#include "World.hpp"
+#include "WorldImpl.hpp"
+#include "ECS.meta.generated.hpp"
 #include <Luna/Runtime/Module.hpp>
 namespace Luna
 {
@@ -24,8 +25,7 @@ namespace Luna
             }
             virtual RV on_init() override
             {
-                register_boxed_type<World>();
-                impl_interface_for_type<World, IWorld>();
+                Meta::register_ECS_types();
                 return ok;
             }
         };

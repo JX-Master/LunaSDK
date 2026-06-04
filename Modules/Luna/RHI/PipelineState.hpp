@@ -12,6 +12,7 @@
 #include "PipelineLayout.hpp"
 #include <Luna/Runtime/Span.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
+#include "PipelineState.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -544,10 +545,8 @@ namespace Luna
         //! @interface IPipelineState
         //! Represents one pipeline state object that stores pipeline configurations that can be 
         //! applied to one pipeline in one call.
-        struct IPipelineState : virtual IDeviceChild
+        struct [[Luna::interface("{A2AC1B03-5258-464E-9CA4-7497AFB7F443}")]] IPipelineState : virtual IDeviceChild
         {
-            luiid("{A2AC1B03-5258-464E-9CA4-7497AFB7F443}");
-
 
         };
 

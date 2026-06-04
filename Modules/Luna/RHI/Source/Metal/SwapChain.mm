@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/8/3
 */
-#include "SwapChain.h"
+#include "MetalSwapChain.h"
 
 #if defined(LUNA_PLATFORM_MACOS)
 #include <Luna/Window/Cocoa/CocoaWindow.hpp>

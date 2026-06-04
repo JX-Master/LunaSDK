@@ -11,6 +11,7 @@
 #include "Texture.hpp"
 #include <Luna/Runtime/Waitable.hpp>
 #include <Luna/Window/Window.hpp>
+#include "SwapChain.generated.hpp"
 
 namespace Luna
 {
@@ -115,10 +116,8 @@ namespace Luna
 
         //! @interface ISwapChain
         //! Represents one swap chain used for presenting images to the screen.
-        struct ISwapChain : virtual IDeviceChild
+        struct [[Luna::interface("{cc455fba-646d-4a64-83e4-149f004a5ea0}")]] ISwapChain : virtual IDeviceChild
         {
-            luiid("{cc455fba-646d-4a64-83e4-149f004a5ea0}");
-
             //! Gets the window that this swap chain bounds to.
             virtual Window::IWindow* get_window() = 0;
 

@@ -11,6 +11,7 @@
 #pragma once
 #include "Waitable.hpp"
 #include "Ref.hpp"
+#include "Semaphore.generated.hpp"
 namespace Luna
 {
     //! @addtogroup RuntimeThread
@@ -18,10 +19,8 @@ namespace Luna
     
     //! @interface ISemaphore
     //! Represents one system-level semaphore object.
-    struct ISemaphore : virtual IWaitable
+    struct [[Luna::interface("{ef6a7782-0a6c-4a40-abc9-a6d2381a3397}")]] ISemaphore : virtual IWaitable
     {
-        luiid("{ef6a7782-0a6c-4a40-abc9-a6d2381a3397}");
-
         //! Increases the counter value of the semaphore by one.
         virtual void release() = 0;
     };

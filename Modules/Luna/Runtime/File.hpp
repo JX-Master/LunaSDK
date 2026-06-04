@@ -10,6 +10,7 @@
 #pragma once
 #include "Stream.hpp"
 #include "Ref.hpp"
+#include "File.generated.hpp"
 namespace Luna
 {
     //! @addtogroup Runtime
@@ -86,10 +87,8 @@ namespace Luna
 
     //! @interface IFile
     //! Represents a opened file object.
-    struct IFile : virtual ISeekableStream
+    struct [[Luna::interface("{c61fbf68-89dc-4776-8a99-cc855ff8289e}")]] IFile : virtual ISeekableStream
     {
-        luiid("{c61fbf68-89dc-4776-8a99-cc855ff8289e}");
-
         //! Clears all buffers for this stream and causes all buffered data to be written to the underlying device.
         virtual void flush() = 0;
     };
@@ -97,10 +96,8 @@ namespace Luna
     //! @interface IFileIterator
     //! Represents a directory stream that can be used to iterate all files and directories
     //! in the specified directory. See @ref open_dir for details.
-    struct IFileIterator : virtual Interface
+    struct [[Luna::interface("{97643c3c-4681-4b24-9aee-320f88379edc}")]] IFileIterator : virtual Interface
     {
-        luiid("{97643c3c-4681-4b24-9aee-320f88379edc}");
-
         //! Checks if this iterator points to a valid file in the directory stream.
         //! @return Returns `true` if the iterator points to a valid file, returns `false` otherwise.
         virtual bool is_valid() = 0;

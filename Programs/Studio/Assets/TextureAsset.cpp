@@ -179,7 +179,6 @@ namespace Luna
     {
         lutry
         {
-            register_boxed_type<TextureAssetUserdata>();
             Ref<TextureAssetUserdata> userdata = new_object<TextureAssetUserdata>();
             luexp(userdata->init());
             Asset::AssetTypeDesc desc;

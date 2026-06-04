@@ -12,7 +12,7 @@
 #include "../../Event.hpp"
 #include "EventDispatching.h"
 #include "Luna/Window/Event.hpp"
-#include "Window.h"
+#include "CocoaWindowImpl.h"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/TSAssert.hpp>

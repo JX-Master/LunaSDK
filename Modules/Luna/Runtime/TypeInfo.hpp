@@ -90,6 +90,13 @@ namespace Luna
             static constexpr const c8* __name = EnumTypeInfo<_Ty>::__name;
             static constexpr Guid __guid { EnumTypeInfo<_Ty>::__guid };
         };
+
+        //! Defines metadata for one reflected interface type.
+        //! @details This default implementation keeps compatibility with interfaces that still use @ref luiid.
+        template <typename _Ty> struct InterfaceMetaData
+        {
+            static constexpr Guid __guid { _Ty::__guid };
+        };
     }
 
     //! The functional obejct that can be overloaded to define custom behavior of @ref typeof for user-defined types.

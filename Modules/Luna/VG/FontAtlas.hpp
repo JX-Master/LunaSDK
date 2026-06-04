@@ -10,6 +10,7 @@
 #pragma once
 #include <Luna/Font/Font.hpp>
 #include "ShapeBuffer.hpp"
+#include "FontAtlas.generated.hpp"
 
 #ifndef LUNA_VG_API
 #define LUNA_VG_API
@@ -24,10 +25,8 @@ namespace Luna
 
         //! @interface IFontAtlas
         //! Represents one font glyph packer that packs font glyph data to one shape buffer.
-        struct IFontAtlas : virtual Interface
+        struct [[Luna::interface("{FCDB9053-448B-4E7D-BC94-B67A7E81081A}")]] IFontAtlas : virtual Interface
         {
-            luiid("{FCDB9053-448B-4E7D-BC94-B67A7E81081A}");
-
             //! Removes all glyphs in the font atlas, but keeps the internal storage, so that
             //! they can be reused to store new glyphs.
             virtual void clear() = 0;

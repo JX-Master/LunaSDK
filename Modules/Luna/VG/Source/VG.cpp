@@ -9,10 +9,11 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_VG_API LUNA_EXPORT
-#include "FontAtlas.hpp"
-#include "ShapeDrawList.hpp"
-#include "ShapeRenderer.hpp"
-#include "ShapeBuffer.hpp"
+#include "FontAtlasImpl.hpp"
+#include "ShapeDrawListImpl.hpp"
+#include "ShapeRendererImpl.hpp"
+#include "ShapeBufferImpl.hpp"
+#include "VG.meta.generated.hpp"
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/RHIUtility/RHIUtility.hpp>
@@ -30,14 +31,7 @@ namespace Luna
             }
             virtual RV on_init() override
             {
-                register_boxed_type<FontAtlas>();
-                impl_interface_for_type<FontAtlas, IFontAtlas>();
-                register_boxed_type<ShapeDrawList>();
-                impl_interface_for_type<ShapeDrawList, IShapeDrawList>();
-                register_boxed_type<FillShapeRenderer>();
-                impl_interface_for_type<FillShapeRenderer, IShapeRenderer>();
-                register_boxed_type<ShapeBuffer>();
-                impl_interface_for_type<ShapeBuffer, IShapeBuffer>();
+                Meta::register_VG_types();
                 return init_render_resources();
             }
             virtual void on_close() override

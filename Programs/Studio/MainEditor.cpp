@@ -34,6 +34,7 @@
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
 #include "RenderPasses/BloomPass.hpp"
+#include "Studio.meta.generated.hpp"
 
 #include "SceneRenderer.hpp"
 #include <Luna/Runtime/Log.hpp>
@@ -170,6 +171,7 @@ namespace Luna
 
             // Register types.
 
+            Meta::register_Studio_types();
             register_components();
 
             luexp(register_static_texture_asset_type());
@@ -413,8 +415,6 @@ namespace Luna
 
     void run_main_editor(const Path& project_path)
     {
-        register_boxed_type<MainEditor>();
-        register_boxed_type<AssetBrowser>();
         register_struct_type<Operation>();
         register_struct_type<AssetEditingOp>(typeof<Operation>());
         register_struct_type<DiffAssetEditingOp>(typeof<AssetEditingOp>());

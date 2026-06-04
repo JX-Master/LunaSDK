@@ -30,6 +30,8 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
             stamp,
             "--depfile",
             depfile,
+            "--target",
+            payload.Required("target"),
             "--mode",
             payload.Required("mode"),
             "--platform",

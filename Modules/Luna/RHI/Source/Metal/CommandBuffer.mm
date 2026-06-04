@@ -7,12 +7,12 @@
 * @author JXMaster
 * @date 2023/7/13
 */
-#include "CommandBuffer.h"
-#include "Resource.h"
-#include "PipelineState.h"
-#include "DescriptorSet.h"
-#include "QueryHeap.h"
-#include "Fence.h"
+#include "MetalCommandBuffer.h"
+#include "MetalResource.h"
+#include "MetalPipelineState.h"
+#include "MetalDescriptorSet.h"
+#include "MetalQueryHeap.h"
+#include "MetalFence.h"
 #include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna

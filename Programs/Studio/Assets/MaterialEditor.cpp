@@ -79,8 +79,6 @@ namespace Luna
     }
     void register_material_editor()
     {
-        register_boxed_type<MaterialEditor>();
-        impl_interface_for_type<MaterialEditor, IAssetEditor>();
         AssetEditorDesc desc;
         desc.new_editor = material_new_editor;
         desc.on_draw_tile = nullptr;

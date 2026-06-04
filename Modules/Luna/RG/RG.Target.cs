@@ -9,7 +9,7 @@ public sealed class RGTargetRules : TargetRules
             rulesPath: "Modules/Luna/RG/RG.Target.cs")
     {
         Headers("*.hpp", "Source/**.hpp");
-        MetaHeaders("Source/RenderGraph.hpp");
+        MetaHeaders("RenderGraph.hpp", "RenderPass.hpp", "Source/RenderGraphImpl.hpp");
         Sources("Source/**.cpp");
         DependsOn("Runtime", "RHI");
     }

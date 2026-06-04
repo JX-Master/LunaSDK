@@ -11,22 +11,23 @@
 #define LUNA_RHI_API LUNA_EXPORT
 #include "../../RHI.hpp"
 #include <d3d12.h>
-#include "Device.hpp"
-#include "SwapChain.hpp"
+#include "D3D12Device.hpp"
+#include "D3D12SwapChain.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #include "../RHI.hpp"
 
-#include "PipelineLayout.hpp"
-#include "PipelineState.hpp"
-#include "CommandBuffer.hpp"
-#include "SwapChain.hpp"
-#include "DescriptorSet.hpp"
-#include "DescriptorSetLayout.hpp"
-#include "QueryHeap.hpp"
-#include "Fence.hpp"
-#include "Adapter.hpp"
+#include "D3D12PipelineLayout.hpp"
+#include "D3D12PipelineState.hpp"
+#include "D3D12CommandBuffer.hpp"
+#include "D3D12SwapChain.hpp"
+#include "D3D12DescriptorSet.hpp"
+#include "D3D12DescriptorSetLayout.hpp"
+#include "D3D12QueryHeap.hpp"
+#include "D3D12Fence.hpp"
+#include "D3D12Adapter.hpp"
+#include "RHI.meta.generated.hpp"
 
 namespace Luna
 {
@@ -37,32 +38,7 @@ namespace Luna
 
         RV render_api_init()
         {
-            register_boxed_type<Adapter>();
-            impl_interface_for_type<Adapter, IAdapter>();
-            register_boxed_type<BufferResource>();
-            impl_interface_for_type<BufferResource, IBuffer, IResource, IDeviceChild>();
-            register_boxed_type<TextureResource>();
-            impl_interface_for_type<TextureResource, ITexture, IResource, IDeviceChild>();
-            register_boxed_type<DeviceMemory>();
-            impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
-            register_boxed_type<PipelineLayout>();
-            impl_interface_for_type<PipelineLayout, IPipelineLayout, IDeviceChild>();
-            register_boxed_type<PipelineState>();
-            impl_interface_for_type<PipelineState, IPipelineState, IDeviceChild>();
-            register_boxed_type<CommandBuffer>();
-            impl_interface_for_type<CommandBuffer, ICommandBuffer, IDeviceChild, IWaitable>();
-            register_boxed_type<Device>();
-            impl_interface_for_type<Device, IDevice>();
-            register_boxed_type<SwapChain>();
-            impl_interface_for_type<SwapChain, ISwapChain, IDeviceChild>();
-            register_boxed_type<DescriptorSetLayout>();
-            impl_interface_for_type<DescriptorSetLayout, IDescriptorSetLayout, IDeviceChild>();
-            register_boxed_type<DescriptorSet>();
-            impl_interface_for_type<DescriptorSet, IDescriptorSet, IDeviceChild>();
-            register_boxed_type<QueryHeap>();
-            impl_interface_for_type<QueryHeap, IQueryHeap, IDeviceChild>();
-            register_boxed_type<Fence>();
-            impl_interface_for_type<Fence, IFence, IDeviceChild>();
+            Meta::register_RHI_types();
 
             HRESULT hr = ::CreateDXGIFactory1(IID_PPV_ARGS(&g_dxgi));
             if (FAILED(hr))

@@ -139,6 +139,11 @@ namespace Luna
     //! @par Valid Usage
     //! * `type` must specify one valid type object.
     LUNA_RUNTIME_API bool is_type_trivially_copy_constructable(typeinfo_t type);
+    //! Checks whether one type can be copy constructed.
+    //! @param[in] type The type object.
+    //! @return Returns `true` if @ref copy_construct_type can be used for this type.
+    //! Returns `false` if copy construction is disabled for this type.
+    LUNA_RUNTIME_API bool is_type_copy_constructable(typeinfo_t type);
     //! Checks whether one type is a trivially move constructable type.
     //! @details One type is trivially move constructable if:
     //! 1. It is a primitive or enumeration type, or
@@ -150,6 +155,11 @@ namespace Luna
     //! @par Valid Usage
     //! * `type` must specify one valid type object.
     LUNA_RUNTIME_API bool is_type_trivially_move_constructable(typeinfo_t type);
+    //! Checks whether one type can be move constructed.
+    //! @param[in] type The type object.
+    //! @return Returns `true` if @ref move_construct_type can be used for this type.
+    //! Returns `false` if move construction is disabled for this type.
+    LUNA_RUNTIME_API bool is_type_move_constructable(typeinfo_t type);
     //! Checks whether one type is a trivially copy assignable type.
     //! @details One type is trivially copy assignable if:
     //! 1. It is a primitive or enumeration type, or
@@ -161,6 +171,11 @@ namespace Luna
     //! @par Valid Usage
     //! * `type` must specify one valid type object.
     LUNA_RUNTIME_API bool is_type_trivially_copy_assignable(typeinfo_t type);
+    //! Checks whether one type can be copy assigned.
+    //! @param[in] type The type object.
+    //! @return Returns `true` if @ref copy_assign_type can be used for this type.
+    //! Returns `false` if copy assignment is disabled for this type.
+    LUNA_RUNTIME_API bool is_type_copy_assignable(typeinfo_t type);
     //! Checks whether one type is a trivially move assignable type.
     //! @details One type is trivially move assignable if:
     //! 1. It is a primitive or enumeration type, or
@@ -172,6 +187,11 @@ namespace Luna
     //! @par Valid Usage
     //! * `type` must specify one valid type object.
     LUNA_RUNTIME_API bool is_type_trivially_move_assignable(typeinfo_t type);
+    //! Checks whether one type can be move assigned.
+    //! @param[in] type The type object.
+    //! @return Returns `true` if @ref move_assign_type can be used for this type.
+    //! Returns `false` if move assignment is disabled for this type.
+    LUNA_RUNTIME_API bool is_type_move_assignable(typeinfo_t type);
     //! Checks whether one type is a trivially relocatable type.
     //! @details One type is trivially relocatable if:
     //! 1. It is a primitive or enumeration type, or
@@ -638,14 +658,17 @@ namespace Luna
         structure_ctor_t* ctor = nullptr;
         //! The destructor function for this type. If `nullptr`, the default destructor will be used.
         structure_dtor_t* dtor = nullptr;
-        //! The copy constructor for this type. If `nullptr`, the default copy constructor will
-        //! be used.
+        //! The copy constructor for this type. If `nullptr`, the type is considered trivially copy constructable.
+        //! Use @ref unsupported_copy_ctor for types that explicitly disable copy construction.
         structure_copy_ctor_t* copy_ctor = nullptr;
-        //! The move constructor for this type. If `nullptr`, the default move constructor will be used.
+        //! The move constructor for this type. If `nullptr`, the type is considered trivially move constructable.
+        //! Use @ref unsupported_move_ctor for types that explicitly disable move construction.
         structure_move_ctor_t* move_ctor = nullptr;
-        //! The copy assignment operator for this type. If `nullptr`, the default copy assignment operator will be used.
+        //! The copy assignment operator for this type. If `nullptr`, the type is considered trivially copy assignable.
+        //! Use @ref unsupported_copy_assign for types that explicitly disable copy assignment.
         structure_copy_assign_t* copy_assign = nullptr;
-        //! The mvoe assignment operator for this type. If `nullptr`, the default move assignment operator will be used.
+        //! The move assignment operator for this type. If `nullptr`, the type is considered trivially move assignable.
+        //! Use @ref unsupported_move_assign for types that explicitly disable move assignment.
         structure_move_assign_t* move_assign = nullptr;
         //! The properties of this structure type.
         Array<StructurePropertyDesc> properties;
@@ -865,6 +888,23 @@ namespace Luna
         move_assign((_Ty*)dst, (_Ty*)src);
     }
 
+    LUNA_RUNTIME_API void unsupported_copy_ctor(typeinfo_t type, void* dst, const void* src);
+    LUNA_RUNTIME_API void unsupported_move_ctor(typeinfo_t type, void* dst, void* src);
+    LUNA_RUNTIME_API void unsupported_copy_assign(typeinfo_t type, void* dst, const void* src);
+    LUNA_RUNTIME_API void unsupported_move_assign(typeinfo_t type, void* dst, void* src);
+
+    template <typename _Ty>
+    constexpr bool can_default_copy_construct_v = requires(_Ty* dst, const _Ty* src) { new (dst) _Ty(*src); };
+
+    template <typename _Ty>
+    constexpr bool can_default_move_construct_v = requires(_Ty* dst, _Ty* src) { new (dst) _Ty(static_cast<_Ty&&>(*src)); };
+
+    template <typename _Ty>
+    constexpr bool can_default_copy_assign_v = requires(_Ty* dst, const _Ty* src) { (*dst) = (*src); };
+
+    template <typename _Ty>
+    constexpr bool can_default_move_assign_v = requires(_Ty* dst, _Ty* src) { (*dst) = static_cast<_Ty&&>(*src); };
+
     //! Registers one structure type to the type system. The structure type must have metadata declared by
     //! LunaMetaTool or one @ref lustruct macro defined in the structure body.
     //! @param[in] properties A list of properties that should be tracked by the type system. The user can use
@@ -883,10 +923,38 @@ namespace Luna
         desc.alignment = alignof(_Ty);
         desc.ctor = is_trivially_constructible_v<_Ty> ? nullptr : default_ctor<_Ty>;
         desc.dtor = is_trivially_destructible_v<_Ty> ? nullptr : default_dtor<_Ty>;
-        desc.copy_ctor = is_trivially_copy_constructible_v<_Ty> ? nullptr : default_copy_ctor<_Ty>;
-        desc.move_ctor = is_trivially_move_constructible_v<_Ty> ? nullptr : default_move_ctor<_Ty>;
-        desc.copy_assign = is_trivially_copy_assignable_v<_Ty> ? nullptr : default_copy_assign<_Ty>;
-        desc.move_assign = is_trivially_move_assignable_v<_Ty> ? nullptr : default_move_assign<_Ty>;
+        if constexpr (can_default_copy_construct_v<_Ty> && !is_trivially_copy_constructible_v<_Ty>)
+        {
+            desc.copy_ctor = default_copy_ctor<_Ty>;
+        }
+        else if constexpr (!can_default_copy_construct_v<_Ty>)
+        {
+            desc.copy_ctor = unsupported_copy_ctor;
+        }
+        if constexpr (can_default_move_construct_v<_Ty> && !is_trivially_move_constructible_v<_Ty>)
+        {
+            desc.move_ctor = default_move_ctor<_Ty>;
+        }
+        else if constexpr (!can_default_move_construct_v<_Ty>)
+        {
+            desc.move_ctor = unsupported_move_ctor;
+        }
+        if constexpr (can_default_copy_assign_v<_Ty> && !is_trivially_copy_assignable_v<_Ty>)
+        {
+            desc.copy_assign = default_copy_assign<_Ty>;
+        }
+        else if constexpr (!can_default_copy_assign_v<_Ty>)
+        {
+            desc.copy_assign = unsupported_copy_assign;
+        }
+        if constexpr (can_default_move_assign_v<_Ty> && !is_trivially_move_assignable_v<_Ty>)
+        {
+            desc.move_assign = default_move_assign<_Ty>;
+        }
+        else if constexpr (!can_default_move_assign_v<_Ty>)
+        {
+            desc.move_assign = unsupported_move_assign;
+        }
         desc.properties = properties;
         desc.trivially_relocatable = is_trivially_relocatable_v<_Ty>;
         desc.abstract = false;
@@ -933,10 +1001,24 @@ namespace Luna
         desc.alignment = alignof(_Ty);
         desc.ctor = nullptr;
         desc.dtor = is_trivially_destructible_v<_Ty> ? nullptr : default_dtor<_Ty>;
-        desc.copy_ctor = nullptr;
-        desc.move_ctor = nullptr;
-        desc.copy_assign = is_trivially_copy_assignable_v<_Ty> ? nullptr : default_copy_assign<_Ty>;
-        desc.move_assign = is_trivially_move_assignable_v<_Ty> ? nullptr : default_move_assign<_Ty>;
+        desc.copy_ctor = unsupported_copy_ctor;
+        desc.move_ctor = unsupported_move_ctor;
+        if constexpr (can_default_copy_assign_v<_Ty> && !is_trivially_copy_assignable_v<_Ty>)
+        {
+            desc.copy_assign = default_copy_assign<_Ty>;
+        }
+        else if constexpr (!can_default_copy_assign_v<_Ty>)
+        {
+            desc.copy_assign = unsupported_copy_assign;
+        }
+        if constexpr (can_default_move_assign_v<_Ty> && !is_trivially_move_assignable_v<_Ty>)
+        {
+            desc.move_assign = default_move_assign<_Ty>;
+        }
+        else if constexpr (!can_default_move_assign_v<_Ty>)
+        {
+            desc.move_assign = unsupported_move_assign;
+        }
         desc.properties = properties;
         desc.trivially_relocatable = is_trivially_relocatable_v<_Ty>;
         desc.abstract = true;
@@ -989,6 +1071,29 @@ namespace Luna
             }
         }
         return register_enum_type<_Ty>(Span<const EnumerationOptionDesc>(options.data(), options.size()), multienum);
+    }
+
+    namespace Meta
+    {
+        template <typename _Ty>
+        typeinfo_t register_reflected_struct_type(typeinfo_t base_type = nullptr)
+        {
+            if (auto type = typeof<_Ty>())
+            {
+                return type;
+            }
+            return base_type ? register_struct_type<_Ty>(base_type) : register_struct_type<_Ty>();
+        }
+
+        template <typename _Ty>
+        typeinfo_t register_reflected_enum_type(bool multienum = false)
+        {
+            if (auto type = typeof<_Ty>())
+            {
+                return type;
+            }
+            return register_enum_type<_Ty>(multienum);
+        }
     }
 
     //! @}

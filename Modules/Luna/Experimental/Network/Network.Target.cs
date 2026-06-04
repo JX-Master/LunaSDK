@@ -9,6 +9,7 @@ public sealed class NetworkTargetRules : TargetRules
             rulesPath: "Modules/Luna/Experimental/Network/Network.Target.cs")
     {
         Headers("*.hpp");
+        MetaHeaders("Network.hpp");
         Sources("Source/*.cpp");
         DependsOn("Runtime");
     }

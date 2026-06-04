@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Resource.hpp"
+#include "Texture.generated.hpp"
 
 namespace Luna
 {
@@ -459,10 +460,8 @@ namespace Luna
         //! @interface ITexture
         //! Represents one texture resource that can be used to contain 
         //! pixel data of certain format.
-        struct ITexture : virtual IResource
+        struct [[Luna::interface("{66189448-3914-4055-A4B3-AE3D6EF57F1A}")]] ITexture : virtual IResource
         {
-            luiid("{66189448-3914-4055-A4B3-AE3D6EF57F1A}");
-
             //! Gets the descriptor of the texture.
             virtual TextureDesc get_desc() = 0;
         };

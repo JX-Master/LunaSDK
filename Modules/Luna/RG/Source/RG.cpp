@@ -11,7 +11,8 @@
 #define LUNA_RG_API LUNA_EXPORT
 #include "RenderPass.hpp"
 #include <Luna/Runtime/Module.hpp>
-#include "RenderGraph.hpp"
+#include "RenderGraphImpl.hpp"
+#include "RG.meta.generated.hpp"
 #include "../RG.hpp"
 namespace Luna
 {
@@ -26,8 +27,7 @@ namespace Luna
             }
             virtual RV on_init() override
             {
-                register_boxed_type<RenderGraph>();
-                impl_interface_for_type<RenderGraph, IRenderGraph, IRenderPassContext, IRenderGraphCompiler>();
+                Meta::register_RG_types();
                 g_render_pass_types_mtx = new_mutex();
                 return ok;
             }

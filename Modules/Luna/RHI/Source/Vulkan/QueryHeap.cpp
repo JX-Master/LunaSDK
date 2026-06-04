@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2022/4/25
 */
-#include "QueryHeap.hpp"
+#include "VulkanQueryHeap.hpp"
 
 namespace Luna
 {

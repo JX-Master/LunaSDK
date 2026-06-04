@@ -11,6 +11,7 @@
 #include <Luna/Runtime/Vector.hpp>
 #include "DeviceChild.hpp"
 #include "DescriptorSetLayout.hpp"
+#include "PipelineLayout.generated.hpp"
 
 namespace Luna
 {
@@ -51,10 +52,8 @@ namespace Luna
         //! @interface IPipelineLayout
         //! Describes how shader parameters are accessed by every shader
         //! in the pipeline.
-        struct IPipelineLayout : virtual IDeviceChild
+        struct [[Luna::interface("{347097dc-04e2-44e8-a9a0-3f89e77b4425}")]] IPipelineLayout : virtual IDeviceChild
         {
-            luiid("{347097dc-04e2-44e8-a9a0-3f89e77b4425}");
-
         };
 
         //! @}

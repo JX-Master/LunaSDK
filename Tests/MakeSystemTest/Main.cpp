@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstring>
 #include "WriteFileCommand.hpp"
+#include "MakeSystemTest.meta.generated.hpp"
 
 using namespace Luna;
 using namespace Luna::MakeSystem;
@@ -429,8 +430,7 @@ int main()
     init();
     lupanic_if_failed(add_module(module_make_system()));
     lupanic_if_failed(init_modules());
-    register_boxed_type<WriteFileCommand>();
-    impl_interface_for_type<WriteFileCommand, IMakeCommand>();
+    Meta::register_MakeSystemTest_types();
     incremental_and_action_key_test();
     depfile_test();
     graph_validation_test();

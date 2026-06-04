@@ -22,6 +22,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include "Socket.hpp"
+#include "Network.meta.generated.hpp"
 
 namespace Luna
 {
@@ -142,8 +143,7 @@ namespace Luna
         }
         RV platform_init()
         {
-            register_boxed_type<Socket>();
-            impl_interface_for_type<Socket, ISocket>();
+            Meta::register_Network_types();
             return ok;
         }
         void platform_close()

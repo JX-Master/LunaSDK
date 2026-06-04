@@ -66,8 +66,6 @@ namespace Luna
     }
     void register_texture_editor()
     {
-        register_boxed_type<TextureEditor>();
-        impl_interface_for_type<TextureEditor, IAssetEditor>();
         AssetEditorDesc desc;
         desc.on_draw_tile = on_draw_tex_tile;
         desc.new_editor = new_tex_editor;

@@ -13,6 +13,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_IMGUI_API LUNA_EXPORT
 #include "../ImGui.hpp"
+#include "ImGui.meta.generated.hpp"
 #include "imgui.h"
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Module.hpp>
@@ -77,8 +78,7 @@ namespace Luna
         static RV init()
         {
             using namespace RHI;
-            register_boxed_type<SampledImage>();
-            impl_interface_for_type<SampledImage, ISampledImage>();
+            Meta::register_ImGui_types();
 
             // Setup Dear ImGui context
             IMGUI_CHECKVERSION();

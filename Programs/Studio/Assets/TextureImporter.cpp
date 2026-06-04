@@ -620,8 +620,6 @@ namespace Luna
     }
     void register_texture_importer()
     {
-        register_boxed_type<TextureImporter>();
-        impl_interface_for_type<TextureImporter, IAssetEditor>();
         AssetImporterDesc desc;
         desc.new_importer = new_static_texture_importer;
         g_env->register_asset_importer_type(get_static_texture_asset_type(), desc);
