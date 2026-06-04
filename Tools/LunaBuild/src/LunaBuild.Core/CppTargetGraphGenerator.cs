@@ -756,7 +756,8 @@ public sealed class CppTargetGraphGenerator
         BuildShaderDefinition shader,
         string headerPath)
     {
-        return string.Join('\n',
+        var lines = new List<string>
+        {
             "kind=cppsl.shader",
             $"target={target.Name}",
             $"source={workspace.ToRepositoryRelativePath(shader.SourceFile)}",
@@ -767,7 +768,14 @@ public sealed class CppTargetGraphGenerator
             $"format={ShaderDataFormat(options.RhiApi)}",
             $"mode={options.Mode}",
             $"platform={options.Platform}",
-            $"arch={options.Architecture}");
+            $"arch={options.Architecture}",
+        };
+        if(options.Platform == BuildPlatform.IOS)
+        {
+            lines.Add($"apple_sdk={BuildOutputLayout.AppleSdkName(options)}");
+            lines.Add($"ios_deployment_target={IOSDeploymentTarget(options)}");
+        }
+        return string.Join('\n', lines);
     }
 
     private static string BuildCopyCommandDescription(
@@ -807,6 +815,13 @@ public sealed class CppTargetGraphGenerator
             RhiApi.Metal => "msl",
             _ => throw new ArgumentOutOfRangeException(nameof(rhiApi), rhiApi, null),
         };
+    }
+
+    private static string IOSDeploymentTarget(BuildOptions options)
+    {
+        return options.Properties.TryGetString("ios_deployment_target", out var configured) && !string.IsNullOrWhiteSpace(configured)
+            ? configured
+            : "13.0";
     }
 
     private static string SourceLanguage(string path)

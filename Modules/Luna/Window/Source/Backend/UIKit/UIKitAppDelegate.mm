@@ -109,12 +109,14 @@ using namespace Luna::Window;
 
 - (void)applicationWillTerminate
 {
+    if (!Luna::is_initialized()) return;
     auto e = new_object<ApplicationWillTerminateEvent>();
     dispatch_event_to_handler(e.object());
 }
 
 - (void)applicationDidReceiveMemoryWarning
 {
+    if (!Luna::is_initialized()) return;
     auto e = new_object<ApplicationDidReceiveMemoryWarningEvent>();
     dispatch_event_to_handler(e.object());
 }
@@ -203,6 +205,7 @@ using namespace Luna::Window;
 
 - (void)sceneWillResignActive:(UIScene *)scene
 {
+    if (!Luna::is_initialized()) return;
     auto e = new_object<ApplicationWillEnterBackgroundEvent>();
     dispatch_event_to_handler(e.object());
 }
@@ -216,6 +219,7 @@ using namespace Luna::Window;
 
 - (void)sceneDidEnterBackground:(UIScene *)scene
 {
+    if (!Luna::is_initialized()) return;
     if(g_window)
     {
         g_window->m_minimized = true;
