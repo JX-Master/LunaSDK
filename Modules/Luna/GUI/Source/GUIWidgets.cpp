@@ -300,7 +300,23 @@ namespace Luna
 
         LUNA_GUI_API void end_table_layout(IContext* context)
         {
-            context_from_interface(context)->end_container();
+            Context* ctx = context_from_interface(context);
+            luassert(!ctx->m_parent_stack.empty());
+            u32 parent = ctx->m_parent_stack.back();
+            luassert(parent < ctx->m_build_desc.nodes.size());
+            TableLayoutNode* table = table_layout_node(ctx->m_build_desc.nodes[parent]);
+            luassert_msg(table && table->active_row_attachment == U32_MAX, "Cannot end a table layout while a table row is open.");
+            ctx->end_container();
+        }
+
+        LUNA_GUI_API bool begin_table_row(IContext* context)
+        {
+            return context_from_interface(context)->begin_table_row();
+        }
+
+        LUNA_GUI_API void end_table_row(IContext* context)
+        {
+            context_from_interface(context)->end_table_row();
         }
 
         LUNA_GUI_API void set_next_table_cell_color(IContext* context, const Float4U& color)

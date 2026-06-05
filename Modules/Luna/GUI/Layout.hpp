@@ -502,6 +502,15 @@ namespace Luna
             }
         };
 
+        //! Selects how table row heights are computed.
+        enum class TableRowHeightMode : u8
+        {
+            //! Use @ref TableDesc::row_sizes and @ref TableDesc::default_row_size.
+            track_sizes,
+            //! Use one fixed height for every row.
+            fixed
+        };
+
         //! Selects the default background fill mode for a table.
         enum class TableBackgroundMode : u8
         {
@@ -582,15 +591,21 @@ namespace Luna
         //! Parameters for table layout.
         struct TableDesc
         {
-            //! Number of columns in the table.
-            u32 columns = 1;
             //! Default column size rule used when @ref column_sizes does not provide an entry.
             TableTrackSize default_column_size = TableTrackSize::hug();
-            //! Default row size rule used when @ref row_sizes does not provide an entry.
+            //! Default row size rule used when @ref row_sizes does not provide an entry in @ref TableRowHeightMode::track_sizes mode.
             TableTrackSize default_row_size = TableTrackSize::hug();
+            //! Row height mode. Fixed-height mode ignores @ref default_row_size and @ref row_sizes.
+            TableRowHeightMode row_height_mode = TableRowHeightMode::track_sizes;
+            //! Fixed row height used when @ref row_height_mode is @ref TableRowHeightMode::fixed.
+            f32 fixed_row_height = 24.0f;
+            //! Whether invisible rows may be skipped by @ref begin_table_row in fixed-height mode.
+            bool virtualize_fixed_rows = false;
+            //! Extra fixed-height rows to keep built before and after the visible range when virtualization is enabled.
+            u32 virtualization_overscan_rows = 2;
             //! Column size rules. Missing entries use @ref default_column_size.
             Vector<TableTrackSize> column_sizes;
-            //! Row size rules. Missing entries use @ref default_row_size.
+            //! Row size rules used in @ref TableRowHeightMode::track_sizes mode. Missing entries use @ref default_row_size.
             Vector<TableTrackSize> row_sizes;
             //! Visual and interaction style for the table.
             TableStyle style;

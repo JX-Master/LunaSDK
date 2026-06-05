@@ -109,7 +109,6 @@ namespace Luna
             if(GUI::get_item_state(heap_header, GUI::State::open()))
             {
                 GUI::TableDesc table;
-                table.columns = 3;
                 table.style.padding = GUI::EdgeInsets::xy(8.0f, 4.0f);
                 table.style.border_size = 1.0f;
                 table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
@@ -123,16 +122,24 @@ namespace Luna
                 table.column_sizes.push_back(GUI::TableTrackSize::fixed(120.0f));
                 GUI::begin_table_layout(context, h.first.c_str(), table);
                 {
-                    GUI::text(context, "Type");
-                    GUI::text(context, "Size");
-                    GUI::text(context, "Allocation Count");
+                    if(GUI::begin_table_row(context))
+                    {
+                        GUI::text(context, "Type");
+                        GUI::text(context, "Size");
+                        GUI::text(context, "Allocation Count");
+                        GUI::end_table_row(context);
+                    }
                     for(auto& a : h.second)
                     {
-                        String count_text;
-                        strprintf(count_text, "%llu", (u64)a.second.second);
-                        GUI::text(context, a.first.c_str());
-                        GUI::text(context, memory_size_text(a.second.first).c_str());
-                        GUI::text(context, count_text.c_str());
+                        if(GUI::begin_table_row(context))
+                        {
+                            String count_text;
+                            strprintf(count_text, "%llu", (u64)a.second.second);
+                            GUI::text(context, a.first.c_str());
+                            GUI::text(context, memory_size_text(a.second.first).c_str());
+                            GUI::text(context, count_text.c_str());
+                            GUI::end_table_row(context);
+                        }
                     }
                     GUI::end_table_layout(context);
                 }

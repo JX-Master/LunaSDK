@@ -217,7 +217,6 @@ namespace Luna
                             f32 recent_w = max((f32)sz.x - 32.0f, 120.0f);
                             GUI::begin_scroll_view(gui, "Recent Projects", GUI::Size::fixed(recent_w, recent_h));
                             GUI::TableDesc recent_table;
-                            recent_table.columns = 4;
                             recent_table.style.padding = GUI::EdgeInsets::xy(8.0f, 4.0f);
                             recent_table.style.border_size = 1.0f;
                             recent_table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
@@ -234,15 +233,19 @@ namespace Luna
                             GUI::begin_table_layout(gui, "Recent Project Table", recent_table);
                             for(usize i = 0; i < recents.size(); ++i)
                             {
-                                DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(recents[i].m_last_use_time));
-                                String time_text;
-                                strprintf(time_text, "%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
-                                GUI::push_id(gui, (u64)i);
-                                GUI::text(gui, recents[i].m_path.encode().c_str());
-                                GUI::text(gui, time_text.c_str());
-                                recent_open_buttons.push_back(GUI::button(gui, "Open"));
-                                recent_remove_buttons.push_back(GUI::button(gui, "Remove"));
-                                GUI::pop_id(gui);
+                                if(GUI::begin_table_row(gui))
+                                {
+                                    DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(recents[i].m_last_use_time));
+                                    String time_text;
+                                    strprintf(time_text, "%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
+                                    GUI::push_id(gui, (u64)i);
+                                    GUI::text(gui, recents[i].m_path.encode().c_str());
+                                    GUI::text(gui, time_text.c_str());
+                                    recent_open_buttons.push_back(GUI::button(gui, "Open"));
+                                    recent_remove_buttons.push_back(GUI::button(gui, "Remove"));
+                                    GUI::pop_id(gui);
+                                    GUI::end_table_row(gui);
+                                }
                             }
                             GUI::end_table_layout(gui);
                             GUI::end_scroll_view(gui);

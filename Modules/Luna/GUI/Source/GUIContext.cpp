@@ -333,12 +333,28 @@ namespace Luna
                     }
                     build_hint_state().has_next_canvas_item_layout = false;
                 }
-                if(build_hint_state().has_next_table_cell_color)
+                if(TableLayoutNode* table = table_layout_node(parent_node))
                 {
-                    if(TableLayoutNode* table = table_layout_node(parent_node))
+                    luassert_msg(table->active_row_attachment != U32_MAX &&
+                        table->active_row_attachment < table->row_attachments.size(),
+                        "Table cells must be submitted between begin_table_row and end_table_row.");
+                    TableRowAttachment& row = table->row_attachments[table->active_row_attachment];
+                    u32 column = row.cell_count++;
+                    TableCellAttachment cell;
+                    cell.child_index = index;
+                    cell.child_id = m_build_desc.nodes[index].id;
+                    cell.row = table->active_row_attachment;
+                    cell.column = column;
+                    if(build_hint_state().has_next_table_cell_color)
                     {
-                        table->cell_attachments.push_back(TableCellAttachment{index, m_build_desc.nodes[index].id, build_hint_state().next_table_cell_color});
+                        cell.color_enabled = true;
+                        cell.color = build_hint_state().next_table_cell_color;
                     }
+                    table->cell_attachments.push_back(cell);
+                    build_hint_state().has_next_table_cell_color = false;
+                }
+                else if(build_hint_state().has_next_table_cell_color)
+                {
                     build_hint_state().has_next_table_cell_color = false;
                 }
                 if(build_hint_state().has_next_dock_panel_style)
@@ -375,6 +391,66 @@ namespace Luna
             luassert(m_parent_stack.size() > 1);
             m_parent_stack.pop_back();
             m_id_stack.pop_back();
+        }
+
+        bool Context::table_row_visible(const TableLayoutNode& table, u32 row) const
+        {
+            if(!table_virtual_rows_enabled(table))
+            {
+                return true;
+            }
+            u32 previous_index = find_submitted_node_index(table.id);
+            if(previous_index == U32_MAX || previous_index >= m_layouts.size())
+            {
+                return true;
+            }
+            const NodeLayout& layout = m_layouts[previous_index];
+            if(layout.rect.width <= 0.0f || layout.rect.height <= 0.0f || layout.clip_rect.width <= 0.0f || layout.clip_rect.height <= 0.0f)
+            {
+                return true;
+            }
+            const TableStyle& style = table.desc.style;
+            f32 row_height = max(table.desc.fixed_row_height, 1.0f);
+            f32 separator = style.row_separators ? max(style.separator_size, 0.0f) : 0.0f;
+            f32 stride = row_height + separator;
+            f32 row_top = layout.rect.offset_y + style.border_size + stride * (f32)row;
+            f32 row_bottom = row_top + row_height;
+            f32 overscan = stride * (f32)table.desc.virtualization_overscan_rows;
+            f32 clip_top = layout.clip_rect.offset_y - overscan;
+            f32 clip_bottom = layout.clip_rect.offset_y + layout.clip_rect.height + overscan;
+            return row_top < clip_bottom && row_bottom > clip_top;
+        }
+
+        bool Context::begin_table_row()
+        {
+            lutsassert();
+            luassert(!m_parent_stack.empty());
+            u32 parent = m_parent_stack.back();
+            luassert(parent < m_build_desc.nodes.size());
+            TableLayoutNode* table = table_layout_node(m_build_desc.nodes[parent]);
+            luassert_msg(table, "begin_table_row must be called inside a table layout.");
+            luassert_msg(table->active_row_attachment == U32_MAX, "Nested table rows are not allowed.");
+            u32 row = (u32)table->row_attachments.size();
+            bool visible = table_row_visible(*table, row);
+            table->row_attachments.push_back(TableRowAttachment());
+            if(visible)
+            {
+                table->active_row_attachment = (u32)table->row_attachments.size() - 1;
+                return true;
+            }
+            return false;
+        }
+
+        void Context::end_table_row()
+        {
+            lutsassert();
+            luassert(!m_parent_stack.empty());
+            u32 parent = m_parent_stack.back();
+            luassert(parent < m_build_desc.nodes.size());
+            TableLayoutNode* table = table_layout_node(m_build_desc.nodes[parent]);
+            luassert_msg(table, "end_table_row must be called inside a table layout.");
+            luassert_msg(table->active_row_attachment != U32_MAX, "end_table_row called without a matching begin_table_row.");
+            table->active_row_attachment = U32_MAX;
         }
 
         void Context::push_id(id_t id)

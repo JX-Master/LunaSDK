@@ -203,10 +203,14 @@ namespace Luna
         void Context::measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred)
         {
             const Node& node = m_submitted_desc.nodes[node_index];
+            const TableLayoutNode* table = table_layout_node(node);
+            luassert(table);
             u32 columns = table_columns(node);
-            u32 rows = table_rows(m_submitted_desc, node);
+            u32 rows = table_rows(node);
             out_column_widths.assign(columns, 1.0f);
             out_row_heights.assign(rows, 1.0f);
+            bool fixed_row_height_mode = table_fixed_row_height_mode(node);
+            f32 fixed_row_height = fixed_row_height_mode ? max(table_desc(node).fixed_row_height, 1.0f) : 1.0f;
 
             TableLayoutState* persistent = get_widget_state<TableLayoutState>(node.id);
             if(persistent)
@@ -228,42 +232,49 @@ namespace Luna
             }
             for(u32 row = 0; row < rows; ++row)
             {
-                const TableTrackSize& size = table_track_size(node, false, row);
-                if(size.policy == TableTrackSizePolicy::fixed)
+                if(fixed_row_height_mode)
                 {
-                    f32 value = size.value;
-                    if(persistent && row < persistent->table_row_sizes.size() && persistent->table_row_sizes[row] > 0.0f)
+                    out_row_heights[row] = fixed_row_height;
+                }
+                else
+                {
+                    const TableTrackSize& size = table_track_size(node, false, row);
+                    if(size.policy == TableTrackSizePolicy::fixed)
                     {
-                        value = persistent->table_row_sizes[row];
+                        f32 value = size.value;
+                        if(persistent && row < persistent->table_row_sizes.size() && persistent->table_row_sizes[row] > 0.0f)
+                        {
+                            value = persistent->table_row_sizes[row];
+                        }
+                        out_row_heights[row] = max(value, 1.0f);
                     }
-                    out_row_heights[row] = max(value, 1.0f);
                 }
             }
 
-            u32 cell_index = 0;
-            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling, ++cell_index)
+            for(const TableCellAttachment& cell : table->cell_attachments)
             {
-                u32 row = cell_index / columns;
-                u32 col = cell_index % columns;
-                if(row >= rows) break;
-                bool measure_column = !table_track_is_fixed(node, true, col);
-                bool measure_row = !table_track_is_fixed(node, false, row);
+                if(cell.child_index == U32_MAX || cell.row >= rows || cell.column >= columns)
+                {
+                    continue;
+                }
+                bool measure_column = !table_track_is_fixed(node, true, cell.column);
+                bool measure_row = !fixed_row_height_mode && !table_track_is_fixed(node, false, cell.row);
                 if(!measure_column && !measure_row)
                 {
                     continue;
                 }
-                LayoutMetrics child_metrics = measure_table_cell_node(*this, child);
+                LayoutMetrics child_metrics = measure_table_cell_node(*this, cell.child_index);
                 Float2U child_size = preferred ? child_metrics.preferred_size : child_metrics.min_size;
                 const TableStyle& style = table_desc(node).style;
                 f32 cell_width = child_size.x + style.padding.left + style.padding.right;
                 f32 cell_height = child_size.y + style.padding.top + style.padding.bottom;
                 if(measure_column)
                 {
-                    out_column_widths[col] = max(out_column_widths[col], cell_width);
+                    out_column_widths[cell.column] = max(out_column_widths[cell.column], cell_width);
                 }
                 if(measure_row)
                 {
-                    out_row_heights[row] = max(out_row_heights[row], cell_height);
+                    out_row_heights[cell.row] = max(out_row_heights[cell.row], cell_height);
                 }
             }
         }
@@ -847,6 +858,8 @@ namespace Luna
         void Context::arrange_table_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
             Node& node = m_submitted_desc.nodes[node_index];
+            const TableLayoutNode* table = table_layout_node(node);
+            luassert(table);
             NodeLayout& layout = m_layouts[node_index];
             Vector<f32> column_widths;
             Vector<f32> row_heights;
@@ -896,25 +909,26 @@ namespace Luna
             visible_axis_range(layout.table_row_offsets, layout.table_row_heights,
                 clip_rect.offset_y, clip_rect.offset_y + clip_rect.height, visible_row_begin, visible_row_end);
 
-            u32 cell_index = 0;
-            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling, ++cell_index)
+            for(const TableCellAttachment& cell : table->cell_attachments)
             {
-                u32 row = cell_index / columns;
-                u32 col = cell_index % columns;
-                if(row >= rows) break;
-                if(row < visible_row_begin || row >= visible_row_end ||
-                    col < visible_col_begin || col >= visible_col_end)
+                if(cell.child_index == U32_MAX || cell.row >= rows || cell.column >= columns)
+                {
+                    continue;
+                }
+                if(cell.row < visible_row_begin || cell.row >= visible_row_end ||
+                    cell.column < visible_col_begin || cell.column >= visible_col_end)
                 {
                     ++m_perf_counters.layout_clip_skipped_node_count;
                     continue;
                 }
-                RectF cell_rect(layout.table_column_offsets[col], layout.table_row_offsets[row], column_widths[col], row_heights[row]);
+                RectF cell_rect(layout.table_column_offsets[cell.column], layout.table_row_offsets[cell.row],
+                    column_widths[cell.column], row_heights[cell.row]);
                 RectF child_rect(
                     cell_rect.offset_x + style.padding.left,
                     cell_rect.offset_y + style.padding.top,
                     max(cell_rect.width - style.padding.left - style.padding.right, 1.0f),
                     max(cell_rect.height - style.padding.top - style.padding.bottom, 1.0f));
-                layout_node(child, child_rect, intersect_rect(cell_rect, clip_rect));
+                layout_node(cell.child_index, child_rect, intersect_rect(cell_rect, clip_rect));
             }
         }
 

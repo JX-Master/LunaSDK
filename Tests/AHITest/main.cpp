@@ -357,7 +357,6 @@ namespace Luna
                                 if(!app.audio_sources.empty())
                                 {
                                     GUI::TableDesc source_table;
-                                    source_table.columns = 4;
                                     source_table.style.padding = GUI::EdgeInsets::xy(8.0f, 4.0f);
                                     source_table.style.border_size = 1.0f;
                                     source_table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
@@ -375,13 +374,17 @@ namespace Luna
                                     GUI::begin_table_layout(app.gui, "Audio Sources", source_table);
                                     for (usize i = 0; i < app.audio_sources.size(); ++i)
                                     {
-                                        AudioSource& source = app.audio_sources[i];
-                                        GUI::push_id(app.gui, (u64)i);
-                                        GUI::text(app.gui, "Audio Source");
-                                        GUI::drag_float(app.gui, "Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
-                                        GUI::slider_float(app.gui, "Volume", &source.volume, 0.0f, 1.0f);
-                                        apply_audio_source_buttons.push_back(GUI::button(app.gui, "Apply"));
-                                        GUI::pop_id(app.gui);
+                                        if(GUI::begin_table_row(app.gui))
+                                        {
+                                            AudioSource& source = app.audio_sources[i];
+                                            GUI::push_id(app.gui, (u64)i);
+                                            GUI::text(app.gui, "Audio Source");
+                                            GUI::drag_float(app.gui, "Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
+                                            GUI::slider_float(app.gui, "Volume", &source.volume, 0.0f, 1.0f);
+                                            apply_audio_source_buttons.push_back(GUI::button(app.gui, "Apply"));
+                                            GUI::pop_id(app.gui);
+                                            GUI::end_table_row(app.gui);
+                                        }
                                     }
                                     GUI::end_table_layout(app.gui);
                                 }

@@ -124,6 +124,13 @@ namespace Luna
         LUNA_GUI_API ItemHandle begin_table_layout(IContext* context, const c8* label, const TableDesc& desc);
         //! Ends the current table layout.
         LUNA_GUI_API void end_table_layout(IContext* context);
+        //! Begins one table row.
+        //! @param[in] context The GUI context.
+        //! @return Returns `true` if cells for this row should be submitted. Returns `false` when fixed-height
+        //! table virtualization skips this row; in that case, do not call @ref end_table_row.
+        LUNA_GUI_API bool begin_table_row(IContext* context);
+        //! Ends the current table row.
+        LUNA_GUI_API void end_table_row(IContext* context);
         //! Assigns a color override to the next table cell.
         LUNA_GUI_API void set_next_table_cell_color(IContext* context, const Float4U& color);
         //! Begins a row-major grid layout.

@@ -14,7 +14,15 @@ namespace Luna
         {
             u32 child_index = U32_MAX;
             id_t child_id = 0;
+            u32 row = 0;
+            u32 column = 0;
+            bool color_enabled = false;
             Float4U color = Float4U(0.0f);
+        };
+
+        struct TableRowAttachment
+        {
+            u32 cell_count = 0;
         };
 
         struct CanvasItemAttachment
@@ -142,7 +150,9 @@ namespace Luna
             lustruct("GUI::TableLayoutNode", "{173F13E1-D89C-4298-8EA4-74400F85C11F}");
 
             TableDesc desc;
+            Vector<TableRowAttachment> row_attachments;
             Vector<TableCellAttachment> cell_attachments;
+            u32 active_row_attachment = U32_MAX;
 
             TableLayoutNode();
             virtual Guid type_guid() const override;

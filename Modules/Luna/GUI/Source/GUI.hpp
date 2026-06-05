@@ -364,8 +364,13 @@ namespace Luna
         inline u32 table_columns(const Node& node)
         {
             const TableLayoutNode* typed = table_layout_node(node);
-            const TableDesc* desc = typed ? &typed->desc : nullptr;
-            return desc ? max(desc->columns, 1u) : 1u;
+            if(!typed) return 1;
+            u32 ret = (u32)typed->desc.column_sizes.size();
+            for(const TableRowAttachment& row : typed->row_attachments)
+            {
+                ret = max(ret, row.cell_count);
+            }
+            return max(ret, 1u);
         }
 
         inline const TableDesc& table_desc(const Node& node)
@@ -382,6 +387,17 @@ namespace Luna
             for(const TableCellAttachment& attachment : table->cell_attachments)
             {
                 if(attachment.child_index == child_index) return &attachment;
+            }
+            return nullptr;
+        }
+
+        inline const TableCellAttachment* table_cell_attachment(const Node& node, u32 row, u32 column)
+        {
+            const TableLayoutNode* table = table_layout_node(node);
+            if(!table) return nullptr;
+            for(const TableCellAttachment& attachment : table->cell_attachments)
+            {
+                if(attachment.row == row && attachment.column == column) return &attachment;
             }
             return nullptr;
         }
@@ -441,23 +457,27 @@ namespace Luna
             return !value || *value;
         }
 
-        inline u32 table_child_count(const Description& desc, const Node& node)
+        inline u32 table_rows(const Node& node)
         {
-            u32 ret = 0;
-            for(u32 child = node.first_child; child != U32_MAX; child = desc.nodes[child].next_sibling)
-            {
-                ++ret;
-            }
-            return ret;
-        }
-
-        inline u32 table_rows(const Description& desc, const Node& node)
-        {
-            u32 columns = table_columns(node);
-            u32 child_count = table_child_count(desc, node);
             const TableLayoutNode* table = table_layout_node(node);
             const TableDesc* table_desc = table ? &table->desc : nullptr;
-            return max((child_count + columns - 1) / columns, table_desc ? (u32)table_desc->row_sizes.size() : 0u);
+            u32 submitted_rows = table ? (u32)table->row_attachments.size() : 0u;
+            u32 explicit_rows = table_desc ? (u32)table_desc->row_sizes.size() : 0u;
+            return max(submitted_rows, explicit_rows);
+        }
+
+        inline bool table_fixed_row_height_mode(const Node& node)
+        {
+            const TableLayoutNode* table = table_layout_node(node);
+            const TableDesc* desc = table ? &table->desc : nullptr;
+            return desc && desc->row_height_mode == TableRowHeightMode::fixed && desc->fixed_row_height > 0.0f;
+        }
+
+        inline bool table_virtual_rows_enabled(const Node& node)
+        {
+            const TableLayoutNode* table = table_layout_node(node);
+            const TableDesc* desc = table ? &table->desc : nullptr;
+            return desc && table_fixed_row_height_mode(node) && desc->virtualize_fixed_rows;
         }
 
         inline const TableTrackSize& table_track_size(const Node& node, bool column, u32 index)
@@ -473,6 +493,7 @@ namespace Luna
 
         inline bool table_track_is_fixed(const Node& node, bool column, u32 index)
         {
+            if(!column && table_fixed_row_height_mode(node)) return true;
             return table_track_size(node, column, index).policy == TableTrackSizePolicy::fixed;
         }
 
@@ -1846,6 +1867,9 @@ namespace Luna
             void set_next_item_enabled_internal(bool enabled);
             void set_next_canvas_item_layout(const CanvasItemLayout& layout);
             void set_next_table_cell_color(const Float4U& color);
+            bool begin_table_row();
+            void end_table_row();
+            bool table_row_visible(const TableLayoutNode& table, u32 row) const;
             void set_next_dock_panel_style(const DockPanelStyle& style, bool* open);
             bool style_parent_cycle(const Name& name, const Name& parent) const;
             void push_id(id_t id);

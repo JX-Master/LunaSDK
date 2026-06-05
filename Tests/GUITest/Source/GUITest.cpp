@@ -609,7 +609,6 @@ namespace Luna
         GUI::text(app.gui, "Columns are fixed and resizable; rows are hug-sized with alternating backgrounds.");
 
         GUI::TableDesc table;
-        table.columns = 4;
         f32 table_width = max(app.showcase_content_size.x - 24.0f, 360.0f);
         f32 table_column = max((table_width - 180.0f) / 3.0f, 96.0f);
         table.column_sizes = {
@@ -627,18 +626,26 @@ namespace Luna
         table.style.resize_fixed_columns = true;
         table.style.separator_size = 1.0f;
         GUI::begin_table_layout(app.gui, "Table Showcase", table);
-        GUI::text(app.gui, "Name");
-        GUI::text(app.gui, "Enabled");
-        GUI::text(app.gui, "Value");
-        GUI::text(app.gui, "Action");
+        if(GUI::begin_table_row(app.gui))
+        {
+            GUI::text(app.gui, "Name");
+            GUI::text(app.gui, "Enabled");
+            GUI::text(app.gui, "Value");
+            GUI::text(app.gui, "Action");
+            GUI::end_table_row(app.gui);
+        }
         for(u32 i = 0; i < 4; ++i)
         {
-            c8 label[64];
-            snprintf(label, 64, "Row %u", i + 1);
-            GUI::text(app.gui, label);
-            GUI::checkbox(app.gui, "Enabled", &app.table_checks[i]);
-            GUI::slider_float(app.gui, "Value", &app.table_values[i], 0.0f, 1.0f);
-            GUI::button(app.gui, "Run");
+            if(GUI::begin_table_row(app.gui))
+            {
+                c8 label[64];
+                snprintf(label, 64, "Row %u", i + 1);
+                GUI::text(app.gui, label);
+                GUI::checkbox(app.gui, "Enabled", &app.table_checks[i]);
+                GUI::slider_float(app.gui, "Value", &app.table_values[i], 0.0f, 1.0f);
+                GUI::button(app.gui, "Run");
+                GUI::end_table_row(app.gui);
+            }
         }
         GUI::end_table_layout(app.gui);
     }
@@ -646,7 +653,7 @@ namespace Luna
     void draw_perf_tab(App& app)
     {
         demo_section(app, "ScrollView + TableLayout stress");
-        GUI::text(app.gui, "This page builds a 1000-row table inside a scroll view and prints the previous frame GUI counters.");
+        GUI::text(app.gui, "This page virtualizes a 1000-row table inside a scroll view and prints the previous frame GUI counters.");
 
         const GUI::PerformanceCounters& perf = app.perf_counters;
         c8 line[256];
@@ -674,11 +681,22 @@ namespace Luna
             perf.render_draw_call_count, perf.render_vertex_count, perf.render_index_count);
         GUI::text(app.gui, line);
 
-        GUI::TableDesc table;
-        table.columns = 5;
         f32 table_width = max(app.showcase_content_size.x - 56.0f, 720.0f);
         f32 name_width = max(table_width - 420.0f, 180.0f);
-        table.default_row_size = GUI::TableTrackSize::fixed(44.0f);
+        constexpr u32 DATA_ROWS = 1000;
+        constexpr u32 HEADER_ROWS = 1;
+        constexpr u32 TOTAL_ROWS = DATA_ROWS + HEADER_ROWS;
+        constexpr f32 ROW_HEIGHT = 44.0f;
+        f32 stress_height = max(app.showcase_content_size.y - 190.0f, 220.0f);
+
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
+        GUI::begin_scroll_view(app.gui, "Perf Stress ScrollView", GUI::Size::fixed(table_width + 24.0f, stress_height));
+
+        GUI::TableDesc table;
+        table.row_height_mode = GUI::TableRowHeightMode::fixed;
+        table.fixed_row_height = ROW_HEIGHT;
+        table.virtualize_fixed_rows = true;
+        table.virtualization_overscan_rows = 4;
         table.column_sizes = {
             GUI::TableTrackSize::fixed(82.0f),
             GUI::TableTrackSize::fixed(name_width),
@@ -695,32 +713,40 @@ namespace Luna
         table.style.resize_fixed_columns = true;
         table.style.separator_size = 1.0f;
 
-        f32 stress_height = max(app.showcase_content_size.y - 190.0f, 220.0f);
-        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
-        GUI::begin_scroll_view(app.gui, "Perf Stress ScrollView", GUI::Size::fixed(table_width + 24.0f, stress_height));
         GUI::begin_table_layout(app.gui, "Perf Stress Table", table);
-        GUI::text(app.gui, "Index");
-        GUI::text(app.gui, "Name");
-        GUI::text(app.gui, "Category");
-        GUI::text(app.gui, "Value");
-        GUI::text(app.gui, "State");
-        for(u32 row = 0; row < 1000; ++row)
+        for(u32 virtual_row = 0; virtual_row < TOTAL_ROWS; ++virtual_row)
         {
-            c8 index[32];
-            c8 name[96];
-            c8 category[48];
-            c8 value[48];
-            c8 state[48];
-            snprintf(index, 32, "%04u", row);
-            snprintf(name, 96, "Stress row %04u / generated sample text", row);
-            snprintf(category, 48, "Group %u", row % 17);
-            snprintf(value, 48, "%u.%02u", row * 3u, row % 100u);
-            snprintf(state, 48, "%s", (row % 7u) == 0u ? "Pinned" : ((row % 3u) == 0u ? "Hot" : "Idle"));
-            GUI::text(app.gui, index);
-            GUI::text(app.gui, name);
-            GUI::text(app.gui, category);
-            GUI::text(app.gui, value);
-            GUI::text(app.gui, state);
+            if(GUI::begin_table_row(app.gui))
+            {
+                if(virtual_row == 0)
+                {
+                    GUI::text(app.gui, "Index");
+                    GUI::text(app.gui, "Name");
+                    GUI::text(app.gui, "Category");
+                    GUI::text(app.gui, "Value");
+                    GUI::text(app.gui, "State");
+                }
+                else
+                {
+                    u32 row = virtual_row - HEADER_ROWS;
+                    c8 index[32];
+                    c8 name[96];
+                    c8 category[48];
+                    c8 value[48];
+                    c8 state[48];
+                    snprintf(index, 32, "%04u", row);
+                    snprintf(name, 96, "Stress row %04u / generated sample text", row);
+                    snprintf(category, 48, "Group %u", row % 17);
+                    snprintf(value, 48, "%u.%02u", row * 3u, row % 100u);
+                    snprintf(state, 48, "%s", (row % 7u) == 0u ? "Pinned" : ((row % 3u) == 0u ? "Hot" : "Idle"));
+                    GUI::text(app.gui, index);
+                    GUI::text(app.gui, name);
+                    GUI::text(app.gui, category);
+                    GUI::text(app.gui, value);
+                    GUI::text(app.gui, state);
+                }
+                GUI::end_table_row(app.gui);
+            }
         }
         GUI::end_table_layout(app.gui);
         GUI::end_scroll_view(app.gui);

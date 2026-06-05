@@ -744,6 +744,8 @@ namespace Luna
             else if(table_layout(node))
             {
                 const NodeLayout& layout = m_layouts[node_index];
+                const TableLayoutNode* table = table_layout_node(node);
+                luassert(table);
                 u32 visible_col_begin = 0;
                 u32 visible_col_end = 0;
                 u32 visible_row_begin = 0;
@@ -753,25 +755,23 @@ namespace Luna
                 visible_axis_range(layout.table_row_offsets, layout.table_row_heights,
                     clip.offset_y, clip.offset_y + clip.height, visible_row_begin, visible_row_end);
                 u32 columns = layout.table_columns;
-                u32 cell_index = 0;
-                for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling, ++cell_index)
+                u32 rows = layout.table_rows;
+                for(const TableCellAttachment& cell : table->cell_attachments)
                 {
-                    if(!columns)
+                    if(!columns || !rows)
                     {
                         break;
                     }
-                    u32 row = cell_index / columns;
-                    u32 col = cell_index % columns;
-                    if(row >= layout.table_rows)
-                    {
-                        break;
-                    }
-                    if(row < visible_row_begin || row >= visible_row_end ||
-                        col < visible_col_begin || col >= visible_col_end)
+                    if(cell.child_index == U32_MAX || cell.row >= rows || cell.column >= columns)
                     {
                         continue;
                     }
-                    render_node(child);
+                    if(cell.row < visible_row_begin || cell.row >= visible_row_end ||
+                        cell.column < visible_col_begin || cell.column >= visible_col_end)
+                    {
+                        continue;
+                    }
+                    render_node(cell.child_index);
                 }
             }
             else

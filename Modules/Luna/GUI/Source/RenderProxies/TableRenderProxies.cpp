@@ -15,7 +15,7 @@ namespace Luna
         {
             usize cell_index = (usize)row * columns + col;
             const TableCellAttachment* cell_attachment = child_index != U32_MAX ? table_cell_attachment(node, child_index) : nullptr;
-            if(cell_attachment)
+            if(cell_attachment && cell_attachment->color_enabled)
             {
                 ColorOverride color;
                 color.enabled = true;
@@ -111,20 +111,12 @@ namespace Luna
             visible_table_range(layout.table_column_offsets, layout.table_column_widths, clip_left, clip_right, visible_col_begin, visible_col_end);
             visible_table_range(layout.table_row_offsets, layout.table_row_heights, clip_top, clip_bottom, visible_row_begin, visible_row_end);
 
-            Vector<u32> children;
-            for(u32 child = node.first_child; child != U32_MAX;)
-            {
-                children.push_back(child);
-                const Node* child_node = ctx.get_node(child);
-                child = child_node ? child_node->next_sibling : U32_MAX;
-            }
-
             for(u32 row = visible_row_begin; row < visible_row_end; ++row)
             {
                 for(u32 col = visible_col_begin; col < visible_col_end; ++col)
                 {
-                    usize cell_index = (usize)row * columns + col;
-                    u32 child = cell_index < children.size() ? children[cell_index] : U32_MAX;
+                    const TableCellAttachment* cell = table_cell_attachment(node, row, col);
+                    u32 child = cell ? cell->child_index : U32_MAX;
                     ColorOverride color = table_cell_color(node, style, child, row, col, columns);
                     if(color.enabled)
                     {

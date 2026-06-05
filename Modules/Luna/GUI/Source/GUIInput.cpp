@@ -263,7 +263,8 @@ namespace Luna
                         }
                     }
                 }
-                if(style.row_separators && style.resize_fixed_rows && layout.table_columns && layout.table_rows > 1)
+                if(style.row_separators && style.resize_fixed_rows && !table_fixed_row_height_mode(node) &&
+                    layout.table_columns && layout.table_rows > 1)
                 {
                     f32 left = layout.table_column_offsets[0];
                     f32 right = layout.table_column_offsets.back() + layout.table_column_widths.back();
