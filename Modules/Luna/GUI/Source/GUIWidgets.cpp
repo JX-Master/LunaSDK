@@ -96,6 +96,11 @@ namespace Luna
             context_from_interface(context)->set_style_value(style, entry, StyleValue::f32_4(value));
         }
 
+        LUNA_GUI_API void set_style_name(IContext* context, const Name& style, const Name& entry, const Name& value)
+        {
+            context_from_interface(context)->set_style_value(style, entry, StyleValue::name(value));
+        }
+
         LUNA_GUI_API void inherit_style_entry(IContext* context, const Name& style, const Name& entry)
         {
             context_from_interface(context)->inherit_style_entry(style, entry);
@@ -119,6 +124,16 @@ namespace Luna
         LUNA_GUI_API void pop_style(IContext* context)
         {
             context_from_interface(context)->pop_style();
+        }
+
+        LUNA_GUI_API RV register_font(IContext* context, const Name& id, Font::IFontFile* font, u32 font_index)
+        {
+            return context_from_interface(context)->register_font(id, font, font_index);
+        }
+
+        LUNA_GUI_API FontDesc get_font(IContext* context, const Name& id)
+        {
+            return context_from_interface(context)->get_font(id);
         }
 
         LUNA_GUI_API void tree_push(IContext* context)
@@ -189,6 +204,21 @@ namespace Luna
         LUNA_GUI_API void set_next_item_layout(IContext* context, const LayoutStyle& style)
         {
             context_from_interface(context)->set_next_item_layout(style);
+        }
+
+        LUNA_GUI_API void set_next_item_enabled(IContext* context, bool enabled)
+        {
+            context_from_interface(context)->set_next_item_enabled(enabled);
+        }
+
+        LUNA_GUI_API void push_enabled(IContext* context, bool enabled)
+        {
+            context_from_interface(context)->push_enabled(enabled);
+        }
+
+        LUNA_GUI_API void pop_enabled(IContext* context)
+        {
+            context_from_interface(context)->pop_enabled();
         }
 
         LUNA_GUI_API void set_next_item_render_proxy(IContext* context, const RenderProxyDesc& proxy)
@@ -270,7 +300,23 @@ namespace Luna
 
         LUNA_GUI_API void end_table_layout(IContext* context)
         {
-            context_from_interface(context)->end_container();
+            Context* ctx = context_from_interface(context);
+            luassert(!ctx->m_parent_stack.empty());
+            u32 parent = ctx->m_parent_stack.back();
+            luassert(parent < ctx->m_build_desc.nodes.size());
+            TableLayoutNode* table = table_layout_node(ctx->m_build_desc.nodes[parent]);
+            luassert_msg(table && table->active_row_attachment == U32_MAX, "Cannot end a table layout while a table row is open.");
+            ctx->end_container();
+        }
+
+        LUNA_GUI_API bool begin_table_row(IContext* context)
+        {
+            return context_from_interface(context)->begin_table_row();
+        }
+
+        LUNA_GUI_API void end_table_row(IContext* context)
+        {
+            context_from_interface(context)->end_table_row();
         }
 
         LUNA_GUI_API void set_next_table_cell_color(IContext* context, const Float4U& color)
@@ -494,17 +540,27 @@ namespace Luna
             context_from_interface(context)->end_container();
         }
 
+        static void prepare_menu_item_for_parent(Context* ctx, MenuItemNode& item)
+        {
+            if(!ctx || ctx->m_parent_stack.empty() || ctx->m_parent_stack.back() == U32_MAX)
+            {
+                return;
+            }
+            u32 parent = ctx->m_parent_stack.back();
+            item.top_level_menu = parent < ctx->m_build_desc.nodes.size() && is_menu_bar_node(ctx->m_build_desc.nodes[parent]);
+            if(item.top_level_menu)
+            {
+                item.layout_style = LayoutStyle::hug();
+            }
+        }
+
         LUNA_GUI_API bool begin_menu(IContext* context, const c8* label, bool enabled, ItemHandle* out_handle)
         {
             Context* ctx = context_from_interface(context);
             Ref<MenuItemNode> menu = new_object<MenuItemNode>();
             menu->enabled = enabled;
-            if(!ctx->m_parent_stack.empty() && ctx->m_parent_stack.back() != U32_MAX)
-            {
-                u32 parent = ctx->m_parent_stack.back();
-                menu->top_level_menu = parent < ctx->m_build_desc.nodes.size() && is_menu_bar_node(ctx->m_build_desc.nodes[parent]);
-            }
-            ItemHandle handle = ctx->add_node(Ref<Node>(menu), label ? label : "", enabled);
+            prepare_menu_item_for_parent(ctx, *menu);
+            ItemHandle handle = ctx->add_node(Ref<Node>(menu), label ? label : "", true);
             if(out_handle)
             {
                 *out_handle = handle;
@@ -544,7 +600,8 @@ namespace Luna
             node->shortcut = shortcut ? shortcut : "";
             node->selected = selected;
             node->enabled = enabled;
-            return ctx->add_node(Ref<Node>(node), label ? label : "", enabled);
+            prepare_menu_item_for_parent(ctx, *node);
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle menu_item(IContext* context, const c8* label, const c8* shortcut, bool* selected, bool enabled)
@@ -555,7 +612,8 @@ namespace Luna
             node->selected_value = selected;
             node->selected = selected ? *selected : false;
             node->enabled = enabled;
-            return ctx->add_node(Ref<Node>(node), label ? label : "", enabled);
+            prepare_menu_item_for_parent(ctx, *node);
+            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
         }
 
         LUNA_GUI_API ItemHandle menu_separator(IContext* context)
@@ -695,6 +753,20 @@ namespace Luna
             return handle;
         }
 
+        LUNA_GUI_API ItemHandle progress_bar(IContext* context, const c8* label, f32 fraction, const Size& size, const c8* overlay)
+        {
+            Context* ctx = context_from_interface(context);
+            Ref<ProgressBarNode> node = new_object<ProgressBarNode>();
+            node->fraction = clamp(fraction, 0.0f, 1.0f);
+            if(overlay)
+            {
+                node->overlay = overlay;
+                node->has_overlay = true;
+            }
+            apply_requested_size(*node, size);
+            return ctx->add_node(Ref<Node>(node), label ? label : "ProgressBar", false);
+        }
+
         static bool has_widget_label(const c8* label)
         {
             return label && label[0];
@@ -711,7 +783,10 @@ namespace Luna
         {
             ItemHandle handle;
             ctx->begin_container(move(node), label ? label : "", Size(), &handle);
+            bool enabled = ctx->m_build_desc.nodes.back().enabled_state();
+            ctx->push_enabled(enabled);
             add_label_text_node(ctx, label, font_size);
+            ctx->pop_enabled();
             ctx->end_container();
             ctx->m_last_item_id = handle.id;
             return handle;

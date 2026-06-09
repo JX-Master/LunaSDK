@@ -54,6 +54,8 @@ namespace Luna
         LUNA_GUI_API void set_style_f32x3(IContext* context, const Name& style, const Name& entry, const Float3U& value);
         //! Sets one f32x4 style entry.
         LUNA_GUI_API void set_style_f32x4(IContext* context, const Name& style, const Name& entry, const Float4U& value);
+        //! Sets one name style entry.
+        LUNA_GUI_API void set_style_name(IContext* context, const Name& style, const Name& entry, const Name& value);
         //! Removes a local style entry so the value is inherited from the parent style.
         LUNA_GUI_API void inherit_style_entry(IContext* context, const Name& style, const Name& entry);
         //! Explicitly unsets a style entry and hides inherited values.
@@ -64,6 +66,14 @@ namespace Luna
         LUNA_GUI_API void push_style(IContext* context, const Name& style);
         //! Pops the current build style.
         LUNA_GUI_API void pop_style(IContext* context);
+        //! @}
+
+        //! @name Font helpers
+        //! @{
+        //! Registers a font file in the context.
+        LUNA_GUI_API RV register_font(IContext* context, const Name& id, Font::IFontFile* font, u32 font_index = 0);
+        //! Gets a registered font by ID.
+        LUNA_GUI_API FontDesc get_font(IContext* context, const Name& id);
         //! @}
 
         //! @name Tree and custom node helpers
@@ -82,6 +92,12 @@ namespace Luna
         //! @{
         //! Assigns layout style to the next item.
         LUNA_GUI_API void set_next_item_layout(IContext* context, const LayoutStyle& style);
+        //! Assigns enabled state to the next item.
+        LUNA_GUI_API void set_next_item_enabled(IContext* context, bool enabled);
+        //! Pushes an enabled state for subsequently created items.
+        LUNA_GUI_API void push_enabled(IContext* context, bool enabled);
+        //! Pops the current enabled state.
+        LUNA_GUI_API void pop_enabled(IContext* context);
         //! Assigns canvas placement to the next item created inside a canvas layout.
         LUNA_GUI_API void set_next_canvas_item_layout(IContext* context, const CanvasItemLayout& layout);
         //! Assigns dock panel style and optional open state to the next dock panel item.
@@ -108,6 +124,13 @@ namespace Luna
         LUNA_GUI_API ItemHandle begin_table_layout(IContext* context, const c8* label, const TableDesc& desc);
         //! Ends the current table layout.
         LUNA_GUI_API void end_table_layout(IContext* context);
+        //! Begins one table row.
+        //! @param[in] context The GUI context.
+        //! @return Returns `true` if cells for this row should be submitted. Returns `false` when fixed-height
+        //! table virtualization skips this row; in that case, do not call @ref end_table_row.
+        LUNA_GUI_API bool begin_table_row(IContext* context);
+        //! Ends the current table row.
+        LUNA_GUI_API void end_table_row(IContext* context);
         //! Assigns a color override to the next table cell.
         LUNA_GUI_API void set_next_table_cell_color(IContext* context, const Float4U& color);
         //! Begins a row-major grid layout.
@@ -206,6 +229,13 @@ namespace Luna
         LUNA_GUI_API ItemHandle button(IContext* context, const c8* label);
         //! Adds an absolute-positioned button.
         LUNA_GUI_API ItemHandle button(IContext* context, const c8* label, const RectF& rect);
+        //! Adds a progress bar.
+        //! @param[in] label The widget label used for ID generation and debug inspection.
+        //! @param[in] fraction The progress fraction in the 0-1 range. Values outside the range are clamped.
+        //! @param[in] size Optional fixed size. Width or height set to 0 uses the progress bar's default layout behavior.
+        //! @param[in] overlay Optional text drawn over the bar. When `nullptr`, the bar displays a percentage.
+        //! @return Returns the created progress bar item handle.
+        LUNA_GUI_API ItemHandle progress_bar(IContext* context, const c8* label, f32 fraction, const Size& size = Size(), const c8* overlay = nullptr);
         //! Adds a selectable item.
         LUNA_GUI_API ItemHandle selectable(IContext* context, const c8* label, bool selected = false);
         //! Adds a text label.

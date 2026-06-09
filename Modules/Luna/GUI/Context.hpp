@@ -20,6 +20,60 @@ namespace Luna
         //! @addtogroup GUI GUI
         //! @{
 
+        //! Runtime performance counters collected by one GUI context.
+        //! @remark The counters describe the latest frame processed by the context. Timing values are in milliseconds.
+        struct PerformanceCounters
+        {
+            //! Context generation of the frame represented by these counters.
+            u64 frame_generation = 0;
+            //! Number of nodes in the submitted description.
+            u32 node_count = 0;
+            //! Number of layers in the submitted description.
+            u32 layer_count = 0;
+            //! Number of nodes that participate in interaction.
+            u32 interactive_node_count = 0;
+            //! Number of input events consumed by submit.
+            u32 input_event_count = 0;
+            //! Number of layout passes executed in submit.
+            u32 layout_pass_count = 0;
+            //! Number of nodes measured by the layout system.
+            u32 measured_node_count = 0;
+            //! Number of nodes arranged by the layout system.
+            u32 arranged_node_count = 0;
+            //! Number of child subtrees skipped by layout because they were outside the scroll clip.
+            u32 layout_clip_skipped_node_count = 0;
+            //! Number of nodes visited for rendering.
+            u32 rendered_node_count = 0;
+            //! Number of node subtrees skipped by rendering because they were outside the clip.
+            u32 render_clip_skipped_node_count = 0;
+            //! Number of compiled VG draw calls emitted by GUI rendering.
+            u32 render_draw_call_count = 0;
+            //! Number of vertices in the compiled GUI VG vertex buffer.
+            u32 render_vertex_count = 0;
+            //! Number of indices in the compiled GUI VG index buffer.
+            u32 render_index_count = 0;
+            //! Total time spent in @ref IContext::submit.
+            f64 submit_total_ms = 0.0;
+            //! Time spent preparing popup, duplicate ID and pre-layout state in submit.
+            f64 submit_prepare_ms = 0.0;
+            //! Time spent in the first layout pass.
+            f64 submit_layout_ms = 0.0;
+            //! Time spent consuming input events.
+            f64 submit_input_ms = 0.0;
+            //! Time spent in the optional second layout pass after input changes.
+            f64 submit_relayout_ms = 0.0;
+            //! Time spent publishing item query states after input and layout.
+            f64 submit_state_ms = 0.0;
+            //! Total time spent in @ref IContext::render.
+            f64 render_total_ms = 0.0;
+            //! Time spent traversing nodes and recording GUI draw lists.
+            f64 render_record_ms = 0.0;
+            //! Time spent compiling VG draw commands.
+            f64 render_compile_ms = 0.0;
+            //! Time spent issuing VG renderer commands and submitting them to the command buffer.
+            f64 render_submit_ms = 0.0;
+        };
+
         //! @interface IContext
         //! Owns GUI frame building, input routing, state storage, layout, render list generation and rendering.
         //! @remark Widget APIs take an explicit context pointer as their first argument. This avoids global GUI state and
@@ -118,9 +172,33 @@ namespace Luna
             //! Pops the current build style.
             virtual void pop_style() = 0;
 
+            //! Registers a font file for style-based text rendering.
+            //! @param[in] id The unique font ID used by style entries.
+            //! @param[in] font The font file to register. The context retains this object.
+            //! @param[in] font_index The font face index inside `font`.
+            //! @return Returns success or failure code.
+            virtual RV register_font(const Name& id, Font::IFontFile* font, u32 font_index = 0) = 0;
+
+            //! Gets a registered font by ID.
+            //! @param[in] id The font ID.
+            //! @return Returns the font descriptor, or an empty descriptor when the font is not registered.
+            virtual FontDesc get_font(const Name& id) = 0;
+
             //! Assigns a render proxy to the next node created by widget APIs.
             //! @param[in] proxy The render proxy callbacks.
             virtual void set_next_item_render_proxy(const RenderProxyDesc& proxy) = 0;
+
+            //! Assigns enabled state to the next node created by widget APIs.
+            //! @param[in] enabled Whether the next item accepts interaction and normal interactive visuals.
+            virtual void set_next_item_enabled(bool enabled) = 0;
+
+            //! Pushes an enabled state onto the build stack.
+            //! @param[in] enabled Whether subsequently created items are enabled while this state is on the stack.
+            //! @remark The effective item enabled state is the logical AND of the enabled stack and any next-item override.
+            virtual void push_enabled(bool enabled) = 0;
+
+            //! Pops the current enabled state from the build stack.
+            virtual void pop_enabled() = 0;
 
             //! Finishes immediate-mode building and returns the description object for the frame.
             //! @return Returns the completed description, or a failure code.
@@ -139,6 +217,10 @@ namespace Luna
             //! Gets the active text input state for host IME and virtual keyboard integration.
             //! @return Returns the current text input state.
             virtual TextInputState get_text_input_state() = 0;
+
+            //! Gets performance counters collected for the latest processed GUI frame.
+            //! @return Returns a copy of the current performance counters.
+            virtual PerformanceCounters get_performance_counters() = 0;
 #ifdef LUNA_GUI_ENABLE_DEBUG
             //! Dumps debug information for the latest submitted frame.
             //! @return Returns a serializable debug information snapshot.

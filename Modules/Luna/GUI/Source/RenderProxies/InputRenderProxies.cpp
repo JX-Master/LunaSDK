@@ -17,8 +17,8 @@ namespace Luna
             usize selection_begin = 0;
             usize selection_end = 0;
             input_text_selection_range(value, state, selection_begin, selection_end);
-            f32 selection_x0 = text_rect.offset_x + input_text_cursor_x(value, selection_begin, font_size);
-            f32 selection_x1 = text_rect.offset_x + input_text_cursor_x(value, selection_end, font_size);
+            f32 selection_x0 = text_rect.offset_x + ctx.text_cursor_x(value, selection_begin, font_size);
+            f32 selection_x1 = text_rect.offset_x + ctx.text_cursor_x(value, selection_end, font_size);
             ctx.draw_rect(RectF(selection_x0, text_rect.offset_y + 4.0f, max(selection_x1 - selection_x0, 1.0f),
                 max(text_rect.height - 8.0f, 1.0f)), text_clip, color, 2.0f);
         }
@@ -29,7 +29,7 @@ namespace Luna
             f64 blink_time = max(time - state.text_cursor_blink_start, 0.0);
             bool cursor_visible = (((u64)(blink_time / 0.5)) & 1) == 0;
             if(!cursor_visible) return;
-            f32 cursor_x = text_rect.offset_x + input_text_cursor_x(value, state.text_cursor, font_size);
+            f32 cursor_x = text_rect.offset_x + ctx.text_cursor_x(value, state.text_cursor, font_size);
             if(cursor_x >= text_clip.offset_x && cursor_x <= text_clip.offset_x + text_clip.width)
             {
                 ctx.draw_rect(RectF(cursor_x, text_rect.offset_y + 5.0f, 1.0f, max(text_rect.height - 10.0f, 1.0f)),
@@ -49,7 +49,7 @@ namespace Luna
             if(!string_value) return;
             RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
             RectF text_clip = intersect_rect(clip_rect, text_rect);
-            f32 text_width = input_text_cursor_x(*string_value, string_value->size(), font_size);
+            f32 text_width = ctx.text_cursor_x(*string_value, string_value->size(), font_size);
             RectF arrange_rect(text_rect.offset_x, text_rect.offset_y, max(text_rect.width, text_width + 4.0f), text_rect.height);
             Ref<InputEditState> state_ref = ctx.get_or_create_widget_state<InputEditState>(node.id);
             InputEditState& state = *state_ref;

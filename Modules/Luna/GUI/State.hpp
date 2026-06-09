@@ -151,6 +151,8 @@ namespace Luna
             LUNA_GUI_API StateKey<bool> active();
             //! Gets the state key that reports whether the item is focused.
             LUNA_GUI_API StateKey<bool> focused();
+            //! Gets the state key that reports whether the item is enabled.
+            LUNA_GUI_API StateKey<bool> enabled();
             //! Gets the state key that reports whether the item is open.
             LUNA_GUI_API StateKey<bool> open();
             //! Gets the state key that reports whether the item value changed this frame.

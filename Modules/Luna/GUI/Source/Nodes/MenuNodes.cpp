@@ -53,7 +53,7 @@ namespace Luna
 
         bool MenuItemNode::enabled_state() const
         {
-            return enabled;
+            return item_enabled && enabled;
         }
 
         bool MenuItemNode::checked() const
@@ -68,7 +68,7 @@ namespace Luna
             f32 width = top_level_menu ? max(text_width + 22.0f, 42.0f) : max(text_width + shortcut_width + (popup_id ? 62.0f : 42.0f), 132.0f);
             f32 height = top_level_menu ? 24.0f : 26.0f;
             LayoutMetrics metrics;
-            metrics.min_size = Float2U(top_level_menu ? min(width, 42.0f) : 96.0f, height);
+            metrics.min_size = Float2U(top_level_menu ? max(width, 42.0f) : 96.0f, height);
             metrics.preferred_size = Float2U(width, height);
             metrics.max_size = Float2U(F32_MAX, height);
             return metrics;
@@ -89,7 +89,7 @@ namespace Luna
 
         void MenuItemNode::on_click(NodeInputContext& ctx)
         {
-            if(!enabled) return;
+            if(!enabled_state()) return;
             if(popup_id)
             {
                 if(ctx.is_popup_open(popup_id))

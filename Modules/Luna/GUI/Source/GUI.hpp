@@ -46,6 +46,22 @@ namespace Luna
             drag
         };
 
+        inline Name default_font_id()
+        {
+            return Name("gui.default_font");
+        }
+
+        inline Name font_style_entry_name()
+        {
+            return Name("gui.font");
+        }
+
+        struct FontResource
+        {
+            Ref<Font::IFontFile> font;
+            u32 font_index = 0;
+        };
+
         inline Context* context_from_interface(IContext* context)
         {
             luassert_msg(context, "GUI context must not be null.");
@@ -348,8 +364,13 @@ namespace Luna
         inline u32 table_columns(const Node& node)
         {
             const TableLayoutNode* typed = table_layout_node(node);
-            const TableDesc* desc = typed ? &typed->desc : nullptr;
-            return desc ? max(desc->columns, 1u) : 1u;
+            if(!typed) return 1;
+            u32 ret = (u32)typed->desc.column_sizes.size();
+            for(const TableRowAttachment& row : typed->row_attachments)
+            {
+                ret = max(ret, row.cell_count);
+            }
+            return max(ret, 1u);
         }
 
         inline const TableDesc& table_desc(const Node& node)
@@ -366,6 +387,17 @@ namespace Luna
             for(const TableCellAttachment& attachment : table->cell_attachments)
             {
                 if(attachment.child_index == child_index) return &attachment;
+            }
+            return nullptr;
+        }
+
+        inline const TableCellAttachment* table_cell_attachment(const Node& node, u32 row, u32 column)
+        {
+            const TableLayoutNode* table = table_layout_node(node);
+            if(!table) return nullptr;
+            for(const TableCellAttachment& attachment : table->cell_attachments)
+            {
+                if(attachment.row == row && attachment.column == column) return &attachment;
             }
             return nullptr;
         }
@@ -425,23 +457,27 @@ namespace Luna
             return !value || *value;
         }
 
-        inline u32 table_child_count(const Description& desc, const Node& node)
+        inline u32 table_rows(const Node& node)
         {
-            u32 ret = 0;
-            for(u32 child = node.first_child; child != U32_MAX; child = desc.nodes[child].next_sibling)
-            {
-                ++ret;
-            }
-            return ret;
-        }
-
-        inline u32 table_rows(const Description& desc, const Node& node)
-        {
-            u32 columns = table_columns(node);
-            u32 child_count = table_child_count(desc, node);
             const TableLayoutNode* table = table_layout_node(node);
             const TableDesc* table_desc = table ? &table->desc : nullptr;
-            return max((child_count + columns - 1) / columns, table_desc ? (u32)table_desc->row_sizes.size() : 0u);
+            u32 submitted_rows = table ? (u32)table->row_attachments.size() : 0u;
+            u32 explicit_rows = table_desc ? (u32)table_desc->row_sizes.size() : 0u;
+            return max(submitted_rows, explicit_rows);
+        }
+
+        inline bool table_fixed_row_height_mode(const Node& node)
+        {
+            const TableLayoutNode* table = table_layout_node(node);
+            const TableDesc* desc = table ? &table->desc : nullptr;
+            return desc && desc->row_height_mode == TableRowHeightMode::fixed && desc->fixed_row_height > 0.0f;
+        }
+
+        inline bool table_virtual_rows_enabled(const Node& node)
+        {
+            const TableLayoutNode* table = table_layout_node(node);
+            const TableDesc* desc = table ? &table->desc : nullptr;
+            return desc && table_fixed_row_height_mode(node) && desc->virtualize_fixed_rows;
         }
 
         inline const TableTrackSize& table_track_size(const Node& node, bool column, u32 index)
@@ -451,11 +487,13 @@ namespace Luna
             const TableDesc* desc = table ? &table->desc : nullptr;
             if(!desc) return default_size;
             const Vector<TableTrackSize>& sizes = column ? desc->column_sizes : desc->row_sizes;
-            return index < sizes.size() ? sizes[index] : default_size;
+            if(index < sizes.size()) return sizes[index];
+            return column ? desc->default_column_size : desc->default_row_size;
         }
 
         inline bool table_track_is_fixed(const Node& node, bool column, u32 index)
         {
+            if(!column && table_fixed_row_height_mode(node)) return true;
             return table_track_size(node, column, index).policy == TableTrackSizePolicy::fixed;
         }
 
@@ -1053,55 +1091,6 @@ namespace Luna
             value.erase(cursor, end - cursor);
         }
 
-        inline VG::TextArrangeResult arrange_input_text_for_cursor(const String& value, f32 font_size)
-        {
-            VG::TextArrangeSection section;
-            section.font_file = Font::get_default_font();
-            section.font_index = 0;
-            section.font_size = font_size;
-            section.num_chars = value.size();
-            return VG::arrange_text(value.c_str(), value.size(), {&section, 1},
-                RectF(0.0f, 0.0f, 1000000.0f, font_size * 2.0f),
-                VG::TextAlignment::center, VG::TextAlignment::begin);
-        }
-
-        inline f32 measure_input_text_width(const String& value, usize bytes, f32 font_size)
-        {
-            bytes = clamp_utf8_cursor(value, bytes);
-            if(!bytes) return 0.0f;
-            String view(value.c_str(), bytes);
-            VG::TextArrangeResult arranged = arrange_input_text_for_cursor(view, font_size);
-            return arranged.bounding_rect.width;
-        }
-
-        inline f32 input_text_cursor_x(const String& value, usize cursor, f32 font_size)
-        {
-            cursor = clamp_utf8_cursor(value, cursor);
-            return measure_input_text_width(value, cursor, font_size);
-        }
-
-        inline usize input_text_cursor_from_x(const String& value, f32 x, f32 font_size)
-        {
-            if(x <= 0.0f) return 0;
-            VG::TextArrangeResult arranged = arrange_input_text_for_cursor(value, font_size);
-            if(arranged.lines.empty()) return value.size();
-            const VG::TextLineArrangeResult& line = arranged.lines[0];
-            if(line.glyphs.empty()) return value.size();
-            for(usize i = 0; i < line.glyphs.size(); ++i)
-            {
-                const VG::TextGlyphArrangeResult& glyph = line.glyphs[i];
-                f32 next_origin = i + 1 < line.glyphs.size() ?
-                    line.glyphs[i + 1].origin_offset :
-                    glyph.origin_offset + glyph.advance_length;
-                f32 threshold = (glyph.origin_offset + next_origin) * 0.5f;
-                if(x < threshold)
-                {
-                    return glyph.index;
-                }
-            }
-            return value.size();
-        }
-
         inline bool has_modifier(KeyModifierFlag flags, KeyModifierFlag flag)
         {
             return (((u8)flags) & ((u8)flag)) != 0;
@@ -1258,6 +1247,8 @@ namespace Luna
             lustruct("GUI::BuildHintState", "{B11BEC18-AD1E-4A26-8462-F13D9D65AB76}");
             bool has_next_item_layout = false;
             LayoutStyle next_item_layout;
+            bool has_next_item_enabled = false;
+            bool next_item_enabled = true;
             bool has_next_canvas_item_layout = false;
             CanvasItemLayout next_canvas_item_layout;
             bool has_next_table_cell_color = false;
@@ -1767,9 +1758,11 @@ namespace Luna
             Vector<id_t> m_id_stack;
             Vector<RectF> m_clip_stack;
             Vector<Name> m_style_stack;
+            Vector<bool> m_enabled_stack;
             Vector<u32> m_child_ordinals;
             HashMap<id_t, StateRecord, IdHash> m_states;
             HashMap<Name, Style> m_styles;
+            HashMap<Name, FontResource> m_fonts;
             ClipboardIO m_clipboard_io;
             id_t m_active_id = 0;
             id_t m_focused_id = 0;
@@ -1794,6 +1787,7 @@ namespace Luna
             IDrawList* m_active_draw_list = nullptr;
             Ref<VG::IShapeRenderer> m_shape_renderer;
             Ref<VG::IFontAtlas> m_font_atlas;
+            PerformanceCounters m_perf_counters;
 
             Context();
 
@@ -1815,11 +1809,17 @@ namespace Luna
             virtual StyleValue get_style_value(const Name& style, const Name& entry, const StyleValue& default_value) override;
             virtual void push_style(const Name& style) override;
             virtual void pop_style() override;
+            virtual RV register_font(const Name& id, Font::IFontFile* font, u32 font_index = 0) override;
+            virtual FontDesc get_font(const Name& id) override;
             virtual void set_next_item_render_proxy(const RenderProxyDesc& proxy) override;
+            virtual void set_next_item_enabled(bool enabled) override;
+            virtual void push_enabled(bool enabled) override;
+            virtual void pop_enabled() override;
             virtual R<Description> end_build() override;
             virtual RV submit(const Description& desc) override;
             virtual void set_clipboard_io(const ClipboardIO& io) override;
             virtual TextInputState get_text_input_state() override;
+            virtual PerformanceCounters get_performance_counters() override;
 #ifdef LUNA_GUI_ENABLE_DEBUG
             virtual R<DebugInfo> dump_debug_info() override;
 #endif
@@ -1864,8 +1864,12 @@ namespace Luna
             void set_item_query_state_if_absent(id_t id, const Name& key, const Any& value);
             void remove_item_query_state(ItemHandle handle, const Name& key);
             void set_next_item_layout(const LayoutStyle& style);
+            void set_next_item_enabled_internal(bool enabled);
             void set_next_canvas_item_layout(const CanvasItemLayout& layout);
             void set_next_table_cell_color(const Float4U& color);
+            bool begin_table_row();
+            void end_table_row();
+            bool table_row_visible(const TableLayoutNode& table, u32 row) const;
             void set_next_dock_panel_style(const DockPanelStyle& style, bool* open);
             bool style_parent_cycle(const Name& name, const Name& parent) const;
             void push_id(id_t id);
@@ -1891,6 +1895,12 @@ namespace Luna
             ItemQueryState* get_query_state(ItemHandle handle);
             Ref<ItemQueryState> get_or_create_query_state(id_t id);
             void touch_state(id_t id, StateLifetime lifetime = StateLifetime::next_frame);
+            StyleValue get_style_value_unlocked(const Name& style, const Name& entry, const StyleValue& default_value) const;
+            Name node_font_id(const Node& node) const;
+            FontDesc resolve_font(const Name& id) const;
+            LayoutMetrics measure_text_with_font(const c8* text, usize text_size, f32 font_size, f32 max_width, const Name& font_id) const;
+            f32 text_cursor_x(const String& value, usize cursor, f32 font_size, const Name& font_id) const;
+            usize text_cursor_from_x(const String& value, f32 x, f32 font_size, const Name& font_id) const;
             template <typename T>
             void touch_widget_state(id_t owner_id, StateLifetime lifetime = StateLifetime::next_frame)
             {
@@ -2026,7 +2036,8 @@ namespace Luna
             void render_color_swatch(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius);
             void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color);
             void render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width);
-            void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment = VG::TextAlignment::center);
+            void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
+                VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment = VG::TextAlignment::center, const Name& font_id = Name());
             RectF to_vg_rect(const RectF& rect) const;
         };
 

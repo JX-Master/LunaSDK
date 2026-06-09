@@ -53,7 +53,9 @@ namespace Luna
             //! Default image rendering.
             none = 0x00,
             //! Flip image sampling vertically.
-            flip_y = 0x01
+            flip_y = 0x01,
+            //! Use nearest-neighbor texture sampling.
+            nearest = 0x02
         };
 
         //! Describes the high-level layer role of a node.
@@ -116,6 +118,8 @@ namespace Luna
             f32 delta_time = 1.0f / 60.0f;
             //! The accumulated context time in seconds.
             f64 time = 0.0;
+            //! Whether the item is enabled for interaction.
+            bool enabled = true;
         };
 
         //! Layout data passed to render proxies for one node.
@@ -232,6 +236,18 @@ namespace Luna
             //! @param[in] default_value The fallback value.
             //! @return Returns the resolved style value.
             virtual StyleValue get_style_value(const Name& style, const Name& entry, const StyleValue& default_value) const = 0;
+            //! Measures the cursor x offset for a UTF-8 text prefix using the current node's font style.
+            //! @param[in] text The text to measure.
+            //! @param[in] cursor The cursor byte offset.
+            //! @param[in] font_size The font size in logical units.
+            //! @return Returns the cursor x offset in logical units.
+            virtual f32 text_cursor_x(const String& text, usize cursor, f32 font_size) const = 0;
+            //! Converts an x offset to a UTF-8 cursor byte offset using the current node's font style.
+            //! @param[in] text The text to inspect.
+            //! @param[in] x The x offset in logical units.
+            //! @param[in] font_size The font size in logical units.
+            //! @return Returns the nearest cursor byte offset.
+            virtual usize text_cursor_from_x(const String& text, f32 x, f32 font_size) const = 0;
 
             //! Gets a typed widget state object owned by the specified ID.
             //! @param[in] owner_id The owner widget or subsystem ID.
@@ -467,7 +483,7 @@ namespace Luna
             //! @return Returns `true` if this node accepts input.
             virtual bool enabled_state() const
             {
-                return true;
+                return item_enabled;
             }
 
             //! Performs hit testing for this node.
@@ -477,7 +493,7 @@ namespace Luna
             //! @return Returns `true` when the position hits the node.
             virtual bool hit_test(const RectF& rect, const RectF& clip_rect, const Float2U& pos) const
             {
-                return interactive &&
+                return enabled_state() && interactive &&
                     pos.x >= rect.offset_x && pos.x <= rect.offset_x + rect.width &&
                     pos.y >= rect.offset_y && pos.y <= rect.offset_y + rect.height &&
                     pos.x >= clip_rect.offset_x && pos.x <= clip_rect.offset_x + clip_rect.width &&
@@ -532,6 +548,8 @@ namespace Luna
             Vector<Name> drag_drop_target_types;
             //! Whether this node participates in item hit testing.
             bool interactive = false;
+            //! Whether this node is enabled for interaction.
+            bool item_enabled = true;
         };
 
         //! Copyable wrapper around the description node storage.
@@ -717,6 +735,13 @@ namespace Luna
         {
             StyleValue value = ctx.get_style_value(node.style, entry, StyleValue::f32_4(default_value));
             return value.value;
+        }
+
+        //! Reads a name style entry for a node.
+        inline Name style_name(NodeRenderContext& ctx, const Node& node, const Name& entry, const Name& default_value = Name())
+        {
+            StyleValue value = ctx.get_style_value(node.style, entry, StyleValue::name(default_value));
+            return value.type == StyleValueType::name ? value.name_value : default_value;
         }
 
         //! Describes one GUI layer in a frame description.

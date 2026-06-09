@@ -13,6 +13,7 @@
 #include "RenderProxies/DockRenderProxies.hpp"
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
+#include <Luna/Runtime/Time.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <cstring>
 
@@ -21,6 +22,55 @@ namespace Luna
     namespace GUI
     {
         static VG::TextAlignment to_vg_text_alignment(TextAlignment alignment);
+
+        static f64 perf_elapsed_ms(u64 begin, u64 end)
+        {
+            return (f64)(end - begin) * 1000.0 / get_ticks_per_second();
+        }
+
+        static bool rect_visible_in_clip(const RectF& rect, const RectF& clip_rect)
+        {
+            return rect.width > 0.0f && rect.height > 0.0f &&
+                clip_rect.width > 0.0f && clip_rect.height > 0.0f &&
+                rect.offset_x < clip_rect.offset_x + clip_rect.width &&
+                rect.offset_x + rect.width > clip_rect.offset_x &&
+                rect.offset_y < clip_rect.offset_y + clip_rect.height &&
+                rect.offset_y + rect.height > clip_rect.offset_y;
+        }
+
+        static bool color_visible(const Float4U& color)
+        {
+            return color.w > 0.0f;
+        }
+
+        static bool axis_range_visible(f32 offset, f32 size, f32 clip_begin, f32 clip_end)
+        {
+            return size > 0.0f && offset < clip_end && offset + size > clip_begin;
+        }
+
+        static void visible_axis_range(const Vector<f32>& offsets, const Vector<f32>& sizes, f32 clip_begin, f32 clip_end,
+            u32& out_begin, u32& out_end)
+        {
+            out_begin = (u32)offsets.size();
+            out_end = (u32)offsets.size();
+            for(u32 i = 0; i < offsets.size() && i < sizes.size(); ++i)
+            {
+                if(axis_range_visible(offsets[i], sizes[i], clip_begin, clip_end))
+                {
+                    if(out_begin == offsets.size()) out_begin = i;
+                    out_end = i + 1;
+                }
+                else if(out_begin != offsets.size() && offsets[i] >= clip_end)
+                {
+                    break;
+                }
+            }
+            if(out_begin == offsets.size())
+            {
+                out_begin = 0;
+                out_end = 0;
+            }
+        }
 
         struct ContextNodeRenderContext : NodeRenderContext
         {
@@ -111,6 +161,20 @@ namespace Luna
                 return context ? context->get_style_value(style, entry, default_value) : default_value;
             }
 
+            virtual f32 text_cursor_x(const String& text, usize cursor, f32 font_size) const override
+            {
+                if(!context) return 0.0f;
+                const Node* node = get_node(node_index);
+                return context->text_cursor_x(text, cursor, font_size, node ? context->node_font_id(*node) : Name());
+            }
+
+            virtual usize text_cursor_from_x(const String& text, f32 x, f32 font_size) const override
+            {
+                if(!context) return text.size();
+                const Node* node = get_node(node_index);
+                return context->text_cursor_from_x(text, x, font_size, node ? context->node_font_id(*node) : Name());
+            }
+
             virtual bool is_popup_open(id_t popup_id) const override
             {
                 return context && popup_id ? context->is_popup_open(popup_id) : false;
@@ -147,8 +211,10 @@ namespace Luna
             virtual void draw_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
                 TextAlignment horizontal_alignment, TextAlignment vertical_alignment) override
             {
+                const Node* node = get_node(node_index);
                 context->render_text(rect, clip_rect, text, font_size, color,
-                    to_vg_text_alignment(horizontal_alignment), to_vg_text_alignment(vertical_alignment));
+                    to_vg_text_alignment(horizontal_alignment), to_vg_text_alignment(vertical_alignment),
+                    node ? context->node_font_id(*node) : Name());
             }
         };
 
@@ -221,11 +287,22 @@ namespace Luna
         void Context::render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
             RHI::ITexture* texture, ImageFlag image_flags)
         {
+            if(!color_visible(color) || !rect_visible_in_clip(rect, clip_rect))
+            {
+                return;
+            }
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
             DrawListState state = m_active_draw_list->get_state();
             state.shape_buffer = m_active_draw_list->get_shape_buffer();
             state.texture = texture;
+            if(test_flags(image_flags, ImageFlag::nearest))
+            {
+                state.sampler = RHI::SamplerDesc(RHI::Filter::nearest, RHI::Filter::nearest, RHI::Filter::nearest,
+                    RHI::TextureAddressMode::clamp,
+                    RHI::TextureAddressMode::clamp,
+                    RHI::TextureAddressMode::clamp);
+            }
             state.clip_rect = c;
             u32 pop_id = m_active_draw_list->push_state(&state);
             auto& points = m_active_draw_list->get_shape_buffer()->get_shape_points(true);
@@ -251,6 +328,11 @@ namespace Luna
         void Context::render_gradient_rect(const RectF& rect, const RectF& clip_rect,
             const Float4U& top_left, const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left)
         {
+            if(!rect_visible_in_clip(rect, clip_rect) ||
+                (top_left.w <= 0.0f && top_right.w <= 0.0f && bottom_right.w <= 0.0f && bottom_left.w <= 0.0f))
+            {
+                return;
+            }
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
             DrawListState state = m_active_draw_list->get_state();
@@ -279,6 +361,10 @@ namespace Luna
         void Context::render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
             bool top_left, bool top_right, bool bottom_right, bool bottom_left)
         {
+            if(!color_visible(color) || !rect_visible_in_clip(rect, clip_rect))
+            {
+                return;
+            }
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
             DrawListState state = m_active_draw_list->get_state();
@@ -321,6 +407,10 @@ namespace Luna
 
         void Context::render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color)
         {
+            if(!color_visible(color) || !rect_visible_in_clip(rect, clip_rect))
+            {
+                return;
+            }
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
             DrawListState state = m_active_draw_list->get_state();
@@ -342,6 +432,10 @@ namespace Luna
 
         void Context::render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width)
         {
+            if(!color_visible(color) || width <= 0.0f)
+            {
+                return;
+            }
             f32 margin = max(width, 1.0f);
             f32 dx = end.x > begin.x ? end.x - begin.x : begin.x - end.x;
             f32 dy = end.y > begin.y ? end.y - begin.y : begin.y - end.y;
@@ -350,6 +444,10 @@ namespace Luna
                 min(begin.y, end.y) - margin,
                 max(dx + margin * 2.0f, 1.0f),
                 max(dy + margin * 2.0f, 1.0f));
+            if(!rect_visible_in_clip(bounds, clip_rect))
+            {
+                return;
+            }
             RectF r = to_vg_rect(bounds);
             RectF c = to_vg_rect(clip_rect);
             DrawListState state = m_active_draw_list->get_state();
@@ -370,14 +468,19 @@ namespace Luna
             m_active_draw_list->pop_state(pop_id);
         }
 
-        void Context::render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment)
+        void Context::render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color,
+            VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment, const Name& font_id)
         {
-            if(!text || !text[0]) return;
+            if(!text || !text[0] || font_size <= 0.0f || !color_visible(color) || !rect_visible_in_clip(rect, clip_rect))
+            {
+                return;
+            }
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
+            FontDesc font = resolve_font(font_id);
             VG::TextArrangeSection section;
-            section.font_file = Font::get_default_font();
-            section.font_index = 0;
+            section.font_file = font.font;
+            section.font_index = font.font_index;
             section.font_size = font_size;
             section.color = color;
             section.num_chars = strlen(text);
@@ -523,6 +626,7 @@ namespace Luna
 
         void Context::render_node(u32 node_index)
         {
+            ++m_perf_counters.rendered_node_count;
             const Node& node = m_submitted_desc.nodes[node_index];
             if(popup_layer(node) && !popup_node_visible(node))
             {
@@ -534,6 +638,18 @@ namespace Luna
             }
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
+            if(!rect_visible_in_clip(rect, clip))
+            {
+                ++m_perf_counters.render_clip_skipped_node_count;
+                for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    if(absolute_node(m_submitted_desc.nodes[child]))
+                    {
+                        render_node(child);
+                    }
+                }
+                return;
+            }
             IDrawList* previous_draw_list = m_active_draw_list;
             u32 dock_panel_layer_pop = U32_MAX;
             if(m_layouts[node_index].dock_panel_child && !m_layouts[node_index].dock_panel_visible)
@@ -559,8 +675,15 @@ namespace Luna
                 auto f = query_state->states.find(Name("gui.focused"));
                 focused = f != query_state->states.end() && f->second.as<bool>() && *f->second.as<bool>();
             }
+            bool enabled = node.enabled_state();
+            if(!enabled)
+            {
+                hovered = false;
+                active = false;
+                focused = false;
+            }
 
-            NodeRenderState render_state{hovered, active, focused, m_frame_desc.surface_size, m_pointer_pos, m_frame_desc.delta_time, m_time};
+            NodeRenderState render_state{hovered, active, focused, m_frame_desc.surface_size, m_pointer_pos, m_frame_desc.delta_time, m_time, enabled};
             auto make_node_render_context = [&]()
             {
                 ContextNodeRenderContext node_render_context;
@@ -618,6 +741,39 @@ namespace Luna
                     render_node(child);
                 }
             }
+            else if(table_layout(node))
+            {
+                const NodeLayout& layout = m_layouts[node_index];
+                const TableLayoutNode* table = table_layout_node(node);
+                luassert(table);
+                u32 visible_col_begin = 0;
+                u32 visible_col_end = 0;
+                u32 visible_row_begin = 0;
+                u32 visible_row_end = 0;
+                visible_axis_range(layout.table_column_offsets, layout.table_column_widths,
+                    clip.offset_x, clip.offset_x + clip.width, visible_col_begin, visible_col_end);
+                visible_axis_range(layout.table_row_offsets, layout.table_row_heights,
+                    clip.offset_y, clip.offset_y + clip.height, visible_row_begin, visible_row_end);
+                u32 columns = layout.table_columns;
+                u32 rows = layout.table_rows;
+                for(const TableCellAttachment& cell : table->cell_attachments)
+                {
+                    if(!columns || !rows)
+                    {
+                        break;
+                    }
+                    if(cell.child_index == U32_MAX || cell.row >= rows || cell.column >= columns)
+                    {
+                        continue;
+                    }
+                    if(cell.row < visible_row_begin || cell.row >= visible_row_end ||
+                        cell.column < visible_col_begin || cell.column >= visible_col_end)
+                    {
+                        continue;
+                    }
+                    render_node(cell.child_index);
+                }
+            }
             else
             {
                 if(!tab_item_layout(node) || m_layouts[node_index].tab_content_visible)
@@ -646,6 +802,8 @@ namespace Luna
             if(!render_target || m_submitted_desc.nodes.empty() || m_submitted_desc.layers.empty()) return ok;
             lutry
             {
+                u64 render_begin = get_ticks();
+                u64 section_begin = render_begin;
                 m_shape_draw_list->reset();
                 while(m_layer_draw_lists.size() < m_submitted_desc.layers.size())
                 {
@@ -668,13 +826,26 @@ namespace Luna
                 render_drag_drop_overlay();
                 m_active_draw_list = nullptr;
                 m_feedback_draw_list->end();
+                u64 section_end = get_ticks();
+                m_perf_counters.render_record_ms = perf_elapsed_ms(section_begin, section_end);
+                section_begin = get_ticks();
                 luexp(m_shape_draw_list->compile());
+                section_end = get_ticks();
+                m_perf_counters.render_compile_ms = perf_elapsed_ms(section_begin, section_end);
+                m_perf_counters.render_vertex_count = m_shape_draw_list->get_vertex_buffer_size();
+                m_perf_counters.render_index_count = m_shape_draw_list->get_index_buffer_size();
+                Span<const VG::ShapeDrawCall> draw_calls = m_shape_draw_list->get_draw_calls();
+                m_perf_counters.render_draw_call_count = (u32)draw_calls.size();
+                section_begin = get_ticks();
                 luexp(m_shape_renderer->begin(render_target));
                 Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, m_frame_desc.surface_size.x, 0.0f, m_frame_desc.surface_size.y, 0.0f, 1.0f);
                 Float4x4U umat(mat);
-                m_shape_renderer->draw(m_shape_draw_list->get_vertex_buffer(), m_shape_draw_list->get_index_buffer(), m_shape_draw_list->get_draw_calls(), &umat);
+                m_shape_renderer->draw(m_shape_draw_list->get_vertex_buffer(), m_shape_draw_list->get_index_buffer(), draw_calls, &umat);
                 luexp(m_shape_renderer->end());
                 m_shape_renderer->submit(cmdbuf);
+                section_end = get_ticks();
+                m_perf_counters.render_submit_ms = perf_elapsed_ms(section_begin, section_end);
+                m_perf_counters.render_total_ms = perf_elapsed_ms(render_begin, section_end);
             }
             lucatchret;
             return ok;

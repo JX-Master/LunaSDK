@@ -15,7 +15,7 @@ namespace Luna
         {
             usize cell_index = (usize)row * columns + col;
             const TableCellAttachment* cell_attachment = child_index != U32_MAX ? table_cell_attachment(node, child_index) : nullptr;
-            if(cell_attachment)
+            if(cell_attachment && cell_attachment->color_enabled)
             {
                 ColorOverride color;
                 color.enabled = true;
@@ -58,6 +58,38 @@ namespace Luna
             return ColorOverride();
         }
 
+        static bool axis_range_visible(f32 offset, f32 size, f32 clip_begin, f32 clip_end)
+        {
+            return size > 0.0f && offset < clip_end && offset + size > clip_begin;
+        }
+
+        static void visible_table_range(const Vector<f32>& offsets, const Vector<f32>& sizes, f32 clip_begin, f32 clip_end,
+            u32& out_begin, u32& out_end)
+        {
+            out_begin = (u32)offsets.size();
+            out_end = out_begin;
+            for(u32 i = 0; i < offsets.size(); ++i)
+            {
+                if(axis_range_visible(offsets[i], sizes[i], clip_begin, clip_end))
+                {
+                    if(out_begin == offsets.size())
+                    {
+                        out_begin = i;
+                    }
+                    out_end = i + 1;
+                }
+                else if(out_begin != offsets.size() && offsets[i] >= clip_end)
+                {
+                    break;
+                }
+            }
+            if(out_begin == offsets.size())
+            {
+                out_begin = 0;
+                out_end = 0;
+            }
+        }
+
         static void draw_default_table_layout(NodeRenderContext& ctx, const Node& node, const RectF& rect, const RectF& clip_rect,
             const NodeRenderState&, void*)
         {
@@ -68,21 +100,28 @@ namespace Luna
             u32 rows = layout.table_rows;
             if(!columns || !rows) return;
 
-            u32 child = node.first_child;
-            for(u32 row = 0; row < rows; ++row)
+            f32 clip_left = clip_rect.offset_x;
+            f32 clip_right = clip_rect.offset_x + clip_rect.width;
+            f32 clip_top = clip_rect.offset_y;
+            f32 clip_bottom = clip_rect.offset_y + clip_rect.height;
+            u32 visible_col_begin = 0;
+            u32 visible_col_end = 0;
+            u32 visible_row_begin = 0;
+            u32 visible_row_end = 0;
+            visible_table_range(layout.table_column_offsets, layout.table_column_widths, clip_left, clip_right, visible_col_begin, visible_col_end);
+            visible_table_range(layout.table_row_offsets, layout.table_row_heights, clip_top, clip_bottom, visible_row_begin, visible_row_end);
+
+            for(u32 row = visible_row_begin; row < visible_row_end; ++row)
             {
-                for(u32 col = 0; col < columns; ++col)
+                for(u32 col = visible_col_begin; col < visible_col_end; ++col)
                 {
+                    const TableCellAttachment* cell = table_cell_attachment(node, row, col);
+                    u32 child = cell ? cell->child_index : U32_MAX;
                     ColorOverride color = table_cell_color(node, style, child, row, col, columns);
                     if(color.enabled)
                     {
                         ctx.draw_rect(RectF(layout.table_column_offsets[col], layout.table_row_offsets[row],
                             layout.table_column_widths[col], layout.table_row_heights[row]), clip_rect, color.color, 0.0f);
-                    }
-                    if(child != U32_MAX)
-                    {
-                        const Node* child_node = ctx.get_node(child);
-                        child = child_node ? child_node->next_sibling : U32_MAX;
                     }
                 }
             }
@@ -93,18 +132,20 @@ namespace Luna
             f32 table_right = layout.table_column_offsets.back() + layout.table_column_widths.back();
             if(style.column_separators && style.separator_size > 0.0f)
             {
-                for(u32 col = 0; col + 1 < columns; ++col)
+                for(u32 col = visible_col_begin; col < visible_col_end && col + 1 < columns; ++col)
                 {
                     f32 x = layout.table_column_offsets[col] + layout.table_column_widths[col];
+                    if(!axis_range_visible(x, style.separator_size, clip_left, clip_right)) continue;
                     ctx.draw_rect(RectF(x, table_top, style.separator_size, max(table_bottom - table_top, 1.0f)),
                         clip_rect, style.separator_color, 0.0f);
                 }
             }
             if(style.row_separators && style.separator_size > 0.0f)
             {
-                for(u32 row = 0; row + 1 < rows; ++row)
+                for(u32 row = visible_row_begin; row < visible_row_end && row + 1 < rows; ++row)
                 {
                     f32 y = layout.table_row_offsets[row] + layout.table_row_heights[row];
+                    if(!axis_range_visible(y, style.separator_size, clip_top, clip_bottom)) continue;
                     ctx.draw_rect(RectF(table_left, y, max(table_right - table_left, 1.0f), style.separator_size),
                         clip_rect, style.separator_color, 0.0f);
                 }

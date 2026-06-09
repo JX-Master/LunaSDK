@@ -26,6 +26,8 @@ using namespace Luna;
 
 namespace Luna
 {
+    constexpr u32 MAX_DEMO_TABS = 16;
+
     struct App
     {
         Ref<Window::IWindow> window;
@@ -83,6 +85,7 @@ namespace Luna
         f32 slider_with_input_value = 0.72f;
         f32 style_preview_slider = 0.48f;
         f32 style_preview_drag = 32.0f;
+        f32 progress_value = 0.62f;
         f32 drag_value = 42.0f;
         Float2 drag2_value = Float2(1.0f, -2.0f);
         Float3 drag3_value = Float3(0.0f, 1.0f, 2.0f);
@@ -99,15 +102,17 @@ namespace Luna
         bool clip_enabled = true;
         Float2U showcase_size = Float2U(920.0f, 700.0f);
         Float2U showcase_content_size = Float2U(880.0f, 590.0f);
+        GUI::PerformanceCounters perf_counters;
 #ifdef LUNA_GUI_ENABLE_DEBUG
         GUI::DebugInfo debug_info;
         bool has_debug_info = false;
+        bool show_debug_panel = false;
 #endif
     };
 
     struct FrameHandles
     {
-        GUI::ItemHandle tabs[12];
+        GUI::ItemHandle tabs[MAX_DEMO_TABS];
         GUI::ItemHandle tree_nodes[8];
         GUI::ItemHandle primary_button;
         GUI::ItemHandle double_click_item;
@@ -226,10 +231,13 @@ namespace Luna
         "Style",
         "Trees",
         "Tabs",
-        "DragDrop"
+        "DragDrop",
+        "Perf",
+        "Debug"
     };
 
     constexpr u32 DEMO_TAB_COUNT = (u32)(sizeof(DEMO_TABS) / sizeof(DEMO_TABS[0]));
+    static_assert(DEMO_TAB_COUNT <= MAX_DEMO_TABS);
     enum DemoTab : u32
     {
         DEMO_TAB_OVERVIEW,
@@ -243,9 +251,11 @@ namespace Luna
         DEMO_TAB_STYLE,
         DEMO_TAB_TREES,
         DEMO_TAB_TABS,
-        DEMO_TAB_DRAG_DROP
+        DEMO_TAB_DRAG_DROP,
+        DEMO_TAB_PERF,
+        DEMO_TAB_DEBUG
     };
-    static_assert((u32)DEMO_TAB_DRAG_DROP + 1 == DEMO_TAB_COUNT);
+    static_assert((u32)DEMO_TAB_DEBUG + 1 == DEMO_TAB_COUNT);
     constexpr u32 TREE_NODE_COUNT = 8;
 
     void demo_section(App& app, const c8* title)
@@ -389,6 +399,28 @@ namespace Luna
         demo_two_column_label(app, "ButtonGroup multi");
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(360.0f));
         GUI::button_group(app.gui, "Multi Button Group", Span<bool>(app.button_group_multi, 3), Span<const c8*>(group_items, 3));
+        GUI::end_h_layout(app.gui);
+
+        GUI::push_enabled(app.gui, false);
+        GUI::begin_h_layout(app.gui, "Disabled Controls", row);
+        GUI::button(app.gui, "Disabled Button");
+        GUI::checkbox(app.gui, "Disabled Check", &app.checkbox_a);
+        GUI::toggle_switch(app.gui, "Disabled Switch", &app.switch_a);
+        GUI::radio_button(app.gui, "Disabled Radio", &app.radio_choice, 2);
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(280.0f));
+        GUI::button_group(app.gui, "Disabled Button Group", &app.button_group_choice, Span<const c8*>(group_items, 3));
+        GUI::selectable(app.gui, "Disabled Selectable", true);
+        GUI::end_h_layout(app.gui);
+        GUI::pop_enabled(app.gui);
+
+        GUI::begin_h_layout(app.gui, "Progress Default", row);
+        demo_two_column_label(app, "ProgressBar");
+        GUI::progress_bar(app.gui, "ProgressBar", app.progress_value);
+        GUI::end_h_layout(app.gui);
+
+        GUI::begin_h_layout(app.gui, "Progress Custom", row);
+        demo_two_column_label(app, "HP bar");
+        GUI::progress_bar(app.gui, "HP ProgressBar", 0.76f, GUI::Size::fixed(320.0f, 24.0f), "HP 76 / 100");
         GUI::end_h_layout(app.gui);
 
         GUI::begin_h_layout(app.gui, "Text Inputs", row);
@@ -577,7 +609,6 @@ namespace Luna
         GUI::text(app.gui, "Columns are fixed and resizable; rows are hug-sized with alternating backgrounds.");
 
         GUI::TableDesc table;
-        table.columns = 4;
         f32 table_width = max(app.showcase_content_size.x - 24.0f, 360.0f);
         f32 table_column = max((table_width - 180.0f) / 3.0f, 96.0f);
         table.column_sizes = {
@@ -595,20 +626,130 @@ namespace Luna
         table.style.resize_fixed_columns = true;
         table.style.separator_size = 1.0f;
         GUI::begin_table_layout(app.gui, "Table Showcase", table);
-        GUI::text(app.gui, "Name");
-        GUI::text(app.gui, "Enabled");
-        GUI::text(app.gui, "Value");
-        GUI::text(app.gui, "Action");
+        if(GUI::begin_table_row(app.gui))
+        {
+            GUI::text(app.gui, "Name");
+            GUI::text(app.gui, "Enabled");
+            GUI::text(app.gui, "Value");
+            GUI::text(app.gui, "Action");
+            GUI::end_table_row(app.gui);
+        }
         for(u32 i = 0; i < 4; ++i)
         {
-            c8 label[64];
-            snprintf(label, 64, "Row %u", i + 1);
-            GUI::text(app.gui, label);
-            GUI::checkbox(app.gui, "Enabled", &app.table_checks[i]);
-            GUI::slider_float(app.gui, "Value", &app.table_values[i], 0.0f, 1.0f);
-            GUI::button(app.gui, "Run");
+            if(GUI::begin_table_row(app.gui))
+            {
+                c8 label[64];
+                snprintf(label, 64, "Row %u", i + 1);
+                GUI::text(app.gui, label);
+                GUI::checkbox(app.gui, "Enabled", &app.table_checks[i]);
+                GUI::slider_float(app.gui, "Value", &app.table_values[i], 0.0f, 1.0f);
+                GUI::button(app.gui, "Run");
+                GUI::end_table_row(app.gui);
+            }
         }
         GUI::end_table_layout(app.gui);
+    }
+
+    void draw_perf_tab(App& app)
+    {
+        demo_section(app, "ScrollView + TableLayout stress");
+        GUI::text(app.gui, "This page virtualizes a 1000-row table inside a scroll view and prints the previous frame GUI counters.");
+
+        const GUI::PerformanceCounters& perf = app.perf_counters;
+        c8 line[256];
+        snprintf(line, 256,
+            "Frame %llu | nodes %u | interactive %u | layers %u | inputs %u",
+            (u64)perf.frame_generation, perf.node_count, perf.interactive_node_count, perf.layer_count, perf.input_event_count);
+        GUI::text(app.gui, line);
+        snprintf(line, 256,
+            "Submit %.3f ms | prepare %.3f | layout %.3f | input %.3f | relayout %.3f | state %.3f",
+            perf.submit_total_ms, perf.submit_prepare_ms, perf.submit_layout_ms, perf.submit_input_ms,
+            perf.submit_relayout_ms, perf.submit_state_ms);
+        GUI::text(app.gui, line);
+        snprintf(line, 256,
+            "Layout passes %u | measured %u | arranged %u | layout clip skipped %u",
+            perf.layout_pass_count, perf.measured_node_count, perf.arranged_node_count,
+            perf.layout_clip_skipped_node_count);
+        GUI::text(app.gui, line);
+        snprintf(line, 256,
+            "Render %.3f ms | record %.3f | compile %.3f | submit %.3f | rendered %u | render clip skipped %u",
+            perf.render_total_ms, perf.render_record_ms, perf.render_compile_ms, perf.render_submit_ms,
+            perf.rendered_node_count, perf.render_clip_skipped_node_count);
+        GUI::text(app.gui, line);
+        snprintf(line, 256,
+            "VG draw calls %u | vertices %u | indices %u",
+            perf.render_draw_call_count, perf.render_vertex_count, perf.render_index_count);
+        GUI::text(app.gui, line);
+
+        f32 table_width = max(app.showcase_content_size.x - 56.0f, 720.0f);
+        f32 name_width = max(table_width - 420.0f, 180.0f);
+        constexpr u32 DATA_ROWS = 1000;
+        constexpr u32 HEADER_ROWS = 1;
+        constexpr u32 TOTAL_ROWS = DATA_ROWS + HEADER_ROWS;
+        constexpr f32 ROW_HEIGHT = 44.0f;
+        f32 stress_height = max(app.showcase_content_size.y - 190.0f, 220.0f);
+
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
+        GUI::begin_scroll_view(app.gui, "Perf Stress ScrollView", GUI::Size::fixed(table_width + 24.0f, stress_height));
+
+        GUI::TableDesc table;
+        table.row_height_mode = GUI::TableRowHeightMode::fixed;
+        table.fixed_row_height = ROW_HEIGHT;
+        table.virtualize_fixed_rows = true;
+        table.virtualization_overscan_rows = 4;
+        table.column_sizes = {
+            GUI::TableTrackSize::fixed(82.0f),
+            GUI::TableTrackSize::fixed(name_width),
+            GUI::TableTrackSize::fixed(130.0f),
+            GUI::TableTrackSize::fixed(110.0f),
+            GUI::TableTrackSize::fixed(98.0f)
+        };
+        table.style.border_size = 1.0f;
+        table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
+        table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.88f);
+        table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.18f, 0.88f);
+        table.style.row_separators = true;
+        table.style.column_separators = true;
+        table.style.resize_fixed_columns = true;
+        table.style.separator_size = 1.0f;
+
+        GUI::begin_table_layout(app.gui, "Perf Stress Table", table);
+        for(u32 virtual_row = 0; virtual_row < TOTAL_ROWS; ++virtual_row)
+        {
+            if(GUI::begin_table_row(app.gui))
+            {
+                if(virtual_row == 0)
+                {
+                    GUI::text(app.gui, "Index");
+                    GUI::text(app.gui, "Name");
+                    GUI::text(app.gui, "Category");
+                    GUI::text(app.gui, "Value");
+                    GUI::text(app.gui, "State");
+                }
+                else
+                {
+                    u32 row = virtual_row - HEADER_ROWS;
+                    c8 index[32];
+                    c8 name[96];
+                    c8 category[48];
+                    c8 value[48];
+                    c8 state[48];
+                    snprintf(index, 32, "%04u", row);
+                    snprintf(name, 96, "Stress row %04u / generated sample text", row);
+                    snprintf(category, 48, "Group %u", row % 17);
+                    snprintf(value, 48, "%u.%02u", row * 3u, row % 100u);
+                    snprintf(state, 48, "%s", (row % 7u) == 0u ? "Pinned" : ((row % 3u) == 0u ? "Hot" : "Idle"));
+                    GUI::text(app.gui, index);
+                    GUI::text(app.gui, name);
+                    GUI::text(app.gui, category);
+                    GUI::text(app.gui, value);
+                    GUI::text(app.gui, state);
+                }
+                GUI::end_table_row(app.gui);
+            }
+        }
+        GUI::end_table_layout(app.gui);
+        GUI::end_scroll_view(app.gui);
     }
 
     void draw_drawing_tab(App& app, FrameHandles& handles)
@@ -935,6 +1076,20 @@ namespace Luna
         GUI::end_tab_bar(app.gui);
     }
 
+    void draw_debug_tab(App& app)
+    {
+        demo_section(app, "Debug");
+#ifdef LUNA_GUI_ENABLE_DEBUG
+        GUI::checkbox(app.gui, "Show Debug Panel", &app.show_debug_panel);
+        GUI::text(app.gui, app.show_debug_panel ?
+            "Debug panel is visible. Hover and select nodes to inspect layout, style and input routing." :
+            "Debug panel is hidden. No debug hit-test outlines are drawn.");
+        GUI::text(app.gui, app.has_debug_info ? "Debug snapshot is ready." : "Debug snapshot will be available after the first submitted frame.");
+#else
+        GUI::text(app.gui, "GUI debug support is disabled for this build.");
+#endif
+    }
+
     struct DemoThemePalette
     {
         const c8* name;
@@ -960,11 +1115,18 @@ namespace Luna
         GUI::set_style_f32x4(app.gui, style, Name(entry), color);
     }
 
+    Name demo_font_id()
+    {
+        return Name("demo.font.default");
+    }
+
     void define_demo_theme(App& app, const DemoThemePalette& theme)
     {
         Name style(theme.name);
         GUI::define_style(app.gui, style);
+        GUI::set_style_name(app.gui, style, Name("gui.font"), demo_font_id());
         set_theme_color(app, style, "gui.text.color", theme.text);
+        set_theme_color(app, style, "gui.text.disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.window.background", theme.panel);
         set_theme_color(app, style, "gui.window.title_background", theme.title);
@@ -977,12 +1139,15 @@ namespace Luna
         set_theme_color(app, style, "gui.button.background", theme.accent);
         set_theme_color(app, style, "gui.button.background_hovered", theme.accent_hover);
         set_theme_color(app, style, "gui.button.background_active", theme.accent_active);
+        set_theme_color(app, style, "gui.button.background_disabled", theme.subtle);
         set_theme_color(app, style, "gui.button.text_color", Float4U(1.0f));
+        set_theme_color(app, style, "gui.button.text_disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.selectable.background_hovered", theme.subtle_hover);
         set_theme_color(app, style, "gui.selectable.background_selected", theme.selected);
         set_theme_color(app, style, "gui.selectable.background_active", theme.accent_active);
         set_theme_color(app, style, "gui.selectable.text_color", theme.text);
+        set_theme_color(app, style, "gui.selectable.text_disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.input_text.background", theme.surface);
         set_theme_color(app, style, "gui.input_text.background_focused", theme.surface_focus);
@@ -1002,41 +1167,67 @@ namespace Luna
         set_theme_color(app, style, "gui.numeric.slider_fill_hovered", theme.accent_hover);
         set_theme_color(app, style, "gui.numeric.slider_fill_active", theme.accent_active);
         set_theme_color(app, style, "gui.numeric.drag_fill", theme.accent_hover);
+        set_theme_color(app, style, "gui.progress_bar.background", theme.surface);
+        set_theme_color(app, style, "gui.progress_bar.fill", theme.accent_active);
+        set_theme_color(app, style, "gui.progress_bar.border", theme.border);
+        set_theme_color(app, style, "gui.progress_bar.text_color", theme.text);
 
         set_theme_color(app, style, "gui.checkbox.background", theme.surface);
         set_theme_color(app, style, "gui.checkbox.background_checked", theme.accent_active);
+        set_theme_color(app, style, "gui.checkbox.background_disabled", theme.subtle);
+        set_theme_color(app, style, "gui.checkbox.background_checked_disabled", theme.selected);
         set_theme_color(app, style, "gui.checkbox.border", theme.border);
         set_theme_color(app, style, "gui.checkbox.border_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.checkbox.border_disabled", theme.border);
         set_theme_color(app, style, "gui.checkbox.text_color", theme.text);
+        set_theme_color(app, style, "gui.checkbox.text_disabled", theme.disabled);
         set_theme_color(app, style, "gui.switch.off_track", theme.subtle);
         set_theme_color(app, style, "gui.switch.off_track_hovered", theme.subtle_hover);
         set_theme_color(app, style, "gui.switch.on_track", theme.accent_active);
         set_theme_color(app, style, "gui.switch.on_track_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.switch.track_disabled", theme.subtle);
+        set_theme_color(app, style, "gui.switch.track_checked_disabled", theme.selected);
+        set_theme_color(app, style, "gui.switch.knob_disabled", theme.disabled);
         set_theme_color(app, style, "gui.switch.text_color", theme.text);
+        set_theme_color(app, style, "gui.switch.text_disabled", theme.disabled);
         set_theme_color(app, style, "gui.radio_button.background", theme.surface);
+        set_theme_color(app, style, "gui.radio_button.background_disabled", theme.subtle);
         set_theme_color(app, style, "gui.radio_button.ring", theme.border);
         set_theme_color(app, style, "gui.radio_button.ring_hovered", theme.accent_hover);
+        set_theme_color(app, style, "gui.radio_button.ring_disabled", theme.border);
         set_theme_color(app, style, "gui.radio_button.selected_color", theme.accent_active);
+        set_theme_color(app, style, "gui.radio_button.selected_disabled", theme.disabled);
         set_theme_color(app, style, "gui.radio_button.text_color", theme.text);
+        set_theme_color(app, style, "gui.radio_button.text_disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.button_group.background", theme.surface);
+        set_theme_color(app, style, "gui.button_group.background_disabled", theme.subtle);
         set_theme_color(app, style, "gui.button_group.border", theme.border);
+        set_theme_color(app, style, "gui.button_group.border_disabled", theme.border);
         set_theme_color(app, style, "gui.button_group.hover", theme.subtle_hover);
         set_theme_color(app, style, "gui.button_group.selected", theme.selected);
         set_theme_color(app, style, "gui.button_group.selected_hot", theme.accent_hover);
+        set_theme_color(app, style, "gui.button_group.selected_disabled", theme.selected);
         set_theme_color(app, style, "gui.button_group.separator", theme.border);
+        set_theme_color(app, style, "gui.button_group.separator_disabled", theme.border);
         set_theme_color(app, style, "gui.button_group.text", theme.text);
         set_theme_color(app, style, "gui.button_group.text_selected", theme.text);
+        set_theme_color(app, style, "gui.button_group.text_disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.collapsing_header.background", theme.subtle);
         set_theme_color(app, style, "gui.collapsing_header.background_hovered", theme.subtle_hover);
+        set_theme_color(app, style, "gui.collapsing_header.background_disabled", theme.subtle);
         set_theme_color(app, style, "gui.collapsing_header.text_color", theme.text);
+        set_theme_color(app, style, "gui.collapsing_header.text_disabled", theme.disabled);
         set_theme_color(app, style, "gui.tree_node.background_hovered", theme.subtle_hover);
         set_theme_color(app, style, "gui.tree_node.background_selected", theme.selected);
         set_theme_color(app, style, "gui.tree_node.background_active", theme.accent_active);
+        set_theme_color(app, style, "gui.tree_node.background_disabled", theme.subtle);
         set_theme_color(app, style, "gui.tree_node.text_color", theme.text);
+        set_theme_color(app, style, "gui.tree_node.text_disabled", theme.disabled);
         set_theme_color(app, style, "gui.tree_node.icon_color", theme.accent_active);
         set_theme_color(app, style, "gui.tree_node.leaf_icon_color", theme.border);
+        set_theme_color(app, style, "gui.tree_node.icon_disabled", theme.disabled);
 
         set_theme_color(app, style, "gui.menu_bar.background", theme.title);
         set_theme_color(app, style, "gui.menu_bar.border", theme.border);
@@ -1143,6 +1334,7 @@ namespace Luna
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
         GUI::input_text(app.gui, "Theme Input", app.style_preview_text);
         GUI::slider_float(app.gui, "Theme Slider", &app.style_preview_slider, 0.0f, 1.0f);
+        GUI::progress_bar(app.gui, "Theme Progress", app.style_preview_slider);
         GUI::drag_float(app.gui, "Theme Drag", &app.style_preview_drag, 1.0f, 0.0f, 100.0f, GUI::NumericEditFlag::input_on_double_click);
 
         GUI::ItemHandle header = GUI::collapsing_header(app.gui, "Collapsing Header");
@@ -1268,6 +1460,12 @@ namespace Luna
         case DEMO_TAB_DRAG_DROP:
             draw_drag_drop_tab(app, handles);
             break;
+        case DEMO_TAB_PERF:
+            draw_perf_tab(app);
+            break;
+        case DEMO_TAB_DEBUG:
+            draw_debug_tab(app);
+            break;
         default:
             break;
         }
@@ -1325,6 +1523,7 @@ namespace Luna
             luset(app.swap_chain, dev->new_swap_chain(app.queue, app.window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})));
             luset(app.cmdbuf, dev->new_command_buffer(app.queue));
             app.gui = GUI::new_context(dev);
+            luexp(GUI::register_font(app.gui, demo_font_id(), Font::get_default_font()));
             GUIWindow::GUIWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;
@@ -1360,7 +1559,7 @@ namespace Luna
                 u32 built_tab = app.selected_tab;
                 draw_showcase(app, handles, frame.surface_size, built_tab);
 #ifdef LUNA_GUI_ENABLE_DEBUG
-                if(app.has_debug_info)
+                if(app.show_debug_panel && app.has_debug_info)
                 {
                     GUI::show_debug_info(app.gui, app.debug_info);
                 }
@@ -1530,6 +1729,7 @@ namespace Luna
                 app.cmdbuf->begin_render_pass(render_pass);
                 app.cmdbuf->end_render_pass();
                 luexp(app.gui->render(app.cmdbuf, back_buffer));
+                app.perf_counters = app.gui->get_performance_counters();
                 app.cmdbuf->resource_barrier({}, {
                     {back_buffer, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
                     });

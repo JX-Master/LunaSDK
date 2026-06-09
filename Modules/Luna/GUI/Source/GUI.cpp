@@ -27,6 +27,7 @@ namespace Luna
             LUNA_GUI_API StateKey<bool> hovered() { return {Name("gui.hovered"), false}; }
             LUNA_GUI_API StateKey<bool> active() { return {Name("gui.active"), false}; }
             LUNA_GUI_API StateKey<bool> focused() { return {Name("gui.focused"), false}; }
+            LUNA_GUI_API StateKey<bool> enabled() { return {Name("gui.enabled"), true}; }
             LUNA_GUI_API StateKey<bool> open() { return {Name("gui.open"), true}; }
             LUNA_GUI_API StateKey<bool> value_changed() { return {Name("gui.value_changed"), false}; }
             LUNA_GUI_API StateKey<RectF> rect() { return {Name("gui.rect"), RectF(0.0f, 0.0f, 0.0f, 0.0f)}; }
@@ -73,6 +74,7 @@ namespace Luna
                 register_struct_type<DockSpaceNode>({}, typeof<Node>());
                 register_struct_type<TabBarNode>({}, typeof<Node>());
                 register_struct_type<ButtonNode>({}, typeof<Node>());
+                register_struct_type<ProgressBarNode>({}, typeof<Node>());
                 register_struct_type<TextNode>({}, typeof<Node>());
                 register_struct_type<SelectableNode>({}, typeof<Node>());
                 register_struct_type<CheckboxNode>({}, typeof<Node>());

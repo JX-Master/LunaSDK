@@ -123,6 +123,9 @@ namespace Luna
                 case StyleValueType::f32_3:
                     strprintf(ret, "(%.3f, %.3f, %.3f)", value.value.x, value.value.y, value.value.z);
                     break;
+                case StyleValueType::name:
+                    ret = value.name_value.c_str();
+                    break;
                 default:
                     strprintf(ret, "(%.3f, %.3f, %.3f, %.3f)", value.value.x, value.value.y, value.value.z, value.value.w);
                     break;

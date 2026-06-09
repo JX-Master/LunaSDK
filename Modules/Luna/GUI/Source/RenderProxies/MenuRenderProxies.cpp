@@ -27,10 +27,10 @@ namespace Luna
             const MenuItemNode* menu_item = cast_node<MenuItemNode>(node);
             if(!menu_item) return;
             bool open = menu_item->popup_id && ctx.is_popup_open(menu_item->popup_id);
-            Float4U text_color = menu_item->enabled ?
+            Float4U text_color = state.enabled ?
                 style_f32x4(ctx, node, Name("gui.menu_item.text_color"), Float4U(1.0f)) :
                 style_f32x4(ctx, node, Name("gui.menu_item.text_disabled"), Float4U(0.55f, 0.59f, 0.65f, 1.0f));
-            if(open || state.hovered || state.active)
+            if(state.enabled && (open || state.hovered || state.active))
             {
                 Float4U active_color = style_f32x4(ctx, node, Name("gui.menu_item.background_active"), Float4U(0.20f, 0.36f, 0.62f, 1.0f));
                 Float4U hovered_color = style_f32x4(ctx, node, Name("gui.menu_item.background_hovered"), Float4U(0.20f, 0.30f, 0.44f, 1.0f));

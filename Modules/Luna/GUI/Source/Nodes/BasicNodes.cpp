@@ -33,6 +33,27 @@ namespace Luna
             return fixed_height_metrics(72.0f, max(text_width + 24.0f, 72.0f), 30.0f);
         }
 
+        ProgressBarNode::ProgressBarNode()
+        {
+            layout_style = LayoutStyle::fill_width();
+            render_proxy = default_progress_bar_render_proxy();
+        }
+
+        Guid ProgressBarNode::type_guid() const
+        {
+            return __guid;
+        }
+
+        Ref<Node> ProgressBarNode::clone() const
+        {
+            return new_object<ProgressBarNode>(*this);
+        }
+
+        LayoutMetrics ProgressBarNode::measure() const
+        {
+            return fixed_height_metrics(80.0f, 160.0f, 24.0f);
+        }
+
         TextNode::TextNode()
         {
             render_proxy = default_text_render_proxy();

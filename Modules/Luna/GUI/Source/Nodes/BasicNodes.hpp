@@ -22,6 +22,22 @@ namespace Luna
             virtual LayoutMetrics measure() const override;
 
         };
+        struct ProgressBarNode : Node
+        {
+            lustruct("GUI::ProgressBarNode", "{FD7AF111-3102-42FD-95B7-38E82E461D50}");
+
+            f32 fraction = 0.0f;
+            String overlay;
+            bool has_overlay = false;
+
+            ProgressBarNode();
+
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+
+            virtual LayoutMetrics measure() const override;
+
+        };
         struct TextNode : Node
         {
             lustruct("GUI::TextNode", "{686DF821-591B-41C4-BC10-9420C24FE28D}");

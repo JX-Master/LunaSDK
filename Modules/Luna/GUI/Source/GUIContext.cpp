@@ -22,6 +22,10 @@ namespace Luna
             m_feedback_draw_list = new_draw_list();
             m_shape_renderer = VG::new_fill_shape_renderer();
             m_font_atlas = VG::new_font_atlas();
+            FontResource default_resource;
+            default_resource.font = Font::get_default_font();
+            default_resource.font_index = 0;
+            m_fonts.insert(make_pair(default_font_id(), move(default_resource)));
         }
 
         void Context::begin_frame(const FrameDesc& desc)
@@ -31,6 +35,8 @@ namespace Luna
             m_frame_desc = desc;
             m_submitted = false;
             ++m_generation;
+            m_perf_counters = PerformanceCounters();
+            m_perf_counters.frame_generation = m_generation;
             gc_states();
             m_drag_drop.begin_frame();
             m_build_desc = Description();
@@ -40,9 +46,12 @@ namespace Luna
             m_id_stack.clear();
             m_clip_stack.clear();
             m_style_stack.clear();
+            m_enabled_stack.clear();
             m_child_ordinals.clear();
             BuildHintState& build_hints = build_hint_state();
             build_hints.has_next_item_layout = false;
+            build_hints.has_next_item_enabled = false;
+            build_hints.next_item_enabled = true;
             build_hints.has_next_canvas_item_layout = false;
             build_hints.has_next_table_cell_color = false;
             build_hints.has_next_dock_panel_style = false;
@@ -183,30 +192,37 @@ namespace Luna
                     continue;
                 }
                 Ref<InputEditState> state = get_or_create_widget_state<InputEditState>(node.id);
-                f32 font_size = 16.0f;
                 const String* string_value = input_text_value(node);
                 if(input_text_node(node) && string_value)
                 {
+                    f32 font_size = get_style_value_unlocked(node.style, Name("gui.input_text.font_size"), StyleValue::f32_1(16.0f)).value.x;
                     const RectF& rect = m_layouts[i].rect;
                     state->text_cursor = clamp_utf8_cursor(*string_value, state->text_cursor);
                     RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
                     ret.active = true;
                     ret.rect = text_rect;
-                    ret.cursor = (i32)(input_text_cursor_x(*string_value, state->text_cursor, font_size) + 0.5f);
+                    ret.cursor = (i32)(text_cursor_x(*string_value, state->text_cursor, font_size, node_font_id(node)) + 0.5f);
                     return ret;
                 }
                 if(numeric_text_editable(node) && state->numeric_editing)
                 {
+                    f32 font_size = get_style_value_unlocked(node.style, Name("gui.numeric.font_size"), StyleValue::f32_1(15.0f)).value.x;
                     state->text_cursor = clamp_utf8_cursor(state->numeric_edit_text, state->text_cursor);
                     RectF component = numeric_component_rect(node, m_layouts[i].rect, state->numeric_edit_component);
                     RectF text_rect(component.offset_x + 6.0f, component.offset_y, max(component.width - 12.0f, 1.0f), component.height);
                     ret.active = true;
                     ret.rect = text_rect;
-                    ret.cursor = (i32)(input_text_cursor_x(state->numeric_edit_text, state->text_cursor, font_size) + 0.5f);
+                    ret.cursor = (i32)(text_cursor_x(state->numeric_edit_text, state->text_cursor, font_size, node_font_id(node)) + 0.5f);
                     return ret;
                 }
             }
             return ret;
+        }
+
+        PerformanceCounters Context::get_performance_counters()
+        {
+            lutsassert();
+            return m_perf_counters;
         }
 
         R<Description> Context::end_build()
@@ -249,6 +265,11 @@ namespace Luna
             node.parent = layer_root ? U32_MAX : parent;
             node.depth = layer_root ? 0 : m_build_desc.nodes[parent].depth + 1;
             node.text = text ? text : "";
+            bool stack_enabled = m_enabled_stack.empty() ? true : m_enabled_stack.back();
+            bool next_enabled = build_hint_state().has_next_item_enabled ? build_hint_state().next_item_enabled : true;
+            node.item_enabled = node.item_enabled && stack_enabled && next_enabled;
+            build_hint_state().has_next_item_enabled = false;
+            build_hint_state().next_item_enabled = true;
             if(!m_style_stack.empty())
             {
                 node.style = m_style_stack.back();
@@ -286,6 +307,8 @@ namespace Luna
                 build_hint_state().has_next_table_cell_color = false;
                 build_hint_state().has_next_dock_panel_style = false;
                 build_hint_state().next_dock_panel_open = nullptr;
+                build_hint_state().has_next_item_enabled = false;
+                build_hint_state().next_item_enabled = true;
                 build_hint_state().has_next_render_proxy = false;
                 build_hint_state().next_render_proxy = RenderProxyDesc();
             }
@@ -310,12 +333,28 @@ namespace Luna
                     }
                     build_hint_state().has_next_canvas_item_layout = false;
                 }
-                if(build_hint_state().has_next_table_cell_color)
+                if(TableLayoutNode* table = table_layout_node(parent_node))
                 {
-                    if(TableLayoutNode* table = table_layout_node(parent_node))
+                    luassert_msg(table->active_row_attachment != U32_MAX &&
+                        table->active_row_attachment < table->row_attachments.size(),
+                        "Table cells must be submitted between begin_table_row and end_table_row.");
+                    TableRowAttachment& row = table->row_attachments[table->active_row_attachment];
+                    u32 column = row.cell_count++;
+                    TableCellAttachment cell;
+                    cell.child_index = index;
+                    cell.child_id = m_build_desc.nodes[index].id;
+                    cell.row = table->active_row_attachment;
+                    cell.column = column;
+                    if(build_hint_state().has_next_table_cell_color)
                     {
-                        table->cell_attachments.push_back(TableCellAttachment{index, m_build_desc.nodes[index].id, build_hint_state().next_table_cell_color});
+                        cell.color_enabled = true;
+                        cell.color = build_hint_state().next_table_cell_color;
                     }
+                    table->cell_attachments.push_back(cell);
+                    build_hint_state().has_next_table_cell_color = false;
+                }
+                else if(build_hint_state().has_next_table_cell_color)
+                {
                     build_hint_state().has_next_table_cell_color = false;
                 }
                 if(build_hint_state().has_next_dock_panel_style)
@@ -352,6 +391,66 @@ namespace Luna
             luassert(m_parent_stack.size() > 1);
             m_parent_stack.pop_back();
             m_id_stack.pop_back();
+        }
+
+        bool Context::table_row_visible(const TableLayoutNode& table, u32 row) const
+        {
+            if(!table_virtual_rows_enabled(table))
+            {
+                return true;
+            }
+            u32 previous_index = find_submitted_node_index(table.id);
+            if(previous_index == U32_MAX || previous_index >= m_layouts.size())
+            {
+                return true;
+            }
+            const NodeLayout& layout = m_layouts[previous_index];
+            if(layout.rect.width <= 0.0f || layout.rect.height <= 0.0f || layout.clip_rect.width <= 0.0f || layout.clip_rect.height <= 0.0f)
+            {
+                return true;
+            }
+            const TableStyle& style = table.desc.style;
+            f32 row_height = max(table.desc.fixed_row_height, 1.0f);
+            f32 separator = style.row_separators ? max(style.separator_size, 0.0f) : 0.0f;
+            f32 stride = row_height + separator;
+            f32 row_top = layout.rect.offset_y + style.border_size + stride * (f32)row;
+            f32 row_bottom = row_top + row_height;
+            f32 overscan = stride * (f32)table.desc.virtualization_overscan_rows;
+            f32 clip_top = layout.clip_rect.offset_y - overscan;
+            f32 clip_bottom = layout.clip_rect.offset_y + layout.clip_rect.height + overscan;
+            return row_top < clip_bottom && row_bottom > clip_top;
+        }
+
+        bool Context::begin_table_row()
+        {
+            lutsassert();
+            luassert(!m_parent_stack.empty());
+            u32 parent = m_parent_stack.back();
+            luassert(parent < m_build_desc.nodes.size());
+            TableLayoutNode* table = table_layout_node(m_build_desc.nodes[parent]);
+            luassert_msg(table, "begin_table_row must be called inside a table layout.");
+            luassert_msg(table->active_row_attachment == U32_MAX, "Nested table rows are not allowed.");
+            u32 row = (u32)table->row_attachments.size();
+            bool visible = table_row_visible(*table, row);
+            table->row_attachments.push_back(TableRowAttachment());
+            if(visible)
+            {
+                table->active_row_attachment = (u32)table->row_attachments.size() - 1;
+                return true;
+            }
+            return false;
+        }
+
+        void Context::end_table_row()
+        {
+            lutsassert();
+            luassert(!m_parent_stack.empty());
+            u32 parent = m_parent_stack.back();
+            luassert(parent < m_build_desc.nodes.size());
+            TableLayoutNode* table = table_layout_node(m_build_desc.nodes[parent]);
+            luassert_msg(table, "end_table_row must be called inside a table layout.");
+            luassert_msg(table->active_row_attachment != U32_MAX, "end_table_row called without a matching begin_table_row.");
+            table->active_row_attachment = U32_MAX;
         }
 
         void Context::push_id(id_t id)
@@ -672,6 +771,57 @@ namespace Luna
         StyleValue Context::get_style_value(const Name& style_name, const Name& entry, const StyleValue& default_value)
         {
             lutsassert();
+            return get_style_value_unlocked(style_name, entry, default_value);
+        }
+
+        void Context::push_style(const Name& style)
+        {
+            lutsassert();
+            luassert(style);
+            m_style_stack.push_back(style);
+        }
+
+        void Context::pop_style()
+        {
+            lutsassert();
+            luassert(!m_style_stack.empty());
+            m_style_stack.pop_back();
+        }
+
+        RV Context::register_font(const Name& id, Font::IFontFile* font, u32 font_index)
+        {
+            lutsassert();
+            if(!id || !font || font_index >= font->get_num_fonts())
+            {
+                return BasicError::bad_arguments();
+            }
+            if(m_fonts.find(id) != m_fonts.end())
+            {
+                return BasicError::already_exists();
+            }
+            FontResource resource;
+            resource.font = font;
+            resource.font_index = font_index;
+            m_fonts.insert(make_pair(id, move(resource)));
+            return ok;
+        }
+
+        FontDesc Context::get_font(const Name& id)
+        {
+            lutsassert();
+            auto iter = m_fonts.find(id);
+            if(iter == m_fonts.end())
+            {
+                return FontDesc();
+            }
+            FontDesc ret;
+            ret.font = iter->second.font.get();
+            ret.font_index = iter->second.font_index;
+            return ret;
+        }
+
+        StyleValue Context::get_style_value_unlocked(const Name& style_name, const Name& entry, const StyleValue& default_value) const
+        {
             if(!style_name || !entry) return default_value;
             Name cursor = style_name;
             for(usize i = 0; i < m_styles.size(); ++i)
@@ -702,18 +852,89 @@ namespace Luna
             return default_value;
         }
 
-        void Context::push_style(const Name& style)
+        Name Context::node_font_id(const Node& node) const
         {
-            lutsassert();
-            luassert(style);
-            m_style_stack.push_back(style);
+            StyleValue value = get_style_value_unlocked(node.style, font_style_entry_name(), StyleValue::name(Name()));
+            return value.type == StyleValueType::name ? value.name_value : Name();
         }
 
-        void Context::pop_style()
+        FontDesc Context::resolve_font(const Name& id) const
         {
-            lutsassert();
-            luassert(!m_style_stack.empty());
-            m_style_stack.pop_back();
+            Name cursor = id ? id : default_font_id();
+            auto iter = m_fonts.find(cursor);
+            if(iter == m_fonts.end())
+            {
+                iter = m_fonts.find(default_font_id());
+            }
+            if(iter != m_fonts.end())
+            {
+                FontDesc ret;
+                ret.font = iter->second.font.get();
+                ret.font_index = iter->second.font_index;
+                return ret;
+            }
+            FontDesc ret;
+            ret.font = Font::get_default_font();
+            ret.font_index = 0;
+            return ret;
+        }
+
+        LayoutMetrics Context::measure_text_with_font(const c8* text, usize text_size, f32 font_size, f32 max_width, const Name& font_id) const
+        {
+            FontDesc font = resolve_font(font_id);
+            VG::TextArrangeSection section;
+            section.font_file = font.font;
+            section.font_index = font.font_index;
+            section.font_size = font_size;
+            section.num_chars = text_size;
+            f32 arrange_width = max_width < F32_MAX * 0.5f ? max_width : 1000000.0f;
+            auto arranged = VG::arrange_text(text ? text : "", text_size, {&section, 1},
+                RectF(0.0f, 0.0f, arrange_width, 100000.0f),
+                VG::TextAlignment::begin, VG::TextAlignment::begin);
+            f32 w = max(arranged.bounding_rect.width, 1.0f);
+            f32 h = max(arranged.bounding_rect.height, font_size + 4.0f);
+            LayoutMetrics metrics;
+            metrics.min_size = Float2U(min(w, 32.0f), h);
+            metrics.preferred_size = Float2U(min(w, max_width), h);
+            metrics.max_size = Float2U(max_width, h);
+            return metrics;
+        }
+
+        f32 Context::text_cursor_x(const String& value, usize cursor, f32 font_size, const Name& font_id) const
+        {
+            cursor = clamp_utf8_cursor(value, cursor);
+            if(!cursor) return 0.0f;
+            return measure_text_with_font(value.c_str(), cursor, font_size, F32_MAX, font_id).preferred_size.x;
+        }
+
+        usize Context::text_cursor_from_x(const String& value, f32 x, f32 font_size, const Name& font_id) const
+        {
+            if(x <= 0.0f) return 0;
+            FontDesc font = resolve_font(font_id);
+            VG::TextArrangeSection section;
+            section.font_file = font.font;
+            section.font_index = font.font_index;
+            section.font_size = font_size;
+            section.num_chars = value.size();
+            VG::TextArrangeResult arranged = VG::arrange_text(value.c_str(), value.size(), {&section, 1},
+                RectF(0.0f, 0.0f, 1000000.0f, font_size * 2.0f),
+                VG::TextAlignment::center, VG::TextAlignment::begin);
+            if(arranged.lines.empty()) return value.size();
+            const VG::TextLineArrangeResult& line = arranged.lines[0];
+            if(line.glyphs.empty()) return value.size();
+            for(usize i = 0; i < line.glyphs.size(); ++i)
+            {
+                const VG::TextGlyphArrangeResult& glyph = line.glyphs[i];
+                f32 next_origin = i + 1 < line.glyphs.size() ?
+                    line.glyphs[i + 1].origin_offset :
+                    glyph.origin_offset + glyph.advance_length;
+                f32 threshold = (glyph.origin_offset + next_origin) * 0.5f;
+                if(x < threshold)
+                {
+                    return glyph.index;
+                }
+            }
+            return value.size();
         }
 
         object_t Context::get_state_object(id_t id) const
@@ -842,6 +1063,33 @@ namespace Luna
             lutsassert();
             build_hint_state().next_render_proxy = proxy;
             build_hint_state().has_next_render_proxy = true;
+        }
+
+        void Context::set_next_item_enabled(bool enabled)
+        {
+            lutsassert();
+            set_next_item_enabled_internal(enabled);
+        }
+
+        void Context::push_enabled(bool enabled)
+        {
+            lutsassert();
+            bool parent_enabled = m_enabled_stack.empty() ? true : m_enabled_stack.back();
+            m_enabled_stack.push_back(parent_enabled && enabled);
+        }
+
+        void Context::pop_enabled()
+        {
+            lutsassert();
+            luassert(!m_enabled_stack.empty());
+            m_enabled_stack.pop_back();
+        }
+
+        void Context::set_next_item_enabled_internal(bool enabled)
+        {
+            lutsassert();
+            build_hint_state().next_item_enabled = enabled;
+            build_hint_state().has_next_item_enabled = true;
         }
 
         void Context::set_next_canvas_item_layout(const CanvasItemLayout& layout)
