@@ -15,3 +15,8 @@
 - All codes written in LunaSDK must conform to [Coding Convention](LunaSDK-Docs/Manual/Coding%20Convention.md).
 - All public headers in LunaSDK must be well documented using Doxygen syntax.
 - Use English to write codes and docs in LunaSDK, unless the user explicitly asked you to use another language.
+
+## ADR (Architecture Decision Record)
+- Always ask for the user whether to draft a new ADR if new features are introduced or big feature changes are made. Bugfixes generally do not require a new ADR.
+- ADRs are placed in `LunaSDK-Docs/Manual/ADRs`. Read [ADR template](LunaSDK-Docs/ADRs/ADR-0001%20ADR%20template.md) first to know how to write a new ADR.
+- If a new ADR is required, write ADR and refer to it before writing real codes.
