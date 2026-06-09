@@ -24,6 +24,7 @@ public abstract class TargetRules
     private BuildWorkspace? _currentWorkspace;
     private BuildOptions? _currentOptions;
     private string? _msvcRuntimeLibrary;
+    private bool _enableRtti = true;
     private DotNetProjectRule? _dotNetProject;
 
     protected TargetRules(string name, string targetDirectory, string rulesPath)
@@ -167,6 +168,11 @@ public abstract class TargetRules
         _msvcRuntimeLibrary = runtimeLibrary;
     }
 
+    protected void Rtti(bool enabled)
+    {
+        _enableRtti = enabled;
+    }
+
     protected void DotNetProject(string projectFile, string outputFile)
     {
         _dotNetProject = new DotNetProjectRule(projectFile, outputFile);
@@ -289,6 +295,7 @@ public abstract class TargetRules
                 Kind: Kind,
                 Category: Category,
                 MsvcRuntimeLibrary: _msvcRuntimeLibrary,
+                EnableRtti: _enableRtti,
                 DotNetProjectFile: _dotNetProject is null
                     ? null
                     : workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, _dotNetProject.ProjectFile)),
@@ -335,6 +342,7 @@ public abstract class TargetRules
             SupportedPlatforms: _supportedPlatforms.ToArray(),
             Category: Category,
             MsvcRuntimeLibrary: _msvcRuntimeLibrary,
+            EnableRtti: _enableRtti,
             DotNetProject: _dotNetProject);
     }
 
@@ -365,6 +373,7 @@ public abstract class TargetRules
         }
         Category = state.Category;
         _msvcRuntimeLibrary = state.MsvcRuntimeLibrary;
+        _enableRtti = state.EnableRtti;
         _dotNetProject = state.DotNetProject;
     }
 
@@ -404,6 +413,7 @@ public abstract class TargetRules
         BuildPlatform[] SupportedPlatforms,
         BuildTargetCategory Category,
         string? MsvcRuntimeLibrary,
+        bool EnableRtti,
         DotNetProjectRule? DotNetProject);
 }
 

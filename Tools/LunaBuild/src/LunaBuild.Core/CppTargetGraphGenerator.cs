@@ -72,6 +72,8 @@ public sealed class CppTargetGraphGenerator
 
     private sealed class CppTargetGraphBuilder
     {
+        private const string CppslTargetName = "CPPSL";
+        private const string CppslNativeExtractorTargetName = "cppsl-native-extractor";
         private const string LunaMetaToolTargetName = "LunaMetaTool";
 
         private readonly BuildWorkspace _workspace;
@@ -156,7 +158,8 @@ public sealed class CppTargetGraphGenerator
                 .SelectMany(output => output.PublicMetaDependencyIds)
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
-            var shaderHeaderIds = AddShaderNodes(target);
+            var cppslToolOutputs = AddCppslToolTargetsForShaders(target);
+            var shaderHeaderIds = AddShaderNodes(target, cppslToolOutputs);
             var embeddedHeaderIds = AddEmbeddedHeaderNodes(target);
             var generatedHeaderIds = shaderHeaderIds
                 .Concat(embeddedHeaderIds)
@@ -494,6 +497,60 @@ public sealed class CppTargetGraphGenerator
             return AddHostLunaMetaToolTargetForMeta();
         }
 
+        private CppslToolBuildOutputs? AddCppslToolTargetsForShaders(BuildTargetDefinition target)
+        {
+            if(!target.Shaders.Any(shader => IsShaderEnabledForPlatform(_options.Platform, shader.SourceFile)) ||
+                target.Name.Equals(CppslTargetName, StringComparison.OrdinalIgnoreCase) ||
+                target.Name.Equals(CppslNativeExtractorTargetName, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if(IsCurrentBuildHostBuild())
+            {
+                if(!_targetMap.ContainsKey(CppslTargetName) ||
+                    !_targetMap.ContainsKey(CppslNativeExtractorTargetName))
+                {
+                    throw new InvalidOperationException(
+                        $"Target {target.Name} uses Shader(...), but host CPPSL tool targets are not available.");
+                }
+
+                var cppslOutputs = AddTarget(CppslTargetName);
+                var nativeExtractorOutputs = AddTarget(CppslNativeExtractorTargetName);
+                return new CppslToolBuildOutputs(cppslOutputs.BinaryId, nativeExtractorOutputs.BinaryId);
+            }
+
+            return AddHostCppslToolTargetsForShaders(target);
+        }
+
+        private CppslToolBuildOutputs AddHostCppslToolTargetsForShaders(BuildTargetDefinition target)
+        {
+            var hostOptions = BuildOptions.HostDefault() with
+            {
+                Properties = _options.Properties,
+                GlobalDefines = _options.GlobalDefines,
+                GlobalUndefines = _options.GlobalUndefines,
+            };
+            var provider = new ProjectTargetRulesProvider();
+            var hostTargets = new TargetDiscovery(new ITargetRulesProvider[] { provider }).DiscoverTargets(_workspace, hostOptions);
+            if(!hostTargets.Any(hostTarget => hostTarget.Name.Equals(CppslTargetName, StringComparison.OrdinalIgnoreCase)) ||
+                !hostTargets.Any(hostTarget => hostTarget.Name.Equals(CppslNativeExtractorTargetName, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException(
+                    $"Target {target.Name} uses Shader(...), but host CPPSL tool targets are not available for {hostOptions.Platform} {hostOptions.Architecture}.");
+            }
+
+            var hostGraph = new CppTargetGraphGenerator().Generate(_workspace, hostOptions, hostTargets, CppslTargetName);
+            foreach(var node in hostGraph.Nodes)
+            {
+                AddNode(node);
+            }
+
+            return new CppslToolBuildOutputs(
+                FindTargetBinaryId(hostGraph, CppslTargetName, OperatingSystem.IsWindows() ? "cppslc.exe" : "cppslc"),
+                FindTargetBinaryId(hostGraph, CppslNativeExtractorTargetName, OperatingSystem.IsWindows() ? "cppsl-native-extractor.exe" : "cppsl-native-extractor"));
+        }
+
         private TargetBuildOutputs? AddHostLunaMetaToolTargetForMeta()
         {
             var hostOptions = BuildOptions.HostDefault() with
@@ -516,7 +573,7 @@ public sealed class CppTargetGraphGenerator
             }
 
             var targetId = BuildGraphIds.Target(LunaMetaToolTargetName);
-            var binaryId = FindLunaMetaToolBinaryId(hostGraph, targetId);
+            var binaryId = FindTargetBinaryId(hostGraph, LunaMetaToolTargetName, OperatingSystem.IsWindows() ? "LunaMetaTool.exe" : "LunaMetaTool");
             return new TargetBuildOutputs(
                 targetId,
                 binaryId,
@@ -536,16 +593,16 @@ public sealed class CppTargetGraphGenerator
                 _options.Architecture.Equals(hostOptions.Architecture, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string FindLunaMetaToolBinaryId(BuildGraph graph, string targetId)
+        private static string FindTargetBinaryId(BuildGraph graph, string targetName, string executableName)
         {
+            var targetId = BuildGraphIds.Target(targetName);
             var targetNode = graph.Nodes.FirstOrDefault(node => node.Id.Equals(targetId, StringComparison.OrdinalIgnoreCase))
-                ?? throw new InvalidOperationException($"Host {LunaMetaToolTargetName} graph did not contain target node `{targetId}`.");
-            var executableName = OperatingSystem.IsWindows() ? "LunaMetaTool.exe" : "LunaMetaTool";
+                ?? throw new InvalidOperationException($"Host {targetName} graph did not contain target node `{targetId}`.");
             var binaryId = targetNode.Dependencies.FirstOrDefault(id =>
                 id.Replace('\\', '/').EndsWith("/bin/" + executableName, StringComparison.OrdinalIgnoreCase));
             if(string.IsNullOrWhiteSpace(binaryId))
             {
-                throw new InvalidOperationException($"Host {LunaMetaToolTargetName} target did not expose its executable dependency.");
+                throw new InvalidOperationException($"Host {targetName} target did not expose its executable dependency.");
             }
             return binaryId;
         }
@@ -726,7 +783,7 @@ public sealed class CppTargetGraphGenerator
             return id;
         }
 
-        private IReadOnlyList<string> AddShaderNodes(BuildTargetDefinition target)
+        private IReadOnlyList<string> AddShaderNodes(BuildTargetDefinition target, CppslToolBuildOutputs? cppslToolOutputs)
         {
             var shaderHeaderIds = new List<string>();
             foreach(var shader in target.Shaders)
@@ -753,8 +810,10 @@ public sealed class CppTargetGraphGenerator
                     Id: headerId,
                     Kind: BuildGraphNodeKind.File,
                     Path: _workspace.ToRepositoryRelativePath(headerPath),
-                    Command: BuildShaderCommandDescription(_workspace, _options, target, shader, headerPath),
-                    Dependencies: new[] { sourceId },
+                    Command: BuildShaderCommandDescription(_workspace, _options, target, shader, headerPath, cppslToolOutputs),
+                    Dependencies: new[] { sourceId }
+                        .Concat(cppslToolOutputs?.DependencyIds ?? Array.Empty<string>())
+                        .ToArray(),
                     OrderOnlyDependencies: Array.Empty<string>(),
                     Outputs: Array.Empty<string>(),
                     Depfiles: Array.Empty<string>()));
@@ -788,6 +847,15 @@ public sealed class CppTargetGraphGenerator
         IReadOnlyList<string> GeneratedHeaderIds,
         IReadOnlyList<string> PublicIncludeDirectories,
         string? GeneratedSourceFile);
+
+    private sealed record CppslToolBuildOutputs(
+        string CppslcId,
+        string NativeExtractorId)
+    {
+        public IReadOnlyList<string> DependencyIds => new[] { CppslcId, NativeExtractorId }
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
 
     private static bool IsBuildSource(string path)
     {
@@ -979,6 +1047,10 @@ public sealed class CppTargetGraphGenerator
             options.Shared ? "define=LUNA_BUILD_SHARED_LIB" : "linkage=static",
         };
         lines.AddRange(options.GlobalDefines.Select(define => $"define={define}"));
+        if(!target.EnableRtti)
+        {
+            lines.Add("rtti=none");
+        }
         if(target.MsvcRuntimeLibrary is not null)
         {
             lines.Add($"runtime={target.MsvcRuntimeLibrary}");
@@ -1077,9 +1149,11 @@ public sealed class CppTargetGraphGenerator
         BuildOptions options,
         BuildTargetDefinition target,
         BuildShaderDefinition shader,
-        string headerPath)
+        string headerPath,
+        CppslToolBuildOutputs? cppslToolOutputs)
     {
-        return string.Join('\n',
+        var lines = new List<string>
+        {
             "kind=cppsl.shader",
             $"target={target.Name}",
             $"source={workspace.ToRepositoryRelativePath(shader.SourceFile)}",
@@ -1090,7 +1164,24 @@ public sealed class CppTargetGraphGenerator
             $"format={ShaderDataFormat(options.RhiApi)}",
             $"mode={options.Mode}",
             $"platform={options.Platform}",
-            $"arch={options.Architecture}");
+            $"arch={options.Architecture}",
+        };
+        if(cppslToolOutputs is not null)
+        {
+            lines.Add($"cppslc={FileIdToRepositoryRelativePath(cppslToolOutputs.CppslcId)}");
+            lines.Add($"native_extractor={FileIdToRepositoryRelativePath(cppslToolOutputs.NativeExtractorId)}");
+        }
+        return string.Join('\n', lines);
+    }
+
+    private static string FileIdToRepositoryRelativePath(string fileId)
+    {
+        const string prefix = "file://";
+        if(!fileId.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"Expected file node id, got `{fileId}`.");
+        }
+        return fileId[prefix.Length..];
     }
 
     private static string BuildCopyCommandDescription(

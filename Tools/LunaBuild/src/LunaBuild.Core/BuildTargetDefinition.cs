@@ -56,5 +56,6 @@ public sealed record BuildTargetDefinition(
     BuildTargetKind Kind,
     BuildTargetCategory Category,
     string? MsvcRuntimeLibrary,
+    bool EnableRtti,
     string? DotNetProjectFile,
     string? DotNetOutputFile);

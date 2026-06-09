@@ -72,6 +72,10 @@ internal static class CppCommandLineBuilder
             args.Add("/TP");
             args.Add("/std:c++20");
         }
+        if(payload.Contains("rtti") && payload.Required("rtti").Equals("none", StringComparison.OrdinalIgnoreCase))
+        {
+            args.Add("/GR-");
+        }
 
         foreach(var include in payload.All("include"))
         {
@@ -116,6 +120,7 @@ internal static class CppCommandLineBuilder
             args.Add("-isysroot");
             args.Add(sdkPath);
         }
+        AddRttiArgs(args, payload);
         AddAppleLanguageArgs(args, payload.Required("language"));
         AddAppleModeArgs(args, payload.Required("mode"));
         AddCommonClangArgs(workspace, payload, args);
@@ -139,6 +144,7 @@ internal static class CppCommandLineBuilder
             "-fPIC",
             "-fno-exceptions",
         };
+        AddRttiArgs(args, payload);
         AddAppleLanguageArgs(args, payload.Required("language"));
         AddAppleModeArgs(args, payload.Required("mode"));
         AddCommonClangArgs(workspace, payload, args);
@@ -188,6 +194,14 @@ internal static class CppCommandLineBuilder
         foreach(var undefine in payload.All("undefine"))
         {
             args.Add("-U" + undefine);
+        }
+    }
+
+    private static void AddRttiArgs(List<string> args, ActionPayload payload)
+    {
+        if(payload.Contains("rtti") && payload.Required("rtti").Equals("none", StringComparison.OrdinalIgnoreCase))
+        {
+            args.Add("-fno-rtti");
         }
     }
 
