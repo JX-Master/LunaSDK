@@ -340,6 +340,11 @@ Headers("Source/*.hpp");
 MetaHeaders("Source/MyType.hpp");
 ```
 
+Targets with meta headers automatically get a build-graph dependency from their
+`luna.meta` action to the `LunaMetaTool` target when that tool target is
+available for the current platform. This builds the tool before metadata
+generation without making it a normal module dependency.
+
 Each meta header must include its generated header by basename after all normal
 includes:
 

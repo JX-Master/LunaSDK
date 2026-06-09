@@ -72,6 +72,8 @@ public sealed class CppTargetGraphGenerator
 
     private sealed class CppTargetGraphBuilder
     {
+        private const string LunaMetaToolTargetName = "LunaMetaTool";
+
         private readonly BuildWorkspace _workspace;
         private readonly BuildOptions _options;
         private readonly IReadOnlyDictionary<string, BuildTargetDefinition> _targetMap;
@@ -145,7 +147,8 @@ public sealed class CppTargetGraphGenerator
                 throw new InvalidOperationException($"Target {target.Name} has no C/C++ source files discovered from rules.");
             }
 
-            var metaOutputs = AddMetaNodes(target, dependencyOutputs);
+            var metaToolOutputs = AddLunaMetaToolTargetForMeta(target);
+            var metaOutputs = AddMetaNodes(target, dependencyOutputs, metaToolOutputs);
             var sourceFiles = discoveredSourceFiles
                 .Concat(metaOutputs.GeneratedSourceFile is null ? Array.Empty<string>() : new[] { metaOutputs.GeneratedSourceFile })
                 .ToArray();
@@ -477,7 +480,21 @@ public sealed class CppTargetGraphGenerator
             return headerIds;
         }
 
-        private LunaMetaBuildOutputs AddMetaNodes(BuildTargetDefinition target, IReadOnlyList<TargetBuildOutputs> dependencyOutputs)
+        private TargetBuildOutputs? AddLunaMetaToolTargetForMeta(BuildTargetDefinition target)
+        {
+            if(target.MetaHeaderFiles.Count == 0 ||
+                target.Name.Equals(LunaMetaToolTargetName, StringComparison.OrdinalIgnoreCase) ||
+                !_targetMap.ContainsKey(LunaMetaToolTargetName))
+            {
+                return null;
+            }
+            return AddTarget(LunaMetaToolTargetName);
+        }
+
+        private LunaMetaBuildOutputs AddMetaNodes(
+            BuildTargetDefinition target,
+            IReadOnlyList<TargetBuildOutputs> dependencyOutputs,
+            TargetBuildOutputs? metaToolOutputs)
         {
             if(target.MetaHeaderFiles.Count == 0)
             {
@@ -573,13 +590,15 @@ public sealed class CppTargetGraphGenerator
                 .SelectMany(output => output.PublicMetaDependencyIds)
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
+            var toolDependencyIds = metaToolOutputs is null ? Array.Empty<string>() : new[] { metaToolOutputs.BinaryId };
+            var toolOrderOnlyDependencyIds = metaToolOutputs is null ? Array.Empty<string>() : new[] { metaToolOutputs.TargetId };
             AddNode(new BuildGraphNode(
                 Id: stampId,
                 Kind: BuildGraphNodeKind.File,
                 Path: _workspace.ToRepositoryRelativePath(stampPath),
                 Command: BuildMetaCommandDescription(_workspace, _options, target, dependencyOutputs, generatedDirectory, stampPath, depfilePath),
-                Dependencies: sourceHeaderIds.Concat(dependencyMetaIds).ToArray(),
-                OrderOnlyDependencies: Array.Empty<string>(),
+                Dependencies: sourceHeaderIds.Concat(dependencyMetaIds).Concat(toolDependencyIds).ToArray(),
+                OrderOnlyDependencies: toolOrderOnlyDependencyIds,
                 Outputs: generatedHeaderIds.Concat(new[] { registrationSourceId }).ToArray(),
                 Depfiles: new[] { depfileId }));
             return new LunaMetaBuildOutputs(stampId, generatedHeaderIds, new[] { generatedDirectory }, registrationSourcePath);

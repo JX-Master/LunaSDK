@@ -211,17 +211,15 @@ When a target has meta headers, LunaBuild:
 
 The generated include directory is also emitted into generated IDE and compile command outputs. Do not add the generated directory manually in target rules.
 
-LunaBuild locates `LunaMetaTool` from the current build output, common host debug build outputs, `Tools/LunaMetaTool/bin`, or the `SDKs/LunaMetaTool` prebuilt locations. If LunaBuild reports that `LunaMetaTool` is missing, build it first:
-
-```sh
-dotnet run --project LunaBuild.csproj -- build --target LunaMetaTool
-```
-
-Then build the target that uses `MetaHeaders(...)`:
+On platforms that define a `LunaMetaTool` target, LunaBuild adds an implicit build-graph dependency from every `luna.meta` action to that tool target. Building a target that uses `MetaHeaders(...)` therefore builds `LunaMetaTool` first when needed:
 
 ```sh
 dotnet run --project LunaBuild.csproj -- build --target MyModule
 ```
+
+The dependency is graph-only for the meta action. It does not make `LunaMetaTool` a normal module dependency, does not add its include directories to the module, and does not link the tool into the module.
+
+If the current platform does not provide a `LunaMetaTool` target, LunaBuild falls back to locating `LunaMetaTool` from the current build output, common host debug build outputs, `Tools/LunaMetaTool/bin`, or the `SDKs/LunaMetaTool` prebuilt locations.
 
 ## Registering generated types in a module
 
