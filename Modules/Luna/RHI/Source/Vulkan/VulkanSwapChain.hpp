@@ -13,8 +13,8 @@
 #include "VulkanResource.hpp"
 #ifdef LUNA_PLATFORM_ANDROID
 #include <android/native_window.h>
-#include "VulkanSwapChain.generated.hpp"
 #endif
+#include "VulkanSwapChain.generated.hpp"
 namespace Luna
 {
     namespace RHI
