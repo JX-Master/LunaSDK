@@ -483,12 +483,71 @@ public sealed class CppTargetGraphGenerator
         private TargetBuildOutputs? AddLunaMetaToolTargetForMeta(BuildTargetDefinition target)
         {
             if(target.MetaHeaderFiles.Count == 0 ||
-                target.Name.Equals(LunaMetaToolTargetName, StringComparison.OrdinalIgnoreCase) ||
-                !_targetMap.ContainsKey(LunaMetaToolTargetName))
+                target.Name.Equals(LunaMetaToolTargetName, StringComparison.OrdinalIgnoreCase))
             {
                 return null;
             }
-            return AddTarget(LunaMetaToolTargetName);
+            if(IsCurrentBuildHostBuild())
+            {
+                return _targetMap.ContainsKey(LunaMetaToolTargetName) ? AddTarget(LunaMetaToolTargetName) : null;
+            }
+            return AddHostLunaMetaToolTargetForMeta();
+        }
+
+        private TargetBuildOutputs? AddHostLunaMetaToolTargetForMeta()
+        {
+            var hostOptions = BuildOptions.HostDefault() with
+            {
+                Properties = _options.Properties,
+                GlobalDefines = _options.GlobalDefines,
+                GlobalUndefines = _options.GlobalUndefines,
+            };
+            var provider = new ProjectTargetRulesProvider();
+            var hostTargets = new TargetDiscovery(new ITargetRulesProvider[] { provider }).DiscoverTargets(_workspace, hostOptions);
+            if(!hostTargets.Any(target => target.Name.Equals(LunaMetaToolTargetName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return null;
+            }
+
+            var hostGraph = new CppTargetGraphGenerator().Generate(_workspace, hostOptions, hostTargets, LunaMetaToolTargetName);
+            foreach(var node in hostGraph.Nodes)
+            {
+                AddNode(node);
+            }
+
+            var targetId = BuildGraphIds.Target(LunaMetaToolTargetName);
+            var binaryId = FindLunaMetaToolBinaryId(hostGraph, targetId);
+            return new TargetBuildOutputs(
+                targetId,
+                binaryId,
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>());
+        }
+
+        private bool IsCurrentBuildHostBuild()
+        {
+            var hostOptions = BuildOptions.HostDefault();
+            return _options.Platform == hostOptions.Platform &&
+                _options.Architecture.Equals(hostOptions.Architecture, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string FindLunaMetaToolBinaryId(BuildGraph graph, string targetId)
+        {
+            var targetNode = graph.Nodes.FirstOrDefault(node => node.Id.Equals(targetId, StringComparison.OrdinalIgnoreCase))
+                ?? throw new InvalidOperationException($"Host {LunaMetaToolTargetName} graph did not contain target node `{targetId}`.");
+            var executableName = OperatingSystem.IsWindows() ? "LunaMetaTool.exe" : "LunaMetaTool";
+            var binaryId = targetNode.Dependencies.FirstOrDefault(id =>
+                id.Replace('\\', '/').EndsWith("/bin/" + executableName, StringComparison.OrdinalIgnoreCase));
+            if(string.IsNullOrWhiteSpace(binaryId))
+            {
+                throw new InvalidOperationException($"Host {LunaMetaToolTargetName} target did not expose its executable dependency.");
+            }
+            return binaryId;
         }
 
         private LunaMetaBuildOutputs AddMetaNodes(

@@ -56,7 +56,8 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
             args.Add("--isysroot");
             args.Add(appleToolchain.SdkPath);
             args.Add("--resource-dir");
-            args.Add(await LocateClangResourceDirectoryAsync(context.Workspace, appleToolchain.Clang, cancellationToken));
+            args.Add(TryLocateLlvmResourceDirectory(context.Workspace) ??
+                await LocateClangResourceDirectoryAsync(context.Workspace, appleToolchain.Clang, cancellationToken));
         }
         foreach(var include in payload.All("include"))
         {
@@ -84,6 +85,27 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
                 args,
                 result.Output));
         }
+    }
+
+    private static string? TryLocateLlvmResourceDirectory(BuildWorkspace workspace)
+    {
+        var clangDirectory = Path.Combine(
+            workspace.RootDirectory,
+            "SDKs",
+            "llvm-21.1.1",
+            "macosx",
+            "arm64",
+            "lib",
+            "clang");
+        if(!Directory.Exists(clangDirectory))
+        {
+            return null;
+        }
+
+        return Directory.EnumerateDirectories(clangDirectory)
+            .Where(directory => Directory.Exists(Path.Combine(directory, "include")))
+            .OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
     }
 
     private async Task<string> LocateClangResourceDirectoryAsync(
