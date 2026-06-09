@@ -26,6 +26,7 @@ namespace Luna
         Ref<Window::IWindow> m_window;
         Ref<RHI::ISwapChain> m_swap_chain;
         Ref<RHI::ICommandBuffer> m_cmdbuf;
+        Ref<GUI::IContext> m_gui;
 
         Ref<AssetBrowser> m_asset_browsers[4];
         bool m_asset_browsers_enabled[4] = { true, false, false, false };
@@ -157,7 +158,7 @@ namespace Luna
 
     void run_main_editor(const Path& project_path);
 
-    void draw_asset_tile(Asset::asset_t asset, const RectF& draw_rect);
+    void draw_asset_tile(GUI::IContext* context, Asset::asset_t asset, const RectF& draw_rect);
 
     extern MainEditor* g_main_editor;
 }

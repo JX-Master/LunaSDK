@@ -43,7 +43,7 @@ Open `CPPSL.sln` in Rider or Visual Studio to inspect the tool projects.
 Build CPPSL source-tool targets only when developing the compiler:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- \
+dotnet run --project LunaBuild.csproj -- \
   build --target CPPSL --platform Windows --arch x64
 ```
 
@@ -57,7 +57,7 @@ Build the native extractor before running the compiler. On Windows, use the
 LunaBuild target:
 
 ```sh
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- \
+dotnet run --project LunaBuild.csproj -- \
   build --target cppsl-native-extractor --platform Windows --arch x64
 ```
 

@@ -29,7 +29,7 @@ internal static class LunaSetupApp
             }
 
             var root = DiscoverRoot(options.RootDirectory);
-            var platform = options.Platform ?? DetectHostPlatform();
+            var platform = DetectHostPlatform();
             if(!SdkUrls.TryGetValue(platform, out var url))
             {
                 throw new NotSupportedException($"Unsupported SDK platform `{platform}`. Supported platforms: {string.Join(", ", SdkUrls.Keys)}.");
@@ -344,7 +344,6 @@ internal static class LunaSetupApp
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --root <path>       LunaSDK repository root. Defaults to auto-discovery.");
-        Console.WriteLine("  --platform <name>   windows or macosx. Defaults to host platform.");
         Console.WriteLine("  --force             Redownload and replace SDKs.");
         Console.WriteLine("  --help              Show this help text.");
     }
@@ -354,8 +353,6 @@ internal sealed class SetupOptions
 {
     public string? RootDirectory { get; private init; }
 
-    public string? Platform { get; private init; }
-
     public bool Force { get; private init; }
 
     public bool ShowHelp { get; private init; }
@@ -363,7 +360,6 @@ internal sealed class SetupOptions
     public static SetupOptions Parse(string[] args)
     {
         var root = default(string);
-        var platform = default(string);
         var force = false;
         var showHelp = false;
 
@@ -373,9 +369,6 @@ internal sealed class SetupOptions
             {
                 case "--root":
                     root = RequireValue(args, ref i, "--root");
-                    break;
-                case "--platform":
-                    platform = RequireValue(args, ref i, "--platform").ToLowerInvariant();
                     break;
                 case "--force":
                     force = true;
@@ -393,7 +386,6 @@ internal sealed class SetupOptions
         return new SetupOptions
         {
             RootDirectory = root,
-            Platform = platform,
             Force = force,
             ShowHelp = showHelp,
         };

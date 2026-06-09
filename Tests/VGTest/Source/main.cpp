@@ -170,32 +170,32 @@ int luna_main(int argc, const char* argv[])
                 auto up = AffineMatrix::up(rot_mat);
 
                 f32 camera_speed = app.camera_speed;
-                if (HID::get_key_state(HID::KeyCode::l_shift))
+                if (HID::get_key_state(KeyCode::l_shift))
                 {
                     camera_speed *= 2.0f;
                 }
 
-                if (HID::get_key_state(HID::KeyCode::w))
+                if (HID::get_key_state(KeyCode::w))
                 {
                     app.camera_position += forward * camera_speed;
                 }
-                if (HID::get_key_state(HID::KeyCode::a))
+                if (HID::get_key_state(KeyCode::a))
                 {
                     app.camera_position += left * camera_speed;
                 }
-                if (HID::get_key_state(HID::KeyCode::s))
+                if (HID::get_key_state(KeyCode::s))
                 {
                     app.camera_position += -forward * camera_speed;
                 }
-                if (HID::get_key_state(HID::KeyCode::d))
+                if (HID::get_key_state(KeyCode::d))
                 {
                     app.camera_position += -left * camera_speed;
                 }
-                if (HID::get_key_state(HID::KeyCode::q))
+                if (HID::get_key_state(KeyCode::q))
                 {
                     app.camera_position += -up * camera_speed;
                 }
-                if (HID::get_key_state(HID::KeyCode::e))
+                if (HID::get_key_state(KeyCode::e))
                 {
                     app.camera_position += up * camera_speed;
                 }

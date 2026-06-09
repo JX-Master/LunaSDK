@@ -10,7 +10,6 @@
 #pragma once
 #include "../../Window.hpp"
 #include "../../../Cocoa/CocoaWindow.hpp"
-#include <Luna/HID/KeyCode.hpp>
 #include <objc/objc.h>
 #import <Cocoa/Cocoa.h>
 #include "CocoaWindowImpl.generated.hpp"
@@ -83,10 +82,10 @@ namespace Luna
     NSRange _markedRange;
     Luna::RectI _inputRect;
     int _pendingKey;
-    Luna::HID::KeyCode _pendingKeyCode;
+    Luna::KeyCode _pendingKeyCode;
 }
 @property (nonatomic, assign) Luna::Window::Window* lunaWindow;
-- (void)setPendingKey:(int)key keyCode:(Luna::HID::KeyCode)keyCode;
+- (void)setPendingKey:(int)key keyCode:(Luna::KeyCode)keyCode;
 - (void)processPendingKeyEvent;
 - (void)clearPendingKey;
 @end

@@ -45,6 +45,7 @@ public sealed class WindowTargetRules : TargetRules
             Headers("Android/**.hpp", "Android/**.h", "Source/Backend/Android/*.hpp");
             MetaHeaders("Android/AndroidWindow.hpp", "Source/Backend/Android/AndroidWindowImpl.hpp");
             Sources("Source/Backend/Android/*.cpp");
+            SystemLibraries("android", "log");
         }
     }
 }

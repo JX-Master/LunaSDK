@@ -16,6 +16,8 @@
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <Luna/Image/RHIHelper.hpp>
 #include <Luna/Runtime/Random.hpp>
+#include <Luna/Runtime/HashMap.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include "SceneEditorTypes.generated.hpp"
 
 namespace Luna
@@ -48,16 +50,23 @@ namespace Luna
 
         // States for actor list.
         Guid m_editing_actor_guid = Guid(0, 0);
+        Guid m_actor_name_editing_guid = Guid(0, 0);
+        String m_actor_name_editing_text;
+        bool m_actor_popup_open = false;
+        Float2U m_actor_popup_position = Float2U(0.0f);
+        GUI::ItemHandle m_actor_popup_handle;
+        bool m_new_component_popup_open = false;
+        Float2U m_new_component_popup_position = Float2U(0.0f);
+        GUI::ItemHandle m_new_component_popup_handle;
 
         // States for scene viewport.
 
-        ImGui::GizmoMode m_gizmo_mode = ImGui::GizmoMode::local;
-        ImGui::GizmoOperation m_gizmo_op = ImGui::GizmoOperation::translate;
+        GUI::GizmoMode m_gizmo_mode = GUI::GizmoMode::local;
+        GUI::GizmoOperation m_gizmo_op = GUI::GizmoOperation::translate;
 
         f32 m_camera_speed = 1.0f;
 
         bool m_navigating = false;
-        Int2U m_scene_click_pos;    // Stores the click mouse position in screen space.
 
         bool m_open = true;
 
@@ -74,13 +83,14 @@ namespace Luna
         void on_actor_remove_component(SceneActor& scene_actor, typeinfo_t component);
         void on_actor_edit_component(SceneActor& scene_actor, typeinfo_t component);
 
-        void draw_actor_list();
-        void draw_actor_tree_node(Actor* actor, bool& open_actor_list_popup);
-        void draw_scene_settings();
-        void draw_scene();
-        void draw_components_grid();
-        void on_render() override;
-        bool closed() override
+        void draw_actor_list(GUI::IContext* context, const RectF& rect);
+        void draw_actor_tree_node(GUI::IContext* context, Actor* actor, bool& open_actor_list_popup);
+        void draw_scene_settings(GUI::IContext* context, const RectF& rect);
+        void draw_scene(GUI::IContext* context, const RectF& rect);
+
+        void draw_components_grid(GUI::IContext* context, const RectF& rect);
+        virtual void on_render(GUI::IContext* context) override;
+        virtual bool closed() override
         {
             return !m_open;
         }

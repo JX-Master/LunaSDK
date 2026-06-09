@@ -51,6 +51,11 @@ public sealed class RHITargetRules : TargetRules
 
     protected override void Configure(BuildWorkspace workspace, BuildOptions options)
     {
+        if(options.Properties.GetBoolean("rhi_debug"))
+        {
+            Defines("LUNA_RHI_DEBUG");
+        }
+
         switch(RhiApi)
         {
             case RhiApi.D3D12:
@@ -91,6 +96,10 @@ public sealed class RHITargetRules : TargetRules
                     "Source/Vulkan/VulkanSampler.hpp",
                     "Source/Vulkan/VulkanSwapChain.hpp");
                 Sources("Source/Vulkan/**.cpp", "Source/Vulkan/**.c");
+                if(Platform == BuildPlatform.Android)
+                {
+                    SystemLibraries("android", "vulkan");
+                }
                 DependsOn("volk", "vulkan-memory-allocator");
                 break;
             case RhiApi.Metal:

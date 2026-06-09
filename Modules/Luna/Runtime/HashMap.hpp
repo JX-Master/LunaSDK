@@ -8,7 +8,7 @@
 * @date 2022/5/1
 */
 #pragma once
-#include "Impl/RobinHoodHashTable.hpp"
+#include "Impl/SparseHashTable.hpp"
 #include "TypeInfo.hpp"
 
 namespace Luna
@@ -16,14 +16,18 @@ namespace Luna
     //! @addtogroup RuntimeContainer
     //! @{
     
-    //! An container that contains key-value pairs with unique keys using open-addressing hashing algorithm.
-    //! @remark LunaSDK provides two kinds of hashing-based containers: open-addressing containers and closed-addressing containers.
-    //! The following containers are open-addressing containers, implemented using Robinhood hashing:
+    //! An container that contains key-value pairs with unique keys using sparse-array hashing algorithm.
+    //! @remark LunaSDK provides several kinds of hashing-based containers. The following containers store elements in sparse arrays and
+    //! use bucket chains to resolve hash collisions:
     //! 
     //! 1. @ref HashMap
     //! 2. @ref HashSet
+    //! The following containers use Robin Hood open-addressing hashing:
+    //!
+    //! 1. @ref RobinMap
+    //! 2. @ref RobinSet
     //! 3. @ref SelfIndexedHashmap
-    //! The following containers are closed-addressing containers, implemented using buckets and per-bucket linked-lists:
+    //! The following containers are node-based closed-addressing containers, implemented using buckets and per-bucket linked-lists:
     //! 1. @ref UnorderedMap
     //! 2. @ref UnorderedSet
     //! 3. @ref UnorderedMultiMap
@@ -31,13 +35,11 @@ namespace Luna
     //! 5. @ref SelfIndexedUnorderedMap
     //! 6. @ref SelfIndexedUnorderedMultiMap
     //! 
-    //! Open addressing (also known as closed hashing) algorithms store elements directly in hash table arrays, while closed addressing (also known as open hashing) algorithms allocate
-    //! dedicated memory for every element, and stores pointers to such elements in hash table arrays. In open-addressing containers, one hash table slot can only store on element, the
-    //! second element with the same hash value must be relocated to another empty slot; in closed-addressing containers, all elements with the same hash value can be stored in the same 
-    //! hash table slot, usually stored as linked lists. See [Open vs Closed Addressing](https://programming.guide/hash-tables-open-vs-closed-addressing.html) for a detailed comparison 
-    //! of open addressing and closed addressing.
-    //! 
-    //! Prefer @ref HashMap and @ref HashSet instead of @ref UnorderedMap and @ref UnorderedSet, since it performs better in memory fragmentation, memory locality and cache performance. 
+    //! Sparse-array hashing stores elements densely enough for cache-friendly iteration while leaving deleted slots reusable through a free list. Bucket chains store sparse-array indices,
+    //! so erasing one element does not relocate other elements.
+    //!
+    //! Prefer @ref HashMap and @ref HashSet instead of @ref UnorderedMap and @ref UnorderedSet for most unique-key maps and sets, since sparse-array hashing performs better in memory
+    //! fragmentation, memory locality and cache performance.
     //! Use @ref UnorderedMap and @ref UnorderedSet if you have the following requirements:
     //! 
     //! 1. You want to insert multiple elements with the same key to the map, which is only supported by closed-addressing maps. Use @ref UnorderedMultiMap, @ref SelfIndexedUnorderedMultiMap
@@ -65,12 +67,12 @@ namespace Luna
         using const_reference = const value_type&;
         using pointer = value_type*;
         using const_pointer = const value_type*;
-        using iterator = RobinHoodHashing::Iterator<value_type, false>;
-        using const_iterator = RobinHoodHashing::Iterator<value_type, true>;
+        using iterator = SparseHashing::Iterator<value_type, false>;
+        using const_iterator = SparseHashing::Iterator<value_type, true>;
 
     private:
 
-        using table_type = RobinHoodHashing::HashTable<key_type, value_type, Impl::MapExtractKey<key_type, value_type>, hasher, key_equal, allocator_type>;
+        using table_type = SparseHashing::HashTable<key_type, value_type, Impl::MapExtractKey<key_type, value_type>, hasher, key_equal, allocator_type>;
 
         table_type m_base;
 
@@ -200,7 +202,7 @@ namespace Luna
         //! will expand the hash table to bring more hash table slots.
         //! @param[in] ml The new load factor to set.
         //! @par Valid Usage
-        //! * `ml` must between [`0.0`, `1.0`].
+        //! * `ml` must be greater than `0.0`.
         void max_load_factor(f32 ml)
         {
             m_base.max_load_factor(ml);
@@ -210,11 +212,50 @@ namespace Luna
         {
             m_base.clear();
         }
-        //! Reduces the hash table size to a minimum value that satisfy the maximum load factor limitation.
-        //! @details The hash table size can be computed as: `ceilf((f32)size() / max_load_factor())`.
+        //! Reduces the sparse value array and hash table to the minimum size that satisfies the current element count and maximum load factor limitation.
         void shrink_to_fit()
         {
             m_base.shrink_to_fit();
+        }
+        //! Sorts elements using the specified comparison function.
+        //! @param[in] comp The comparison function object, which returns `true` if the first key-value pair should be ordered before the second key-value pair.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        template <typename _Compare>
+        void sort(_Compare comp)
+        {
+            m_base.sort(comp);
+        }
+        //! Sorts elements by key in non-descending order.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        void key_sort()
+        {
+            key_sort(less<key_type>());
+        }
+        //! Sorts elements by key using the specified comparison function.
+        //! @param[in] comp The comparison function object, which returns `true` if the first key should be ordered before the second key.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        template <typename _Compare>
+        void key_sort(_Compare comp)
+        {
+            m_base.sort([comp](const value_type& lhs, const value_type& rhs) {
+                return comp(lhs.first, rhs.first);
+            });
+        }
+        //! Sorts elements by value in non-descending order.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        void value_sort()
+        {
+            value_sort(less<mapped_type>());
+        }
+        //! Sorts elements by value using the specified comparison function.
+        //! @param[in] comp The comparison function object, which returns `true` if the first value should be ordered before the second value.
+        //! @remark This invalidates all iterators, references and pointers to elements.
+        template <typename _Compare>
+        void value_sort(_Compare comp)
+        {
+            m_base.sort([comp](const value_type& lhs, const value_type& rhs) {
+                return comp(lhs.second, rhs.second);
+            });
         }
         //! Gets the hash function used by this map.
         //! @return Returns the hash function used by this map.

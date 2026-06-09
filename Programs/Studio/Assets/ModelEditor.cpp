@@ -10,51 +10,54 @@
 #include "Model.hpp"
 #include "ModelEditor.hpp"
 #include "../StudioHeader.hpp"
+#include "../StudioGUI.hpp"
 #include <Luna/Window/MessageBox.hpp>
-#include "../EditObject.hpp"
 #include "../Mesh.hpp"
 namespace Luna
 {
-    void ModelEditor::on_render()
+    void ModelEditor::on_render(GUI::IContext* context)
     {
-        char title[32];
-        snprintf(title, 32, "Model Editor###%d", (u32)(usize)this);
-        ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar);
+        char title[256];
+        auto path = Asset::get_asset_path(m_model);
+        if(!path.empty())
+        {
+            snprintf(title, 256, "Model Editor - %s###%d", path.encode().c_str(), (u32)(usize)this);
+        }
+        else
+        {
+            snprintf(title, 256, "Model Editor###%d", (u32)(usize)this);
+        }
+        if(!m_open) return;
+        GUI::begin_window(context, title, &m_open, GUI::Size::fixed(760.0f, 620.0f));
 
         Ref<Model> model = get_asset_or_async_load_if_not_ready<Model>(m_model);
         if (!model || (Asset::get_asset_state(m_model) != Asset::AssetState::loaded))
         {
-            ImGui::Text("Model Asset is not loaded.");
+            GUI::text(context, "Model Asset is not loaded.");
         }
         else
         {
-            if (ImGui::BeginMenuBar())
+            if (GUI::is_item_clicked(GUI::button(context, "Save")))
             {
-                if (ImGui::BeginMenu("File"))
+                lutry
                 {
-                    if (ImGui::MenuItem("Save"))
-                    {
-                        lutry
-                        {
-                            luexp(Asset::save_asset(m_model));
-                        }
-                        lucatch
-                        {
-                            auto _ = Window::message_box(explain(luerr), "Failed to save asset", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                        }
-                    }
-                    ImGui::EndMenu();
+                    luexp(Asset::save_asset(m_model));
                 }
-                ImGui::EndMenuBar();
+                lucatch
+                {
+                    auto _ = Window::message_box(explain(luerr), "Failed to save asset", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                }
             }
 
-            edit_asset("Mesh Asset", model->mesh);
+            gui_edit_asset_path(context, "Mesh Asset", model->mesh, m_mesh_name, "Failed to set mesh asset reference");
             if (model->mesh)
             {
                 Ref<Mesh> mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
                 if (mesh)
                 {
-                    ImGui::Text("This mesh requires %u material(s).", (u32)mesh->pieces.size());
+                    char mesh_info[64];
+                    snprintf(mesh_info, 64, "This mesh requires %u material(s).", (u32)mesh->pieces.size());
+                    GUI::text(context, mesh_info);
                 }
             }
 
@@ -64,24 +67,27 @@ namespace Luna
             i32 add_index = -1;
             for (u32 i = 0; i < num_mats; ++i)
             {
-                auto pos = ImGui::GetCursorPos();
                 char mat_name[32];
                 snprintf(mat_name, 32, "Material slot %u", i);
-                edit_asset(mat_name, model->materials[i]);
-                ImGui::SameLine();
-                ImGui::PushID(i);
-                if (ImGui::Button("Remove current slot"))
+                GUI::push_id(context, i);
+                GUI::LayoutDesc row;
+                row.gap = 8.0f;
+                row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
+                GUI::begin_h_layout(context, "Material Slot Row", row);
+                GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
+                gui_edit_asset_path(context, mat_name, model->materials[i], m_mat_names[i], "Failed to set material asset reference");
+                GUI::ItemHandle remove_button = GUI::button(context, "Remove current slot");
+                GUI::ItemHandle add_button = GUI::button(context, "Add before this");
+                GUI::end_h_layout(context);
+                if (GUI::is_item_clicked(remove_button))
                 {
                     remove_index = i;
                 }
-                ImGui::SameLine();
-                if (ImGui::Button("Add before this"))
+                if (GUI::is_item_clicked(add_button))
                 {
                     add_index = i;
                 }
-                ImGui::PopID();
-                pos.y += 110;
-                ImGui::SetCursorPos(pos);
+                GUI::pop_id(context);
             }
             if (remove_index >= 0)
             {
@@ -91,16 +97,13 @@ namespace Luna
             {
                 model->materials.insert(model->materials.begin() + add_index, Asset::asset_t());
             }
-            auto pos = ImGui::GetCursorPos();
-            pos.y += 100;
-            ImGui::SetCursorPos(pos);
-            if (ImGui::Button("Add a new material slot"))
+            if (GUI::is_item_clicked(GUI::button(context, "Add a new material slot")))
             {
                 model->materials.push_back(Asset::asset_t());
             }
         }
 
-        ImGui::End();
+        GUI::end_window(context);
     }
     Ref<IAssetEditor> new_model_editor(object_t userdata, Asset::asset_t editing_asset)
     {

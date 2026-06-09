@@ -130,6 +130,211 @@ float curve_test_y_axis(float2 v0, float2 v1, float2 v2, float2 pixels_per_unit)
     return ret;
 }
 
+struct RootSet
+{
+    float r0;
+    float r1;
+    float r2;
+    int count;
+};
+
+RootSet make_root_set()
+{
+    RootSet ret;
+    ret.r0 = 0.0f;
+    ret.r1 = 0.0f;
+    ret.r2 = 0.0f;
+    ret.count = 0;
+    return ret;
+}
+
+float root_at(RootSet roots, int index)
+{
+    if (index == 0) return roots.r0;
+    if (index == 1) return roots.r1;
+    return roots.r2;
+}
+
+RootSet set_root_at(RootSet roots, int index, float value)
+{
+    if (index == 0) roots.r0 = value;
+    else if (index == 1) roots.r1 = value;
+    else roots.r2 = value;
+    return roots;
+}
+
+RootSet sort_roots(RootSet roots)
+{
+    if (roots.count > 1 && roots.r1 < roots.r0)
+    {
+        float t = roots.r0;
+        roots.r0 = roots.r1;
+        roots.r1 = t;
+    }
+    if (roots.count > 2 && roots.r2 < roots.r1)
+    {
+        float t = roots.r1;
+        roots.r1 = roots.r2;
+        roots.r2 = t;
+    }
+    if (roots.count > 1 && roots.r1 < roots.r0)
+    {
+        float t = roots.r0;
+        roots.r0 = roots.r1;
+        roots.r1 = t;
+    }
+    return roots;
+}
+
+RootSet add_root(RootSet roots, float root)
+{
+    if (root < -0.0001220703125f || root > 1.0001220703125f) return roots;
+    root = clamp(root, 0.0f, 1.0f);
+    if (roots.count > 0 && abs(root - roots.r0) < 0.000244140625f) return roots;
+    if (roots.count > 1 && abs(root - roots.r1) < 0.000244140625f) return roots;
+    if (roots.count > 2 && abs(root - roots.r2) < 0.000244140625f) return roots;
+    if (roots.count >= 3) return roots;
+    roots = set_root_at(roots, roots.count, root);
+    roots.count += 1;
+    return sort_roots(roots);
+}
+
+RootSet solve_linear_roots(float a, float b)
+{
+    RootSet roots = make_root_set();
+    if (abs(a) < 0.0001220703125f) return roots;
+    return add_root(roots, -b / a);
+}
+
+RootSet solve_quadratic_roots(float a, float b, float c)
+{
+    if (abs(a) < 0.0001220703125f)
+    {
+        return solve_linear_roots(b, c);
+    }
+    RootSet roots = make_root_set();
+    float delta = b * b - 4.0f * a * c;
+    if (delta < -0.0001220703125f) return roots;
+    if (abs(delta) <= 0.0001220703125f)
+    {
+        return add_root(roots, -b / (2.0f * a));
+    }
+    float sqrt_delta = sqrt(delta);
+    roots = add_root(roots, (-b - sqrt_delta) / (2.0f * a));
+    roots = add_root(roots, (-b + sqrt_delta) / (2.0f * a));
+    return roots;
+}
+
+float cubic_eval(float v0, float v1, float v2, float v3, float t)
+{
+    float u = 1.0f - t;
+    return u * u * u * v0 + 3.0f * u * u * t * v1 + 3.0f * u * t * t * v2 + t * t * t * v3;
+}
+
+RootSet cubic_derivative_roots(float v0, float v1, float v2, float v3)
+{
+    float a = -v0 + 3.0f * v1 - 3.0f * v2 + v3;
+    float b = 3.0f * v0 - 6.0f * v1 + 3.0f * v2;
+    float c = -3.0f * v0 + 3.0f * v1;
+    return solve_quadratic_roots(3.0f * a, 2.0f * b, c);
+}
+
+float cubic_find_root(float v0, float v1, float v2, float v3, float lo, float hi)
+{
+    float flo = cubic_eval(v0, v1, v2, v3, lo);
+    if (abs(flo) <= 0.0001220703125f) return lo;
+    float fhi = cubic_eval(v0, v1, v2, v3, hi);
+    if (abs(fhi) <= 0.0001220703125f) return hi;
+    float a = lo;
+    float b = hi;
+    float fa = flo;
+    int i = 0;
+    while (i < 16)
+    {
+        float m = (a + b) * 0.5f;
+        float fm = cubic_eval(v0, v1, v2, v3, m);
+        if ((fa > 0.0f) == (fm > 0.0f))
+        {
+            a = m;
+            fa = fm;
+        }
+        else
+        {
+            b = m;
+        }
+        i += 1;
+    }
+    return (a + b) * 0.5f;
+}
+
+float cubic_interval_test_x_axis(float2 v0, float2 v1, float2 v2, float2 v3, float lo, float hi, float2 pixels_per_unit)
+{
+    if (hi - lo < 0.0001220703125f) return 0.0f;
+    float flo = cubic_eval(v0.y, v1.y, v2.y, v3.y, lo);
+    float fhi = cubic_eval(v0.y, v1.y, v2.y, v3.y, hi);
+    int sign = ((flo > 0.0f) ? 1 : 0) - ((fhi > 0.0f) ? 1 : 0);
+    if (sign == 0) return 0.0f;
+    float t = cubic_find_root(v0.y, v1.y, v2.y, v3.y, lo, hi);
+    float x = cubic_eval(v0.x, v1.x, v2.x, v3.x, t) * pixels_per_unit.x;
+    return sign * saturate(x + 0.5f);
+}
+
+float cubic_interval_test_y_axis(float2 v0, float2 v1, float2 v2, float2 v3, float lo, float hi, float2 pixels_per_unit)
+{
+    if (hi - lo < 0.0001220703125f) return 0.0f;
+    float flo = cubic_eval(v0.x, v1.x, v2.x, v3.x, lo);
+    float fhi = cubic_eval(v0.x, v1.x, v2.x, v3.x, hi);
+    int sign = ((fhi > 0.0f) ? 1 : 0) - ((flo > 0.0f) ? 1 : 0);
+    if (sign == 0) return 0.0f;
+    float t = cubic_find_root(v0.x, v1.x, v2.x, v3.x, lo, hi);
+    float y = cubic_eval(v0.y, v1.y, v2.y, v3.y, t) * pixels_per_unit.y;
+    return sign * saturate(y + 0.5f);
+}
+
+float cubic_curve_test_x_axis(float2 v0, float2 v1, float2 v2, float2 v3, float2 pixels_per_unit)
+{
+    if (max(max(v0.x, v1.x), max(v2.x, v3.x)) * pixels_per_unit.x < -0.5f) return 0.0f;
+    float min_y = min(min(v0.y, v1.y), min(v2.y, v3.y));
+    float max_y = max(max(v0.y, v1.y), max(v2.y, v3.y));
+    if (min_y > 0.0f || max_y < 0.0f) return 0.0f;
+
+    RootSet roots = cubic_derivative_roots(v0.y, v1.y, v2.y, v3.y);
+    float ret = 0.0f;
+    float lo = 0.0f;
+    int i = 0;
+    while (i < roots.count)
+    {
+        float hi = root_at(roots, i);
+        ret += cubic_interval_test_x_axis(v0, v1, v2, v3, lo, hi, pixels_per_unit);
+        lo = hi;
+        i += 1;
+    }
+    ret += cubic_interval_test_x_axis(v0, v1, v2, v3, lo, 1.0f, pixels_per_unit);
+    return ret;
+}
+
+float cubic_curve_test_y_axis(float2 v0, float2 v1, float2 v2, float2 v3, float2 pixels_per_unit)
+{
+    if (max(max(v0.y, v1.y), max(v2.y, v3.y)) * pixels_per_unit.y < -0.5f) return 0.0f;
+    float min_x = min(min(v0.x, v1.x), min(v2.x, v3.x));
+    float max_x = max(max(v0.x, v1.x), max(v2.x, v3.x));
+    if (min_x > 0.0f || max_x < 0.0f) return 0.0f;
+
+    RootSet roots = cubic_derivative_roots(v0.x, v1.x, v2.x, v3.x);
+    float ret = 0.0f;
+    float lo = 0.0f;
+    int i = 0;
+    while (i < roots.count)
+    {
+        float hi = root_at(roots, i);
+        ret += cubic_interval_test_y_axis(v0, v1, v2, v3, lo, hi, pixels_per_unit);
+        lo = hi;
+        i += 1;
+    }
+    ret += cubic_interval_test_y_axis(v0, v1, v2, v3, lo, 1.0f, pixels_per_unit);
+    return ret;
+}
+
 float2 circle_get_point(float2 center, float radius, float angle)
 {
     angle = angle * 0.0174532925222222f;
@@ -236,6 +441,17 @@ PSOut ps_main(PSIn v)
             coverage_x += curve_test_x_axis(v0, v1, v2, pixels_per_unit);
             coverage_y += curve_test_y_axis(v0, v1, v2, pixels_per_unit);
             i += 5;
+        }
+        else if (command == 12.0f)
+        {
+            float2 v0 = last_point - v.shapecoord;
+            float2 v1 = float2{g_set0.g_commands[i + 1], g_set0.g_commands[i + 2]} - v.shapecoord;
+            float2 v2 = float2{g_set0.g_commands[i + 3], g_set0.g_commands[i + 4]} - v.shapecoord;
+            last_point = float2{g_set0.g_commands[i + 5], g_set0.g_commands[i + 6]};
+            float2 v3 = last_point - v.shapecoord;
+            coverage_x += cubic_curve_test_x_axis(v0, v1, v2, v3, pixels_per_unit);
+            coverage_y += cubic_curve_test_y_axis(v0, v1, v2, v3, pixels_per_unit);
+            i += 7;
         }
         else if (command >= 4.0f && command <= 7.0f)
         {

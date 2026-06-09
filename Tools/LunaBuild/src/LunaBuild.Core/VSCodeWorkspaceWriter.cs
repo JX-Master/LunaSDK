@@ -6,6 +6,12 @@ namespace LunaBuild.Core;
 
 public static class VSCodeWorkspaceWriter
 {
+    private static readonly JsonDocumentOptions JsonDocumentOptions = new()
+    {
+        AllowTrailingCommas = true,
+        CommentHandling = JsonCommentHandling.Skip,
+    };
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -16,13 +22,15 @@ public static class VSCodeWorkspaceWriter
         BuildOptions options,
         BuildGraph graph,
         IReadOnlyList<BuildTargetDefinition> targets,
-        string outputDirectory)
+        string outputDirectory,
+        VSCodeLaunchOptions? launchOptions = null)
     {
+        launchOptions ??= VSCodeLaunchOptions.Default(options.Platform);
         Directory.CreateDirectory(outputDirectory);
         var compileCommandsPath = Path.Combine(workspace.BuildDirectory, "compile_commands.json");
         CompileCommandsWriter.Write(workspace, graph, compileCommandsPath);
         WriteTasks(workspace, options, targets, Path.Combine(outputDirectory, "tasks.json"));
-        WriteLaunch(workspace, options, graph, targets, Path.Combine(outputDirectory, "launch.json"));
+        WriteLaunch(workspace, options, graph, targets, Path.Combine(outputDirectory, "launch.json"), launchOptions);
         WriteSettings(workspace, compileCommandsPath, Path.Combine(outputDirectory, "settings.json"));
     }
 
@@ -41,7 +49,7 @@ public static class VSCodeWorkspaceWriter
         tasks.Add(CreateTask("LunaBuild: clean all", CommandArgs(workspace, options, "clean", targetName: null, all: true, force: false)));
         tasks.Add(CreateTask("LunaBuild: clean full", new[]
         {
-            "run", "--no-restore", "--project", "${workspaceFolder}/Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj",
+            "run", "--no-restore", "--project", "${workspaceFolder}/LunaBuild.csproj",
             "--", "clean", "--root", "${workspaceFolder}", "--full",
         }));
 
@@ -50,6 +58,10 @@ public static class VSCodeWorkspaceWriter
             tasks.Add(CreateTask($"LunaBuild: build {target.Name}", CommandArgs(workspace, options, "build", target.Name, all: false, force: false)));
             tasks.Add(CreateTask($"LunaBuild: rebuild {target.Name}", CommandArgs(workspace, options, "build", target.Name, all: false, force: true)));
             tasks.Add(CreateTask($"LunaBuild: clean {target.Name}", CommandArgs(workspace, options, "clean", target.Name, all: false, force: false)));
+            if(target.Kind is BuildTargetKind.Executable or BuildTargetKind.DotNetProject)
+            {
+                tasks.Add(CreateTask($"LunaBuild: run {target.Name}", CommandArgs(workspace, options, "run", target.Name, all: false, force: false)));
+            }
         }
 
         root["tasks"] = tasks;
@@ -61,7 +73,8 @@ public static class VSCodeWorkspaceWriter
         BuildOptions options,
         BuildGraph graph,
         IReadOnlyList<BuildTargetDefinition> targets,
-        string path)
+        string path,
+        VSCodeLaunchOptions launchOptions)
     {
         var root = ReadObject(path);
         root["version"] = "0.2.0";
@@ -74,27 +87,16 @@ public static class VSCodeWorkspaceWriter
             .OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase))
         {
             var program = executableOutputs[target.Name];
-            var configuration = new JsonObject
+            foreach(var debugger in launchOptions.Debuggers)
             {
-                ["name"] = $"LunaBuild: launch {target.Name}",
-                ["type"] = options.Platform == BuildPlatform.Windows ? "cppvsdbg" : "cppdbg",
-                ["request"] = "launch",
-                ["program"] = ToWorkspaceVariablePath(workspace, program),
-                ["args"] = new JsonArray(),
-                ["stopAtEntry"] = false,
-                ["cwd"] = ToWorkspaceVariablePath(workspace, Path.GetDirectoryName(program)!),
-                ["environment"] = new JsonArray(),
-                ["preLaunchTask"] = $"LunaBuild: build {target.Name}",
-            };
-            if(options.Platform == BuildPlatform.MacOS)
-            {
-                configuration["MIMode"] = "lldb";
+                configurations.Add(CreateLaunchConfiguration(
+                    workspace,
+                    options,
+                    target.Name,
+                    program,
+                    debugger,
+                    launchOptions.Debuggers.Count > 1));
             }
-            else if(options.Platform == BuildPlatform.Linux)
-            {
-                configuration["MIMode"] = "gdb";
-            }
-            configurations.Add(configuration);
         }
 
         root["configurations"] = configurations;
@@ -129,6 +131,63 @@ public static class VSCodeWorkspaceWriter
         return task;
     }
 
+    private static JsonObject CreateLaunchConfiguration(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        string targetName,
+        string program,
+        VSCodeDebuggerType debugger,
+        bool includeDebuggerInName)
+    {
+        var debuggerName = debugger.ToString();
+        var configuration = new JsonObject
+        {
+            ["name"] = includeDebuggerInName
+                ? $"LunaBuild: launch {targetName} ({debuggerName})"
+                : $"LunaBuild: launch {targetName}",
+            ["type"] = debuggerName,
+            ["request"] = "launch",
+            ["program"] = ToWorkspaceVariablePath(workspace, program),
+            ["args"] = new JsonArray(),
+            ["cwd"] = ToWorkspaceVariablePath(workspace, Path.GetDirectoryName(program)!),
+            ["preLaunchTask"] = $"LunaBuild: build {targetName}",
+        };
+
+        switch(debugger.Kind)
+        {
+            case VSCodeDebuggerKind.CppVsDbg:
+                configuration["stopAtEntry"] = false;
+                configuration["environment"] = new JsonArray();
+                configuration["console"] = "integratedTerminal";
+                break;
+            case VSCodeDebuggerKind.CppDbg:
+                configuration["stopAtEntry"] = false;
+                configuration["environment"] = new JsonArray();
+                configuration["externalConsole"] = false;
+                AddCppDbgMiMode(configuration, options.Platform);
+                break;
+            case VSCodeDebuggerKind.LldbDap:
+                configuration["stopOnEntry"] = false;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(debugger), debugger.Kind, null);
+        }
+
+        return configuration;
+    }
+
+    private static void AddCppDbgMiMode(JsonObject configuration, BuildPlatform platform)
+    {
+        if(platform == BuildPlatform.MacOS)
+        {
+            configuration["MIMode"] = "lldb";
+        }
+        else if(platform is BuildPlatform.Linux or BuildPlatform.Android)
+        {
+            configuration["MIMode"] = "gdb";
+        }
+    }
+
     private static IReadOnlyList<string> CommandArgs(
         BuildWorkspace workspace,
         BuildOptions options,
@@ -144,7 +203,7 @@ public static class VSCodeWorkspaceWriter
             targetName,
             all,
             force,
-            "${workspaceFolder}/Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj",
+            "${workspaceFolder}/LunaBuild.csproj",
             "${workspaceFolder}");
     }
 
@@ -176,8 +235,15 @@ public static class VSCodeWorkspaceWriter
         {
             return new JsonObject();
         }
-        var node = JsonNode.Parse(File.ReadAllText(path));
-        return node as JsonObject ?? new JsonObject();
+        try
+        {
+            var node = JsonNode.Parse(File.ReadAllText(path), documentOptions: JsonDocumentOptions);
+            return node as JsonObject ?? new JsonObject();
+        }
+        catch(JsonException ex)
+        {
+            throw new InvalidOperationException($"Failed to parse VSCode JSON file '{path}': {ex.Message}", ex);
+        }
     }
 
     private static void WriteObject(string path, JsonObject root)
@@ -194,4 +260,55 @@ public static class VSCodeWorkspaceWriter
     {
         return "${workspaceFolder}/" + workspace.ToRepositoryRelativePath(path);
     }
+}
+
+public sealed record VSCodeLaunchOptions(IReadOnlyList<VSCodeDebuggerType> Debuggers)
+{
+    public static VSCodeLaunchOptions Default(BuildPlatform platform)
+    {
+        return new VSCodeLaunchOptions(new[]
+        {
+            platform == BuildPlatform.Windows
+                ? VSCodeDebuggerType.CppVsDbg
+                : VSCodeDebuggerType.CppDbg,
+        });
+    }
+}
+
+public readonly record struct VSCodeDebuggerType(VSCodeDebuggerKind Kind)
+{
+    public static VSCodeDebuggerType CppVsDbg { get; } = new(VSCodeDebuggerKind.CppVsDbg);
+
+    public static VSCodeDebuggerType CppDbg { get; } = new(VSCodeDebuggerKind.CppDbg);
+
+    public static VSCodeDebuggerType LldbDap { get; } = new(VSCodeDebuggerKind.LldbDap);
+
+    public static VSCodeDebuggerType Parse(string value)
+    {
+        return value.Replace("_", "-", StringComparison.Ordinal).ToLowerInvariant() switch
+        {
+            "cppvsdbg" => CppVsDbg,
+            "cppdbg" => CppDbg,
+            "lldb-dap" => LldbDap,
+            _ => throw new ArgumentException($"Unsupported VSCode debugger type: {value}. Expected cppvsdbg, cppdbg, or lldb-dap."),
+        };
+    }
+
+    public override string ToString()
+    {
+        return Kind switch
+        {
+            VSCodeDebuggerKind.CppVsDbg => "cppvsdbg",
+            VSCodeDebuggerKind.CppDbg => "cppdbg",
+            VSCodeDebuggerKind.LldbDap => "lldb-dap",
+            _ => throw new ArgumentOutOfRangeException(nameof(Kind), Kind, null),
+        };
+    }
+}
+
+public enum VSCodeDebuggerKind
+{
+    CppVsDbg,
+    CppDbg,
+    LldbDap,
 }

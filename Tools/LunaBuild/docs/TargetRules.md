@@ -1,17 +1,20 @@
 # LunaBuild Target Rules
 
-`*.Target.cs` files describe LunaBuild targets for a project. LunaBuild Core
-is project-agnostic: it scans the repository for `*.Target.cs`, compiles those
-files into a temporary rules assembly, and loads concrete `TargetRules` types.
+`*.Target.cs` files describe LunaBuild targets for a project. `*.Project.cs`
+files may describe project-level build properties and defaults. LunaBuild Core
+is project-agnostic: it scans the repository for rules files, compiles those
+files into a temporary rules assembly, and loads concrete `TargetRules` and
+`ProjectRules` types.
 
 ## Location
 
-Place each target rule file next to the target's project files. During the
-xmake migration this means the same directory as the target's `xmake.lua`.
+Place each target rule file next to the target's project files.
+`<TargetName>.Target.cs` is the authoritative LunaBuild rule.
 
 Examples:
 
 ```text
+LunaSDK.Project.cs
 Modules/Luna/Runtime/Runtime.Target.cs
 Modules/Luna/RHI/RHI.Target.cs
 Tests/RHITests/RHITest4_Box/RHITest4_Box.Target.cs
@@ -172,6 +175,63 @@ SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Lin
 `inspect` and graph generation filter unsupported targets before dependency
 resolution.
 
+## Project Build Properties
+
+Project-specific build switches should be declared in a `*.Project.cs` file,
+not hard-coded in LunaBuild Core. A project rules file can declare typed
+properties, command-line aliases, and project-wide effects such as global
+defines:
+
+```csharp
+using LunaBuild.Core;
+
+public sealed class ExampleProjectRules : ProjectRules
+{
+    public ExampleProjectRules()
+        : base("ExampleProject")
+    {
+    }
+
+    protected override void ConfigureProperties(BuildWorkspace workspace)
+    {
+        BooleanProperty(
+            "memory_profiler",
+            defaultValue: false,
+            description: "Enable memory profiler instrumentation.",
+            "memory-profiler");
+    }
+
+    protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+    {
+        if(GetBoolean("memory_profiler"))
+        {
+            GlobalDefines("EXAMPLE_ENABLE_MEMORY_PROFILER");
+        }
+    }
+}
+```
+
+Users can set project properties by using their declared aliases or the generic
+property form:
+
+```sh
+lunabuild build --all --memory-profiler
+lunabuild build --all --property memory_profiler=true
+```
+
+Target rules can also read project properties directly when the effect should
+only apply to one target:
+
+```csharp
+protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+{
+    if(options.Properties.GetBoolean("rhi_debug"))
+    {
+        Defines("LUNA_RHI_DEBUG");
+    }
+}
+```
+
 ## Includes, Defines, External Targets, Frameworks
 
 ```csharp
@@ -267,7 +327,8 @@ Shader targets should include generated headers by name:
 #include <TestBoxVS.hpp>
 ```
 
-The current executor supports Windows/D3D12 DXIL output first.
+The current executor supports DXIL for D3D12, SPIR-V for Vulkan, and Metal
+library output for Metal.
 
 ## Meta Headers
 
@@ -349,24 +410,24 @@ them during build, which would make the target rebuild forever.
 Generate a readable graph dump:
 
 ```powershell
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --target RHITest4_Box --output build/LunaBuild/RHITest4_Box.lunarules
+dotnet run --project LunaBuild.csproj -- generate --root . --target RHITest4_Box --output build/LunaBuild/RHITest4_Box.lunarules
 ```
 
 Build and dump at the same time:
 
 ```powershell
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- build --root . --target RHITest4_Box --output build/LunaBuild/RHITest4_Box.lunarules
+dotnet run --project LunaBuild.csproj -- build --root . --target RHITest4_Box --output build/LunaBuild/RHITest4_Box.lunarules
 ```
 
 Use the timeout wrapper for commands that may invoke compilers or tests:
 
 ```powershell
-.\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','Tools\LunaBuild\src\LunaBuild.Cli','--','build','--root','.','--target','RHITest4_Box') -TimeoutSeconds 300
+.\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','LunaBuild.csproj','--','build','--root','.','--target','RHITest4_Box') -TimeoutSeconds 300
 ```
 
 ## Checklist For New Targets
 
-- Put `<TargetName>.Target.cs` beside the target's `xmake.lua`.
+- Put `<TargetName>.Target.cs` in the target's project directory.
 - Keep `rulesPath` equal to the rule file's repository-relative path.
 - Use `Category = BuildTargetCategory.Tests` for every test and test helper target.
 - Declare target dependencies with `DependsOn(...)`.

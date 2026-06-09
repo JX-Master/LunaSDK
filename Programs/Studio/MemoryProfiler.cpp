@@ -11,6 +11,27 @@
 
 namespace Luna
 {
+    namespace
+    {
+        String memory_size_text(usize size)
+        {
+            String ret;
+            if(size >= 1_mb)
+            {
+                strprintf(ret, "%.2fMB", (f64)size / (f64)1_mb);
+            }
+            else if(size >= 1_kb)
+            {
+                strprintf(ret, "%.2fKB", (f64)size / (f64)1_kb);
+            }
+            else
+            {
+                strprintf(ret, "%llu", (u64)size);
+            }
+            return ret;
+        }
+    }
+
     void MemoryProfiler::on_allocate(void* ptr, usize size)
     {
         MemoryBlockInfo info;
@@ -49,7 +70,7 @@ namespace Luna
         if(iter == m_memory_blocks.end()) return;
         iter->second.domain = move(d);
     }
-    void MemoryProfiler::render()
+    void MemoryProfiler::render(GUI::IContext* context)
     {
         LockGuard guard(m_lock);
         m_snapshoting = true;
@@ -80,44 +101,52 @@ namespace Luna
             iter2->second.first += b.second.size;
             iter2->second.second += 1;
         }
-        ImGui::SetNextWindowSize({ 500.0f, 1000.0f }, ImGuiCond_FirstUseEver);
-        ImGui::Begin("Memory Usages", nullptr, ImGuiWindowFlags_NoCollapse);
+        GUI::begin_window(context, "Memory Usages", GUI::Size::fixed(500.0f, 1000.0f));
+        GUI::begin_scroll_view(context, "Memory Usage List", GUI::Size::fixed(484.0f, 940.0f));
         for(auto& h : heaps)
         {
-            if(ImGui::CollapsingHeader(h.first.c_str()))
+            GUI::ItemHandle heap_header = GUI::collapsing_header(context, h.first.c_str());
+            if(GUI::get_item_state(heap_header, GUI::State::open()))
             {
-                if(ImGui::BeginTable(h.first.c_str(), 3))
+                GUI::TableDesc table;
+                table.style.padding = GUI::EdgeInsets::xy(8.0f, 4.0f);
+                table.style.border_size = 1.0f;
+                table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
+                table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.72f);
+                table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.17f, 0.72f);
+                table.style.row_separators = true;
+                table.style.column_separators = true;
+                table.style.resize_fixed_columns = true;
+                table.column_sizes.push_back(GUI::TableTrackSize::fixed(240.0f));
+                table.column_sizes.push_back(GUI::TableTrackSize::fixed(110.0f));
+                table.column_sizes.push_back(GUI::TableTrackSize::fixed(120.0f));
+                GUI::begin_table_layout(context, h.first.c_str(), table);
                 {
-                    ImGui::TableSetupColumn("Type");
-                    ImGui::TableSetupColumn("Size");
-                    ImGui::TableSetupColumn("Allocation Count");
-                    ImGui::TableHeadersRow();
+                    if(GUI::begin_table_row(context))
+                    {
+                        GUI::text(context, "Type");
+                        GUI::text(context, "Size");
+                        GUI::text(context, "Allocation Count");
+                        GUI::end_table_row(context);
+                    }
                     for(auto& a : h.second)
                     {
-                        ImGui::TableNextRow();
-                        ImGui::TableSetColumnIndex(0);
-                        ImGui::Text("%s", a.first.c_str());
-                        ImGui::TableSetColumnIndex(1);
-                        if(a.second.first >= 1_mb)
+                        if(GUI::begin_table_row(context))
                         {
-                            ImGui::Text("%.2fMB", (f64)a.second.first / (f64)1_mb);
+                            String count_text;
+                            strprintf(count_text, "%llu", (u64)a.second.second);
+                            GUI::text(context, a.first.c_str());
+                            GUI::text(context, memory_size_text(a.second.first).c_str());
+                            GUI::text(context, count_text.c_str());
+                            GUI::end_table_row(context);
                         }
-                        else if(a.second.first >= 1_kb)
-                        {
-                            ImGui::Text("%.2fKB", (f64)a.second.first / (f64)1_kb);
-                        }
-                        else
-                        {
-                            ImGui::Text("%llu", (u64)a.second.first);
-                        }
-                        ImGui::TableSetColumnIndex(2);
-                        ImGui::Text("%llu", (u64)a.second.second);
                     }
-                    ImGui::EndTable();
+                    GUI::end_table_layout(context);
                 }
             }
         }
-        ImGui::End();
+        GUI::end_scroll_view(context);
+        GUI::end_window(context);
     }
     void MemoryProfilerCallback::operator()(const ProfilerEvent& event)
     {

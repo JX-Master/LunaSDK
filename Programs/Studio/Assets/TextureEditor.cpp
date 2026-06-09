@@ -12,7 +12,7 @@
 
 namespace Luna
 {
-    void TextureEditor::on_render()
+    void TextureEditor::on_render(GUI::IContext* context)
     {
         Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(m_tex);
         if (!tex)
@@ -24,38 +24,35 @@ namespace Luna
         char name[32];
         snprintf(name, 32, "Texture###%d", (u32)(usize)this);
 
-        ImGui::Begin(name, &m_open, ImGuiWindowFlags_NoCollapse);
+        if(!m_open) return;
 
         lutry
         {
             auto desc = tex->get_desc();
-            ImGui::Image(tex.get(), { (f32)desc.width, (f32)desc.height });
+            GUI::begin_window(context, name, &m_open, GUI::Size::fixed(max((f32)desc.width + 16.0f, 220.0f), max((f32)desc.height + 46.0f, 120.0f)));
+            GUI::image(context, tex.get(), GUI::Size::fixed((f32)desc.width, (f32)desc.height));
+            GUI::end_window(context);
         }
         lucatch
         {
-            ImGui::Text("Texture Unavailable.");
+            GUI::begin_window(context, name, &m_open, GUI::Size::fixed(260.0f, 120.0f));
+            GUI::text(context, "Texture Unavailable.");
+            GUI::end_window(context);
         }
-
-        ImGui::End();
     }
-    static void on_draw_tex_tile(object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
+    static void on_draw_tex_tile(GUI::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
     {
         if (Asset::get_asset_state(asset) == Asset::AssetState::loaded)
         {
             Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
             if (tex)
             {
-                ImGui::SetCursorScreenPos({ draw_rect.offset_x, draw_rect.offset_y });
-                ImGui::Image(tex.get(), {draw_rect.width, draw_rect.height});
+                GUI::draw_image(context, tex.get(), draw_rect);
             }
         }
         else
         {
-            // Draw tex.
-            auto text_sz = ImGui::CalcTextSize("Texture");
-            Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
-            ImGui::SetCursorScreenPos({ center.x - text_sz.x / 2.0f, center.y - text_sz.y / 2.0f });
-            ImGui::Text("Texture");
+            GUI::draw_text(context, draw_rect, "Texture", Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
         }
     }
     static Ref<IAssetEditor> new_tex_editor(object_t userdata, Asset::asset_t editing_asset)

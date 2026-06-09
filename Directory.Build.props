@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'LunaBuild'">
+    <BaseOutputPath>$(MSBuildThisFileDirectory)build/LunaBuild/RootProject/bin/</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)build/LunaBuild/RootProject/obj/</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

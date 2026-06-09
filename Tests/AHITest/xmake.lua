@@ -1,6 +1,0 @@
-target("AHITest")
-    set_luna_sdk_test()
-    set_kind("binary")
-    add_files("*.cpp")
-    add_deps("Runtime", "AHI", "RHI", "Window", "ImGui")
-target_end()

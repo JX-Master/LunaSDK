@@ -81,6 +81,10 @@ public sealed class RuntimeTargetRules : TargetRules
             {
                 SystemLibraries("pthread");
             }
+            else if(Platform == BuildPlatform.Android)
+            {
+                SystemLibraries("dl", "log");
+            }
         }
     }
 }

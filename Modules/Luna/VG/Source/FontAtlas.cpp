@@ -117,6 +117,19 @@ namespace Luna
                         i += 5;
                     }
                     break;
+                    case Font::COMMAND_CUBIC_TO:
+                    {
+                        f32 p0 = f32(font_shape[i + 1]);
+                        f32 p1 = f32(font_shape[i + 2]);
+                        f32 p2 = f32(font_shape[i + 3]);
+                        f32 p3 = f32(font_shape[i + 4]);
+                        f32 p4 = f32(font_shape[i + 5]);
+                        f32 p5 = f32(font_shape[i + 6]);
+                        out_shape_points->insert(out_shape_points->end(), { VG::COMMAND_CUBIC_TO,
+                            p0, p1, p2, p3, p4, p5 });
+                        i += 7;
+                    }
+                    break;
                     default: lupanic();
                     }
                 }

@@ -270,6 +270,14 @@ public sealed class MakeSystemBackend
             builder.AppendLine($"  node path: {context.Workspace.ResolveRepositoryPath(context.Node.Path)}");
         }
         builder.AppendLine($"  configuration: platform={options.Platform} arch={options.Architecture} mode={options.Mode} linkage={(options.Shared ? "shared" : "static")} rhi={options.RhiApi}");
+        if(options.Properties.Values.Count > 0)
+        {
+            builder.AppendLine("  project properties:");
+            foreach(var property in options.Properties.Values.OrderBy(property => property.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                builder.AppendLine($"    {property.Name}={property.Value}");
+            }
+        }
 
         var payloadValues = ParsePayloadForDiagnostics(context.ActionPayload);
         foreach(var key in new[] { "target", "name", "source", "object", "output", "header", "depfile", "format", "stage", "entry", "language" })

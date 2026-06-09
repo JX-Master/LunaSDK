@@ -19,7 +19,7 @@ namespace Luna
 
         TextureEditor() {}
 
-        virtual void on_render() override;
+        virtual void on_render(GUI::IContext* context) override;
         virtual bool closed() override
         {
             return !m_open;

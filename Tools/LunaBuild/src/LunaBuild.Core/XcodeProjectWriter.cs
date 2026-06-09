@@ -416,7 +416,7 @@ public static class XcodeProjectWriter
 
     private static void WriteHelperScript(string scriptPath, BuildWorkspace workspace, BuildOptions options)
     {
-        var projectPath = Path.Combine(workspace.RootDirectory, "Tools", "LunaBuild", "src", "LunaBuild.Cli", "LunaBuild.Cli.csproj");
+        var projectPath = Path.Combine(workspace.RootDirectory, "LunaBuild.csproj");
         var commonArgs = string.Join(" ", IdeProjectModel.CommonBuildOptionArguments(options));
         var text = string.Join('\n',
             "#!/bin/sh",

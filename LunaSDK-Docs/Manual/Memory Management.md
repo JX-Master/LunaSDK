@@ -19,9 +19,9 @@ You may notice that all heap memory allocation functions provided by LunaSDK tak
 
 ### Memory leak detection
 
-LunaSDK comes with an memory leak detection layer that tracks all memory blocks allocated from `memalloc` or `memrealloc`. The memory leak detection layer is disabled by default, you may enable it on xmake menus, or passing `--check_memory_leak=true` when building the SDK. You can use `LUNA_RUNTIME_CHECK_MEMORY_LEAK` macro to determine whether the memory leak detection layer is enabled.
+LunaSDK comes with a memory profiler layer that tracks memory blocks allocated from `memalloc` or `memrealloc`. The memory profiler is disabled by default and can be enabled with the LunaBuild `--memory-profiler` option, which defines `LUNA_ENABLE_MEMORY_PROFILER` for compiled targets. Runtime code can check `LUNA_MEMORY_PROFILER_ENABLED` to determine whether the memory profiler is active.
 
-If memory leak detection layer is enabled and unfreed memory blocks are detected when LunaSDK is closing, LunaSDK will print warning messages for each unfreed memory block, including the size and the memory address of the block. If these blocks were allocated using `memnew`, the type of the block will also be printed, so that the user can detect the problem quickly.
+If the memory profiler is enabled and unfreed memory blocks are detected when LunaSDK is closing, LunaSDK will print warning messages for each unfreed memory block, including the size and the memory address of the block. If these blocks were allocated using `memnew`, the type of the block will also be printed, so that the user can detect the problem quickly.
 
 ## Dynamic object creation and destruction
 

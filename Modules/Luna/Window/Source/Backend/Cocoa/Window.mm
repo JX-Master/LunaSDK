@@ -50,7 +50,7 @@ inline void dispatch_event_to_handler(Luna::object_t event)
         _selectedRange = NSMakeRange(NSNotFound, 0);
         _markedRange = NSMakeRange(NSNotFound, 0);
         _pendingKey = -1;
-        _pendingKeyCode = Luna::HID::KeyCode::unknown;
+        _pendingKeyCode = Luna::KeyCode::unknown;
     }
     return self;
 }
@@ -180,7 +180,7 @@ inline void dispatch_event_to_handler(Luna::object_t event)
     // Can handle non-text input keys here.
 }
 
-- (void)setPendingKey:(int)key keyCode:(Luna::HID::KeyCode)keyCode
+- (void)setPendingKey:(int)key keyCode:(Luna::KeyCode)keyCode
 {
     _pendingKey = key;
     _pendingKeyCode = keyCode;
@@ -546,15 +546,33 @@ namespace Luna
         Int2U Window::screen_to_client(const Int2U& point)
         {
             lutsassert_main_thread();
-            auto pos = get_position();
-            return Int2U(point.x - pos.x, point.y - pos.y);
+            if (is_closed()) return Int2U(0, 0);
+            @autoreleasepool
+            {
+                NSWindow* window = (NSWindow*)m_window;
+                NSRect frame = [window frame];
+                NSRect contentRect = [window contentRectForFrameRect:frame];
+                NSRect screenFrame = [[window screen] frame];
+                i32 content_x = (i32)contentRect.origin.x;
+                i32 content_y = (i32)(screenFrame.size.height - contentRect.origin.y - contentRect.size.height);
+                return Int2U(point.x - content_x, point.y - content_y);
+            }
         }
 
         Int2U Window::client_to_screen(const Int2U& point)
         {
             lutsassert_main_thread();
-            auto pos = get_position();
-            return Int2U(point.x + pos.x, point.y + pos.y);
+            if (is_closed()) return Int2U(0, 0);
+            @autoreleasepool
+            {
+                NSWindow* window = (NSWindow*)m_window;
+                NSRect frame = [window frame];
+                NSRect contentRect = [window contentRectForFrameRect:frame];
+                NSRect screenFrame = [[window screen] frame];
+                i32 content_x = (i32)contentRect.origin.x;
+                i32 content_y = (i32)(screenFrame.size.height - contentRect.origin.y - contentRect.size.height);
+                return Int2U(point.x + content_x, point.y + content_y);
+            }
         }
 
         id Window::get_nswindow()

@@ -10,7 +10,7 @@
 #pragma once
 #include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Result.hpp>
-#include <Luna/HID/KeyCode.hpp>
+#include <Luna/Runtime/KeyCode.hpp>
 #include <Luna/Runtime/Ref.hpp>
 #include "Display.hpp"
 #include <Luna/Runtime/Module.hpp>

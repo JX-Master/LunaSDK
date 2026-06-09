@@ -1154,8 +1154,8 @@ static string FindRepoRoot(string start)
     var dir = new DirectoryInfo(start);
     while (dir is not null)
     {
-        if (File.Exists(Path.Combine(dir.FullName, "xmake.lua")) &&
-            Directory.Exists(Path.Combine(dir.FullName, "Tools")))
+        if (Directory.Exists(Path.Combine(dir.FullName, "Tools", "LunaBuild")) &&
+            Directory.Exists(Path.Combine(dir.FullName, "Tools", "CPPSL")))
         {
             return dir.FullName;
         }

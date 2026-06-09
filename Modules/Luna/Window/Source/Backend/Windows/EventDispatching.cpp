@@ -24,76 +24,76 @@ namespace Luna
 {
     namespace Window
     {
-        static HID::KeyCode translate_virtual_key(int vk)
+        static KeyCode translate_virtual_key(int vk)
         {
             if (vk >= 0x30 && vk <= 0x39)
             {
-                return (HID::KeyCode)((u16)HID::KeyCode::num0 + vk - 0x30);
+                return (KeyCode)((u16)KeyCode::num0 + vk - 0x30);
             }
             if (vk >= 0x41 && vk <= 0x5A)
             {
-                return (HID::KeyCode)((u16)HID::KeyCode::a + vk - 0x41);
+                return (KeyCode)((u16)KeyCode::a + vk - 0x41);
             }
             if (vk >= VK_F1 && vk <= VK_F12)
             {
-                return (HID::KeyCode)((u16)HID::KeyCode::f1 + vk - VK_F1);
+                return (KeyCode)((u16)KeyCode::f1 + vk - VK_F1);
             }
             if (vk >= VK_NUMPAD0 && vk <= VK_NUMPAD9)
             {
-                return (HID::KeyCode)((u16)HID::KeyCode::numpad0 + vk - VK_NUMPAD0);
+                return (KeyCode)((u16)KeyCode::numpad0 + vk - VK_NUMPAD0);
             }
             switch (vk)
             {
-            case VK_ESCAPE:        return HID::KeyCode::esc;
-            case VK_OEM_3:        return HID::KeyCode::grave;
-            case VK_OEM_PLUS:    return HID::KeyCode::equal;
-            case VK_OEM_MINUS:    return HID::KeyCode::minus;
-            case VK_BACK:        return HID::KeyCode::backspace;
-            case VK_TAB:        return HID::KeyCode::tab;
-            case VK_CAPITAL:    return HID::KeyCode::caps_lock;
-            case VK_RETURN:        return HID::KeyCode::enter;
-            case VK_LCONTROL:    return HID::KeyCode::l_ctrl;
-            case VK_RCONTROL:    return HID::KeyCode::r_ctrl;
-            case VK_CONTROL:    return HID::KeyCode::ctrl;
-            case VK_LSHIFT:        return HID::KeyCode::l_shift;
-            case VK_RSHIFT:        return HID::KeyCode::r_shift;
-            case VK_SHIFT:        return HID::KeyCode::shift;
-            case VK_LMENU:        return HID::KeyCode::l_menu;
-            case VK_RMENU:        return HID::KeyCode::r_menu;
-            case VK_MENU:        return HID::KeyCode::menu;
-            case VK_LWIN:        return HID::KeyCode::l_system;
-            case VK_RWIN:        return HID::KeyCode::r_system;
-            case VK_APPS:        return HID::KeyCode::apps;
-            case VK_SPACE:        return HID::KeyCode::spacebar;
-            case VK_OEM_4:        return HID::KeyCode::l_branket;
-            case VK_OEM_6:        return HID::KeyCode::r_branket;
-            case VK_OEM_5:        return HID::KeyCode::backslash;
-            case VK_OEM_1:        return HID::KeyCode::semicolon;
-            case VK_OEM_7:        return HID::KeyCode::quote;
-            case VK_OEM_COMMA:    return HID::KeyCode::comma;
-            case VK_OEM_PERIOD:    return HID::KeyCode::period;
-            case VK_OEM_2:        return HID::KeyCode::slash;
-            case VK_SNAPSHOT:    return HID::KeyCode::print_screen;
-            case VK_SCROLL:        return HID::KeyCode::scroll_lock;
-            case VK_PAUSE:        return HID::KeyCode::pause;
-            case VK_INSERT:        return HID::KeyCode::insert;
-            case VK_HOME:        return HID::KeyCode::home;
-            case VK_PRIOR:        return HID::KeyCode::page_up;
-            case VK_NEXT:        return HID::KeyCode::page_down;
-            case VK_DELETE:        return HID::KeyCode::del;
-            case VK_END:        return HID::KeyCode::end;
-            case VK_LEFT:        return HID::KeyCode::left;
-            case VK_UP:            return HID::KeyCode::up;
-            case VK_RIGHT:        return HID::KeyCode::right;
-            case VK_DOWN:        return HID::KeyCode::down;
-            case VK_NUMLOCK:    return HID::KeyCode::num_lock;
-            case VK_DECIMAL:    return HID::KeyCode::numpad_decimal;
-            case VK_ADD:        return HID::KeyCode::numpad_add;
-            case VK_SUBTRACT:    return HID::KeyCode::numpad_subtract;
-            case VK_MULTIPLY:    return HID::KeyCode::numpad_multiply;
-            case VK_DIVIDE:        return HID::KeyCode::numpad_divide;
-            //case VK_CLEAR:        return HID::KeyCode::clear;
-            default: lupanic(); return HID::KeyCode::unknown;
+            case VK_ESCAPE:        return KeyCode::esc;
+            case VK_OEM_3:        return KeyCode::grave;
+            case VK_OEM_PLUS:    return KeyCode::equal;
+            case VK_OEM_MINUS:    return KeyCode::minus;
+            case VK_BACK:        return KeyCode::backspace;
+            case VK_TAB:        return KeyCode::tab;
+            case VK_CAPITAL:    return KeyCode::caps_lock;
+            case VK_RETURN:        return KeyCode::enter;
+            case VK_LCONTROL:    return KeyCode::l_ctrl;
+            case VK_RCONTROL:    return KeyCode::r_ctrl;
+            case VK_CONTROL:    return KeyCode::ctrl;
+            case VK_LSHIFT:        return KeyCode::l_shift;
+            case VK_RSHIFT:        return KeyCode::r_shift;
+            case VK_SHIFT:        return KeyCode::shift;
+            case VK_LMENU:        return KeyCode::l_menu;
+            case VK_RMENU:        return KeyCode::r_menu;
+            case VK_MENU:        return KeyCode::menu;
+            case VK_LWIN:        return KeyCode::l_system;
+            case VK_RWIN:        return KeyCode::r_system;
+            case VK_APPS:        return KeyCode::apps;
+            case VK_SPACE:        return KeyCode::spacebar;
+            case VK_OEM_4:        return KeyCode::l_branket;
+            case VK_OEM_6:        return KeyCode::r_branket;
+            case VK_OEM_5:        return KeyCode::backslash;
+            case VK_OEM_1:        return KeyCode::semicolon;
+            case VK_OEM_7:        return KeyCode::quote;
+            case VK_OEM_COMMA:    return KeyCode::comma;
+            case VK_OEM_PERIOD:    return KeyCode::period;
+            case VK_OEM_2:        return KeyCode::slash;
+            case VK_SNAPSHOT:    return KeyCode::print_screen;
+            case VK_SCROLL:        return KeyCode::scroll_lock;
+            case VK_PAUSE:        return KeyCode::pause;
+            case VK_INSERT:        return KeyCode::insert;
+            case VK_HOME:        return KeyCode::home;
+            case VK_PRIOR:        return KeyCode::page_up;
+            case VK_NEXT:        return KeyCode::page_down;
+            case VK_DELETE:        return KeyCode::del;
+            case VK_END:        return KeyCode::end;
+            case VK_LEFT:        return KeyCode::left;
+            case VK_UP:            return KeyCode::up;
+            case VK_RIGHT:        return KeyCode::right;
+            case VK_DOWN:        return KeyCode::down;
+            case VK_NUMLOCK:    return KeyCode::num_lock;
+            case VK_DECIMAL:    return KeyCode::numpad_decimal;
+            case VK_ADD:        return KeyCode::numpad_add;
+            case VK_SUBTRACT:    return KeyCode::numpad_subtract;
+            case VK_MULTIPLY:    return KeyCode::numpad_multiply;
+            case VK_DIVIDE:        return KeyCode::numpad_divide;
+            //case VK_CLEAR:        return KeyCode::clear;
+            default: lupanic(); return KeyCode::unknown;
             }
         }
 

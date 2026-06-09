@@ -1,6 +1,5 @@
 plugins {
     id 'com.android.application'
-    id 'org.tboox.gradle-xmake-plugin' version "1.2.3"
 }
 
 android {
@@ -15,14 +14,6 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        externalNativeBuild {
-            xmake {
-                arguments "--rhi_debug=y"
-                buildMode "debug"
-                abiFilters "arm64-v8a"
-                targets "MultiPlatformSample"
-            }
-        }
     }
 
     buildTypes {
@@ -35,13 +26,9 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-    buildFeatures {
-        prefab true
-    }
-    externalNativeBuild {
-        xmake {
-            path "../../../../xmake.lua"
-            logLevel "verbose"
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jniLibs']
         }
     }
     ndkVersion '29.0.14206865'

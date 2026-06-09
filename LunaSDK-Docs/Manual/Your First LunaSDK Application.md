@@ -3,32 +3,38 @@ Welcome to LunaSDK. In this article, we will guide you to LunaSDK by creating a 
 In this article, we assume that you have the basic knowledge of C++ programming and graphics programming (like using D3D11, D3D12 or OpenGL). You should also correctly setup LunaSDK and developing environments using the instructions provided in `README.md` of the project. The program described in this article runs ONLY on desktop platforms (Windows and macOS), it does not compile on mobile and other platforms.
 
 ## Creating the program
-The first thing to do is to create an binary target for our demo program, so that XMake build system can correctly build our program. To create a new program, create a new folder in the `{ROOT_DIR}/Programs` directory, and name it `DemoApp`. In this folder, create a new Lua script file called `xmake.lua`, and fill its content with the following text:
+The first thing to do is to create a binary target for our demo program, so that LunaBuild can build our program. To create a new program, create a new folder in the `{ROOT_DIR}/Programs` directory, and name it `DemoApp`. In this folder, create a new C# target rule file called `DemoApp.Target.cs`, and fill its content with the following text:
 
-```lua
-target("DemoApp")
-    set_luna_sdk_program()
-    add_rules("luna.shader")
-    add_files("**.cpp")
-    add_luna_shader("DemoAppVS.cxx", {type = "vertex", entry_point = "vs_main"})
-    add_luna_shader("DemoAppPS.cxx", {type = "pixel", entry_point = "ps_main"})
-    add_deps("Runtime", "Window", "RHI", "RHIUtility", "Image")
-target_end()
+```csharp
+namespace LunaBuild.Core.Targets;
+
+public sealed class DemoAppTargetRules : TargetRules
+{
+    public DemoAppTargetRules()
+        : base(
+            name: "DemoApp",
+            targetDirectory: "Programs/DemoApp",
+            rulesPath: "Programs/DemoApp/DemoApp.Target.cs")
+    {
+        Kind = BuildTargetKind.Executable;
+        Sources("**.cpp");
+        Shader("DemoAppVS.cxx", "vertex", "vs_main");
+        Shader("DemoAppPS.cxx", "pixel", "ps_main");
+        RuntimeFiles("luna.png");
+        DependsOn("Runtime", "Window", "RHI", "RHIUtility", "Image");
+    }
+}
 ```
 
-`target` and `target_end` enclose a *target scope*, where all target definitions are specified. `set_luna_sdk_program` tells XMake that we are defining one LunaSDK program, this will let XMake set the target kind to "binary" and import all SDK options for the program. `add_rules("luna.shader")` enables CPPSL shader compilation for this target. `add_files("**.cpp")` tells XMake to add all CPP files in the current directory and all subdirectories to the this target. `add_luna_shader` declares CPPSL shader entry files that will be compiled before the C++ sources. `add_deps` lists all libraries that this program links to, in our example, we need to link to the SDK runtime (`Runtime`), the window module (`Window`), the Graphics API module (`RHI`), the RHI utility module (`RHIUtility`) and the image file module (`Image`). If you got unresolved external symbol errors when compiling, make sure you already link correct libraries.
+`Kind = BuildTargetKind.Executable` tells LunaBuild that this target produces a runnable program. `Sources("**.cpp")` adds all C++ source files in the current directory and all subdirectories to this target. `Shader(...)` declares CPPSL shader entry files that will be compiled before the C++ sources. `RuntimeFiles("luna.png")` copies the image next to the produced executable. `DependsOn(...)` lists all libraries that this program links to. In our example, we need to link to the SDK runtime (`Runtime`), the window module (`Window`), the Graphics API module (`RHI`), the RHI utility module (`RHIUtility`) and the image file module (`Image`). If you get unresolved external symbol errors when compiling, make sure you already link correct libraries.
 
 Then we need to create source CPP files for our program. Since out demo program is simple, we only create one "main. cpp" file to host all source codes. After this, the `DemoApp` directory should looks like this:
 ```
 DemoApp
-|- xmake.lua
+|- DemoApp.Target.cs
 |- main.cpp
 ```
-The last thing is to add one line in the end of `{LUNA_ROOT_DIR}/Programs/xmake.lua` to tell XMake to add our program in the solution:
-```lua
-includes("DemoApp")
-```
-Well done, now every is set up and we can start to program our first LunaSDK program!
+LunaBuild discovers `*.Target.cs` files automatically, so no parent build script needs to be edited. Well done, now everything is set up and we can start to program our first LunaSDK program!
 
 ## Program structure
 
@@ -132,7 +138,11 @@ The user should uses allocation functions provided by LunaSDK instead of those p
 
 The rest part of our `run_app` function simply checks whether the program is exiting by calling `is_exiting`, and updates the program when it is not exiting. 
 
-After filling this content, execute `xmake build DemoApp` on terminal or click `build` button on your IDE, you should successfully build the `DemoApp` program.
+After filling this content, execute the following command on terminal or use the generated IDE build task, you should successfully build the `DemoApp` program:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --target DemoApp
+```
 
 ## Window creation and event handling
 
@@ -569,7 +579,7 @@ For this demo, create three shader files beside `main.cpp`: `DemoAppShader.hxx`,
 #include <DemoAppPS.hpp>
 ```
 
-`add_luna_shader` in `xmake.lua` compiles these CPPSL entry files and generates the two headers above. The descriptor bindings declared in CPPSL must match the descriptor set layout created by the C++ code: binding `0` is the uniform buffer, binding `1` is the texture and binding `2` is the sampler.
+The `Shader(...)` calls in `DemoApp.Target.cs` compile these CPPSL entry files and generate the two headers above. The descriptor bindings declared in CPPSL must match the descriptor set layout created by the C++ code: binding `0` is the uniform buffer, binding `1` is the texture and binding `2` is the sampler.
 
 ## Creating pipeline layout and pipeline state
 
@@ -892,31 +902,18 @@ Save the image file in the same directory as `main.cpp`, and naming it `luna.png
 
 ```
 DemoApp
-|- xmake.lua
+|- DemoApp.Target.cs
 |- main.cpp
 |- luna.png
 ```
 
-Then fills `xmake. lua` with the following code:
+Make sure `DemoApp.Target.cs` declares the image as a runtime file:
 
-```lua
-target ("DemoApp")
-	set_luna_sdk_program()
-	add_rules("luna.shader")
-	add_files("Source/**.cpp")
-	add_luna_shader("DemoAppVS.cxx", {type = "vertex", entry_point = "vs_main"})
-	add_luna_shader("DemoAppPS.cxx", {type = "pixel", entry_point = "ps_main"})
-	add_deps("Runtime", "Window", "RHI", "RHIUtility", "Image")
-	before_build (function (target)
-	    os.cp("$(scriptdir)/luna.png", target:targetdir() .. "/luna.png")
-	end)
-	after_install (function (target)
-	    os.cp(target:targetdir() .. "/luna.png", target:installdir() .. "/bin/luna.png")
-	end)
-target_end ()
+```csharp
+RuntimeFiles("luna.png");
 ```
 
-This script triggers registers custom functions before building the program and after installing the program, the custom function copies the image file to same the directory of our program binary file, so that our program can correctly find the image file.
+LunaBuild emits a `file.copy` action for runtime files. The image is copied to the same directory as the program binary, so that our program can correctly find the image file. The same runtime file metadata is also used by `lunabuild install`.
 
 Then, go back to `main.cpp`, and add one new property to `DemoApp` to represent the loaded image:
 

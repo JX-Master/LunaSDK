@@ -42,6 +42,9 @@ namespace Luna
         //! The command value that draws a Quadratic Belzier curve to the specified point, 
         //! followed by four data points: cx, cy, x, y
         constexpr i16 COMMAND_CURVE_TO = 3;
+        //! The command value that draws a cubic Bezier curve to the specified point,
+        //! followed by six data points: c1x, c1y, c2x, c2y, x, y
+        constexpr i16 COMMAND_CUBIC_TO = 4;
 
         //! @interface IFontFile
         //! Represents a font file that may contain one or multiple fonts.

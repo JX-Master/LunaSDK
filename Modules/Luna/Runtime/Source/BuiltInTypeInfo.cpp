@@ -422,128 +422,219 @@ namespace Luna
         lucatchret;
         return ok;
     }
-    inline usize robinhood_insert(usize h, typeinfo_t value_type, usize value_size, usize value_alignment, void* src_buf, void* value_buf, RobinHoodHashing::ControlBlock* cb_buf, usize buffer_size)
-    {
-        luassert(h != RobinHoodHashing::EMPTY_SLOT && !RobinHoodHashing::is_tombstone(h));
-        // Extract current data.
-        usize pos = h % buffer_size;
-        usize dist = 0;
-        usize ret_pos = USIZE_MAX;
-        void* temp_v = nullptr;
-        while (true)
-        {
-            if (cb_buf[pos].m_hash == RobinHoodHashing::EMPTY_SLOT)
-            {
-                cb_buf[pos].m_hash = h;
-                void* dst = (void*)((usize)value_buf + pos * value_size);
-                relocate_type(value_type, dst, src_buf);
-                if (ret_pos == USIZE_MAX) ret_pos = pos;
-                break;
-            }
-            usize existing_dist = RobinHoodHashing::probe_distance(cb_buf[pos].m_hash, pos, buffer_size);
-            if ((existing_dist <= dist) && RobinHoodHashing::is_tombstone(cb_buf[pos].m_hash))
-            {
-                cb_buf[pos].m_hash = h;
-                void* dst = (void*)((usize)value_buf + pos * value_size);
-                relocate_type(value_type, dst, src_buf);
-                if (ret_pos == USIZE_MAX) ret_pos = pos;
-                break;
-            }
-            if (existing_dist < dist)
-            {
-                usize temp_h = cb_buf[pos].m_hash;
-                cb_buf[pos].m_hash = h;
-                h = temp_h;
-                void* dst = (void*)((usize)value_buf + pos * value_size);
-                if(!temp_v) temp_v = memalloc(value_size, value_alignment);
-                relocate_type(value_type, temp_v, dst);
-                relocate_type(value_type, dst, src_buf);
-                relocate_type(value_type, src_buf, temp_v);
-                dist = existing_dist;
-                if (ret_pos == USIZE_MAX) ret_pos = pos;
-            }
-            ++pos;
-            ++dist;
-            if (pos == buffer_size)
-                pos = 0;
-        }
-        if(temp_v) memfree(temp_v, value_alignment);
-        return ret_pos;
-    }
     struct HashTableData
     {
         void* m_value_buffer;
-        RobinHoodHashing::ControlBlock* m_cb_buffer;
-        usize m_buffer_size;
+        usize* m_hashes;
+        usize* m_nexts;
+        u8* m_occupied;
+        usize* m_buckets;
+        usize m_capacity;
+        usize m_sparse_size;
         usize m_size;
+        usize m_first_free;
+        usize m_hole_count;
+        usize m_bucket_count;
         f32 m_max_load_factor;
 
+        usize bitset_size() const
+        {
+            return SparseHashing::bitset_size(m_capacity);
+        }
+        void* value_at(typeinfo_t value_type, usize index) const
+        {
+            return (void*)((usize)m_value_buffer + index * get_type_size(value_type));
+        }
+        void initialize_bucket_buffer(usize* buckets, usize count)
+        {
+            for (usize i = 0; i < count; ++i)
+            {
+                buckets[i] = SparseHashing::EMPTY_SLOT;
+            }
+        }
+        usize minimum_bucket_count(usize size) const
+        {
+            return SparseHashing::minimum_bucket_count(size, m_max_load_factor);
+        }
+        void clear(typeinfo_t value_type)
+        {
+            for (usize i = 0; i < m_sparse_size; ++i)
+            {
+                if (bit_test(m_occupied, i))
+                {
+                    destruct_type(value_type, value_at(value_type, i));
+                }
+            }
+            if (m_occupied)
+            {
+                memzero(m_occupied, bitset_size());
+            }
+            if (m_buckets)
+            {
+                initialize_bucket_buffer(m_buckets, m_bucket_count);
+            }
+            m_sparse_size = 0;
+            m_size = 0;
+            m_first_free = SparseHashing::EMPTY_SLOT;
+            m_hole_count = 0;
+        }
         void clear_and_free_table(typeinfo_t value_type)
         {
-            for (usize i = 0; i < m_buffer_size; ++i)
-            {
-                usize h = m_cb_buffer[i].m_hash;
-                if (h == RobinHoodHashing::EMPTY_SLOT || RobinHoodHashing::is_tombstone(h)) continue;
-                destruct_type(value_type, (void*)((usize)m_value_buffer + i * get_type_size(value_type)));
-            }
+            clear(value_type);
             if (m_value_buffer)
             {
-                memfree(m_value_buffer);
-                memfree(m_cb_buffer);
+                memfree(m_value_buffer, get_type_alignment(value_type));
                 m_value_buffer = nullptr;
             }
-            m_buffer_size = 0;
+            if (m_hashes)
+            {
+                memfree(m_hashes);
+                m_hashes = nullptr;
+            }
+            if (m_nexts)
+            {
+                memfree(m_nexts);
+                m_nexts = nullptr;
+            }
+            if (m_occupied)
+            {
+                memfree(m_occupied);
+                m_occupied = nullptr;
+            }
+            if (m_buckets)
+            {
+                memfree(m_buckets);
+                m_buckets = nullptr;
+            }
+            m_capacity = 0;
+            m_bucket_count = 0;
             m_size = 0;
         }
         f32 load_factor()
         {
-            if (!m_buffer_size)
+            if (!m_bucket_count)
             {
                 return 0.0f;
             }
-            return (f32)m_size / (f32)m_buffer_size;
+            return (f32)m_size / (f32)m_bucket_count;
         }
-        void rehash(typeinfo_t value_type, usize new_buffer_size)
+        void reserve_values(typeinfo_t value_type, usize new_capacity)
         {
-            new_buffer_size = max(max(new_buffer_size, (usize)(ceilf((f32)m_size / m_max_load_factor))), RobinHoodHashing::INITIAL_BUFFER_SIZE);
-            if (new_buffer_size == m_buffer_size)
+            if (new_capacity <= m_capacity) return;
+            usize value_size = get_type_size(value_type);
+            usize value_alignment = get_type_alignment(value_type);
+            void* new_values = memalloc(new_capacity * value_size, value_alignment);
+            usize* new_hashes = (usize*)memalloc(new_capacity * sizeof(usize));
+            usize* new_nexts = (usize*)memalloc(new_capacity * sizeof(usize));
+            usize new_occupied_size = SparseHashing::bitset_size(new_capacity);
+            u8* new_occupied = (u8*)memalloc(new_occupied_size);
+            memzero(new_occupied, new_occupied_size);
+            if (m_value_buffer)
+            {
+                memcpy(new_hashes, m_hashes, sizeof(usize) * m_capacity);
+                memcpy(new_nexts, m_nexts, sizeof(usize) * m_capacity);
+                for (usize i = 0; i < m_sparse_size; ++i)
+                {
+                    if (bit_test(m_occupied, i))
+                    {
+                        relocate_type(value_type, (void*)((usize)new_values + i * value_size), value_at(value_type, i));
+                        bit_set(new_occupied, i);
+                    }
+                }
+                memfree(m_value_buffer, value_alignment);
+                memfree(m_hashes);
+                memfree(m_nexts);
+                memfree(m_occupied);
+            }
+            m_value_buffer = new_values;
+            m_hashes = new_hashes;
+            m_nexts = new_nexts;
+            m_occupied = new_occupied;
+            m_capacity = new_capacity;
+        }
+        void rehash(typeinfo_t value_type, usize new_bucket_count)
+        {
+            new_bucket_count = SparseHashing::round_up_power_of_two(max(new_bucket_count, minimum_bucket_count(m_size)));
+            if (new_bucket_count == m_bucket_count)
             {
                 return;
             }
-            usize value_size = get_type_size(value_type);
-            usize value_alignment = get_type_alignment(value_type);
-            void* value_buf = memalloc(new_buffer_size * value_size, value_alignment);
-            RobinHoodHashing::ControlBlock* cb_buf = (RobinHoodHashing::ControlBlock*)memalloc(new_buffer_size * sizeof(RobinHoodHashing::ControlBlock));
-            memzero(cb_buf, new_buffer_size * sizeof(RobinHoodHashing::ControlBlock));
-            for (usize i = 0; i < m_buffer_size; ++i)
+            usize* buckets = nullptr;
+            if (new_bucket_count)
             {
-                usize h = m_cb_buffer[i].m_hash;
-                if (h == RobinHoodHashing::EMPTY_SLOT || RobinHoodHashing::is_tombstone(h)) continue;
-                void* src = (void*)((usize)m_value_buffer + i * value_size);
-                robinhood_insert(h, value_type, value_size, value_alignment, src, value_buf, cb_buf, new_buffer_size);
+                buckets = (usize*)memalloc(new_bucket_count * sizeof(usize));
+                initialize_bucket_buffer(buckets, new_bucket_count);
+                for (usize i = 0; i < m_sparse_size; ++i)
+                {
+                    if (bit_test(m_occupied, i))
+                    {
+                        usize bucket = m_hashes[i] % new_bucket_count;
+                        m_nexts[i] = buckets[bucket];
+                        buckets[bucket] = i;
+                    }
+                }
             }
-            if (m_value_buffer)
+            if (m_buckets)
             {
-                memfree(m_value_buffer);
-                memfree(m_cb_buffer);
-                m_value_buffer = nullptr;
+                memfree(m_buckets);
             }
-            m_value_buffer = value_buf;
-            m_cb_buffer = cb_buf;
-            m_buffer_size = new_buffer_size;
+            m_buckets = buckets;
+            m_bucket_count = new_bucket_count;
         }
         usize capacity() const
         {
-            return (usize)floorf(m_max_load_factor * m_buffer_size);
+            return m_capacity;
         }
         void increment_reserve(typeinfo_t value_type, usize new_cap)
         {
             usize current_capacity = capacity();
             if (new_cap > current_capacity)
             {
-                new_cap = max(new_cap, current_capacity * 2);
-                rehash(value_type, (usize)ceilf((f32)new_cap / m_max_load_factor));
+                reserve_values(value_type, max(max(new_cap, current_capacity * 2), SparseHashing::INITIAL_BUFFER_SIZE));
             }
+            usize desired_bucket_count = minimum_bucket_count(new_cap);
+            if (desired_bucket_count > m_bucket_count)
+            {
+                rehash(value_type, desired_bucket_count);
+            }
+        }
+        usize allocate_sparse_slot()
+        {
+            if (m_first_free != SparseHashing::EMPTY_SLOT)
+            {
+                usize ret = m_first_free;
+                m_first_free = m_nexts[ret];
+                --m_hole_count;
+                bit_set(m_occupied, ret);
+                return ret;
+            }
+            luassert(m_sparse_size < m_capacity);
+            usize ret = m_sparse_size++;
+            bit_set(m_occupied, ret);
+            return ret;
+        }
+        void link_slot(usize index, usize hash)
+        {
+            m_hashes[index] = hash;
+            usize bucket = hash % m_bucket_count;
+            m_nexts[index] = m_buckets[bucket];
+            m_buckets[bucket] = index;
+        }
+        void insert_relocated(typeinfo_t value_type, usize hash, void* src)
+        {
+            increment_reserve(value_type, m_size + 1);
+            usize index = allocate_sparse_slot();
+            relocate_type(value_type, value_at(value_type, index), src);
+            link_slot(index, hash);
+            ++m_size;
+        }
+        void insert_copied(typeinfo_t value_type, usize hash, const void* src)
+        {
+            increment_reserve(value_type, m_size + 1);
+            usize index = allocate_sparse_slot();
+            copy_construct_type(value_type, value_at(value_type, index), src);
+            link_slot(index, hash);
+            ++m_size;
         }
         R<Variant> do_serialize(typeinfo_t value_type) const
         {
@@ -551,10 +642,9 @@ namespace Luna
             Variant ret(VariantType::array);
             lutry
             {
-                for (usize i = 0; i < m_buffer_size; ++i)
+                for (usize i = 0; i < m_sparse_size; ++i)
                 {
-                    usize h = m_cb_buffer[i].m_hash;
-                    if (h != RobinHoodHashing::EMPTY_SLOT && !RobinHoodHashing::is_tombstone(h))
+                    if (bit_test(m_occupied, i))
                     {
                         const void* v = (const void*)((usize)m_value_buffer + value_size * i);
                         lulet(var, serialize(value_type, v));
@@ -574,10 +664,17 @@ namespace Luna
     {
         HashTableData* d = (HashTableData*)inst;
         d->m_value_buffer = nullptr;
-        d->m_cb_buffer = nullptr;
-        d->m_buffer_size = 0;
+        d->m_hashes = nullptr;
+        d->m_nexts = nullptr;
+        d->m_occupied = nullptr;
+        d->m_buckets = nullptr;
+        d->m_capacity = 0;
+        d->m_sparse_size = 0;
         d->m_size = 0;
-        d->m_max_load_factor = RobinHoodHashing::INITIAL_LOAD_FACTOR;
+        d->m_first_free = SparseHashing::EMPTY_SLOT;
+        d->m_hole_count = 0;
+        d->m_bucket_count = 0;
+        d->m_max_load_factor = SparseHashing::INITIAL_LOAD_FACTOR;
     }
     static void hashmap_dtor(typeinfo_t type, void* inst)
     {
@@ -596,34 +693,27 @@ namespace Luna
     inline void hashtable_copy_ctor(typeinfo_t value_type, HashTableData* dest, HashTableData* src)
     {
         dest->m_value_buffer = nullptr;
-        dest->m_cb_buffer = nullptr;
-        dest->m_buffer_size = 0;
+        dest->m_hashes = nullptr;
+        dest->m_nexts = nullptr;
+        dest->m_occupied = nullptr;
+        dest->m_buckets = nullptr;
+        dest->m_capacity = 0;
+        dest->m_sparse_size = 0;
         dest->m_size = 0;
-        dest->m_max_load_factor = RobinHoodHashing::INITIAL_LOAD_FACTOR;
-        usize value_size = get_type_size(value_type);
+        dest->m_first_free = SparseHashing::EMPTY_SLOT;
+        dest->m_hole_count = 0;
+        dest->m_bucket_count = 0;
+        dest->m_max_load_factor = SparseHashing::INITIAL_LOAD_FACTOR;
         dest->m_max_load_factor = src->m_max_load_factor;
-        if (dest->load_factor() > dest->m_max_load_factor)
-        {
-            dest->rehash(value_type, 0);
-        }
         if (src->m_size)
         {
-            dest->m_value_buffer = memalloc(src->m_buffer_size * value_size, get_type_alignment(value_type));
-            dest->m_cb_buffer = (RobinHoodHashing::ControlBlock*)memalloc(src->m_buffer_size * sizeof(RobinHoodHashing::ControlBlock));
-            memzero(dest->m_cb_buffer, src->m_buffer_size * sizeof(RobinHoodHashing::ControlBlock));
-            dest->m_buffer_size = src->m_buffer_size;
-            for (usize i = 0; i < src->m_buffer_size; ++i)
+            for (usize i = 0; i < src->m_sparse_size; ++i)
             {
-                usize h = src->m_cb_buffer[i].m_hash;
-                dest->m_cb_buffer[i].m_hash = h;
-                if (h != RobinHoodHashing::EMPTY_SLOT && !RobinHoodHashing::is_tombstone(h))
+                if (bit_test(src->m_occupied, i))
                 {
-                    void* dest_buf = (void*)((usize)dest->m_value_buffer + i * value_size);
-                    void* src_buf = (void*)((usize)src->m_value_buffer + i * value_size);
-                    copy_construct_type(value_type, dest_buf, src_buf);
+                    dest->insert_copied(value_type, src->m_hashes[i], src->value_at(value_type, i));
                 }
             }
-            dest->m_size = src->m_size;
         }
     }
     static void hashmap_copy_ctor(typeinfo_t type, void* dest, const void* src)
@@ -643,8 +733,16 @@ namespace Luna
         HashTableData* srcd = (HashTableData*)src;
         memcpy(destd, srcd, sizeof(HashTableData));
         srcd->m_value_buffer = nullptr;
-        srcd->m_buffer_size = 0;
+        srcd->m_hashes = nullptr;
+        srcd->m_nexts = nullptr;
+        srcd->m_occupied = nullptr;
+        srcd->m_buckets = nullptr;
+        srcd->m_capacity = 0;
+        srcd->m_sparse_size = 0;
         srcd->m_size = 0;
+        srcd->m_first_free = SparseHashing::EMPTY_SLOT;
+        srcd->m_hole_count = 0;
+        srcd->m_bucket_count = 0;
     }
     static void hashmap_copy_assign(typeinfo_t type, void* dest, const void* src)
     {
@@ -673,11 +771,6 @@ namespace Luna
         typeinfo_t value_type = make_hashmap_value_type(generic_arguments[0].type, generic_arguments[1].type);
         return d->do_serialize(value_type);
     }
-    inline usize alter_hash(usize h)
-    {
-        if (h == RobinHoodHashing::EMPTY_SLOT) ++h;
-        return h & ~RobinHoodHashing::TOMBSTONE_BIT;
-    }
     static RV hashmap_deserialize(typeinfo_t type, void* inst, const Variant& data)
     {
         HashTableData* d = (HashTableData*)inst;
@@ -695,16 +788,14 @@ namespace Luna
             if(failed(r))
             {
                 destruct_type(value_type, value_buffer);
-                memfree(value_buffer);
+                memfree(value_buffer, value_alignment);
                 return r;
             }
             // Extract key type.
-            usize h = alter_hash(hash_type(key_type, value_buffer));
-            d->increment_reserve(value_type, d->m_size + 1);
-            robinhood_insert(h, value_type, value_size, value_alignment, value_buffer, d->m_value_buffer, d->m_cb_buffer, d->m_buffer_size);
-            ++d->m_size;
+            usize h = hash_type(key_type, value_buffer);
+            d->insert_relocated(value_type, h, value_buffer);
         }
-        memfree(value_buffer);
+        memfree(value_buffer, value_alignment);
         return ok;
     }
     static R<Variant> hashset_serialize(typeinfo_t type, const void* inst)
@@ -721,7 +812,6 @@ namespace Luna
         usize value_size = get_type_size(value_type);
         usize value_alignment = get_type_alignment(value_type);
         void* value_buffer = memalloc(value_size, value_alignment);
-        value_buffer = (void*)align_upper((usize)value_buffer, value_alignment);
         for (auto& v : data.values())
         {
             construct_type(value_type, value_buffer);
@@ -729,16 +819,14 @@ namespace Luna
             if(failed(r))
             {
                 destruct_type(value_type, value_buffer);
-                memfree(value_buffer);
+                memfree(value_buffer, value_alignment);
                 return r;
             }
             // Extract key type.
-            usize h = alter_hash(hash_type(value_type, value_buffer));
-            d->increment_reserve(value_type, d->m_size + 1);
-            robinhood_insert(h, value_type, value_size, value_alignment, value_buffer, d->m_value_buffer, d->m_cb_buffer, d->m_buffer_size);
-            ++d->m_size;
+            usize h = hash_type(value_type, value_buffer);
+            d->insert_relocated(value_type, h, value_buffer);
         }
-        memfree(value_buffer);
+        memfree(value_buffer, value_alignment);
         return ok;
     }
     static GenericStructureInstantiateInfo hashmap_instantiate(typeinfo_t base_type, Span<const GenericArgument> generic_arguments)

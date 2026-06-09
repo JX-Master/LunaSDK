@@ -15,4 +15,12 @@ public sealed class MultiPlatformSampleTargetRules : TargetRules
         EmbeddedHeader("Res/luna.png", "LunaTex.hpp", "LUNA_PNG_DATA", "LUNA_PNG_SIZE");
         DependsOn("Runtime", "Window", "RHI", "RHIUtility", "Image");
     }
+
+    protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+    {
+        if(Platform == BuildPlatform.Android)
+        {
+            SystemLibraries("android", "log");
+        }
+    }
 }

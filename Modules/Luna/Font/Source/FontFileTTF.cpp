@@ -90,7 +90,7 @@ namespace Luna
                 case STBTT_vcurve:
                     out_commands.insert(out_commands.end(), { COMMAND_CURVE_TO, v.cx, v.cy, v.x, v.y }); break;
                 case STBTT_vcubic:
-                    lupanic(); break;
+                    out_commands.insert(out_commands.end(), { COMMAND_CUBIC_TO, v.cx, v.cy, v.cx1, v.cy1, v.x, v.y }); break;
                 }
             }
             if(vertices) stbtt_FreeShape(&m_infos[font_index], vertices);

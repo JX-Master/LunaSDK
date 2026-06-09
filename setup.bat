@@ -1,5 +1,5 @@
 @echo off
 setlocal
 
-dotnet run --project "%~dp0Tools\LunaSetup\LunaSetup.csproj" -- --root "%~dp0." %* --platform windows
+dotnet run --project "%~dp0Tools\LunaSetup\LunaSetup.csproj" -- --root "%~dp0." %*
 exit /b %ERRORLEVEL%

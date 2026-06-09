@@ -59,6 +59,7 @@ struct ReflectedDecl
     std::string enum_underlying_type;
     bool enum_scoped = false;
     bool has_direct_interface_base = false;
+    bool abstract = false;
     std::vector<std::string> namespaces;
     std::vector<std::string> base_qualified_names;
     std::vector<std::string> interface_qualified_names;
@@ -614,7 +615,15 @@ bool WriteTargetRegistrationFiles(const Options& options, const std::vector<Refl
         }
         else
         {
-            source << "        auto " << variable_name << " = ::Luna::Meta::register_reflected_struct_type<" << TypeReference(declaration) << ">";
+            source << "        auto " << variable_name << " = ";
+            if (declaration.abstract)
+            {
+                source << "::Luna::register_abstract_struct_type<" << TypeReference(declaration) << ">";
+            }
+            else
+            {
+                source << "::Luna::Meta::register_reflected_struct_type<" << TypeReference(declaration) << ">";
+            }
             if (!declaration.base_qualified_names.empty())
             {
                 source << "(" << type_variable_names.at(declaration.base_qualified_names[0]) << ")";
@@ -1263,6 +1272,7 @@ bool AddReflectedRecord(
     declaration.reflection_name = ReflectionNameFromQualifiedName(declaration.qualified_name);
     declaration.guid = guid;
     declaration.declaration_attributes = RecordDeclarationAttributes(source_text, declaration.declaration_keyword);
+    declaration.abstract = record->isAbstract();
     const auto& lang_options = ast_context.getLangOpts();
     for (const auto& base : record->bases())
     {

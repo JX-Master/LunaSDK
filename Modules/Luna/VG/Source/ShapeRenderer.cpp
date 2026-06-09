@@ -252,7 +252,7 @@ namespace Luna
             using namespace RHI;
             usize num_draw_calls = m_draw_calls.size();
             Vector<TextureBarrier> barriers;
-            barriers.push_back({ m_render_target, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content });
+            barriers.push_back({ m_render_target, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::none });
             barriers.push_back({ g_white_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
             for (usize i = 0; i < num_draw_calls; ++i)
             {

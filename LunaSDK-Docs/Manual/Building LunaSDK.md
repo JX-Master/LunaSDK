@@ -1,132 +1,275 @@
 ## Prerequisites
+
 ### Common
-* xmake building system, check [here](https://xmake.io/#/guide/installation) for installation instructions.
-* .NET 10, check [here](https://dotnet.microsoft.com/download) for installation instructions.
+
+* .NET 9 SDK, check [here](https://dotnet.microsoft.com/download) for installation instructions.
+* LunaBuild is the authoritative build system for LunaSDK.
+
 ### Windows
-* Visual Studio 2022 or later (Choose C++ desktop development & C++ game development workload).
+
+* Visual Studio 2022 or later.
+* Install the C++ desktop development workload.
+* Windows 10 SDK or later.
+
 ### macOS
-* XCode and Command Line Tool.
-* Metal toolchain (`xcodebuild -downloadComponent MetalToolchain`).
+
+* Xcode and Command Line Tools.
+* Metal toolchain:
+
+```sh
+xcodebuild -downloadComponent MetalToolchain
+```
+
 ### Android
-* Android Studio with Android SDK of your choice (Level 31 and newer is tested).
-* Install NDK (29.0.14206865 or newer) in `Tools -> SDK Manager` in Android Studio.
+
+* Android Studio or Android SDK command-line tools.
+* Android SDK platform matching the application `compileSdk`.
+* Android NDK matching the application `ndkVersion`.
+* JDK 17 or the JBR bundled with Android Studio.
+
+LunaBuild builds the native targets. The Android Gradle project is used only for APK packaging and does not compile native code.
+
 ### iOS/iPadOS
-* Install iOS/iPadOS SDK in XCode.
+
+Install iOS/iPadOS SDK in Xcode. iOS build packaging is not part of the current LunaBuild main path.
+
+## Setup
+
+Clone or download this project, then download LunaSDK's prebuilt third-party SDK bundle.
+
+On Windows:
+
+```bat
+setup.bat
+```
+
+On macOS:
+
+```sh
+chmod +x ./setup.sh
+./setup.sh
+```
+
+The setup script downloads the platform SDK archive into `SDKs`. LunaBuild does not manage packages and does not download third-party libraries during build. All external SDK paths are declared by LunaSDK target rules.
 
 ## Building
 
-1. Clone or download this project.
-2. Run `setup.bat` (on Windows) or `setup.sh` (on macOS) to download third party SDKs that are not managed by xmake. You may need to invoke `chmod +x ./setup.sh` firstly on macOS if a "permission denied" error occurs.
-3. Configure the building option by executing `xmake f {options}`. Possible options include:
-	1. `-p` for target platform, supported values are `windows`,  `macosx` and `android`. This can be set automatically if you build project for the current platform.
-	2.  `-a` for architecture, supported values are `x64` on Windows, `x86_64` and `arm64` on macOS, `arm64-v8a` and `x86_64` for Android.
-	3.  `-m` for mode, supported values are:
-		1. `debug`: keep debug info and disable code optimization.
-		2. `profile`: discard debug info, enable full code optimization, keep profiling codes.
-		3. `release`: discard debug info, enable full code optimization, remov profiling codes.
-	4. `--ndk={NDK_PATH}` to specifiy NDK path if you want to build for Android platform.
-	5. `--shared=y` for building all libraries as shared libraries.
-	6. `--rhi_debug=y` if you want to enable the debug layer of the rendering backend (D3D12 debug layer or Vulkan validation layer).
-	7. `--rhi_api=XXX` for choosing the rendering backend, supported values are: 
-		1. Windows: `D3D12` (default),  `Vulkan`.
-		2. macOS: `Metal` (default). 
-	8. `--memory_profiler=y` for enabling memory profiler.
-	9. `--thread_safe_assertion=y` for enabling thread safe assertions.
-	10. `--build_tests=y` for building unit tests.
-	11. `--api_validation=y` for enabling api validation macros (`lucheck` and variations).
-	xmake will download and install dependency packages on first configure command.
-4. Build the project by executing `xmake build`, or build one target by executing `xmake build {target}`.
-5. Run one target by executing `xmake run {target}`.
+LunaBuild is invoked through the .NET project:
 
-### Packaging for Android devices
+```sh
+dotnet run --project LunaBuild.csproj -- <command> [options]
+```
 
-One Android Studio project is required for packaging `.apk` files for Android devices. When creating projects, make sure that:
-1. `NativeActivity` is used as the base class of your application activity class.
-2. `org.tboox.gradle-xmake-plugin` plugin is specified in `build.gradle` of your project and module, and root xmake script file is specified. See [xmake-gradle GitHub page](https://github.com/xmake-io/xmake-gradle) for details.
+Build the default engine targets for the host platform:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --all
+```
+
+Build one target:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --target ObjLoader
+```
+
+Build all tests:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --category Tests
+```
+
+Build all tools:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --category Tools
+```
+
+Force rebuild:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --all --force
+```
+
+## Running
+
+Run builds the selected executable target first, then launches the produced program from its output directory:
+
+```sh
+dotnet run --project LunaBuild.csproj -- run --target RuntimeTest
+```
+
+The target name can also be written positionally:
+
+```sh
+dotnet run --project LunaBuild.csproj -- run RuntimeTest
+```
+
+Pass program arguments after a second `--` separator:
+
+```sh
+dotnet run --project LunaBuild.csproj -- run RuntimeTest -- --list
+```
+
+### Common Options
+
+* `--target <name>` builds one target and its dependencies.
+* `--all` builds all default targets.
+* `--category <name>` filters all-target operations by `Engine`, `Tests`, or `Tools`. This option can be repeated or passed as a comma-separated list.
+* `--mode <name>` selects `Debug`, `Profile`, or `Release`. Default: `Debug`.
+* `--platform <name>` selects `Windows`, `MacOS`, `Linux`, `Android`, or `IOS`. Default: host platform.
+* `--arch <name>` selects architecture. Common values are `x64`, `x86_64`, and `arm64`.
+* `--rhi <name>` selects `D3D12`, `Vulkan`, or `Metal`. Default: platform default.
+* `--shared` builds shared libraries.
+* `--static` builds static libraries.
+* `--property <name=value>` sets one project-defined build property.
+* `--api-validation` enables public API validation checks. Debug builds enable this by default. This is declared by LunaSDK's project rules.
+* `--contract-assertion` is an alias of `--api-validation` for users migrating from older option names.
+* `--thread-safe-assertion` enables thread-safety assertion checks. This is declared by LunaSDK's project rules.
+* `--memory-profiler` enables Luna runtime memory profiler instrumentation. This is declared by LunaSDK's project rules.
+* `--rhi-debug` enables RHI backend debug layers and validation helpers. This is declared by LunaSDK's project rules.
+
+### Windows Examples
+
+Build Debug D3D12 shared libraries:
+
+```powershell
+dotnet run --project LunaBuild.csproj -- build --all --platform Windows --arch x64 --mode Debug --rhi D3D12 --shared
+```
+
+Build Debug Vulkan shared libraries:
+
+```powershell
+dotnet run --project LunaBuild.csproj -- build --all --platform Windows --arch x64 --mode Debug --rhi Vulkan --shared
+```
+
+Build Release D3D12 static libraries:
+
+```powershell
+dotnet run --project LunaBuild.csproj -- build --all --platform Windows --arch x64 --mode Release --rhi D3D12 --static
+```
+
+### macOS Examples
+
+Build Debug Metal shared libraries for Apple Silicon:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --all --platform MacOS --arch arm64 --mode Debug --rhi Metal --shared
+```
+
+Build Release Metal static libraries for x86_64:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --all --platform MacOS --arch x86_64 --mode Release --rhi Metal --static
+```
+
+### Android Examples
+
+Build the native shared library for `MultiPlatformSample`:
+
+```sh
+dotnet run --project LunaBuild.csproj -- build --target MultiPlatformSample --platform Android --arch arm64-v8a --mode Debug --rhi Vulkan
+```
+
+Package `MultiPlatformSample` into an APK:
+
+```sh
+dotnet run --project LunaBuild.csproj -- package MultiPlatformSample --platform Android --arch arm64-v8a --mode Debug --rhi Vulkan --output build/LunaBuild/AndroidPackages
+```
+
+The package command builds the selected executable target first, copies the produced native `.so` files into the target's `AndroidProject/app/src/main/jniLibs/<abi>` directory, then invokes the Gradle wrapper for `assembleDebug` or `assembleRelease`. LunaBuild redirects Gradle and Android user-state directories under `build/LunaBuild` so local package runs do not depend on writable user profile cache directories.
+
+## Cleaning
+
+Clean generated files for the selected graph:
+
+```sh
+dotnet run --project LunaBuild.csproj -- clean --all
+```
+
+Clean one target:
+
+```sh
+dotnet run --project LunaBuild.csproj -- clean --target ObjLoader
+```
+
+Remove the whole LunaBuild output directory:
+
+```sh
+dotnet run --project LunaBuild.csproj -- clean --full
+```
+
+## Installing Artifacts
+
+Install build outputs into an artifact directory:
+
+```sh
+dotnet run --project LunaBuild.csproj -- install --all --mode Debug --output ./install/debug
+```
+
+The install command copies LunaBuild graph outputs and target metadata outputs such as libraries, binaries, runtime files, public headers, and generated headers.
 
 ## Debugging in IDEs
 
-### Visual Studio Code (Windows/macOS) (suggested)
+IDE projects generated by LunaBuild are editing and command-entry projects. They do not translate LunaBuild into native MSBuild, Xcode, or VSCode build logic. Build, rebuild, clean, and launch tasks call LunaBuild.
 
-If you use Visual Studio Code for developing, you can install `xmake` extension for a better developing experience. Based on your preference, you may choose to use Microsoft C/C++ extension or clangd extension for code highlighting and debugging.
+### Visual Studio Code
 
-#### Set up Microsoft C/C++ extension
+Generate VSCode tasks, launch configurations, settings, and compile commands:
 
-If you use Microsoft C/C++ extension, you should create one `c_cpp_properties.json` file in your `.vscode` directory with the following include path:
-```json
-"${workspaceFolder}/Modules"
+```sh
+dotnet run --project LunaBuild.csproj -- generate --format vscode --all
+dotnet run --project LunaBuild.csproj -- generate --format compile_commands --all
 ```
-The whole file may looks like this:
-```json
-{
-    "configurations": [
-        {
-            "name": "Win32",
-            "includePath": [
-                "${workspaceFolder}/Modules"
-            ],
-            "defines": [
-                "_DEBUG",
-                "UNICODE",
-                "_UNICODE"
-            ],
-            "windowsSdkVersion": "10.0.26100.0",
-            "compilerPath": "cl.exe",
-            "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "windows-msvc-x64"
-        }
-    ],
-    "version": 4
-}
-```
-With xmake extension installed, you can now build and debug targets in xmake panel.
 
-#### Set Up clangd extension
+The generated `.vscode/tasks.json` entries are prefixed with `LunaBuild:`. LunaBuild only replaces entries with this prefix and preserves user-defined tasks.
 
-If you use clangd extension, you need to generate `compile_commands.json` file in `.vscode` to let clangd understand the project. With xmake extension installed, you can use Ctrl/Command+Shift+P to open command palette, then type `XMake: UpdateIntelliSence`, which generates `compile_commands.json` automatically for you. You should also add the following settings in your `.vscode/settings.json`:
+For clangd, point it at the generated compile commands directory:
+
 ```json
 {
-	"clangd.arguments": [
-		"--compile-commands-dir=${workspaceFolder}/.vscode"
-	]
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/build/LunaBuild"
+    ]
 }
 ```
 
-#### Debugging with LLDB DAP
+### Visual Studio 2022
 
-LLDB (LLVM debugger) only provides a command-line based debugging interface, which is inconvenient for those who are used to debugging in IDE. To have a visual debugging experience, we suggest the user to install LLDB DAP extension for vscode. Note that the `lldb-dap` program should be installed manually, follow the instructions on LLDB DAP extension page to install it.
+Generate the Visual Studio solution:
 
-After you setup LLDB DAP, you can create a `launch.json` file in `.vscode` to start debugging programs. Here is one example that debugs `Studio` program of LunaSDK:
-
-```json
-{  
-	"type": "lldb-dap",  
-	"request": "launch",  
-	"name": "Debug Studio",  
-	"program": "${workspaceRoot}/build/macosx/arm64/debug/Studio",  
-	"args": [],  
-	"env": [],
-	"cwd": "${workspaceRoot}/build/macosx/arm64/debug"
-}
+```bat
+gen_vs2022.bat
 ```
 
-### Visual Studio
-1. Clone or download this project.
-2. Double click `setup.bat` to perform project setup.
-3. Double click `gen_vs2022.bat` or execute the following commands:
-    ``` xmake project  -y -k vsxmake2022 -m "debug;profile;release" Solution ```
-    if you user other Visual Studio versions, change `vsxmake2022` to your version, like `vsxmake2026`.
-4. Open solution file in `/Solution/vsxmake2022/Luna.sln`
-5. Build solution in Visual Studio.
+Or run the command directly:
 
-### XCode
-1. Clone or download this project.
-2. Run `setup.sh` to perform project setup.
-3. Run `gen_xcode.sh` on terminal:
-    ```
-    chmod +x ./gen_xcode.sh
-    ./gen_xcode.sh
-    ```
-4. Open `/Solution/Luna.xcodeproj`.
-5. Build products in XCode. 
+```powershell
+dotnet run --project LunaBuild.csproj -- generate --format vs2022 --all --platform Windows --arch x64
+```
+
+Open the generated solution under `build/LunaBuild/VS2022`. The projects use NMake-style commands that call LunaBuild for build, rebuild, and clean.
+
+### Xcode
+
+Generate the Xcode project:
+
+```sh
+chmod +x ./gen_xcode.sh
+./gen_xcode.sh
+```
+
+Or run the command directly:
+
+```sh
+dotnet run --project LunaBuild.csproj -- generate --format xcode --all --platform MacOS --arch arm64
+```
+
+Open the generated project under `build/LunaBuild/Xcode`. Xcode schemes call LunaBuild through the generated `lunabuild-xcode.sh` helper.
+
+## Long-Running Local Builds
+
+When investigating local build issues, use the timeout wrapper so compiler or toolchain hangs do not leave stale processes running:
+
+```powershell
+.\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','LunaBuild.csproj','--','build','--all') -TimeoutSeconds 300
+```

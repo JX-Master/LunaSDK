@@ -24,7 +24,7 @@ if (-not (Test-Path $Cppslc -PathType Leaf)) {
 }
 
 if (-not (Test-Path $NativeExtractor -PathType Leaf)) {
-    Write-Error "CPPSL native extractor does not exist: $NativeExtractor`nBuild it first, for example: dotnet run --project Tools\LunaBuild\src\LunaBuild.Cli -- build --target cppsl-native-extractor --platform Windows --arch x64"
+    Write-Error "CPPSL native extractor does not exist: $NativeExtractor`nBuild it first, for example: dotnet run --project LunaBuild.csproj -- build --target cppsl-native-extractor --platform Windows --arch x64"
 }
 
 New-Item -ItemType Directory -Force -Path $SdkBin | Out-Null
