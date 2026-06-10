@@ -14,6 +14,7 @@ namespace Luna
     {
         ButtonNode::ButtonNode()
         {
+            layout_style.min_size = Float2U(72.0f, 30.0f);
             render_proxy = default_button_render_proxy();
         }
 
@@ -27,10 +28,32 @@ namespace Luna
             return new_object<ButtonNode>(*this);
         }
 
+        NodeLayoutFlow ButtonNode::layout_flow() const
+        {
+            return NodeLayoutFlow::horizontal;
+        }
+
+        bool ButtonNode::default_interactive() const
+        {
+            return true;
+        }
+
+        bool ButtonNode::uses_node_measure() const
+        {
+            return false;
+        }
+
+        void ButtonNode::apply_container_defaults(LayoutDesc& desc) const
+        {
+            desc.padding = EdgeInsets::xy(8.0f, 5.0f);
+            desc.gap = 4.0f;
+            desc.main_axis_alignment = LayoutMainAxisAlignment::center;
+            desc.cross_axis_alignment = LayoutCrossAxisAlignment::center;
+        }
+
         LayoutMetrics ButtonNode::measure() const
         {
-            f32 text_width = (f32)text.size() * 16.0f * 0.52f;
-            return fixed_height_metrics(72.0f, max(text_width + 24.0f, 72.0f), 30.0f);
+            return fixed_height_metrics(72.0f, 72.0f, 30.0f);
         }
 
         ProgressBarNode::ProgressBarNode()

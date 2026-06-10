@@ -246,7 +246,7 @@ namespace Luna
         GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(96.0f));
         GUI::text(context, "Actor List");
         GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(110.0f));
-        GUI::ItemHandle new_actor_button = GUI::button(context, "New Actor");
+        GUI::ItemHandle new_actor_button = GUI::text_button(context, "New Actor");
         GUI::end_h_layout(context);
 
         if (GUI::is_item_clicked(new_actor_button))
@@ -520,7 +520,7 @@ namespace Luna
             GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(64.0f));
             GUI::ItemHandle scale_op = GUI::selectable(context, "Scale", m_gizmo_op == GUI::GizmoOperation::scale);
             GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(170.0f));
-            GUI::ItemHandle render_mode_button = GUI::button(context, render_mode_label.c_str());
+            GUI::ItemHandle render_mode_button = GUI::text_button(context, render_mode_label.c_str());
             GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(140.0f));
             GUI::ItemHandle profiling_button = GUI::selectable(context, "Time Profiling", settings.frame_profiling);
             GUI::end_h_layout(context);
@@ -856,7 +856,7 @@ namespace Luna
 
                                 SceneGUIRow remove_row = begin_scene_gui_row(context, "Remove Component", 28.0f);
                                 GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(120.0f));
-                                GUI::ItemHandle remove_button = GUI::button(context, "Remove");
+                                GUI::ItemHandle remove_button = GUI::text_button(context, "Remove");
                                 remove_component = end_scene_gui_row(context, remove_row, remove_button);
                             }
                             GUI::pop_id(context);
@@ -875,7 +875,7 @@ namespace Luna
 
                     SceneGUIRow new_component_row = begin_scene_gui_row(context, "New Component", 30.0f);
                     GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(150.0f));
-                    GUI::ItemHandle new_component_button = GUI::button(context, "New Component");
+                    GUI::ItemHandle new_component_button = GUI::text_button(context, "New Component");
                     end_scene_gui_row(context, new_component_row, new_component_button);
                     if(GUI::is_item_clicked(new_component_button))
                     {

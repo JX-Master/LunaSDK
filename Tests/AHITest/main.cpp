@@ -315,7 +315,7 @@ namespace Luna
                         {
                             if(!app.device)
                             {
-                                create_device_button = GUI::button(app.gui, "Create Device");
+                                create_device_button = GUI::text_button(app.gui, "Create Device");
                             }
                         }
                         if(app.device)
@@ -353,7 +353,7 @@ namespace Luna
                                 }
 
                                 GUI::slider_float(app.gui, "Input Audio Level", &input_audio_level, 0.0f, 1.0f);
-                                add_audio_source_button = GUI::button(app.gui, "Add Audio Source");
+                                add_audio_source_button = GUI::text_button(app.gui, "Add Audio Source");
                                 if(!app.audio_sources.empty())
                                 {
                                     GUI::TableDesc source_table;
@@ -381,7 +381,7 @@ namespace Luna
                                             GUI::text(app.gui, "Audio Source");
                                             GUI::drag_float(app.gui, "Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
                                             GUI::slider_float(app.gui, "Volume", &source.volume, 0.0f, 1.0f);
-                                            apply_audio_source_buttons.push_back(GUI::button(app.gui, "Apply"));
+                                            apply_audio_source_buttons.push_back(GUI::text_button(app.gui, "Apply"));
                                             GUI::pop_id(app.gui);
                                             GUI::end_table_row(app.gui);
                                         }

@@ -18,6 +18,14 @@ namespace Luna
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 
+            virtual NodeLayoutFlow layout_flow() const override;
+
+            virtual bool default_interactive() const override;
+
+            virtual bool uses_node_measure() const override;
+
+            virtual void apply_container_defaults(LayoutDesc& desc) const override;
+
             virtual LayoutMetrics measure() const override;
 
         };

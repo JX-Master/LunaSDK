@@ -28,8 +28,8 @@ namespace Luna
         GUI::text(context, label);
         GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
         GUI::input_text(context, "Path", path_text);
-        GUI::ItemHandle set_button = GUI::button(context, "Set");
-        GUI::ItemHandle clear_button = GUI::button(context, "Clear");
+        GUI::ItemHandle set_button = GUI::text_button(context, "Set");
+        GUI::ItemHandle clear_button = GUI::text_button(context, "Clear");
         GUI::end_h_layout(context);
 
         bool edited = false;

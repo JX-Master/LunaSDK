@@ -500,14 +500,14 @@ namespace Luna
             }
             GUI::input_text(app.gui, "Label", app.new_node_label);
             GUI::set_next_item_enabled(app.gui, document && document->asset && !app.node_types.empty());
-            handles.add_child = GUI::button(app.gui, "Add Child");
+            handles.add_child = GUI::text_button(app.gui, "Add Child");
             GUI::set_next_item_enabled(app.gui, can_add_sibling(document) && !app.node_types.empty());
-            handles.add_sibling = GUI::button(app.gui, "Add Sibling");
+            handles.add_sibling = GUI::text_button(app.gui, "Add Sibling");
             GUI::text(app.gui, "Palette");
             for(usize i = 0; i < app.node_types.size(); ++i)
             {
                 GUI::push_id(app.gui, i);
-                GUI::ItemHandle h = GUI::button(app.gui, app.node_types[i].c_str());
+                GUI::ItemHandle h = GUI::text_button(app.gui, app.node_types[i].c_str());
                 handles.palette_nodes.push_back({Guid((u64)i, 0), h});
                 register_palette_drag_source(app, i, h);
                 GUI::pop_id(app.gui);
@@ -529,11 +529,11 @@ namespace Luna
             action_layout.gap = 4.0f;
             GUI::begin_h_layout(app.gui, "Tree Actions", action_layout);
             GUI::set_next_item_enabled(app.gui, can_move_selected(document, false));
-            handles.move_up = GUI::button(app.gui, "Move Up");
+            handles.move_up = GUI::text_button(app.gui, "Move Up");
             GUI::set_next_item_enabled(app.gui, can_move_selected(document, true));
-            handles.move_down = GUI::button(app.gui, "Move Down");
+            handles.move_down = GUI::text_button(app.gui, "Move Down");
             GUI::set_next_item_enabled(app.gui, can_remove_selected(document));
-            handles.remove_node = GUI::button(app.gui, "Delete");
+            handles.remove_node = GUI::text_button(app.gui, "Delete");
             GUI::end_h_layout(app.gui);
             draw_node_tree(app, handles, *document, GA::get_root(document->asset.get()));
         }
@@ -560,7 +560,7 @@ namespace Luna
             GUI::input_text(app.gui, "Label", app.edit_label);
             GUI::input_text(app.gui, "Style", app.edit_style);
             GUI::checkbox(app.gui, "Enabled", &app.edit_enabled);
-            handles.apply_common = GUI::button(app.gui, "Apply Common Fields");
+            handles.apply_common = GUI::text_button(app.gui, "Apply Common Fields");
 
             GUI::text(app.gui, "Properties");
             if(node->properties.type() == VariantType::object)
@@ -587,8 +587,8 @@ namespace Luna
             const c8* type_items[] = {"String", "Number", "Integer", "Boolean"};
             GUI::button_group(app.gui, "Property Type", &app.property_type, Span<const c8*>(type_items, 4));
             GUI::input_text(app.gui, "Property Value", app.property_value);
-            handles.set_property = GUI::button(app.gui, "Set Property");
-            handles.erase_property = GUI::button(app.gui, "Erase Property");
+            handles.set_property = GUI::text_button(app.gui, "Set Property");
+            handles.erase_property = GUI::text_button(app.gui, "Erase Property");
         }
 
         static void draw_preview_panel(App& app)

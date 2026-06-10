@@ -474,7 +474,7 @@ namespace Luna
         if(!m_open) return;
 
         GUI::begin_window(context, title, &m_open, GUI::Size::fixed(720.0f, 780.0f));
-        if (GUI::is_item_clicked(GUI::button(context, "Select Source File")))
+        if (GUI::is_item_clicked(GUI::text_button(context, "Select Source File")))
         {
             lutry
             {
@@ -525,7 +525,7 @@ namespace Luna
         }
         else
         {
-            if(GUI::is_item_clicked(GUI::button(context, "Import All")))
+            if(GUI::is_item_clicked(GUI::text_button(context, "Import All")))
             {
                 for(auto& file : m_files)
                 {
@@ -634,7 +634,7 @@ namespace Luna
                     String import_path;
                     strprintf(import_path, "The texture will be imported as: %s%s", m_create_dir.encode().c_str(), file.m_asset_name.c_str());
                     GUI::text(context, import_path.c_str());
-                    if (GUI::is_item_clicked(GUI::button(context, "Import")))
+                    if (GUI::is_item_clicked(GUI::text_button(context, "Import")))
                     {
                         import_texture_asset(m_create_dir, file);
                     }

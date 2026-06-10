@@ -10,6 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
 #include "GUI.hpp"
+#include "RenderProxies/BasicRenderProxies.hpp"
 
 namespace Luna
 {
@@ -734,22 +735,62 @@ namespace Luna
             }
         }
 
-        LUNA_GUI_API ItemHandle button(IContext* context, const c8* label)
+        LUNA_GUI_API ItemHandle begin_button(IContext* context, const c8* label, const Size& size)
         {
             Context* ctx = context_from_interface(context);
             Ref<ButtonNode> node = new_object<ButtonNode>();
-            return ctx->add_node(Ref<Node>(node), label ? label : "", true);
+            ItemHandle handle;
+            ctx->begin_container(Ref<Node>(node), label ? label : "", size, &handle);
+            return handle;
         }
 
-        LUNA_GUI_API ItemHandle button(IContext* context, const c8* label, const RectF& rect)
+        static ItemHandle begin_absolute_button(Context* ctx, const c8* label, const RectF& rect)
         {
-            Context* ctx = context_from_interface(context);
             Ref<ButtonNode> button_node = new_object<ButtonNode>();
-            ItemHandle handle = ctx->add_node(Ref<Node>(button_node), label ? label : "", true);
+            ItemHandle handle;
+            ctx->begin_container(Ref<Node>(button_node), label ? label : "",
+                Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
             Node& node = ctx->m_build_desc.nodes.back();
             node.absolute_position = true;
             node.position = Float2U(rect.offset_x, rect.offset_y);
-            apply_requested_size(node, Size::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)));
+            return handle;
+        }
+
+        LUNA_GUI_API void end_button(IContext* context)
+        {
+            context_from_interface(context)->end_container();
+        }
+
+        static ItemHandle add_button_label_node(Context* ctx, const c8* label)
+        {
+            Ref<TextNode> node = new_object<TextNode>();
+            node->render_proxy = default_button_label_render_proxy();
+            return ctx->add_node(Ref<Node>(node), label ? label : "", false);
+        }
+
+        LUNA_GUI_API ItemHandle text_button(IContext* context, const c8* text)
+        {
+            Context* ctx = context_from_interface(context);
+            ItemHandle handle = begin_button(context, text ? text : "");
+            bool enabled = ctx->m_build_desc.nodes.back().enabled_state();
+            ctx->push_enabled(enabled);
+            add_button_label_node(ctx, text);
+            ctx->pop_enabled();
+            end_button(context);
+            ctx->m_last_item_id = handle.id;
+            return handle;
+        }
+
+        LUNA_GUI_API ItemHandle text_button(IContext* context, const c8* text, const RectF& rect)
+        {
+            Context* ctx = context_from_interface(context);
+            ItemHandle handle = begin_absolute_button(ctx, text ? text : "", rect);
+            bool enabled = ctx->m_build_desc.nodes.back().enabled_state();
+            ctx->push_enabled(enabled);
+            add_button_label_node(ctx, text);
+            ctx->pop_enabled();
+            end_button(context);
+            ctx->m_last_item_id = handle.id;
             return handle;
         }
 

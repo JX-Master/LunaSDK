@@ -39,13 +39,17 @@ namespace Luna
             next_animation_state->color = color;
             next_animation_state->initialized = true;
             f32 radius = style_f32(ctx, node, Name("gui.button.radius"), 5.0f);
+            ctx.draw_rect(rect, clip_rect, color, radius);
+        }
+
+        static void draw_default_button_label(NodeRenderContext& ctx, const Node& node, const RectF& rect, const RectF& clip_rect,
+            const NodeRenderState& state, void*)
+        {
             f32 font_size = style_f32(ctx, node, Name("gui.button.font_size"), 16.0f);
             Float4U text_color = state.enabled ?
                 style_f32x4(ctx, node, Name("gui.button.text_color"), Float4U(1.0f)) :
                 style_f32x4(ctx, node, Name("gui.button.text_disabled"), Float4U(0.55f, 0.59f, 0.65f, 1.0f));
-            ctx.draw_rect(rect, clip_rect, color, radius);
-            ctx.draw_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
-                clip_rect, node.text.c_str(), font_size, text_color, TextAlignment::center);
+            ctx.draw_text(rect, clip_rect, node.text.c_str(), font_size, text_color, TextAlignment::center);
         }
 
         static void draw_default_text(NodeRenderContext& ctx, const Node& node, const RectF& rect, const RectF& clip_rect,
@@ -481,6 +485,13 @@ namespace Luna
         {
             RenderProxyDesc desc;
             desc.draw = draw_default_button;
+            return desc;
+        }
+
+        RenderProxyDesc default_button_label_render_proxy()
+        {
+            RenderProxyDesc desc;
+            desc.draw = draw_default_button_label;
             return desc;
         }
 

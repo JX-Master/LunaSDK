@@ -399,7 +399,7 @@ namespace Luna
 
         static RV generate_button(GUI::IContext* context, Node& node, const GenerateContext&)
         {
-            GUI::button(context, node.label.c_str());
+            GUI::text_button(context, node.label.c_str());
             return ok;
         }
 

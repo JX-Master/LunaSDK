@@ -210,7 +210,7 @@ namespace Luna
         if(!m_open) return;
 
         GUI::begin_window(context, title, &m_open, GUI::Size::fixed(620.0f, 720.0f));
-        GUI::ItemHandle select_source = GUI::button(context, "Select Source File");
+        GUI::ItemHandle select_source = GUI::text_button(context, "Select Source File");
 
         if (GUI::is_item_clicked(select_source))
         {
@@ -293,7 +293,7 @@ namespace Luna
                 String mesh_count;
                 strprintf(mesh_count, "%u meshes found", (u32)m_obj_file.shapes.size());
                 GUI::text(context, mesh_count.c_str());
-                if(GUI::is_item_clicked(GUI::button(context, "Import All")))
+                if(GUI::is_item_clicked(GUI::text_button(context, "Import All")))
                 {
                     for (u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
                     {
@@ -326,7 +326,7 @@ namespace Luna
                             String import_path;
                             strprintf(import_path, "The mesh will be imported as: %s", file_path.encode().c_str());
                             GUI::text(context, import_path.c_str());
-                            if (GUI::is_item_clicked(GUI::button(context, "Import")))
+                            if (GUI::is_item_clicked(GUI::text_button(context, "Import")))
                             {
                                 import_static_mesh(file_path, m_obj_file, i);
                             }

@@ -202,13 +202,13 @@ namespace Luna
                         GUI::text(gui, "Project Name");
                         GUI::input_text(gui, "Project Name", new_solution_name);
                         GUI::checkbox(gui, "Create Project Folder", &create_dir);
-                        create_project_button = GUI::button(gui, "Create New Project");
+                        create_project_button = GUI::text_button(gui, "Create New Project");
                     }
 
                     GUI::ItemHandle open_project = GUI::collapsing_header(gui, "Open Existing Project");
                     if (GUI::get_item_state(open_project, GUI::State::open()))
                     {
-                        browse_project_button = GUI::button(gui, "Browse Project File");
+                        browse_project_button = GUI::text_button(gui, "Browse Project File");
 
                         if (!recents.empty())
                         {
@@ -241,8 +241,8 @@ namespace Luna
                                     GUI::push_id(gui, (u64)i);
                                     GUI::text(gui, recents[i].m_path.encode().c_str());
                                     GUI::text(gui, time_text.c_str());
-                                    recent_open_buttons.push_back(GUI::button(gui, "Open"));
-                                    recent_remove_buttons.push_back(GUI::button(gui, "Remove"));
+                                    recent_open_buttons.push_back(GUI::text_button(gui, "Open"));
+                                    recent_remove_buttons.push_back(GUI::text_button(gui, "Remove"));
                                     GUI::pop_id(gui);
                                     GUI::end_table_row(gui);
                                 }

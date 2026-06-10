@@ -225,10 +225,31 @@ namespace Luna
 
         //! @name Basic widgets
         //! @{
-        //! Adds a button.
-        LUNA_GUI_API ItemHandle button(IContext* context, const c8* label);
-        //! Adds an absolute-positioned button.
-        LUNA_GUI_API ItemHandle button(IContext* context, const c8* label, const RectF& rect);
+        //! Begins an interactive button container.
+        //! @param[in] context The GUI context.
+        //! @param[in] label The button label used for ID generation and debug inspection.
+        //! @param[in] size Optional fixed size. Width or height set to 0 uses the button content's preferred size.
+        //! @return Returns the created button item handle.
+        //! @remark The button itself draws the button chrome. The label is only used for ID generation and debug
+        //! inspection; it is not displayed automatically. Child widgets submitted before @ref end_button are
+        //! arranged inside the button. Use @ref text_button for a simple text button helper.
+        LUNA_GUI_API ItemHandle begin_button(IContext* context, const c8* label, const Size& size = Size());
+        //! Ends the current button container.
+        //! @param[in] context The GUI context.
+        LUNA_GUI_API void end_button(IContext* context);
+        //! Adds a text button helper.
+        //! @param[in] context The GUI context.
+        //! @param[in] text The button text. This is also used for ID generation and debug inspection.
+        //! @return Returns the created button item handle.
+        //! @remark This creates a button container and inserts one text child using the default button-label renderer.
+        LUNA_GUI_API ItemHandle text_button(IContext* context, const c8* text);
+        //! Adds an absolute-positioned text button helper.
+        //! @param[in] context The GUI context.
+        //! @param[in] text The button text. This is also used for ID generation and debug inspection.
+        //! @param[in] rect The button rectangle in layer coordinates.
+        //! @return Returns the created button item handle.
+        //! @remark This creates a button container and inserts one text child using the default button-label renderer.
+        LUNA_GUI_API ItemHandle text_button(IContext* context, const c8* text, const RectF& rect);
         //! Adds a progress bar.
         //! @param[in] label The widget label used for ID generation and debug inspection.
         //! @param[in] fraction The progress fraction in the 0-1 range. Values outside the range are clamped.

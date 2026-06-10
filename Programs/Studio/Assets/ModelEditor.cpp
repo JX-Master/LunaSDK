@@ -37,7 +37,7 @@ namespace Luna
         }
         else
         {
-            if (GUI::is_item_clicked(GUI::button(context, "Save")))
+            if (GUI::is_item_clicked(GUI::text_button(context, "Save")))
             {
                 lutry
                 {
@@ -76,8 +76,8 @@ namespace Luna
                 GUI::begin_h_layout(context, "Material Slot Row", row);
                 GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
                 gui_edit_asset_path(context, mat_name, model->materials[i], m_mat_names[i], "Failed to set material asset reference");
-                GUI::ItemHandle remove_button = GUI::button(context, "Remove current slot");
-                GUI::ItemHandle add_button = GUI::button(context, "Add before this");
+                GUI::ItemHandle remove_button = GUI::text_button(context, "Remove current slot");
+                GUI::ItemHandle add_button = GUI::text_button(context, "Add before this");
                 GUI::end_h_layout(context);
                 if (GUI::is_item_clicked(remove_button))
                 {
@@ -97,7 +97,7 @@ namespace Luna
             {
                 model->materials.insert(model->materials.begin() + add_index, Asset::asset_t());
             }
-            if (GUI::is_item_clicked(GUI::button(context, "Add a new material slot")))
+            if (GUI::is_item_clicked(GUI::text_button(context, "Add a new material slot")))
             {
                 model->materials.push_back(Asset::asset_t());
             }

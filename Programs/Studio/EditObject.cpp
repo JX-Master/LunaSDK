@@ -119,7 +119,7 @@ namespace Luna
             String label;
             strprintf(label, "%s: %s", name, descs[current_item].name.c_str());
             GUIPropertyRow row = begin_gui_property_row(context, name);
-            GUI::ItemHandle button = GUI::button(context, label.c_str());
+            GUI::ItemHandle button = GUI::text_button(context, label.c_str());
             end_gui_property_row(context, row);
             if(GUI::is_item_clicked(button))
             {
@@ -332,7 +332,7 @@ namespace Luna
 
         GUIPropertyRow row = begin_gui_property_row(context, name, 104.0f);
         GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(100.0f));
-        GUI::ItemHandle target = GUI::button(context, asset ? "" : "(None)");
+        GUI::ItemHandle target = GUI::text_button(context, asset ? "" : "(None)");
 
         Name asset_ref_payload_type("Asset Ref");
         if (GUI::begin_drag_drop_target(context, target, asset_ref_payload_type))
@@ -359,7 +359,7 @@ namespace Luna
             GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
             GUI::text(context, path.encode().c_str());
             GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(72.0f));
-            GUI::ItemHandle clear_button = GUI::button(context, "Clear");
+            GUI::ItemHandle clear_button = GUI::text_button(context, "Clear");
             if (GUI::is_item_clicked(clear_button))
             {
                 asset.reset();
@@ -397,7 +397,7 @@ namespace Luna
 
         GUIPropertyRow row = begin_gui_property_row(context, name, 30.0f);
         GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(160.0f));
-        GUI::ItemHandle target = GUI::button(context, actor_name);
+        GUI::ItemHandle target = GUI::text_button(context, actor_name);
 
         Name actor_ref_payload_type("Actor Ref");
         if (GUI::begin_drag_drop_target(context, target, actor_ref_payload_type))

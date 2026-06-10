@@ -178,8 +178,6 @@ namespace Luna
         ctx.draw_line(Float2U(rect.offset_x + 8.0f, rect.offset_y + rect.height - 5.0f),
             Float2U(rect.offset_x + max(rect.width - 8.0f, 8.0f), rect.offset_y + rect.height - 5.0f),
             clip_rect, accent, state.active ? 4.0f : 2.0f);
-        ctx.draw_text(RectF(rect.offset_x + 10.0f, rect.offset_y, max(rect.width - 20.0f, 1.0f), rect.height),
-            clip_rect, node.text.c_str(), 16.0f, Color::white(), GUI::TextAlignment::center);
     }
 
     GUI::RenderProxyDesc demo_button_render_proxy()
@@ -333,9 +331,18 @@ namespace Luna
         row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
 
         GUI::begin_h_layout(app.gui, "Buttons", row);
-        handles.primary_button = GUI::button(app.gui, "Count Click");
-        handles.double_click_item = GUI::button(app.gui, "Double Click");
+        handles.primary_button = GUI::text_button(app.gui, "Count Click");
+        handles.double_click_item = GUI::text_button(app.gui, "Double Click");
         handles.right_click_item = GUI::selectable(app.gui, "Right Click Target");
+        GUI::end_h_layout(app.gui);
+
+        GUI::begin_h_layout(app.gui, "Button Container", row);
+        demo_two_column_label(app, "Button container");
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(240.0f));
+        GUI::begin_button(app.gui, "Build Button");
+        GUI::text(app.gui, "Build");
+        GUI::progress_bar(app.gui, "Build Progress", 0.62f, GUI::Size::fixed(92.0f, 18.0f), "62%");
+        GUI::end_button(app.gui);
         GUI::end_h_layout(app.gui);
 
         c8 counters[160];
@@ -374,7 +381,7 @@ namespace Luna
 
         GUI::push_enabled(app.gui, false);
         GUI::begin_h_layout(app.gui, "Disabled Controls", row);
-        GUI::button(app.gui, "Disabled Button");
+        GUI::text_button(app.gui, "Disabled Button");
         GUI::checkbox(app.gui, "Disabled Check", &app.checkbox_a);
         GUI::toggle_switch(app.gui, "Disabled Switch", &app.switch_a);
         GUI::radio_button(app.gui, "Disabled Radio", &app.radio_choice, 2);
@@ -438,11 +445,11 @@ namespace Luna
         row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::stretch;
         GUI::begin_h_layout(app.gui, "Fill Row", row);
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(110.0f));
-        GUI::button(app.gui, "Fixed");
+        GUI::text_button(app.gui, "Fixed");
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width(1.0f));
-        GUI::button(app.gui, "Fill 1");
+        GUI::text_button(app.gui, "Fill 1");
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width(2.0f));
-        GUI::button(app.gui, "Fill 2");
+        GUI::text_button(app.gui, "Fill 2");
         GUI::end_h_layout(app.gui);
 
         GUI::LayoutDesc columns;
@@ -452,8 +459,8 @@ namespace Luna
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
         GUI::begin_v_layout(app.gui, "Left Column");
         GUI::text(app.gui, "Left column");
-        GUI::button(app.gui, "Action A");
-        GUI::button(app.gui, "Action B");
+        GUI::text_button(app.gui, "Action A");
+        GUI::text_button(app.gui, "Action B");
         GUI::end_v_layout(app.gui);
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
         GUI::begin_v_layout(app.gui, "Right Column");
@@ -476,7 +483,7 @@ namespace Luna
             c8 label[32];
             snprintf(label, 32, "Asset %02u", i + 1);
             GUI::push_id(app.gui, i);
-            GUI::button(app.gui, label);
+            GUI::text_button(app.gui, label);
             GUI::pop_id(app.gui);
         }
         GUI::end_grid_layout(app.gui);
@@ -515,9 +522,9 @@ namespace Luna
         GUI::set_next_canvas_item_layout(app.gui, GUI::CanvasItemLayout::fixed(Float2U(18.0f, 14.0f), Float2U(230.0f, 28.0f)));
         GUI::text(app.gui, "Top-left anchored overlay");
         GUI::set_next_canvas_item_layout(app.gui, GUI::CanvasItemLayout::anchored(Float2U(1.0f, 0.0f), Float2U(-94.0f, 28.0f), Float2U(170.0f, 34.0f)));
-        GUI::button(app.gui, "Top Right");
+        GUI::text_button(app.gui, "Top Right");
         GUI::set_next_canvas_item_layout(app.gui, GUI::CanvasItemLayout::anchored(Float2U(0.5f, 0.5f), Float2U(0.0f, 0.0f), Float2U(220.0f, 44.0f)));
-        handles.canvas_hit = GUI::button(app.gui, "Center Hit Target");
+        handles.canvas_hit = GUI::text_button(app.gui, "Center Hit Target");
         GUI::set_item_tooltip(app.gui, handles.canvas_hit, "Canvas children are positioned by anchor and offset, not cursor order.");
         GUI::CanvasItemLayout bottom_bar;
         bottom_bar.anchor_min = Float2U(0.0f, 1.0f);
@@ -527,8 +534,8 @@ namespace Luna
         GUI::set_next_canvas_item_layout(app.gui, bottom_bar);
         GUI::begin_h_layout(app.gui, "Canvas Bottom Bar", row);
         GUI::text(app.gui, "Bottom stretch");
-        GUI::button(app.gui, "Overlay");
-        GUI::button(app.gui, "Controls");
+        GUI::text_button(app.gui, "Overlay");
+        GUI::text_button(app.gui, "Controls");
         GUI::end_h_layout(app.gui);
         GUI::end_canvas_layout(app.gui);
 
@@ -548,7 +555,7 @@ namespace Luna
         {
             GUI::begin_dock_panel(app.gui, "Docked Panel", &app.dock_panel_a_open);
             GUI::text(app.gui, "This panel starts in docking mode.");
-            GUI::button(app.gui, "Docked Action");
+            GUI::text_button(app.gui, "Docked Action");
             GUI::end_dock_panel(app.gui);
         }
         if(app.dock_panel_b_open)
@@ -564,7 +571,7 @@ namespace Luna
         }
         GUI::end_dock_space(app.gui);
 
-        handles.open_window_button = GUI::button(app.gui, "Open Closeable Floating Window");
+        handles.open_window_button = GUI::text_button(app.gui, "Open Closeable Floating Window");
         if(app.floating_window_open)
         {
             GUI::begin_window(app.gui, "Floating Demo", &app.floating_window_open, GUI::Size::fixed(280.0f, 150.0f));
@@ -614,7 +621,7 @@ namespace Luna
                 GUI::text(app.gui, label);
                 GUI::checkbox(app.gui, "Enabled", &app.table_checks[i]);
                 GUI::slider_float(app.gui, "Value", &app.table_values[i], 0.0f, 1.0f);
-                GUI::button(app.gui, "Run");
+                GUI::text_button(app.gui, "Run");
                 GUI::end_table_row(app.gui);
             }
         }
@@ -781,7 +788,7 @@ namespace Luna
         demo_section(app, "Popups and context menus");
         GUI::text(app.gui, "Right-click the selectable below, or click the button to open a stack-managed popup.");
         handles.right_click_item = GUI::selectable(app.gui, "Right click me");
-        handles.managed_popup_button = GUI::button(app.gui, "Open Stack Popup");
+        handles.managed_popup_button = GUI::text_button(app.gui, "Open Stack Popup");
         GUI::text(app.gui, app.popup_text.c_str());
 
         GUI::PopupDesc popup_desc;
@@ -811,7 +818,7 @@ namespace Luna
         demo_section(app, "Tooltip");
         GUI::text(app.gui, "Hover these controls to show text-only and custom overlay tooltips.");
 
-        GUI::ItemHandle button = GUI::button(app.gui, "Hover for tooltip");
+        GUI::ItemHandle button = GUI::text_button(app.gui, "Hover for tooltip");
         GUI::set_item_tooltip(app.gui, button, "Tooltip content is built every frame but only rendered after the hover delay.");
 
         GUI::TooltipDesc quick_desc;
@@ -822,7 +829,7 @@ namespace Luna
         GUI::TooltipDesc custom_desc;
         custom_desc.delay = 0.2f;
         custom_desc.max_width = 280.0f;
-        GUI::ItemHandle custom = GUI::button(app.gui, "Hover for custom tooltip");
+        GUI::ItemHandle custom = GUI::text_button(app.gui, "Hover for custom tooltip");
         GUI::begin_tooltip(app.gui, custom, "Custom Tooltip", custom_desc);
         GUI::text(app.gui, "Custom tooltip");
         GUI::text(app.gui, "Multiple nodes can be placed here.");
@@ -848,7 +855,7 @@ namespace Luna
     {
         demo_section(app, "State queries");
         GUI::text(app.gui, "Widget APIs return handles. Query before submit for last-frame state and after submit for current-frame state.");
-        handles.primary_button = GUI::button(app.gui, "Inspect Me");
+        handles.primary_button = GUI::text_button(app.gui, "Inspect Me");
         bool hovered = GUI::is_item_hovered(handles.primary_button);
         bool active = GUI::is_item_active(handles.primary_button);
         bool focused = GUI::is_item_focused(handles.primary_button);
@@ -924,7 +931,7 @@ namespace Luna
         GUI::text(app.gui, "Targets");
 
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(240.0f));
-        handles.drag_number_target = GUI::button(app.gui, "Accept Number");
+        handles.drag_number_target = GUI::text_button(app.gui, "Accept Number");
         Name number_type = demo_number_payload_type();
         if(GUI::begin_drag_drop_target(app.gui, handles.drag_number_target, number_type))
         {
@@ -936,7 +943,7 @@ namespace Luna
         GUI::text(app.gui, number_text);
 
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(240.0f));
-        handles.drag_text_target = GUI::button(app.gui, "Accept Text");
+        handles.drag_text_target = GUI::text_button(app.gui, "Accept Text");
         Name text_type = demo_text_payload_type();
         if(GUI::begin_drag_drop_target(app.gui, handles.drag_text_target, text_type))
         {
@@ -946,7 +953,7 @@ namespace Luna
         GUI::text(app.gui, app.dropped_text.c_str());
 
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(240.0f));
-        handles.drag_mixed_target = GUI::button(app.gui, "Accept Both");
+        handles.drag_mixed_target = GUI::text_button(app.gui, "Accept Both");
         if(GUI::begin_drag_drop_target(app.gui, handles.drag_mixed_target, number_type))
         {
             (void)GUI::accept_drag_drop_payload(app.gui, number_type);
@@ -1287,7 +1294,7 @@ namespace Luna
         row.gap = 8.0f;
         row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
         GUI::begin_h_layout(app.gui, "Theme Preview Buttons", row);
-        GUI::button(app.gui, "Primary Button");
+        GUI::text_button(app.gui, "Primary Button");
         GUI::selectable(app.gui, "Selectable Row", true);
         GUI::end_h_layout(app.gui);
 
@@ -1317,7 +1324,7 @@ namespace Luna
         }
 
         GUI::set_next_item_render_proxy(app.gui, demo_button_render_proxy());
-        GUI::button(app.gui, "Render Proxy Styled By Theme");
+        GUI::text_button(app.gui, "Render Proxy Styled By Theme");
         GUI::end_window(app.gui);
     }
 
@@ -1342,15 +1349,15 @@ namespace Luna
         row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
         GUI::begin_h_layout(app.gui, "Styled Buttons", row);
         GUI::push_style(app.gui, Name("demo.button.base"));
-        GUI::button(app.gui, "Base Style");
+        GUI::text_button(app.gui, "Base Style");
         GUI::pop_style(app.gui);
         GUI::push_style(app.gui, Name("demo.button.warning"));
-        GUI::button(app.gui, "Child Override");
+        GUI::text_button(app.gui, "Child Override");
         GUI::pop_style(app.gui);
         GUI::push_style(app.gui, Name("demo.button.unset_hover"));
-        GUI::button(app.gui, "Unset Hover");
+        GUI::text_button(app.gui, "Unset Hover");
         GUI::pop_style(app.gui);
-        GUI::button(app.gui, "Default Style");
+        GUI::text_button(app.gui, "Default Style");
         GUI::end_h_layout(app.gui);
 
         demo_section(app, "Render proxy override");
@@ -1360,9 +1367,9 @@ namespace Luna
         GUI::begin_h_layout(app.gui, "Proxy Buttons", row);
         GUI::push_style(app.gui, Name("demo.proxy.button"));
         GUI::set_next_item_render_proxy(app.gui, demo_button_render_proxy());
-        GUI::button(app.gui, "Custom Proxy");
+        GUI::text_button(app.gui, "Custom Proxy");
         GUI::set_next_item_render_proxy(app.gui, demo_button_render_proxy());
-        GUI::button(app.gui, "Same Node, Different Draw");
+        GUI::text_button(app.gui, "Same Node, Different Draw");
         GUI::pop_style(app.gui);
         GUI::end_h_layout(app.gui);
 

@@ -11,6 +11,7 @@ namespace Luna
     namespace GUI
     {
         RenderProxyDesc default_button_render_proxy();
+        RenderProxyDesc default_button_label_render_proxy();
         RenderProxyDesc default_progress_bar_render_proxy();
         RenderProxyDesc default_text_render_proxy();
         RenderProxyDesc default_selectable_render_proxy();

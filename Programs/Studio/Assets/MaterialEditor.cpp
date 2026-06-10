@@ -36,7 +36,7 @@ namespace Luna
         }
         else
         {
-            if (GUI::is_item_clicked(GUI::button(context, "Save")))
+            if (GUI::is_item_clicked(GUI::text_button(context, "Save")))
             {
                 lutry
                 {

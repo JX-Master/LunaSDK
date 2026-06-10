@@ -108,7 +108,7 @@ namespace Luna
                 GUI::TextAlignment::center, GUI::TextAlignment::center);
             return GUI::ItemHandle();
         }
-        return GUI::button(context, label, rect);
+        return GUI::text_button(context, label, rect);
     }
 
     static f32 estimate_gui_text_width(const c8* text)
@@ -370,7 +370,7 @@ namespace Luna
                 GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
                 GUI::input_text(context, "PathTextEditing", m_path_edit_text);
                 GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(48.0f));
-                GUI::ItemHandle go_button = GUI::button(context, "Go");
+                GUI::ItemHandle go_button = GUI::text_button(context, "Go");
                 GUI::end_h_layout(context);
                 if (GUI::is_item_clicked(go_button))
                 {
@@ -681,7 +681,7 @@ namespace Luna
                         GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
                         GUI::input_text(context, "AssetNameEdit", m_asset_name_editing_buf);
                         GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(34.0f));
-                        GUI::ItemHandle rename_ok = GUI::button(context, "OK");
+                        GUI::ItemHandle rename_ok = GUI::text_button(context, "OK");
                         GUI::end_h_layout(context);
                         if(GUI::is_item_clicked(rename_ok))
                         {
