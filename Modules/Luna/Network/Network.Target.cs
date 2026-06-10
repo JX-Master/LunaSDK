@@ -5,8 +5,8 @@ public sealed class NetworkTargetRules : TargetRules
     public NetworkTargetRules()
         : base(
             name: "Network",
-            targetDirectory: "Modules/Luna/Experimental/Network",
-            rulesPath: "Modules/Luna/Experimental/Network/Network.Target.cs")
+            targetDirectory: "Modules/Luna/Network",
+            rulesPath: "Modules/Luna/Network/Network.Target.cs")
     {
         Headers("*.hpp");
         MetaHeaders("Network.hpp");
