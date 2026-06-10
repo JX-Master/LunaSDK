@@ -63,11 +63,14 @@ namespace Luna
         //! Specifies one IPv6 address.
         struct IPv6Address
         {
+            //! The address bytes.
             u8 bytes[16];
         };
 
         //! A special IPv4 address that does not specify any particular address.
         constexpr IPv4Address IPV4_ADDRESS_ANY = { 0, 0, 0, 0 };
+        //! A special IPv6 address that does not specify any particular address.
+        constexpr IPv6Address IPV6_ADDRESS_ANY = {};
 
         //! The address to use when opening a socket using IPv4 address.
         struct SocketAddressIPv4
@@ -78,6 +81,19 @@ namespace Luna
             u16 port;
         };
 
+        //! The address to use when opening a socket using IPv6 address.
+        struct SocketAddressIPv6
+        {
+            //! The IPv6 address.
+            IPv6Address address;
+            //! The port number of the address in host byte order.
+            u16 port;
+            //! The IPv6 flow information. Usually `0`.
+            u32 flow_info;
+            //! The IPv6 scope ID. Usually `0`, unless the address is scoped such as link-local addresses.
+            u32 scope_id;
+        };
+
         //! Specifies address family.
         enum class AddressFamily : u32
         {
@@ -86,9 +102,7 @@ namespace Luna
             //! Maps to `AF_INET`. The Internet Protocol version 4 (IPv4) address family.
             ipv4,
             //! Maps to `AF_INET6`. The Internet Protocol version 6 (IPv6) address family.
-            ipv6,
-            //! Maps to `AF_BTH` or `AF_BLUETOOTH`. The Bluetooth address family.
-            bluetooth
+            ipv6
         };
         
         //! Specifies address to use when opening a socket.
@@ -100,15 +114,16 @@ namespace Luna
             {
                 //! The address to use if `family` is @ref AddressFamily::ipv4.
                 SocketAddressIPv4 ipv4;
+                //! The address to use if `family` is @ref AddressFamily::ipv6.
+                SocketAddressIPv6 ipv6;
 
             };
         };
 
         //! @interface ISocket
         //! Represents one socket, which is a network communication endpoint.
-        //! @details Each socket is associated with a socket address, which consists of an IP address and a port number. 
-        //! Sockets allow for real-time, bi-directional communication between a client and a server, and are used in various protocols like TCP/IP and UDP.
-        struct [[Luna::interface("{36233BD3-54A0-4E67-B01E-C79E8115F548}")]] ISocket : virtual IStream
+        //! @details Each socket is associated with a socket address, which consists of an IP address and a port number.
+        struct [[Luna::interface("{36233BD3-54A0-4E67-B01E-C79E8115F548}")]] ISocket : virtual Interface
         {
             //! Gets the native handle of this socket.
             //! @details On Windows platforms, the returned handle can be reinterpreted to `SOCKET` type.
@@ -117,10 +132,23 @@ namespace Luna
             //! @return Returns the native handle of this socket.
             virtual opaque_t get_native_handle() = 0;
 
-            //! Binds one address to this socket, so that it can be used to listen connections from that address. 
+            //! Gets the local address assigned to this socket.
+            //! @param[out] address Returns the local address.
+            virtual RV get_local_address(SocketAddress& address) = 0;
+
+            //! Binds one address to this socket.
             //! @param[in] address The address to bind.
-            //! @par Valid 
             virtual RV bind(const SocketAddress& address) = 0;
+        };
+
+        //! @interface ITCPSocket
+        //! Represents one TCP socket.
+        //! @details TCP sockets provide reliable byte-stream communication.
+        struct [[Luna::interface("{FE548F0C-F3E6-49EE-B729-36B0B7C6CE2E}")]] ITCPSocket : virtual ISocket, virtual IStream
+        {
+            //! Gets the remote address connected to this socket.
+            //! @param[out] address Returns the remote address.
+            virtual RV get_remote_address(SocketAddress& address) = 0;
 
             //! Starts listening for incoming connections.
             //! @param[in] len The maximum number of connections that can be queued to be accepted.
@@ -133,7 +161,27 @@ namespace Luna
             //! Accepts incoming connection attempt on this socket.
             //! @param[out] address The assigned address for the accepted connection.
             //! @return Returns the socket that represents the accepted connection.
-            virtual R<Ref<ISocket>> accept(SocketAddress& address) = 0;
+            virtual R<Ref<ITCPSocket>> accept(SocketAddress& address) = 0;
+        };
+
+        //! @interface IUDPSocket
+        //! Represents one UDP socket.
+        //! @details UDP sockets provide connectionless datagram communication.
+        struct [[Luna::interface("{560F8D2B-F29F-481E-B7DC-226F16336972}")]] IUDPSocket : virtual ISocket
+        {
+            //! Sends one datagram to the specified address.
+            //! @param[in] buffer The buffer that holds data to send.
+            //! @param[in] size The size, in bytes, to send from the buffer.
+            //! @param[in] address The destination address.
+            //! @param[out] sent_bytes If not `nullptr`, returns the actual number of bytes sent.
+            virtual RV send_to(const void* buffer, usize size, const SocketAddress& address, usize* sent_bytes = nullptr) = 0;
+
+            //! Receives one datagram and optionally reports the source address.
+            //! @param[in] buffer The buffer to accept received data.
+            //! @param[in] size The size, in bytes, of `buffer`.
+            //! @param[out] address If not `nullptr`, returns the source address of the datagram.
+            //! @param[out] received_bytes If not `nullptr`, returns the actual number of bytes received.
+            virtual RV receive_from(void* buffer, usize size, SocketAddress* address = nullptr, usize* received_bytes = nullptr) = 0;
         };
 
         //! Specifies the socket type.
@@ -148,12 +196,6 @@ namespace Luna
             //! Maps to `SOCK_DGRAM`
             //! Supports datagrams (connectionless, unreliable messages of a fixed maximum length).
             dgram,
-            //! Maps to `SOCK_RAW`
-            //! Provides raw network protocol access.
-            raw,
-            //! Maps to `SOCK_RDM`
-            //! Provides a reliable datagram layer that does not guarantee ordering.
-            rdm,
         };
 
         //! Specifies the transmission protocol used by the socket.
@@ -162,18 +204,6 @@ namespace Luna
             //! The network protocol is unspecified. The system chooses the most suitable protocol based 
             //! on `af` and `type` parameters.
             unspecified = 0,
-            //! The Internet Control Message Protocol (ICMP). 
-            //! This is a possible value when the `af` parameter is @ref AddressFamily::unspecified, 
-            //! @ref AddressFamily::ipv4 or @ref AddressFamily::ipv6 and the `type` parameter is @ref SocketType::raw or @ref SocketType::unspecified.
-            icmp,
-            //! The Internet Group Management Protocol (IGMP).
-            //! This is a possible value when the `af` parameter is @ref AddressFamily::unspecified, 
-            //! @ref AddressFamily::ipv4 or @ref AddressFamily::ipv6 and the `type` parameter is SocketType::raw or @ref SocketType::unspecified.
-            igmp,
-            //! The Bluetooth Radio Frequency Communications (Bluetooth RFCOMM) protocol. 
-            //! This is a possible value when the `af` parameter is @ref AddressFamily::bluetooth
-            //! and the `type` parameter is @ref SocketType::stream.
-            rfcomm,
             //! Use Transmission Control Protocol (TCP). 
             //! This is a possible value when the `af` parameter is @ref AddressFamily::ipv4 or @ref AddressFamily::ipv6 
             //! and the `type` parameter is @ref SocketType::stream.
@@ -182,24 +212,23 @@ namespace Luna
             //! This is a possible value when the `af` parameter is @ref AddressFamily::ipv4 or @ref AddressFamily::ipv6
             //! and the `type` parameter is @ref SocketType::dgram.
             udp,
-            //! The Internet Control Message Protocol Version 6 (ICMPv6). 
-            //! This is a possible value when the `af` parameter is @ref AddressFamily::unspecified, 
-            //! @ref AddressFamily::ipv4 or @ref AddressFamily::ipv6 and the `type` parameter is @ref SocketType::raw or @ref SocketType::unspecified.
-            icmpv6,
         };
 
-        //! Creates one new socket.
+        //! Creates one new TCP socket.
         //! @param[in] af The address family for the new socket.
-        //! @param[in] type The socket type.
-        //! @param[in] protocol The transmission protocol used by the socket.
         //! @return Returns the created socket.
-        LUNA_NETWORK_API R<Ref<ISocket>> new_socket(AddressFamily af, SocketType type, Protocol protocol);
+        LUNA_NETWORK_API R<Ref<ITCPSocket>> new_tcp_socket(AddressFamily af);
+
+        //! Creates one new UDP socket.
+        //! @param[in] af The address family for the new socket.
+        //! @return Returns the created socket.
+        LUNA_NETWORK_API R<Ref<IUDPSocket>> new_udp_socket(AddressFamily af);
 
         //! Specifies flag attributes of one address.
         enum class AddressInfoFlag : u8
         {
             none = 0,
-            //! If set, this address is used for @ref ISocket::bind`. If unset, this address is used for @ref ISocket::connect.
+            //! If set, this address is used for @ref ISocket::bind. If unset, this address is used for @ref ITCPSocket::connect.
             passive = 0x01,
         };
 

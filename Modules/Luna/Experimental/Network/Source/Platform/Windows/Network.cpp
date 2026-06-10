@@ -66,9 +66,92 @@ namespace Luna
             }
         }
 
-        RV Socket::read(void* buffer, usize size, usize* read_bytes)
+        inline R<int> encode_socket_address(sockaddr_storage& out, const SocketAddress& address)
         {
-            int r = ::recv(m_socket, (char*)buffer, (int)size, 0);
+            memzero(&out, sizeof(out));
+            switch(address.family)
+            {
+            case AddressFamily::ipv4:
+            {
+                sockaddr_in* addr = (sockaddr_in*)&out;
+                addr->sin_family = AF_INET;
+                addr->sin_port = hton(address.ipv4.port);
+                memcpy(&addr->sin_addr.S_un.S_un_b.s_b1, &address.ipv4.address.bytes, 4);
+                return (int)sizeof(sockaddr_in);
+            }
+            case AddressFamily::ipv6:
+            {
+                sockaddr_in6* addr = (sockaddr_in6*)&out;
+                addr->sin6_family = AF_INET6;
+                addr->sin6_port = hton(address.ipv6.port);
+                addr->sin6_flowinfo = address.ipv6.flow_info;
+                addr->sin6_scope_id = address.ipv6.scope_id;
+                memcpy(&addr->sin6_addr, &address.ipv6.address.bytes, 16);
+                return (int)sizeof(sockaddr_in6);
+            }
+            default:
+                return NetworkError::address_not_supported();
+            }
+        }
+
+        inline bool decode_socket_address(SocketAddress& out, const sockaddr* address)
+        {
+            memzero(&out, sizeof(out));
+            switch(address->sa_family)
+            {
+            case AF_INET:
+            {
+                const sockaddr_in* addr = (const sockaddr_in*)address;
+                out.family = AddressFamily::ipv4;
+                out.ipv4.port = ntoh(addr->sin_port);
+                memcpy(&out.ipv4.address.bytes, &addr->sin_addr.S_un.S_un_b.s_b1, 4);
+                return true;
+            }
+            case AF_INET6:
+            {
+                const sockaddr_in6* addr = (const sockaddr_in6*)address;
+                out.family = AddressFamily::ipv6;
+                out.ipv6.port = ntoh(addr->sin6_port);
+                out.ipv6.flow_info = addr->sin6_flowinfo;
+                out.ipv6.scope_id = addr->sin6_scope_id;
+                memcpy(&out.ipv6.address.bytes, &addr->sin6_addr, 16);
+                return true;
+            }
+            default:
+                return false;
+            }
+        }
+
+        RV SocketBase::get_local_address(SocketAddress& address)
+        {
+            sockaddr_storage addr;
+            int size = sizeof(addr);
+            int r = ::getsockname(m_socket, (sockaddr*)&addr, &size);
+            if(r == SOCKET_ERROR)
+            {
+                int err = WSAGetLastError();
+                return translate_error(err);
+            }
+            return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(NetworkError::address_not_supported());
+        }
+
+        RV TCPSocket::get_remote_address(SocketAddress& address)
+        {
+            sockaddr_storage addr;
+            int size = sizeof(addr);
+            int r = ::getpeername(m_socket, (sockaddr*)&addr, &size);
+            if(r == SOCKET_ERROR)
+            {
+                int err = WSAGetLastError();
+                return translate_error(err);
+            }
+            return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(NetworkError::address_not_supported());
+        }
+
+        RV TCPSocket::read(void* buffer, usize size, usize* read_bytes)
+        {
+            usize read_size = size > (usize)I32_MAX ? (usize)I32_MAX : size;
+            int r = ::recv(m_socket, (char*)buffer, (int)read_size, 0);
             if (r == SOCKET_ERROR)
             {
                 if(read_bytes) *read_bytes = 0;
@@ -78,37 +161,48 @@ namespace Luna
             if (read_bytes) *read_bytes = r;
             return ok;
         }
-        RV Socket::write(const void* buffer, usize size, usize* write_bytes)
+        RV TCPSocket::write(const void* buffer, usize size, usize* write_bytes)
         {
-            int r = ::send(m_socket, (const char*)buffer, (int)size, 0);
-            if (r == SOCKET_ERROR)
+            usize total_written = 0;
+            while(total_written < size)
             {
-                if(write_bytes) *write_bytes = 0;
-                int err = WSAGetLastError();
-                return translate_error(err);
-            }
-            if (write_bytes) *write_bytes = r;
-            return ok;
-        }
-        RV Socket::bind(const SocketAddress& address)
-        {
-            if(address.family == AddressFamily::ipv4)
-            {
-                sockaddr_in addr;
-                addr.sin_family = AF_INET;
-                addr.sin_port = hton(address.ipv4.port);
-                memcpy(&addr.sin_addr.S_un.S_un_b.s_b1, &address.ipv4.address, 4);
-                auto r = ::bind(m_socket, (sockaddr*)&addr, sizeof(addr));
+                usize chunk = size - total_written;
+                if(chunk > (usize)I32_MAX) chunk = (usize)I32_MAX;
+                int r = ::send(m_socket, (const char*)buffer + total_written, (int)chunk, 0);
                 if (r == SOCKET_ERROR)
                 {
+                    if(write_bytes) *write_bytes = total_written;
                     int err = WSAGetLastError();
                     return translate_error(err);
                 }
-                return ok;
+                if(r == 0)
+                {
+                    if(write_bytes) *write_bytes = total_written;
+                    return BasicError::no_data();
+                }
+                total_written += (usize)r;
+                if(m_type != SocketType::stream)
+                {
+                    break;
+                }
             }
-            return NetworkError::address_not_supported();
+            if (write_bytes) *write_bytes = total_written;
+            return ok;
         }
-        RV Socket::listen(i32 len)
+        RV SocketBase::bind(const SocketAddress& address)
+        {
+            sockaddr_storage addr;
+            auto addr_size = encode_socket_address(addr, address);
+            if(!addr_size.valid()) return addr_size.errcode();
+            auto r = ::bind(m_socket, (sockaddr*)&addr, addr_size.get());
+            if (r == SOCKET_ERROR)
+            {
+                int err = WSAGetLastError();
+                return translate_error(err);
+            }
+            return ok;
+        }
+        RV TCPSocket::listen(i32 len)
         {
             if (len == I32_MAX)
             {
@@ -122,45 +216,83 @@ namespace Luna
             }
             return ok;
         }
-        RV Socket::connect(const SocketAddress& address)
+        RV TCPSocket::connect(const SocketAddress& address)
         {
-            if(address.family == AddressFamily::ipv4)
+            sockaddr_storage addr;
+            auto addr_size = encode_socket_address(addr, address);
+            if(!addr_size.valid()) return addr_size.errcode();
+            int r = ::connect(m_socket, (sockaddr*)&addr, addr_size.get());
+            if (r == SOCKET_ERROR)
             {
-                sockaddr_in addr;
-                addr.sin_family = AF_INET;
-                addr.sin_port = hton(address.ipv4.port);
-                memcpy(&addr.sin_addr.S_un.S_un_b.s_b1, &address.ipv4.address, 4);
-                int r = ::connect(m_socket, (sockaddr*)&addr, sizeof(addr));
-                if (r == SOCKET_ERROR)
-                {
-                    int err = WSAGetLastError();
-                    return translate_error(err);
-                }
-                return ok;
+                int err = WSAGetLastError();
+                return translate_error(err);
             }
-            return NetworkError::address_not_supported();
+            return ok;
         }
-        R<Ref<ISocket>> Socket::accept(SocketAddress& address)
+        R<Ref<ITCPSocket>> TCPSocket::accept(SocketAddress& address)
         {
-            memzero(&address, sizeof(SocketAddress));
-            if(m_af == AddressFamily::ipv4)
+            sockaddr_storage addr;
+            int size = sizeof(addr);
+            SOCKET r = ::accept(m_socket, (sockaddr*)&addr, &size);
+            if (r == INVALID_SOCKET)
             {
-                sockaddr_in addr;
-                int size = sizeof(addr);
-                SOCKET r = ::accept(m_socket, (sockaddr*)&addr, &size);
-                if (r == INVALID_SOCKET)
-                {
-                    int err = WSAGetLastError();
-                    return translate_error(err);
-                }
-                address.family = AddressFamily::ipv4;
-                address.ipv4.port = ntoh(addr.sin_port);
-                memcpy(&address.ipv4.address, &addr.sin_addr.S_un.S_un_b.s_b1, 4);
-                Ref<Socket> s = new_object<Socket>();
-                s->m_socket = r;
-                return Ref<ISocket>(s);
+                int err = WSAGetLastError();
+                return translate_error(err);
             }
-            return NetworkError::address_not_supported();
+            if(!decode_socket_address(address, (sockaddr*)&addr))
+            {
+                closesocket(r);
+                return NetworkError::address_not_supported();
+            }
+            Ref<TCPSocket> s = new_object<TCPSocket>();
+            s->m_af = address.family;
+            s->m_type = m_type;
+            s->m_socket = r;
+            return Ref<ITCPSocket>(s);
+        }
+        RV UDPSocket::send_to(const void* buffer, usize size, const SocketAddress& address, usize* sent_bytes)
+        {
+            if(size > (usize)I32_MAX)
+            {
+                if(sent_bytes) *sent_bytes = 0;
+                return BasicError::data_too_big();
+            }
+            sockaddr_storage addr;
+            auto addr_size = encode_socket_address(addr, address);
+            if(!addr_size.valid())
+            {
+                if(sent_bytes) *sent_bytes = 0;
+                return addr_size.errcode();
+            }
+            int r = ::sendto(m_socket, (const char*)buffer, (int)size, 0, (sockaddr*)&addr, addr_size.get());
+            if(r == SOCKET_ERROR)
+            {
+                if(sent_bytes) *sent_bytes = 0;
+                int err = WSAGetLastError();
+                return translate_error(err);
+            }
+            if(sent_bytes) *sent_bytes = (usize)r;
+            return ok;
+        }
+        RV UDPSocket::receive_from(void* buffer, usize size, SocketAddress* address, usize* received_bytes)
+        {
+            usize read_size = size > (usize)I32_MAX ? (usize)I32_MAX : size;
+            sockaddr_storage addr;
+            int addr_size = sizeof(addr);
+            int r = ::recvfrom(m_socket, (char*)buffer, (int)read_size, 0, (sockaddr*)&addr, &addr_size);
+            if(r == SOCKET_ERROR)
+            {
+                if(received_bytes) *received_bytes = 0;
+                int err = WSAGetLastError();
+                return translate_error(err);
+            }
+            if(address && !decode_socket_address(*address, (sockaddr*)&addr))
+            {
+                if(received_bytes) *received_bytes = 0;
+                return NetworkError::address_not_supported();
+            }
+            if(received_bytes) *received_bytes = (usize)r;
+            return ok;
         }
         RV platform_init()
         {
@@ -204,7 +336,6 @@ namespace Luna
             case AddressFamily::unspecified: return AF_UNSPEC;
             case AddressFamily::ipv4: return AF_INET;
             case AddressFamily::ipv6: return AF_INET6;
-            case AddressFamily::bluetooth: return AF_BTH;
             default: lupanic(); return AF_UNSPEC;
             }
         }
@@ -215,7 +346,6 @@ namespace Luna
                 case AF_UNSPEC: return AddressFamily::unspecified;
                 case AF_INET: return AddressFamily::ipv4;
                 case AF_INET6: return AddressFamily::ipv6;
-                case AF_BTH: return AddressFamily::bluetooth;
                 default: return AddressFamily::unspecified;
             }
         }
@@ -227,8 +357,6 @@ namespace Luna
             case SocketType::unspecified: return 0;
             case SocketType::stream: return SOCK_STREAM;
             case SocketType::dgram: return SOCK_DGRAM;
-            case SocketType::raw: return SOCK_RAW;
-            case SocketType::rdm: return SOCK_RDM;
             default: lupanic(); return 0;
             }
         }
@@ -240,8 +368,6 @@ namespace Luna
                 case 0: return SocketType::unspecified;
                 case SOCK_STREAM: return SocketType::stream;
                 case SOCK_DGRAM: return SocketType::dgram;
-                case SOCK_RAW: return SocketType::raw;
-                case SOCK_RDM: return SocketType::rdm;
                 default: return SocketType::unspecified;
             }
         }
@@ -251,12 +377,8 @@ namespace Luna
             switch(protocol)
             {
                 case Protocol::unspecified: return 0;
-                case Protocol::icmp: return IPPROTO_ICMP;
-                case Protocol::igmp: return IPPROTO_IGMP;
-                case Protocol::rfcomm: return 3; // BTHPROTO_RFCOMM
                 case Protocol::tcp: return IPPROTO_TCP;
                 case Protocol::udp: return IPPROTO_UDP;
-                case Protocol::icmpv6: return IPPROTO_ICMPV6;
                 default: lupanic(); return 0;
             }
         }
@@ -266,18 +388,16 @@ namespace Luna
             switch (protocol)
             {
             case 0: return Protocol::unspecified;
-            case IPPROTO_ICMP: return Protocol::icmp;
-            case IPPROTO_IGMP: return Protocol::igmp;
-            case 3: return Protocol::rfcomm;
             case IPPROTO_TCP: return Protocol::tcp;
             case IPPROTO_UDP: return Protocol::udp;
-            case IPPROTO_ICMPV6: return Protocol::icmpv6;
             default: return Protocol::unspecified;
             }
         }
 
-        LUNA_NETWORK_API R<Ref<ISocket>> new_socket(AddressFamily af, SocketType type, Protocol protocol)
+        inline R<SOCKET> new_native_socket(AddressFamily af, SocketType type, Protocol protocol)
         {
+            if(af == AddressFamily::unspecified) return NetworkError::address_not_supported();
+            if(type == SocketType::unspecified) return BasicError::bad_arguments();
             int iaf = encode_af(af);
             int itype = encode_type(type);
             int iprotocol = encode_protocol(protocol);
@@ -287,10 +407,29 @@ namespace Luna
                 int err = WSAGetLastError();
                 return translate_error(err);
             }
-            Ref<Socket> s = new_object<Socket>();
+            return r;
+        }
+
+        LUNA_NETWORK_API R<Ref<ITCPSocket>> new_tcp_socket(AddressFamily af)
+        {
+            auto native_socket = new_native_socket(af, SocketType::stream, Protocol::tcp);
+            if(!native_socket.valid()) return native_socket.errcode();
+            Ref<TCPSocket> s = new_object<TCPSocket>();
             s->m_af = af;
-            s->m_socket = r;
-            return Ref<ISocket>(s);
+            s->m_type = SocketType::stream;
+            s->m_socket = native_socket.get();
+            return Ref<ITCPSocket>(s);
+        }
+
+        LUNA_NETWORK_API R<Ref<IUDPSocket>> new_udp_socket(AddressFamily af)
+        {
+            auto native_socket = new_native_socket(af, SocketType::dgram, Protocol::udp);
+            if(!native_socket.valid()) return native_socket.errcode();
+            Ref<UDPSocket> s = new_object<UDPSocket>();
+            s->m_af = af;
+            s->m_type = SocketType::dgram;
+            s->m_socket = native_socket.get();
+            return Ref<IUDPSocket>(s);
         }
 
         LUNA_NETWORK_API RV getaddrinfo(const c8* node, const c8* service, const AddressInfo* hints, Vector<AddressInfo>& out_result)
@@ -312,13 +451,24 @@ namespace Luna
             {
                 d_hints.ai_family = AF_UNSPEC;
             }
-            d_hints.ai_flags |= AI_CANONNAME;
-            usize node_len = utf8_to_utf16_len(node);
-            usize service_len = utf8_to_utf16_len(service);
-            wchar_t* wnode = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (node_len + 1));
-            wchar_t* wservice = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (service_len + 1));
-            utf8_to_utf16((c16*)wnode, node_len + 1, node);
-            utf8_to_utf16((c16*)wservice, service_len + 1, service);
+            if(node)
+            {
+                d_hints.ai_flags |= AI_CANONNAME;
+            }
+            wchar_t* wnode = nullptr;
+            wchar_t* wservice = nullptr;
+            if(node)
+            {
+                usize node_len = utf8_to_utf16_len(node);
+                wnode = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (node_len + 1));
+                utf8_to_utf16((c16*)wnode, node_len + 1, node);
+            }
+            if(service)
+            {
+                usize service_len = utf8_to_utf16_len(service);
+                wservice = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (service_len + 1));
+                utf8_to_utf16((c16*)wservice, service_len + 1, service);
+            }
             ADDRINFOW* result = nullptr;
             auto err = GetAddrInfoW(wnode, wservice, &d_hints, &result);
             if(err)
@@ -328,9 +478,11 @@ namespace Luna
             Vector<c8> buffer;
             for(auto i = result; i; i = i->ai_next)
             {
-                AddressInfo r;
+                AddressInfo r = {};
                 r.family = decode_af(i->ai_family);
+                if(r.family == AddressFamily::unspecified) continue;
                 r.socktype = decode_type(i->ai_socktype);
+                if(r.socktype == SocketType::unspecified && i->ai_socktype != 0) continue;
                 r.protocol = decode_protocol(i->ai_protocol);
                 if(i->ai_canonname)
                 {
@@ -344,15 +496,10 @@ namespace Luna
                 {
                     set_flags(r.flags, AddressInfoFlag::passive);
                 }
-                if(i->ai_addr->sa_family == AF_INET)
+                if(i->ai_addr && decode_socket_address(r.addr, i->ai_addr))
                 {
-                    sockaddr_in* addr = (sockaddr_in*)i->ai_addr;
-                    r.addr.family = AddressFamily::ipv4;
-                    r.addr.ipv4.port = ntoh(addr->sin_port);
-                    memcpy(&r.addr.ipv4.address, &addr->sin_addr.S_un.S_un_b.s_b1, 4);
+                    out_result.push_back(r);
                 }
-                else continue;
-                out_result.push_back(r);
             }
             if(result)
             {

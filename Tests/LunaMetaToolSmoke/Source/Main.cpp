@@ -37,25 +37,82 @@ int main()
     {
         return 6;
     }
-    auto boxed_type = Luna::typeof<Luna::MetaToolSmoke::MetaSmokeBoxed>();
-    if (!boxed_type)
+    auto plain_base_type = Luna::typeof<Luna::MetaToolSmoke::MetaSmokeStructWithPlainBase>();
+    if (!plain_base_type)
     {
         return 7;
     }
-    if (!Luna::is_interface_implemented_by_type(boxed_type, Luna::Meta::InterfaceMetaData<Luna::MetaToolSmoke::IMetaSmokeInterface>::__guid))
+    if (Luna::get_base_type(plain_base_type))
     {
         return 8;
+    }
+    auto reflected_base_type = Luna::typeof<Luna::MetaToolSmoke::MetaSmokeReflectedBase>();
+    if (!reflected_base_type)
+    {
+        return 9;
+    }
+    auto derived_type = Luna::typeof<Luna::MetaToolSmoke::MetaSmokeDerivedStruct>();
+    if (!derived_type)
+    {
+        return 10;
+    }
+    if (Luna::get_base_type(derived_type) != reflected_base_type)
+    {
+        return 11;
+    }
+    auto boxed_type = Luna::typeof<Luna::MetaToolSmoke::MetaSmokeBoxed>();
+    if (!boxed_type)
+    {
+        return 12;
+    }
+    if (!Luna::is_interface_implemented_by_type(boxed_type, Luna::Meta::InterfaceMetaData<Luna::MetaToolSmoke::IMetaSmokeInterface>::__guid))
+    {
+        return 13;
     }
     {
         auto boxed = Luna::new_object<Luna::MetaToolSmoke::MetaSmokeBoxed>();
         auto iface = Luna::query_interface<Luna::MetaToolSmoke::IMetaSmokeInterface>(boxed.get());
         if (!iface)
         {
-            return 9;
+            return 14;
         }
         if (iface->marker() != 42)
         {
-            return 10;
+            return 15;
+        }
+    }
+    auto helper_boxed_type = Luna::typeof<Luna::MetaToolSmoke::MetaSmokeBoxedWithHelperBase>();
+    if (!helper_boxed_type)
+    {
+        return 16;
+    }
+    if (!Luna::is_interface_implemented_by_type(helper_boxed_type, Luna::Meta::InterfaceMetaData<Luna::MetaToolSmoke::IMetaSmokeInterface>::__guid))
+    {
+        return 17;
+    }
+    if (!Luna::is_interface_implemented_by_type(helper_boxed_type, Luna::Meta::InterfaceMetaData<Luna::MetaToolSmoke::IMetaSmokeHelperInterface>::__guid))
+    {
+        return 18;
+    }
+    {
+        auto boxed = Luna::new_object<Luna::MetaToolSmoke::MetaSmokeBoxedWithHelperBase>();
+        auto iface = Luna::query_interface<Luna::MetaToolSmoke::IMetaSmokeInterface>(boxed.get());
+        if (!iface)
+        {
+            return 19;
+        }
+        if (iface->marker() != 84)
+        {
+            return 20;
+        }
+        auto helper_iface = Luna::query_interface<Luna::MetaToolSmoke::IMetaSmokeHelperInterface>(boxed.get());
+        if (!helper_iface)
+        {
+            return 21;
+        }
+        if (helper_iface->helper_marker() != 24)
+        {
+            return 22;
         }
     }
     (void)Luna::typeof<Luna::MetaToolSmoke::MetaSmokeEnum>();
