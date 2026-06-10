@@ -7,6 +7,8 @@
 * @author JXMaster
 * @date 2024/1/11
 */
+#include <Luna/Runtime/PlatformDefines.hpp>
+#define LUNA_NETWORK_API LUNA_EXPORT
 #include "../Network.hpp"
 #include <Luna/Runtime/Module.hpp>
 namespace Luna

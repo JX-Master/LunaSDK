@@ -410,67 +410,38 @@ std::vector<std::string> RecordDependencies(
 
 std::set<std::string> AutoRegisterRecordNames(const std::vector<ReflectedDecl>& declarations)
 {
-    std::set<std::string> record_names;
+    std::set<std::string> auto_register_names;
     for (const auto& declaration : declarations)
     {
         if (declaration.kind == ReflectedDeclKind::record)
         {
-            record_names.insert(declaration.qualified_name);
-        }
-    }
-
-    std::set<std::string> auto_register_names;
-    for (const auto& declaration : declarations)
-    {
-        if (declaration.kind != ReflectedDeclKind::record || declaration.base_qualified_names.size() > 1)
-        {
-            continue;
-        }
-        bool has_external_base = false;
-        for (const auto& base : declaration.base_qualified_names)
-        {
-            if (!record_names.contains(base))
-            {
-                has_external_base = true;
-                break;
-            }
-        }
-        if (!has_external_base)
-        {
             auto_register_names.insert(declaration.qualified_name);
         }
     }
-
-    bool changed = true;
-    while (changed)
-    {
-        changed = false;
-        for (auto iter = auto_register_names.begin(); iter != auto_register_names.end();)
-        {
-            auto declaration_iter = std::find_if(declarations.begin(), declarations.end(), [&](const ReflectedDecl& declaration) {
-                return declaration.qualified_name == *iter;
-            });
-            bool keep = true;
-            for (const auto& dependency : RecordDependencies(*declaration_iter, record_names))
-            {
-                if (!auto_register_names.contains(dependency))
-                {
-                    keep = false;
-                    break;
-                }
-            }
-            if (!keep)
-            {
-                iter = auto_register_names.erase(iter);
-                changed = true;
-            }
-            else
-            {
-                ++iter;
-            }
-        }
-    }
     return auto_register_names;
+}
+
+std::string ReflectedBaseTypeExpression(
+    const ReflectedDecl& declaration,
+    const std::map<std::string, std::string>& type_variable_names,
+    std::string& error)
+{
+    if (declaration.base_qualified_names.empty())
+    {
+        return {};
+    }
+    if (declaration.base_qualified_names.size() > 1)
+    {
+        error = "multiple reflected base types are not supported for " + declaration.qualified_name;
+        return {};
+    }
+    const auto& base_name = declaration.base_qualified_names[0];
+    auto iter = type_variable_names.find(base_name);
+    if (iter != type_variable_names.end())
+    {
+        return iter->second;
+    }
+    return "::Luna::typeof<::" + base_name + ">()";
 }
 
 bool VisitRegistrationRecord(
@@ -609,7 +580,7 @@ bool WriteTargetRegistrationFiles(const Options& options, const std::vector<Refl
         const auto& declaration = *ordered_records[i];
         auto variable_name = "type_" + std::to_string(i);
         type_variable_names.emplace(declaration.qualified_name, variable_name);
-        if (declaration.has_direct_interface_base)
+        if (declaration.has_direct_interface_base && declaration.base_qualified_names.empty())
         {
             source << "        auto " << variable_name << " = ::Luna::register_boxed_type<" << TypeReference(declaration) << ">();\n";
         }
@@ -624,9 +595,16 @@ bool WriteTargetRegistrationFiles(const Options& options, const std::vector<Refl
             {
                 source << "::Luna::Meta::register_reflected_struct_type<" << TypeReference(declaration) << ">";
             }
-            if (!declaration.base_qualified_names.empty())
+            std::string base_error;
+            auto base_type_expr = ReflectedBaseTypeExpression(declaration, type_variable_names, base_error);
+            if (!base_error.empty())
             {
-                source << "(" << type_variable_names.at(declaration.base_qualified_names[0]) << ")";
+                std::cerr << "error: " << base_error << "\n";
+                return false;
+            }
+            if (!base_type_expr.empty())
+            {
+                source << "(" << base_type_expr << ")";
             }
             else
             {
@@ -1183,6 +1161,16 @@ bool HasInterfaceAttribute(
     return std::regex_search(source_text, interface_attribute_regex);
 }
 
+bool HasStructAttribute(
+    const clang::CXXRecordDecl* record,
+    const clang::SourceManager& sm,
+    const clang::LangOptions& lang_options)
+{
+    auto source_text = DeclSourceText(record, sm, lang_options);
+    static const std::regex struct_attribute_regex(R"(\[\[\s*(?:Luna|luna)::struct\s*\()");
+    return std::regex_search(source_text, struct_attribute_regex);
+}
+
 bool IsInterfaceDeclaration(
     const clang::CXXRecordDecl* record,
     const clang::SourceManager& sm,
@@ -1196,8 +1184,7 @@ bool IsInterfaceDeclaration(
     {
         return true;
     }
-    return DerivesFromLunaInterface(record) &&
-        (record->getNameAsString().starts_with("I") || HasInterfaceAttribute(record, sm, lang_options));
+    return DerivesFromLunaInterface(record) && HasInterfaceAttribute(record, sm, lang_options);
 }
 
 void AddUniqueName(std::vector<std::string>& names, const std::string& name)
@@ -1285,7 +1272,10 @@ bool AddReflectedRecord(
             }
             else
             {
-                declaration.base_qualified_names.push_back(base_record->getQualifiedNameAsString());
+                if (HasStructAttribute(base_record, sm, lang_options))
+                {
+                    declaration.base_qualified_names.push_back(base_record->getQualifiedNameAsString());
+                }
                 CollectInterfaceNames(base_record, sm, lang_options, declaration.interface_qualified_names);
             }
         }

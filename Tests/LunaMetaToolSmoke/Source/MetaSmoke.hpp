@@ -10,6 +10,11 @@ namespace Luna::MetaToolSmoke
         virtual u32 marker() = 0;
     };
 
+    struct [[Luna::interface("{6B0FC0D5-B5AF-4CC1-AC94-8B51A3BC4DDF}")]] IMetaSmokeHelperInterface : virtual Interface
+    {
+        virtual u32 helper_marker() = 0;
+    };
+
     struct [[luna::struct("{C7D43C71-9895-47DA-9A78-F5502609BE30}")]] MetaSmokeStruct
     {
         [[Luna::property]] i32 value = 0;
@@ -24,6 +29,26 @@ namespace Luna::MetaToolSmoke
         MetaSmokeNonCopyable& operator=(MetaSmokeNonCopyable&&) = delete;
     };
 
+    struct MetaSmokePlainBase
+    {
+        i32 plain_base_value = 0;
+    };
+
+    struct [[luna::struct("{BF234AF8-5C4C-42F6-9231-752103CE1203}")]] MetaSmokeStructWithPlainBase : MetaSmokePlainBase
+    {
+        [[Luna::property]] i32 value = 0;
+    };
+
+    struct [[luna::struct("{53746E16-A04F-4203-BDE9-B22EDEB2C3D4}")]] MetaSmokeReflectedBase
+    {
+        [[Luna::property]] i32 reflected_base_value = 0;
+    };
+
+    struct [[luna::struct("{80A50329-D966-46E4-830C-651DA1DDA97F}")]] MetaSmokeDerivedStruct : MetaSmokeReflectedBase
+    {
+        [[Luna::property]] i32 derived_value = 0;
+    };
+
     struct [[luna::struct("{7B993692-2949-4E6F-9B73-3CA09C23B7BA}")]] MetaSmokeBoxed : IMetaSmokeInterface
     {
         virtual object_t get_object() override
@@ -33,6 +58,26 @@ namespace Luna::MetaToolSmoke
         virtual u32 marker() override
         {
             return 42;
+        }
+    };
+
+    struct MetaSmokeHelperBase : virtual IMetaSmokeHelperInterface
+    {
+        virtual u32 helper_marker() override
+        {
+            return 24;
+        }
+    };
+
+    struct [[luna::struct("{8D3EE497-A6A6-4ACF-846C-534742793240}")]] MetaSmokeBoxedWithHelperBase : MetaSmokeHelperBase, IMetaSmokeInterface
+    {
+        virtual object_t get_object() override
+        {
+            return this;
+        }
+        virtual u32 marker() override
+        {
+            return 84;
         }
     };
 
