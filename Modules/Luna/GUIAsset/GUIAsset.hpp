@@ -152,6 +152,10 @@ namespace Luna
         //! @return Returns the descriptor, or an error if no descriptor is registered for the name.
         LUNA_GUI_ASSET_API R<NodeTypeDesc> get_node_type(const Name& type);
 
+        //! Gets all registered GUI asset node type names.
+        //! @param[out] out_types Receives node type names appended to the end of the vector.
+        LUNA_GUI_ASSET_API void get_node_types(Vector<Name>& out_types);
+
         //! Creates one node of a registered type and initializes it with stable ID and default properties.
         //! @param[in] type The registered node type name.
         //! @param[in] label Optional node label.

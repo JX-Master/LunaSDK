@@ -684,6 +684,17 @@ namespace Luna
             return iter->second;
         }
 
+        LUNA_GUI_ASSET_API void get_node_types(Vector<Name>& out_types)
+        {
+            for(const auto& pair : g_node_types)
+            {
+                out_types.push_back(pair.first);
+            }
+            sort(out_types.begin(), out_types.end(), [](const Name& lhs, const Name& rhs) {
+                return strcmp(lhs.c_str(), rhs.c_str()) < 0;
+            });
+        }
+
         LUNA_GUI_ASSET_API R<Ref<Node>> new_node(const Name& type, const c8* label)
         {
             lutry

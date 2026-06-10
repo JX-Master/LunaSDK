@@ -1028,6 +1028,61 @@ namespace Luna
             return false;
         }
 
+        static u32 dock_tree_find_panel_leaf(const DockSpaceState& dock_state, id_t panel_id)
+        {
+            if(!panel_id || dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size()) return U32_MAX;
+            Vector<u32> stack;
+            stack.push_back(dock_state.dock_root_node);
+            while(!stack.empty())
+            {
+                u32 node_index = stack.back();
+                stack.pop_back();
+                if(node_index >= dock_state.dock_nodes.size()) continue;
+                const DockTreeNode& node = dock_state.dock_nodes[node_index];
+                if(node.split)
+                {
+                    stack.push_back(node.child1);
+                    stack.push_back(node.child0);
+                    continue;
+                }
+                for(id_t tab : node.tabs)
+                {
+                    if(tab == panel_id) return node_index;
+                }
+            }
+            return U32_MAX;
+        }
+
+        static DockDropDirection dock_initial_placement_to_drop_direction(DockPanelInitialPlacement placement)
+        {
+            switch(placement)
+            {
+            case DockPanelInitialPlacement::left:
+                return DockDropDirection::left;
+            case DockPanelInitialPlacement::right:
+                return DockDropDirection::right;
+            case DockPanelInitialPlacement::up:
+                return DockDropDirection::up;
+            case DockPanelInitialPlacement::down:
+                return DockDropDirection::down;
+            default:
+                return DockDropDirection::center;
+            }
+        }
+
+        static id_t find_dock_panel_child_id_by_label(const Description& desc, const Node& dock_node, const Name& label)
+        {
+            if(label.empty()) return 0;
+            for(u32 child = dock_node.first_child; child != U32_MAX; child = desc.nodes[child].next_sibling)
+            {
+                if(!strcmp(desc.nodes[child].text.c_str(), label.c_str()))
+                {
+                    return desc.nodes[child].id;
+                }
+            }
+            return 0;
+        }
+
         void Context::dock_tree_add_panel(DockSpaceState& dock_state, id_t panel_id)
         {
             if(!panel_id || dock_tree_contains_panel(dock_state, panel_id)) return;
@@ -1132,7 +1187,7 @@ namespace Luna
             return false;
         }
 
-        void Context::dock_tree_dock_panel(DockSpaceState& dock_state, id_t panel_id, u32 target_leaf, DockDropDirection direction)
+        void Context::dock_tree_dock_panel(DockSpaceState& dock_state, id_t panel_id, u32 target_leaf, DockDropDirection direction, f32 split_ratio)
         {
             if(!panel_id) return;
             dock_tree_remove_panel(dock_state, panel_id);
@@ -1160,7 +1215,7 @@ namespace Luna
             split.split = true;
             split.parent = dock_state.dock_nodes[target_leaf].parent;
             split.split_axis = (direction == DockDropDirection::left || direction == DockDropDirection::right) ? DockSplitAxis::x : DockSplitAxis::y;
-            split.split_ratio = 0.5f;
+            split.split_ratio = clamp(split_ratio, 0.08f, 0.92f);
             if(direction == DockDropDirection::left || direction == DockDropDirection::up)
             {
                 split.child0 = new_child;
@@ -1329,6 +1384,7 @@ namespace Luna
                 DockPanelStyle style = panel_attachment ? panel_attachment->style : DockPanelStyle();
                 bool* panel_open = panel_attachment ? panel_attachment->open : nullptr;
                 DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state, child_node.id);
+                bool panel_was_initialized = panel_state.initialized;
                 if(!panel_state.initialized)
                 {
                     panel_state.initialized = true;
@@ -1373,7 +1429,26 @@ namespace Luna
                 {
                     docking_panel_indices.insert_or_assign(child_node.id, child);
                     live_docking_panels.insert(child_node.id);
-                    dock_tree_add_panel(dock_state, child_node.id);
+                    bool placed = false;
+                    if(!panel_was_initialized && !style.initial_dock_target.empty())
+                    {
+                        id_t target_panel = find_dock_panel_child_id_by_label(m_submitted_desc, node, style.initial_dock_target);
+                        u32 target_leaf = dock_tree_find_panel_leaf(dock_state, target_panel);
+                        if(target_leaf != U32_MAX && target_panel != child_node.id)
+                        {
+                            dock_tree_dock_panel(
+                                dock_state,
+                                child_node.id,
+                                target_leaf,
+                                dock_initial_placement_to_drop_direction(style.initial_dock_placement),
+                                style.initial_dock_split_ratio);
+                            placed = true;
+                        }
+                    }
+                    if(!placed)
+                    {
+                        dock_tree_add_panel(dock_state, child_node.id);
+                    }
                 }
             }
 

@@ -1948,7 +1948,7 @@ namespace Luna
             void dock_tree_add_panel(DockSpaceState& dock_state, id_t panel_id);
             bool dock_tree_contains_panel(const DockSpaceState& dock_state, id_t panel_id) const;
             bool dock_tree_remove_panel(DockSpaceState& dock_state, id_t panel_id);
-            void dock_tree_dock_panel(DockSpaceState& dock_state, id_t panel_id, u32 target_leaf, DockDropDirection direction);
+            void dock_tree_dock_panel(DockSpaceState& dock_state, id_t panel_id, u32 target_leaf, DockDropDirection direction, f32 split_ratio = 0.5f);
             void dock_tree_prune_missing(DockSpaceState& dock_state, const HashSet<id_t, IdHash>& live_panels);
             id_t dock_tree_selected_panel(DockSpaceState& dock_state, u32 leaf_index);
             void arrange_dock_tree_node(id_t dock_space_id, u32 node_index, const RectF& rect, const RectF& clip_rect, const HashMap<id_t, u32, IdHash>& panel_indices);

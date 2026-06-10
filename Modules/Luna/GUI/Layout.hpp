@@ -433,6 +433,21 @@ namespace Luna
             floating
         };
 
+        //! Initial dock placement relative to another dock panel.
+        enum class DockPanelInitialPlacement : u8
+        {
+            //! Add the panel as a tab in the target leaf.
+            tab,
+            //! Split the target leaf and place the panel on the left side.
+            left,
+            //! Split the target leaf and place the panel on the right side.
+            right,
+            //! Split the target leaf and place the panel on the upper side.
+            up,
+            //! Split the target leaf and place the panel on the lower side.
+            down
+        };
+
         //! Style and initial behavior for dock panels managed by a dock space.
         struct DockPanelStyle
         {
@@ -456,6 +471,12 @@ namespace Luna
             Float2U floating_size = Float2U(320.0f, 220.0f);
             //! Minimum size for user-resized floating panels.
             Float2U min_floating_size = Float2U(120.0f, 80.0f);
+            //! Initial target panel label used for first-time dock placement. Empty means using the dock space default placement.
+            Name initial_dock_target;
+            //! Initial placement relative to @ref initial_dock_target when the panel state is first created.
+            DockPanelInitialPlacement initial_dock_placement = DockPanelInitialPlacement::tab;
+            //! Initial split ratio used when @ref initial_dock_placement splits the target leaf.
+            f32 initial_dock_split_ratio = 0.5f;
             //! Panel background color used by the default render proxy.
             Float4U background_color = Float4U(0.09f, 0.11f, 0.14f, 0.96f);
             //! Inactive title bar color used by the default render proxy.
