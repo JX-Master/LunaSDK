@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Fiber.hpp"
+#include "Coroutine.generated.hpp"
 
 namespace Luna
 {
@@ -22,10 +23,8 @@ namespace Luna
 
     //! @interface ICoroutine
     //! Represents one coroutine object that can be switch to.
-    struct ICoroutine : virtual Interface
+    struct [[Luna::interface("{1b962e21-009e-401f-aa45-5434101250ce}")]] ICoroutine : virtual Interface
     {
-        luiid("{1b962e21-009e-401f-aa45-5434101250ce}");
-
         //! Gets the underlying fiber context for this coroutine.
         virtual IFiber* get_fiber() = 0;
     };

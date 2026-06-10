@@ -72,6 +72,10 @@ internal static class CppCommandLineBuilder
             args.Add("/TP");
             args.Add("/std:c++20");
         }
+        if(payload.Contains("rtti") && payload.Required("rtti").Equals("none", StringComparison.OrdinalIgnoreCase))
+        {
+            args.Add("/GR-");
+        }
 
         foreach(var include in payload.All("include"))
         {
@@ -116,6 +120,7 @@ internal static class CppCommandLineBuilder
             args.Add("-isysroot");
             args.Add(sdkPath);
         }
+        AddRttiArgs(args, payload);
         AddAppleLanguageArgs(args, payload.Required("language"));
         AddAppleModeArgs(args, payload.Required("mode"));
         AddCommonClangArgs(workspace, payload, args);
@@ -139,6 +144,7 @@ internal static class CppCommandLineBuilder
             "-fPIC",
             "-fno-exceptions",
         };
+        AddRttiArgs(args, payload);
         AddAppleLanguageArgs(args, payload.Required("language"));
         AddAppleModeArgs(args, payload.Required("mode"));
         AddCommonClangArgs(workspace, payload, args);
@@ -191,6 +197,14 @@ internal static class CppCommandLineBuilder
         }
     }
 
+    private static void AddRttiArgs(List<string> args, ActionPayload payload)
+    {
+        if(payload.Contains("rtti") && payload.Required("rtti").Equals("none", StringComparison.OrdinalIgnoreCase))
+        {
+            args.Add("-fno-rtti");
+        }
+    }
+
     private static void AddAppleLanguageArgs(List<string> args, string language)
     {
         switch(language.ToLowerInvariant())
@@ -200,11 +214,15 @@ internal static class CppCommandLineBuilder
                 break;
             case "c++20":
                 args.Add("-std=c++20");
+                args.Add("-Wno-unknown-attributes");
+                args.Add("-Wno-ignored-attributes");
                 break;
             case "objective-c++20":
                 args.Add("-x");
                 args.Add("objective-c++");
                 args.Add("-std=c++20");
+                args.Add("-Wno-unknown-attributes");
+                args.Add("-Wno-ignored-attributes");
                 args.Add("-fobjc-arc");
                 break;
             case "objective-c":
@@ -258,7 +276,6 @@ internal static class CppCommandLineBuilder
         return architecture.ToLowerInvariant() switch
         {
             "arm64" or "aarch64" => "arm64",
-            "x64" or "x86_64" => "x86_64",
             _ => throw new MakeSystemException($"Unsupported clang architecture: {architecture}"),
         };
     }

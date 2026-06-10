@@ -14,6 +14,7 @@
 #include <Luna/Runtime/Ref.hpp>
 #include "Display.hpp"
 #include <Luna/Runtime/Module.hpp>
+#include "Window.generated.hpp"
 
 namespace Luna
 {
@@ -38,10 +39,8 @@ namespace Luna
 
         //! @interface IWindow
         //! Represents a system window that can be used to display user interface and can be drawn as surface.
-        struct IWindow : virtual Interface
+        struct [[Luna::interface("{234f4d10-340a-4633-9acc-d70d61f44d23}")]] IWindow : virtual Interface
         {
-            luiid("{234f4d10-340a-4633-9acc-d70d61f44d23}");
-
 #if defined(LUNA_PLATFORM_DESKTOP)
             //! Closes this window.
             virtual void close() = 0;

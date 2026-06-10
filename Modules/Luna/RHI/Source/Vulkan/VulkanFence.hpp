@@ -1,0 +1,32 @@
+/*!
+* This file is a portion of LunaSDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+*
+* @file Fence.hpp
+* @author JXMaster
+* @date 2023/4/21
+*/
+#pragma once
+#include "VulkanDevice.hpp"
+#include "VulkanFence.generated.hpp"
+namespace Luna
+{
+    namespace RHI
+    {
+        struct [[luna::struct("{DCC665F4-475F-4EAA-8837-17362D44BAD9}")]] Fence : IFence
+        {
+            luiimpl();
+
+            Ref<Device> m_device;
+            VkSemaphore m_semaphore = VK_NULL_HANDLE;
+            Name m_name;
+
+            RV init();
+            ~Fence();
+
+            virtual IDevice* get_device() override { return m_device.get(); }
+            virtual void set_name(const c8* name) override { m_name = name; }
+        };
+    }
+}

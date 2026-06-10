@@ -6,6 +6,7 @@ public abstract class TargetRules
     private readonly List<string> _sourcePatterns = new();
     private readonly List<string> _excludedSourcePatterns = new();
     private readonly List<string> _headerPatterns = new();
+    private readonly List<string> _metaHeaderPatterns = new();
     private readonly List<string> _includeDirectories = new();
     private readonly List<string> _publicIncludeDirectories = new();
     private readonly List<string> _defines = new();
@@ -23,6 +24,7 @@ public abstract class TargetRules
     private BuildWorkspace? _currentWorkspace;
     private BuildOptions? _currentOptions;
     private string? _msvcRuntimeLibrary;
+    private bool _enableRtti = true;
     private DotNetProjectRule? _dotNetProject;
 
     protected TargetRules(string name, string targetDirectory, string rulesPath)
@@ -105,6 +107,11 @@ public abstract class TargetRules
         _headerPatterns.AddRange(patterns);
     }
 
+    protected void MetaHeaders(params string[] patterns)
+    {
+        _metaHeaderPatterns.AddRange(patterns);
+    }
+
     protected void IncludeDirectories(params string[] directories)
     {
         _includeDirectories.AddRange(directories);
@@ -161,6 +168,11 @@ public abstract class TargetRules
         _msvcRuntimeLibrary = runtimeLibrary;
     }
 
+    protected void Rtti(bool enabled)
+    {
+        _enableRtti = enabled;
+    }
+
     protected void DotNetProject(string projectFile, string outputFile)
     {
         _dotNetProject = new DotNetProjectRule(projectFile, outputFile);
@@ -211,6 +223,7 @@ public abstract class TargetRules
                     .Where(source => !excludedSources.Contains(source))
                     .ToArray(),
                 HeaderFiles: TargetPatternExpander.ExpandPatterns(directory, _headerPatterns),
+                MetaHeaderFiles: TargetPatternExpander.ExpandPatterns(directory, _metaHeaderPatterns),
                 IncludeDirectories: _includeDirectories
                     .Select(includeDirectory => ResolveTargetPath(workspace, TargetDirectory, includeDirectory))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -282,6 +295,7 @@ public abstract class TargetRules
                 Kind: Kind,
                 Category: Category,
                 MsvcRuntimeLibrary: _msvcRuntimeLibrary,
+                EnableRtti: _enableRtti,
                 DotNetProjectFile: _dotNetProject is null
                     ? null
                     : workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, _dotNetProject.ProjectFile)),
@@ -311,6 +325,7 @@ public abstract class TargetRules
             SourcePatterns: _sourcePatterns.Count,
             ExcludedSourcePatterns: _excludedSourcePatterns.Count,
             HeaderPatterns: _headerPatterns.Count,
+            MetaHeaderPatterns: _metaHeaderPatterns.Count,
             IncludeDirectories: _includeDirectories.Count,
             PublicIncludeDirectories: _publicIncludeDirectories.Count,
             Defines: _defines.Count,
@@ -327,6 +342,7 @@ public abstract class TargetRules
             SupportedPlatforms: _supportedPlatforms.ToArray(),
             Category: Category,
             MsvcRuntimeLibrary: _msvcRuntimeLibrary,
+            EnableRtti: _enableRtti,
             DotNetProject: _dotNetProject);
     }
 
@@ -336,6 +352,7 @@ public abstract class TargetRules
         Truncate(_sourcePatterns, state.SourcePatterns);
         Truncate(_excludedSourcePatterns, state.ExcludedSourcePatterns);
         Truncate(_headerPatterns, state.HeaderPatterns);
+        Truncate(_metaHeaderPatterns, state.MetaHeaderPatterns);
         Truncate(_includeDirectories, state.IncludeDirectories);
         Truncate(_publicIncludeDirectories, state.PublicIncludeDirectories);
         Truncate(_defines, state.Defines);
@@ -356,6 +373,7 @@ public abstract class TargetRules
         }
         Category = state.Category;
         _msvcRuntimeLibrary = state.MsvcRuntimeLibrary;
+        _enableRtti = state.EnableRtti;
         _dotNetProject = state.DotNetProject;
     }
 
@@ -378,6 +396,7 @@ public abstract class TargetRules
         int SourcePatterns,
         int ExcludedSourcePatterns,
         int HeaderPatterns,
+        int MetaHeaderPatterns,
         int IncludeDirectories,
         int PublicIncludeDirectories,
         int Defines,
@@ -394,6 +413,7 @@ public abstract class TargetRules
         BuildPlatform[] SupportedPlatforms,
         BuildTargetCategory Category,
         string? MsvcRuntimeLibrary,
+        bool EnableRtti,
         DotNetProjectRule? DotNetProject);
 }
 

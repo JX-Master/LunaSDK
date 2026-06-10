@@ -15,6 +15,10 @@ public sealed class FileCopyActionExecutor : KnownActionExecutor
 
         cancellationToken.ThrowIfCancellationRequested();
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        if(File.Exists(output))
+        {
+            File.SetAttributes(output, FileAttributes.Normal);
+        }
         File.Copy(source, output, overwrite: true);
         File.SetLastWriteTimeUtc(output, File.GetLastWriteTimeUtc(source));
         return Task.CompletedTask;

@@ -40,16 +40,16 @@ namespace Luna
     typeinfo_t register_boxed_type()
     {
         StructureTypeDesc desc;
-        desc.guid = _Ty::__guid;
-        desc.name = _Ty::__name;
+        desc.guid = Meta::StructMetaData<_Ty>::__guid;
+        desc.name = Meta::StructMetaData<_Ty>::__name;
         desc.size = sizeof(_Ty);
         desc.alignment = alignof(_Ty);
         desc.ctor = nullptr;
         desc.dtor = default_dtor<_Ty>;
-        desc.copy_ctor = nullptr;
-        desc.move_ctor = nullptr;
-        desc.copy_assign = nullptr;
-        desc.move_assign = nullptr;
+        desc.copy_ctor = unsupported_copy_ctor;
+        desc.move_ctor = unsupported_move_ctor;
+        desc.copy_assign = unsupported_copy_assign;
+        desc.move_assign = unsupported_move_assign;
         return register_struct_type(desc);
     }
 
@@ -139,7 +139,7 @@ namespace Luna
     template <typename _Rty>
     inline _Rty* cast_object(object_t object_ptr)
     {
-        return object_is_type(object_ptr, get_type_by_guid(_Rty::__guid)) ? (_Rty*)object_ptr : nullptr;
+        return object_is_type(object_ptr, get_type_by_guid(Meta::StructMetaData<_Rty>::__guid)) ? (_Rty*)object_ptr : nullptr;
     }
 
     //! @}

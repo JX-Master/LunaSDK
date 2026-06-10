@@ -9,6 +9,7 @@ public sealed class ImGuiTargetRules : TargetRules
             rulesPath: "Modules/Luna/ImGui/ImGui.Target.cs")
     {
         Headers("*.hpp", "*.h", "Source/**.h");
+        MetaHeaders("ImGui.hpp", "Source/SampledImage.hpp");
         Sources("Source/**.cpp");
         IncludeDirectories(".");
         Defines("LUNA_IMGUI_IMPL");

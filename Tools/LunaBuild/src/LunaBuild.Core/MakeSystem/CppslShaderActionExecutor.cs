@@ -27,10 +27,15 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         Directory.CreateDirectory(intermediateDirectory);
         Directory.CreateDirectory(Path.GetDirectoryName(header)!);
 
-        var nativeExtractor = LocateNativeExtractor(context.Workspace);
+        var cppslc = payload.Contains("cppslc")
+            ? ResolveToolPath(context.Workspace, payload.Required("cppslc"), "cppslc")
+            : LocateCppslc(context.Workspace);
+        var nativeExtractor = payload.Contains("native_extractor")
+            ? ResolveToolPath(context.Workspace, payload.Required("native_extractor"), "CPPSL native extractor")
+            : LocateNativeExtractor(context.Workspace);
         if(format.Equals("dxil", StringComparison.OrdinalIgnoreCase))
         {
-            await RunCppslAsync(context.Workspace, source, intermediateDirectory, stage, entry, nativeExtractor, "hlsl", cancellationToken);
+            await RunCppslAsync(context.Workspace, cppslc, source, intermediateDirectory, stage, entry, nativeExtractor, "hlsl", cancellationToken);
 
             var hlsl = Path.Combine(intermediateDirectory, sourceName + ".hlsl");
             if(!File.Exists(hlsl))
@@ -46,7 +51,7 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
 
         if(format.Equals("spir_v", StringComparison.OrdinalIgnoreCase))
         {
-            await RunCppslAsync(context.Workspace, source, intermediateDirectory, stage, entry, nativeExtractor, "glsl", cancellationToken);
+            await RunCppslAsync(context.Workspace, cppslc, source, intermediateDirectory, stage, entry, nativeExtractor, "glsl", cancellationToken);
 
             var glsl = Path.Combine(intermediateDirectory, sourceName + ".glsl");
             if(!File.Exists(glsl))
@@ -61,7 +66,7 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
 
         if(format.Equals("msl", StringComparison.OrdinalIgnoreCase))
         {
-            await RunCppslAsync(context.Workspace, source, intermediateDirectory, stage, entry, nativeExtractor, "msl,reflection", cancellationToken);
+            await RunCppslAsync(context.Workspace, cppslc, source, intermediateDirectory, stage, entry, nativeExtractor, "msl,reflection", cancellationToken);
 
             var metal = Path.Combine(intermediateDirectory, sourceName + ".metal");
             if(!File.Exists(metal))
@@ -80,6 +85,7 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
 
     private async Task RunCppslAsync(
         BuildWorkspace workspace,
+        string cppslc,
         string source,
         string outputDirectory,
         string stage,
@@ -89,7 +95,6 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         CancellationToken cancellationToken)
     {
         var includeStd = Path.Combine(workspace.RootDirectory, "Tools", "CPPSL", "std");
-        var cppslc = LocateCppslc(workspace);
         var args = new List<string>
         {
             "compile",
@@ -120,6 +125,16 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
                 args,
                 result.Output));
         }
+    }
+
+    private static string ResolveToolPath(BuildWorkspace workspace, string path, string toolName)
+    {
+        var resolved = workspace.ResolveRepositoryPath(path);
+        if(!File.Exists(resolved))
+        {
+            throw new MakeSystemException($"{toolName} was not built or does not exist: {resolved}");
+        }
+        return resolved;
     }
 
     private async Task<string> RunMetalAsync(

@@ -12,7 +12,7 @@ namespace Luna
     {
         Guid HitBoxNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<HitBoxNode>::__guid;
         }
 
         Ref<Node> HitBoxNode::clone() const
@@ -36,7 +36,7 @@ namespace Luna
 
         Guid ImageNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<ImageNode>::__guid;
         }
 
         Ref<Node> ImageNode::clone() const
@@ -61,7 +61,7 @@ namespace Luna
 
         Guid DrawRectNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<DrawRectNode>::__guid;
         }
 
         Ref<Node> DrawRectNode::clone() const
@@ -86,7 +86,7 @@ namespace Luna
 
         Guid DrawCircleNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<DrawCircleNode>::__guid;
         }
 
         Ref<Node> DrawCircleNode::clone() const
@@ -111,7 +111,7 @@ namespace Luna
 
         Guid DrawLineNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<DrawLineNode>::__guid;
         }
 
         Ref<Node> DrawLineNode::clone() const
@@ -136,7 +136,7 @@ namespace Luna
 
         Guid DrawTextNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<DrawTextNode>::__guid;
         }
 
         Ref<Node> DrawTextNode::clone() const
@@ -161,7 +161,7 @@ namespace Luna
 
         Guid DrawImageNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<DrawImageNode>::__guid;
         }
 
         Ref<Node> DrawImageNode::clone() const

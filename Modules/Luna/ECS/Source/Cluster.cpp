@@ -10,7 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_ECS_API LUNA_EXPORT
 #include "Cluster.hpp"
-#include "World.hpp"
+#include "WorldImpl.hpp"
 
 namespace Luna
 {

@@ -21,20 +21,9 @@ namespace Luna
 
     void register_material_asset_type()
     {
-        register_enum_type<MeterialType>({
-            luoption(MeterialType, lit),
-            luoption(MeterialType, unlit)
-            });
+        register_enum_type<MeterialType>();
         set_serializable<MeterialType>();
-        register_struct_type<Material>({
-            luproperty(Material, MeterialType, material_type),
-            luproperty(Material, Asset::asset_t, base_color),
-            luproperty(Material, Asset::asset_t, roughness),
-            luproperty(Material, Asset::asset_t, normal),
-            luproperty(Material, Asset::asset_t, metallic),
-            luproperty(Material, Asset::asset_t, emissive),
-            luproperty(Material, f32, emissive_intensity)
-            });
+        register_struct_type<Material>();
         set_serializable<Material>();
         Asset::AssetTypeDesc desc;
         desc.name = get_material_asset_type();

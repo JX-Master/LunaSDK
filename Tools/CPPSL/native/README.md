@@ -31,7 +31,14 @@ If macOS rejects the downloaded SDK dylibs, remove the quarantine attribute:
 xattr -dr com.apple.quarantine SDKs/llvm-21.1.1/macosx/arm64
 ```
 
-Build locally on macOS arm64 with the direct native build script:
+Build locally on macOS arm64 with LunaBuild:
+
+```sh
+dotnet run --project LunaBuild.csproj -- \
+  build --target cppsl-native-extractor --platform MacOS --arch arm64
+```
+
+The direct script is still useful when working only on the extractor:
 
 ```sh
 sh Tools/CPPSL/native/build-macos-arm64.sh
@@ -44,8 +51,9 @@ dotnet run --project LunaBuild.csproj -- \
   build --target cppsl-native-extractor --platform Windows --arch x64
 ```
 
-Normal SDK builds consume the prebuilt extractor from `SDKs/CPPSL`; the source
-target is only for CPPSL tool development.
+Normal LunaSDK shader builds depend on the source target and build the host
+extractor before running CPPSL. Prebuilt copies under `SDKs/CPPSL` are retained
+only as compatibility and packaging artifacts.
 
 Run through the C# CLI:
 

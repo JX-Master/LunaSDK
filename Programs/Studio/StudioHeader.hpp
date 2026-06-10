@@ -19,6 +19,7 @@
 #include <Luna/VFS/VFS.hpp>
 #include <Luna/Runtime/HashSet.hpp>
 #include <Luna/VariantUtils/JSON.hpp>
+#include "StudioHeader.generated.hpp"
 
 namespace Luna
 {
@@ -99,10 +100,8 @@ namespace Luna
 
     //! @interface IAssetEditor
     //! Represents a window of the editor.
-    struct IAssetEditor : virtual Interface
+    struct [[Luna::interface("{410f7868-38b5-4e3f-b291-8e58d2cb7372}")]] IAssetEditor : virtual Interface
     {
-        luiid("{410f7868-38b5-4e3f-b291-8e58d2cb7372}");
-
         virtual void on_render(GUI::IContext* context) = 0;
         virtual bool closed() = 0;
     };

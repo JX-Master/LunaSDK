@@ -10,6 +10,7 @@
 #pragma once
 #include "Interface.hpp"
 #include "Result.hpp"
+#include "Stream.generated.hpp"
 
 namespace Luna
 {
@@ -33,10 +34,8 @@ namespace Luna
     //! 
     //! This object is not thread safe and the I/O operations on this object is not asynchronous (will suspend
     //! the current thread until the operation is done or failed).
-    struct IStream : virtual Interface
+    struct [[Luna::interface("{0345f636-ca5c-4b4d-8416-29834377d239}")]] IStream : virtual Interface
     {
-        luiid("{0345f636-ca5c-4b4d-8416-29834377d239}");
-
         //! Reads data from the current position the cursor is pointing to and advances the cursor. 
         //! @details If the data to be read is not ready, the platform suspends the calling thread until the data is ready.
         //! @param[in] buffer The buffer to accept the read data.
@@ -66,10 +65,8 @@ namespace Luna
 
     //! @interface ISeekableStream
     //! Represents one stream object that supports setting the cursor position.
-    struct ISeekableStream : virtual IStream
+    struct [[Luna::interface("{42F66080-C388-4EE0-9C4D-1EEC1B82F692}")]] ISeekableStream : virtual IStream
     {
-        luiid("{42F66080-C388-4EE0-9C4D-1EEC1B82F692}");
-
         //! Gets the current position of the stream cursor. 
         //! @return Returns the current position of the stream cursor. The position is number of bytes relative to the beginning of the stream.
         virtual R<u64> tell() = 0;

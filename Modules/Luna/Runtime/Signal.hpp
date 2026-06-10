@@ -11,6 +11,7 @@
 #pragma once
 #include "Waitable.hpp"
 #include "Ref.hpp"
+#include "Signal.generated.hpp"
 
 namespace Luna
 {
@@ -20,10 +21,8 @@ namespace Luna
     //! @interface ISignal
     //! Represents a system-level signal object.
     //! @threadsafe
-    struct ISignal : virtual IWaitable
+    struct [[Luna::interface("{79648c17-4685-41e0-a625-6228b0a06509}")]] ISignal : virtual IWaitable
     {
-        luiid("{79648c17-4685-41e0-a625-6228b0a06509}");
-
         //! Set this signal to trigged state.
         //! @details If this signal is not a manual reset signal, all threads that are waiting for this signal will
         //! be waken up and continue to run.

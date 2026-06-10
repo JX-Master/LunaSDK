@@ -18,7 +18,7 @@ namespace Luna
         ItemHandle Context::begin_tooltip(ItemHandle owner, const c8* label, const TooltipDesc& desc)
         {
             ItemHandle handle;
-            id_t layer_id = allocate_detached_layer_id(TooltipNode::__guid, label ? label : "Tooltip");
+            id_t layer_id = allocate_detached_layer_id(Meta::StructMetaData<TooltipNode>::__guid, label ? label : "Tooltip");
             push_layer_internal(layer_id, Float2U(0.0f));
             begin_container(Ref<Node>(new_object<TooltipNode>()), label ? label : "Tooltip", desc.size, &handle, layer_id);
             Node& node = m_build_desc.nodes.back();

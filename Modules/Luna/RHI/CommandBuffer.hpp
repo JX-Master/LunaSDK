@@ -16,6 +16,7 @@
 #include "QueryHeap.hpp"
 #include <Luna/Runtime/Span.hpp>
 #include "Fence.hpp"
+#include "CommandBuffer.generated.hpp"
 
 namespace Luna
 {
@@ -472,10 +473,8 @@ namespace Luna
         //! 1. Use @ref ICommandBuffer::wait to wait for one command buffer from host side, 
         //! 2. Use fence objects to wait for one command buffer from another command buffer.
         //! 3. Only call @ref ICommandBuffer::reset after the command buffer is not submitted, or is finished by GPU.
-        struct ICommandBuffer : virtual IDeviceChild, virtual IWaitable
+        struct [[Luna::interface("{2970a4c8-d905-4e58-9247-46ba6a33b220}")]] ICommandBuffer : virtual IDeviceChild, virtual IWaitable
         {
-            luiid("{2970a4c8-d905-4e58-9247-46ba6a33b220}");
-
             //! Gets the command queue index of the command queue attached to 
             //! this buffer.
             virtual u32 get_command_queue_index() = 0;

@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
-#include "Window.hpp"
+#include "WindowsWindowImpl.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
 #include <Luna/Runtime/Unicode.hpp>
 #include "../../Window.hpp"
@@ -27,8 +27,6 @@ namespace Luna
 
         RV platform_init()
         {
-            register_boxed_type<Window>();
-            impl_interface_for_type<Window, IWin32Window, IWindow>();
             lutry
             {
                 if(!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))

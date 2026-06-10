@@ -10,7 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RUNTIME_API LUNA_EXPORT
 
-#include "ReadWriteLock.hpp"
+#include "ReadWriteLockImpl.hpp"
 namespace Luna
 {
     LUNA_RUNTIME_API Ref<IReadWriteLock> new_read_write_lock()

@@ -9,6 +9,15 @@ public sealed class RHIUtilityTargetRules : TargetRules
             rulesPath: "Modules/Luna/RHIUtility/RHIUtility.Target.cs")
     {
         Headers("**.hpp");
+        MetaHeaders(
+            "BlitContext.hpp",
+            "MipmapGenerationContext.hpp",
+            "ResourceReadContext.hpp",
+            "ResourceWriteContext.hpp",
+            "Source/BlitContextImpl.hpp",
+            "Source/MipmapGenerationContextImpl.hpp",
+            "Source/ResourceReadContextImpl.hpp",
+            "Source/ResourceWriteContextImpl.hpp");
         Sources("Source/**.cpp");
         Shader("Source/Shaders/MipmapGeneration1DCS.cxx", "compute", "cs_main");
         Shader("Source/Shaders/MipmapGeneration2DCS.cxx", "compute", "cs_main");

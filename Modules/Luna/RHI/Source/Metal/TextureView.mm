@@ -7,8 +7,8 @@
 * @author JXMaster
 * @date 2023/7/24
 */
-#include "TextureView.h"
-#include "Resource.h"
+#include "MetalTextureView.h"
+#include "MetalResource.h"
 
 namespace Luna
 {

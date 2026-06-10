@@ -11,7 +11,7 @@
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include "../DLL.hpp"
 #include "Platform/DLL.hpp"
-#include "Error.hpp"
+#include "ErrorImpl.hpp"
 
 namespace Luna
 {

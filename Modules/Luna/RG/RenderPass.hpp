@@ -9,6 +9,7 @@
 */
 #pragma once
 #include <Luna/RHI/RHI.hpp>
+#include "RenderPass.generated.hpp"
 
 #ifndef LUNA_RG_API
 #define LUNA_RG_API
@@ -72,10 +73,8 @@ namespace Luna
 
         //! @interface IRenderPassContext
         //! Represents one render graph execution context. This is used only as the parameter of @ref IRenderPass::execute.
-        struct IRenderPassContext : virtual Interface
+        struct [[Luna::interface("{04ab587d-1e50-4816-89e6-6ff676d30bbf}")]] IRenderPassContext : virtual Interface
         {
-            luiid("{04ab587d-1e50-4816-89e6-6ff676d30bbf}");
-
             //! Gets the command buffer used to record commands for the render pass.
             //! @return Returns the command buffer.
             virtual RHI::ICommandBuffer* get_command_buffer() = 0;
@@ -112,10 +111,8 @@ namespace Luna
 
         //! @interface IRenderPass
         //! Represents one user-implemented render pass.
-        struct IRenderPass : virtual Interface
+        struct [[Luna::interface("{e8392032-e97e-4557-a40a-a5e22f5d0f2f}")]] IRenderPass : virtual Interface
         {
-            luiid("{e8392032-e97e-4557-a40a-a5e22f5d0f2f}");
-
             //! Executes the render pass. This is called by the render graph in @ref IRenderGraph::execute, the user
             //! should not call this manually.
             //! @param[in] ctx The render graph execution context that can be used by the render pass to read input / output resources, 
@@ -128,10 +125,8 @@ namespace Luna
 
         //! @interface IRenderGraphCompiler
         //! The render graph compile context. This is used only as the parameter for @ref render_pass_compile_func_t.
-        struct IRenderGraphCompiler : virtual Interface
+        struct [[Luna::interface("{158df588-6b27-4438-ba8a-8913cebacaca}")]] IRenderGraphCompiler : virtual Interface
         {
-            luiid("{158df588-6b27-4438-ba8a-8913cebacaca}");
-
             //! Gets the resource ID of one input resource.
             //! @param[in] name The name of the input resource.
             //! @return Returns the resource ID of the resource. Returns @ref INVALID_RESOURCE if the name is not specified as one input resource.

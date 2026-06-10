@@ -12,23 +12,19 @@
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/VariantUtils/Diff.hpp>
 #include <Luna/Runtime/Serialization.hpp>
-
+#include "Operation.generated.hpp"
 namespace Luna
 {
     //! The base class for all operations that can be undo/redo.
-    struct Operation
+    struct [[luna::struct("e3902eda-6abd-4c1a-9934-1baee0419c7a")]] Operation
     {
-        lustruct("GBA::Operation", "e3902eda-6abd-4c1a-9934-1baee0419c7a");
-
         virtual void execute() {};
         virtual void revert() {};
     };
 
     //! The operation that edits one asset.
-    struct AssetEditingOp : Operation
+    struct [[luna::struct("9bfd334d-7134-4e70-a618-f6315cb5d5ee")]] AssetEditingOp : Operation
     {
-        lustruct("GBA::AssetEditingOp", "9bfd334d-7134-4e70-a618-f6315cb5d5ee");
-
         Asset::asset_t target_asset;
 
         virtual void execute() override;
@@ -36,10 +32,8 @@ namespace Luna
     };
 
     //! A generic asset editing op that serializes differences between two asset versions.
-    struct DiffAssetEditingOp : AssetEditingOp
+    struct [[luna::struct("9c72d43b-a531-4dc3-9e84-f79860b8005f")]] DiffAssetEditingOp : AssetEditingOp
     {
-        lustruct("GBA::DiffAssetEditingOp", "9c72d43b-a531-4dc3-9e84-f79860b8005f");
-
         Variant delta;
 
         DiffAssetEditingOp() = default;

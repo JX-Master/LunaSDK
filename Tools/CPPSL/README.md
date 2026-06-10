@@ -27,22 +27,27 @@ The frontend is native-only. The extractor lives in `Tools/CPPSL/native`, links
 against the LLVM SDK under `SDKs`, and runs as a separate process that emits the
 frontend JSON contract consumed by the C# pipeline.
 
-Normal LunaSDK builds do not build CPPSL from source. They consume prebuilt
-tools from the SDK package:
+Normal LunaSDK builds build the host CPPSL tools from source when a target uses
+`Shader(...)`. LunaBuild wires the `CPPSL` and `cppsl-native-extractor` tool
+targets into the shader build graph before running the `cppsl.shader` action.
+Prebuilt SDK copies are only compatibility and packaging artifacts:
 
 ```text
 SDKs/CPPSL/<platform>/<arch>/bin/cppslc
 SDKs/CPPSL/<platform>/<arch>/bin/cppsl-native-extractor
 ```
 
-On Windows the executables use the `.exe` suffix. Update the third-party SDK
-archives whenever CPPSL compiler changes must be distributed to normal users.
+On Windows the executables use the `.exe` suffix.
 
 Open `CPPSL.sln` in Rider or Visual Studio to inspect the tool projects.
 
-Build CPPSL source-tool targets only when developing the compiler:
+Build the CPPSL source-tool targets directly when developing the compiler or
+verifying the host tools:
 
 ```sh
+dotnet run --project LunaBuild.csproj -- \
+  build --target CPPSL --platform MacOS --arch arm64
+
 dotnet run --project LunaBuild.csproj -- \
   build --target CPPSL --platform Windows --arch x64
 ```
@@ -53,10 +58,13 @@ Build the solution from command line:
 dotnet build Tools/CPPSL/CPPSL.sln -m:1 /nr:false
 ```
 
-Build the native extractor before running the compiler. On Windows, use the
-LunaBuild target:
+The `CPPSL` target depends on the native extractor. To build the extractor
+directly, use the LunaBuild target:
 
 ```sh
+dotnet run --project LunaBuild.csproj -- \
+  build --target cppsl-native-extractor --platform MacOS --arch arm64
+
 dotnet run --project LunaBuild.csproj -- \
   build --target cppsl-native-extractor --platform Windows --arch x64
 ```

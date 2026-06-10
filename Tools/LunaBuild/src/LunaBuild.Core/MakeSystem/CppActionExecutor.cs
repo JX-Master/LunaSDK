@@ -524,11 +524,15 @@ public sealed class CppActionExecutor : IMakeActionExecutor
                 break;
             case "c++20":
                 args.Add("-std=c++20");
+                args.Add("-Wno-unknown-attributes");
+                args.Add("-Wno-ignored-attributes");
                 break;
             case "objective-c++20":
                 args.Add("-x");
                 args.Add("objective-c++");
                 args.Add("-std=c++20");
+                args.Add("-Wno-unknown-attributes");
+                args.Add("-Wno-ignored-attributes");
                 args.Add("-fobjc-arc");
                 break;
             case "objective-c":
@@ -641,7 +645,6 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         return architecture.ToLowerInvariant() switch
         {
             "arm64" or "aarch64" => "arm64",
-            "x64" or "x86_64" => "x86_64",
             _ => throw new MakeSystemException($"Unsupported macOS architecture: {architecture}"),
         };
     }

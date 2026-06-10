@@ -8,7 +8,7 @@
 * @date 2022/10/29
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
-#include "SwapChain.hpp"
+#include "VulkanSwapChain.hpp"
 #include "Instance.hpp"
 #include "SurfaceBind.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>

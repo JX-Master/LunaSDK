@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Description.hpp"
+#include "Debug.generated.hpp"
 
 #ifdef LUNA_GUI_ENABLE_DEBUG
 
@@ -392,9 +393,8 @@ namespace Luna
         };
 
         //! UI state used by the built-in debug panel visualization.
-        struct DebugInspectorState
+        struct [[Luna::struct("{1A73D379-3531-4791-9392-B379EF34B0A9}")]] DebugInspectorState
         {
-            lustruct("GUI::DebugInspectorState", "{1A73D379-3531-4791-9392-B379EF34B0A9}");
             //! Whether a node is selected in the inspector.
             bool has_selected_node = false;
             //! Selected node key.

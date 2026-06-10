@@ -11,6 +11,37 @@ public sealed class StudioTargetRules : TargetRules
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
         Kind = BuildTargetKind.Executable;
         Headers("**.hpp", "Shaders/*.hxx");
+        MetaHeaders(
+            "Actor.hpp",
+            "AssetBrowser.hpp",
+            "Assets/MaterialEditor.hpp",
+            "Assets/MeshAsset.hpp",
+            "Assets/MeshImporter.hpp",
+            "Assets/ModelEditor.hpp",
+            "Assets/SceneEditorTypes.hpp",
+            "Assets/TextureAssetUserdata.hpp",
+            "Assets/TextureEditor.hpp",
+            "Assets/TextureImporter.hpp",
+            "Camera.hpp",
+            "Light.hpp",
+            "MainEditor.hpp",
+            "Material.hpp",
+            "Mesh.hpp",
+            "Model.hpp",
+            "ModelRenderer.hpp",
+            "Operation.hpp",
+            "RenderPasses/BloomPass.hpp",
+            "RenderPasses/BufferVisualizationPass.hpp",
+            "RenderPasses/DeferredLightingPass.hpp",
+            "RenderPasses/GeometryPass.hpp",
+            "RenderPasses/SkyBoxPass.hpp",
+            "RenderPasses/ToneMappingPass.hpp",
+            "RenderPasses/WireframePass.hpp",
+            "Scene.hpp",
+            "SceneRenderer.hpp",
+            "SceneSettings.hpp",
+            "StudioHeader.hpp",
+            "Transform.hpp");
         Sources("**.cpp");
         Shader("Shaders/SkyboxCS.cxx", "compute", "cs_main");
         Shader("Shaders/ToneMappingCS.cxx", "compute", "cs_main");

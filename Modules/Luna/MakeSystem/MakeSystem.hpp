@@ -12,6 +12,7 @@
 #include <Luna/Runtime/Path.hpp>
 #include "MakeNode.hpp"
 #include <Luna/Runtime/Result.hpp>
+#include "MakeSystem.generated.hpp"
 
 #ifndef LUNA_MAKE_SYSTEM_API
 #define LUNA_MAKE_SYSTEM_API
@@ -23,10 +24,8 @@ namespace Luna
 
     namespace MakeSystem
     {
-        struct IMakeSystem : virtual Interface
+        struct [[Luna::interface("{24684269-d789-4b8b-af39-a65a642e29a6}")]] IMakeSystem : virtual Interface
         {
-            luiid("{24684269-d789-4b8b-af39-a65a642e29a6}");
-
             virtual const Path& get_build_dir() = 0;
 
             virtual i32 get_max_num_parallel_tasks() = 0;

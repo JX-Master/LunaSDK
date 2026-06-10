@@ -17,6 +17,8 @@
 #include <Luna/MakeSystem/MakeSystem.hpp>
 #include <cstdio>
 #include <cstring>
+#include "WriteFileCommand.hpp"
+#include "MakeSystemTest.meta.generated.hpp"
 
 using namespace Luna;
 using namespace Luna::MakeSystem;
@@ -60,50 +62,39 @@ namespace
         return r.get();
     }
 
-    struct WriteFileCommand : IMakeCommand
+}
+
+RV Luna::WriteFileCommand::execute(Luna::LogHandler&)
+{
+    if(counter)
     {
-        lustruct("MakeSystemTest::WriteFileCommand", "{d112916e-514a-4c23-92bc-9d9606e7b1c8}");
-        luiimpl();
-
-        Path output;
-        String content;
-        Path depfile;
-        String depfile_content;
-        Path side_output;
-        String side_content;
-        usize* counter = nullptr;
-        bool write_output = true;
-        bool fail = false;
-
-        virtual RV execute(LogHandler&) override
+        ++(*counter);
+    }
+    if(fail)
+    {
+        return BasicError::failure();
+    }
+    lutry
+    {
+        if(write_output)
         {
-            if(counter)
-            {
-                ++(*counter);
-            }
-            if(fail)
-            {
-                return BasicError::failure();
-            }
-            lutry
-            {
-                if(write_output)
-                {
-                    luexp(write_text_file(output, content));
-                }
-                if(!side_output.empty())
-                {
-                    luexp(write_text_file(side_output, side_content));
-                }
-                if(!depfile.empty())
-                {
-                    luexp(write_text_file(depfile, depfile_content));
-                }
-            }
-            lucatchret;
-            return ok;
+            luexp(write_text_file(output, content));
         }
-    };
+        if(!side_output.empty())
+        {
+            luexp(write_text_file(side_output, side_content));
+        }
+        if(!depfile.empty())
+        {
+            luexp(write_text_file(depfile, depfile_content));
+        }
+    }
+    lucatchret;
+    return ok;
+}
+
+namespace
+{
 
     static Path test_build_dir()
     {
@@ -439,8 +430,7 @@ int main()
     init();
     lupanic_if_failed(add_module(module_make_system()));
     lupanic_if_failed(init_modules());
-    register_boxed_type<WriteFileCommand>();
-    impl_interface_for_type<WriteFileCommand, IMakeCommand>();
+    Meta::register_MakeSystemTest_types();
     incremental_and_action_key_test();
     depfile_test();
     graph_validation_test();

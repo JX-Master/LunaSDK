@@ -8,7 +8,7 @@
 * @date 2023/4/21
 */
 #include "RenderPassPool.hpp"
-#include "Device.hpp"
+#include "VulkanDevice.hpp"
 
 namespace Luna
 {

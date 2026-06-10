@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_JOBSYSTEM_API LUNA_EXPORT
-#include "JobScheduler.hpp"
+#include "JobSchedulerImpl.hpp"
 #include "JobSystem.hpp"
 #include <Luna/Runtime/Random.hpp>
 

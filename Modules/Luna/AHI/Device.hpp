@@ -11,6 +11,7 @@
 #include "Adapter.hpp"
 #include <Luna/Runtime/Ref.hpp>
 #include <Luna/Runtime/Result.hpp>
+#include "Device.generated.hpp"
 
 #ifndef LUNA_AHI_API
 #define LUNA_AHI_API
@@ -90,10 +91,8 @@ namespace Luna
 
         //! @interface IDevice
         //! Represents one audio device that can playback sounds.
-        struct IDevice : virtual Interface
+        struct [[Luna::interface("{85271f74-2990-41e5-81f1-7e74b128b1d3}")]] IDevice : virtual Interface
         {
-            luiid("{85271f74-2990-41e5-81f1-7e74b128b1d3}");
-
             //! Gets the sample rate of the playback and capture stream.
             //! @return Returns the sample rate of the playback and capture stream.
             virtual u32 get_sample_rate() = 0;

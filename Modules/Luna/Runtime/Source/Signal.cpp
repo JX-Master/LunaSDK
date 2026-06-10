@@ -10,7 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RUNTIME_API LUNA_EXPORT
 
-#include "Signal.hpp"
+#include "SignalImpl.hpp"
 namespace Luna
 {
     LUNA_RUNTIME_API Ref<ISignal> new_signal(bool manual_reset)

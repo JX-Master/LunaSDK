@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_UTILITY_API LUNA_EXPORT
-#include "BlitContext.hpp"
+#include "BlitContextImpl.hpp"
 #include <BlitVS.hpp>
 #include <BlitPS.hpp>
 

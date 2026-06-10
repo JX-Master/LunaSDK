@@ -7,9 +7,9 @@
 * @author JXMaster
 * @date 2020/3/11
 */
-#include "CommandBuffer.hpp"
-#include "QueryHeap.hpp"
-#include "Fence.hpp"
+#include "D3D12CommandBuffer.hpp"
+#include "D3D12QueryHeap.hpp"
+#include "D3D12Fence.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna

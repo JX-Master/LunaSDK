@@ -8,6 +8,7 @@
 * @date 2020/5/15
 */
 #include "Scene.hpp"
+#include "SceneEditorTypes.hpp"
 #include "../SceneRenderer.hpp"
 #include "../MainEditor.hpp"
 #include "../Scene.hpp"
@@ -114,88 +115,6 @@ namespace Luna
 
         HashMap<usize, Float3> g_transform_rotation_edit_buffers;
     }
-
-    struct SceneEditorUserData
-    {
-        lustruct("SceneEditorUserData", "{5b4aea33-e61a-4042-ba91-1f4ec84f8194}");
-
-        // Resources for rendering grids.
-        Ref<RHI::IBuffer> m_grid_vb;
-        Ref<RHI::IDescriptorSetLayout> m_grid_dlayout;
-        Ref<RHI::IPipelineLayout> m_grid_playout;
-        Ref<RHI::IPipelineState> m_grid_pso;
-
-        SceneEditorUserData() {}
-
-        RV init();
-    };
-    
-    struct SceneEditor : public IAssetEditor
-    {
-    public:
-        lustruct("SceneEditor", "{c973cc28-78e7-4be5-a391-8c2e5960fa48}");
-        luiimpl();
-
-        Ref<SceneEditorUserData> m_type;
-
-        Asset::asset_t m_scene;
-        World m_world;
-        bool m_world_initialized = false;
-
-        SceneRenderer m_renderer;
-
-        // States for actor list.
-        Guid m_editing_actor_guid = Guid(0, 0);
-        Guid m_actor_name_editing_guid = Guid(0, 0);
-        String m_actor_name_editing_text;
-        bool m_actor_popup_open = false;
-        Float2U m_actor_popup_position = Float2U(0.0f);
-        GUI::ItemHandle m_actor_popup_handle;
-        bool m_new_component_popup_open = false;
-        Float2U m_new_component_popup_position = Float2U(0.0f);
-        GUI::ItemHandle m_new_component_popup_handle;
-
-        // States for scene viewport.
-
-        GUI::GizmoMode m_gizmo_mode = GUI::GizmoMode::local;
-        GUI::GizmoOperation m_gizmo_op = GUI::GizmoOperation::translate;
-
-        f32 m_camera_speed = 1.0f;
-
-        bool m_navigating = false;
-
-        bool m_open = true;
-
-        SceneEditor() :
-            m_renderer(RHI::get_main_device()) {}
-
-        RV init();
-
-        void on_add_actor(usize actor_index);
-        void on_remove_actor(const Guid& guid);
-        void on_edit_actor_info(SceneActor& scene_actor);
-        void on_edit_actor_transform(SceneActor& scene_actor);
-        void on_actor_add_component(SceneActor& scene_actor, typeinfo_t component);
-        void on_actor_remove_component(SceneActor& scene_actor, typeinfo_t component);
-        void on_actor_edit_component(SceneActor& scene_actor, typeinfo_t component);
-
-        void edit_scene();
-        void draw_actor_list(GUI::IContext* context, const RectF& rect);
-        void draw_actor_tree_node(GUI::IContext* context, Actor* actor, bool& open_actor_list_popup);
-        void draw_scene_settings(GUI::IContext* context, const RectF& rect);
-        void draw_scene(GUI::IContext* context, const RectF& rect);
-
-        void draw_components_grid(GUI::IContext* context, const RectF& rect);
-
-        virtual void on_render(GUI::IContext* context) override;
-        virtual bool closed() override
-        {
-            return !m_open;
-        }
-
-        void capture_scene_to_file(const Path& path);
-    };
-
     RV SceneEditor::init()
     {
         lutry
@@ -1275,10 +1194,6 @@ namespace Luna
     {
         lutry
         {
-            register_boxed_type<SceneEditorUserData>();
-            register_boxed_type<SceneEditor>();
-            impl_interface_for_type<SceneEditor, IAssetEditor>();
-
             AssetEditorDesc desc;
             desc.new_editor = new_scene_editor;
             desc.on_draw_tile = nullptr;

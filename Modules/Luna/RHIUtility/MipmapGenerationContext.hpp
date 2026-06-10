@@ -9,6 +9,7 @@
 */
 #pragma once
 #include <Luna/RHI/Device.hpp>
+#include "MipmapGenerationContext.generated.hpp"
 
 #ifndef LUNA_RHI_UTILITY_API
 #define LUNA_RHI_UTILITY_API
@@ -21,10 +22,8 @@ namespace Luna
         //! @addtogroup RHIUtility
         //! @{
 
-        struct IMipmapGenerationContext : virtual RHI::IDeviceChild
+        struct [[Luna::interface("beb3c88c-1c7d-4de6-af48-15364a89b5e2")]] IMipmapGenerationContext : virtual RHI::IDeviceChild
         {
-            luiid("beb3c88c-1c7d-4de6-af48-15364a89b5e2");
-
             virtual void reset() = 0;
 
             virtual void generate_mipmaps(RHI::ITexture* tex, u32 source_mip = 0, u32 num_gen_mips = U32_MAX) = 0;

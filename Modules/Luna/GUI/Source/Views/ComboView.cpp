@@ -139,7 +139,7 @@ namespace Luna
             result->states.insert_or_assign(Name("gui.open"), Any(open));
             if(Node* preview_node = ctx->find_build_node(handle))
             {
-                if(preview_node->type_guid() == SelectableNode::__guid)
+                if(preview_node->type_guid() == Meta::StructMetaData<SelectableNode>::__guid)
                 {
                     ((SelectableNode*)preview_node)->selected = open;
                 }

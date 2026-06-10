@@ -173,9 +173,6 @@ namespace Luna
     {
         lutry
         {
-            register_boxed_type<SkyBoxPassGlobalData>();
-            register_boxed_type<SkyBoxPass>();
-            impl_interface_for_type<SkyBoxPass, RG::IRenderPass>();
             RG::RenderPassTypeDesc desc;
             desc.name = "SkyBox";
             desc.desc = "Renders one sky box to the specified background using the specified texture";

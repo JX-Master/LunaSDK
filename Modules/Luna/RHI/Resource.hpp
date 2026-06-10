@@ -11,6 +11,7 @@
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Math/Math.hpp>
 #include "DeviceMemory.hpp"
+#include "Resource.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -49,10 +50,8 @@ namespace Luna
 
         //! @interface IResource
         //! Represents a memory region that can be accessed by GPU.
-        struct IResource : virtual IDeviceChild
+        struct [[Luna::interface("{D67C47CD-1FF3-4FA4-82FE-773EC5C8AD2A}")]] IResource : virtual IDeviceChild
         {
-            luiid("{D67C47CD-1FF3-4FA4-82FE-773EC5C8AD2A}");
-
             //! Gets the device memory object that holds memory of this resource.
             virtual IDeviceMemory* get_memory() = 0;
         };

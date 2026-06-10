@@ -5,15 +5,14 @@
 */
 #pragma once
 #include "Common.hpp"
+#include "ButtonGroupNodes.generated.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        struct ButtonGroupNode : Node
+        struct [[Luna::struct("{66300361-8899-4285-977C-F39581E46C74}")]] ButtonGroupNode : Node
         {
-            lustruct("GUI::ButtonGroupNode", "{66300361-8899-4285-977C-F39581E46C74}");
-
             i32* current_item = nullptr;
             bool* selected = nullptr;
             Vector<String> items;

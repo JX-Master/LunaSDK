@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/5/4
 */
-#include "Sampler.hpp"
+#include "VulkanSampler.hpp"
 
 namespace Luna
 {

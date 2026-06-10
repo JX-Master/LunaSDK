@@ -21,6 +21,8 @@
 #include <Luna/Window/Event.hpp>
 #include <cstdio>
 #include <cstring>
+#include "DemoCustomNode.hpp"
+#include "GUITest.meta.generated.hpp"
 
 using namespace Luna;
 
@@ -132,37 +134,6 @@ namespace Luna
         GUI::ItemHandle drag_number_target;
         GUI::ItemHandle drag_text_target;
         GUI::ItemHandle drag_mixed_target;
-    };
-
-    GUI::RenderProxyDesc demo_custom_node_render_proxy();
-
-    struct DemoCustomNode : GUI::Node
-    {
-        lustruct("GUITest::DemoCustomNode", "{A7A8030D-AAD4-4374-B967-74AF3DAD0A4D}");
-
-        DemoCustomNode()
-        {
-            render_proxy = demo_custom_node_render_proxy();
-        }
-
-        virtual Guid type_guid() const override
-        {
-            return __guid;
-        }
-
-        virtual Ref<GUI::Node> clone() const override
-        {
-            return new_object<DemoCustomNode>(*this);
-        }
-
-        virtual GUI::LayoutMetrics measure() const override
-        {
-            GUI::LayoutMetrics metrics;
-            metrics.min_size = Float2U(160.0f, 34.0f);
-            metrics.preferred_size = Float2U(260.0f, 38.0f);
-            metrics.max_size = Float2U(F32_MAX, 38.0f);
-            return metrics;
-        }
     };
 
     void draw_demo_custom_node(GUI::NodeRenderContext& ctx, const GUI::Node&, const RectF& rect, const RectF& clip_rect,
@@ -1502,7 +1473,7 @@ namespace Luna
         {
             luexp(add_modules({module_window(), module_rhi(), module_font(), module_vg(), GUI::module_gui(), GUIWindow::module_gui_window()}));
             luexp(init_modules());
-            register_struct_type<DemoCustomNode>({}, typeof<GUI::Node>());
+            Meta::register_GUITest_types();
             set_log_to_platform_enabled(true);
             using namespace RHI;
 

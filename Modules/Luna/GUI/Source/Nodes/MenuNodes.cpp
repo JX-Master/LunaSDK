@@ -18,7 +18,7 @@ namespace Luna
 
         Guid MenuSeparatorNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<MenuSeparatorNode>::__guid;
         }
 
         Ref<Node> MenuSeparatorNode::clone() const
@@ -43,7 +43,7 @@ namespace Luna
 
         Guid MenuItemNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<MenuItemNode>::__guid;
         }
 
         Ref<Node> MenuItemNode::clone() const

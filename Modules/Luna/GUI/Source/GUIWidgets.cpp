@@ -17,7 +17,7 @@ namespace Luna
     {
         static bool is_menu_bar_node(const Node& node)
         {
-            return node.type_guid() == MenuBarNode::__guid;
+            return node.type_guid() == Meta::StructMetaData<MenuBarNode>::__guid;
         }
 
         LUNA_GUI_API void push_id(IContext* context, u64 id)

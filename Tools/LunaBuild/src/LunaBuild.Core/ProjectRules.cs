@@ -185,4 +185,3 @@ public sealed record BuildProjectDefinition(
             .ToArray());
     }
 }
-

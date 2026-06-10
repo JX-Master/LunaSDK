@@ -9,6 +9,7 @@
 */
 #include "FontFileTTF.hpp"
 #include "DefaultFont.hpp"
+#include "Font.meta.generated.hpp"
 #include <Luna/Runtime/Module.hpp>
 namespace Luna
 {
@@ -20,8 +21,7 @@ namespace Luna
             virtual const c8* get_name() override { return "Font"; }
             virtual RV on_init() override
             {
-                register_boxed_type<FontFileTTF>();
-                impl_interface_for_type<FontFileTTF, IFontFile>();
+                Meta::register_Font_types();
                 auto r = load_ttf_font_file((const byte_t*)opensans_regular_ttf, (usize)opensans_regular_ttf_size);
                 if (failed(r))
                 {

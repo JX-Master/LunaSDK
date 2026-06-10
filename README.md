@@ -28,7 +28,7 @@ Specifications:
 Designed target platforms:
 
 * Windows (Direct3D 12+/Vulkan 1.0+)
-* macOS (Metal 3.2+)
+* macOS arm64 (Metal 3.2+)
 * Linux (Vulkan) (Not implemented yet.)
 * Android (Vulkan 1.0+)
 * iOS (Metal 3.2+)
@@ -51,7 +51,7 @@ The following requirements must be satisfied to run LunaSDK with Vulkan renderin
 
 ### macOS
 
-* macOS 15 (Sequoia) and later.
+* Apple Silicon Mac with macOS 15 (Sequoia) or later.
 
 ### Android
 

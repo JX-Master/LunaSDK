@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "Module.hpp"
+#include "ModuleImpl.hpp"
 #include "../Module.hpp"
 #include "../Assert.hpp"
 #include "../Vector.hpp"

@@ -85,6 +85,8 @@ Generic structure types cannot be used directly, they must be instantiated to a 
 #include <Luna/Runtime/Reflection.hpp>
 ```
 
+**For new reflected structures, prefer LunaMetaTool attributes and generated registration. See [[Reflection Metadata with LunaMetaTool]] for the current recommended workflow. The macro-based methods below are kept for compatibility with code that has not been migrated yet, and for low-level cases that intentionally bypass LunaMetaTool.**
+
 There are two methods to register one structure type. The first method is simpler and can be used for most cases, the second method is non-intrusive can be used if the structure is defined in another module or third-party library and cannot be changed directly.
 
 ### The first method
@@ -157,6 +159,8 @@ LUNA_XXX_API typeinfo_t get_my_type() { return g_my_type; }
 ```c++
 #include <Luna/Runtime/Reflection.hpp>
 ```
+
+**For new reflected enumerations, prefer `[[Luna::enum(... )]]` and `[[Luna::option]]` with LunaMetaTool. See [[Reflection Metadata with LunaMetaTool]].**
 
 The user can use `register_enum_type` function and `luoption` macro to register one enumeration type. For example, if we have the following type:
 

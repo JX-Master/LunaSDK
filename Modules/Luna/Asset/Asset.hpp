@@ -11,7 +11,7 @@
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Ref.hpp>
 #include <Luna/Runtime/Path.hpp>
-
+#include "Asset.generated.hpp"
 #ifndef LUNA_ASSET_API
 #define LUNA_ASSET_API
 #endif
@@ -47,9 +47,8 @@ namespace Luna
         //! this reason, when serializing one reference to one asset, we should save the asset GUID rather than 
         //! the handle value, so that we can get the same asset and restore reference after the application
         //! is restarted.
-        struct asset_t
+        struct [[luna::struct("{69A0F401-6B30-4C91-B790-07BD02E64C56}")]] asset_t
         {
-            lustruct("Asset::asset_t", "{69A0F401-6B30-4C91-B790-07BD02E64C56}");
             opaque_t handle;
             asset_t() :
                 handle(nullptr) {}

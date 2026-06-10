@@ -15,6 +15,7 @@
 #include <Luna/RHI/Texture.hpp>
 #include <Luna/RHI/CommandBuffer.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
+#include "BlitContext.generated.hpp"
 
 namespace Luna
 {
@@ -23,10 +24,8 @@ namespace Luna
         //! @addtogroup RHIUtility
         //! @{
 
-        struct IBlitContext : virtual RHI::IDeviceChild
+        struct [[Luna::interface("ca143948-12d5-4205-8d1f-a93396e9c6c6")]] IBlitContext : virtual RHI::IDeviceChild
         {
-            luiid("ca143948-12d5-4205-8d1f-a93396e9c6c6");
-
             virtual void reset() = 0;
 
             //! Blits the source texture to the destination texture.

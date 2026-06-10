@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/7/13
 */
-#include "Resource.h"
+#include "MetalResource.h"
 #include <Luna/Runtime/Profiler.hpp>
 namespace Luna
 {

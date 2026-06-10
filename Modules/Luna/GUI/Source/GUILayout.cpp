@@ -28,7 +28,7 @@ namespace Luna
 
         static bool is_menu_bar_node(const Node& node)
         {
-            return node.type_guid() == MenuBarNode::__guid;
+            return node.type_guid() == Meta::StructMetaData<MenuBarNode>::__guid;
         }
 
         static u32 grid_row_count(u32 child_count, u32 columns)

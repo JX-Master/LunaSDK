@@ -246,9 +246,6 @@ namespace Luna
     {
         lutry
         {
-            register_boxed_type<DeferredLightingPassGlobalData>();
-            register_boxed_type<DeferredLightingPass>();
-            impl_interface_for_type<DeferredLightingPass, RG::IRenderPass>();
             RG::RenderPassTypeDesc desc;
             desc.name = "DeferredLighting";
             desc.desc = "Illuminate the scene.";

@@ -12,6 +12,7 @@
 #include "Window.hpp"
 #include <Luna/Runtime/Module.hpp>
 #include "../Window.hpp"
+#include "Window.meta.generated.hpp"
 namespace Luna
 {
     namespace Window
@@ -31,7 +32,7 @@ namespace Luna
                     memcpy(g_name, g_startup_params.name, min<usize>(len, 260));
                 }
                 g_version = g_startup_params.version;
-                register_events();
+                Meta::register_Window_types();
                 return platform_init();
             }
             virtual void on_close() override

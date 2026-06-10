@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Resource.hpp"
+#include "Buffer.generated.hpp"
 
 namespace Luna
 {
@@ -61,10 +62,8 @@ namespace Luna
         //! @interface IBuffer
         //! Represents one buffer resource that can be used to contain 
         //! arbitrary binary data.
-        struct IBuffer : virtual IResource
+        struct [[Luna::interface("{548E82ED-947F-4F4C-95A0-DC0607C96C54}")]] IBuffer : virtual IResource
         {
-            luiid("{548E82ED-947F-4F4C-95A0-DC0607C96C54}");
-
             //! Gets the descriptor of this buffer object.
             virtual BufferDesc get_desc() = 0;
 

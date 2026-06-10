@@ -1,0 +1,52 @@
+/*!
+* This file is a portion of LunaSDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+* 
+* @file QueryHeap.h
+* @author JXMaster
+* @date 2023/8/1
+*/
+#pragma once
+#include "MetalDevice.h"
+#include "MetalQueryHeap.generated.hpp"
+namespace Luna
+{
+    namespace RHI
+    {
+        struct [[luna::struct("{5e568a4a-b522-441b-b421-efe46777d725}")]] BufferQueryHeap : IQueryHeap
+        {
+            luiimpl();
+
+            Ref<Device> m_device;
+            id<MTLBuffer> m_buffer;
+            QueryHeapDesc m_desc;
+
+            RV init(const QueryHeapDesc& desc);
+
+            virtual IDevice* get_device() override { return m_device; }
+            virtual void set_name(const c8* name) override;
+            virtual QueryHeapDesc get_desc() override { return m_desc; }
+            virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override { return BasicError::not_supported(); }
+            virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override;
+            virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) override { return BasicError::not_supported(); }
+        };
+        struct [[luna::struct("{2660efc3-0198-45e6-b2c0-1f6539f82ccd}")]] CounterSampleQueryHeap : IQueryHeap
+        {
+            luiimpl();
+
+            Ref<Device> m_device;
+            id<MTLCounterSampleBuffer> m_buffer;
+            QueryHeapDesc m_desc;
+
+            RV init(const QueryHeapDesc& desc);
+
+            virtual IDevice* get_device() override { return m_device; }
+            virtual void set_name(const c8* name) override  { }
+            virtual QueryHeapDesc get_desc() override { return m_desc; }
+            virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override;
+            virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override { return BasicError::not_supported(); }
+            virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) override;
+        };
+    }
+}

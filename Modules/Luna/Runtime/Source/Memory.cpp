@@ -13,7 +13,7 @@
 
 #include "../Memory.hpp"
 #include "../Atomic.hpp"
-#include "Memory.hpp"
+#include "MemoryImpl.hpp"
 #include "Platform/Memory.hpp"
 #include "../Profiler.hpp"
 

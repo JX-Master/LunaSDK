@@ -10,6 +10,7 @@
 #pragma once
 #include <Luna/Runtime/Stream.hpp>
 #include <Luna/Runtime/Ref.hpp>
+#include "Network.generated.hpp"
 
 #ifndef LUNA_NETWORK_API
 #define LUNA_NETWORK_API
@@ -107,10 +108,8 @@ namespace Luna
         //! Represents one socket, which is a network communication endpoint.
         //! @details Each socket is associated with a socket address, which consists of an IP address and a port number. 
         //! Sockets allow for real-time, bi-directional communication between a client and a server, and are used in various protocols like TCP/IP and UDP.
-        struct ISocket : virtual IStream
+        struct [[Luna::interface("{36233BD3-54A0-4E67-B01E-C79E8115F548}")]] ISocket : virtual IStream
         {
-            luiid("{36233BD3-54A0-4E67-B01E-C79E8115F548}");
-
             //! Gets the native handle of this socket.
             //! @details On Windows platforms, the returned handle can be reinterpreted to `SOCKET` type.
             //! On POSIX platforms, the returned handle can be reinterpreted to `int`, which is the file

@@ -18,7 +18,7 @@ namespace Luna
 
         Guid ColorPickerNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<ColorPickerNode>::__guid;
         }
 
         Ref<Node> ColorPickerNode::clone() const

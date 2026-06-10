@@ -9,6 +9,7 @@
 */
 #pragma once
 #include <Luna/Runtime/Interface.hpp>
+#include "DeviceChild.generated.hpp"
 
 namespace Luna
 {
@@ -24,10 +25,8 @@ namespace Luna
         //! device context.
         //! @details Every device child object holds one strong reference to the devices that creates
         //! it, so the device object will not be destroyed until all device child objects are destroyed.
-        struct IDeviceChild : virtual Interface
+        struct [[Luna::interface("{BE9F147B-9C53-4103-9E8D-1F5CEC6459BA}")]] IDeviceChild : virtual Interface
         {
-            luiid("{BE9F147B-9C53-4103-9E8D-1F5CEC6459BA}");
-
             //! Gets the device that creates this object.
             //! @return Returns the device that creates this object.
             virtual IDevice* get_device() = 0;

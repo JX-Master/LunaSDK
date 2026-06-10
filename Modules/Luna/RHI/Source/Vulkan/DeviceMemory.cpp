@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/4/20
 */
-#include "DeviceMemory.hpp"
+#include "VulkanDeviceMemory.hpp"
 #include <Luna/Runtime/Profiler.hpp>
 
 namespace Luna

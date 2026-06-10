@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_VG_API LUNA_EXPORT
-#include "FontAtlas.hpp"
+#include "FontAtlasImpl.hpp"
 #include "../Shapes.hpp"
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/RHI/RHI.hpp>

@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_ECS_API LUNA_EXPORT
-#include "World.hpp"
+#include "WorldImpl.hpp"
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/Runtime/Log.hpp>
 namespace Luna

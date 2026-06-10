@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_UTILITY_API LUNA_EXPORT
-#include "ResourceWriteContext.hpp"
+#include "ResourceWriteContextImpl.hpp"
 #include <Luna/RHI/Device.hpp>
 
 namespace Luna

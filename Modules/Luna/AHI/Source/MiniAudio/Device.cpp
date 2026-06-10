@@ -9,8 +9,8 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_AHI_API LUNA_EXPORT
-#include "Adapter.hpp"
-#include "Device.hpp"
+#include "AdapterImpl.hpp"
+#include "DeviceImpl.hpp"
 #include <Luna/Runtime/Array.hpp>
 #include <Luna/Runtime/Math/Math.hpp>
 #include <Luna/Runtime/StackAllocator.hpp>

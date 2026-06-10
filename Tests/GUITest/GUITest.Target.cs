@@ -11,6 +11,8 @@ public sealed class GUITestTargetRules : TargetRules
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
         Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
+        Headers("Source/*.hpp");
+        MetaHeaders("Source/DemoCustomNode.hpp");
         Sources("Source/**.cpp");
         DependsOn("Runtime", "Window", "RHI", "Font", "VG", "GUI", "GUIWindow");
     }

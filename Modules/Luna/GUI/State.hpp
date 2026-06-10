@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Context.hpp"
+#include "State.generated.hpp"
 
 namespace Luna
 {
@@ -19,25 +20,22 @@ namespace Luna
 
         //! State object that stores public item query values for one item.
         //! @remark This is the state read by @ref get_item_state and the `is_item_*` helpers.
-        struct ItemQueryState
+        struct [[Luna::struct("{0F5DB6E4-C49A-4BDE-BDFF-E6A432146AFD}")]] ItemQueryState
         {
-            lustruct("GUI::ItemQueryState", "{0F5DB6E4-C49A-4BDE-BDFF-E6A432146AFD}");
             //! Query values indexed by public state key name.
             HashMap<Name, Any> states;
         };
 
         //! General-purpose state bag available for custom widgets and views.
-        struct CustomState
+        struct [[Luna::struct("{44E02645-6144-4A84-8736-204880C0E620}")]] CustomState
         {
-            lustruct("GUI::CustomState", "{44E02645-6144-4A84-8736-204880C0E620}");
             //! Custom values indexed by user-defined names.
             HashMap<Name, Any> states;
         };
 
         //! Disclosure state used by collapsing headers and tree nodes.
-        struct DisclosureState
+        struct [[Luna::struct("{62263BD7-3405-493F-8DDB-B3D089412ACA}")]] DisclosureState
         {
-            lustruct("GUI::DisclosureState", "{62263BD7-3405-493F-8DDB-B3D089412ACA}");
             //! Whether the disclosure content is currently open.
             bool open = true;
             //! Whether the initial open state has been applied.
@@ -45,9 +43,8 @@ namespace Luna
         };
 
         //! Visual animation state used by switch widgets.
-        struct SwitchAnimationState
+        struct [[Luna::struct("{C8CC1A97-56C5-49B4-962D-70C1A1A7CC9F}")]] SwitchAnimationState
         {
-            lustruct("GUI::SwitchAnimationState", "{C8CC1A97-56C5-49B4-962D-70C1A1A7CC9F}");
             //! Current switch knob animation value.
             f32 animation = 0.0f;
             //! Whether @ref animation has been initialized from current widget value.
@@ -55,9 +52,8 @@ namespace Luna
         };
 
         //! Visual animation state used by buttons.
-        struct ButtonAnimationState
+        struct [[Luna::struct("{B00FEB21-FE08-459E-87BC-FD15468BB6B6}")]] ButtonAnimationState
         {
-            lustruct("GUI::ButtonAnimationState", "{B00FEB21-FE08-459E-87BC-FD15468BB6B6}");
             //! Current animated button fill color.
             Float4U color = Float4U(0.18f, 0.28f, 0.45f, 1.0f);
             //! Whether @ref color has been initialized.
@@ -65,9 +61,8 @@ namespace Luna
         };
 
         //! Visual animation state used by button groups.
-        struct ButtonGroupAnimationState
+        struct [[Luna::struct("{2FB79430-D36D-42E1-BF3D-2FDD21D351AF}")]] ButtonGroupAnimationState
         {
-            lustruct("GUI::ButtonGroupAnimationState", "{2FB79430-D36D-42E1-BF3D-2FDD21D351AF}");
             //! Selection indicator animation value for single-selection groups.
             f32 selection_animation = 0.0f;
             //! Whether @ref selection_animation has been initialized.
@@ -77,9 +72,8 @@ namespace Luna
         };
 
         //! Visual animation state used by tab bars.
-        struct TabBarAnimationState
+        struct [[Luna::struct("{68A87F19-D1C3-4496-AE46-87A2DFB61E3D}")]] TabBarAnimationState
         {
-            lustruct("GUI::TabBarAnimationState", "{68A87F19-D1C3-4496-AE46-87A2DFB61E3D}");
             //! Current animated selected tab header rectangle.
             RectF selection_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             //! Whether @ref selection_rect has been initialized.

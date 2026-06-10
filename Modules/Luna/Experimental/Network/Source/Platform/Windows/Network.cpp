@@ -17,37 +17,13 @@
 #pragma comment(lib, "ws2_32.lib")
 
 #include <Luna/Runtime/StackAllocator.hpp>
+#include "Socket.hpp"
+#include "Network.meta.generated.hpp"
 
 namespace Luna
 {
     namespace Network
     {
-        struct Socket : ISocket
-        {
-            lustruct("Network::Socket", "{42EF7CB8-B292-4837-88A4-D2E8AC156BA2}");
-            luiimpl();
-
-            AddressFamily m_af;
-            SOCKET m_socket;
-
-            Socket() :
-                m_socket(INVALID_SOCKET) {}
-            ~Socket()
-            {
-                if (m_socket != INVALID_SOCKET)
-                {
-                    closesocket(m_socket);
-                    m_socket = INVALID_SOCKET;
-                }
-            }
-            virtual opaque_t get_native_handle() override { return (opaque_t)m_socket; }
-            virtual RV read(void* buffer, usize size, usize* read_bytes) override;
-            virtual RV write(const void* buffer, usize size, usize* write_bytes) override;
-            virtual RV bind(const SocketAddress& address) override;
-            virtual RV listen(i32 len) override;
-            virtual RV connect(const SocketAddress& address) override;
-            virtual R<Ref<ISocket>> accept(SocketAddress& address) override;
-        };
         inline ErrCode translate_error(int err)
         {
             switch (err)
@@ -188,8 +164,7 @@ namespace Luna
         }
         RV platform_init()
         {
-            register_boxed_type<Socket>();
-            impl_interface_for_type<Socket, ISocket>();
+            Meta::register_Network_types();
             WORD sock_version = MAKEWORD(2, 2);
             WSADATA data;
             auto r = WSAStartup(sock_version, &data);

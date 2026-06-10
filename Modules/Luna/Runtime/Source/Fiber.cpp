@@ -9,8 +9,8 @@
 */
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "Thread.hpp"
-#include "Fiber.hpp"
+#include "ThreadImpl.hpp"
+#include "FiberImpl.hpp"
 
 namespace Luna
 {

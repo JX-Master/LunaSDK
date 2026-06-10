@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "Name.hpp"
+#include "NameImpl.hpp"
 #include "../Name.hpp"
 #include "../SelfIndexedUnorderedMultiMap.hpp"
 #include "../SpinLock.hpp"

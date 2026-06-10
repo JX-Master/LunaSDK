@@ -10,23 +10,19 @@
 #pragma once
 #include <Luna/RG/RenderPass.hpp>
 #include "../Scene.hpp"
-
+#include "BufferVisualizationPass.generated.hpp"
 namespace Luna
 {
-    struct BufferVisualizationPassGlobalData
+    struct [[luna::struct("{1f810587-a8fe-48a6-9c25-a803b9c9801e}")]] BufferVisualizationPassGlobalData
     {
-        lustruct("BufferVisualizationPassGlobalData", "{1f810587-a8fe-48a6-9c25-a803b9c9801e}");
-
         Ref<RHI::IPipelineState> m_buffer_visualization_pass_pso;
         Ref<RHI::IDescriptorSetLayout> m_buffer_visualization_pass_dlayout;
         Ref<RHI::IPipelineLayout> m_buffer_visualization_pass_playout;
 
         RV init(RHI::IDevice* device);
     };
-
-    struct BufferVisualizationPass : RG::IRenderPass
+    struct [[luna::struct("{7bbc14b1-f5fb-4966-aa3f-36c2dc7e058d}")]] BufferVisualizationPass : RG::IRenderPass
     {
-        lustruct("BufferVisualizationPass", "{7bbc14b1-f5fb-4966-aa3f-36c2dc7e058d}");
         luiimpl();
 
         u32 vis_type;

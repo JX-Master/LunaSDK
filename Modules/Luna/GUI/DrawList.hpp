@@ -2,7 +2,7 @@
 * This file is a portion of Luna SDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
-* 
+*
 * @file DrawList.hpp
 * @author JXMaster
 * @date 2024/7/13
@@ -11,6 +11,7 @@
 #include "Base.hpp"
 #include <Luna/RHI/DescriptorSet.hpp>
 #include <Luna/VG/ShapeDrawList.hpp>
+#include "DrawList.generated.hpp"
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -43,7 +44,7 @@ namespace Luna
             //! @return Returns `true` if both states are equal.
             bool operator==(const DrawListState& rhs) const
             {
-                return shape_buffer == rhs.shape_buffer && texture == rhs.texture && 
+                return shape_buffer == rhs.shape_buffer && texture == rhs.texture &&
                     sampler == rhs.sampler && clip_rect == rhs.clip_rect;
             }
             //! Compares two draw list states.
@@ -57,10 +58,8 @@ namespace Luna
 
         //! @interface IDrawList
         //! Used to batch GUI draw calls based on layers.
-        struct IDrawList : virtual Interface
+        struct [[Luna::interface("eea861f3-ea7b-4a44-9d20-a94713eb7113")]] IDrawList : virtual Interface
         {
-            luiid("eea861f3-ea7b-4a44-9d20-a94713eb7113");
-
             //! Begins recording GUI drawing into a VG shape draw list.
             //! @param[in] draw_list The target VG draw list.
             virtual void begin(VG::IShapeDrawList* draw_list) = 0;
@@ -98,7 +97,7 @@ namespace Luna
             //! @param[in] color The shape color multiplier.
             //! @param[in] min_texcoord The minimum texture coordinate.
             //! @param[in] max_texcoord The maximum texture coordinate.
-            virtual void add_shape(u32 begin_command, u32 num_commands, 
+            virtual void add_shape(u32 begin_command, u32 num_commands,
                 const Float2U& min_position, const Float2U& max_position,
                 const Float2U& min_shapecoord, const Float2U& max_shapecoord,
                 const Float4U& color,

@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
-#include "Adapter.h"
+#include "MetalAdapter.h"
 
 #import <Foundation/Foundation.h>
 

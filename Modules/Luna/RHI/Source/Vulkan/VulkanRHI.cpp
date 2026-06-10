@@ -10,21 +10,22 @@
 #include "Common.hpp"
 #include <Luna/Runtime/HashSet.hpp>
 #include "../RHI.hpp"
-#include "Device.hpp"
+#include "VulkanDevice.hpp"
 #include <Luna/Window/Window.hpp>
 #include "Instance.hpp"
-#include "Adapter.hpp"
-#include "CommandBuffer.hpp"
-#include "DescriptorSet.hpp"
-#include "DescriptorSetLayout.hpp"
-#include "Device.hpp"
-#include "Fence.hpp"
-#include "PipelineState.hpp"
-#include "QueryHeap.hpp"
-#include "Resource.hpp"
-#include "Sampler.hpp"
-#include "PipelineLayout.hpp"
-#include "SwapChain.hpp"
+#include "VulkanAdapter.hpp"
+#include "VulkanCommandBuffer.hpp"
+#include "VulkanDescriptorSet.hpp"
+#include "VulkanDescriptorSetLayout.hpp"
+#include "VulkanDevice.hpp"
+#include "VulkanFence.hpp"
+#include "VulkanPipelineState.hpp"
+#include "VulkanQueryHeap.hpp"
+#include "VulkanResource.hpp"
+#include "VulkanSampler.hpp"
+#include "VulkanPipelineLayout.hpp"
+#include "VulkanSwapChain.hpp"
+#include "RHI.meta.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -35,34 +36,7 @@ namespace Luna
             Ref<Window::IWindow> dummy_window;
             lutry
             {
-                register_boxed_type<Adapter>();
-                impl_interface_for_type<Adapter, IAdapter>();
-                register_boxed_type<CommandBuffer>();
-                impl_interface_for_type<CommandBuffer, ICommandBuffer, IDeviceChild, IWaitable>();
-                register_boxed_type<DescriptorSet>();
-                impl_interface_for_type<DescriptorSet, IDescriptorSet, IDeviceChild>();
-                register_boxed_type<DescriptorSetLayout>();
-                impl_interface_for_type<DescriptorSetLayout, IDescriptorSetLayout, IDeviceChild>();
-                register_boxed_type<Device>();
-                impl_interface_for_type<Device, IDevice>();
-                register_boxed_type<DeviceMemory>();
-                impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
-                register_boxed_type<Fence>();
-                impl_interface_for_type<Fence, IFence, IDeviceChild>();
-                register_boxed_type<ImageView>();
-                register_boxed_type<PipelineState>();
-                impl_interface_for_type<PipelineState, IPipelineState, IDeviceChild>();
-                register_boxed_type<QueryHeap>();
-                impl_interface_for_type<QueryHeap, IQueryHeap, IDeviceChild>();
-                register_boxed_type<BufferResource>();
-                impl_interface_for_type<BufferResource, IBuffer, IResource, IDeviceChild>();
-                register_boxed_type<ImageResource>();
-                impl_interface_for_type<ImageResource, ITexture, IResource, IDeviceChild>();
-                register_boxed_type<Sampler>();
-                register_boxed_type<PipelineLayout>();
-                impl_interface_for_type<PipelineLayout, IPipelineLayout, IDeviceChild>();
-                register_boxed_type<SwapChain>();
-                impl_interface_for_type<SwapChain, ISwapChain, IDeviceChild>();
+                Meta::register_RHI_types();
 
                 luexp(create_vk_instance());
                 luexp(init_physical_devices());

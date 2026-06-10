@@ -9,7 +9,8 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_MAKE_SYSTEM_API LUNA_EXPORT
-#include "MakeSystem.hpp"
+#include "MakeSystemImpl.hpp"
+#include "MakeSystem.meta.generated.hpp"
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Hash.hpp>
@@ -703,8 +704,7 @@ namespace Luna
         }
         virtual RV on_init() override
         {
-            register_boxed_type<MakeSystem::MakeSystem>();
-            impl_interface_for_type<MakeSystem::MakeSystem, MakeSystem::IMakeSystem>();
+            Meta::register_MakeSystem_types();
             return ok;
         }
     };

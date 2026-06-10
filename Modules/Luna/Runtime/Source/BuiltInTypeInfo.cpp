@@ -1372,10 +1372,7 @@ namespace Luna
         }
         // Float2
         {
-            g_float2_type = register_struct_type<Float2>({
-                luproperty(Float2, f32, x),
-                luproperty(Float2, f32, y)
-                });
+            g_float2_type = register_struct_type<Float2>();
             SerializableTypeDesc desc;
             desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
             {
@@ -1396,11 +1393,7 @@ namespace Luna
         }
         // Float3
         {
-            g_float3_type = register_struct_type<Float3>({
-                luproperty(Float3, f32, x),
-                luproperty(Float3, f32, y),
-                luproperty(Float3, f32, z)
-                });
+            g_float3_type = register_struct_type<Float3>();
             SerializableTypeDesc desc;
             desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
             {
@@ -1423,12 +1416,7 @@ namespace Luna
         }
         // Float4
         {
-            g_float4_type = register_struct_type<Float4>({
-                luproperty(Float4, f32, x),
-                luproperty(Float4, f32, y),
-                luproperty(Float4, f32, z),
-                luproperty(Float4, f32, w)
-                });
+            g_float4_type = register_struct_type<Float4>();
             SerializableTypeDesc desc;
             desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
             {
@@ -1453,12 +1441,7 @@ namespace Luna
         }
         // Quaternion
         {
-            g_quaternion_type = register_struct_type<Quaternion>({
-                luproperty(Quaternion, f32, x),
-                luproperty(Quaternion, f32, y),
-                luproperty(Quaternion, f32, z),
-                luproperty(Quaternion, f32, w)
-            });
+            g_quaternion_type = register_struct_type<Quaternion>();
             SerializableTypeDesc desc;
             desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
             {

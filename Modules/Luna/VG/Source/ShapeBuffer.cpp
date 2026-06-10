@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_VG_API LUNA_EXPORT
-#include "ShapeBuffer.hpp"
+#include "ShapeBufferImpl.hpp"
 #include <Luna/RHI/Device.hpp>
 
 namespace Luna

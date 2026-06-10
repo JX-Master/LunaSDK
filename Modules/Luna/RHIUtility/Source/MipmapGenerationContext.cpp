@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_UTILITY_API LUNA_EXPORT
-#include "MipmapGenerationContext.hpp"
+#include "MipmapGenerationContextImpl.hpp"
 #include <Luna/Runtime/SpinLock.hpp>
 
 #include <MipmapGeneration1DCS.hpp>

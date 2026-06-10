@@ -15,15 +15,12 @@
 #include "Operation.hpp"
 #include <Luna/Runtime/RingDeque.hpp>
 #include <Luna/JobSystem/JobScheduler.hpp>
-
+#include "MainEditor.generated.hpp"
 namespace Luna
 {
     constexpr c8 APP_NAME[] = "Luna Studio";
-
-    struct MainEditor
+    struct [[luna::struct("{CF004929-E981-4E1D-A4AE-96EEC79AD1EB}")]] MainEditor
     {
-        lustruct("MainEditor", "{CF004929-E981-4E1D-A4AE-96EEC79AD1EB}");
-
         Path m_project_path;
 
         Ref<Window::IWindow> m_window;

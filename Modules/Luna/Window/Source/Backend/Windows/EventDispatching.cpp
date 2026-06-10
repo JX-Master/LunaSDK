@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
-#include "Window.hpp"
+#include "WindowsWindowImpl.hpp"
 #include <windowsx.h>
 #include <shellapi.h>
 #include <Luna/Runtime/Unicode.hpp>

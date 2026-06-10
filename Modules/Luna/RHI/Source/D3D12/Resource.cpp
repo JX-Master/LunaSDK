@@ -8,9 +8,9 @@
 * @date 2019/8/10
 * @brief D3D12 implementation of Resource Object
 */
-#include "Resource.hpp"
+#include "D3D12Resource.hpp"
 #include "../../RHI.hpp"
-#include "DescriptorSet.hpp"
+#include "D3D12DescriptorSet.hpp"
 #include <Luna/Runtime/Profiler.hpp>
 namespace Luna
 {

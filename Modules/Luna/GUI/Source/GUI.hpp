@@ -25,6 +25,7 @@
 #include <Luna/VG/TextArranger.hpp>
 #include <Luna/VG/Shapes.hpp>
 #include <Luna/Font/Font.hpp>
+#include "GUI.generated.hpp"
 
 namespace Luna
 {
@@ -143,13 +144,13 @@ namespace Luna
         template <typename T>
         inline T* cast_node(Node& node)
         {
-            return node.type_guid() == T::__guid ? (T*)&node : nullptr;
+            return node.type_guid() == Meta::StructMetaData<T>::__guid ? (T*)&node : nullptr;
         }
 
         template <typename T>
         inline const T* cast_node(const Node& node)
         {
-            return node.type_guid() == T::__guid ? (const T*)&node : nullptr;
+            return node.type_guid() == Meta::StructMetaData<T>::__guid ? (const T*)&node : nullptr;
         }
 
         inline WindowNode* window_node(Node& node)
@@ -1151,9 +1152,8 @@ namespace Luna
             u64 last_set_generation = 0;
         };
 
-        struct InteractionState
+        struct [[Luna::struct("{531E33F1-5236-4E30-8FC6-71D06B8EE0B6}")]] InteractionState
         {
-            lustruct("GUI::InteractionState", "{531E33F1-5236-4E30-8FC6-71D06B8EE0B6}");
             bool active = false;
             bool focused = false;
             bool pointer_down = false;
@@ -1161,47 +1161,41 @@ namespace Luna
             f64 last_right_click_time = -1000.0;
         };
 
-        struct ScrollState
+        struct [[Luna::struct("{1A6F29FC-6D16-4A44-954E-463563E26428}")]] ScrollState
         {
-            lustruct("GUI::ScrollState", "{1A6F29FC-6D16-4A44-954E-463563E26428}");
             f32 scroll_x = 0.0f;
             f32 scroll_y = 0.0f;
             f32 scrollbar_opacity = 0.35f;
         };
 
-        struct NumericInteractionState
+        struct [[Luna::struct("{14494B92-C943-49E6-85EA-7CC0AAE026D0}")]] NumericInteractionState
         {
-            lustruct("GUI::NumericInteractionState", "{14494B92-C943-49E6-85EA-7CC0AAE026D0}");
             u32 active_float_component = U32_MAX;
             Float2U active_numeric_start_pos = Float2U(0.0f);
             bool active_numeric_defer_until_drag = false;
         };
 
-        struct ColorPickerInteractionState
+        struct [[Luna::struct("{E8F4622D-7EBF-46FE-9689-FA7AE1C3CC37}")]] ColorPickerInteractionState
         {
-            lustruct("GUI::ColorPickerInteractionState", "{E8F4622D-7EBF-46FE-9689-FA7AE1C3CC37}");
             u32 active_color_part = 0;
         };
 
-        struct TableResizeInteractionState
+        struct [[Luna::struct("{1ADB536C-7F49-48A7-9363-0616CACED450}")]] TableResizeInteractionState
         {
-            lustruct("GUI::TableResizeInteractionState", "{1ADB536C-7F49-48A7-9363-0616CACED450}");
             id_t active_table_resize_id = 0;
             bool active_table_resize_column = false;
             u32 active_table_resize_index = U32_MAX;
         };
 
-        struct ScrollbarInteractionState
+        struct [[Luna::struct("{52DC17A8-55C6-4873-88A9-F9132874C22D}")]] ScrollbarInteractionState
         {
-            lustruct("GUI::ScrollbarInteractionState", "{52DC17A8-55C6-4873-88A9-F9132874C22D}");
             id_t active_scrollbar_id = 0;
             bool active_scrollbar_vertical = false;
             f32 active_scrollbar_grab_offset = 0.0f;
         };
 
-        struct DockInteractionState
+        struct [[Luna::struct("{778DB35B-0546-4610-916F-842DCD36818B}")]] DockInteractionState
         {
-            lustruct("GUI::DockInteractionState", "{778DB35B-0546-4610-916F-842DCD36818B}");
             id_t active_dock_space_id = 0;
             id_t active_dock_panel_id = 0;
             bool active_dock_panel_resize = false;
@@ -1222,9 +1216,8 @@ namespace Luna
             Float2U active_dock_split_start_pos = Float2U(0.0f);
         };
 
-        struct TabInteractionState
+        struct [[Luna::struct("{DF073278-FA77-4C3B-B33C-36B74AF9EBEE}")]] TabInteractionState
         {
-            lustruct("GUI::TabInteractionState", "{DF073278-FA77-4C3B-B33C-36B74AF9EBEE}");
             id_t active_tab_bar_id = 0;
             id_t active_tab_item_id = 0;
             bool active_tab_close = false;
@@ -1235,16 +1228,14 @@ namespace Luna
             bool active_tab_scroll_left = false;
         };
 
-        struct TooltipInteractionState
+        struct [[Luna::struct("{6FA7C420-CA7E-487C-BFB3-247792931FD7}")]] TooltipInteractionState
         {
-            lustruct("GUI::TooltipInteractionState", "{6FA7C420-CA7E-487C-BFB3-247792931FD7}");
             id_t tooltip_hovered_id = 0;
             f64 tooltip_hover_start = 0.0;
         };
 
-        struct BuildHintState
+        struct [[Luna::struct("{B11BEC18-AD1E-4A26-8462-F13D9D65AB76}")]] BuildHintState
         {
-            lustruct("GUI::BuildHintState", "{B11BEC18-AD1E-4A26-8462-F13D9D65AB76}");
             bool has_next_item_layout = false;
             LayoutStyle next_item_layout;
             bool has_next_item_enabled = false;
@@ -1366,18 +1357,16 @@ namespace Luna
             }
         };
 
-        struct DockSpaceState
+        struct [[Luna::struct("{EF185DED-76E2-4448-A137-004051FFFD5B}")]] DockSpaceState
         {
-            lustruct("GUI::DockSpaceState", "{EF185DED-76E2-4448-A137-004051FFFD5B}");
             u32 dock_next_z_order = 1;
             HashMap<id_t, DockPanelPersistentState, IdHash> dock_panels;
             Vector<DockTreeNode> dock_nodes;
             u32 dock_root_node = U32_MAX;
         };
 
-        struct InputEditState
+        struct [[Luna::struct("{DC801B89-9DEE-4456-8036-9F8C9A7C8A8A}")]] InputEditState
         {
-            lustruct("GUI::InputEditState", "{DC801B89-9DEE-4456-8036-9F8C9A7C8A8A}");
             usize text_cursor = USIZE_MAX;
             usize text_select_anchor = USIZE_MAX;
             bool text_selecting = false;
@@ -1387,24 +1376,21 @@ namespace Luna
             bool numeric_editing = false;
         };
 
-        struct TableLayoutState
+        struct [[Luna::struct("{79096C88-F7D0-4EF3-9521-7800D6F70F16}")]] TableLayoutState
         {
-            lustruct("GUI::TableLayoutState", "{79096C88-F7D0-4EF3-9521-7800D6F70F16}");
             Vector<f32> table_column_sizes;
             Vector<f32> table_row_sizes;
         };
 
-        struct TabBarState
+        struct [[Luna::struct("{AEA771D2-1441-4CE9-9876-38F1787F2C49}")]] TabBarState
         {
-            lustruct("GUI::TabBarState", "{AEA771D2-1441-4CE9-9876-38F1787F2C49}");
             id_t tab_selected_id = 0;
             f32 tab_scroll_x = 0.0f;
             Vector<id_t> tab_order;
         };
 
-        struct ColorPickerState
+        struct [[Luna::struct("{A9483A32-872C-47B0-9AAF-26468F6D411F}")]] ColorPickerState
         {
-            lustruct("GUI::ColorPickerState", "{A9483A32-872C-47B0-9AAF-26468F6D411F}");
             Vector<i32> color_picker_axis;
             Vector<i32> color_picker_rgb;
             Vector<i32> color_picker_hsv;
@@ -1418,9 +1404,8 @@ namespace Luna
             owner_down
         };
 
-        struct PopupAnchorState
+        struct [[Luna::struct("{9BEED835-1593-4FAF-B0F7-FC753D462883}")]] PopupAnchorState
         {
-            lustruct("GUI::PopupAnchorState", "{9BEED835-1593-4FAF-B0F7-FC753D462883}");
             Float2U popup_anchor_position = Float2U(0.0f, 0.0f);
             PopupAnchorPlacement popup_anchor_placement = PopupAnchorPlacement::pointer;
             bool popup_anchor_valid = false;
@@ -1468,9 +1453,8 @@ namespace Luna
             bool visible_tab_chosen = false;
         };
 
-        struct TabBuildState
+        struct [[Luna::struct("{9BC38163-D6FD-436F-8087-637E952960A4}")]] TabBuildState
         {
-            lustruct("GUI::TabBuildState", "{9BC38163-D6FD-436F-8087-637E952960A4}");
             Vector<TabBuildScope> stack;
         };
 
@@ -1738,9 +1722,8 @@ namespace Luna
             return RectF(track.offset_x + travel * t, track.offset_y, thumb_width, track.height);
         }
 
-        struct Context : IContext
+        struct [[Luna::struct("{BF721C36-C7C2-4B49-89E6-22F0B3BE56F5}")]] Context : IContext
         {
-            lustruct("GUI::Context", "{BF721C36-C7C2-4B49-89E6-22F0B3BE56F5}");
             luiimpl();
             lutsassert_lock();
 

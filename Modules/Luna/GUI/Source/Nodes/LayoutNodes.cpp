@@ -13,7 +13,7 @@ namespace Luna
     {
         Guid RootNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<RootNode>::__guid;
         }
 
         Ref<Node> RootNode::clone() const
@@ -33,7 +33,7 @@ namespace Luna
 
         Guid HLayoutNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<HLayoutNode>::__guid;
         }
 
         Ref<Node> HLayoutNode::clone() const
@@ -53,7 +53,7 @@ namespace Luna
 
         Guid VLayoutNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<VLayoutNode>::__guid;
         }
 
         Ref<Node> VLayoutNode::clone() const
@@ -73,7 +73,7 @@ namespace Luna
 
         Guid ScrollViewNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<ScrollViewNode>::__guid;
         }
 
         Ref<Node> ScrollViewNode::clone() const
@@ -119,7 +119,7 @@ namespace Luna
 
         Guid WindowNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<WindowNode>::__guid;
         }
 
         Ref<Node> WindowNode::clone() const
@@ -168,7 +168,7 @@ namespace Luna
 
         Guid PopupNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<PopupNode>::__guid;
         }
 
         Ref<Node> PopupNode::clone() const
@@ -198,7 +198,7 @@ namespace Luna
 
         Guid TooltipNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<TooltipNode>::__guid;
         }
 
         Ref<Node> TooltipNode::clone() const
@@ -224,7 +224,7 @@ namespace Luna
 
         Guid MenuBarNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<MenuBarNode>::__guid;
         }
 
         Ref<Node> MenuBarNode::clone() const
@@ -262,7 +262,7 @@ namespace Luna
 
         Guid TableLayoutNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<TableLayoutNode>::__guid;
         }
 
         Ref<Node> TableLayoutNode::clone() const
@@ -292,7 +292,7 @@ namespace Luna
 
         Guid GridLayoutNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<GridLayoutNode>::__guid;
         }
 
         Ref<Node> GridLayoutNode::clone() const
@@ -317,7 +317,7 @@ namespace Luna
 
         Guid CanvasLayoutNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<CanvasLayoutNode>::__guid;
         }
 
         Ref<Node> CanvasLayoutNode::clone() const
@@ -349,7 +349,7 @@ namespace Luna
 
         Guid DockSpaceNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<DockSpaceNode>::__guid;
         }
 
         Ref<Node> DockSpaceNode::clone() const
@@ -381,7 +381,7 @@ namespace Luna
 
         Guid TabBarNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<TabBarNode>::__guid;
         }
 
         Ref<Node> TabBarNode::clone() const
@@ -417,7 +417,7 @@ namespace Luna
 
         Guid TabItemNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<TabItemNode>::__guid;
         }
 
         Ref<Node> TabItemNode::clone() const

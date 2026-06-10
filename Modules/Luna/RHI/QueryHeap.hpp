@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "DeviceChild.hpp"
+#include "QueryHeap.generated.hpp"
 
 namespace Luna
 {
@@ -62,10 +63,8 @@ namespace Luna
         //! @interface IQueryHeap
         //! Contains one array of query elements that can be used to query pipeline execution information, such
         //! as pixel occlusion, execution time and pipeline statistics.
-        struct IQueryHeap : virtual IDeviceChild
+        struct [[Luna::interface("{11c98a1e-1fd4-48c7-828b-96c56239e6ca}")]] IQueryHeap : virtual IDeviceChild
         {
-            luiid("{11c98a1e-1fd4-48c7-828b-96c56239e6ca}");
-
             //! Gets the descriptor of the query heap.
             virtual QueryHeapDesc get_desc() = 0;
 

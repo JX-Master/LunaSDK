@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RG_API LUNA_EXPORT
-#include "RenderGraph.hpp"
+#include "RenderGraphImpl.hpp"
 #include "RenderPass.hpp"
 
 namespace Luna

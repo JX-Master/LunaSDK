@@ -12,17 +12,14 @@
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/Runtime/Math/Quaternion.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
-
+#include "Transform.generated.hpp"
 namespace Luna
 {
-    struct Transform
+    struct [[luna::struct("aff5aa04-bfb0-48a0-8ae9-f9f37d3052b8")]] Transform
     {
-        lustruct("Transform", "aff5aa04-bfb0-48a0-8ae9-f9f37d3052b8");
-
-        Float3 position = Float3::zero();
-        Quaternion rotation = Quaternion::identity();
-        Float3 scale = Float3::one();
-
+        [[Luna::property]] Float3 position = Float3::zero();
+        [[Luna::property]] Quaternion rotation = Quaternion::identity();
+        [[Luna::property]] Float3 scale = Float3::one();
         Float4x4 get_this_to_parent_matrix() const
         {
             return AffineMatrix::make(position, rotation, scale);

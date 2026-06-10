@@ -14,6 +14,7 @@
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Math/Math.hpp>
 #include <Luna/Runtime/Ref.hpp>
+#include "Font.generated.hpp"
 
 #ifndef LUNA_FONT_API
 #define LUNA_FONT_API
@@ -47,10 +48,8 @@ namespace Luna
 
         //! @interface IFontFile
         //! Represents a font file that may contain one or multiple fonts.
-        struct IFontFile : virtual Interface
+        struct [[Luna::interface("{989fe385-6d98-480d-89ab-6b7dd3ec5624}")]] IFontFile : virtual Interface
         {
-            luiid("{989fe385-6d98-480d-89ab-6b7dd3ec5624}");
-
             //! Gets the data of the font file.
             //! @return Returns the data of the font file.
             virtual Span<const byte_t> get_data() = 0;

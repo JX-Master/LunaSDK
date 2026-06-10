@@ -148,9 +148,6 @@ namespace Luna
     {
         lutry
         {
-            register_boxed_type<WireframePassGlobalData>();
-            register_boxed_type<WireframePass>();
-            impl_interface_for_type<WireframePass, RG::IRenderPass>();
             RG::RenderPassTypeDesc desc;
             desc.name = "Wireframe";
             desc.desc = "Draws wireframe of the scene.";

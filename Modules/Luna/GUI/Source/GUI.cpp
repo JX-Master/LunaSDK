@@ -11,6 +11,7 @@
 #define LUNA_GUI_API LUNA_EXPORT
 #include "GUI.hpp"
 #include "GUIDrawList.hpp"
+#include "GUI.meta.generated.hpp"
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/VG/VG.hpp>
@@ -59,79 +60,7 @@ namespace Luna
             }
             virtual RV on_init() override
             {
-                register_abstract_struct_type<Node>({});
-                register_struct_type<RootNode>({}, typeof<Node>());
-                register_struct_type<HLayoutNode>({}, typeof<Node>());
-                register_struct_type<VLayoutNode>({}, typeof<Node>());
-                register_struct_type<ScrollViewNode>({}, typeof<Node>());
-                register_struct_type<WindowNode>({}, typeof<Node>());
-                register_struct_type<PopupNode>({}, typeof<Node>());
-                register_struct_type<TooltipNode>({}, typeof<Node>());
-                register_struct_type<MenuBarNode>({}, typeof<Node>());
-                register_struct_type<TableLayoutNode>({}, typeof<Node>());
-                register_struct_type<GridLayoutNode>({}, typeof<Node>());
-                register_struct_type<CanvasLayoutNode>({}, typeof<Node>());
-                register_struct_type<DockSpaceNode>({}, typeof<Node>());
-                register_struct_type<TabBarNode>({}, typeof<Node>());
-                register_struct_type<ButtonNode>({}, typeof<Node>());
-                register_struct_type<ProgressBarNode>({}, typeof<Node>());
-                register_struct_type<TextNode>({}, typeof<Node>());
-                register_struct_type<SelectableNode>({}, typeof<Node>());
-                register_struct_type<CheckboxNode>({}, typeof<Node>());
-                register_struct_type<ToggleSwitchNode>({}, typeof<Node>());
-                register_struct_type<CollapsingHeaderNode>({}, typeof<Node>());
-                register_struct_type<TreeNodeNode>({}, typeof<Node>());
-                register_struct_type<RadioButtonNode>({}, typeof<Node>());
-                register_struct_type<TabItemNode>({}, typeof<Node>());
-                register_struct_type<InputTextNode>({}, typeof<Node>());
-                register_struct_type<SliderFloatNode>({}, typeof<Node>());
-                register_struct_type<SliderIntNode>({}, typeof<Node>());
-                register_struct_type<InputFloatNode>({}, typeof<Node>());
-                register_struct_type<InputIntNode>({}, typeof<Node>());
-                register_struct_type<DragFloatNode>({}, typeof<Node>());
-                register_struct_type<DragIntNode>({}, typeof<Node>());
-                register_struct_type<ColorPickerNode>({}, typeof<Node>());
-                register_struct_type<MenuItemNode>({}, typeof<Node>());
-                register_struct_type<MenuSeparatorNode>({}, typeof<Node>());
-                register_struct_type<ButtonGroupNode>({}, typeof<Node>());
-                register_struct_type<HitBoxNode>({}, typeof<Node>());
-                register_struct_type<ImageNode>({}, typeof<Node>());
-                register_struct_type<DrawRectNode>({}, typeof<Node>());
-                register_struct_type<DrawCircleNode>({}, typeof<Node>());
-                register_struct_type<DrawLineNode>({}, typeof<Node>());
-                register_struct_type<DrawTextNode>({}, typeof<Node>());
-                register_struct_type<DrawImageNode>({}, typeof<Node>());
-                register_struct_type<ItemQueryState>({});
-                register_struct_type<CustomState>({});
-                register_struct_type<DisclosureState>({});
-                register_struct_type<InteractionState>({});
-                register_struct_type<ScrollState>({});
-                register_struct_type<NumericInteractionState>({});
-                register_struct_type<ColorPickerInteractionState>({});
-                register_struct_type<TableResizeInteractionState>({});
-                register_struct_type<ScrollbarInteractionState>({});
-                register_struct_type<DockInteractionState>({});
-                register_struct_type<TabInteractionState>({});
-                register_struct_type<TooltipInteractionState>({});
-                register_struct_type<BuildHintState>({});
-                register_struct_type<SwitchAnimationState>({});
-                register_struct_type<ButtonAnimationState>({});
-                register_struct_type<ButtonGroupAnimationState>({});
-                register_struct_type<TabBarAnimationState>({});
-                register_struct_type<DockSpaceState>({});
-                register_struct_type<InputEditState>({});
-                register_struct_type<TableLayoutState>({});
-                register_struct_type<TabBarState>({});
-                register_struct_type<TabBuildState>({});
-                register_struct_type<ColorPickerState>({});
-                register_struct_type<PopupAnchorState>({});
-#ifdef LUNA_GUI_ENABLE_DEBUG
-                register_struct_type<DebugInspectorState>({});
-#endif
-                register_boxed_type<Context>();
-                impl_interface_for_type<Context, IContext>();
-                register_boxed_type<DrawList>();
-                impl_interface_for_type<DrawList, IDrawList>();
+                Meta::register_GUI_types();
                 return ok;
             }
             virtual void on_close() override {}

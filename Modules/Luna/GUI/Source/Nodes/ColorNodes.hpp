@@ -6,15 +6,14 @@
 #pragma once
 #include "Common.hpp"
 #include "InputNodes.hpp"
+#include "ColorNodes.generated.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        struct ColorPickerNode : Node
+        struct [[Luna::struct("{BE28EC1C-7058-43E0-A970-FCFB1B2629FC}")]] ColorPickerNode : Node
         {
-            lustruct("GUI::ColorPickerNode", "{BE28EC1C-7058-43E0-A970-FCFB1B2629FC}");
-
             ColorBinding binding;
 
             ColorPickerNode();

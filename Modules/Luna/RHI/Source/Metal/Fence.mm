@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/8/3
 */
-#include "Fence.h"
+#include "MetalFence.h"
 
 namespace Luna
 {

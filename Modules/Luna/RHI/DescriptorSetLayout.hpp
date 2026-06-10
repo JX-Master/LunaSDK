@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "DeviceChild.hpp"
+#include "DescriptorSetLayout.generated.hpp"
 
 namespace Luna
 {
@@ -216,10 +217,8 @@ namespace Luna
         //! @interface IDescriptorSetLayout
         //! Represents one descriptor set layout that can be used to create 
         //! descriptor sets and pipeline layouts.
-        struct IDescriptorSetLayout : virtual IDeviceChild
+        struct [[Luna::interface("{68D6929B-D94F-48B1-A19E-B89E0CF0D008}")]] IDescriptorSetLayout : virtual IDeviceChild
         {
-            luiid("{68D6929B-D94F-48B1-A19E-B89E0CF0D008}");
-
         };
 
         //! @}

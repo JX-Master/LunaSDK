@@ -8,12 +8,19 @@ public sealed class CPPSLTargetRules : TargetRules
             targetDirectory: "Tools/CPPSL",
             rulesPath: "Tools/CPPSL/CPPSL.Target.cs")
     {
-        SupportedPlatforms(BuildPlatform.Windows);
+        SupportedPlatforms(BuildPlatform.MacOS, BuildPlatform.Windows);
         Category = BuildTargetCategory.Tools;
         Kind = BuildTargetKind.DotNetProject;
         Sources("src/CPPSL.Cli/*.cs", "src/CPPSL.Core/**.cs");
         ExcludeSources("src/CPPSL.Core/bin/**.cs", "src/CPPSL.Core/obj/**.cs");
-        DotNetProject("src/CPPSL.Cli/CPPSL.Cli.csproj", "src/CPPSL.Cli/bin/Debug/net9.0/cppslc.exe");
         DependsOn("cppsl-native-extractor");
+    }
+
+    protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+    {
+        var executable = options.Platform == BuildPlatform.Windows ? "cppslc.exe" : "cppslc";
+        DotNetProject(
+            "src/CPPSL.Cli/CPPSL.Cli.csproj",
+            Path.Combine("src", "CPPSL.Cli", "bin", "Debug", "net9.0", executable));
     }
 }

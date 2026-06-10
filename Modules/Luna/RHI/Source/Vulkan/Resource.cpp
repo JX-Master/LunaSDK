@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/4/19
 */
-#include "Resource.hpp"
+#include "VulkanResource.hpp"
 #include "Instance.hpp"
 #include "../RHI.hpp"
 #include <Luna/Runtime/Profiler.hpp>

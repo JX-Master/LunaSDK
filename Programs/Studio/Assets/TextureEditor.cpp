@@ -8,27 +8,10 @@
 * @date 2020/5/9
 */
 #include "Texture.hpp"
+#include "TextureEditor.hpp"
 
 namespace Luna
 {
-    struct TextureEditor : public IAssetEditor
-    {
-        lustruct("TextureEditor", "{E1F83CDB-D75C-4943-9428-AB1768C94677}");
-        luiimpl();
-
-        Asset::asset_t m_tex;
-
-        bool m_open = true;
-
-        TextureEditor() {}
-
-        virtual void on_render(GUI::IContext* context) override;
-        virtual bool closed() override
-        {
-            return !m_open;
-        }
-    };
-
     void TextureEditor::on_render(GUI::IContext* context)
     {
         Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(m_tex);
@@ -80,8 +63,6 @@ namespace Luna
     }
     void register_texture_editor()
     {
-        register_boxed_type<TextureEditor>();
-        impl_interface_for_type<TextureEditor, IAssetEditor>();
         AssetEditorDesc desc;
         desc.on_draw_tile = on_draw_tex_tile;
         desc.new_editor = new_tex_editor;

@@ -14,7 +14,7 @@
 #include <Luna/Runtime/SpinLock.hpp>
 #include <Luna/Runtime/String.hpp>
 #include <Luna/Runtime/Vector.hpp>
-
+#include "BuildCache.generated.hpp"
 namespace Luna
 {
     namespace MakeSystem
@@ -27,11 +27,8 @@ namespace Luna
             Vector<Path> outputs;
             Vector<Path> implicit_dependencies;
         };
-
-        struct BuildCache
+        struct [[luna::struct("{4eca9a8a-db94-4733-a154-9bb8c33c051a}")]] BuildCache
         {
-            lustruct("MakeSystem::BuildCache", "{4eca9a8a-db94-4733-a154-9bb8c33c051a}");
-
             Path m_cache_file_path;
             HashMap<Path, BuildCacheRecord> m_records;
             SpinLock m_lock;

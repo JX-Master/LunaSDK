@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "RenderPass.hpp"
+#include "RenderGraph.generated.hpp"
 
 namespace Luna
 {
@@ -103,10 +104,8 @@ namespace Luna
         //! @interface IRenderGraph
         //! Represents one render graph that can be used to schedule render passes and reuse in-frame 
         //! transient render resources to reduce memory comsumption. 
-        struct IRenderGraph : virtual Interface
+        struct [[Luna::interface("{ad007d31-b655-4276-8b11-db09a93db278}")]] IRenderGraph : virtual Interface
         {
-            luiid("{ad007d31-b655-4276-8b11-db09a93db278}");
-
             //! Gets the RHI device attached to this render graph.
             //! @return Returns the RHI device attached to this render graph.
             virtual RHI::IDevice* get_device() = 0;

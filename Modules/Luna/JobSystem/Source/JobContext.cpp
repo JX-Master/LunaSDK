@@ -8,7 +8,7 @@
 * @date 2026/2/14
 */
 #include "JobContext.hpp"
-#include "JobScheduler.hpp"
+#include "JobSchedulerImpl.hpp"
 
 namespace Luna
 {

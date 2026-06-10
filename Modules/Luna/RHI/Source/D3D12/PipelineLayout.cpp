@@ -7,8 +7,8 @@
 * @author JXMaster
 * @date 2020/3/14
 */
-#include "PipelineLayout.hpp"
-#include "DescriptorSetLayout.hpp"
+#include "D3D12PipelineLayout.hpp"
+#include "D3D12DescriptorSetLayout.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna

@@ -13,13 +13,11 @@
 #include "../Scene.hpp"
 #include "../ModelRenderer.hpp"
 #include "../SceneRenderer.hpp"
-
+#include "GeometryPass.generated.hpp"
 namespace Luna
 {
-    struct GeometryPassGlobalData
+    struct [[luna::struct("{8e00d9f0-e920-45e2-a9fc-c7e51644d286}")]] GeometryPassGlobalData
     {
-        lustruct("GeometryPassGlobalData", "{8e00d9f0-e920-45e2-a9fc-c7e51644d286}");
-
         Ref<RHI::IPipelineState> m_geometry_pass_pso;
         Ref<RHI::IDescriptorSetLayout> m_geometry_pass_dlayout;
         Ref<RHI::IPipelineLayout> m_geometry_pass_playout;
@@ -35,10 +33,8 @@ namespace Luna
     
         RV init(RHI::IDevice* device);
     };
-
-    struct GeometryPass : RG::IRenderPass
+    struct [[luna::struct("{addf4399-72e6-4855-83a9-457153a2c5a1}")]] GeometryPass : RG::IRenderPass
     {
-        lustruct("GeometryPass", "{addf4399-72e6-4855-83a9-457153a2c5a1}");
         luiimpl();
 
         Span<MeshRenderParams> mesh_render_params;

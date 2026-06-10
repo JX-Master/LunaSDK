@@ -5,15 +5,14 @@
 */
 #pragma once
 #include "Common.hpp"
+#include "BasicNodes.generated.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        struct ButtonNode : Node
+        struct [[Luna::struct("{1AA61495-B39A-4109-971F-4ABDB810F4EE}")]] ButtonNode : Node
         {
-            lustruct("GUI::ButtonNode", "{1AA61495-B39A-4109-971F-4ABDB810F4EE}");
-
             ButtonNode();
 
             virtual Guid type_guid() const override;
@@ -22,10 +21,8 @@ namespace Luna
             virtual LayoutMetrics measure() const override;
 
         };
-        struct ProgressBarNode : Node
+        struct [[Luna::struct("{FD7AF111-3102-42FD-95B7-38E82E461D50}")]] ProgressBarNode : Node
         {
-            lustruct("GUI::ProgressBarNode", "{FD7AF111-3102-42FD-95B7-38E82E461D50}");
-
             f32 fraction = 0.0f;
             String overlay;
             bool has_overlay = false;
@@ -38,10 +35,8 @@ namespace Luna
             virtual LayoutMetrics measure() const override;
 
         };
-        struct TextNode : Node
+        struct [[Luna::struct("{686DF821-591B-41C4-BC10-9420C24FE28D}")]] TextNode : Node
         {
-            lustruct("GUI::TextNode", "{686DF821-591B-41C4-BC10-9420C24FE28D}");
-
             Float4U color = Float4U(1.0f);
             f32 font_size = 16.0f;
 
@@ -55,10 +50,8 @@ namespace Luna
             virtual LayoutMetrics measure(NodeMeasureContext& ctx) const override;
 
         };
-        struct SelectableNode : Node
+        struct [[Luna::struct("{F021AFD7-2AC6-4CCC-B6B5-D4BE6FDDF0E4}")]] SelectableNode : Node
         {
-            lustruct("GUI::SelectableNode", "{F021AFD7-2AC6-4CCC-B6B5-D4BE6FDDF0E4}");
-
             bool selected = false;
             bool label_layout = false;
 
@@ -78,10 +71,8 @@ namespace Luna
             virtual LayoutMetrics measure() const override;
 
         };
-        struct CheckboxNode : Node
+        struct [[Luna::struct("{967B664F-1718-4F2A-8EA0-82879DA3579B}")]] CheckboxNode : Node
         {
-            lustruct("GUI::CheckboxNode", "{967B664F-1718-4F2A-8EA0-82879DA3579B}");
-
             bool* value = nullptr;
             bool label_layout = false;
 
@@ -102,10 +93,8 @@ namespace Luna
 
             virtual void on_click(NodeInputContext& ctx) override;
         };
-        struct ToggleSwitchNode : Node
+        struct [[Luna::struct("{E7794BFA-1A37-4890-BDFD-0C15F5CC8942}")]] ToggleSwitchNode : Node
         {
-            lustruct("GUI::ToggleSwitchNode", "{E7794BFA-1A37-4890-BDFD-0C15F5CC8942}");
-
             bool* value = nullptr;
             bool label_layout = false;
 
@@ -126,10 +115,8 @@ namespace Luna
 
             virtual void on_click(NodeInputContext& ctx) override;
         };
-        struct CollapsingHeaderNode : Node
+        struct [[Luna::struct("{3F6E2788-AE42-4B9C-8309-742C8ACC5933}")]] CollapsingHeaderNode : Node
         {
-            lustruct("GUI::CollapsingHeaderNode", "{3F6E2788-AE42-4B9C-8309-742C8ACC5933}");
-
             CollapsingHeaderNode();
 
             virtual Guid type_guid() const override;
@@ -143,10 +130,8 @@ namespace Luna
 
             virtual void on_click(NodeInputContext& ctx) override;
         };
-        struct TreeNodeNode : Node
+        struct [[Luna::struct("{55ACA6E4-97CA-4D42-BF56-EABE7F02DC48}")]] TreeNodeNode : Node
         {
-            lustruct("GUI::TreeNodeNode", "{55ACA6E4-97CA-4D42-BF56-EABE7F02DC48}");
-
             TreeNodeFlag flags = TreeNodeFlag::none;
             u32 indent_depth = 0;
             bool selected = false;
@@ -168,10 +153,8 @@ namespace Luna
 
             virtual void on_click(NodeInputContext& ctx) override;
         };
-        struct RadioButtonNode : Node
+        struct [[Luna::struct("{EB54B8B9-8C68-4072-B632-750291A8569A}")]] RadioButtonNode : Node
         {
-            lustruct("GUI::RadioButtonNode", "{EB54B8B9-8C68-4072-B632-750291A8569A}");
-
             bool selected = false;
             bool* value = nullptr;
             i32* i32_value = nullptr;

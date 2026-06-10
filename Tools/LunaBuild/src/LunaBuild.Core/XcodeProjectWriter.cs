@@ -573,8 +573,7 @@ public static class XcodeProjectWriter
         return architecture.ToLowerInvariant() switch
         {
             "arm64" or "aarch64" => "arm64",
-            "x64" or "x86_64" => "x86_64",
-            _ => architecture,
+            _ => throw new ArgumentException($"Unsupported Xcode architecture: {architecture}"),
         };
     }
 

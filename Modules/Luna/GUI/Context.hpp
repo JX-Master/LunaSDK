@@ -12,6 +12,7 @@
 #ifdef LUNA_GUI_ENABLE_DEBUG
 #include "Debug.hpp"
 #endif
+#include "Context.generated.hpp"
 
 namespace Luna
 {
@@ -78,10 +79,8 @@ namespace Luna
         //! Owns GUI frame building, input routing, state storage, layout, render list generation and rendering.
         //! @remark Widget APIs take an explicit context pointer as their first argument. This avoids global GUI state and
         //! allows multiple contexts to be built from different threads or hosts.
-        struct IContext : virtual Interface
+        struct [[Luna::interface("{E58F6F6C-48A9-42AB-86F3-898419C207BC}")]] IContext : virtual Interface
         {
-            luiid("{E58F6F6C-48A9-42AB-86F3-898419C207BC}");
-
             //! Begins a new GUI frame.
             //! @param[in] desc The logical screen, framebuffer and timing information for this frame.
             //! @remark This resets per-frame build state and expires states whose lifetime requires frame cleanup.

@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Interface.hpp"
+#include "Waitable.generated.hpp"
 namespace Luna
 {
     //! @addtogroup RuntimeThread
@@ -17,10 +18,8 @@ namespace Luna
     //! @interface IWaitable
     //! Represents a waitable object used for multi-thread synchronization. 
     //! @details Objects that implements `IWaitable` cannot be used cross process boundary.
-    struct IWaitable : virtual Interface
+    struct [[Luna::interface("{3dcaabdc-f4d5-4aa6-bc30-904f7875964a}")]] IWaitable : virtual Interface
     {    
-        luiid("{3dcaabdc-f4d5-4aa6-bc30-904f7875964a}");
-        
         //! Waits for this object to be signaled. 
         //! @details This will block the current thread until the wait condition is satisfied.
         virtual void wait() = 0;

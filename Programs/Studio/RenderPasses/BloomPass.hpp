@@ -9,13 +9,11 @@
 */
 #pragma once
 #include <Luna/RG/RenderPass.hpp>
-
+#include "BloomPass.generated.hpp"
 namespace Luna
 {
-    struct BloomPassGlobalData
+    struct [[luna::struct("{539c5e18-85b8-4c5e-8554-450b17cabd1f}")]] BloomPassGlobalData
     {
-        lustruct("BloomPassGlobalData", "{539c5e18-85b8-4c5e-8554-450b17cabd1f}");
-        
         Ref<RHI::IDescriptorSetLayout> m_bloom_setup_pass_dlayout;
         Ref<RHI::IPipelineLayout> m_bloom_setup_pass_playout;
         Ref<RHI::IPipelineState> m_bloom_setup_pass_pso;
@@ -30,10 +28,8 @@ namespace Luna
 
         RV init(RHI::IDevice* device);
     };
-
-    struct BloomPass : RG::IRenderPass
+    struct [[luna::struct("{5c2480a4-23b0-49d8-95ae-c5ae73248c11}")]] BloomPass : RG::IRenderPass
     {
-        lustruct("BloomPass", "{5c2480a4-23b0-49d8-95ae-c5ae73248c11}");
         luiimpl();
 
         f32 lum_threshold = 1.0f;

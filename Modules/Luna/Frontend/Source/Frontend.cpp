@@ -11,7 +11,8 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_FRONTEND_API LUNA_EXPORT
-#include "Frontend.hpp"
+#include "FrontendImpl.hpp"
+#include "Frontend.meta.generated.hpp"
 #include "../Frontend.hpp"
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Memory.hpp>
@@ -223,8 +224,7 @@ namespace Luna
 
             virtual RV on_register() override
             {
-                register_boxed_type<Frontend>();
-                impl_interface_for_type<Frontend, IFrontend>();
+                Meta::register_Frontend_types();
                 return ok;
             }
         };

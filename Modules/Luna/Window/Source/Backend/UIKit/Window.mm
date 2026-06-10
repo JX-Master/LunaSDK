@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
-#include "Window.h"
+#include "UIKitWindowImpl.h"
 #include "../../Window.hpp"
 #include "../../Event.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
@@ -33,8 +33,6 @@ namespace Luna
                 {
                     if([[UIApplication sharedApplication].delegate isKindOfClass:[LunaUIKitDelegate class]])
                     {
-                        register_struct_type<UIKitWindow>({});
-                        impl_interface_for_type<UIKitWindow, IUIKitWindow, IWindow>();
                         LunaUIKitDelegate* delegate = (LunaUIKitDelegate*)[UIApplication sharedApplication].delegate;
                         UIWindowScene* scene = delegate.primary_scene;
                         Ref<UIKitWindow> window = new_object<UIKitWindow>();

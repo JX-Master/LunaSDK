@@ -128,6 +128,23 @@ namespace Luna
             return query_interface(obj, guid);
         }
 
+        template <typename _QueryTy>
+        static const Guid& internal_type_guid()
+        {
+            if constexpr (is_base_of_v<Interface, _QueryTy> && is_abstract_v<_QueryTy>)
+            {
+                return Meta::InterfaceMetaData<_QueryTy>::__guid;
+            }
+            else if constexpr (requires { typename Meta::StructMetaData<_QueryTy>::LunaStructMetaTag; })
+            {
+                return Meta::StructMetaData<_QueryTy>::__guid;
+            }
+            else
+            {
+                return Meta::StructMetaData<_QueryTy>::__guid;
+            }
+        }
+
         template <bool _HasGetObject>
         struct InterfaceAdapter;
         template <> struct InterfaceAdapter<true>
@@ -195,7 +212,7 @@ namespace Luna
             internal_clear();
             if (ptr)
             {
-                m_vtable = (_Ty*)internal_query_interface(ptr, _Ty::__guid);
+                m_vtable = (_Ty*)internal_query_interface(ptr, internal_type_guid<_Ty>());
                 if (!m_vtable) object_release(ptr);
             }
         }
@@ -236,7 +253,7 @@ namespace Luna
         Ref(const Ref<_Rty>& rhs)
         {
             object_t obj = rhs.object();
-            m_vtable = obj ? (_Ty*)internal_query_interface(obj, _Ty::__guid) : nullptr;
+            m_vtable = obj ? (_Ty*)internal_query_interface(obj, internal_type_guid<_Ty>()) : nullptr;
             internal_addref();
         }
         //! Assigns this reference by coping the pointer from another reference of one different type.
@@ -251,7 +268,7 @@ namespace Luna
         {
             internal_clear();
             object_t obj = rhs.object();
-            m_vtable = obj ? (_Ty*)internal_query_interface(obj, _Ty::__guid) : nullptr;
+            m_vtable = obj ? (_Ty*)internal_query_interface(obj, internal_type_guid<_Ty>()) : nullptr;
             internal_addref();
             return *this;
         }
@@ -265,7 +282,7 @@ namespace Luna
         Ref(Ref<_Rty>&& rhs)
         {
             object_t obj = rhs.detach();
-            m_vtable = obj ? (_Ty*)internal_query_interface(obj, _Ty::__guid) : nullptr;
+            m_vtable = obj ? (_Ty*)internal_query_interface(obj, internal_type_guid<_Ty>()) : nullptr;
             if (obj && !m_vtable) object_release(obj);
         }
         //! Assigns this reference by moving the pointer from another reference of one different type.
@@ -281,7 +298,7 @@ namespace Luna
         {
             internal_clear();
             object_t obj = rhs.detach();
-            m_vtable = obj ? (_Ty*)internal_query_interface(obj, _Ty::__guid) : nullptr;
+            m_vtable = obj ? (_Ty*)internal_query_interface(obj, internal_type_guid<_Ty>()) : nullptr;
             if (obj && !m_vtable) object_release(obj);
             return *this;
         }
@@ -325,7 +342,7 @@ namespace Luna
         {
             if (rhs)
             {
-                m_vtable = (_Ty*)internal_query_interface(rhs.get(), _Ty::__guid);
+                m_vtable = (_Ty*)internal_query_interface(rhs.get(), internal_type_guid<_Ty>());
                 internal_addref();
             }
             else
@@ -344,7 +361,7 @@ namespace Luna
             object_t ptr = rhs.detach();
             if (ptr)
             {
-                m_vtable = (_Ty*)internal_query_interface(ptr, _Ty::__guid);
+                m_vtable = (_Ty*)internal_query_interface(ptr, internal_type_guid<_Ty>());
                 if (!m_vtable) object_release(ptr);
             }
             else
@@ -364,7 +381,7 @@ namespace Luna
             internal_clear();
             if (rhs)
             {
-                m_vtable = (_Ty*)internal_query_interface(rhs.get(), _Ty::__guid);
+                m_vtable = (_Ty*)internal_query_interface(rhs.get(), internal_type_guid<_Ty>());
                 internal_addref();
             }
             return *this;
@@ -383,7 +400,7 @@ namespace Luna
             object_t ptr = rhs.detach();
             if (ptr)
             {
-                m_vtable = (_Ty*)internal_query_interface(ptr, _Ty::__guid);
+                m_vtable = (_Ty*)internal_query_interface(ptr, internal_type_guid<_Ty>());
                 if (!m_vtable) object_release(ptr);
             }
             return *this;
@@ -427,7 +444,7 @@ namespace Luna
         {
             auto obj = object();
             if (!obj) return nullptr;
-            return (_Rty*)internal_query_interface(obj, _Rty::__guid);
+            return (_Rty*)internal_query_interface(obj, internal_type_guid<_Rty>());
         }
     };
 

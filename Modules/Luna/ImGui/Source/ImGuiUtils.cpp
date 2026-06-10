@@ -13,6 +13,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_IMGUI_API LUNA_EXPORT
 #include "../ImGui.hpp"
+#include "ImGui.meta.generated.hpp"
 #include "imgui.h"
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Module.hpp>
@@ -26,6 +27,7 @@
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <Luna/Window/Event.hpp>
 #include "Luna/Window/Clipboard.hpp"
+#include "SampledImage.hpp"
 #include <ImGuiVS.hpp>
 #include <ImGuiPS.hpp>
 namespace Luna
@@ -60,20 +62,6 @@ namespace Luna
 
         Ref<RHI::IBuffer> g_cb;
 
-        struct SampledImage : ISampledImage
-        {
-            lustruct("ImGuiUtils::SampledImage", "29378bf1-b58e-4c8a-a30f-d29239f9a713");
-            luiimpl();
-
-            Ref<RHI::ITexture> m_texture;
-            RHI::SamplerDesc m_sampler;
-
-            virtual RHI::ITexture* get_texture() override { return m_texture; }
-            virtual void set_texture(RHI::ITexture* texture) override { m_texture = texture; }
-            virtual RHI::SamplerDesc get_sampler() override { return m_sampler; }
-            virtual void set_sampler(const RHI::SamplerDesc& desc) override { m_sampler = desc; }
-        };
-
         LUNA_IMGUI_API Ref<ISampledImage> new_sampled_image(RHI::ITexture* texture, const RHI::SamplerDesc& sampler_desc)
         {
             Ref<SampledImage> image = new_object<SampledImage>();
@@ -90,8 +78,7 @@ namespace Luna
         static RV init()
         {
             using namespace RHI;
-            register_boxed_type<SampledImage>();
-            impl_interface_for_type<SampledImage, ISampledImage>();
+            Meta::register_ImGui_types();
 
             // Setup Dear ImGui context
             IMGUI_CHECKVERSION();

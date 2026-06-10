@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2022/12/17
 */
-#include "Mesh.hpp"
+#include "MeshAsset.hpp"
 #include <Luna/VFS/VFS.hpp>
 #include "../Mesh.hpp"
 #include <Luna/VariantUtils/JSON.hpp>
@@ -70,24 +70,11 @@ namespace Luna
     }
     void register_static_mesh_asset_type()
     {
-        register_struct_type<Vertex>({
-                luproperty(Vertex, Float3U, position),
-                luproperty(Vertex, Float3U, normal),
-                luproperty(Vertex, Float3U, tangent),
-                luproperty(Vertex, Float2U, texcoord),
-                luproperty(Vertex, Float4U, color),
-            });
+        register_struct_type<Vertex>();
         set_serializable<Vertex>();
-        register_struct_type<MeshPiece>({
-                   luproperty(MeshPiece, u32, first_index_offset),
-                   luproperty(MeshPiece, u32, num_indices)
-            });
+        register_struct_type<MeshPiece>();
         set_serializable<MeshPiece>();
-        register_boxed_type<Mesh>();
-        register_struct_type<MeshAsset>({
-                luproperty(MeshAsset, Vector<MeshPiece>, pieces),
-                luproperty(MeshAsset, Blob, vertex_data),
-                luproperty(MeshAsset, Blob, index_data) });
+        register_struct_type<MeshAsset>();
         set_serializable<MeshAsset>();
         Asset::AssetTypeDesc desc;
         desc.name = get_static_mesh_asset_type();

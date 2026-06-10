@@ -152,16 +152,17 @@ public sealed class ExampleTargetRules : TargetRules
 ```
 
 Use `Architecture` inside the same method for files such as POSIX fiber
-context assembly:
+context assembly. LunaSDK supports macOS arm64 only.
+POSIX x86_64 branches are for other supported POSIX platforms.
 
 ```csharp
-if(Architecture is "x86_64" or "x64")
-{
-    Sources("Source/Platform/POSIX/FiberContext_x86_64.S");
-}
-else if(Architecture is "arm64" or "aarch64" or "arm64-v8a")
+if(Architecture is "arm64" or "aarch64" or "arm64-v8a")
 {
     Sources("Source/Platform/POSIX/FiberContext_arm64.S");
+}
+else if(Architecture is "x86_64" or "x64")
+{
+    Sources("Source/Platform/POSIX/FiberContext_x86_64.S");
 }
 ```
 
@@ -329,6 +330,44 @@ Shader targets should include generated headers by name:
 
 The current executor supports DXIL for D3D12, SPIR-V for Vulkan, and Metal
 library output for Metal.
+
+## Meta Headers
+
+Use `MetaHeaders(...)` for C++ headers that should be scanned by
+LunaMetaTool before normal C++ compilation:
+
+```csharp
+Headers("Source/*.hpp");
+MetaHeaders("Source/MyType.hpp");
+```
+
+Targets with meta headers automatically get a build-graph dependency from their
+`luna.meta` action to the `LunaMetaTool` target when that tool target is
+available for the current platform. This builds the tool before metadata
+generation without making it a normal module dependency.
+
+Each meta header must include its generated header by basename after all normal
+includes:
+
+```cpp
+#pragma once
+#include <Luna/Runtime/Runtime.hpp>
+#include "MyType.generated.hpp"
+
+struct [[luna::struct("{dbeecd7a-2dc5-423e-8e20-7521826c3f06}")]] MyType
+{
+};
+```
+
+The generated header is placed under:
+
+```text
+build/LunaBuild/<Platform>/<Arch>/<Mode>/generated/<Target>/meta
+```
+
+The generated meta include directory is added to the target and propagated as a
+public include directory to dependent targets. In the first phase these headers
+are intentionally empty except for `#pragma once`.
 
 ## Runtime Files
 

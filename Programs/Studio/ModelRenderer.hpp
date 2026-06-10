@@ -10,12 +10,11 @@
 #pragma once
 #include <Luna/Runtime/TypeInfo.hpp>
 #include <Luna/Asset/Asset.hpp>
-
+#include "ModelRenderer.generated.hpp"
 namespace Luna
 {
-    struct ModelRenderer
+    struct [[luna::struct("{27C69426-9BFB-4558-9904-9C5A05727E8C}")]] ModelRenderer
     {
-        lustruct("ModelRenderer", "{27C69426-9BFB-4558-9904-9C5A05727E8C}");
-        Asset::asset_t model;
+        [[Luna::property]] Asset::asset_t model;
     };
 }

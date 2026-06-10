@@ -13,6 +13,7 @@
 #include "World.hpp"
 #include "Camera.hpp"
 #include "Model.hpp"
+#include "SceneRenderer.generated.hpp"
 namespace Luna
 {
     struct CameraCB
@@ -53,25 +54,21 @@ namespace Luna
         Float4x4U world_to_local_mat;
         Ref<Model> model;
     };
-
-    enum class SceneRendererMode : u8
+    enum class [[luna::enum("e66271d7-cbe7-4f0b-8de3-de0cc7b06982")]] SceneRendererMode : u8
     {
-        lit = 0,
-        wireframe,
-        base_color,
-        normal,
-        roughness,
-        metallic,
-        depth,
-        emissive,
-        diffuse_lighting,
-        specular_lighting,
-        ambient_diffuse_lighting,
-        ambient_specular_lighting
+        lit [[Luna::option]] = 0,
+        wireframe [[Luna::option]],
+        base_color [[Luna::option]],
+        normal [[Luna::option]],
+        roughness [[Luna::option]],
+        metallic [[Luna::option]],
+        depth [[Luna::option]],
+        emissive [[Luna::option]],
+        diffuse_lighting [[Luna::option]],
+        specular_lighting [[Luna::option]],
+        ambient_diffuse_lighting [[Luna::option]],
+        ambient_specular_lighting [[Luna::option]]
     };
-
-    luenum(SceneRendererMode, "SceneRendererMode", "e66271d7-cbe7-4f0b-8de3-de0cc7b06982");
-
     struct SceneRendererSettings
     {
         // The screen size.

@@ -11,6 +11,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #include <Luna/Runtime/Platform/Windows/MiniWin.hpp>
 #include "../Window.hpp"
+#include "Win32Window.generated.hpp"
 
 namespace Luna
 {
@@ -21,10 +22,8 @@ namespace Luna
 
         //! @interface IWin32Window
         //! Implemented by window object on Windows platform.
-        struct IWin32Window : virtual IWindow
+        struct [[Luna::interface("{939C8832-C687-4F8E-811B-506B62C872F0}")]] IWin32Window : virtual IWindow
         {
-            luiid("{939C8832-C687-4F8E-811B-506B62C872F0}");
-
             //! Fetches the native handle (HWND) of this window.
             //! @return Returns the native handle of this window.
             virtual HWND get_hwnd() = 0;

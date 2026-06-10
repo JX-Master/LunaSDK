@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "DeviceChild.hpp"
+#include "DeviceMemory.generated.hpp"
 
 namespace Luna
 {
@@ -65,10 +66,8 @@ namespace Luna
 
         //! @interface IDeviceMemory
         //! Represents one allocated device memory.
-        struct IDeviceMemory : virtual IDeviceChild
+        struct [[Luna::interface("{066D9159-5E46-4967-A92C-752C1530308E}")]] IDeviceMemory : virtual IDeviceChild
         {
-            luiid("{066D9159-5E46-4967-A92C-752C1530308E}");
-
             //! Gets the memory type of the device memory.
             //! @return Returns the memory type of the device memory.
             virtual MemoryType get_memory_type() = 0;

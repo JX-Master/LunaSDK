@@ -39,6 +39,7 @@ public sealed record BuildTargetDefinition(
     IReadOnlyList<string> Dependencies,
     IReadOnlyList<string> SourceFiles,
     IReadOnlyList<string> HeaderFiles,
+    IReadOnlyList<string> MetaHeaderFiles,
     IReadOnlyList<string> IncludeDirectories,
     IReadOnlyList<string> PublicIncludeDirectories,
     IReadOnlyList<string> Defines,
@@ -55,5 +56,6 @@ public sealed record BuildTargetDefinition(
     BuildTargetKind Kind,
     BuildTargetCategory Category,
     string? MsvcRuntimeLibrary,
+    bool EnableRtti,
     string? DotNetProjectFile,
     string? DotNetOutputFile);

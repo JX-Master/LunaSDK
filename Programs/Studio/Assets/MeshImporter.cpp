@@ -7,7 +7,8 @@
 * @author JXMaster
 * @date 2022/12/17
 */
-#include "Mesh.hpp"
+#include "MeshAsset.hpp"
+#include "MeshImporter.hpp"
 #include <Luna/ObjLoader/ObjLoader.hpp>
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
@@ -17,30 +18,6 @@
 #include <Luna/VariantUtils/JSON.hpp>
 namespace Luna
 {
-    struct MeshImporter : public IAssetEditor
-    {
-        lustruct("MeshImporter", "{770ac671-c013-4b89-a0a2-ab222e919a35}");
-        luiimpl();
-
-        Path m_create_dir;
-
-        Path m_source_file_path;
-
-        ObjLoader::ObjMesh m_obj_file;
-
-        Vector<String> m_import_names;
-
-        MeshImporter() {}
-
-        bool m_open = true;
-
-        virtual void on_render(GUI::IContext* context) override;
-        virtual bool closed() override
-        {
-            return !m_open;
-        }
-    };
-
     template <>
     struct hash<ObjLoader::Index>
     {
@@ -372,8 +349,6 @@ namespace Luna
 
     void register_static_mesh_importer()
     {
-        register_boxed_type<MeshImporter>();
-        impl_interface_for_type<MeshImporter, IAssetEditor>();
         AssetImporterDesc desc;
         desc.new_importer = new_static_mesh_importer;
         g_env->register_asset_importer_type(get_static_mesh_asset_type(), desc);

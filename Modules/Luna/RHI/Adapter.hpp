@@ -10,6 +10,7 @@
 #pragma once
 #include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Ref.hpp>
+#include "Adapter.generated.hpp"
 #ifndef LUNA_RHI_API
 #define LUNA_RHI_API
 #endif
@@ -22,10 +23,8 @@ namespace Luna
         
         //! @interface IAdapter
         //! Represents a physical graphics device installed on the platform.
-        struct IAdapter : virtual Interface
+        struct [[Luna::interface("{3be9e0bb-0633-4547-ba1a-c964cf480adc}")]] IAdapter : virtual Interface
         {
-            luiid("{3be9e0bb-0633-4547-ba1a-c964cf480adc}");
-
             //! Gets the name of the adapter.
             //! @return Returns the name of the adapter. The returned string is valid until the adapter interface is 
             //! released.

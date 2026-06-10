@@ -19,10 +19,8 @@ namespace Luna
     //! 3x3 matrix type with @ref f32 components.
     //! @details This matrix type is 16-bytes aligned and will use SIMD to accelerate matrix 
     //! calculations when possible.
-    struct alignas(16) Float3x3
+    struct [[luna::struct("{7DD15385-7C4E-4018-9E0A-92A76671CC0B}")]] alignas(16) Float3x3
     {
-        lustruct("Float3x3", "{7DD15385-7C4E-4018-9E0A-92A76671CC0B}");
-
         //! The array of rows of the matrix.
         Float3 r[3];
 
@@ -425,10 +423,8 @@ namespace Luna
     //! 4x4 matrix type with @ref f32 components.
     //! @details This matrix type is 16-bytes aligned and will use SIMD to accelerate matrix 
     //! calculations when possible.
-    struct alignas(16) Float4x4
+    struct [[luna::struct("{EE1F1000-29F9-4B91-953F-EE4D63BEDE9D}")]] alignas(16) Float4x4
     {
-        lustruct("Float4x4", "{EE1F1000-29F9-4B91-953F-EE4D63BEDE9D}");
-
         //! The array of rows of the matrix.
         Float4 r[4];
 
@@ -882,3 +878,4 @@ namespace Luna
 
 #include "Impl/Float3x3.inl"
 #include "Impl/Float4x4.inl"
+#include "Matrix.generated.hpp"

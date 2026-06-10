@@ -13,6 +13,7 @@
 #include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Ref.hpp>
+#include "Adapter.generated.hpp"
 
 #ifndef LUNA_AHI_API
 #define LUNA_AHI_API
@@ -76,10 +77,8 @@ namespace Luna
         
         //! @interface IAdapter
         //! Represents one audio adapter that can be used to create one device.
-        struct IAdapter : virtual Interface
+        struct [[Luna::interface("{e19367b1-0f70-4839-8b66-c3a0411d9c29}")]] IAdapter : virtual Interface
         {
-            luiid("{e19367b1-0f70-4839-8b66-c3a0411d9c29}");
-
             //! Gets the name of this adapter.
             //! @return Returns the name of this adapter.
             virtual const c8* get_name() = 0;

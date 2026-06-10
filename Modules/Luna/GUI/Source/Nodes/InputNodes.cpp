@@ -18,7 +18,7 @@ namespace Luna
 
         Guid InputTextNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<InputTextNode>::__guid;
         }
 
         Ref<Node> InputTextNode::clone() const
@@ -39,7 +39,7 @@ namespace Luna
 
         Guid SliderFloatNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<SliderFloatNode>::__guid;
         }
 
         Ref<Node> SliderFloatNode::clone() const
@@ -60,7 +60,7 @@ namespace Luna
 
         Guid SliderIntNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<SliderIntNode>::__guid;
         }
 
         Ref<Node> SliderIntNode::clone() const
@@ -81,7 +81,7 @@ namespace Luna
 
         Guid InputFloatNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<InputFloatNode>::__guid;
         }
 
         Ref<Node> InputFloatNode::clone() const
@@ -102,7 +102,7 @@ namespace Luna
 
         Guid InputIntNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<InputIntNode>::__guid;
         }
 
         Ref<Node> InputIntNode::clone() const
@@ -123,7 +123,7 @@ namespace Luna
 
         Guid DragFloatNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<DragFloatNode>::__guid;
         }
 
         Ref<Node> DragFloatNode::clone() const
@@ -144,7 +144,7 @@ namespace Luna
 
         Guid DragIntNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<DragIntNode>::__guid;
         }
 
         Ref<Node> DragIntNode::clone() const

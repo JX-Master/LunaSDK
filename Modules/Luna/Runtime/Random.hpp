@@ -10,6 +10,7 @@
 #pragma once
 #include "Interface.hpp"
 #include "Ref.hpp"
+#include "Random.generated.hpp"
 namespace Luna
 {
     //! @addtogroup Runtime
@@ -22,10 +23,8 @@ namespace Luna
         
     //! @interface IRandom
     //! Represents a Pseudo-random number generator.
-    struct IRandom : virtual Interface
+    struct [[Luna::interface("{c5a542f4-36be-45e7-8dba-9cb74adff098}")]] IRandom : virtual Interface
     {
-        luiid("{c5a542f4-36be-45e7-8dba-9cb74adff098}");
-
         //! Sets random seed for the generator.
         //! @param[in] seed The new random seed to set.
         virtual void set_seed(u32 seed) = 0;

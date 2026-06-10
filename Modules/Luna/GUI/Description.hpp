@@ -10,6 +10,7 @@
 #pragma once
 #include "Layout.hpp"
 #include "RenderProxy.hpp"
+#include "Description.generated.hpp"
 
 namespace Luna
 {
@@ -407,10 +408,8 @@ namespace Luna
         //! @remark User modules can implement custom widgets by deriving from this type and passing the node to
         //! @ref custom_node or @ref IContext::add_node. The context calls virtual methods for measurement, layout
         //! classification, hit testing and input state updates.
-        struct Node
+        struct [[Luna::struct("{AD82DACD-76EC-4EE5-8A82-0A6C4CC8BD5C}")]] Node
         {
-            lustruct("GUI::Node", "{AD82DACD-76EC-4EE5-8A82-0A6C4CC8BD5C}");
-
             virtual ~Node() = default;
 
             //! Gets the concrete node type GUID.

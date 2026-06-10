@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/3/8
 */
-#include "QueryHeap.hpp"
+#include "D3D12QueryHeap.hpp"
 namespace Luna
 {
     namespace RHI

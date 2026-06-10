@@ -21,6 +21,8 @@
 #include <arm_acle.h>
 #endif
 
+#include "Thread.generated.hpp"
+
 namespace Luna
 {
     //! @addtogroup Runtime
@@ -49,10 +51,8 @@ namespace Luna
     //! @interface IThread
     //! Represents a system thread object.
     //! @threadsafe
-    struct IThread : virtual IWaitable
+    struct [[Luna::interface("{9e4fbbb8-0751-4703-bfb5-246dd1cf8b04}")]] IThread : virtual IWaitable
     {
-        luiid("{9e4fbbb8-0751-4703-bfb5-246dd1cf8b04}");
-
         //! Sets thread priority.
         //! @param[in] priority The new priority of the thread.
         virtual RV set_priority(ThreadPriority priority) = 0;

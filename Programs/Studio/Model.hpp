@@ -9,14 +9,12 @@
 */
 #pragma once
 #include <Luna/Asset/Asset.hpp>
-
+#include "Model.generated.hpp"
 namespace Luna
 {
-    struct Model
+    struct [[luna::struct("{D6D78DDD-B0A1-4B43-BFCE-7E67542FE315}")]] Model
     {
-        lustruct("Model", "{D6D78DDD-B0A1-4B43-BFCE-7E67542FE315}");
-
-        Asset::asset_t mesh;
-        Vector<Asset::asset_t> materials;
+        [[Luna::property]] Asset::asset_t mesh;
+        [[Luna::property]] Vector<Asset::asset_t> materials;
     };
 }

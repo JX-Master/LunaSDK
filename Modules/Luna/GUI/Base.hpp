@@ -212,7 +212,7 @@ namespace Luna
         template <typename T>
         id_t make_state_id(id_t owner_id)
         {
-            return make_state_id(owner_id, T::__guid);
+            return make_state_id(owner_id, Meta::StructMetaData<T>::__guid);
         }
 
         //! Describes one typed item query key.

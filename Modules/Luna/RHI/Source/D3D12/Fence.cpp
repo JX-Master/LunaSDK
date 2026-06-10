@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/5/16
 */
-#include "Fence.hpp"
+#include "D3D12Fence.hpp"
 namespace Luna
 {
     namespace RHI

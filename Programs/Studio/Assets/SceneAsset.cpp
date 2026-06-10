@@ -73,22 +73,14 @@ namespace Luna
     }
     void register_scene_asset_type()
     {
-        register_struct_type<SceneActor>({
-            luproperty(SceneActor, Guid, guid),
-            luproperty(SceneActor, Name, name),
-            luproperty(SceneActor, Transform, transform),
-            luproperty(SceneActor, Vector<Guid>, children)
-        });
+        register_struct_type<SceneActor>();
         {
             SerializableTypeDesc desc;
             desc.serialize_func = serialize_actor;
             desc.deserialize_func = deserialize_actor;
             set_serializable<SceneActor>(&desc);
         }
-        register_struct_type<Scene>({
-            luproperty(Scene, SceneSettings, settings),
-            luproperty(Scene, Vector<SceneActor>, actors)
-        });
+        register_struct_type<Scene>();
         set_serializable<Scene>();
         {
             Asset::AssetTypeDesc desc;

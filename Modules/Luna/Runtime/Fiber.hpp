@@ -9,16 +9,15 @@
 */
 #pragma once
 #include "Thread.hpp"
+#include "Fiber.generated.hpp"
 
 namespace Luna
 {
     //! @interface IFiber
     //! Represents a thread executing context that can be switched to 
     //! for a specified thread.
-    struct IFiber : virtual Interface
+    struct [[Luna::interface("{86a46fbf-43fd-40f3-9aa4-3aa10fa7d6f9}")]] IFiber : virtual Interface
     {
-        luiid("{86a46fbf-43fd-40f3-9aa4-3aa10fa7d6f9}");
-
     };
 
     //! Creates a new fiber object.

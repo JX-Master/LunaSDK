@@ -55,7 +55,7 @@ namespace Luna
             {
                 parent_id = m_build_desc.nodes[parent].id;
             }
-            return make_node_id(parent_id, PopupNode::__guid, 0, label ? label : "Popup");
+            return make_node_id(parent_id, Meta::StructMetaData<PopupNode>::__guid, 0, label ? label : "Popup");
         }
 
         ItemHandle Context::popup_handle(const c8* label)

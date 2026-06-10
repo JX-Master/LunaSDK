@@ -9,17 +9,17 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
-#include "Device.h"
-#include "Adapter.h"
-#include "DeviceMemory.h"
-#include "Resource.h"
-#include "CommandBuffer.h"
-#include "PipelineLayout.h"
-#include "PipelineState.h"
-#include "DescriptorSet.h"
-#include "QueryHeap.h"
-#include "Fence.h"
-#include "SwapChain.h"
+#include "MetalDevice.h"
+#include "MetalAdapter.h"
+#include "MetalDeviceMemory.h"
+#include "MetalResource.h"
+#include "MetalCommandBuffer.h"
+#include "MetalPipelineLayout.h"
+#include "MetalPipelineState.h"
+#include "MetalDescriptorSet.h"
+#include "MetalQueryHeap.h"
+#include "MetalFence.h"
+#include "MetalSwapChain.h"
 namespace Luna
 {
     namespace RHI

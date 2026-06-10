@@ -12,6 +12,7 @@
 #include "Waitable.hpp"
 #include "Ref.hpp"
 #include "SpinLock.hpp"
+#include "Mutex.generated.hpp"
 
 namespace Luna
 {
@@ -34,10 +35,8 @@ namespace Luna
     //! one release call for each acquire call to finally release the mutex.
     //! 
     //! Acquiring the mutex from one thread and releasing from another thread is not allowed.
-    struct IMutex : virtual IWaitable
+    struct [[Luna::interface("{eff5c37a-8994-4136-a841-3f494a75385e}")]] IMutex : virtual IWaitable
     {
-        luiid("{eff5c37a-8994-4136-a841-3f494a75385e}");
-
         //! Releases the ownership of the mutex.
         virtual void unlock() = 0;
     };

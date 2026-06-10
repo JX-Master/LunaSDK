@@ -498,6 +498,7 @@ public static class LunaBuildCli
         var makeSystem = new MakeSystemBackend(new IMakeActionExecutor[]
         {
             new CppActionExecutor(),
+            new LunaMetaActionExecutor(),
             new CppslShaderActionExecutor(),
             new FileCopyActionExecutor(),
             new BinaryEmbedHeaderActionExecutor(),
@@ -1058,12 +1059,14 @@ internal sealed class CommandLineOptions
     {
         var defaults = BuildOptions.HostDefault();
         var platform = Platform ?? defaults.Platform;
+        var architecture = Architecture ?? defaults.Architecture;
+        ValidatePlatformArchitecture(platform, architecture);
         var properties = projectDefinition.ResolveProperties(ProjectPropertyOverrides);
         return defaults with
         {
             Mode = Mode ?? defaults.Mode,
             Platform = platform,
-            Architecture = Architecture ?? defaults.Architecture,
+            Architecture = architecture,
             Shared = Shared ?? defaults.Shared,
             RhiApi = RhiApi ?? DefaultRhiApi(platform),
             Properties = properties,
@@ -1117,6 +1120,20 @@ internal sealed class CommandLineOptions
             BuildPlatform.MacOS or BuildPlatform.IOS => LunaBuild.Core.RhiApi.Metal,
             _ => LunaBuild.Core.RhiApi.Vulkan,
         };
+    }
+
+    private static void ValidatePlatformArchitecture(BuildPlatform platform, string architecture)
+    {
+        if(platform == BuildPlatform.MacOS && !IsMacOsSupportedArchitecture(architecture))
+        {
+            throw new ArgumentException($"Unsupported macOS architecture: {architecture}. LunaSDK supports macOS arm64 only.");
+        }
+    }
+
+    private static bool IsMacOsSupportedArchitecture(string architecture)
+    {
+        return architecture.Equals("arm64", StringComparison.OrdinalIgnoreCase) ||
+            architecture.Equals("aarch64", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string RequireValue(string[] args, ref int index, string optionName)

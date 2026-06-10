@@ -15,6 +15,31 @@ public sealed class RuntimeTargetRules : TargetRules
             "Math/**.hpp",
             "Math/**.inl",
             "Source/**.hpp");
+        MetaHeaders(
+            "Waitable.hpp",
+            "Stream.hpp",
+            "Signal.hpp",
+            "Mutex.hpp",
+            "Semaphore.hpp",
+            "File.hpp",
+            "Thread.hpp",
+            "Fiber.hpp",
+            "Coroutine.hpp",
+            "Random.hpp",
+            "ReadWriteLock.hpp",
+            "Math/Matrix.hpp",
+            "Math/Quaternion.hpp",
+            "Math/Vector.hpp",
+            "Source/CoroutineImpl.hpp",
+            "Source/FiberImpl.hpp",
+            "Source/FileImpl.hpp",
+            "Source/MutexImpl.hpp",
+            "Source/RandomImpl.hpp",
+            "Source/ReadWriteLockImpl.hpp",
+            "Source/SemaphoreImpl.hpp",
+            "Source/SignalImpl.hpp",
+            "Source/StdIOImpl.hpp",
+            "Source/ThreadImpl.hpp");
 
         Sources("Source/*.cpp");
     }

@@ -18,7 +18,7 @@ namespace Luna
 
         Guid ButtonGroupNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<ButtonGroupNode>::__guid;
         }
 
         Ref<Node> ButtonGroupNode::clone() const

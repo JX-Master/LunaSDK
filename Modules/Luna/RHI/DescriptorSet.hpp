@@ -11,6 +11,7 @@
 #include "PipelineState.hpp"
 #include "Buffer.hpp"
 #include <Luna/Runtime/Math/Vector.hpp>
+#include "DescriptorSet.generated.hpp"
 #ifndef LUNA_RHI_API
 #define LUNA_RHI_API
 #endif
@@ -489,10 +490,8 @@ namespace Luna
         //! Describes which views and samples are bound to the pipeline.
         //! This can be set at any time before the draw call or dispatch call
         //! is submitted.
-        struct IDescriptorSet : virtual IDeviceChild
+        struct [[Luna::interface("{f12bc4b0-2aad-42bb-8b8c-237ed0593aa3}")]] IDescriptorSet : virtual IDeviceChild
         {
-            luiid("{f12bc4b0-2aad-42bb-8b8c-237ed0593aa3}");
-
             //! Updates descriptors' data in this descriptor set.
             //! @param[in] writes An array of descriptor set write operations that will be 
             //! performed in this call.

@@ -159,9 +159,6 @@ namespace Luna
     {
         lutry
         {
-            register_boxed_type<BufferVisualizationPassGlobalData>();
-            register_boxed_type<BufferVisualizationPass>();
-            impl_interface_for_type<BufferVisualizationPass, RG::IRenderPass>();
             RG::RenderPassTypeDesc desc;
             desc.name = "BufferVisualization";
             desc.desc = "Visualize geometry buffer data.";

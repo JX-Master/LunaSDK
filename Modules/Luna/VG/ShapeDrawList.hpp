@@ -14,6 +14,7 @@
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include "ShapeBuffer.hpp"
+#include "ShapeDrawList.generated.hpp"
 
 #ifndef LUNA_VG_API
 #define LUNA_VG_API
@@ -66,10 +67,8 @@ namespace Luna
 
         //! @interface IShapeDrawList
         //! Represents a draw list that contains shapes to be drawn.
-        struct IShapeDrawList : virtual Interface
+        struct [[Luna::interface("{14F1CA71-7B2D-4072-A2EE-DFD64B62FCD5}")]] IShapeDrawList : virtual Interface
         {
-            luiid("{14F1CA71-7B2D-4072-A2EE-DFD64B62FCD5}");
-
             //! Gets the bounded RHI device.
             //! @return Returns the bounded RHI device.
             virtual RHI::IDevice* get_device() = 0;

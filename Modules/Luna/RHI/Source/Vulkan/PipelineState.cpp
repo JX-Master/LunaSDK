@@ -7,8 +7,8 @@
 * @author JXMaster
 * @date 2023/4/23
 */
-#include "PipelineState.hpp"
-#include "PipelineLayout.hpp"
+#include "VulkanPipelineState.hpp"
+#include "VulkanPipelineLayout.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna

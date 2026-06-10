@@ -2,7 +2,7 @@
 * This file is a portion of Luna SDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
-* 
+*
 * @file GUIDrawList.cpp
 * @author JXMaster
 * @date 2024/7/14
@@ -79,7 +79,7 @@ namespace Luna
                 batch.m_indices.push_back(idx_offset + i);
             }
         }
-        void DrawList::add_shape(u32 begin_command, u32 num_commands, 
+        void DrawList::add_shape(u32 begin_command, u32 num_commands,
                 const Float2U& min_position, const Float2U& max_position,
                 const Float2U& min_shapecoord, const Float2U& max_shapecoord,
                 const Float4U& color,
@@ -90,7 +90,7 @@ namespace Luna
             u32 idx_offset = (u32)batch.m_vertices.size();
             VG::Vertex v[4];
             u32 indices[6];
-            get_rect_shape_draw_vertices(v, indices, begin_command, num_commands, 
+            get_rect_shape_draw_vertices(v, indices, begin_command, num_commands,
                 min_position, max_position, min_shapecoord, max_shapecoord,
                 color, min_texcoord, max_texcoord);
             batch.m_vertices.insert(batch.m_vertices.end(), Span<VG::Vertex>(v, 4));

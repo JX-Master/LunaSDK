@@ -12,15 +12,12 @@
 #include <Luna/ECS/World.hpp>
 #include "Transform.hpp"
 #include <Luna/Runtime/Log.hpp>
-
+#include "Actor.generated.hpp"
 namespace Luna
 {
     struct Actor;
-
-    struct ActorInfo
+    struct [[luna::struct("bfeab38f-5057-4d52-8c9c-dfe776228e7b")]] ActorInfo
     {
-        lustruct("ActorInfo", "bfeab38f-5057-4d52-8c9c-dfe776228e7b");
-
         ActorInfo()
         {
             log_info("Studio", "ActorInfo construct");
@@ -148,11 +145,8 @@ namespace Luna
         ECS::IWorld* m_world;
         ECS::entity_id_t m_entity;
     };
-
-    struct ActorRef
+    struct [[luna::struct("aa67dbc3-b319-412e-a951-67f2d818f742")]] ActorRef
     {
-        lustruct("ActorRef", "aa67dbc3-b319-412e-a951-67f2d818f742");
-
-        Guid guid = Guid(0, 0);
+        [[Luna::property]] Guid guid = Guid(0, 0);
     };
 }

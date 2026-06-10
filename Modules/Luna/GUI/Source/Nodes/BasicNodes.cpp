@@ -19,7 +19,7 @@ namespace Luna
 
         Guid ButtonNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<ButtonNode>::__guid;
         }
 
         Ref<Node> ButtonNode::clone() const
@@ -41,7 +41,7 @@ namespace Luna
 
         Guid ProgressBarNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<ProgressBarNode>::__guid;
         }
 
         Ref<Node> ProgressBarNode::clone() const
@@ -61,7 +61,7 @@ namespace Luna
 
         Guid TextNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<TextNode>::__guid;
         }
 
         Ref<Node> TextNode::clone() const
@@ -101,7 +101,7 @@ namespace Luna
 
         Guid SelectableNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<SelectableNode>::__guid;
         }
 
         Ref<Node> SelectableNode::clone() const
@@ -149,7 +149,7 @@ namespace Luna
 
         Guid CheckboxNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<CheckboxNode>::__guid;
         }
 
         Ref<Node> CheckboxNode::clone() const
@@ -205,7 +205,7 @@ namespace Luna
 
         Guid ToggleSwitchNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<ToggleSwitchNode>::__guid;
         }
 
         Ref<Node> ToggleSwitchNode::clone() const
@@ -261,7 +261,7 @@ namespace Luna
 
         Guid CollapsingHeaderNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<CollapsingHeaderNode>::__guid;
         }
 
         Ref<Node> CollapsingHeaderNode::clone() const
@@ -308,7 +308,7 @@ namespace Luna
 
         Guid TreeNodeNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<TreeNodeNode>::__guid;
         }
 
         Ref<Node> TreeNodeNode::clone() const
@@ -379,7 +379,7 @@ namespace Luna
 
         Guid RadioButtonNode::type_guid() const
         {
-            return __guid;
+            return Meta::StructMetaData<RadioButtonNode>::__guid;
         }
 
         Ref<Node> RadioButtonNode::clone() const
