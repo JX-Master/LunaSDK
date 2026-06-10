@@ -8,7 +8,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ macos-latest ]
-        arch: [ x86_64, arm64 ]
+        arch: [ arm64 ]
         shared : [shared, static]
     name: ${{ matrix.arch }}-${{ matrix.shared }}
     runs-on: ${{ matrix.os }}

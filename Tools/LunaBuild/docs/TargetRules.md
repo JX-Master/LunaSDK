@@ -152,16 +152,17 @@ public sealed class ExampleTargetRules : TargetRules
 ```
 
 Use `Architecture` inside the same method for files such as POSIX fiber
-context assembly:
+context assembly. LunaSDK supports macOS arm64 only.
+POSIX x86_64 branches are for other supported POSIX platforms.
 
 ```csharp
-if(Architecture is "x86_64" or "x64")
-{
-    Sources("Source/Platform/POSIX/FiberContext_x86_64.S");
-}
-else if(Architecture is "arm64" or "aarch64" or "arm64-v8a")
+if(Architecture is "arm64" or "aarch64" or "arm64-v8a")
 {
     Sources("Source/Platform/POSIX/FiberContext_arm64.S");
+}
+else if(Architecture is "x86_64" or "x64")
+{
+    Sources("Source/Platform/POSIX/FiberContext_x86_64.S");
 }
 ```
 

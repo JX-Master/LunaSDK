@@ -13,6 +13,7 @@
 
 ### macOS
 
+* Apple Silicon Mac. LunaSDK supports macOS arm64 only.
 * Xcode and Command Line Tools.
 * Metal toolchain:
 
@@ -117,7 +118,8 @@ dotnet run --project LunaBuild.csproj -- run RuntimeTest -- --list
 * `--category <name>` filters all-target operations by `Engine`, `Tests`, or `Tools`. This option can be repeated or passed as a comma-separated list.
 * `--mode <name>` selects `Debug`, `Profile`, or `Release`. Default: `Debug`.
 * `--platform <name>` selects `Windows`, `MacOS`, `Linux`, `Android`, or `IOS`. Default: host platform.
-* `--arch <name>` selects architecture. Common values are `x64`, `x86_64`, and `arm64`.
+* `--arch <name>` selects architecture. LunaSDK supports macOS arm64 only.
+* Other common architecture values include Windows `x64` and Android ABI names such as `arm64-v8a`.
 * `--rhi <name>` selects `D3D12`, `Vulkan`, or `Metal`. Default: platform default.
 * `--shared` builds shared libraries.
 * `--static` builds static libraries.
@@ -156,10 +158,10 @@ Build Debug Metal shared libraries for Apple Silicon:
 dotnet run --project LunaBuild.csproj -- build --all --platform MacOS --arch arm64 --mode Debug --rhi Metal --shared
 ```
 
-Build Release Metal static libraries for x86_64:
+Build Release Metal static libraries for Apple Silicon:
 
 ```sh
-dotnet run --project LunaBuild.csproj -- build --all --platform MacOS --arch x86_64 --mode Release --rhi Metal --static
+dotnet run --project LunaBuild.csproj -- build --all --platform MacOS --arch arm64 --mode Release --rhi Metal --static
 ```
 
 ### Android Examples

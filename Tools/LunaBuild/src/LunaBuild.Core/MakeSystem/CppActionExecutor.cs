@@ -645,7 +645,6 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         return architecture.ToLowerInvariant() switch
         {
             "arm64" or "aarch64" => "arm64",
-            "x64" or "x86_64" => "x86_64",
             _ => throw new MakeSystemException($"Unsupported macOS architecture: {architecture}"),
         };
     }

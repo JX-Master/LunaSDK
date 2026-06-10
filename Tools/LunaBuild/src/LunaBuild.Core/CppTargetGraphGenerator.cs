@@ -599,12 +599,24 @@ public sealed class CppTargetGraphGenerator
             var targetNode = graph.Nodes.FirstOrDefault(node => node.Id.Equals(targetId, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidOperationException($"Host {targetName} graph did not contain target node `{targetId}`.");
             var binaryId = targetNode.Dependencies.FirstOrDefault(id =>
-                id.Replace('\\', '/').EndsWith("/bin/" + executableName, StringComparison.OrdinalIgnoreCase));
+                TryGetFileNameFromFileId(id).Equals(executableName, StringComparison.OrdinalIgnoreCase));
             if(string.IsNullOrWhiteSpace(binaryId))
             {
-                throw new InvalidOperationException($"Host {targetName} target did not expose its executable dependency.");
+                throw new InvalidOperationException(
+                    $"Host {targetName} target did not expose `{executableName}` as an executable dependency. " +
+                    $"Dependencies: {string.Join(", ", targetNode.Dependencies)}");
             }
             return binaryId;
+        }
+
+        private static string TryGetFileNameFromFileId(string id)
+        {
+            const string filePrefix = "file://";
+            if(!id.StartsWith(filePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+            return Path.GetFileName(id[filePrefix.Length..].Replace('\\', '/'));
         }
 
         private LunaMetaBuildOutputs AddMetaNodes(
