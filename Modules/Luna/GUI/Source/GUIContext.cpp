@@ -640,6 +640,101 @@ namespace Luna
             build_hint_state().next_dock_panel_open = open;
         }
 
+        void Context::set_dockspace_layout(id_t dock_space, const DockSpaceLayoutDesc& desc)
+        {
+            lutsassert();
+            if(!dock_space) return;
+            Ref<DockSpaceState> dock_state_ref = get_or_create_widget_state<DockSpaceState>(dock_space);
+            DockSpaceState& dock_state = *dock_state_ref;
+            dock_state.dock_nodes.clear();
+            dock_state.dock_root_node = U32_MAX;
+
+            HashSet<id_t, IdHash> floating_panels;
+            for(const DockSpaceFloatingPanelDesc& floating_panel : desc.floating_panels)
+            {
+                if(floating_panel.panel)
+                {
+                    floating_panels.insert(floating_panel.panel);
+                }
+            }
+
+            HashSet<id_t, IdHash> docked_panels;
+            Vector<u8> visiting;
+            visiting.resize(desc.nodes.size());
+            auto copy_node = [&](auto&& self, u32 source_index, u32 parent) -> u32 {
+                if(source_index >= desc.nodes.size() || visiting[source_index]) return U32_MAX;
+                visiting[source_index] = 1;
+                u32 target_index = (u32)dock_state.dock_nodes.size();
+                DockTreeNode target;
+                target.parent = parent;
+                dock_state.dock_nodes.push_back(move(target));
+
+                const DockSpaceLayoutNodeDesc& source = desc.nodes[source_index];
+                if(source.split)
+                {
+                    u32 child0 = self(self, source.child0, target_index);
+                    u32 child1 = self(self, source.child1, target_index);
+                    if(child0 != U32_MAX && child1 != U32_MAX)
+                    {
+                        DockTreeNode& target_node = dock_state.dock_nodes[target_index];
+                        target_node.split = true;
+                        target_node.child0 = child0;
+                        target_node.child1 = child1;
+                        target_node.split_axis = source.split_axis;
+                        target_node.split_ratio = clamp(source.split_ratio, 0.08f, 0.92f);
+                    }
+                }
+                else
+                {
+                    DockTreeNode& target_node = dock_state.dock_nodes[target_index];
+                    for(id_t panel : source.tabs)
+                    {
+                        if(!panel || floating_panels.contains(panel) || docked_panels.contains(panel)) continue;
+                        target_node.tabs.push_back(panel);
+                        docked_panels.insert(panel);
+                        DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state, panel);
+                        panel_state.initialized = true;
+                        panel_state.closed = false;
+                        panel_state.mode = DockPanelMode::docking;
+                    }
+                    for(id_t panel : target_node.tabs)
+                    {
+                        if(panel == source.selected_tab)
+                        {
+                            target_node.selected_tab = source.selected_tab;
+                            break;
+                        }
+                    }
+                    if(!target_node.selected_tab && !target_node.tabs.empty())
+                    {
+                        target_node.selected_tab = target_node.tabs[0];
+                    }
+                }
+                visiting[source_index] = 0;
+                return target_index;
+            };
+
+            if(desc.root_node != U32_MAX)
+            {
+                dock_state.dock_root_node = copy_node(copy_node, desc.root_node, U32_MAX);
+            }
+
+            u32 next_z_order = dock_state.dock_next_z_order;
+            for(const DockSpaceFloatingPanelDesc& floating_panel : desc.floating_panels)
+            {
+                if(!floating_panel.panel) continue;
+                DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state, floating_panel.panel);
+                panel_state.initialized = true;
+                panel_state.closed = false;
+                panel_state.mode = DockPanelMode::floating;
+                panel_state.rect = floating_panel.rect;
+                panel_state.z_order = floating_panel.z_order ? floating_panel.z_order : next_z_order++;
+                next_z_order = max(next_z_order, panel_state.z_order + 1);
+            }
+            dock_state.dock_next_z_order = max(dock_state.dock_next_z_order, next_z_order);
+            m_layout_dirty = true;
+        }
+
         u64 Context::generation() const
         {
             lutsassert();

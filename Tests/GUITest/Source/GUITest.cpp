@@ -15,6 +15,7 @@
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/VG/ShapeBuffer.hpp>
 #include <Luna/VG/VG.hpp>
 #include <Luna/VG/Shapes.hpp>
 #include <Luna/Window/AppMain.hpp>
@@ -36,6 +37,8 @@ namespace Luna
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
         Ref<GUI::IContext> gui;
+        Ref<VG::IShapeBuffer> check_shape_buffer;
+        GUI::ShapeDesc check_shape;
         u32 queue = U32_MAX;
         u32 width = 0;
         u32 height = 0;
@@ -53,6 +56,7 @@ namespace Luna
         bool menu_snap_to_grid = false;
         bool dock_panel_a_open = true;
         bool dock_panel_b_open = true;
+        bool dockspace_layout_initialized = false;
         bool tab_document_open[4] = { true, true, true, true };
         bool floating_window_open = false;
         i32 style_theme = 0;
@@ -239,6 +243,24 @@ namespace Luna
         GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
     }
 
+    GUI::ShapeDesc& demo_check_shape(App& app)
+    {
+        if(!app.check_shape_buffer)
+        {
+            app.check_shape_buffer = VG::new_shape_buffer();
+            Vector<f32>& points = app.check_shape_buffer->get_shape_points(true);
+            u32 begin = (u32)points.size();
+            VG::ShapeBuilder::add_line(points, 3.0f, 9.5f, 7.0f, 13.5f, 2.6f);
+            VG::ShapeBuilder::add_line(points, 7.0f, 13.5f, 15.0f, 5.0f, 2.6f);
+            app.check_shape.buffer = app.check_shape_buffer.get();
+            app.check_shape.texture = nullptr;
+            app.check_shape.first_command = begin;
+            app.check_shape.num_commands = (u32)points.size() - begin;
+            app.check_shape.bounds = RectF(0.0f, 0.0f, 18.0f, 18.0f);
+        }
+        return app.check_shape;
+    }
+
     GUI::ItemHandle demo_tree_node(App& app, FrameHandles& handles, u32 index, const c8* label, GUI::TreeNodeFlag flags = GUI::TreeNodeFlag::none)
     {
         if(app.tree_selected == index)
@@ -338,11 +360,13 @@ namespace Luna
 
         GUI::begin_h_layout(app.gui, "Button Container", row);
         demo_two_column_label(app, "Button container");
-        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(240.0f));
+        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(268.0f));
         GUI::begin_button(app.gui, "Build Button");
+        GUI::shape(app.gui, demo_check_shape(app), GUI::Size::fixed(18.0f, 18.0f));
         GUI::text(app.gui, "Build");
         GUI::progress_bar(app.gui, "Build Progress", 0.62f, GUI::Size::fixed(92.0f, 18.0f), "62%");
         GUI::end_button(app.gui);
+        GUI::shape_button(app.gui, "Shape Button", demo_check_shape(app), GUI::Size::fixed(18.0f, 18.0f));
         GUI::end_h_layout(app.gui);
 
         c8 counters[160];
@@ -550,10 +574,12 @@ namespace Luna
         GUI::end_scroll_view(app.gui);
 
         GUI::text(app.gui, "DockSpace");
-        GUI::begin_dock_space(app.gui, "Layout DockSpace", GUI::Size::fixed(max(app.showcase_content_size.x - 16.0f, 260.0f), 260.0f));
+        GUI::ItemHandle dock_space = GUI::begin_dock_space(app.gui, "Layout DockSpace", GUI::Size::fixed(max(app.showcase_content_size.x - 16.0f, 260.0f), 260.0f));
+        GUI::ItemHandle docked_panel;
+        GUI::ItemHandle floating_panel;
         if(app.dock_panel_a_open)
         {
-            GUI::begin_dock_panel(app.gui, "Docked Panel", &app.dock_panel_a_open);
+            docked_panel = GUI::begin_dock_panel(app.gui, "Docked Panel", &app.dock_panel_a_open);
             GUI::text(app.gui, "This panel starts in docking mode.");
             GUI::text_button(app.gui, "Docked Action");
             GUI::end_dock_panel(app.gui);
@@ -561,13 +587,28 @@ namespace Luna
         if(app.dock_panel_b_open)
         {
             GUI::DockPanelStyle floating_style;
-            floating_style.initial_mode = GUI::DockPanelMode::floating;
-            floating_style.floating_position = Float2U(220.0f, 34.0f);
-            floating_style.floating_size = Float2U(240.0f, 150.0f);
-            GUI::begin_dock_panel(app.gui, "Floating Panel", &app.dock_panel_b_open, floating_style);
+            floating_panel = GUI::begin_dock_panel(app.gui, "Floating Panel", &app.dock_panel_b_open, floating_style);
             GUI::text(app.gui, "Drag the title bar or resize from the corner.");
             GUI::toggle_switch(app.gui, "Live", &app.switch_a);
             GUI::end_dock_panel(app.gui);
+        }
+        if(!app.dockspace_layout_initialized && docked_panel.id)
+        {
+            GUI::DockSpaceLayoutDesc layout;
+            GUI::DockSpaceLayoutNodeDesc root;
+            root.tabs.push_back(docked_panel.id);
+            root.selected_tab = docked_panel.id;
+            layout.nodes.push_back(root);
+            layout.root_node = 0;
+            if(floating_panel.id)
+            {
+                GUI::DockSpaceFloatingPanelDesc floating;
+                floating.panel = floating_panel.id;
+                floating.rect = RectF(220.0f, 34.0f, 240.0f, 150.0f);
+                layout.floating_panels.push_back(floating);
+            }
+            GUI::set_dockspace_layout(app.gui, dock_space, layout);
+            app.dockspace_layout_initialized = true;
         }
         GUI::end_dock_space(app.gui);
 

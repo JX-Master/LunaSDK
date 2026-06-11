@@ -5,6 +5,7 @@
 */
 #pragma once
 #include "Common.hpp"
+#include <Luna/VG/ShapeBuffer.hpp>
 #include "DrawingNodes.generated.hpp"
 
 namespace Luna
@@ -24,6 +25,20 @@ namespace Luna
             ImageFlag flags = ImageFlag::none;
 
             ImageNode();
+            virtual Guid type_guid() const override;
+            virtual Ref<Node> clone() const override;
+
+            virtual LayoutMetrics measure() const override;
+        };
+        struct [[Luna::struct("{33EDF8A1-B3C9-405F-B819-89677F77A299}")]] ShapeNode : Node
+        {
+            Ref<VG::IShapeBuffer> buffer;
+            Ref<RHI::ITexture> texture;
+            u32 first_command = 0;
+            u32 num_commands = 0;
+            RectF bounds;
+
+            ShapeNode();
             virtual Guid type_guid() const override;
             virtual Ref<Node> clone() const override;
 

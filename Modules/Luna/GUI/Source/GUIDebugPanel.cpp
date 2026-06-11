@@ -427,13 +427,20 @@ namespace Luna
             f32 panel_height = max(desc.size.height, 220.0f);
             DockPanelStyle panel_style;
             panel_style.close_button = false;
-            panel_style.initial_mode = DockPanelMode::floating;
-            panel_style.floating_position = desc.screen_position;
-            panel_style.floating_size = Float2U(panel_width, panel_height);
             panel_style.min_floating_size = Float2U(320.0f, 220.0f);
             set_next_canvas_item_layout(context, CanvasItemLayout::fixed(Float2U(0.0f), screen_size));
-            begin_dock_space(context, "GUI Debug DockSpace", Size::fixed(screen_size.x, screen_size.y));
-            begin_dock_panel(context, "GUI Debug Panel", nullptr, panel_style);
+            ItemHandle dock_space = begin_dock_space(context, "GUI Debug DockSpace", Size::fixed(screen_size.x, screen_size.y));
+            ItemHandle debug_panel = begin_dock_panel(context, "GUI Debug Panel", nullptr, panel_style);
+            if(!state->dock_layout_initialized)
+            {
+                DockSpaceLayoutDesc layout;
+                DockSpaceFloatingPanelDesc floating_panel;
+                floating_panel.panel = debug_panel.id;
+                floating_panel.rect = RectF(desc.screen_position.x, desc.screen_position.y, panel_width, panel_height);
+                layout.floating_panels.push_back(floating_panel);
+                set_dockspace_layout(context, dock_space, layout);
+                state->dock_layout_initialized = true;
+            }
             LayoutDesc row;
             row.gap = 8.0f;
             row.cross_axis_alignment = LayoutCrossAxisAlignment::stretch;

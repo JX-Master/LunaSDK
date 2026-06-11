@@ -145,6 +145,10 @@ namespace Luna
         LUNA_GUI_API void end_canvas_layout(IContext* context);
         //! Begins a dock space that manages dock panels.
         LUNA_GUI_API ItemHandle begin_dock_space(IContext* context, const c8* label, const Size& size = Size());
+        //! Replaces the stored layout for a dock space by ID.
+        LUNA_GUI_API void set_dockspace_layout(IContext* context, id_t dock_space, const DockSpaceLayoutDesc& desc);
+        //! Replaces the stored layout for a dock space handle.
+        LUNA_GUI_API void set_dockspace_layout(IContext* context, ItemHandle dock_space, const DockSpaceLayoutDesc& desc);
         //! Ends the current dock space.
         LUNA_GUI_API void end_dock_space(IContext* context);
         //! Begins a dock panel inside the current dock space.
@@ -250,6 +254,14 @@ namespace Luna
         //! @return Returns the created button item handle.
         //! @remark This creates a button container and inserts one text child using the default button-label renderer.
         LUNA_GUI_API ItemHandle text_button(IContext* context, const c8* text, const RectF& rect);
+        //! Adds a shape button helper.
+        //! @param[in] context The GUI context.
+        //! @param[in] label The button label used for ID generation and debug inspection.
+        //! @param[in] shape The shape drawn as the button content.
+        //! @param[in] size The requested shape content size.
+        //! @return Returns the created button item handle.
+        //! @remark This creates a button container and inserts one shape child.
+        LUNA_GUI_API ItemHandle shape_button(IContext* context, const c8* label, ShapeDesc& shape, const Size& size);
         //! Adds a progress bar.
         //! @param[in] label The widget label used for ID generation and debug inspection.
         //! @param[in] fraction The progress fraction in the 0-1 range. Values outside the range are clamped.
@@ -275,6 +287,12 @@ namespace Luna
         LUNA_GUI_API ItemHandle input_text(IContext* context, const c8* label, String& value);
         //! Adds an image item.
         LUNA_GUI_API ItemHandle image(IContext* context, RHI::ITexture* texture, const Size& size, ImageFlag flags = ImageFlag::none);
+        //! Adds a vector shape item.
+        //! @param[in] context The GUI context.
+        //! @param[in] shape The VG shape description. The pointed shape buffer and texture are retained by the node.
+        //! @param[in] size The requested item size.
+        //! @return Returns the created shape item handle.
+        LUNA_GUI_API ItemHandle shape(IContext* context, ShapeDesc& shape, const Size& size);
         //! Adds a collapsing header.
         LUNA_GUI_API ItemHandle collapsing_header(IContext* context, const c8* label);
         //! Adds a tree node.

@@ -14,6 +14,11 @@
 
 namespace Luna
 {
+    namespace VG
+    {
+        struct IShapeBuffer;
+    }
+
     namespace GUI
     {
         //! @addtogroup GUI GUI
@@ -57,6 +62,22 @@ namespace Luna
             flip_y = 0x01,
             //! Use nearest-neighbor texture sampling.
             nearest = 0x02
+        };
+
+        //! Describes one vector shape stored in a VG shape buffer.
+        struct ShapeDesc
+        {
+            //! The VG shape buffer that stores the shape command range.
+            VG::IShapeBuffer* buffer = nullptr;
+            //! Optional texture sampled through the shape. When this is not `nullptr`, the shape acts as the texture mask.
+            RHI::ITexture* texture = nullptr;
+            //! The first command point of the shape in @ref buffer.
+            u32 first_command = 0;
+            //! The number of command points in the shape.
+            u32 num_commands = 0;
+            //! The source shape bounds used to map shape coordinates to the destination rectangle.
+            //! @remark Bounds are interpreted in GUI shape coordinates, where Y increases downward.
+            RectF bounds;
         };
 
         //! Describes the high-level layer role of a node.

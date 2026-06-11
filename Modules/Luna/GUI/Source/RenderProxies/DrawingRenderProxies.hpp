@@ -11,6 +11,7 @@ namespace Luna
     namespace GUI
     {
         RenderProxyDesc default_image_render_proxy();
+        RenderProxyDesc default_shape_render_proxy();
         RenderProxyDesc default_draw_rect_render_proxy();
         RenderProxyDesc default_draw_circle_render_proxy();
         RenderProxyDesc default_draw_line_render_proxy();

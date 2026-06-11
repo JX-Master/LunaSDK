@@ -960,7 +960,6 @@ namespace Luna
 
         GUI::push_id(context, this);
         GUI::DockPanelStyle panel_style;
-        panel_style.floating_size = Float2U(1000.0f, 500.0f);
         panel_style.min_floating_size = Float2U(420.0f, 260.0f);
         GUI::LayoutDesc panel_layout;
         panel_layout.padding = GUI::EdgeInsets::all(0.0f);

@@ -490,45 +490,65 @@ namespace Luna
         bool Context::hit_test_dock_splitter(const Float2U& pos, id_t& out_space_id, u32& out_node_index, DockSplitAxis& out_axis) const
         {
             if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
-            u32 hit_layer = hit_test_layer_index(pos);
-            if(hit_layer == U32_MAX) return false;
-            id_t top_space = 0;
-            id_t top_panel = 0;
-            if(hit_test_dock_panel(pos, top_space, top_panel))
-            {
+            auto layer_has_floating_dock_panel = [&](u32 layer_index) {
                 for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                 {
-                    if(m_submitted_desc.nodes[i].id == top_panel && m_layouts[i].dock_panel_floating)
+                    const Node& dock_node = m_submitted_desc.nodes[i];
+                    if(dock_node.layer != layer_index) continue;
+                    if(!dock_space_layout(dock_node)) continue;
+                    if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
+                    for(u32 child = dock_node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                     {
-                        return false;
+                        const NodeLayout& layout = m_layouts[child];
+                        if(!layout.dock_panel_child || !layout.dock_panel_visible || !layout.dock_panel_floating) continue;
+                        if(point_in_rect(pos, layout.dock_panel_rect) && point_in_rect(pos, layout.dock_panel_clip_rect))
+                        {
+                            return true;
+                        }
                     }
                 }
-            }
-            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
-            {
-                const Node& dock_node = m_submitted_desc.nodes[i];
-                if(dock_node.layer != hit_layer) continue;
-                if(!dock_space_layout(dock_node)) continue;
-                const DockSpaceState* dock_state = get_widget_state<DockSpaceState>(dock_node.id);
-                if(!dock_state) continue;
-                if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
-                if(dock_state->dock_root_node == U32_MAX || dock_state->dock_root_node >= dock_state->dock_nodes.size()) continue;
-                Vector<u32> stack;
-                stack.push_back(dock_state->dock_root_node);
-                while(!stack.empty())
+                return false;
+            };
+            auto hit_splitter_in_layer = [&](u32 layer_index, id_t& space_id, u32& node_index, DockSplitAxis& axis) {
+                for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                 {
-                    u32 node_index = stack.back();
-                    stack.pop_back();
-                    if(node_index >= dock_state->dock_nodes.size()) continue;
-                    const DockTreeNode& tree_node = dock_state->dock_nodes[node_index];
-                    if(!tree_node.split) continue;
-                    stack.push_back(tree_node.child1);
-                    stack.push_back(tree_node.child0);
-                    if(!point_in_rect(pos, tree_node.split_rect)) continue;
-                    out_space_id = dock_node.id;
-                    out_node_index = (u32)node_index;
-                    out_axis = tree_node.split_axis;
-                    return true;
+                    const Node& dock_node = m_submitted_desc.nodes[i];
+                    if(dock_node.layer != layer_index) continue;
+                    if(!dock_space_layout(dock_node)) continue;
+                    const DockSpaceState* dock_state = get_widget_state<DockSpaceState>(dock_node.id);
+                    if(!dock_state) continue;
+                    if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
+                    if(dock_state->dock_root_node == U32_MAX || dock_state->dock_root_node >= dock_state->dock_nodes.size()) continue;
+                    Vector<u32> stack;
+                    stack.push_back(dock_state->dock_root_node);
+                    while(!stack.empty())
+                    {
+                        u32 current_node = stack.back();
+                        stack.pop_back();
+                        if(current_node >= dock_state->dock_nodes.size()) continue;
+                        const DockTreeNode& tree_node = dock_state->dock_nodes[current_node];
+                        if(!tree_node.split) continue;
+                        stack.push_back(tree_node.child1);
+                        stack.push_back(tree_node.child0);
+                        if(!point_in_rect(pos, tree_node.split_rect)) continue;
+                        space_id = dock_node.id;
+                        node_index = current_node;
+                        axis = tree_node.split_axis;
+                        return true;
+                    }
+                }
+                return false;
+            };
+            for(usize layer_index = m_submitted_desc.layers.size(); layer_index > 0; --layer_index)
+            {
+                u32 layer = (u32)(layer_index - 1);
+                const Layer& layer_desc = m_submitted_desc.layers[layer];
+                if(layer_desc.root == U32_MAX || layer_desc.root >= m_submitted_desc.nodes.size()) continue;
+                if(layer_has_floating_dock_panel(layer)) return false;
+                if(hit_splitter_in_layer(layer, out_space_id, out_node_index, out_axis)) return true;
+                if(hit_test_node(layer_desc.root, pos, HitTestFilter::none) || hit_test_dock_panel_layer(layer, pos))
+                {
+                    return false;
                 }
             }
             return false;

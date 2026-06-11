@@ -375,6 +375,17 @@ namespace Luna
             return handle;
         }
 
+        LUNA_GUI_API void set_dockspace_layout(IContext* context, id_t dock_space, const DockSpaceLayoutDesc& desc)
+        {
+            context_from_interface(context)->set_dockspace_layout(dock_space, desc);
+        }
+
+        LUNA_GUI_API void set_dockspace_layout(IContext* context, ItemHandle dock_space, const DockSpaceLayoutDesc& desc)
+        {
+            if(!dock_space.id) return;
+            context_from_interface(context)->set_dockspace_layout(dock_space.id, desc);
+        }
+
         LUNA_GUI_API void end_dock_space(IContext* context)
         {
             context_from_interface(context)->end_container();
@@ -794,6 +805,19 @@ namespace Luna
             return handle;
         }
 
+        LUNA_GUI_API ItemHandle shape_button(IContext* context, const c8* label, ShapeDesc& shape_desc, const Size& size)
+        {
+            Context* ctx = context_from_interface(context);
+            ItemHandle handle = begin_button(context, label ? label : "");
+            bool enabled = ctx->m_build_desc.nodes.back().enabled_state();
+            ctx->push_enabled(enabled);
+            shape(context, shape_desc, size);
+            ctx->pop_enabled();
+            end_button(context);
+            ctx->m_last_item_id = handle.id;
+            return handle;
+        }
+
         LUNA_GUI_API ItemHandle progress_bar(IContext* context, const c8* label, f32 fraction, const Size& size, const c8* overlay)
         {
             Context* ctx = context_from_interface(context);
@@ -937,6 +961,20 @@ namespace Luna
             node->flags = flags;
             apply_requested_size(*node, size);
             ItemHandle handle = ctx->add_node(Ref<Node>(node), "Image", false);
+            return handle;
+        }
+
+        LUNA_GUI_API ItemHandle shape(IContext* context, ShapeDesc& shape, const Size& size)
+        {
+            Context* ctx = context_from_interface(context);
+            Ref<ShapeNode> node = new_object<ShapeNode>();
+            node->buffer = shape.buffer;
+            node->texture = shape.texture;
+            node->first_command = shape.first_command;
+            node->num_commands = shape.num_commands;
+            node->bounds = shape.bounds;
+            apply_requested_size(*node, size);
+            ItemHandle handle = ctx->add_node(Ref<Node>(node), "Shape", false);
             return handle;
         }
 

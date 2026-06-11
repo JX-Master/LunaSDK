@@ -407,6 +407,8 @@ namespace Luna
             bool has_main_hovered_node = false;
             //! Main UI hovered node key.
             DebugNodeKey main_hovered_node;
+            //! Whether the debug panel dock layout has been initialized.
+            bool dock_layout_initialized = false;
         };
 
         //! Gets the default debug panel layer ID.

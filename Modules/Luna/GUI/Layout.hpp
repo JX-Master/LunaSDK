@@ -424,7 +424,7 @@ namespace Luna
             f32 max_width = 360.0f;
         };
 
-        //! Initial placement mode for a dock panel.
+        //! Placement mode for a dock panel.
         enum class DockPanelMode : u8
         {
             //! Place the panel into the dock tree.
@@ -433,22 +433,57 @@ namespace Luna
             floating
         };
 
-        //! Initial dock placement relative to another dock panel.
-        enum class DockPanelInitialPlacement : u8
+        //! Axis used by one dock space split node.
+        enum class DockSplitAxis : u8
         {
-            //! Add the panel as a tab in the target leaf.
-            tab,
-            //! Split the target leaf and place the panel on the left side.
-            left,
-            //! Split the target leaf and place the panel on the right side.
-            right,
-            //! Split the target leaf and place the panel on the upper side.
-            up,
-            //! Split the target leaf and place the panel on the lower side.
-            down
+            //! Split the region into left and right children.
+            x,
+            //! Split the region into upper and lower children.
+            y
         };
 
-        //! Style and initial behavior for dock panels managed by a dock space.
+        //! Describes one node in a dock space layout tree.
+        struct DockSpaceLayoutNodeDesc
+        {
+            //! Whether this node splits its rectangle into two child rectangles.
+            bool split = false;
+            //! Split axis used when @ref split is `true`.
+            DockSplitAxis split_axis = DockSplitAxis::x;
+            //! Fraction of the available split axis length assigned to @ref child0.
+            f32 split_ratio = 0.5f;
+            //! Index of the first child node in @ref DockSpaceLayoutDesc::nodes.
+            u32 child0 = U32_MAX;
+            //! Index of the second child node in @ref DockSpaceLayoutDesc::nodes.
+            u32 child1 = U32_MAX;
+            //! Dock panel IDs stacked in this leaf as tabs when @ref split is `false`.
+            Vector<id_t> tabs;
+            //! Selected dock panel ID for this leaf. If zero or absent from @ref tabs, the first live tab is selected.
+            id_t selected_tab = 0;
+        };
+
+        //! Describes one floating dock panel in a dock space layout.
+        struct DockSpaceFloatingPanelDesc
+        {
+            //! Dock panel ID.
+            id_t panel = 0;
+            //! Floating panel rectangle in dock space coordinates.
+            RectF rect = RectF(0.0f, 0.0f, 320.0f, 220.0f);
+            //! Floating panel Z order. A value of 0 lets the context assign one after existing panels.
+            u32 z_order = 0;
+        };
+
+        //! Describes the full layout stored by one dock space.
+        struct DockSpaceLayoutDesc
+        {
+            //! Dock tree nodes. Split nodes reference children by index, leaf nodes hold tab panel IDs.
+            Vector<DockSpaceLayoutNodeDesc> nodes;
+            //! Index of the root node in @ref nodes. `U32_MAX` means the dock tree is empty.
+            u32 root_node = U32_MAX;
+            //! Floating panels drawn above the docked tree.
+            Vector<DockSpaceFloatingPanelDesc> floating_panels;
+        };
+
+        //! Style for dock panels managed by a dock space.
         struct DockPanelStyle
         {
             //! Whether the panel displays a title bar.
@@ -463,20 +498,8 @@ namespace Luna
             f32 border_size = 1.0f;
             //! Floating panel resize hit-test thickness in logical units.
             f32 resize_border_size = 6.0f;
-            //! Initial mode used when no persistent dock panel state exists.
-            DockPanelMode initial_mode = DockPanelMode::docking;
-            //! Initial floating top-left position in dock space coordinates.
-            Float2U floating_position = Float2U(24.0f, 24.0f);
-            //! Initial floating size.
-            Float2U floating_size = Float2U(320.0f, 220.0f);
             //! Minimum size for user-resized floating panels.
             Float2U min_floating_size = Float2U(120.0f, 80.0f);
-            //! Initial target panel label used for first-time dock placement. Empty means using the dock space default placement.
-            Name initial_dock_target;
-            //! Initial placement relative to @ref initial_dock_target when the panel state is first created.
-            DockPanelInitialPlacement initial_dock_placement = DockPanelInitialPlacement::tab;
-            //! Initial split ratio used when @ref initial_dock_placement splits the target leaf.
-            f32 initial_dock_split_ratio = 0.5f;
             //! Panel background color used by the default render proxy.
             Float4U background_color = Float4U(0.09f, 0.11f, 0.14f, 0.96f);
             //! Inactive title bar color used by the default render proxy.

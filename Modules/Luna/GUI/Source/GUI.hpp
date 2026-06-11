@@ -1115,12 +1115,6 @@ namespace Luna
             u32 z_order = 0;
         };
 
-        enum class DockSplitAxis : u8
-        {
-            x,
-            y
-        };
-
         enum class DockDropDirection : u8
         {
             none,
@@ -1854,6 +1848,7 @@ namespace Luna
             void end_table_row();
             bool table_row_visible(const TableLayoutNode& table, u32 row) const;
             void set_next_dock_panel_style(const DockPanelStyle& style, bool* open);
+            void set_dockspace_layout(id_t dock_space, const DockSpaceLayoutDesc& desc);
             bool style_parent_cycle(const Name& name, const Name& parent) const;
             void push_id(id_t id);
             void pop_id();

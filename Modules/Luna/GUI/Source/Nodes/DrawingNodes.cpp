@@ -54,6 +54,31 @@ namespace Luna
             return metrics;
         }
 
+        ShapeNode::ShapeNode()
+        {
+            render_proxy = default_shape_render_proxy();
+        }
+
+        Guid ShapeNode::type_guid() const
+        {
+            return Meta::StructMetaData<ShapeNode>::__guid;
+        }
+
+        Ref<Node> ShapeNode::clone() const
+        {
+            return new_object<ShapeNode>(*this);
+        }
+
+        LayoutMetrics ShapeNode::measure() const
+        {
+            Float2U shape_size(max(requested_size.width, 1.0f), max(requested_size.height, 1.0f));
+            LayoutMetrics metrics;
+            metrics.min_size = shape_size;
+            metrics.preferred_size = shape_size;
+            metrics.max_size = shape_size;
+            return metrics;
+        }
+
         DrawRectNode::DrawRectNode()
         {
             render_proxy = default_draw_rect_render_proxy();

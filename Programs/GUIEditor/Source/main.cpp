@@ -8,6 +8,7 @@
 * @date 2026/6/10
 */
 #include "EditorService.hpp"
+#include "PaletteIcons.hpp"
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/Font/Font.hpp>
 #include <Luna/GUI/GUI.hpp>
@@ -52,6 +53,12 @@ namespace Luna
             Guid node;
         };
 
+        struct TypeItemHandle
+        {
+            u32 type_index = 0;
+            GUI::ItemHandle handle;
+        };
+
         struct FrameHandles
         {
             GUI::ItemHandle new_document;
@@ -59,8 +66,8 @@ namespace Luna
             GUI::ItemHandle save_document;
             GUI::ItemHandle undo;
             GUI::ItemHandle redo;
-            GUI::ItemHandle add_child;
-            GUI::ItemHandle add_sibling;
+            GUI::ItemHandle new_node;
+            GUI::ItemHandle new_node_popup;
             GUI::ItemHandle remove_node_menu;
             GUI::ItemHandle remove_node;
             GUI::ItemHandle move_up;
@@ -70,7 +77,7 @@ namespace Luna
             GUI::ItemHandle erase_property;
             GUI::ItemHandle preview_drop_target;
             Vector<NodeHandle> tree_nodes;
-            Vector<NodeHandle> palette_nodes;
+            Vector<TypeItemHandle> new_node_items;
         };
 
         struct App
@@ -81,16 +88,16 @@ namespace Luna
             Ref<GUI::IContext> gui;
             EditorService service;
             Vector<Name> node_types;
+            PaletteIcons palette_icons;
             u32 queue = U32_MAX;
             u32 width = 0;
             u32 height = 0;
             bool show_preview = true;
             bool show_properties = true;
+            bool dockspace_layout_initialized = false;
             Guid inspector_node = Guid(0, 0);
             String open_path = "/sample.guiasset";
             String save_path = "/sample.guiasset";
-            String new_node_label = "New Node";
-            i32 selected_node_type = 0;
             String edit_label;
             String edit_style;
             bool edit_enabled = true;
@@ -290,11 +297,6 @@ namespace Luna
                 document->selected_node != GA::get_root(document->asset.get());
         }
 
-        static bool can_add_sibling(EditorDocument* document)
-        {
-            return can_remove_selected(document);
-        }
-
         static bool can_move_selected(EditorDocument* document, bool down)
         {
             usize index = 0;
@@ -363,14 +365,6 @@ namespace Luna
         {
             app.node_types.clear();
             GA::get_node_types(app.node_types);
-            if(app.node_types.empty())
-            {
-                app.selected_node_type = 0;
-            }
-            else if(app.selected_node_type < 0 || (usize)app.selected_node_type >= app.node_types.size())
-            {
-                app.selected_node_type = 0;
-            }
         }
 
         static void sync_inspector(App& app)
@@ -486,32 +480,28 @@ namespace Luna
 
         static void draw_palette_panel(App& app, FrameHandles& handles)
         {
-            EditorDocument* document = app.service.active_document();
-            GUI::text(app.gui, "Create Node");
-            if(!app.node_types.empty())
-            {
-                Vector<const c8*> type_items;
-                type_items.reserve(app.node_types.size());
-                for(const Name& type : app.node_types)
-                {
-                    type_items.push_back(type.c_str());
-                }
-                GUI::button_group(app.gui, "Node Type", &app.selected_node_type, Span<const c8*>(type_items.data(), type_items.size()));
-            }
-            GUI::input_text(app.gui, "Label", app.new_node_label);
-            GUI::set_next_item_enabled(app.gui, document && document->asset && !app.node_types.empty());
-            handles.add_child = GUI::text_button(app.gui, "Add Child");
-            GUI::set_next_item_enabled(app.gui, can_add_sibling(document) && !app.node_types.empty());
-            handles.add_sibling = GUI::text_button(app.gui, "Add Sibling");
+            (void)handles;
             GUI::text(app.gui, "Palette");
+            GUI::GridLayoutDesc palette_grid;
+            palette_grid.sizing_mode = GUI::GridSizingMode::fixed_cell_size;
+            palette_grid.cell_size = Float2U(42.0f, 38.0f);
+            palette_grid.padding = GUI::EdgeInsets::all(0.0f);
+            palette_grid.gap = Float2U(6.0f, 6.0f);
+            palette_grid.cell_cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
+            GUI::begin_grid_layout(app.gui, "Palette Grid", palette_grid);
             for(usize i = 0; i < app.node_types.size(); ++i)
             {
                 GUI::push_id(app.gui, i);
-                GUI::ItemHandle h = GUI::text_button(app.gui, app.node_types[i].c_str());
-                handles.palette_nodes.push_back({Guid((u64)i, 0), h});
+                GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill());
+                GUI::ShapeDesc& icon = palette_icon(app.palette_icons, app.node_types[i]);
+                GUI::ItemHandle h = GUI::shape_button(app.gui, app.node_types[i].c_str(), icon, GUI::Size::fixed(18.0f, 18.0f));
+                c8 tooltip[192];
+                snprintf(tooltip, sizeof(tooltip), "Drag %s into the tree or preview.", app.node_types[i].c_str());
+                GUI::set_item_tooltip(app.gui, h, tooltip);
                 register_palette_drag_source(app, i, h);
                 GUI::pop_id(app.gui);
             }
+            GUI::end_grid_layout(app.gui);
         }
 
         static void draw_tree_panel(App& app, FrameHandles& handles)
@@ -528,6 +518,8 @@ namespace Luna
             GUI::LayoutDesc action_layout;
             action_layout.gap = 4.0f;
             GUI::begin_h_layout(app.gui, "Tree Actions", action_layout);
+            GUI::set_next_item_enabled(app.gui, document && document->asset && !app.node_types.empty());
+            handles.new_node = GUI::text_button(app.gui, "New");
             GUI::set_next_item_enabled(app.gui, can_move_selected(document, false));
             handles.move_up = GUI::text_button(app.gui, "Move Up");
             GUI::set_next_item_enabled(app.gui, can_move_selected(document, true));
@@ -535,6 +527,22 @@ namespace Luna
             GUI::set_next_item_enabled(app.gui, can_remove_selected(document));
             handles.remove_node = GUI::text_button(app.gui, "Delete");
             GUI::end_h_layout(app.gui);
+
+            RectF new_rect = GUI::get_item_state(handles.new_node, GUI::State::rect());
+            GUI::PopupDesc popup_desc;
+            popup_desc.position = Float2U(new_rect.offset_x, new_rect.offset_y + new_rect.height + 4.0f);
+            popup_desc.size = GUI::Size::fixed(220.0f, 0.0f);
+            if(GUI::begin_popup(app.gui, "New Node Popup", popup_desc, &handles.new_node_popup))
+            {
+                for(usize i = 0; i < app.node_types.size(); ++i)
+                {
+                    GUI::push_id(app.gui, i);
+                    GUI::ItemHandle item = GUI::menu_item(app.gui, app.node_types[i].c_str());
+                    handles.new_node_items.push_back({(u32)i, item});
+                    GUI::pop_id(app.gui);
+                }
+                GUI::end_popup(app.gui);
+            }
             draw_node_tree(app, handles, *document, GA::get_root(document->asset.get()));
         }
 
@@ -633,13 +641,51 @@ namespace Luna
             }
         }
 
-        static GUI::DockPanelStyle dock_panel_style(const c8* target, GUI::DockPanelInitialPlacement placement, f32 split_ratio)
+        static GUI::DockSpaceLayoutNodeDesc dock_leaf(GUI::id_t panel)
         {
-            GUI::DockPanelStyle style;
-            style.initial_dock_target = target ? Name(target) : Name();
-            style.initial_dock_placement = placement;
-            style.initial_dock_split_ratio = split_ratio;
-            return style;
+            GUI::DockSpaceLayoutNodeDesc node;
+            node.tabs.push_back(panel);
+            node.selected_tab = panel;
+            return node;
+        }
+
+        static GUI::DockSpaceLayoutNodeDesc dock_split(GUI::DockSplitAxis axis, f32 ratio, u32 child0, u32 child1)
+        {
+            GUI::DockSpaceLayoutNodeDesc node;
+            node.split = true;
+            node.split_axis = axis;
+            node.split_ratio = ratio;
+            node.child0 = child0;
+            node.child1 = child1;
+            return node;
+        }
+
+        static void set_default_dockspace_layout(
+            App& app,
+            GUI::ItemHandle dock_space,
+            GUI::ItemHandle palette,
+            GUI::ItemHandle preview,
+            GUI::ItemHandle inspector,
+            GUI::ItemHandle tree,
+            GUI::ItemHandle history)
+        {
+            if(app.dockspace_layout_initialized || !dock_space.id || !palette.id || !preview.id || !inspector.id || !tree.id || !history.id)
+            {
+                return;
+            }
+            GUI::DockSpaceLayoutDesc layout;
+            layout.root_node = 0;
+            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::x, 0.22f, 1, 4));
+            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::y, 0.34f, 2, 3));
+            layout.nodes.push_back(dock_leaf(palette.id));
+            layout.nodes.push_back(dock_leaf(tree.id));
+            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::x, 0.72f, 5, 8));
+            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::y, 0.76f, 6, 7));
+            layout.nodes.push_back(dock_leaf(preview.id));
+            layout.nodes.push_back(dock_leaf(history.id));
+            layout.nodes.push_back(dock_leaf(inspector.id));
+            GUI::set_dockspace_layout(app.gui, dock_space, layout);
+            app.dockspace_layout_initialized = true;
         }
 
         static GUI::ItemHandle begin_panel_scroll(App& app, const c8* label)
@@ -693,18 +739,18 @@ namespace Luna
             GUI::end_menu_bar(app.gui);
 
             GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill());
-            GUI::begin_dock_space(app.gui, "GUIEditor DockSpace");
+            GUI::ItemHandle dock_space = GUI::begin_dock_space(app.gui, "GUIEditor DockSpace");
 
-            GUI::begin_dock_panel(app.gui, "Node Palette");
+            GUI::ItemHandle palette_panel = GUI::begin_dock_panel(app.gui, "Node Palette");
             (void)begin_panel_scroll(app, "Node Palette Scroll");
             draw_palette_panel(app, handles);
             end_panel_scroll(app);
             GUI::end_dock_panel(app.gui);
 
+            GUI::ItemHandle preview_panel;
             if(app.show_preview)
             {
-                GUI::DockPanelStyle style = dock_panel_style("Node Palette", GUI::DockPanelInitialPlacement::right, 0.22f);
-                GUI::begin_dock_panel(app.gui, "Preview", &app.show_preview, style);
+                preview_panel = GUI::begin_dock_panel(app.gui, "Preview", &app.show_preview);
                 handles.preview_drop_target = begin_panel_scroll(app, "Preview Scroll");
                 register_tree_drop_target(app, handles.preview_drop_target);
                 draw_preview_panel(app);
@@ -712,32 +758,32 @@ namespace Luna
                 GUI::end_dock_panel(app.gui);
             }
 
+            GUI::ItemHandle inspector_panel;
             if(app.show_properties)
             {
-                GUI::DockPanelStyle style = dock_panel_style("Preview", GUI::DockPanelInitialPlacement::right, 0.72f);
-                GUI::begin_dock_panel(app.gui, "Inspector", &app.show_properties, style);
+                inspector_panel = GUI::begin_dock_panel(app.gui, "Inspector", &app.show_properties);
                 (void)begin_panel_scroll(app, "Inspector Scroll");
                 draw_properties_panel(app, handles);
                 end_panel_scroll(app);
                 GUI::end_dock_panel(app.gui);
             }
 
+            GUI::ItemHandle tree_panel;
             {
-                GUI::DockPanelStyle style = dock_panel_style("Node Palette", GUI::DockPanelInitialPlacement::down, 0.34f);
-                GUI::begin_dock_panel(app.gui, "Widget Tree", nullptr, style);
+                tree_panel = GUI::begin_dock_panel(app.gui, "Widget Tree");
                 (void)begin_panel_scroll(app, "Widget Tree Scroll");
                 draw_tree_panel(app, handles);
                 end_panel_scroll(app);
                 GUI::end_dock_panel(app.gui);
             }
 
-            GUI::DockPanelStyle history_style = dock_panel_style("Preview", GUI::DockPanelInitialPlacement::down, 0.76f);
-            GUI::begin_dock_panel(app.gui, "History", nullptr, history_style);
+            GUI::ItemHandle history_panel = GUI::begin_dock_panel(app.gui, "History");
             (void)begin_panel_scroll(app, "History Scroll");
             draw_history_panel(app);
             end_panel_scroll(app);
             GUI::end_dock_panel(app.gui);
 
+            set_default_dockspace_layout(app, dock_space, palette_panel, preview_panel, inspector_panel, tree_panel, history_panel);
             GUI::end_dock_space(app.gui);
             GUI::end_v_layout(app.gui);
         }
@@ -801,7 +847,6 @@ namespace Luna
                 app.service.last_status = "Invalid palette drag payload.";
                 return true;
             }
-            app.selected_node_type = (i32)data->type_index;
             RV r = create_node_at(app.service, document, app.node_types[data->type_index], app.node_types[data->type_index].c_str(), parent, index);
             set_drop_status(app.service, r);
             app.inspector_node = Guid(0, 0);
@@ -934,6 +979,24 @@ namespace Luna
             {
                 return;
             }
+            if(GUI::is_item_clicked(handles.new_node))
+            {
+                GUI::open_popup(app.gui, handles.new_node_popup);
+            }
+            for(const TypeItemHandle& item : handles.new_node_items)
+            {
+                if(GUI::is_item_clicked(item.handle) && (usize)item.type_index < app.node_types.size())
+                {
+                    Guid parent = document->selected_node != Guid(0, 0) ? document->selected_node : GA::get_root(document->asset.get());
+                    (void)app.service.create_node(document->id, parent, app.node_types[item.type_index], app.node_types[item.type_index].c_str());
+                    if(handles.new_node_popup.context)
+                    {
+                        GUI::close_popup(app.gui, handles.new_node_popup);
+                    }
+                    app.inspector_node = Guid(0, 0);
+                    return;
+                }
+            }
             if(process_drop_actions(app, handles, *document))
             {
                 return;
@@ -943,35 +1006,6 @@ namespace Luna
                 if(GUI::is_item_clicked(h.handle))
                 {
                     select_node(app, h.node);
-                }
-            }
-            for(usize i = 0; i < handles.palette_nodes.size(); ++i)
-            {
-                if(GUI::is_item_clicked(handles.palette_nodes[i].handle))
-                {
-                    app.selected_node_type = (i32)i;
-                    if(!app.node_types.empty())
-                    {
-                        Guid parent = document->selected_node != Guid(0, 0) ? document->selected_node : GA::get_root(document->asset.get());
-                        (void)app.service.create_node(document->id, parent, app.node_types[i], app.node_types[i].c_str());
-                        app.inspector_node = Guid(0, 0);
-                    }
-                }
-            }
-            if(GUI::is_item_clicked(handles.add_child) && !app.node_types.empty())
-            {
-                Guid parent = document->selected_node != Guid(0, 0) ? document->selected_node : GA::get_root(document->asset.get());
-                (void)app.service.create_node(document->id, parent, app.node_types[(usize)app.selected_node_type], app.new_node_label.c_str());
-                app.inspector_node = Guid(0, 0);
-            }
-            if(GUI::is_item_clicked(handles.add_sibling) && !app.node_types.empty())
-            {
-                Ref<GA::Node> selected = GA::find_node(document->asset.get(), document->selected_node);
-                Guid parent = selected ? GA::get_parent(selected.get()) : Guid(0, 0);
-                if(parent != Guid(0, 0))
-                {
-                    (void)app.service.create_node(document->id, parent, app.node_types[(usize)app.selected_node_type], app.new_node_label.c_str());
-                    app.inspector_node = Guid(0, 0);
                 }
             }
             if(move_up_requested && can_move_selected(document, false))
@@ -1041,6 +1075,7 @@ namespace Luna
                 App app;
                 luexp(app.service.init());
                 refresh_node_types(app);
+                init_palette_icons(app.palette_icons);
                 luset(app.window, Window::new_window("Luna GUI Editor"));
                 Ref<RHI::IDevice> dev = RHI::get_main_device();
                 u32 num_queues = dev->get_num_command_queues();

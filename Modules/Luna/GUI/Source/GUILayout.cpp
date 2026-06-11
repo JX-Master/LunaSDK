@@ -1053,36 +1053,6 @@ namespace Luna
             return U32_MAX;
         }
 
-        static DockDropDirection dock_initial_placement_to_drop_direction(DockPanelInitialPlacement placement)
-        {
-            switch(placement)
-            {
-            case DockPanelInitialPlacement::left:
-                return DockDropDirection::left;
-            case DockPanelInitialPlacement::right:
-                return DockDropDirection::right;
-            case DockPanelInitialPlacement::up:
-                return DockDropDirection::up;
-            case DockPanelInitialPlacement::down:
-                return DockDropDirection::down;
-            default:
-                return DockDropDirection::center;
-            }
-        }
-
-        static id_t find_dock_panel_child_id_by_label(const Description& desc, const Node& dock_node, const Name& label)
-        {
-            if(label.empty()) return 0;
-            for(u32 child = dock_node.first_child; child != U32_MAX; child = desc.nodes[child].next_sibling)
-            {
-                if(!strcmp(desc.nodes[child].text.c_str(), label.c_str()))
-                {
-                    return desc.nodes[child].id;
-                }
-            }
-            return 0;
-        }
-
         void Context::dock_tree_add_panel(DockSpaceState& dock_state, id_t panel_id)
         {
             if(!panel_id || dock_tree_contains_panel(dock_state, panel_id)) return;
@@ -1384,17 +1354,12 @@ namespace Luna
                 DockPanelStyle style = panel_attachment ? panel_attachment->style : DockPanelStyle();
                 bool* panel_open = panel_attachment ? panel_attachment->open : nullptr;
                 DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state, child_node.id);
-                bool panel_was_initialized = panel_state.initialized;
                 if(!panel_state.initialized)
                 {
                     panel_state.initialized = true;
                     panel_state.closed = false;
-                    panel_state.mode = style.initial_mode;
-                    panel_state.rect = RectF(
-                        rect.offset_x + style.floating_position.x,
-                        rect.offset_y + style.floating_position.y,
-                        max(style.floating_size.x, style.min_floating_size.x),
-                        max(style.floating_size.y, style.min_floating_size.y));
+                    panel_state.mode = DockPanelMode::docking;
+                    panel_state.rect = RectF(rect.offset_x + 24.0f, rect.offset_y + 24.0f, 320.0f, 220.0f);
                     panel_state.z_order = dock_state.dock_next_z_order++;
                 }
                 if(panel_open && *panel_open)
@@ -1429,26 +1394,7 @@ namespace Luna
                 {
                     docking_panel_indices.insert_or_assign(child_node.id, child);
                     live_docking_panels.insert(child_node.id);
-                    bool placed = false;
-                    if(!panel_was_initialized && !style.initial_dock_target.empty())
-                    {
-                        id_t target_panel = find_dock_panel_child_id_by_label(m_submitted_desc, node, style.initial_dock_target);
-                        u32 target_leaf = dock_tree_find_panel_leaf(dock_state, target_panel);
-                        if(target_leaf != U32_MAX && target_panel != child_node.id)
-                        {
-                            dock_tree_dock_panel(
-                                dock_state,
-                                child_node.id,
-                                target_leaf,
-                                dock_initial_placement_to_drop_direction(style.initial_dock_placement),
-                                style.initial_dock_split_ratio);
-                            placed = true;
-                        }
-                    }
-                    if(!placed)
-                    {
-                        dock_tree_add_panel(dock_state, child_node.id);
-                    }
+                    dock_tree_add_panel(dock_state, child_node.id);
                 }
             }
 
