@@ -295,6 +295,17 @@ namespace Luna
             return RectF(track.offset_x + travel * t, track.offset_y, thumb_width, track.height);
         }
 
+        static RectF render_scroll_display_thumb_rect(const RectF& thumb, bool vertical, f32 hover_amount)
+        {
+            f32 full_size = vertical ? thumb.width : thumb.height;
+            f32 thickness = scroll_bar_collapsed_size() + (full_size - scroll_bar_collapsed_size()) * clamp(hover_amount, 0.0f, 1.0f);
+            if(vertical)
+            {
+                return RectF(thumb.offset_x + (full_size - thickness) * 0.5f, thumb.offset_y, thickness, thumb.height);
+            }
+            return RectF(thumb.offset_x, thumb.offset_y + (full_size - thickness) * 0.5f, thumb.width, thickness);
+        }
+
         static void draw_default_scroll_view_after_children(NodeRenderContext& ctx, const Node& node, const RectF&, const RectF&,
             const NodeRenderState& render_state, void*)
         {
@@ -302,41 +313,70 @@ namespace Luna
             if(!ctx.get_node_render_layout(ctx.current_node_index(), layout)) return;
             if(!render_scroll_has_vertical_bar(layout) && !render_scroll_has_horizontal_bar(layout)) return;
 
+            bool reserved_scroll_bar = scroll_bar_reserved(node);
             Ref<ScrollState> state_ref = ctx.get_or_create_widget_state<ScrollState>(node.id);
             ScrollState& state = *state_ref;
             bool hovered = false;
-            if(render_scroll_has_vertical_bar(layout) && point_in_rect_local(render_state.pointer_position, render_scroll_vertical_track_rect(layout)))
+            bool visible_for_hover = reserved_scroll_bar || scroll_bar_visible_for_input(state);
+            if(visible_for_hover && render_scroll_has_vertical_bar(layout) && point_in_rect_local(render_state.pointer_position, render_scroll_vertical_track_rect(layout)))
             {
                 hovered = true;
             }
-            if(render_scroll_has_horizontal_bar(layout) && point_in_rect_local(render_state.pointer_position, render_scroll_horizontal_track_rect(layout)))
+            if(visible_for_hover && render_scroll_has_horizontal_bar(layout) && point_in_rect_local(render_state.pointer_position, render_scroll_horizontal_track_rect(layout)))
             {
                 hovered = true;
             }
             ScrollbarInteractionState* scrollbar_interaction = ctx.get_widget_state<ScrollbarInteractionState>(0);
             bool active = scrollbar_interaction && scrollbar_interaction->active_scrollbar_id == node.id;
-            f32 target_opacity = (hovered || active) ? 0.92f : 0.35f;
-            f32 blend = clamp(render_state.delta_time * 12.0f, 0.0f, 1.0f);
-            state.scrollbar_opacity += (target_opacity - state.scrollbar_opacity) * blend;
-            f32 alpha = clamp(state.scrollbar_opacity, 0.20f, 1.0f);
+            if(reserved_scroll_bar)
+            {
+                state.scrollbar_visibility = 1.0f;
+                state.scrollbar_hover = 1.0f;
+                state.scrollbar_idle_time = 0.0f;
+            }
+            else if(hovered || active)
+            {
+                state.scrollbar_idle_time = 0.0f;
+            }
+            else
+            {
+                state.scrollbar_idle_time += render_state.delta_time;
+            }
+            if(!reserved_scroll_bar)
+            {
+                f32 target_visibility = (hovered || active || state.scrollbar_idle_time < scroll_bar_visible_time()) ? 1.0f : 0.0f;
+                f32 target_hover = (hovered || active) ? 1.0f : 0.0f;
+                f32 blend = clamp(render_state.delta_time * 12.0f, 0.0f, 1.0f);
+                state.scrollbar_visibility += (target_visibility - state.scrollbar_visibility) * blend;
+                state.scrollbar_hover += (target_hover - state.scrollbar_hover) * blend;
+            }
+            f32 visibility = clamp(state.scrollbar_visibility, 0.0f, 1.0f);
+            if(visibility <= 0.01f && !active) return;
+            f32 hover_amount = clamp(state.scrollbar_hover, 0.0f, 1.0f);
             const RectF& clip = layout.clip_rect;
             f32 radius = scroll_bar_size() * 0.5f;
-            Float4U track_color(0.02f, 0.025f, 0.03f, alpha * 0.45f);
-            Float4U thumb_color(0.58f, 0.68f, 0.80f, alpha);
+            Float4U track_color(0.02f, 0.025f, 0.03f, visibility * (reserved_scroll_bar ? 0.42f : hover_amount * 0.52f));
+            Float4U thumb_color(0.58f, 0.68f, 0.80f, visibility * (reserved_scroll_bar ? (hovered || active ? 1.0f : 0.86f) : (0.72f + hover_amount * 0.28f)));
 
             if(render_scroll_has_vertical_bar(layout))
             {
                 RectF track = render_scroll_vertical_track_rect(layout);
-                RectF thumb = render_scroll_vertical_thumb_rect(layout, state);
-                ctx.draw_rect(track, clip, track_color, radius);
-                ctx.draw_rect(thumb, clip, thumb_color, radius);
+                RectF thumb = render_scroll_display_thumb_rect(render_scroll_vertical_thumb_rect(layout, state), true, hover_amount);
+                if(track_color.w > 0.01f)
+                {
+                    ctx.draw_rect(track, clip, track_color, radius);
+                }
+                ctx.draw_rect(thumb, clip, thumb_color, thumb.width * 0.5f);
             }
             if(render_scroll_has_horizontal_bar(layout))
             {
                 RectF track = render_scroll_horizontal_track_rect(layout);
-                RectF thumb = render_scroll_horizontal_thumb_rect(layout, state);
-                ctx.draw_rect(track, clip, track_color, radius);
-                ctx.draw_rect(thumb, clip, thumb_color, radius);
+                RectF thumb = render_scroll_display_thumb_rect(render_scroll_horizontal_thumb_rect(layout, state), false, hover_amount);
+                if(track_color.w > 0.01f)
+                {
+                    ctx.draw_rect(track, clip, track_color, radius);
+                }
+                ctx.draw_rect(thumb, clip, thumb_color, thumb.height * 0.5f);
             }
         }
 

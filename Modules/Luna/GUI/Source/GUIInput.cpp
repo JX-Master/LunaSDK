@@ -760,6 +760,10 @@ namespace Luna
 
                 ScrollState empty_state;
                 const ScrollState* stored_state = get_widget_state<ScrollState>(node.id);
+                const ScrollbarInteractionState& interaction = scrollbar_interaction_state();
+                bool active = interaction.active_scrollbar_id == node.id;
+                bool reserved_scroll_bar = scroll_bar_reserved(node);
+                if(!reserved_scroll_bar && !active && (!stored_state || !scroll_bar_visible_for_input(*stored_state))) continue;
                 const ScrollState& state = stored_state ? *stored_state : empty_state;
                 if(scroll_has_vertical_bar(layout))
                 {
@@ -817,6 +821,7 @@ namespace Luna
                 clamp_scroll_state(node.id);
                 if(state->scroll_x != old_scroll_x || state->scroll_y != old_scroll_y)
                 {
+                    wake_scroll_bar(*state);
                     Ref<ItemQueryState> result = get_or_create_query_state(node.id);
                     result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
                     m_layout_dirty = true;
@@ -1639,6 +1644,18 @@ namespace Luna
                     input_state->text_selecting = false;
                 }
             };
+            auto wake_visible_scroll_bar_at = [&](const Float2U& position)
+            {
+                id_t scroll_target = hit_test_filtered(position, HitTestFilter::scroll_view);
+                if(!scroll_target) return;
+                Node* scroll_node = find_node(scroll_target);
+                if(!scroll_node || scroll_bar_reserved(*scroll_node)) return;
+                ScrollState* state = get_widget_state<ScrollState>(scroll_target);
+                if(state && scroll_bar_visible_for_input(*state))
+                {
+                    wake_scroll_bar(*state);
+                }
+            };
 
             for(const InputEvent& e : m_input_events)
             {
@@ -1657,6 +1674,12 @@ namespace Luna
                     Float2U old_pos = m_pointer_pos;
                     m_pointer_inside = true;
                     update_pointer_position(e.position);
+                    f32 move_x = e.position.x - old_pos.x;
+                    f32 move_y = e.position.y - old_pos.y;
+                    if(move_x * move_x + move_y * move_y > 0.0001f)
+                    {
+                        wake_visible_scroll_bar_at(e.position);
+                    }
                     if(m_drag_drop.candidate_source_id && !m_drag_drop.active)
                     {
                         f32 dx = e.position.x - m_drag_drop.start_pos.x;
@@ -1918,6 +1941,7 @@ namespace Luna
                                 scrollbar_thumb.height * 0.5f :
                                 scrollbar_thumb.width * 0.5f;
                         }
+                        wake_scroll_bar(*get_or_create_widget_state<ScrollState>(scrollbar_id));
                         set_interaction_down(scrollbar_id);
                         update_scrollbar_from_pointer(e.position);
                         continue;
@@ -2330,25 +2354,26 @@ namespace Luna
                         continue;
                     }
                     id_t scroll_target = 0;
-                    bool scrollbar_vertical = false;
-                    RectF scrollbar_thumb;
-                    if(!hit_test_scrollbar(e.position, scroll_target, scrollbar_vertical, scrollbar_thumb))
-                    {
-                        scroll_target = hit_test_filtered(e.position, HitTestFilter::scroll_view);
-                    }
+                    scroll_target = hit_test_filtered(e.position, HitTestFilter::scroll_view);
                     if(scroll_target)
                     {
                         Ref<ScrollState> state = get_or_create_widget_state<ScrollState>(scroll_target);
                         f32 old_scroll_x = state->scroll_x;
                         f32 old_scroll_y = state->scroll_y;
+                        bool was_scroll_bar_visible = scroll_bar_visible_for_input(*state);
                         state->scroll_x -= e.wheel_delta.x * 24.0f;
                         state->scroll_y -= e.wheel_delta.y * 24.0f;
                         clamp_scroll_state(scroll_target);
                         if(state->scroll_x != old_scroll_x || state->scroll_y != old_scroll_y)
                         {
+                            wake_scroll_bar(*state);
                             Ref<ItemQueryState> result = get_or_create_query_state(scroll_target);
                             result->states.insert_or_assign(Name("gui.value_changed"), Any(true));
                             m_layout_dirty = true;
+                        }
+                        else if(was_scroll_bar_visible)
+                        {
+                            wake_scroll_bar(*state);
                         }
                     }
                 }

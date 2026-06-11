@@ -126,6 +126,22 @@ namespace Luna
             Float2U max_size = Float2U(F32_MAX, F32_MAX);
         };
 
+        //! Describes how scroll bars are displayed and whether they reserve layout space.
+        enum class ScrollBarMode : u8
+        {
+            //! Scroll bars are hidden by default, fade in after scrolling, and draw over the scroll view content.
+            auto_hide_overlay,
+            //! Scroll bars stay visible when scrolling is available and reserve space from the content viewport.
+            always_visible_reserved
+        };
+
+        //! Options used to create a scroll view.
+        struct ScrollViewDesc
+        {
+            //! The scroll bar display and layout mode.
+            ScrollBarMode scroll_bar_mode = ScrollBarMode::auto_hide_overlay;
+        };
+
         //! Size policy and constraints assigned to one item by widget APIs or parent layouts.
         struct LayoutStyle
         {

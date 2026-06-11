@@ -875,6 +875,22 @@ namespace Luna
             return node.layout_behavior() == NodeLayoutBehavior::scroll;
         }
 
+        inline const ScrollViewNode* scroll_view_node(const Node& node)
+        {
+            return cast_node<ScrollViewNode>(node);
+        }
+
+        inline ScrollBarMode scroll_bar_mode(const Node& node)
+        {
+            const ScrollViewNode* scroll_view = scroll_view_node(node);
+            return scroll_view ? scroll_view->desc.scroll_bar_mode : ScrollBarMode::auto_hide_overlay;
+        }
+
+        inline bool scroll_bar_reserved(const Node& node)
+        {
+            return scroll_bar_mode(node) == ScrollBarMode::always_visible_reserved;
+        }
+
         inline bool table_layout(const Node& node)
         {
             return node.layout_behavior() == NodeLayoutBehavior::table;
@@ -1159,7 +1175,9 @@ namespace Luna
         {
             f32 scroll_x = 0.0f;
             f32 scroll_y = 0.0f;
-            f32 scrollbar_opacity = 0.35f;
+            f32 scrollbar_visibility = 0.0f;
+            f32 scrollbar_hover = 0.0f;
+            f32 scrollbar_idle_time = 1000.0f;
         };
 
         struct [[Luna::struct("{14494B92-C943-49E6-85EA-7CC0AAE026D0}")]] NumericInteractionState
@@ -1637,19 +1655,35 @@ namespace Luna
             return 10.0f;
         }
 
+        inline f32 scroll_bar_collapsed_size()
+        {
+            return 3.0f;
+        }
+
         inline f32 scroll_bar_margin()
         {
             return 3.0f;
         }
 
-        inline f32 scroll_bar_padding()
-        {
-            return scroll_bar_size() + scroll_bar_margin() * 2.0f;
-        }
-
         inline f32 scroll_min_thumb_size()
         {
             return 24.0f;
+        }
+
+        inline f32 scroll_bar_visible_time()
+        {
+            return 0.8f;
+        }
+
+        inline bool scroll_bar_visible_for_input(const ScrollState& state)
+        {
+            return state.scrollbar_visibility > 0.05f;
+        }
+
+        inline void wake_scroll_bar(ScrollState& state)
+        {
+            state.scrollbar_visibility = max(state.scrollbar_visibility, 0.35f);
+            state.scrollbar_idle_time = 0.0f;
         }
 
         inline f32 scroll_max_x(const NodeLayout& layout)

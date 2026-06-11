@@ -63,6 +63,8 @@ namespace Luna
         };
         struct [[Luna::struct("{99956C7E-0997-4E23-8A95-373C5196A7F7}")]] ScrollViewNode : Node
         {
+            ScrollViewDesc desc;
+
             ScrollViewNode();
 
             virtual Guid type_guid() const override;

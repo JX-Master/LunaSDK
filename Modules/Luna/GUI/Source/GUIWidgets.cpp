@@ -406,10 +406,12 @@ namespace Luna
             context_from_interface(context)->end_container();
         }
 
-        LUNA_GUI_API ItemHandle begin_scroll_view(IContext* context, const c8* label, const Size& size)
+        LUNA_GUI_API ItemHandle begin_scroll_view(IContext* context, const c8* label, const Size& size, const ScrollViewDesc& desc)
         {
             ItemHandle handle;
-            context_from_interface(context)->begin_container(Ref<Node>(new_object<ScrollViewNode>()), label ? label : "ScrollView", size, &handle);
+            Ref<ScrollViewNode> node = new_object<ScrollViewNode>();
+            node->desc = desc;
+            context_from_interface(context)->begin_container(Ref<Node>(node), label ? label : "ScrollView", size, &handle);
             return handle;
         }
 

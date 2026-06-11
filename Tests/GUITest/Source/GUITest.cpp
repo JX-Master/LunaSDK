@@ -573,6 +573,17 @@ namespace Luna
         }
         GUI::end_scroll_view(app.gui);
 
+        GUI::ScrollViewDesc reserved_scroll_view;
+        reserved_scroll_view.scroll_bar_mode = GUI::ScrollBarMode::always_visible_reserved;
+        GUI::begin_scroll_view(app.gui, "Reserved Scroll", GUI::Size::fixed(max(app.showcase_content_size.x - 16.0f, 240.0f), 160.0f), reserved_scroll_view);
+        for(u32 i = 0; i < 12; ++i)
+        {
+            c8 line[96];
+            snprintf(line, 96, "Reserved scrollbar row %02u: content area should not overlap the bar.", i + 1);
+            GUI::text(app.gui, line);
+        }
+        GUI::end_scroll_view(app.gui);
+
         GUI::text(app.gui, "DockSpace");
         GUI::ItemHandle dock_space = GUI::begin_dock_space(app.gui, "Layout DockSpace", GUI::Size::fixed(max(app.showcase_content_size.x - 16.0f, 260.0f), 260.0f));
         GUI::ItemHandle docked_panel;

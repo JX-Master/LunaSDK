@@ -156,7 +156,7 @@ namespace Luna
         //! Ends the current dock panel.
         LUNA_GUI_API void end_dock_panel(IContext* context);
         //! Begins a scroll view.
-        LUNA_GUI_API ItemHandle begin_scroll_view(IContext* context, const c8* label, const Size& size);
+        LUNA_GUI_API ItemHandle begin_scroll_view(IContext* context, const c8* label, const Size& size, const ScrollViewDesc& desc = ScrollViewDesc());
         //! Ends the current scroll view.
         LUNA_GUI_API void end_scroll_view(IContext* context);
         //! Begins a top-level window-like layout helper.

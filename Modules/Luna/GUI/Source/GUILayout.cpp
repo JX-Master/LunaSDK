@@ -1677,6 +1677,9 @@ namespace Luna
                     Ref<ScrollState> persistent = get_or_create_widget_state<ScrollState>(node.id);
                     persistent->scroll_x = 0.0f;
                     persistent->scroll_y = 0.0f;
+                    persistent->scrollbar_visibility = 0.0f;
+                    persistent->scrollbar_hover = 0.0f;
+                    persistent->scrollbar_idle_time = 1000.0f;
                 }
                 layout_absolute_children();
                 return rect;
@@ -1713,60 +1716,73 @@ namespace Luna
                 Float2U raw_content_size = compute_scroll_content_size();
                 f32 raw_content_width = raw_content_size.x;
                 f32 raw_content_height = raw_content_size.y;
-                auto compute_scrollbars = [&]() {
-                    bool vertical = raw_content_height > viewport_rect.height + 0.5f;
-                    bool horizontal_bar = raw_content_width > viewport_rect.width + 0.5f;
-                    f32 bar_padding = scroll_bar_padding();
-                    f32 padded_width = max(viewport_rect.width - (vertical ? bar_padding : 0.0f), 1.0f);
-                    f32 padded_height = max(viewport_rect.height - (horizontal_bar ? bar_padding : 0.0f), 1.0f);
-                    if(vertical && raw_content_width > padded_width + 0.5f)
-                    {
-                        horizontal_bar = true;
-                        padded_height = max(viewport_rect.height - bar_padding, 1.0f);
-                    }
-                    if(horizontal_bar && raw_content_height > padded_height + 0.5f)
-                    {
-                        vertical = true;
-                        padded_width = max(viewport_rect.width - bar_padding, 1.0f);
-                    }
-                    return Float4U(vertical ? 1.0f : 0.0f, horizontal_bar ? 1.0f : 0.0f, padded_width, padded_height);
-                };
-
-                Float4U scrollbar_info = compute_scrollbars();
-                bool has_vertical_bar = scrollbar_info.x > 0.5f;
-                bool has_horizontal_bar = scrollbar_info.y > 0.5f;
-                f32 padded_viewport_width = scrollbar_info.z;
-                f32 padded_viewport_height = scrollbar_info.w;
-
-                if(has_grid_child && has_vertical_bar &&
-                    (padded_viewport_width + 0.5f < viewport_rect.width || padded_viewport_width > viewport_rect.width + 0.5f))
+                bool has_vertical_bar = false;
+                bool has_horizontal_bar = false;
+                f32 viewport_width = max(viewport_rect.width, 1.0f);
+                f32 viewport_height = max(viewport_rect.height, 1.0f);
+                bool reserve_scroll_bars = scroll_bar_reserved(node);
+                if(reserve_scroll_bars)
                 {
-                    refresh_axis_metrics(padded_viewport_width);
-                    raw_content_size = compute_scroll_content_size();
-                    raw_content_width = raw_content_size.x;
-                    raw_content_height = raw_content_size.y;
-                    scrollbar_info = compute_scrollbars();
+                    auto compute_scrollbars = [&]() {
+                        bool vertical = raw_content_height > viewport_rect.height + 0.5f;
+                        bool horizontal_bar = raw_content_width > viewport_rect.width + 0.5f;
+                        f32 bar_padding = scroll_bar_size() + scroll_bar_margin() * 2.0f;
+                        f32 padded_width = max(viewport_rect.width - (vertical ? bar_padding : 0.0f), 1.0f);
+                        f32 padded_height = max(viewport_rect.height - (horizontal_bar ? bar_padding : 0.0f), 1.0f);
+                        if(vertical && raw_content_width > padded_width + 0.5f)
+                        {
+                            horizontal_bar = true;
+                            padded_height = max(viewport_rect.height - bar_padding, 1.0f);
+                        }
+                        if(horizontal_bar && raw_content_height > padded_height + 0.5f)
+                        {
+                            vertical = true;
+                            padded_width = max(viewport_rect.width - bar_padding, 1.0f);
+                        }
+                        return Float4U(vertical ? 1.0f : 0.0f, horizontal_bar ? 1.0f : 0.0f, padded_width, padded_height);
+                    };
+
+                    Float4U scrollbar_info = compute_scrollbars();
                     has_vertical_bar = scrollbar_info.x > 0.5f;
                     has_horizontal_bar = scrollbar_info.y > 0.5f;
-                    padded_viewport_width = scrollbar_info.z;
-                    padded_viewport_height = scrollbar_info.w;
+                    viewport_width = scrollbar_info.z;
+                    viewport_height = scrollbar_info.w;
+
+                    if(has_grid_child && has_vertical_bar &&
+                        (viewport_width + 0.5f < viewport_rect.width || viewport_width > viewport_rect.width + 0.5f))
+                    {
+                        refresh_axis_metrics(viewport_width);
+                        raw_content_size = compute_scroll_content_size();
+                        raw_content_width = raw_content_size.x;
+                        raw_content_height = raw_content_size.y;
+                        scrollbar_info = compute_scrollbars();
+                        has_vertical_bar = scrollbar_info.x > 0.5f;
+                        has_horizontal_bar = scrollbar_info.y > 0.5f;
+                        viewport_width = scrollbar_info.z;
+                        viewport_height = scrollbar_info.w;
+                    }
+                }
+                else
+                {
+                    has_vertical_bar = raw_content_height > viewport_rect.height + 0.5f;
+                    has_horizontal_bar = raw_content_width > viewport_rect.width + 0.5f;
                 }
 
                 NodeLayout& layout = m_layouts[node_index];
                 layout.scroll_has_vertical = has_vertical_bar;
                 layout.scroll_has_horizontal = has_horizontal_bar;
-                layout.scroll_viewport_size = Float2U(padded_viewport_width, padded_viewport_height);
+                layout.scroll_viewport_size = Float2U(viewport_width, viewport_height);
                 layout.scroll_content_size = Float2U(
-                    max(raw_content_width, padded_viewport_width),
-                    max(raw_content_height, padded_viewport_height));
+                    max(raw_content_width, viewport_width),
+                    max(raw_content_height, viewport_height));
 
                 Ref<ScrollState> persistent = get_or_create_widget_state<ScrollState>(node.id);
                 persistent->scroll_x = clamp(persistent->scroll_x, 0.0f, scroll_max_x(layout));
                 persistent->scroll_y = clamp(persistent->scroll_y, 0.0f, scroll_max_y(layout));
 
                 content_rect = viewport_rect;
-                content_rect.width = padded_viewport_width;
-                content_rect.height = padded_viewport_height;
+                content_rect.width = viewport_width;
+                content_rect.height = viewport_height;
                 content_rect.offset_x -= persistent->scroll_x;
                 content_rect.offset_y -= persistent->scroll_y;
             }
