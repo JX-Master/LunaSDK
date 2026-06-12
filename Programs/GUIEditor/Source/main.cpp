@@ -478,12 +478,28 @@ namespace Luna
             GUI::pop_id(app.gui);
         }
 
+        static bool is_core_palette_type(const Name& type)
+        {
+            const c8* name = type.c_str();
+            return strcmp(name, "h_layout") == 0 ||
+                strcmp(name, "v_layout") == 0 ||
+                strcmp(name, "scroll_view") == 0 ||
+                strcmp(name, "grid_layout") == 0 ||
+                strcmp(name, "canvas_layout") == 0 ||
+                strcmp(name, "text") == 0 ||
+                strcmp(name, "button") == 0 ||
+                strcmp(name, "input_text") == 0 ||
+                strcmp(name, "image") == 0 ||
+                strcmp(name, "checkbox") == 0;
+        }
+
         static void draw_palette_panel(App& app, FrameHandles& handles)
         {
             (void)handles;
             GUI::text(app.gui, "Palette");
             GUI::GridLayoutDesc palette_grid;
-            palette_grid.sizing_mode = GUI::GridSizingMode::fixed_cell_size;
+            palette_grid.sizing_mode = GUI::GridSizingMode::fixed_columns;
+            palette_grid.columns = 2;
             palette_grid.cell_size = Float2U(42.0f, 38.0f);
             palette_grid.padding = GUI::EdgeInsets::all(0.0f);
             palette_grid.gap = Float2U(6.0f, 6.0f);
@@ -491,6 +507,10 @@ namespace Luna
             GUI::begin_grid_layout(app.gui, "Palette Grid", palette_grid);
             for(usize i = 0; i < app.node_types.size(); ++i)
             {
+                if(!is_core_palette_type(app.node_types[i]))
+                {
+                    continue;
+                }
                 GUI::push_id(app.gui, i);
                 GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill());
                 GUI::ShapeDesc& icon = palette_icon(app.palette_icons, app.node_types[i]);
@@ -675,15 +695,15 @@ namespace Luna
             }
             GUI::DockSpaceLayoutDesc layout;
             layout.root_node = 0;
-            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::x, 0.22f, 1, 4));
-            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::y, 0.34f, 2, 3));
+            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::x, 0.10f, 1, 2));
             layout.nodes.push_back(dock_leaf(palette.id));
-            layout.nodes.push_back(dock_leaf(tree.id));
-            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::x, 0.72f, 5, 8));
-            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::y, 0.76f, 6, 7));
+            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::x, 0.72f, 3, 4));
             layout.nodes.push_back(dock_leaf(preview.id));
-            layout.nodes.push_back(dock_leaf(history.id));
+            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::y, 0.42f, 5, 6));
+            layout.nodes.push_back(dock_leaf(tree.id));
+            layout.nodes.push_back(dock_split(GUI::DockSplitAxis::y, 0.62f, 7, 8));
             layout.nodes.push_back(dock_leaf(inspector.id));
+            layout.nodes.push_back(dock_leaf(history.id));
             GUI::set_dockspace_layout(app.gui, dock_space, layout);
             app.dockspace_layout_initialized = true;
         }
