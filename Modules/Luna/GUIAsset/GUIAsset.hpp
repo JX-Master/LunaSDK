@@ -59,6 +59,56 @@ namespace Luna
         //! @param[out] referred_assets Receives referred assets appended to the end of the vector.
         using node_get_referred_assets_func_t = void(*)(const Node& node, Vector<Luna::Asset::asset_t>& referred_assets);
 
+        //! Selects the editor widget used to edit one GUI asset property.
+        enum class NodePropertyKind : u8
+        {
+            //! UTF-8 string value.
+            string,
+            //! Boolean value.
+            boolean,
+            //! Signed integer value.
+            integer,
+            //! Floating-point number value.
+            number,
+            //! String value selected from a fixed list of entries.
+            enum_string,
+            //! GUI size object with `width` and `height` fields.
+            size,
+            //! GUI edge-insets object with `left`, `top`, `right` and `bottom` fields.
+            edge_insets,
+            //! Layout descriptor object with `padding` and `gap` fields.
+            layout_desc,
+            //! String array value.
+            string_array,
+            //! Number array value.
+            number_array,
+            //! Serialized asset reference value.
+            asset
+        };
+
+        //! Design-time schema for one editable GUI asset node property.
+        struct NodePropertyDesc
+        {
+            //! Property key stored in @ref Node::properties.
+            Name key;
+            //! Human-facing name shown by visual editors. If empty, @ref key is used.
+            String display_name;
+            //! Optional category used by visual editors to group related properties.
+            String category;
+            //! Editor and value kind.
+            NodePropertyKind kind = NodePropertyKind::string;
+            //! Default value used by editors when the property is missing from the node.
+            Variant default_value;
+            //! Minimum numeric value used by number editors.
+            f64 min_value = 0.0;
+            //! Maximum numeric value used by number editors.
+            f64 max_value = 1.0;
+            //! Numeric drag speed or step size.
+            f32 speed = 1.0f;
+            //! Valid string values for @ref NodePropertyKind::enum_string.
+            Vector<String> enum_items;
+        };
+
         //! Runtime descriptor for one registered GUI asset node type.
         struct NodeTypeDesc
         {
@@ -66,6 +116,8 @@ namespace Luna
             Name type;
             //! Default property object copied into newly created nodes of this type.
             Variant default_properties;
+            //! Design-time property schema used by GUI editors and external tooling.
+            Vector<NodePropertyDesc> properties;
             //! Callback used to generate runtime GUI widgets for this node type.
             node_generate_func_t on_generate = nullptr;
             //! Optional callback used to collect assets referred by this node type.

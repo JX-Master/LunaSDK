@@ -59,6 +59,21 @@ namespace Luna
             GUI::ItemHandle handle;
         };
 
+        struct PropertyEditHandle
+        {
+            u64 document_id = 0;
+            Guid node;
+            Name key;
+            GA::NodePropertyKind kind = GA::NodePropertyKind::string;
+            GUI::ItemHandle handle;
+            GUI::ItemHandle extra_handle;
+            String string_value;
+            Vector<String> enum_items;
+            bool bool_value = false;
+            i32 int_value = 0;
+            f32 values[5] = {};
+        };
+
         struct FrameHandles
         {
             GUI::ItemHandle new_document;
@@ -68,16 +83,20 @@ namespace Luna
             GUI::ItemHandle redo;
             GUI::ItemHandle new_node;
             GUI::ItemHandle new_node_popup;
+            GUI::ItemHandle node_context_popup;
+            GUI::ItemHandle node_context_move_up;
+            GUI::ItemHandle node_context_move_down;
+            GUI::ItemHandle node_context_delete;
             GUI::ItemHandle remove_node_menu;
-            GUI::ItemHandle remove_node;
-            GUI::ItemHandle move_up;
-            GUI::ItemHandle move_down;
-            GUI::ItemHandle apply_common;
+            GUI::ItemHandle common_label;
+            GUI::ItemHandle common_style;
+            GUI::ItemHandle common_enabled;
             GUI::ItemHandle set_property;
             GUI::ItemHandle erase_property;
             GUI::ItemHandle preview_drop_target;
             Vector<NodeHandle> tree_nodes;
             Vector<TypeItemHandle> new_node_items;
+            Vector<UniquePtr<PropertyEditHandle>> property_edits;
         };
 
         struct App
@@ -101,6 +120,10 @@ namespace Luna
             String edit_label;
             String edit_style;
             bool edit_enabled = true;
+            bool edit_label_was_focused = false;
+            bool edit_style_was_focused = false;
+            Guid tree_context_node = Guid(0, 0);
+            Float2U tree_context_position = Float2U(0.0f, 0.0f);
             String property_key = "value";
             String property_value = "";
             i32 property_type = 0;
@@ -172,8 +195,210 @@ namespace Luna
                 return buf;
             }
             default:
-                return VariantUtils::write_json(value);
+                return VariantUtils::write_json(value, false);
             }
+        }
+
+        static Name inspector_section_title_style()
+        {
+            return Name("gui_editor.inspector.section_title");
+        }
+
+        static Name inspector_subsection_title_style()
+        {
+            return Name("gui_editor.inspector.subsection_title");
+        }
+
+        static Name inspector_separator_style()
+        {
+            return Name("gui_editor.inspector.separator");
+        }
+
+        static Name inspector_spacer_style()
+        {
+            return Name("gui_editor.inspector.spacer");
+        }
+
+        static void ensure_inspector_styles(GUI::IContext* context)
+        {
+            GUI::define_style(context, inspector_section_title_style());
+            GUI::set_style_f32(context, inspector_section_title_style(), Name("gui.text.font_size"), 18.0f);
+            GUI::set_style_f32x4(context, inspector_section_title_style(), Name("gui.text.color"), Float4U(0.92f, 0.96f, 1.0f, 1.0f));
+
+            GUI::define_style(context, inspector_subsection_title_style());
+            GUI::set_style_f32(context, inspector_subsection_title_style(), Name("gui.text.font_size"), 15.0f);
+            GUI::set_style_f32x4(context, inspector_subsection_title_style(), Name("gui.text.color"), Float4U(0.62f, 0.70f, 0.80f, 1.0f));
+
+            GUI::define_style(context, inspector_separator_style());
+            GUI::set_style_f32(context, inspector_separator_style(), Name("gui.menu_separator.padding"), 0.0f);
+            GUI::set_style_f32(context, inspector_separator_style(), Name("gui.menu_separator.width"), 1.0f);
+            GUI::set_style_f32x4(context, inspector_separator_style(), Name("gui.menu_separator.color"), Float4U(0.24f, 0.29f, 0.36f, 1.0f));
+
+            GUI::define_style(context, inspector_spacer_style());
+            GUI::set_style_f32(context, inspector_spacer_style(), Name("gui.text.font_size"), 6.0f);
+            GUI::set_style_f32x4(context, inspector_spacer_style(), Name("gui.text.color"), Float4U(0.0f));
+        }
+
+        static void inspector_spacer(App& app)
+        {
+            GUI::push_style(app.gui, inspector_spacer_style());
+            GUI::text(app.gui, "");
+            GUI::pop_style(app.gui);
+        }
+
+        static void inspector_section(App& app, const c8* title, bool first = false)
+        {
+            if(!first)
+            {
+                inspector_spacer(app);
+            }
+            GUI::push_style(app.gui, inspector_section_title_style());
+            GUI::text(app.gui, title);
+            GUI::pop_style(app.gui);
+            GUI::push_style(app.gui, inspector_separator_style());
+            GUI::menu_separator(app.gui);
+            GUI::pop_style(app.gui);
+        }
+
+        static void inspector_subsection(App& app, const c8* title)
+        {
+            GUI::push_style(app.gui, inspector_subsection_title_style());
+            GUI::text(app.gui, title);
+            GUI::pop_style(app.gui);
+        }
+
+        static GUI::ItemHandle labeled_input_text(App& app, const c8* label, String& value)
+        {
+            GUI::text(app.gui, label);
+            return GUI::input_text(app.gui, label, value);
+        }
+
+        static const Variant& node_property_or_default(const GA::Node& node, const GA::NodePropertyDesc& desc)
+        {
+            const Variant& value = node.properties[desc.key];
+            return value.valid() ? value : desc.default_value;
+        }
+
+        static Variant make_size_variant(f32 width, f32 height)
+        {
+            Variant r(VariantType::object);
+            r[Name("width")] = (f64)width;
+            r[Name("height")] = (f64)height;
+            return r;
+        }
+
+        static Variant make_edge_insets_variant(f32 left, f32 top, f32 right, f32 bottom)
+        {
+            Variant r(VariantType::object);
+            r[Name("left")] = (f64)left;
+            r[Name("top")] = (f64)top;
+            r[Name("right")] = (f64)right;
+            r[Name("bottom")] = (f64)bottom;
+            return r;
+        }
+
+        static bool set_property_if_changed(App& app, EditorDocument& document, const Guid& node, const Name& key, Variant&& value)
+        {
+            RV r = app.service.set_node_property(document.id, node, key, move(value));
+            if(failed(r))
+            {
+                app.service.last_status = explain(r.errcode());
+                return false;
+            }
+            return true;
+        }
+
+        static void split_csv(const String& text, Vector<String>& out_items)
+        {
+            out_items.clear();
+            usize start = 0;
+            for(usize i = 0; i <= text.size(); ++i)
+            {
+                if(i == text.size() || text[i] == ',')
+                {
+                    usize end = i;
+                    while(start < end && (text[start] == ' ' || text[start] == '\t'))
+                    {
+                        ++start;
+                    }
+                    while(end > start && (text[end - 1] == ' ' || text[end - 1] == '\t'))
+                    {
+                        --end;
+                    }
+                    out_items.push_back(String(text.data() + start, text.data() + end));
+                    start = i + 1;
+                }
+            }
+        }
+
+        static String join_string_array(const Variant& value)
+        {
+            String r;
+            bool first = true;
+            for(const Variant& item : value.values())
+            {
+                if(!first)
+                {
+                    r.append(", ");
+                }
+                r.append(item.c_str(""));
+                first = false;
+            }
+            return r;
+        }
+
+        static Variant parse_string_array(const String& text)
+        {
+            Vector<String> strings;
+            split_csv(text, strings);
+            Variant r(VariantType::array);
+            for(const String& item : strings)
+            {
+                if(!item.empty())
+                {
+                    r.push_back(item.c_str());
+                }
+            }
+            return r;
+        }
+
+        static String join_number_array(const Variant& value)
+        {
+            String r;
+            bool first = true;
+            c8 buf[64];
+            for(const Variant& item : value.values())
+            {
+                if(!first)
+                {
+                    r.append(", ");
+                }
+                snprintf(buf, sizeof(buf), "%.3f", item.fnum(0.0));
+                r.append(buf);
+                first = false;
+            }
+            return r;
+        }
+
+        static Variant parse_number_array(const String& text)
+        {
+            Vector<String> parts;
+            split_csv(text, parts);
+            Variant r(VariantType::array);
+            for(const String& part : parts)
+            {
+                if(part.empty())
+                {
+                    continue;
+                }
+                c8* end = nullptr;
+                f64 value = strtod(part.c_str(), &end);
+                if(end != part.c_str())
+                {
+                    r.push_back(value);
+                }
+            }
+            return r;
         }
 
         static bool selected_node_order(EditorDocument* document, usize& index, usize& count)
@@ -291,21 +516,33 @@ namespace Luna
             }
         }
 
-        static bool can_remove_selected(EditorDocument* document)
+        static bool can_remove_node(EditorDocument* document, const Guid& node)
         {
-            return document && document->asset && document->selected_node != Guid(0, 0) &&
-                document->selected_node != GA::get_root(document->asset.get());
+            return document && document->asset && node != Guid(0, 0) &&
+                node != GA::get_root(document->asset.get()) &&
+                GA::find_node(document->asset.get(), node);
         }
 
-        static bool can_move_selected(EditorDocument* document, bool down)
+        static bool can_remove_selected(EditorDocument* document)
+        {
+            return document && can_remove_node(document, document->selected_node);
+        }
+
+        static bool can_move_node(EditorDocument* document, const Guid& node, bool down)
         {
             usize index = 0;
             usize count = 0;
-            if(!selected_node_order(document, index, count))
+            Guid parent;
+            if(!node_order(document, node, parent, index, count))
             {
                 return false;
             }
             return down ? index + 1 < count : index > 0;
+        }
+
+        static bool can_move_selected(EditorDocument* document, bool down)
+        {
+            return document && can_move_node(document, document->selected_node, down);
         }
 
         static bool key_edge(bool down, bool& previous)
@@ -379,6 +616,8 @@ namespace Luna
                 return;
             }
             app.inspector_node = document->selected_node;
+            app.edit_label_was_focused = false;
+            app.edit_style_was_focused = false;
             Ref<GA::Node> node = GA::find_node(document->asset.get(), app.inspector_node);
             if(node)
             {
@@ -540,12 +779,6 @@ namespace Luna
             GUI::begin_h_layout(app.gui, "Tree Actions", action_layout);
             GUI::set_next_item_enabled(app.gui, document && document->asset && !app.node_types.empty());
             handles.new_node = GUI::text_button(app.gui, "New");
-            GUI::set_next_item_enabled(app.gui, can_move_selected(document, false));
-            handles.move_up = GUI::text_button(app.gui, "Move Up");
-            GUI::set_next_item_enabled(app.gui, can_move_selected(document, true));
-            handles.move_down = GUI::text_button(app.gui, "Move Down");
-            GUI::set_next_item_enabled(app.gui, can_remove_selected(document));
-            handles.remove_node = GUI::text_button(app.gui, "Delete");
             GUI::end_h_layout(app.gui);
 
             RectF new_rect = GUI::get_item_state(handles.new_node, GUI::State::rect());
@@ -563,7 +796,168 @@ namespace Luna
                 }
                 GUI::end_popup(app.gui);
             }
+            GUI::PopupDesc context_desc;
+            context_desc.position = app.tree_context_position;
+            context_desc.size = GUI::Size::fixed(180.0f, 0.0f);
+            if(GUI::begin_popup(app.gui, "Tree Node Context Popup", context_desc, &handles.node_context_popup))
+            {
+                GUI::set_next_item_enabled(app.gui, can_move_node(document, app.tree_context_node, false));
+                handles.node_context_move_up = GUI::menu_item(app.gui, "Move Up");
+                GUI::set_next_item_enabled(app.gui, can_move_node(document, app.tree_context_node, true));
+                handles.node_context_move_down = GUI::menu_item(app.gui, "Move Down");
+                GUI::menu_separator(app.gui);
+                GUI::set_next_item_enabled(app.gui, can_remove_node(document, app.tree_context_node));
+                handles.node_context_delete = GUI::menu_item(app.gui, "Delete");
+                GUI::end_popup(app.gui);
+            }
             draw_node_tree(app, handles, *document, GA::get_root(document->asset.get()));
+        }
+
+        static PropertyEditHandle& add_property_edit(FrameHandles& handles, u64 document_id, const GA::Node& node, const GA::NodePropertyDesc& desc)
+        {
+            UniquePtr<PropertyEditHandle> edit(memnew<PropertyEditHandle>());
+            edit->document_id = document_id;
+            edit->node = node.id;
+            edit->key = desc.key;
+            edit->kind = desc.kind;
+            handles.property_edits.push_back(move(edit));
+            return *handles.property_edits.back().get();
+        }
+
+        static GUI::ItemHandle draw_string_property(App& app, const c8* label, String& value)
+        {
+            return labeled_input_text(app, label, value);
+        }
+
+        static void draw_schema_property(App& app, FrameHandles& handles, EditorDocument& document, const GA::Node& node, const GA::NodePropertyDesc& desc)
+        {
+            const c8* label = desc.display_name.empty() ? desc.key.c_str() : desc.display_name.c_str();
+            const Variant& value = node_property_or_default(node, desc);
+            PropertyEditHandle& edit = add_property_edit(handles, document.id, node, desc);
+            GUI::push_id(app.gui, desc.key.c_str());
+            switch(desc.kind)
+            {
+            case GA::NodePropertyKind::string:
+            case GA::NodePropertyKind::asset:
+            {
+                edit.string_value = value.c_str("");
+                edit.handle = draw_string_property(app, label, edit.string_value);
+                break;
+            }
+            case GA::NodePropertyKind::boolean:
+            {
+                edit.bool_value = value.boolean(false);
+                edit.handle = GUI::checkbox(app.gui, label, &edit.bool_value);
+                break;
+            }
+            case GA::NodePropertyKind::integer:
+            {
+                edit.int_value = (i32)value.inum((i64)desc.default_value.inum(0));
+                edit.handle = GUI::drag_int(app.gui, label, &edit.int_value, desc.speed, (i32)desc.min_value, (i32)desc.max_value, GUI::NumericEditFlag::input_on_double_click);
+                break;
+            }
+            case GA::NodePropertyKind::number:
+            {
+                edit.values[0] = (f32)value.fnum(desc.default_value.fnum(0.0));
+                edit.handle = GUI::drag_float(app.gui, label, edit.values, desc.speed, (f32)desc.min_value, (f32)desc.max_value, GUI::NumericEditFlag::input_on_double_click);
+                break;
+            }
+            case GA::NodePropertyKind::enum_string:
+            {
+                Vector<const c8*> items;
+                items.reserve(desc.enum_items.size());
+                for(const String& item : desc.enum_items)
+                {
+                    edit.enum_items.push_back(item);
+                    items.push_back(item.c_str());
+                }
+                if(items.empty())
+                {
+                    edit.string_value = value.c_str("");
+                    edit.handle = draw_string_property(app, label, edit.string_value);
+                    break;
+                }
+                const c8* current_text = value.c_str(desc.default_value.c_str(""));
+                edit.int_value = 0;
+                for(usize i = 0; i < items.size(); ++i)
+                {
+                    if(!strcmp(current_text, items[i]))
+                    {
+                        edit.int_value = (i32)i;
+                        break;
+                    }
+                }
+                edit.handle = GUI::combo(app.gui, label, &edit.int_value, Span<const c8*>(items.data(), items.size()));
+                break;
+            }
+            case GA::NodePropertyKind::size:
+            {
+                edit.values[0] = (f32)value[Name("width")].fnum(desc.default_value[Name("width")].fnum(0.0));
+                edit.values[1] = (f32)value[Name("height")].fnum(desc.default_value[Name("height")].fnum(0.0));
+                edit.handle = GUI::drag_float2(app.gui, label, edit.values, 1.0f, 0.0f, 8192.0f, GUI::NumericEditFlag::input_on_double_click);
+                break;
+            }
+            case GA::NodePropertyKind::edge_insets:
+            {
+                edit.values[0] = (f32)value[Name("left")].fnum(desc.default_value[Name("left")].fnum(0.0));
+                edit.values[1] = (f32)value[Name("top")].fnum(desc.default_value[Name("top")].fnum(0.0));
+                edit.values[2] = (f32)value[Name("right")].fnum(desc.default_value[Name("right")].fnum(0.0));
+                edit.values[3] = (f32)value[Name("bottom")].fnum(desc.default_value[Name("bottom")].fnum(0.0));
+                edit.handle = GUI::drag_float4(app.gui, label, edit.values, 1.0f, 0.0f, 512.0f, GUI::NumericEditFlag::input_on_double_click);
+                break;
+            }
+            case GA::NodePropertyKind::layout_desc:
+            {
+                edit.values[0] = (f32)value[Name("padding")][Name("left")].fnum(desc.default_value[Name("padding")][Name("left")].fnum(0.0));
+                edit.values[1] = (f32)value[Name("padding")][Name("top")].fnum(desc.default_value[Name("padding")][Name("top")].fnum(0.0));
+                edit.values[2] = (f32)value[Name("padding")][Name("right")].fnum(desc.default_value[Name("padding")][Name("right")].fnum(0.0));
+                edit.values[3] = (f32)value[Name("padding")][Name("bottom")].fnum(desc.default_value[Name("padding")][Name("bottom")].fnum(0.0));
+                edit.values[4] = (f32)value[Name("gap")].fnum(desc.default_value[Name("gap")].fnum(0.0));
+                edit.handle = GUI::drag_float4(app.gui, "Padding", edit.values, 1.0f, 0.0f, 512.0f, GUI::NumericEditFlag::input_on_double_click);
+                edit.extra_handle = GUI::drag_float(app.gui, "Gap", edit.values + 4, 1.0f, 0.0f, 512.0f, GUI::NumericEditFlag::input_on_double_click);
+                break;
+            }
+            case GA::NodePropertyKind::string_array:
+            {
+                edit.string_value = join_string_array(value);
+                edit.handle = draw_string_property(app, label, edit.string_value);
+                break;
+            }
+            case GA::NodePropertyKind::number_array:
+            {
+                edit.string_value = join_number_array(value);
+                edit.handle = draw_string_property(app, label, edit.string_value);
+                break;
+            }
+            }
+            GUI::pop_id(app.gui);
+        }
+
+        static void draw_schema_properties(App& app, FrameHandles& handles, EditorDocument& document, const GA::Node& node)
+        {
+            R<GA::NodeTypeDesc> desc_result = GA::get_node_type(node.type);
+            if(failed(desc_result))
+            {
+                GUI::text(app.gui, explain(desc_result.errcode()));
+                return;
+            }
+            const GA::NodeTypeDesc& desc = desc_result.get();
+            if(desc.properties.empty())
+            {
+                GUI::text(app.gui, "This node type does not declare editable properties.");
+                return;
+            }
+            String current_category;
+            for(const GA::NodePropertyDesc& property_desc : desc.properties)
+            {
+                const String& category = property_desc.category;
+                if(strcmp(category.c_str(), current_category.c_str()))
+                {
+                    current_category = category;
+                    inspector_subsection(app, current_category.empty() ? "Properties" : current_category.c_str());
+                }
+                draw_schema_property(app, handles, document, node, property_desc);
+            }
         }
 
         static void draw_properties_panel(App& app, FrameHandles& handles)
@@ -580,17 +974,24 @@ namespace Luna
                 GUI::text(app.gui, "No node selected.");
                 return;
             }
-            GUI::text(app.gui, "Selected Node");
-            GUI::text(app.gui, guid_to_text(node->id).c_str());
-            c8 type_text[128];
+            ensure_inspector_styles(app.gui);
+            inspector_section(app, "Identity", true);
+            c8 id_text[128];
+            snprintf(id_text, sizeof(id_text), "ID: %s", guid_to_text(node->id).c_str());
+            GUI::text(app.gui, id_text);
+            c8 type_text[160];
             snprintf(type_text, sizeof(type_text), "Type: %s", node->type.c_str());
             GUI::text(app.gui, type_text);
-            GUI::input_text(app.gui, "Label", app.edit_label);
-            GUI::input_text(app.gui, "Style", app.edit_style);
-            GUI::checkbox(app.gui, "Enabled", &app.edit_enabled);
-            handles.apply_common = GUI::text_button(app.gui, "Apply Common Fields");
+            handles.common_label = labeled_input_text(app, "Label", app.edit_label);
 
-            GUI::text(app.gui, "Properties");
+            inspector_section(app, "Common");
+            handles.common_style = labeled_input_text(app, "Style", app.edit_style);
+            handles.common_enabled = GUI::checkbox(app.gui, "Enabled", &app.edit_enabled);
+
+            inspector_section(app, "Widget Properties");
+            draw_schema_properties(app, handles, *document, *node.get());
+
+            inspector_section(app, "Raw Properties");
             if(node->properties.type() == VariantType::object)
             {
                 GUI::TableDesc table;
@@ -611,10 +1012,11 @@ namespace Luna
                 }
                 GUI::end_table_layout(app.gui);
             }
-            GUI::input_text(app.gui, "Property Key", app.property_key);
+            inspector_subsection(app, "Manual Edit");
+            labeled_input_text(app, "Property Key", app.property_key);
             const c8* type_items[] = {"String", "Number", "Integer", "Boolean"};
             GUI::button_group(app.gui, "Property Type", &app.property_type, Span<const c8*>(type_items, 4));
-            GUI::input_text(app.gui, "Property Value", app.property_value);
+            labeled_input_text(app, "Property Value", app.property_value);
             handles.set_property = GUI::text_button(app.gui, "Set Property");
             handles.erase_property = GUI::text_button(app.gui, "Erase Property");
         }
@@ -933,6 +1335,106 @@ namespace Luna
             return false;
         }
 
+        static Variant property_edit_value(const PropertyEditHandle& edit)
+        {
+            switch(edit.kind)
+            {
+            case GA::NodePropertyKind::string:
+            case GA::NodePropertyKind::asset:
+                return Variant(edit.string_value.c_str());
+            case GA::NodePropertyKind::boolean:
+                return Variant(edit.bool_value);
+            case GA::NodePropertyKind::integer:
+                return Variant((i64)edit.int_value);
+            case GA::NodePropertyKind::number:
+                return Variant((f64)edit.values[0]);
+            case GA::NodePropertyKind::enum_string:
+                if(!edit.enum_items.empty() && edit.int_value >= 0 && (usize)edit.int_value < edit.enum_items.size())
+                {
+                    return Variant(edit.enum_items[(usize)edit.int_value].c_str());
+                }
+                return Variant(edit.string_value.c_str());
+            case GA::NodePropertyKind::size:
+                return make_size_variant(edit.values[0], edit.values[1]);
+            case GA::NodePropertyKind::edge_insets:
+                return make_edge_insets_variant(edit.values[0], edit.values[1], edit.values[2], edit.values[3]);
+            case GA::NodePropertyKind::layout_desc:
+            {
+                Variant layout(VariantType::object);
+                layout[Name("padding")] = make_edge_insets_variant(edit.values[0], edit.values[1], edit.values[2], edit.values[3]);
+                layout[Name("gap")] = (f64)edit.values[4];
+                return layout;
+            }
+            case GA::NodePropertyKind::string_array:
+                return parse_string_array(edit.string_value);
+            case GA::NodePropertyKind::number_array:
+                return parse_number_array(edit.string_value);
+            }
+            return Variant();
+        }
+
+        static bool process_property_edits(App& app, const FrameHandles& handles, EditorDocument& document)
+        {
+            for(const UniquePtr<PropertyEditHandle>& edit : handles.property_edits)
+            {
+                if(!edit || edit->document_id != document.id || !edit->handle.context)
+                {
+                    continue;
+                }
+                bool changed = GUI::get_item_state(edit->handle, GUI::State::value_changed());
+                if(edit->extra_handle.context)
+                {
+                    changed = changed || GUI::get_item_state(edit->extra_handle, GUI::State::value_changed());
+                }
+                if(changed)
+                {
+                    (void)set_property_if_changed(app, document, edit->node, edit->key, property_edit_value(*edit.get()));
+                    app.inspector_node = Guid(0, 0);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        static bool apply_common_if_changed(App& app, EditorDocument& document)
+        {
+            Ref<GA::Node> node = GA::find_node(document.asset.get(), document.selected_node);
+            if(!node)
+            {
+                return false;
+            }
+            if(!strcmp(node->label.c_str(), app.edit_label.c_str()) &&
+                !strcmp(node->style.c_str(), app.edit_style.c_str()) &&
+                node->enabled == app.edit_enabled)
+            {
+                return false;
+            }
+            RV r = app.service.set_node_common(document.id, document.selected_node, app.edit_label.c_str(), app.edit_enabled, Name(app.edit_style.c_str()));
+            if(failed(r))
+            {
+                app.service.last_status = explain(r.errcode());
+                return true;
+            }
+            app.inspector_node = Guid(0, 0);
+            return true;
+        }
+
+        static bool process_common_edits(App& app, const FrameHandles& handles, EditorDocument& document)
+        {
+            bool label_focused = handles.common_label.context && GUI::is_item_focused(handles.common_label);
+            bool style_focused = handles.common_style.context && GUI::is_item_focused(handles.common_style);
+            bool label_lost_focus = app.edit_label_was_focused && !label_focused;
+            bool style_lost_focus = app.edit_style_was_focused && !style_focused;
+            bool enabled_changed = handles.common_enabled.context && GUI::get_item_state(handles.common_enabled, GUI::State::value_changed());
+            app.edit_label_was_focused = label_focused;
+            app.edit_style_was_focused = style_focused;
+            if(label_lost_focus || style_lost_focus || enabled_changed)
+            {
+                return apply_common_if_changed(app, document);
+            }
+            return false;
+        }
+
         static void process_actions(App& app, const FrameHandles& handles)
         {
             EditorDocument* document = app.service.active_document();
@@ -951,12 +1453,9 @@ namespace Luna
             bool redo_requested = GUI::is_item_clicked(handles.redo) ||
                 shortcut_pressed(app, KeyCode::y, app.shortcut_redo_down, true);
             bool delete_requested = GUI::is_item_clicked(handles.remove_node_menu) ||
-                GUI::is_item_clicked(handles.remove_node) ||
                 shortcut_pressed(app, KeyCode::del, app.shortcut_delete_down, false);
-            bool move_up_requested = GUI::is_item_clicked(handles.move_up) ||
-                shortcut_pressed(app, KeyCode::up, app.shortcut_move_up_down, true);
-            bool move_down_requested = GUI::is_item_clicked(handles.move_down) ||
-                shortcut_pressed(app, KeyCode::down, app.shortcut_move_down_down, true);
+            bool move_up_requested = shortcut_pressed(app, KeyCode::up, app.shortcut_move_up_down, true);
+            bool move_down_requested = shortcut_pressed(app, KeyCode::down, app.shortcut_move_down_down, true);
 
             if(new_requested)
             {
@@ -1021,11 +1520,73 @@ namespace Luna
             {
                 return;
             }
+            if(process_property_edits(app, handles, *document))
+            {
+                return;
+            }
+            if(process_common_edits(app, handles, *document))
+            {
+                return;
+            }
+            if(GUI::is_item_clicked(handles.node_context_move_up) && can_move_node(document, app.tree_context_node, false))
+            {
+                Guid parent;
+                usize index = 0;
+                usize count = 0;
+                if(node_order(document, app.tree_context_node, parent, index, count))
+                {
+                    (void)app.service.reorder_node(document->id, app.tree_context_node, index - 1);
+                    if(handles.node_context_popup.context)
+                    {
+                        GUI::close_popup(app.gui, handles.node_context_popup);
+                    }
+                    app.inspector_node = Guid(0, 0);
+                    return;
+                }
+            }
+            if(GUI::is_item_clicked(handles.node_context_move_down) && can_move_node(document, app.tree_context_node, true))
+            {
+                Guid parent;
+                usize index = 0;
+                usize count = 0;
+                if(node_order(document, app.tree_context_node, parent, index, count))
+                {
+                    (void)app.service.reorder_node(document->id, app.tree_context_node, index + 1);
+                    if(handles.node_context_popup.context)
+                    {
+                        GUI::close_popup(app.gui, handles.node_context_popup);
+                    }
+                    app.inspector_node = Guid(0, 0);
+                    return;
+                }
+            }
+            if(GUI::is_item_clicked(handles.node_context_delete) && can_remove_node(document, app.tree_context_node))
+            {
+                (void)app.service.remove_node(document->id, app.tree_context_node);
+                if(handles.node_context_popup.context)
+                {
+                    GUI::close_popup(app.gui, handles.node_context_popup);
+                }
+                app.tree_context_node = Guid(0, 0);
+                app.inspector_node = Guid(0, 0);
+                return;
+            }
             for(const NodeHandle& h : handles.tree_nodes)
             {
                 if(GUI::is_item_clicked(h.handle))
                 {
                     select_node(app, h.node);
+                }
+                if(GUI::is_item_right_clicked(h.handle))
+                {
+                    select_node(app, h.node);
+                    app.tree_context_node = h.node;
+                    app.tree_context_position = GUI::get_pointer_position(app.gui);
+                    if(handles.node_context_popup.context)
+                    {
+                        GUI::open_popup(app.gui, handles.node_context_popup);
+                    }
+                    return;
                 }
             }
             if(move_up_requested && can_move_selected(document, false))
@@ -1051,11 +1612,6 @@ namespace Luna
             if(delete_requested && can_remove_selected(document))
             {
                 (void)app.service.remove_node(document->id, document->selected_node);
-                app.inspector_node = Guid(0, 0);
-            }
-            if(GUI::is_item_clicked(handles.apply_common))
-            {
-                (void)app.service.set_node_common(document->id, document->selected_node, app.edit_label.c_str(), app.edit_enabled, Name(app.edit_style.c_str()));
                 app.inspector_node = Guid(0, 0);
             }
             if(GUI::is_item_clicked(handles.set_property))

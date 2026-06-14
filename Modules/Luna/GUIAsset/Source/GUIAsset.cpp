@@ -314,7 +314,10 @@ namespace Luna
 
         static RV generate_scroll_view(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUI::begin_scroll_view(context, node.label.c_str(), read_size(node.properties[Name("size")]));
+            GUI::ScrollViewDesc desc;
+            const c8* mode = property_c_str(node, "scroll_bar_mode", "auto_hide_overlay");
+            desc.scroll_bar_mode = strcmp(mode, "always_visible_reserved") == 0 ? GUI::ScrollBarMode::always_visible_reserved : GUI::ScrollBarMode::auto_hide_overlay;
+            GUI::begin_scroll_view(context, node.label.c_str(), read_size(node.properties[Name("size")]), desc);
             RV r = generate_children(context, node, generate_context);
             GUI::end_scroll_view(context);
             return r;
@@ -589,6 +592,26 @@ namespace Luna
             return write_size(GUI::Size::fixed(width, height));
         }
 
+        static Variant string_array(Span<const c8* const> items)
+        {
+            Variant r(VariantType::array);
+            for(const c8* item : items)
+            {
+                r.push_back(item ? item : "");
+            }
+            return r;
+        }
+
+        static Variant number_array(Span<const f64> values)
+        {
+            Variant r(VariantType::array);
+            for(f64 value : values)
+            {
+                r.push_back(value);
+            }
+            return r;
+        }
+
         static NodeTypeDesc make_desc(const c8* type, node_generate_func_t generate, Variant default_properties = Variant(VariantType::object))
         {
             NodeTypeDesc desc;
@@ -598,67 +621,196 @@ namespace Luna
             return desc;
         }
 
+        static void add_property(
+            NodeTypeDesc& desc,
+            const c8* key,
+            const c8* display_name,
+            NodePropertyKind kind,
+            Variant default_value,
+            const c8* category = "Properties",
+            f64 min_value = 0.0,
+            f64 max_value = 1.0,
+            f32 speed = 1.0f,
+            Span<const c8* const> enum_items = Span<const c8* const>())
+        {
+            NodePropertyDesc property_desc;
+            property_desc.key = key;
+            property_desc.display_name = display_name ? display_name : key;
+            property_desc.category = category ? category : "";
+            property_desc.kind = kind;
+            property_desc.default_value = default_value;
+            property_desc.min_value = min_value;
+            property_desc.max_value = max_value;
+            property_desc.speed = speed;
+            for(const c8* item : enum_items)
+            {
+                property_desc.enum_items.push_back(item ? item : "");
+            }
+            desc.properties.push_back(move(property_desc));
+            if(!key || !key[0])
+            {
+                return;
+            }
+            if(desc.default_properties.type() != VariantType::object)
+            {
+                desc.default_properties = Variant(VariantType::object);
+            }
+            desc.default_properties[Name(key)] = move(default_value);
+        }
+
+        static NodeTypeDesc make_layout_desc(const c8* type, node_generate_func_t generate)
+        {
+            NodeTypeDesc desc = make_desc(type, generate);
+            GUI::LayoutDesc layout_desc;
+            add_property(desc, "padding", "Padding", NodePropertyKind::edge_insets, write_edge_insets(layout_desc.padding), "Layout");
+            add_property(desc, "gap", "Gap", NodePropertyKind::number, (f64)layout_desc.gap, "Layout", 0.0, 128.0, 1.0f);
+            return desc;
+        }
+
         static void register_builtin_node_types()
         {
-            register_node_type(make_desc("h_layout", generate_h_layout));
-            register_node_type(make_desc("v_layout", generate_v_layout));
+            register_node_type(make_layout_desc("h_layout", generate_h_layout));
+            register_node_type(make_layout_desc("v_layout", generate_v_layout));
             {
-                Variant props(VariantType::object);
-                props[Name("size")] = default_size(320.0f, 240.0f);
-                register_node_type(make_desc("scroll_view", generate_scroll_view, move(props)));
+                NodeTypeDesc desc = make_desc("scroll_view", generate_scroll_view);
+                const c8* modes[] = {"auto_hide_overlay", "always_visible_reserved"};
+                add_property(desc, "size", "Size", NodePropertyKind::size, default_size(320.0f, 240.0f), "Layout");
+                add_property(desc, "scroll_bar_mode", "Scroll Bar Mode", NodePropertyKind::enum_string, "auto_hide_overlay", "Scroll", 0.0, 1.0, 1.0f, Span<const c8* const>(modes, 2));
+                register_node_type(desc);
             }
-            register_node_type(make_desc("grid_layout", generate_grid_layout));
             {
-                Variant props(VariantType::object);
-                props[Name("size")] = default_size(320.0f, 240.0f);
-                props[Name("clip_children")] = true;
-                register_node_type(make_desc("canvas_layout", generate_canvas_layout, move(props)));
+                NodeTypeDesc desc = make_desc("grid_layout", generate_grid_layout);
+                GUI::GridLayoutDesc grid_desc;
+                const c8* modes[] = {"fixed_cell_size", "fixed_columns"};
+                add_property(desc, "sizing_mode", "Sizing Mode", NodePropertyKind::enum_string, "fixed_cell_size", "Layout", 0.0, 1.0, 1.0f, Span<const c8* const>(modes, 2));
+                add_property(desc, "cell_width", "Cell Width", NodePropertyKind::number, (f64)grid_desc.cell_size.x, "Layout", 1.0, 4096.0, 1.0f);
+                add_property(desc, "cell_height", "Cell Height", NodePropertyKind::number, (f64)grid_desc.cell_size.y, "Layout", 1.0, 4096.0, 1.0f);
+                add_property(desc, "columns", "Columns", NodePropertyKind::integer, (i64)grid_desc.columns, "Layout", 1.0, 128.0, 1.0f);
+                add_property(desc, "padding", "Padding", NodePropertyKind::edge_insets, write_edge_insets(grid_desc.padding), "Layout");
+                add_property(desc, "gap_x", "Gap X", NodePropertyKind::number, (f64)grid_desc.gap.x, "Layout", 0.0, 256.0, 1.0f);
+                add_property(desc, "gap_y", "Gap Y", NodePropertyKind::number, (f64)grid_desc.gap.y, "Layout", 0.0, 256.0, 1.0f);
+                register_node_type(desc);
             }
-            register_node_type(make_desc("table_layout", generate_table_layout));
+            {
+                NodeTypeDesc desc = make_desc("canvas_layout", generate_canvas_layout);
+                GUI::CanvasLayoutDesc canvas_desc;
+                add_property(desc, "size", "Size", NodePropertyKind::size, default_size(320.0f, 240.0f), "Layout");
+                add_property(desc, "padding", "Padding", NodePropertyKind::edge_insets, write_edge_insets(canvas_desc.padding), "Layout");
+                add_property(desc, "clip_children", "Clip Children", NodePropertyKind::boolean, true, "Layout");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("table_layout", generate_table_layout);
+                const f64 columns[] = {120.0, 180.0, 120.0};
+                const c8* backgrounds[] = {"none", "solid", "alternate_rows", "alternate_columns"};
+                add_property(desc, "columns", "Columns", NodePropertyKind::number_array, number_array(Span<const f64>(columns, 3)), "Table");
+                add_property(desc, "fixed_row_height_mode", "Fixed Row Height Mode", NodePropertyKind::boolean, false, "Table");
+                add_property(desc, "fixed_row_height", "Fixed Row Height", NodePropertyKind::number, 28.0, "Table", 1.0, 512.0, 1.0f);
+                add_property(desc, "virtualize_fixed_rows", "Virtualize Fixed Rows", NodePropertyKind::boolean, false, "Table");
+                add_property(desc, "row_separators", "Row Separators", NodePropertyKind::boolean, true, "Table");
+                add_property(desc, "column_separators", "Column Separators", NodePropertyKind::boolean, true, "Table");
+                add_property(desc, "background_mode", "Background Mode", NodePropertyKind::enum_string, "alternate_rows", "Table", 0.0, 1.0, 1.0f, Span<const c8* const>(backgrounds, 4));
+                register_node_type(desc);
+            }
             register_node_type(make_desc("table_row", generate_table_row));
             register_node_type(make_desc("text", generate_text));
             register_node_type(make_desc("button", generate_button));
-            register_node_type(make_desc("progress_bar", generate_progress_bar));
-            register_node_type(make_desc("selectable", generate_selectable));
-            register_node_type(make_desc("checkbox", generate_checkbox));
-            register_node_type(make_desc("radio_button", generate_radio_button));
-            register_node_type(make_desc("toggle_switch", generate_toggle_switch));
-            register_node_type(make_desc("input_text", generate_input_text));
             {
-                Variant props(VariantType::object);
-                props[Name("size")] = default_size(64.0f, 64.0f);
-                register_node_type(make_desc("image", generate_image, move(props)));
+                NodeTypeDesc desc = make_desc("progress_bar", generate_progress_bar);
+                add_property(desc, "fraction", "Fraction", NodePropertyKind::number, 0.5, "Progress", 0.0, 1.0, 0.01f);
+                add_property(desc, "overlay", "Overlay", NodePropertyKind::string, "", "Progress");
+                add_property(desc, "size", "Size", NodePropertyKind::size, default_size(0.0f, 0.0f), "Layout");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("selectable", generate_selectable);
+                add_property(desc, "selected", "Selected", NodePropertyKind::boolean, false, "State");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("checkbox", generate_checkbox);
+                add_property(desc, "value", "Value", NodePropertyKind::boolean, false, "State");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("radio_button", generate_radio_button);
+                add_property(desc, "selected", "Selected", NodePropertyKind::boolean, false, "State");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("toggle_switch", generate_toggle_switch);
+                add_property(desc, "value", "Value", NodePropertyKind::boolean, false, "State");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("input_text", generate_input_text);
+                add_property(desc, "value", "Value", NodePropertyKind::string, "", "State");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("image", generate_image);
+                add_property(desc, "size", "Size", NodePropertyKind::size, default_size(64.0f, 64.0f), "Layout");
+                register_node_type(desc);
             }
             register_node_type(make_desc("collapsing_header", generate_collapsing_header));
-            register_node_type(make_desc("tree_node", generate_tree_node));
             {
-                Variant props(VariantType::object);
-                Variant items(VariantType::array);
-                items.push_back("One");
-                items.push_back("Two");
-                items.push_back("Three");
-                props[Name("items")] = move(items);
-                props[Name("current_item")] = (i64)0;
-                props[Name("multi_select")] = false;
-                register_node_type(make_desc("button_group", generate_button_group, move(props)));
+                NodeTypeDesc desc = make_desc("tree_node", generate_tree_node);
+                add_property(desc, "selected", "Selected", NodePropertyKind::boolean, false, "State");
+                add_property(desc, "leaf", "Leaf", NodePropertyKind::boolean, false, "Behavior");
+                add_property(desc, "default_open", "Default Open", NodePropertyKind::boolean, false, "Behavior");
+                register_node_type(desc);
             }
             {
-                Variant props(VariantType::object);
-                Variant items(VariantType::array);
-                items.push_back("Alpha");
-                items.push_back("Beta");
-                items.push_back("Gamma");
-                props[Name("items")] = move(items);
-                props[Name("current_item")] = (i64)0;
-                register_node_type(make_desc("combo", generate_combo, move(props)));
+                NodeTypeDesc desc = make_desc("button_group", generate_button_group);
+                const c8* items[] = {"One", "Two", "Three"};
+                add_property(desc, "items", "Items", NodePropertyKind::string_array, string_array(Span<const c8* const>(items, 3)), "Items");
+                add_property(desc, "current_item", "Current Item", NodePropertyKind::integer, (i64)0, "State", 0.0, 64.0, 1.0f);
+                add_property(desc, "multi_select", "Multi Select", NodePropertyKind::boolean, false, "Behavior");
+                register_node_type(desc);
             }
-            register_node_type(make_desc("slider_float", generate_slider_float));
-            register_node_type(make_desc("slider_int", generate_slider_int));
-            register_node_type(make_desc("drag_float", generate_drag_float));
-            register_node_type(make_desc("drag_int", generate_drag_int));
-            NodeTypeDesc asset_ref = make_desc("asset_reference", generate_asset_reference);
-            asset_ref.on_get_referred_assets = get_asset_reference_referred_assets;
-            register_node_type(asset_ref);
+            {
+                NodeTypeDesc desc = make_desc("combo", generate_combo);
+                const c8* items[] = {"Alpha", "Beta", "Gamma"};
+                add_property(desc, "items", "Items", NodePropertyKind::string_array, string_array(Span<const c8* const>(items, 3)), "Items");
+                add_property(desc, "current_item", "Current Item", NodePropertyKind::integer, (i64)0, "State", 0.0, 64.0, 1.0f);
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("slider_float", generate_slider_float);
+                add_property(desc, "value", "Value", NodePropertyKind::number, 0.0, "Numeric", -10000.0, 10000.0, 0.01f);
+                add_property(desc, "min", "Min", NodePropertyKind::number, 0.0, "Numeric", -10000.0, 10000.0, 0.01f);
+                add_property(desc, "max", "Max", NodePropertyKind::number, 1.0, "Numeric", -10000.0, 10000.0, 0.01f);
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("slider_int", generate_slider_int);
+                add_property(desc, "value", "Value", NodePropertyKind::integer, (i64)0, "Numeric", -10000.0, 10000.0, 1.0f);
+                add_property(desc, "min", "Min", NodePropertyKind::integer, (i64)0, "Numeric", -10000.0, 10000.0, 1.0f);
+                add_property(desc, "max", "Max", NodePropertyKind::integer, (i64)100, "Numeric", -10000.0, 10000.0, 1.0f);
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("drag_float", generate_drag_float);
+                add_property(desc, "value", "Value", NodePropertyKind::number, 0.0, "Numeric", -10000.0, 10000.0, 0.01f);
+                add_property(desc, "speed", "Speed", NodePropertyKind::number, 1.0, "Numeric", 0.001, 1000.0, 0.01f);
+                add_property(desc, "min", "Min", NodePropertyKind::number, 0.0, "Numeric", -10000.0, 10000.0, 0.01f);
+                add_property(desc, "max", "Max", NodePropertyKind::number, 1.0, "Numeric", -10000.0, 10000.0, 0.01f);
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("drag_int", generate_drag_int);
+                add_property(desc, "value", "Value", NodePropertyKind::integer, (i64)0, "Numeric", -10000.0, 10000.0, 1.0f);
+                add_property(desc, "speed", "Speed", NodePropertyKind::number, 1.0, "Numeric", 0.001, 1000.0, 0.01f);
+                add_property(desc, "min", "Min", NodePropertyKind::integer, (i64)0, "Numeric", -10000.0, 10000.0, 1.0f);
+                add_property(desc, "max", "Max", NodePropertyKind::integer, (i64)100, "Numeric", -10000.0, 10000.0, 1.0f);
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc asset_ref = make_desc("asset_reference", generate_asset_reference);
+                add_property(asset_ref, "asset", "Asset", NodePropertyKind::asset, Variant(), "Reference");
+                asset_ref.on_get_referred_assets = get_asset_reference_referred_assets;
+                register_node_type(asset_ref);
+            }
         }
 
         LUNA_GUI_ASSET_API Name asset_type_name()

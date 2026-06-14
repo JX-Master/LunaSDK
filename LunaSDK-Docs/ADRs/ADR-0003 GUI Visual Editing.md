@@ -19,7 +19,8 @@ We introduce two new targets in LunaSDK: `GUIAsset` and `GUIEditor`.
 5. GUI asset node types are registered to GUIAsset runtime module, user module can also define and register new GUI asset types.
 6. GUI asset node supports mounting another `GUIAsset` as its sub-node, it calls `generate` of the referred node to generate child content.
 7. `GUIAsset` provides a `generate` function, which calls GUI widget APIs to build runtime GUI description tree based on the GUI asset data.
-8. `GUIAsset` can be saved and loaded as JSON files.
+8. GUI asset node type descriptors include a design-time property schema. Visual editors, MCP clients and other external tools should use this schema to inspect and edit widget-specific properties instead of hard-coding GUIEditor-only knowledge.
+9. `GUIAsset` can be saved and loaded as JSON files.
 
 ### GUIEditor
 `GUIEditor` is a new application target in `Programs`, it provides a one-stop visual editing environment for `GUIAsset`. `GUIEditor` has two modes: CLI mode and GUI mode. `GUIEditor` uses `Frontend` to expose its services, CLI and GUI are two application interfaces that interact with the service. Whether GUIEditor is launched using GUI or CLI mode, it uses only one process to contain both the service and the application interface.

@@ -64,8 +64,24 @@ namespace Luna
         LayoutMetrics MenuItemNode::measure() const
         {
             f32 text_width = (f32)text.size() * 15.0f * 0.52f;
-            f32 shortcut_width = shortcut.empty() ? 0.0f : (f32)shortcut.size() * 15.0f * 0.52f + 28.0f;
-            f32 width = top_level_menu ? max(text_width + 22.0f, 42.0f) : max(text_width + shortcut_width + (popup_id ? 62.0f : 42.0f), 132.0f);
+            f32 shortcut_width = shortcut.empty() ? 0.0f : (f32)shortcut.size() * 14.0f * 0.52f;
+            f32 width = 0.0f;
+            if(top_level_menu)
+            {
+                width = max(text_width + 30.0f, 42.0f);
+            }
+            else if(popup_id)
+            {
+                width = max(text_width + 80.0f, 132.0f);
+            }
+            else if(!shortcut.empty())
+            {
+                width = max(text_width + max(shortcut_width, 80.0f) + 34.0f, 132.0f);
+            }
+            else
+            {
+                width = max(text_width + 104.0f, 132.0f);
+            }
             f32 height = top_level_menu ? 24.0f : 26.0f;
             LayoutMetrics metrics;
             metrics.min_size = Float2U(top_level_menu ? max(width, 42.0f) : 96.0f, height);
