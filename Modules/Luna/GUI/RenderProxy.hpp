@@ -31,6 +31,25 @@ namespace Luna
         using RenderProxyDrawFunc = void(*)(NodeRenderContext& ctx, const Node& node, const RectF& rect, const RectF& clip_rect,
             const NodeRenderState& state, void* userdata);
 
+        //! Describes one style entry that may be read by a render proxy.
+        //! @remark Style usage is owned by the render proxy rather than by the node type, because replacing the render proxy can
+        //! change which style entries affect a node.
+        struct StyleEntryDesc
+        {
+            //! Style entry name.
+            Name name;
+            //! Expected value type.
+            StyleValueType type = StyleValueType::f32_4;
+            //! Fallback value used by the render proxy when the entry cannot be resolved from the node style.
+            StyleValue default_value;
+            //! Optional human-readable display name.
+            const c8* display_name = nullptr;
+            //! Optional UI category for editors and debug tools.
+            const c8* category = nullptr;
+            //! Optional description for editors and debug tools.
+            const c8* description = nullptr;
+        };
+
         //! Describes how one node should be rendered.
         //! @remark A render proxy does not own state or lifetime. It may read node properties, node style entries and
         //! context state objects to implement custom visuals and visual animations.
@@ -42,6 +61,10 @@ namespace Luna
             RenderProxyDrawFunc draw_after_children = nullptr;
             //! User data passed to render proxy callbacks.
             void* userdata = nullptr;
+            //! Style entries used by this render proxy.
+            const StyleEntryDesc* style_entries = nullptr;
+            //! Number of entries in @ref style_entries.
+            usize num_style_entries = 0;
 
             //! Checks whether this render proxy contains at least one callback.
             //! @return Returns `true` if this proxy can render something.

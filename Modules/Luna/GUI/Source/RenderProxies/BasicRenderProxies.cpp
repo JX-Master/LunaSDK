@@ -14,6 +14,11 @@ namespace Luna
 {
     namespace GUI
     {
+#define LUNA_GUI_STYLE_F32(entry_name, value, category) {Name(entry_name), StyleValueType::f32_1, StyleValue::f32_1(value), nullptr, category, nullptr}
+#define LUNA_GUI_STYLE_F32X2(entry_name, value, category) {Name(entry_name), StyleValueType::f32_2, StyleValue::f32_2(value), nullptr, category, nullptr}
+#define LUNA_GUI_STYLE_F32X4(entry_name, value, category) {Name(entry_name), StyleValueType::f32_4, StyleValue::f32_4(value), nullptr, category, nullptr}
+#define LUNA_GUI_STYLE_NAME(entry_name, value, category) {Name(entry_name), StyleValueType::name, StyleValue::name(Name(value)), nullptr, category, nullptr}
+
         static Float4U disabled_alpha(NodeRenderContext& ctx, const Node& node, const Float4U& color)
         {
             f32 alpha = style_f32(ctx, node, Name("gui.disabled_alpha"), 0.52f);
@@ -483,79 +488,250 @@ namespace Luna
 
         RenderProxyDesc default_button_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_F32X4("gui.button.background", Float4U(0.18f, 0.28f, 0.45f, 1.0f), "Button"),
+                LUNA_GUI_STYLE_F32X4("gui.button.background_hovered", Float4U(0.26f, 0.43f, 0.72f, 1.0f), "Button"),
+                LUNA_GUI_STYLE_F32X4("gui.button.background_active", Float4U(0.20f, 0.36f, 0.62f, 1.0f), "Button"),
+                LUNA_GUI_STYLE_F32X4("gui.button.background_disabled", Float4U(0.13f, 0.16f, 0.20f, 1.0f), "Button"),
+                LUNA_GUI_STYLE_F32("gui.button.animation_speed", 14.0f, "Button"),
+                LUNA_GUI_STYLE_F32("gui.button.radius", 5.0f, "Button")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_button;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_button_label_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32("gui.button.font_size", 16.0f, "Button"),
+                LUNA_GUI_STYLE_F32X4("gui.button.text_color", Float4U(1.0f), "Button"),
+                LUNA_GUI_STYLE_F32X4("gui.button.text_disabled", Float4U(0.55f, 0.59f, 0.65f, 1.0f), "Button")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_button_label;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_progress_bar_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32("gui.progress_bar.border_size", 1.0f, "ProgressBar"),
+                LUNA_GUI_STYLE_F32("gui.progress_bar.radius", 5.0f, "ProgressBar"),
+                LUNA_GUI_STYLE_F32X4("gui.progress_bar.border", Float4U(0.25f, 0.29f, 0.35f, 1.0f), "ProgressBar"),
+                LUNA_GUI_STYLE_F32X4("gui.progress_bar.background", Float4U(0.07f, 0.08f, 0.10f, 1.0f), "ProgressBar"),
+                LUNA_GUI_STYLE_F32X4("gui.progress_bar.fill", Float4U(0.20f, 0.36f, 0.62f, 1.0f), "ProgressBar"),
+                LUNA_GUI_STYLE_F32("gui.progress_bar.font_size", 14.0f, "ProgressBar"),
+                LUNA_GUI_STYLE_F32X4("gui.progress_bar.text_color", Float4U(1.0f), "ProgressBar")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_progress_bar;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_text_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32("gui.text.font_size", 16.0f, "Text"),
+                LUNA_GUI_STYLE_F32X4("gui.text.color", Float4U(1.0f), "Text"),
+                LUNA_GUI_STYLE_F32X4("gui.text.disabled", Float4U(0.52f, 0.52f, 0.52f, 0.52f), "Text"),
+                LUNA_GUI_STYLE_F32("gui.disabled_alpha", 0.52f, "Common")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_text;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_selectable_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32X4("gui.selectable.background_active", Float4U(0.20f, 0.36f, 0.62f, 1.0f), "Selectable"),
+                LUNA_GUI_STYLE_F32X4("gui.selectable.background_selected", Float4U(0.16f, 0.25f, 0.38f, 1.0f), "Selectable"),
+                LUNA_GUI_STYLE_F32X4("gui.selectable.background_hovered", Float4U(0.20f, 0.30f, 0.44f, 1.0f), "Selectable"),
+                LUNA_GUI_STYLE_F32("gui.selectable.radius", 4.0f, "Selectable"),
+                LUNA_GUI_STYLE_F32("gui.selectable.font_size", 15.0f, "Selectable"),
+                LUNA_GUI_STYLE_F32X4("gui.selectable.text_color", Float4U(1.0f), "Selectable"),
+                LUNA_GUI_STYLE_F32X4("gui.selectable.text_disabled", Float4U(0.55f, 0.59f, 0.65f, 1.0f), "Selectable"),
+                LUNA_GUI_STYLE_F32("gui.disabled_alpha", 0.52f, "Common")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_selectable;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_checkbox_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32("gui.checkbox.box_size", 18.0f, "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.border_disabled", Float4U(0.18f, 0.21f, 0.26f, 1.0f), "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.border_hovered", Float4U(0.34f, 0.39f, 0.46f, 1.0f), "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.border", Float4U(0.25f, 0.29f, 0.35f, 1.0f), "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.background_checked", Float4U(0.22f, 0.55f, 0.32f, 1.0f), "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.background", Float4U(0.18f, 0.20f, 0.23f, 1.0f), "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.background_checked_disabled", Float4U(0.1144f, 0.286f, 0.1664f, 0.52f), "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.background_disabled", Float4U(0.12f, 0.14f, 0.17f, 1.0f), "Checkbox"),
+                LUNA_GUI_STYLE_F32("gui.checkbox.radius", 3.0f, "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.check_color", Float4U(1.0f), "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.check_disabled", Float4U(0.70f, 0.74f, 0.80f, 1.0f), "Checkbox"),
+                LUNA_GUI_STYLE_F32("gui.checkbox.check_width", 2.4f, "Checkbox"),
+                LUNA_GUI_STYLE_F32("gui.checkbox.label_offset", 28.0f, "Checkbox"),
+                LUNA_GUI_STYLE_F32("gui.checkbox.font_size", 16.0f, "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.text_color", Float4U(1.0f), "Checkbox"),
+                LUNA_GUI_STYLE_F32X4("gui.checkbox.text_disabled", Float4U(0.55f, 0.59f, 0.65f, 1.0f), "Checkbox"),
+                LUNA_GUI_STYLE_F32("gui.disabled_alpha", 0.52f, "Common")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_checkbox;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_toggle_switch_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32("gui.switch.animation_speed", 14.0f, "Switch"),
+                LUNA_GUI_STYLE_F32X2("gui.switch.track_size", Float2U(44.0f, 22.0f), "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.track_disabled", Float4U(0.11f, 0.12f, 0.14f, 1.0f), "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.off_track_hovered", Float4U(0.18f, 0.20f, 0.23f, 1.0f), "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.off_track", Float4U(0.12f, 0.14f, 0.16f, 1.0f), "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.track_checked_disabled", Float4U(0.17f, 0.23f, 0.20f, 1.0f), "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.on_track_hovered", Float4U(0.25f, 0.62f, 0.38f, 1.0f), "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.on_track", Float4U(0.20f, 0.55f, 0.32f, 1.0f), "Switch"),
+                LUNA_GUI_STYLE_F32("gui.switch.knob_size", 18.0f, "Switch"),
+                LUNA_GUI_STYLE_F32("gui.switch.knob_margin", 2.0f, "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.off_knob", Float4U(0.78f, 0.80f, 0.84f, 1.0f), "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.on_knob", Float4U(1.0f), "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.knob_disabled", Float4U(0.45f, 0.48f, 0.54f, 1.0f), "Switch"),
+                LUNA_GUI_STYLE_F32("gui.switch.label_offset", 56.0f, "Switch"),
+                LUNA_GUI_STYLE_F32("gui.switch.font_size", 16.0f, "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.text_color", Float4U(1.0f), "Switch"),
+                LUNA_GUI_STYLE_F32X4("gui.switch.text_disabled", Float4U(0.55f, 0.59f, 0.65f, 1.0f), "Switch")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_toggle_switch;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_collapsing_header_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32X4("gui.collapsing_header.background_hovered", Float4U(0.22f, 0.27f, 0.34f, 1.0f), "CollapsingHeader"),
+                LUNA_GUI_STYLE_F32X4("gui.collapsing_header.background", Float4U(0.16f, 0.19f, 0.24f, 1.0f), "CollapsingHeader"),
+                LUNA_GUI_STYLE_F32X4("gui.collapsing_header.background_disabled", Float4U(0.0832f, 0.0988f, 0.1248f, 0.52f), "CollapsingHeader"),
+                LUNA_GUI_STYLE_F32("gui.collapsing_header.radius", 4.0f, "CollapsingHeader"),
+                LUNA_GUI_STYLE_F32("gui.collapsing_header.font_size", 16.0f, "CollapsingHeader"),
+                LUNA_GUI_STYLE_F32X4("gui.collapsing_header.text_color", Float4U(1.0f), "CollapsingHeader"),
+                LUNA_GUI_STYLE_F32X4("gui.collapsing_header.text_disabled", Float4U(0.55f, 0.59f, 0.65f, 1.0f), "CollapsingHeader"),
+                LUNA_GUI_STYLE_F32("gui.disabled_alpha", 0.52f, "Common")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_collapsing_header;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_tree_node_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32X4("gui.tree_node.background_active", Float4U(0.20f, 0.36f, 0.62f, 1.0f), "TreeNode"),
+                LUNA_GUI_STYLE_F32X4("gui.tree_node.background_selected", Float4U(0.16f, 0.25f, 0.38f, 1.0f), "TreeNode"),
+                LUNA_GUI_STYLE_F32X4("gui.tree_node.background_hovered", Float4U(0.18f, 0.24f, 0.32f, 1.0f), "TreeNode"),
+                LUNA_GUI_STYLE_F32X4("gui.tree_node.background_disabled", Float4U(0.0832f, 0.13f, 0.1976f, 0.52f), "TreeNode"),
+                LUNA_GUI_STYLE_F32("gui.tree_node.radius", 4.0f, "TreeNode"),
+                LUNA_GUI_STYLE_F32X4("gui.tree_node.leaf_icon_color", Float4U(0.58f, 0.65f, 0.74f, 1.0f), "TreeNode"),
+                LUNA_GUI_STYLE_F32X4("gui.tree_node.icon_color", Float4U(1.0f), "TreeNode"),
+                LUNA_GUI_STYLE_F32X4("gui.tree_node.icon_disabled", Float4U(0.50f, 0.54f, 0.60f, 1.0f), "TreeNode"),
+                LUNA_GUI_STYLE_F32("gui.tree_node.leaf_dot_size", 5.0f, "TreeNode"),
+                LUNA_GUI_STYLE_F32("gui.tree_node.font_size", 15.0f, "TreeNode"),
+                LUNA_GUI_STYLE_F32X4("gui.tree_node.text_color", Float4U(1.0f), "TreeNode"),
+                LUNA_GUI_STYLE_F32X4("gui.tree_node.text_disabled", Float4U(0.55f, 0.59f, 0.65f, 1.0f), "TreeNode"),
+                LUNA_GUI_STYLE_F32("gui.disabled_alpha", 0.52f, "Common")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_tree_node;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_radio_button_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32("gui.radio_button.outer_size", 18.0f, "RadioButton"),
+                LUNA_GUI_STYLE_F32X4("gui.radio_button.ring_hovered", Float4U(0.38f, 0.43f, 0.50f, 1.0f), "RadioButton"),
+                LUNA_GUI_STYLE_F32X4("gui.radio_button.ring", Float4U(0.27f, 0.31f, 0.37f, 1.0f), "RadioButton"),
+                LUNA_GUI_STYLE_F32X4("gui.radio_button.ring_disabled", Float4U(0.18f, 0.21f, 0.26f, 1.0f), "RadioButton"),
+                LUNA_GUI_STYLE_F32X4("gui.radio_button.background", Float4U(0.10f, 0.12f, 0.15f, 1.0f), "RadioButton"),
+                LUNA_GUI_STYLE_F32X4("gui.radio_button.background_disabled", Float4U(0.08f, 0.09f, 0.11f, 1.0f), "RadioButton"),
+                LUNA_GUI_STYLE_F32("gui.radio_button.inner_size", 8.0f, "RadioButton"),
+                LUNA_GUI_STYLE_F32X4("gui.radio_button.selected_color", Float4U(0.34f, 0.58f, 0.92f, 1.0f), "RadioButton"),
+                LUNA_GUI_STYLE_F32X4("gui.radio_button.selected_disabled", Float4U(0.45f, 0.50f, 0.58f, 1.0f), "RadioButton"),
+                LUNA_GUI_STYLE_F32("gui.radio_button.label_offset", 28.0f, "RadioButton"),
+                LUNA_GUI_STYLE_F32("gui.radio_button.font_size", 16.0f, "RadioButton"),
+                LUNA_GUI_STYLE_F32X4("gui.radio_button.text_color", Float4U(1.0f), "RadioButton"),
+                LUNA_GUI_STYLE_F32X4("gui.radio_button.text_disabled", Float4U(0.55f, 0.59f, 0.65f, 1.0f), "RadioButton")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_radio_button;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_button_group_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32("gui.button_group.radius", 5.0f, "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.border", Float4U(0.25f, 0.29f, 0.35f, 1.0f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.background", Float4U(0.07f, 0.08f, 0.10f, 1.0f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.selected", Float4U(0.16f, 0.24f, 0.38f, 1.0f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.selected_hot", Float4U(0.20f, 0.33f, 0.54f, 1.0f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.hover", Float4U(0.14f, 0.17f, 0.22f, 1.0f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.border_disabled", Float4U(0.18f, 0.21f, 0.26f, 1.0f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.background_disabled", Float4U(0.08f, 0.09f, 0.11f, 1.0f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.selected_disabled", Float4U(0.18f, 0.21f, 0.27f, 1.0f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32("gui.button_group.animation_speed", 14.0f, "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.separator", Float4U(0.20f, 0.23f, 0.28f, 0.90f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.separator_disabled", Float4U(0.14f, 0.16f, 0.19f, 0.90f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32("gui.button_group.font_size", 15.0f, "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.text_selected", Float4U(1.0f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.text", Float4U(0.58f, 0.63f, 0.70f, 1.0f), "ButtonGroup"),
+                LUNA_GUI_STYLE_F32X4("gui.button_group.text_disabled", Float4U(0.55f, 0.59f, 0.65f, 1.0f), "ButtonGroup")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_button_group;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
+
+#undef LUNA_GUI_STYLE_F32
+#undef LUNA_GUI_STYLE_F32X2
+#undef LUNA_GUI_STYLE_F32X4
+#undef LUNA_GUI_STYLE_NAME
     }
 }

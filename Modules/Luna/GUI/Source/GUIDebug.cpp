@@ -383,6 +383,28 @@ namespace Luna
                 {
                     node_info.resolved_style.push_back(resolve_style_entry(*this, node.style, entry));
                 }
+                if(node.render_proxy.style_entries && node.render_proxy.num_style_entries)
+                {
+                    node_info.style_usage.reserve(node.render_proxy.num_style_entries);
+                    for(usize usage_index = 0; usage_index < node.render_proxy.num_style_entries; ++usage_index)
+                    {
+                        const StyleEntryDesc& desc = node.render_proxy.style_entries[usage_index];
+                        if(!desc.name) continue;
+                        DebugResolvedStyleEntryInfo resolved = resolve_style_entry(*this, node.style, desc.name);
+                        DebugStyleUsageInfo usage;
+                        usage.name = desc.name;
+                        usage.type = desc.type;
+                        usage.default_value = desc.default_value;
+                        usage.display_name = desc.display_name ? desc.display_name : "";
+                        usage.category = desc.category ? desc.category : "";
+                        usage.description = desc.description ? desc.description : "";
+                        usage.found = resolved.found;
+                        usage.unset = resolved.unset;
+                        usage.uses_default = !resolved.found || resolved.unset;
+                        usage.value = usage.uses_default ? desc.default_value : resolved.value;
+                        node_info.style_usage.push_back(move(usage));
+                    }
+                }
 
                 object_t state_obj = get_state_object(make_state_id<ItemQueryState>(node.id));
                 if(ItemQueryState* query_state = state_obj ? cast_object<ItemQueryState>(state_obj) : nullptr)

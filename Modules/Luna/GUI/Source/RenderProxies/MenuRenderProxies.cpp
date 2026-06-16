@@ -11,6 +11,10 @@ namespace Luna
 {
     namespace GUI
     {
+#define LUNA_GUI_STYLE_F32(entry_name, value, category) {Name(entry_name), StyleValueType::f32_1, StyleValue::f32_1(value), nullptr, category, nullptr}
+#define LUNA_GUI_STYLE_F32X4(entry_name, value, category) {Name(entry_name), StyleValueType::f32_4, StyleValue::f32_4(value), nullptr, category, nullptr}
+#define LUNA_GUI_STYLE_NAME(entry_name, value, category) {Name(entry_name), StyleValueType::name, StyleValue::name(Name(value)), nullptr, category, nullptr}
+
         static void draw_default_menu_separator(NodeRenderContext& ctx, const Node& node, const RectF& rect, const RectF& clip_rect,
             const NodeRenderState&, void*)
         {
@@ -71,16 +75,42 @@ namespace Luna
 
         RenderProxyDesc default_menu_separator_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_F32("gui.menu_separator.padding", 8.0f, "MenuSeparator"),
+                LUNA_GUI_STYLE_F32X4("gui.menu_separator.color", Float4U(0.24f, 0.29f, 0.36f, 1.0f), "MenuSeparator"),
+                LUNA_GUI_STYLE_F32("gui.menu_separator.width", 1.0f, "MenuSeparator")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_menu_separator;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_menu_item_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32X4("gui.menu_item.text_color", Float4U(1.0f), "MenuItem"),
+                LUNA_GUI_STYLE_F32X4("gui.menu_item.text_disabled", Float4U(0.55f, 0.59f, 0.65f, 1.0f), "MenuItem"),
+                LUNA_GUI_STYLE_F32X4("gui.menu_item.background_active", Float4U(0.20f, 0.36f, 0.62f, 1.0f), "MenuItem"),
+                LUNA_GUI_STYLE_F32X4("gui.menu_item.background_hovered", Float4U(0.20f, 0.30f, 0.44f, 1.0f), "MenuItem"),
+                LUNA_GUI_STYLE_F32("gui.menu_item.top_level_radius", 4.0f, "MenuItem"),
+                LUNA_GUI_STYLE_F32("gui.menu_item.radius", 3.0f, "MenuItem"),
+                LUNA_GUI_STYLE_F32("gui.menu_item.check_width", 2.0f, "MenuItem"),
+                LUNA_GUI_STYLE_F32("gui.menu_item.font_size", 15.0f, "MenuItem"),
+                LUNA_GUI_STYLE_F32("gui.menu_item.shortcut_font_size", 14.0f, "MenuItem"),
+                LUNA_GUI_STYLE_F32("gui.menu_item.shortcut_alpha", 0.72f, "MenuItem")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_menu_item;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
+
+#undef LUNA_GUI_STYLE_F32
+#undef LUNA_GUI_STYLE_F32X4
+#undef LUNA_GUI_STYLE_NAME
     }
 }

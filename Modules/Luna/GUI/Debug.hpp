@@ -110,6 +110,31 @@ namespace Luna
             StyleValue value;
         };
 
+        //! One style entry declared by a node's render proxy and resolved against the node style.
+        struct DebugStyleUsageInfo
+        {
+            //! Entry name.
+            Name name;
+            //! Expected entry value type.
+            StyleValueType type = StyleValueType::f32_4;
+            //! Fallback value declared by the render proxy.
+            StyleValue default_value;
+            //! Optional human-readable display name.
+            String display_name;
+            //! Optional UI category.
+            String category;
+            //! Optional description.
+            String description;
+            //! Whether a value was found through the node style inheritance chain.
+            bool found = false;
+            //! Whether the entry was explicitly unset.
+            bool unset = false;
+            //! Resolved value, or @ref default_value when @ref uses_default is `true`.
+            StyleValue value;
+            //! Whether rendering falls back to the render proxy default value.
+            bool uses_default = true;
+        };
+
         //! Layout and subsystem-specific rectangles captured for one node.
         struct DebugLayoutInfo
         {
@@ -256,6 +281,8 @@ namespace Luna
             Vector<Name> drag_drop_target_types;
             //! Style entries resolved for this node.
             Vector<DebugResolvedStyleEntryInfo> resolved_style;
+            //! Style entries declared by this node's render proxy, with their resolved values.
+            Vector<DebugStyleUsageInfo> style_usage;
             //! Public item query states stored for this node.
             Vector<Pair<Name, DebugValue>> item_query_states;
             //! Layout data for this node.

@@ -11,6 +11,10 @@ namespace Luna
 {
     namespace GUI
     {
+#define LUNA_GUI_STYLE_F32(entry_name, value, category) {Name(entry_name), StyleValueType::f32_1, StyleValue::f32_1(value), nullptr, category, nullptr}
+#define LUNA_GUI_STYLE_F32X4(entry_name, value, category) {Name(entry_name), StyleValueType::f32_4, StyleValue::f32_4(value), nullptr, category, nullptr}
+#define LUNA_GUI_STYLE_NAME(entry_name, value, category) {Name(entry_name), StyleValueType::name, StyleValue::name(Name(value)), nullptr, category, nullptr}
+
         static void draw_text_selection(NodeRenderContext& ctx, const RectF& text_rect, const RectF& text_clip,
             const String& value, const InputEditState& state, f32 font_size, const Float4U& color)
         {
@@ -163,16 +167,50 @@ namespace Luna
 
         RenderProxyDesc default_input_text_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32("gui.input_text.font_size", 16.0f, "InputText"),
+                LUNA_GUI_STYLE_F32X4("gui.input_text.background_focused", Float4U(0.12f, 0.16f, 0.22f, 1.0f), "InputText"),
+                LUNA_GUI_STYLE_F32X4("gui.input_text.background", Float4U(0.08f, 0.10f, 0.13f, 1.0f), "InputText"),
+                LUNA_GUI_STYLE_F32("gui.input_text.radius", 4.0f, "InputText"),
+                LUNA_GUI_STYLE_F32X4("gui.input_text.selection", Float4U(0.25f, 0.45f, 0.78f, 0.80f), "InputText"),
+                LUNA_GUI_STYLE_F32X4("gui.input_text.text_color", Float4U(1.0f), "InputText"),
+                LUNA_GUI_STYLE_F32X4("gui.input_text.cursor", Float4U(1.0f), "InputText")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_input_text;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_numeric_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.slider_track_hovered", Float4U(0.12f, 0.16f, 0.22f, 1.0f), "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.slider_track", Float4U(0.07f, 0.08f, 0.10f, 1.0f), "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.slider_fill_active", Float4U(0.26f, 0.43f, 0.72f, 1.0f), "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.slider_fill_hovered", Float4U(0.22f, 0.38f, 0.64f, 1.0f), "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.slider_fill", Float4U(0.20f, 0.36f, 0.62f, 1.0f), "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.label_color", Float4U(1.0f), "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.background", Float4U(0.12f, 0.16f, 0.22f, 1.0f), "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.background_active", Float4U(0.18f, 0.29f, 0.44f, 1.0f), "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.drag_fill", Float4U(0.30f, 0.56f, 0.88f, 1.0f), "Numeric"),
+                LUNA_GUI_STYLE_F32("gui.numeric.font_size", 15.0f, "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.selection", Float4U(0.25f, 0.45f, 0.78f, 0.80f), "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.text_color", Float4U(1.0f), "Numeric"),
+                LUNA_GUI_STYLE_F32X4("gui.numeric.cursor", Float4U(1.0f), "Numeric")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_numeric;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
+
+#undef LUNA_GUI_STYLE_F32
+#undef LUNA_GUI_STYLE_F32X4
+#undef LUNA_GUI_STYLE_NAME
     }
 }

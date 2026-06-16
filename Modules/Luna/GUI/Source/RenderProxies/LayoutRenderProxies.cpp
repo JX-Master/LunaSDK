@@ -11,6 +11,10 @@ namespace Luna
 {
     namespace GUI
     {
+#define LUNA_GUI_STYLE_F32(entry_name, value, category) {Name(entry_name), StyleValueType::f32_1, StyleValue::f32_1(value), nullptr, category, nullptr}
+#define LUNA_GUI_STYLE_F32X4(entry_name, value, category) {Name(entry_name), StyleValueType::f32_4, StyleValue::f32_4(value), nullptr, category, nullptr}
+#define LUNA_GUI_STYLE_NAME(entry_name, value, category) {Name(entry_name), StyleValueType::name, StyleValue::name(Name(value)), nullptr, category, nullptr}
+
         static bool point_in_rect_local(const Float2U& pos, const RectF& rect)
         {
             return pos.x >= rect.offset_x && pos.x <= rect.offset_x + rect.width &&
@@ -453,37 +457,79 @@ namespace Luna
 
         RenderProxyDesc default_scroll_view_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_F32X4("gui.scroll_view.background", Float4U(0.10f, 0.12f, 0.14f, 0.92f), "ScrollView"),
+                LUNA_GUI_STYLE_F32("gui.scroll_view.radius", 6.0f, "ScrollView")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_scroll_view;
             desc.draw_after_children = draw_default_scroll_view_after_children;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_window_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32X4("gui.window.background", Float4U(0.10f, 0.12f, 0.14f, 0.92f), "Window"),
+                LUNA_GUI_STYLE_F32("gui.window.radius", 6.0f, "Window"),
+                LUNA_GUI_STYLE_F32X4("gui.window.title_background", Float4U(0.13f, 0.17f, 0.22f, 1.0f), "Window"),
+                LUNA_GUI_STYLE_F32("gui.window.title_font_size", 15.0f, "Window"),
+                LUNA_GUI_STYLE_F32X4("gui.window.title_color", Float4U(1.0f), "Window"),
+                LUNA_GUI_STYLE_F32X4("gui.window.close_hovered", Float4U(0.55f, 0.18f, 0.18f, 1.0f), "Window"),
+                LUNA_GUI_STYLE_F32X4("gui.window.close_background", Float4U(0.23f, 0.27f, 0.33f, 1.0f), "Window"),
+                LUNA_GUI_STYLE_F32("gui.window.close_radius", 4.0f, "Window"),
+                LUNA_GUI_STYLE_F32("gui.window.close_font_size", 14.0f, "Window"),
+                LUNA_GUI_STYLE_F32X4("gui.window.close_color", Float4U(1.0f), "Window")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_window;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_popup_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_F32X4("gui.popup.background", Float4U(0.08f, 0.10f, 0.13f, 0.98f), "Popup"),
+                LUNA_GUI_STYLE_F32("gui.popup.radius", 5.0f, "Popup")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_popup;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_tooltip_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_F32X4("gui.tooltip.background", Float4U(0.05f, 0.06f, 0.07f, 0.97f), "Tooltip"),
+                LUNA_GUI_STYLE_F32("gui.tooltip.radius", 4.0f, "Tooltip"),
+                LUNA_GUI_STYLE_F32X4("gui.tooltip.border", Float4U(0.28f, 0.33f, 0.40f, 1.0f), "Tooltip"),
+                LUNA_GUI_STYLE_F32("gui.tooltip.border_width", 1.0f, "Tooltip")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_tooltip;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
         RenderProxyDesc default_menu_bar_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_F32X4("gui.menu_bar.background", Float4U(0.08f, 0.10f, 0.13f, 0.92f), "MenuBar"),
+                LUNA_GUI_STYLE_F32("gui.menu_bar.border_width", 1.0f, "MenuBar"),
+                LUNA_GUI_STYLE_F32X4("gui.menu_bar.border", Float4U(0.20f, 0.24f, 0.30f, 1.0f), "MenuBar")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_menu_bar;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
@@ -495,9 +541,19 @@ namespace Luna
 
         RenderProxyDesc default_tab_bar_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32X4("gui.tab_bar.background", Float4U(0.08f, 0.10f, 0.13f, 0.70f), "TabBar"),
+                LUNA_GUI_STYLE_F32("gui.tab_bar.radius", 4.0f, "TabBar"),
+                LUNA_GUI_STYLE_F32("gui.tab_bar.header_line_y", 31.0f, "TabBar"),
+                LUNA_GUI_STYLE_F32("gui.tab_bar.header_line_width", 1.0f, "TabBar"),
+                LUNA_GUI_STYLE_F32X4("gui.tab_bar.header_line", Float4U(0.22f, 0.27f, 0.34f, 1.0f), "TabBar")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_tab_bar;
             desc.draw_after_children = draw_default_tab_bar_after_children;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
 
@@ -507,5 +563,9 @@ namespace Luna
             desc.draw = draw_default_tab_item;
             return desc;
         }
+
+#undef LUNA_GUI_STYLE_F32
+#undef LUNA_GUI_STYLE_F32X4
+#undef LUNA_GUI_STYLE_NAME
     }
 }

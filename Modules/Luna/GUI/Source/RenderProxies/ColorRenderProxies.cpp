@@ -11,6 +11,9 @@ namespace Luna
 {
     namespace GUI
     {
+#define LUNA_GUI_STYLE_F32X4(entry_name, value, category) {Name(entry_name), StyleValueType::f32_4, StyleValue::f32_4(value), nullptr, category, nullptr}
+#define LUNA_GUI_STYLE_NAME(entry_name, value, category) {Name(entry_name), StyleValueType::name, StyleValue::name(Name(value)), nullptr, category, nullptr}
+
         static void draw_color_swatch(NodeRenderContext& ctx, const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius)
         {
             ctx.draw_rect(rect, clip_rect, Float4U(0.24f, 0.29f, 0.36f, 1.0f), radius);
@@ -137,9 +140,18 @@ namespace Luna
 
         RenderProxyDesc default_color_picker_render_proxy()
         {
+            static StyleEntryDesc entries[] = {
+                LUNA_GUI_STYLE_NAME("gui.font", "", "Text"),
+                LUNA_GUI_STYLE_F32X4("gui.color_picker.border", Float4U(0.24f, 0.29f, 0.36f, 1.0f), "ColorPicker")
+            };
             RenderProxyDesc desc;
             desc.draw = draw_default_color_picker;
+            desc.style_entries = entries;
+            desc.num_style_entries = sizeof(entries) / sizeof(entries[0]);
             return desc;
         }
+
+#undef LUNA_GUI_STYLE_F32X4
+#undef LUNA_GUI_STYLE_NAME
     }
 }
