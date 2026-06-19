@@ -13,9 +13,11 @@
 #include <Luna/Window/Window.hpp>
 #include <Luna/RHI/SwapChain.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/GUI/Editor.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/Font/Font.hpp>
+#include <Luna/VG/ShapeDrawList.hpp>
+#include <Luna/VG/ShapeRenderer.hpp>
 #include <Luna/VG/VG.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/AHI/Device.hpp>
@@ -216,7 +218,9 @@ namespace Luna
         Ref<Window::IWindow> window;
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
-        Ref<GUI::IContext> gui;
+        Ref<GUICore::IContext> gui;
+        Ref<VG::IShapeDrawList> gui_draw_list;
+        Ref<VG::IShapeRenderer> gui_renderer;
         Vector<Ref<AHI::IAdapter>> playback_adapters;
         Vector<Ref<AHI::IAdapter>> capture_adapters;
         Vector<AudioSource> audio_sources;
@@ -225,11 +229,209 @@ namespace Luna
         u32 height = 0;
     };
 
+    constexpr GUICore::id_t DEFAULT_LAYER_ID = 1;
+    constexpr GUICore::id_t ROOT_ID = 2;
+    constexpr GUICore::id_t ADAPTERS_HEADER_ID = 10;
+    constexpr GUICore::id_t PLAYBACK_COMBO_ID = 11;
+    constexpr GUICore::id_t CAPTURE_COMBO_ID = 12;
+    constexpr GUICore::id_t CREATE_DEVICE_BUTTON_ID = 13;
+    constexpr GUICore::id_t DEVICE_HEADER_ID = 20;
+    constexpr GUICore::id_t INPUT_LEVEL_SLIDER_ID = 21;
+    constexpr GUICore::id_t ADD_SOURCE_BUTTON_ID = 22;
+    constexpr GUICore::id_t FIRST_TEXT_ID = 1000;
+    constexpr GUICore::id_t FIRST_SOURCE_ID = 2000;
+    constexpr GUICore::id_t SOURCE_ID_STRIDE = 16;
+
+    inline GUICore::LayoutInput fixed_layout(f32 width, f32 height)
+    {
+        GUICore::LayoutInput layout;
+        layout.width.kind = GUICore::SizeKind::pixels;
+        layout.width.value = width;
+        layout.height.kind = GUICore::SizeKind::pixels;
+        layout.height.value = height;
+        return layout;
+    }
+
+    inline void set_element_rect(GUICore::IContext* context, const GUICore::ElementHandle& element, const RectF& rect)
+    {
+        GUICore::LayoutResult layout;
+        layout.rect = rect;
+        layout.clip_rect = rect;
+        layout.content_size = Float2U(rect.width, rect.height);
+        context->set_layout_result(element, layout);
+    }
+
+    inline bool clicked(GUICore::IContext* context, GUICore::id_t id)
+    {
+        return context->get_interaction_state(id).clicked;
+    }
+
+    void draw_label(GUICore::IContext* context, GUICore::id_t id, const RectF& rect, const c8* text)
+    {
+        GUI::draw_text(context, id, rect, text ? text : "", Float4U(0.88f, 0.90f, 0.94f, 1.0f), 16.0f);
+    }
+
+    void draw_panel_background(GUICore::IContext* context, const RectF& rect)
+    {
+        GUI::draw_rect(context, 900, rect, Float4U(0.06f, 0.075f, 0.09f, 1.0f), 0.0f);
+    }
+
+    void build_gui(App& app, const Float2U& surface_size, i32& current_playback_adapter, i32& current_capture_adapter)
+    {
+        GUICore::IContext* context = app.gui;
+        GUICore::ElementHandle root = context->begin_element(ROOT_ID, Name("AHITest Root"));
+        set_element_rect(context, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
+        draw_panel_background(context, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
+
+        f32 y = 16.0f;
+        draw_label(context, FIRST_TEXT_ID, RectF(18.0f, y, 260.0f, 28.0f), "AHI Test");
+        y += 38.0f;
+
+        GUICore::ElementHandle adapters_header;
+        bool show_adapters = GUI::collapsing_header(context, ADAPTERS_HEADER_ID, "Adapters and formats", true,
+            fixed_layout(max(surface_size.x - 36.0f, 300.0f), 30.0f), &adapters_header);
+        set_element_rect(context, adapters_header, RectF(18.0f, y, max(surface_size.x - 36.0f, 300.0f), 30.0f));
+        y += 38.0f;
+        if(show_adapters)
+        {
+            Vector<const c8*> playback_adapter_names;
+            Vector<const c8*> capture_adapter_names;
+            playback_adapter_names.reserve(app.playback_adapters.size());
+            capture_adapter_names.reserve(app.capture_adapters.size());
+            for(auto& adapter : app.playback_adapters)
+            {
+                playback_adapter_names.push_back(adapter->get_name());
+            }
+            for(auto& adapter : app.capture_adapters)
+            {
+                capture_adapter_names.push_back(adapter->get_name());
+            }
+            draw_label(context, FIRST_TEXT_ID + 1, RectF(32.0f, y, 160.0f, 28.0f), "Playback Adapter");
+            GUICore::ElementHandle playback_combo = GUI::combo(context, PLAYBACK_COMBO_ID, "Playback Adapters",
+                &current_playback_adapter, Span<const c8*>(playback_adapter_names.data(), playback_adapter_names.size()),
+                fixed_layout(max(surface_size.x - 240.0f, 240.0f), 30.0f));
+            set_element_rect(context, playback_combo, RectF(198.0f, y, max(surface_size.x - 240.0f, 240.0f), 30.0f));
+            y += 38.0f;
+
+            draw_label(context, FIRST_TEXT_ID + 2, RectF(32.0f, y, 160.0f, 28.0f), "Capture Adapter");
+            GUICore::ElementHandle capture_combo = GUI::combo(context, CAPTURE_COMBO_ID, "Capture Adapters",
+                &current_capture_adapter, Span<const c8*>(capture_adapter_names.data(), capture_adapter_names.size()),
+                fixed_layout(max(surface_size.x - 240.0f, 240.0f), 30.0f));
+            set_element_rect(context, capture_combo, RectF(198.0f, y, max(surface_size.x - 240.0f, 240.0f), 30.0f));
+            y += 42.0f;
+
+            if(!app.device && (usize)current_playback_adapter < app.playback_adapters.size() &&
+                (usize)current_capture_adapter < app.capture_adapters.size())
+            {
+                GUICore::ElementHandle create_device = GUI::text_button(context, CREATE_DEVICE_BUTTON_ID, "Create Device",
+                    fixed_layout(150.0f, 32.0f));
+                set_element_rect(context, create_device, RectF(32.0f, y, 150.0f, 32.0f));
+                y += 44.0f;
+            }
+
+            if(app.device)
+            {
+                GUICore::ElementHandle device_header;
+                bool show_device = GUI::collapsing_header(context, DEVICE_HEADER_ID, "Device", true,
+                    fixed_layout(max(surface_size.x - 64.0f, 300.0f), 30.0f), &device_header);
+                set_element_rect(context, device_header, RectF(32.0f, y, max(surface_size.x - 64.0f, 300.0f), 30.0f));
+                y += 38.0f;
+                if(show_device)
+                {
+                    auto bd = app.device->get_playback_bit_depth();
+                    const c8* bit_depth = "unknown";
+                    switch(bd)
+                    {
+                    case AHI::BitDepth::u8: bit_depth = "8bit"; break;
+                    case AHI::BitDepth::s16: bit_depth = "16bit"; break;
+                    case AHI::BitDepth::s24: bit_depth = "24bit"; break;
+                    case AHI::BitDepth::s32: bit_depth = "32bit"; break;
+                    case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
+                    default: break;
+                    }
+                    String text;
+                    strprintf(text, "Playback: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_playback_num_channels());
+                    draw_label(context, FIRST_TEXT_ID + 3, RectF(48.0f, y, 520.0f, 28.0f), text.c_str());
+                    y += 30.0f;
+                    bd = app.device->get_capture_bit_depth();
+                    switch(bd)
+                    {
+                    case AHI::BitDepth::u8: bit_depth = "8bit"; break;
+                    case AHI::BitDepth::s16: bit_depth = "16bit"; break;
+                    case AHI::BitDepth::s24: bit_depth = "24bit"; break;
+                    case AHI::BitDepth::s32: bit_depth = "32bit"; break;
+                    case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
+                    default: bit_depth = "unknown"; break;
+                    }
+                    strprintf(text, "Capture: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_capture_num_channels());
+                    draw_label(context, FIRST_TEXT_ID + 4, RectF(48.0f, y, 520.0f, 28.0f), text.c_str());
+                    y += 38.0f;
+
+                    draw_label(context, FIRST_TEXT_ID + 5, RectF(48.0f, y, 150.0f, 28.0f), "Input Audio Level");
+                    GUICore::ElementHandle level_slider = GUI::slider_float(context, INPUT_LEVEL_SLIDER_ID,
+                        &input_audio_level, 0.0f, 1.0f, fixed_layout(max(surface_size.x - 250.0f, 220.0f), 26.0f));
+                    set_element_rect(context, level_slider, RectF(210.0f, y + 2.0f, max(surface_size.x - 250.0f, 220.0f), 26.0f));
+                    y += 42.0f;
+
+                    GUICore::ElementHandle add_source = GUI::text_button(context, ADD_SOURCE_BUTTON_ID, "Add Audio Source",
+                        fixed_layout(170.0f, 32.0f));
+                    set_element_rect(context, add_source, RectF(48.0f, y, 170.0f, 32.0f));
+                    y += 46.0f;
+
+                    if(!app.audio_sources.empty())
+                    {
+                        f32 table_x = 48.0f;
+                        f32 table_w = max(surface_size.x - 96.0f, 520.0f);
+                        f32 freq_w = max((table_w - 240.0f) * 0.5f, 180.0f);
+                        f32 volume_w = max(table_w - 220.0f - freq_w, 180.0f);
+                        draw_label(context, FIRST_TEXT_ID + 6, RectF(table_x, y, 140.0f, 24.0f), "Audio Source");
+                        draw_label(context, FIRST_TEXT_ID + 7, RectF(table_x + 130.0f, y, 140.0f, 24.0f), "Frequency");
+                        draw_label(context, FIRST_TEXT_ID + 8, RectF(table_x + 140.0f + freq_w, y, 140.0f, 24.0f), "Volume");
+                        y += 30.0f;
+                        for(usize i = 0; i < app.audio_sources.size(); ++i)
+                        {
+                            AudioSource& source = app.audio_sources[i];
+                            f32 row_y = y + (f32)i * 38.0f;
+                            Float4U row_color = (i % 2) ? Float4U(0.09f, 0.11f, 0.14f, 0.95f) :
+                                Float4U(0.065f, 0.08f, 0.10f, 0.95f);
+                            GUI::draw_rect(context, FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE,
+                                RectF(table_x, row_y, table_w, 34.0f), row_color, 0.0f);
+                            draw_label(context, FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 1,
+                                RectF(table_x + 8.0f, row_y + 4.0f, 120.0f, 26.0f), "Audio Source");
+                            GUICore::ElementHandle frequency = GUI::drag_float(context,
+                                FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 2,
+                                &source.frequency, 1.0f, 8.176f, 15804.266f,
+                                fixed_layout(freq_w - 12.0f, 26.0f));
+                            set_element_rect(context, frequency, RectF(table_x + 130.0f, row_y + 4.0f, freq_w - 12.0f, 26.0f));
+                            GUICore::ElementHandle volume = GUI::slider_float(context,
+                                FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 3,
+                                &source.volume, 0.0f, 1.0f, fixed_layout(volume_w - 92.0f, 26.0f));
+                            set_element_rect(context, volume, RectF(table_x + 140.0f + freq_w, row_y + 4.0f, volume_w - 92.0f, 26.0f));
+                            GUICore::ElementHandle apply = GUI::text_button(context,
+                                FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 4,
+                                "Apply", fixed_layout(72.0f, 26.0f));
+                            set_element_rect(context, apply, RectF(table_x + table_w - 80.0f, row_y + 4.0f, 72.0f, 26.0f));
+                        }
+                    }
+                }
+            }
+        }
+        context->end_element();
+    }
+
     RV run_app()
     {
         lutry
         {
-            luexp(add_modules({module_ahi(), module_rhi(), module_window(), module_font(), module_vg(), GUI::module_gui(), GUIWindow::module_gui_window()}));
+            luexp(add_modules({
+                module_ahi(),
+                module_rhi(),
+                module_window(),
+                module_font(),
+                module_vg(),
+                GUICore::module_gui_core(),
+                GUI::module_gui(),
+                GUIWindow::module_gui_window()}));
             luexp(init_modules());
 
             App app;
@@ -251,8 +453,12 @@ namespace Luna
             }
             luset(app.swap_chain, dev->new_swap_chain(graphics_queue, app.window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             luset(app.cmdbuf, dev->new_command_buffer(graphics_queue));
-            app.gui = GUI::new_context(dev);
-            GUIWindow::GUIWindowInputAdapter input_adapter;
+            app.gui_draw_list = VG::new_shape_draw_list(dev);
+            app.gui_renderer = VG::new_fill_shape_renderer();
+            app.gui = GUICore::new_context();
+            GUI::register_editor_style_schemas(app.gui);
+            luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
+            GUIWindow::GUICoreWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;
             GUIWindow::install_window_event_handler(&input_adapter);
@@ -280,124 +486,23 @@ namespace Luna
                 }
                 auto sz = app.window->get_size();
 
-                GUI::FrameDesc frame;
-                frame.surface_size = Float2U((f32)sz.x, (f32)sz.y);
+                GUICore::FrameDesc frame;
+                frame.screen_size = Float2U((f32)sz.x, (f32)sz.y);
                 frame.framebuffer_size = fb_sz;
                 frame.dpi_scale = app.window->get_dpi_scale_factor();
                 frame.delta_time = 1.0f / 60.0f;
                 app.gui->begin_frame(frame);
+                GUIWindow::update_input(&input_adapter);
 
                 static i32 current_playback_adapter = 0;
                 static i32 current_capture_adapter = 0;
-                GUI::ItemHandle create_device_button;
-                GUI::ItemHandle add_audio_source_button;
-                Vector<GUI::ItemHandle> apply_audio_source_buttons;
+                app.gui->push_layer(DEFAULT_LAYER_ID, Float2U(0.0f), Name("default"));
+                build_gui(app, frame.screen_size, current_playback_adapter, current_capture_adapter);
+                app.gui->pop_layer();
+                app.gui->route_input();
+                luexp(GUIWindow::update_text_input(&input_adapter));
 
-                GUI::begin_window(app.gui, "AHITest", GUI::Size::fixed((f32)sz.x, (f32)sz.y));
-                {
-                    GUI::ItemHandle adapters_header = GUI::collapsing_header(app.gui, "Adapters and formats");
-                    if(GUI::get_item_state(adapters_header, GUI::State::open()))
-                    {
-                        Vector<const c8*> playback_adapter_names;
-                        Vector<const c8*> capture_adapter_names;
-                        playback_adapter_names.reserve(app.playback_adapters.size());
-                        for(auto& adapter : app.playback_adapters)
-                        {
-                            playback_adapter_names.push_back(adapter->get_name());
-                        }
-                        for(auto& adapter : app.capture_adapters)
-                        {
-                            capture_adapter_names.push_back(adapter->get_name());
-                        }
-                        GUI::combo(app.gui, "Playback Adapters", &current_playback_adapter, Span<const c8*>(playback_adapter_names.data(), playback_adapter_names.size()));
-                        GUI::combo(app.gui, "Capture Adapters", &current_capture_adapter, Span<const c8*>(capture_adapter_names.data(), capture_adapter_names.size()));
-                        if((usize)current_playback_adapter < app.playback_adapters.size() && (usize)current_capture_adapter < app.capture_adapters.size())
-                        {
-                            if(!app.device)
-                            {
-                                create_device_button = GUI::text_button(app.gui, "Create Device");
-                            }
-                        }
-                        if(app.device)
-                        {
-                            GUI::ItemHandle device_header = GUI::collapsing_header(app.gui, "Device");
-                            if(GUI::get_item_state(device_header, GUI::State::open()))
-                            {
-                                {
-                                    auto bd = app.device->get_playback_bit_depth();
-                                    const c8* bit_depth = "unknown";
-                                    switch(bd)
-                                    {
-                                        case AHI::BitDepth::u8: bit_depth = "8bit"; break;
-                                        case AHI::BitDepth::s16: bit_depth = "16bit"; break;
-                                        case AHI::BitDepth::s24: bit_depth = "24bit"; break;
-                                        case AHI::BitDepth::s32: bit_depth = "32bit"; break;
-                                        case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
-                                        default: break;
-                                    }
-                                    String text;
-                                    strprintf(text, "Playback: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_playback_num_channels());
-                                    GUI::text(app.gui, text.c_str());
-                                    bd = app.device->get_capture_bit_depth();
-                                    switch(bd)
-                                    {
-                                        case AHI::BitDepth::u8: bit_depth = "8bit"; break;
-                                        case AHI::BitDepth::s16: bit_depth = "16bit"; break;
-                                        case AHI::BitDepth::s24: bit_depth = "24bit"; break;
-                                        case AHI::BitDepth::s32: bit_depth = "32bit"; break;
-                                        case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
-                                        default: bit_depth = "unknown"; break;
-                                    }
-                                    strprintf(text, "Capture: %s, %uHz, %u channels", bit_depth, app.device->get_sample_rate(), app.device->get_capture_num_channels());
-                                    GUI::text(app.gui, text.c_str());
-                                }
-
-                                GUI::slider_float(app.gui, "Input Audio Level", &input_audio_level, 0.0f, 1.0f);
-                                add_audio_source_button = GUI::text_button(app.gui, "Add Audio Source");
-                                if(!app.audio_sources.empty())
-                                {
-                                    GUI::TableDesc source_table;
-                                    source_table.style.padding = GUI::EdgeInsets::xy(8.0f, 4.0f);
-                                    source_table.style.border_size = 1.0f;
-                                    source_table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
-                                    source_table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.72f);
-                                    source_table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.17f, 0.72f);
-                                    source_table.style.row_separators = true;
-                                    source_table.style.column_separators = true;
-                                    source_table.style.resize_fixed_columns = true;
-                                    f32 source_table_w = max((f32)sz.x - 40.0f, 480.0f);
-                                    f32 control_w = max((source_table_w - 226.0f) * 0.5f, 220.0f);
-                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(120.0f));
-                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(control_w));
-                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(control_w));
-                                    source_table.column_sizes.push_back(GUI::TableTrackSize::fixed(80.0f));
-                                    GUI::begin_table_layout(app.gui, "Audio Sources", source_table);
-                                    for (usize i = 0; i < app.audio_sources.size(); ++i)
-                                    {
-                                        if(GUI::begin_table_row(app.gui))
-                                        {
-                                            AudioSource& source = app.audio_sources[i];
-                                            GUI::push_id(app.gui, (u64)i);
-                                            GUI::text(app.gui, "Audio Source");
-                                            GUI::drag_float(app.gui, "Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
-                                            GUI::slider_float(app.gui, "Volume", &source.volume, 0.0f, 1.0f);
-                                            apply_audio_source_buttons.push_back(GUI::text_button(app.gui, "Apply"));
-                                            GUI::pop_id(app.gui);
-                                            GUI::end_table_row(app.gui);
-                                        }
-                                    }
-                                    GUI::end_table_layout(app.gui);
-                                }
-                            }
-                        }
-                    }
-                }
-                GUI::end_window(app.gui);
-
-                lulet(gui_desc, app.gui->end_build());
-                luexp(app.gui->submit(gui_desc));
-
-                if(GUI::is_item_clicked(create_device_button))
+                if(clicked(app.gui, CREATE_DEVICE_BUTTON_ID))
                 {
                     AHI::DeviceDesc desc;
                     desc.flags = AHI::DeviceFlag::playback | AHI::DeviceFlag::capture;
@@ -411,14 +516,15 @@ namespace Luna
                     luset(app.device, AHI::new_device(desc));
                     app.device->add_capture_data_callback(on_capture_data);
                 }
-                if(GUI::is_item_clicked(add_audio_source_button))
+                if(clicked(app.gui, ADD_SOURCE_BUTTON_ID))
                 {
                     AudioSource source;
                     app.audio_sources.push_back(source);
                 }
-                for(usize i = 0; i < apply_audio_source_buttons.size() && i < app.audio_sources.size(); ++i)
+                for(usize i = 0; i < app.audio_sources.size(); ++i)
                 {
-                    if(GUI::is_item_clicked(apply_audio_source_buttons[i]))
+                    GUICore::id_t apply_id = FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 4;
+                    if(clicked(app.gui, apply_id))
                     {
                         AudioSource& source = app.audio_sources[i];
                         AudioSourceCallback callback;
@@ -440,7 +546,19 @@ namespace Luna
                 render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
                 app.cmdbuf->begin_render_pass(render_pass);
                 app.cmdbuf->end_render_pass();
-                luexp(app.gui->render(app.cmdbuf, back_buffer));
+                luexp(app.gui->compile_draw_commands(app.gui_draw_list));
+                luexp(app.gui_draw_list->compile());
+                Span<const VG::ShapeDrawCall> gui_draw_calls = app.gui_draw_list->get_draw_calls();
+                if(!gui_draw_calls.empty())
+                {
+                    luexp(app.gui_renderer->begin(back_buffer));
+                    app.gui_renderer->draw(app.gui_draw_list->get_vertex_buffer(),
+                        app.gui_draw_list->get_index_buffer(),
+                        gui_draw_calls,
+                        nullptr);
+                    luexp(app.gui_renderer->end());
+                    app.gui_renderer->submit(app.cmdbuf);
+                }
                 app.cmdbuf->resource_barrier({}, {
                     {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
                     });

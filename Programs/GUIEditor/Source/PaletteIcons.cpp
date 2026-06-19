@@ -47,10 +47,10 @@ namespace Luna
             icon_line(points, x + size, y + size, x, y + size * 2.0f, width);
         }
 
-        static GUI::ShapeDesc append_palette_icon(PaletteIcons& icons, void(*build)(Vector<f32>&))
+        static GUICore::ShapeDesc append_palette_icon(PaletteIcons& icons, void(*build)(Vector<f32>&))
         {
             Vector<f32>& points = icons.shape_buffer->get_shape_points(true);
-            GUI::ShapeDesc desc;
+            GUICore::ShapeDesc desc;
             desc.buffer = icons.shape_buffer;
             desc.first_command = (u32)points.size();
             build(points);
@@ -274,7 +274,7 @@ namespace Luna
             add_palette_icon(icons, "asset_reference", build_icon_asset_reference);
         }
 
-        GUI::ShapeDesc& palette_icon(PaletteIcons& icons, const Name& type)
+        GUICore::ShapeDesc& palette_icon(PaletteIcons& icons, const Name& type)
         {
             auto iter = icons.icons.find(type);
             return iter == icons.icons.end() ? icons.fallback_icon : iter->second;

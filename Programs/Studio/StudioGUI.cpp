@@ -8,61 +8,94 @@
 * @date 2026/5/22
 */
 #include "StudioGUI.hpp"
+#include <Luna/GUI/Editor.hpp>
 #include <Luna/Window/MessageBox.hpp>
 
 namespace Luna
 {
-    bool gui_edit_asset_path(GUI::IContext* context, const c8* label, Asset::asset_t& asset, String& path_text, const c8* failure_title)
+    namespace
     {
+        GUICore::LayoutInput fixed_size(f32 width, f32 height)
+        {
+            GUICore::LayoutInput layout;
+            layout.width.kind = GUICore::SizeKind::pixels;
+            layout.width.value = width;
+            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.height.value = height;
+            return layout;
+        }
+
+        GUICore::LayoutInput fill_width(f32 height)
+        {
+            GUICore::LayoutInput layout;
+            layout.width.kind = GUICore::SizeKind::expand;
+            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.height.value = height;
+            return layout;
+        }
+
+        bool apply_asset_path_edit(const c8* label, Asset::asset_t& asset, String& path_text, const c8* failure_title,
+            bool set_clicked, bool clear_clicked)
+        {
+            bool edited = false;
+            if(set_clicked)
+            {
+                if(path_text.empty())
+                {
+                    asset.reset();
+                    edited = true;
+                }
+                else
+                {
+                    Path path = path_text.c_str();
+                    auto r = Asset::get_asset_by_path(path);
+                    if(succeeded(r))
+                    {
+                        asset = r.get();
+                        path_text = Asset::get_asset_path(asset).encode();
+                        edited = true;
+                    }
+                    else
+                    {
+                        auto _ = Window::message_box(explain(r.errcode()), failure_title, Window::MessageBoxType::ok,
+                            Window::MessageBoxIcon::error);
+                    }
+                }
+            }
+            if(clear_clicked)
+            {
+                asset.reset();
+                path_text.clear();
+                edited = true;
+            }
+            return edited;
+        }
+    }
+
+    bool gui_edit_asset_path(GUICore::IContext* context, const c8* label, Asset::asset_t& asset, String& path_text, const c8* failure_title)
+    {
+        luassert(context && label);
         if(asset && path_text.empty())
         {
             path_text = Asset::get_asset_path(asset).encode();
         }
 
-        GUI::push_id(context, label);
-        GUI::LayoutDesc row;
-        row.gap = 8.0f;
-        row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
-        GUI::begin_h_layout(context, label, row);
-        GUI::set_next_item_layout(context, GUI::LayoutStyle::fixed_width(112.0f));
-        GUI::text(context, label);
-        GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
-        GUI::input_text(context, "Path", path_text);
-        GUI::ItemHandle set_button = GUI::text_button(context, "Set");
-        GUI::ItemHandle clear_button = GUI::text_button(context, "Clear");
-        GUI::end_h_layout(context);
+        GUICore::id_t scope = context->make_id(label);
+        context->push_data_scope(scope);
+        GUICore::LayoutInput row_layout = fill_width(30.0f);
+        GUICore::ElementHandle row = GUI::begin_h_layout(context, context->make_id("row"), label, row_layout);
+        GUI::text(context, context->make_id("label"), label, fixed_size(112.0f, 30.0f));
+        GUI::input_text(context, context->make_id("path"), path_text, fill_width(30.0f));
+        GUICore::ElementHandle set_button = GUI::text_button(context, context->make_id("set"), "Set", fixed_size(52.0f, 30.0f));
+        GUICore::ElementHandle clear_button = GUI::text_button(context, context->make_id("clear"), "Clear", fixed_size(64.0f, 30.0f));
+        GUICore::LinearLayoutDesc row_desc;
+        row_desc.axis = GUICore::LayoutAxis::x;
+        row_desc.gap = 8.0f;
+        lupanic_if_failed(GUI::end_h_layout(context, row, row_desc));
 
-        bool edited = false;
-        if(GUI::is_item_clicked(set_button))
-        {
-            if(path_text.empty())
-            {
-                asset.reset();
-                edited = true;
-            }
-            else
-            {
-                Path path = path_text.c_str();
-                auto r = Asset::get_asset_by_path(path);
-                if(succeeded(r))
-                {
-                    asset = r.get();
-                    path_text = Asset::get_asset_path(asset).encode();
-                    edited = true;
-                }
-                else
-                {
-                    auto _ = Window::message_box(explain(r.errcode()), failure_title, Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                }
-            }
-        }
-        if(GUI::is_item_clicked(clear_button))
-        {
-            asset.reset();
-            path_text.clear();
-            edited = true;
-        }
-        GUI::pop_id(context);
+        bool edited = apply_asset_path_edit(label, asset, path_text, failure_title,
+            GUI::is_item_clicked(context, set_button), GUI::is_item_clicked(context, clear_button));
+        context->pop_data_scope();
         return edited;
     }
 }

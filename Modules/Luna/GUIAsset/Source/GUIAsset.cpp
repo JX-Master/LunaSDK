@@ -11,6 +11,7 @@
 #define LUNA_GUI_ASSET_API LUNA_EXPORT
 #include "../GUIAsset.hpp"
 #include "GUIAsset.meta.generated.hpp"
+#include <Luna/GUI/Editor.hpp>
 #include <Luna/Runtime/Algorithm.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Serialization.hpp>
@@ -38,6 +39,64 @@ namespace Luna
         static constexpr const c8* name_style = "style";
         static constexpr const c8* name_type = "type";
         static constexpr const c8* name_version = "version";
+
+        enum class AssetSizePolicy : u8
+        {
+            fixed,
+            hug,
+            fill
+        };
+
+        struct AssetSize
+        {
+            f32 width = 0.0f;
+            f32 height = 0.0f;
+
+            static AssetSize fixed(f32 width, f32 height)
+            {
+                AssetSize r;
+                r.width = width;
+                r.height = height;
+                return r;
+            }
+        };
+
+        struct AssetEdgeInsets
+        {
+            f32 left = 0.0f;
+            f32 top = 0.0f;
+            f32 right = 0.0f;
+            f32 bottom = 0.0f;
+
+            static AssetEdgeInsets all(f32 value)
+            {
+                AssetEdgeInsets r;
+                r.left = value;
+                r.top = value;
+                r.right = value;
+                r.bottom = value;
+                return r;
+            }
+        };
+
+        struct AssetLayoutDesc
+        {
+            AssetEdgeInsets padding;
+            f32 gap = 6.0f;
+        };
+
+        struct AssetGridLayoutDesc
+        {
+            Float2U cell_size = Float2U(96.0f, 118.0f);
+            u32 columns = 4;
+            AssetEdgeInsets padding = AssetEdgeInsets::all(6.0f);
+            Float2U gap = Float2U(8.0f, 8.0f);
+        };
+
+        struct AssetCanvasLayoutDesc
+        {
+            AssetEdgeInsets padding;
+        };
 
         namespace AssetTopologyAccess
         {
@@ -163,6 +222,20 @@ namespace Luna
             }
         }
 
+        static Vector<f32> read_float_items(const Variant& data, Span<const f32> default_values)
+        {
+            Vector<f32> items;
+            for(const Variant& item : data.values())
+            {
+                items.push_back((f32)item.fnum(0.0));
+            }
+            if(items.empty())
+            {
+                items.assign(default_values.begin(), default_values.end());
+            }
+            return items;
+        }
+
         template <typename _Ty>
         static _Ty& runtime_value(Node& node, const Name& key, const _Ty& default_value)
         {
@@ -175,15 +248,15 @@ namespace Luna
             return *iter->second.as<_Ty>();
         }
 
-        static GUI::Size read_size(const Variant& data, const GUI::Size& default_value = GUI::Size())
+        static AssetSize read_size(const Variant& data, const AssetSize& default_value = AssetSize())
         {
-            GUI::Size r = default_value;
+            AssetSize r = default_value;
             r.width = (f32)data[Name("width")].fnum(r.width);
             r.height = (f32)data[Name("height")].fnum(r.height);
             return r;
         }
 
-        static Variant write_size(const GUI::Size& value)
+        static Variant write_size(const AssetSize& value)
         {
             Variant r(VariantType::object);
             r[name_width()] = (f64)value.width;
@@ -191,9 +264,9 @@ namespace Luna
             return r;
         }
 
-        static GUI::EdgeInsets read_edge_insets(const Variant& data, const GUI::EdgeInsets& default_value = GUI::EdgeInsets())
+        static AssetEdgeInsets read_edge_insets(const Variant& data, const AssetEdgeInsets& default_value = AssetEdgeInsets())
         {
-            GUI::EdgeInsets r = default_value;
+            AssetEdgeInsets r = default_value;
             r.left = (f32)data[name_left()].fnum(r.left);
             r.top = (f32)data[name_top()].fnum(r.top);
             r.right = (f32)data[name_right()].fnum(r.right);
@@ -201,7 +274,7 @@ namespace Luna
             return r;
         }
 
-        static Variant write_edge_insets(const GUI::EdgeInsets& value)
+        static Variant write_edge_insets(const AssetEdgeInsets& value)
         {
             Variant r(VariantType::object);
             r[name_left()] = (f64)value.left;
@@ -211,277 +284,746 @@ namespace Luna
             return r;
         }
 
-        static GUI::LayoutDesc read_layout_desc(const Variant& data)
+        static Variant write_edge_insets(const Float4U& value)
         {
-            GUI::LayoutDesc r;
+            AssetEdgeInsets insets;
+            insets.left = value.x;
+            insets.top = value.y;
+            insets.right = value.z;
+            insets.bottom = value.w;
+            return write_edge_insets(insets);
+        }
+
+        static AssetLayoutDesc read_layout_desc(const Variant& data)
+        {
+            AssetLayoutDesc r;
             r.padding = read_edge_insets(data[Name("padding")], r.padding);
             r.gap = (f32)data[Name("gap")].fnum(r.gap);
             return r;
         }
 
-        static Variant write_layout_style(const GUI::LayoutStyle& value)
+        static Variant write_core_size_value(const GUICore::SizeValue& value)
         {
             Variant r(VariantType::object);
-            r[Name("width_policy")] = (u64)value.width_policy;
-            r[Name("height_policy")] = (u64)value.height_policy;
-            r[Name("fixed_width")] = (f64)value.fixed_width_value;
-            r[Name("fixed_height")] = (f64)value.fixed_height_value;
-            r[Name("fill_weight_x")] = (f64)value.fill_weight_x;
-            r[Name("fill_weight_y")] = (f64)value.fill_weight_y;
+            r[Name("kind")] = (u64)value.kind;
+            r[Name("value")] = (f64)value.value;
+            r[Name("min")] = (f64)value.min;
+            r[Name("max")] = (f64)value.max;
             return r;
         }
 
-        static GUI::LayoutStyle read_layout_style(const Variant& data)
+        static GUICore::SizeValue read_core_size_value(const Variant& data, const GUICore::SizeValue& default_value)
         {
-            GUI::LayoutStyle r;
-            r.width_policy = (GUI::SizePolicy)data[Name("width_policy")].unum((u64)r.width_policy);
-            r.height_policy = (GUI::SizePolicy)data[Name("height_policy")].unum((u64)r.height_policy);
-            r.fixed_width_value = (f32)data[Name("fixed_width")].fnum(r.fixed_width_value);
-            r.fixed_height_value = (f32)data[Name("fixed_height")].fnum(r.fixed_height_value);
-            r.fill_weight_x = (f32)data[Name("fill_weight_x")].fnum(r.fill_weight_x);
-            r.fill_weight_y = (f32)data[Name("fill_weight_y")].fnum(r.fill_weight_y);
+            GUICore::SizeValue r = default_value;
+            r.kind = (GUICore::SizeKind)data[Name("kind")].unum((u64)r.kind);
+            r.value = (f32)data[Name("value")].fnum(r.value);
+            r.min = (f32)data[Name("min")].fnum(r.min);
+            r.max = (f32)data[Name("max")].fnum(r.max);
             return r;
         }
 
-        static Variant write_canvas_item_layout(const GUI::CanvasItemLayout& value)
+        static Variant write_layout_input(const GUICore::LayoutInput& value)
+        {
+            Variant r(VariantType::object);
+            r[Name("width")] = write_core_size_value(value.width);
+            r[Name("height")] = write_core_size_value(value.height);
+            r[Name("margin")] = write_edge_insets(value.margin);
+            r[Name("padding")] = write_edge_insets(value.padding);
+            return r;
+        }
+
+        static GUICore::LayoutInput read_layout_input(const Variant& data)
+        {
+            GUICore::LayoutInput r;
+            if(data[Name("width")].type() == VariantType::object)
+            {
+                r.width = read_core_size_value(data[Name("width")], r.width);
+            }
+            else if(data[Name("width_policy")].valid())
+            {
+                AssetSizePolicy policy = (AssetSizePolicy)data[Name("width_policy")].unum((u64)AssetSizePolicy::hug);
+                r.width.kind = policy == AssetSizePolicy::fixed ? GUICore::SizeKind::pixels :
+                    (policy == AssetSizePolicy::fill ? GUICore::SizeKind::ratio : GUICore::SizeKind::fit);
+                r.width.value = policy == AssetSizePolicy::fixed ?
+                    (f32)data[Name("fixed_width")].fnum(0.0) : (f32)data[Name("fill_weight_x")].fnum(1.0);
+            }
+            if(data[Name("height")].type() == VariantType::object)
+            {
+                r.height = read_core_size_value(data[Name("height")], r.height);
+            }
+            else if(data[Name("height_policy")].valid())
+            {
+                AssetSizePolicy policy = (AssetSizePolicy)data[Name("height_policy")].unum((u64)AssetSizePolicy::hug);
+                r.height.kind = policy == AssetSizePolicy::fixed ? GUICore::SizeKind::pixels :
+                    (policy == AssetSizePolicy::fill ? GUICore::SizeKind::ratio : GUICore::SizeKind::fit);
+                r.height.value = policy == AssetSizePolicy::fixed ?
+                    (f32)data[Name("fixed_height")].fnum(0.0) : (f32)data[Name("fill_weight_y")].fnum(1.0);
+            }
+            AssetEdgeInsets margin = read_edge_insets(data[Name("margin")]);
+            AssetEdgeInsets padding = read_edge_insets(data[Name("padding")]);
+            r.margin = Float4U(margin.left, margin.top, margin.right, margin.bottom);
+            r.padding = Float4U(padding.left, padding.top, padding.right, padding.bottom);
+            return r;
+        }
+
+        static Variant write_canvas_layout(const GUICore::CanvasLayoutItem& value)
         {
             Variant r(VariantType::object);
             r[Name("anchor_min_x")] = (f64)value.anchor_min.x;
             r[Name("anchor_min_y")] = (f64)value.anchor_min.y;
             r[Name("anchor_max_x")] = (f64)value.anchor_max.x;
             r[Name("anchor_max_y")] = (f64)value.anchor_max.y;
-            r[Name("offset_min_x")] = (f64)value.offset_min.x;
-            r[Name("offset_min_y")] = (f64)value.offset_min.y;
-            r[Name("offset_max_x")] = (f64)value.offset_max.x;
-            r[Name("offset_max_y")] = (f64)value.offset_max.y;
+            r[Name("offset_min_x")] = (f64)value.offset.x;
+            r[Name("offset_min_y")] = (f64)value.offset.y;
+            r[Name("offset_max_x")] = (f64)value.offset.z;
+            r[Name("offset_max_y")] = (f64)value.offset.w;
+            r[Name("pivot_x")] = (f64)value.pivot.x;
+            r[Name("pivot_y")] = (f64)value.pivot.y;
             return r;
         }
 
-        static GUI::CanvasItemLayout read_canvas_item_layout(const Variant& data)
+        static GUICore::CanvasLayoutItem read_canvas_layout(const Variant& data)
         {
-            GUI::CanvasItemLayout r;
+            GUICore::CanvasLayoutItem r;
             r.anchor_min.x = (f32)data[Name("anchor_min_x")].fnum(r.anchor_min.x);
             r.anchor_min.y = (f32)data[Name("anchor_min_y")].fnum(r.anchor_min.y);
             r.anchor_max.x = (f32)data[Name("anchor_max_x")].fnum(r.anchor_max.x);
             r.anchor_max.y = (f32)data[Name("anchor_max_y")].fnum(r.anchor_max.y);
-            r.offset_min.x = (f32)data[Name("offset_min_x")].fnum(r.offset_min.x);
-            r.offset_min.y = (f32)data[Name("offset_min_y")].fnum(r.offset_min.y);
-            r.offset_max.x = (f32)data[Name("offset_max_x")].fnum(r.offset_max.x);
-            r.offset_max.y = (f32)data[Name("offset_max_y")].fnum(r.offset_max.y);
+            r.offset.x = (f32)data[Name("offset_min_x")].fnum(r.offset.x);
+            r.offset.y = (f32)data[Name("offset_min_y")].fnum(r.offset.y);
+            r.offset.z = (f32)data[Name("offset_max_x")].fnum(r.offset.z);
+            r.offset.w = (f32)data[Name("offset_max_y")].fnum(r.offset.w);
+            r.pivot.x = (f32)data[Name("pivot_x")].fnum(r.pivot.x);
+            r.pivot.y = (f32)data[Name("pivot_y")].fnum(r.pivot.y);
             return r;
         }
 
-        static void apply_common_modifiers(GUI::IContext* context, const Node& node)
+        LUNA_GUI_ASSET_API GUICore::id_t node_core_id(const Node& node)
         {
-            if(node.has_layout_style)
+            GUICore::id_t id = (GUICore::id_t)hash<Guid>()(node.id);
+            return id ? id : 1;
+        }
+
+        static GUICore::id_t derived_core_id(const Node& node, const c8* local_name)
+        {
+            return GUICore::make_scoped_id(node_core_id(node), local_name);
+        }
+
+        static GUICore::LayoutInput read_core_layout_input(const Node& node)
+        {
+            GUICore::LayoutInput input;
+            AssetEdgeInsets padding = read_edge_insets(node.properties[Name("padding")]);
+            input.padding = Float4U(padding.left, padding.top, padding.right, padding.bottom);
+            if(node.has_layout_input)
             {
-                GUI::set_next_item_layout(context, node.layout_style);
+                input = node.layout_input;
+                if(padding.left != 0.0f || padding.top != 0.0f || padding.right != 0.0f || padding.bottom != 0.0f)
+                {
+                    input.padding = Float4U(padding.left, padding.top, padding.right, padding.bottom);
+                }
             }
-            if(node.has_canvas_item_layout)
+            return input;
+        }
+
+        static GUICore::LayoutInput read_core_layout_input(const Node& node, const AssetSize& size)
+        {
+            GUICore::LayoutInput input = read_core_layout_input(node);
+            if(size.width > 0.0f)
             {
-                GUI::set_next_canvas_item_layout(context, node.canvas_item_layout);
+                input.width.kind = GUICore::SizeKind::pixels;
+                input.width.value = size.width;
             }
-            GUI::set_next_item_enabled(context, node.enabled);
+            if(size.height > 0.0f)
+            {
+                input.height.kind = GUICore::SizeKind::pixels;
+                input.height.value = size.height;
+            }
+            return input;
+        }
+
+        static GUICore::LayoutInput fixed_core_layout(f32 width, f32 height)
+        {
+            GUICore::LayoutInput input;
+            if(width > 0.0f)
+            {
+                input.width.kind = GUICore::SizeKind::pixels;
+                input.width.value = width;
+            }
+            if(height > 0.0f)
+            {
+                input.height.kind = GUICore::SizeKind::pixels;
+                input.height.value = height;
+            }
+            return input;
+        }
+
+        static RectF core_generation_rect(GUICore::IContext* context, const GenerateContext& generate_context)
+        {
+            RectF rect = generate_context.core_root_rect;
+            if(rect.width <= 0.0f || rect.height <= 0.0f)
+            {
+                GUICore::FrameDesc frame_desc = context->get_frame_desc();
+                rect = RectF(0.0f, 0.0f, frame_desc.screen_size.x, frame_desc.screen_size.y);
+            }
+            if(rect.width <= 0.0f || rect.height <= 0.0f)
+            {
+                rect = RectF(0.0f, 0.0f, 800.0f, 600.0f);
+            }
+            return rect;
+        }
+
+        static void apply_core_common_modifiers(GUICore::IContext* context, const Node& node)
+        {
             if(!node.style.empty())
             {
-                GUI::push_style(context, node.style);
+                context->push_style(node.style);
             }
         }
 
-        static void finish_common_modifiers(GUI::IContext* context, const Node& node)
+        static void finish_core_common_modifiers(GUICore::IContext* context, const Node& node)
         {
             if(!node.style.empty())
             {
-                GUI::pop_style(context);
+                context->pop_style();
             }
         }
 
-        static RV generate_h_layout(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
+        static void apply_core_enabled(GUICore::IContext* context, const Node& node, const GUICore::ElementHandle& element)
         {
-            GUI::begin_h_layout(context, node.label.c_str(), read_layout_desc(node.properties));
-            RV r = generate_children(context, node, generate_context);
-            GUI::end_h_layout(context);
-            return r;
+            if(node.enabled || element.index == GUICore::INVALID_ELEMENT)
+            {
+                return;
+            }
+            const GUICore::Element* core_element = context->get_element(element.index);
+            if(!core_element)
+            {
+                return;
+            }
+            GUICore::Interactable interactable = core_element->interactable;
+            interactable.disabled = true;
+            context->set_interactable(element, interactable);
         }
 
-        static RV generate_v_layout(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
+        static GUICore::GridLayoutDesc read_core_grid_layout_desc(const Node& node)
         {
-            GUI::begin_v_layout(context, node.label.c_str(), read_layout_desc(node.properties));
-            RV r = generate_children(context, node, generate_context);
-            GUI::end_v_layout(context);
-            return r;
-        }
-
-        static RV generate_scroll_view(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
-        {
-            GUI::ScrollViewDesc desc;
-            const c8* mode = property_c_str(node, "scroll_bar_mode", "auto_hide_overlay");
-            desc.scroll_bar_mode = strcmp(mode, "always_visible_reserved") == 0 ? GUI::ScrollBarMode::always_visible_reserved : GUI::ScrollBarMode::auto_hide_overlay;
-            GUI::begin_scroll_view(context, node.label.c_str(), read_size(node.properties[Name("size")]), desc);
-            RV r = generate_children(context, node, generate_context);
-            GUI::end_scroll_view(context);
-            return r;
-        }
-
-        static RV generate_grid_layout(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
-        {
-            GUI::GridLayoutDesc desc;
+            GUICore::GridLayoutDesc desc;
             const c8* mode = property_c_str(node, "sizing_mode", "fixed_cell_size");
-            desc.sizing_mode = strcmp(mode, "fixed_columns") == 0 ? GUI::GridSizingMode::fixed_columns : GUI::GridSizingMode::fixed_cell_size;
+            desc.mode = strcmp(mode, "fixed_columns") == 0 ? GUICore::GridLayoutMode::fixed_column_count : GUICore::GridLayoutMode::fixed_cell_size;
             desc.cell_size.x = property_f32(node, "cell_width", desc.cell_size.x);
             desc.cell_size.y = property_f32(node, "cell_height", desc.cell_size.y);
-            desc.columns = property_u32(node, "columns", desc.columns);
-            desc.padding = read_edge_insets(node.properties[Name("padding")], desc.padding);
+            desc.column_count = property_u32(node, "columns", desc.column_count);
             desc.gap.x = property_f32(node, "gap_x", desc.gap.x);
             desc.gap.y = property_f32(node, "gap_y", desc.gap.y);
-            GUI::begin_grid_layout(context, node.label.c_str(), desc);
-            RV r = generate_children(context, node, generate_context);
-            GUI::end_grid_layout(context);
-            return r;
+            return desc;
         }
 
-        static RV generate_canvas_layout(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
+        static GUICore::TableTrackDesc core_table_track_pixels(f32 value)
         {
-            GUI::CanvasLayoutDesc desc;
-            desc.padding = read_edge_insets(node.properties[Name("padding")], desc.padding);
+            GUICore::TableTrackDesc desc;
+            desc.kind = GUICore::TableTrackSizeKind::pixels;
+            desc.value = value;
+            return desc;
+        }
+
+        static GUICore::TableTrackDesc core_table_track_fit()
+        {
+            GUICore::TableTrackDesc desc;
+            desc.kind = GUICore::TableTrackSizeKind::fit;
+            return desc;
+        }
+
+        static GUICore::CanvasLayoutItem core_canvas_item(const Node& node)
+        {
+            GUICore::CanvasLayoutItem item;
+            item.element_id = node_core_id(node);
+            item.anchor_min = node.canvas_layout.anchor_min;
+            item.anchor_max = node.canvas_layout.anchor_max;
+            item.offset = node.canvas_layout.offset;
+            item.pivot = node.canvas_layout.pivot;
+            return item;
+        }
+
+        static void apply_core_canvas_item_size(Node& node)
+        {
+            if(!node.has_canvas_layout)
+            {
+                return;
+            }
+            bool stretch_x = node.canvas_layout.anchor_min.x != node.canvas_layout.anchor_max.x;
+            bool stretch_y = node.canvas_layout.anchor_min.y != node.canvas_layout.anchor_max.y;
+            if(stretch_x && stretch_y)
+            {
+                return;
+            }
+            if(!stretch_x)
+            {
+                node.layout_input.width.kind = GUICore::SizeKind::pixels;
+                node.layout_input.width.value = max(node.canvas_layout.offset.z - node.canvas_layout.offset.x, 1.0f);
+            }
+            if(!stretch_y)
+            {
+                node.layout_input.height.kind = GUICore::SizeKind::pixels;
+                node.layout_input.height.value = max(node.canvas_layout.offset.w - node.canvas_layout.offset.y, 1.0f);
+            }
+            node.has_layout_input = true;
+        }
+
+        static void read_core_table_columns(const Node& node, Vector<GUICore::TableTrackDesc>& columns)
+        {
+            columns.clear();
+            const Variant& values = property(node, "columns");
+            for(const Variant& value : values.values())
+            {
+                columns.push_back(core_table_track_pixels((f32)value.fnum(0.0)));
+            }
+            if(columns.empty())
+            {
+                columns.push_back(core_table_track_fit());
+            }
+        }
+
+        static void read_core_table_rows(const Node& node, usize row_count, Vector<GUICore::TableTrackDesc>& rows)
+        {
+            rows.clear();
+            rows.reserve(row_count);
+            bool fixed_height = property_bool(node, "fixed_row_height_mode", false);
+            f32 row_height = property_f32(node, "fixed_row_height", 28.0f);
+            for(usize i = 0; i < row_count; ++i)
+            {
+                rows.push_back(fixed_height ? core_table_track_pixels(row_height) : core_table_track_fit());
+            }
+        }
+
+        static RV generate_core_h_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUICore::ElementHandle layout = GUI::begin_h_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            RV r = generate_children(context, node, generate_context);
+            if(failed(r))
+            {
+                context->end_element();
+                return r;
+            }
+            GUICore::LinearLayoutDesc desc;
+            desc.gap = read_layout_desc(node.properties).gap;
+            return GUI::end_h_layout(context, layout, desc);
+        }
+
+        static RV generate_core_v_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUICore::ElementHandle layout = GUI::begin_v_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            RV r = generate_children(context, node, generate_context);
+            if(failed(r))
+            {
+                context->end_element();
+                return r;
+            }
+            GUICore::LinearLayoutDesc desc;
+            desc.gap = read_layout_desc(node.properties).gap;
+            return GUI::end_v_layout(context, layout, desc);
+        }
+
+        static RV generate_core_scroll_view(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUICore::ElementHandle layout = GUI::begin_scroll_view(context, node_core_id(node), node.label.c_str(),
+                read_core_layout_input(node, read_size(node.properties[Name("size")])));
+            RV r = generate_children(context, node, generate_context);
+            if(failed(r))
+            {
+                context->end_element();
+                return r;
+            }
+            return GUI::end_scroll_view(context, layout);
+        }
+
+        static RV generate_core_grid_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUICore::ElementHandle layout = GUI::begin_grid_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            RV r = generate_children(context, node, generate_context);
+            if(failed(r))
+            {
+                context->end_element();
+                return r;
+            }
+            return GUI::end_grid_layout(context, layout, read_core_grid_layout_desc(node));
+        }
+
+        static RV generate_core_canvas_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUICore::ElementHandle layout = GUI::begin_canvas_layout(context, node_core_id(node), node.label.c_str(),
+                read_core_layout_input(node, read_size(node.properties[Name("size")])));
+            Vector<GUICore::CanvasLayoutItem> items;
+            for(const Guid& child_id : AssetTopologyAccess::children(&node))
+            {
+                Ref<Node> child = find_node(generate_context.asset, child_id);
+                if(!child)
+                {
+                    continue;
+                }
+                bool old_has_layout_input = child->has_layout_input;
+                GUICore::LayoutInput old_layout_input = child->layout_input;
+                if(child->has_canvas_layout)
+                {
+                    items.push_back(core_canvas_item(*child.get()));
+                    apply_core_canvas_item_size(*child.get());
+                }
+                RV r = generate_node(context, *child.get(), generate_context);
+                child->has_layout_input = old_has_layout_input;
+                child->layout_input = old_layout_input;
+                if(failed(r))
+                {
+                    context->end_element();
+                    return r;
+                }
+            }
+            GUICore::CanvasLayoutDesc desc;
+            desc.items = Span<const GUICore::CanvasLayoutItem>(items.data(), items.size());
             desc.clip_children = property_bool(node, "clip_children", desc.clip_children);
-            GUI::begin_canvas_layout(context, node.label.c_str(), read_size(node.properties[Name("size")]), desc);
-            RV r = generate_children(context, node, generate_context);
-            GUI::end_canvas_layout(context);
-            return r;
+            return GUI::end_canvas_layout(context, layout, desc);
         }
 
-        static RV generate_table_layout(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
+        static RV generate_core_table_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUI::TableDesc desc;
-            const Variant& columns = node.properties[Name("columns")];
-            for(const Variant& column : columns.values())
-            {
-                desc.column_sizes.push_back(GUI::TableTrackSize::fixed((f32)column.fnum(96.0f)));
-            }
-            desc.row_height_mode = property_bool(node, "fixed_row_height_mode", false) ? GUI::TableRowHeightMode::fixed : GUI::TableRowHeightMode::track_sizes;
-            desc.fixed_row_height = property_f32(node, "fixed_row_height", desc.fixed_row_height);
-            desc.virtualize_fixed_rows = property_bool(node, "virtualize_fixed_rows", desc.virtualize_fixed_rows);
-            desc.style.row_separators = property_bool(node, "row_separators", desc.style.row_separators);
-            desc.style.column_separators = property_bool(node, "column_separators", desc.style.column_separators);
-            const c8* background = property_c_str(node, "background_mode", "none");
-            if(strcmp(background, "alternate_rows") == 0)
-            {
-                desc.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
-            }
-            else if(strcmp(background, "alternate_columns") == 0)
-            {
-                desc.style.background_mode = GUI::TableBackgroundMode::alternate_columns;
-            }
-            else if(strcmp(background, "solid") == 0)
-            {
-                desc.style.background_mode = GUI::TableBackgroundMode::solid;
-            }
-            GUI::begin_table_layout(context, node.label.c_str(), desc);
-            RV r = generate_children(context, node, generate_context);
-            GUI::end_table_layout(context);
-            return r;
-        }
+            GUICore::ElementHandle layout = GUI::begin_table_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            Vector<GUICore::TableLayoutCell> cells;
+            u32 row_index = 0;
 
-        static RV generate_table_row(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
-        {
-            if(GUI::begin_table_row(context))
+            auto append_cell = [&](Node& cell_node, u32 column_index) -> RV {
+                RV r = generate_node(context, cell_node, generate_context);
+                if(failed(r))
+                {
+                    return r;
+                }
+                GUICore::TableLayoutCell cell;
+                cell.element_id = node_core_id(cell_node);
+                cell.row = row_index;
+                cell.column = column_index;
+                cells.push_back(cell);
+                return ok;
+            };
+
+            for(const Guid& child_id : AssetTopologyAccess::children(&node))
             {
-                RV r = generate_children(context, node, generate_context);
-                GUI::end_table_row(context);
+                auto child = find_node(generate_context.asset, child_id);
+                if(!child)
+                {
+                    continue;
+                }
+                if(child->type == Name("table_row"))
+                {
+                    apply_core_common_modifiers(context, *child.get());
+                    u32 column_index = 0;
+                    for(const Guid& cell_id : AssetTopologyAccess::children(child.get()))
+                    {
+                        auto cell_node = find_node(generate_context.asset, cell_id);
+                        if(!cell_node)
+                        {
+                            continue;
+                        }
+                        RV r = append_cell(*cell_node.get(), column_index++);
+                        if(failed(r))
+                        {
+                            finish_core_common_modifiers(context, *child.get());
+                            context->end_element();
+                            return r;
+                        }
+                    }
+                    finish_core_common_modifiers(context, *child.get());
+                    ++row_index;
+                }
+                else
+                {
+                    RV r = append_cell(*child.get(), 0);
+                    if(failed(r))
+                    {
+                        context->end_element();
+                        return r;
+                    }
+                    ++row_index;
+                }
+            }
+
+            Vector<GUICore::TableTrackDesc> columns;
+            Vector<GUICore::TableTrackDesc> rows;
+            read_core_table_columns(node, columns);
+            read_core_table_rows(node, row_index, rows);
+
+            GUICore::TableLayoutDesc desc;
+            desc.columns = Span<const GUICore::TableTrackDesc>(columns.data(), columns.size());
+            desc.rows = Span<const GUICore::TableTrackDesc>(rows.data(), rows.size());
+            desc.cells = Span<const GUICore::TableLayoutCell>(cells.data(), cells.size());
+            RV r = GUI::end_table_layout(context, layout, desc);
+            if(failed(r))
+            {
                 return r;
             }
             return ok;
         }
 
-        static RV generate_text(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_table_row(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUI::text(context, node.label.c_str());
+            GUICore::ElementHandle layout = GUI::begin_h_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            RV r = generate_children(context, node, generate_context);
+            if(failed(r))
+            {
+                context->end_element();
+                return r;
+            }
+            GUICore::LinearLayoutDesc desc;
+            desc.gap = 0.0f;
+            return GUI::end_h_layout(context, layout, desc);
+        }
+
+        static RV generate_core_text(GUICore::IContext* context, Node& node, const GenerateContext&)
+        {
+            GUICore::ElementHandle element = GUI::text(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_button(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_button(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
-            GUI::text_button(context, node.label.c_str());
+            GUICore::ElementHandle element = GUI::text_button(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_progress_bar(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_progress_bar(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             const Variant& overlay_value = property(node, "overlay");
             const c8* overlay = overlay_value.valid() ? overlay_value.c_str("") : nullptr;
-            GUI::progress_bar(context, node.label.c_str(), property_f32(node, "fraction", 0.0f), read_size(node.properties[Name("size")]), overlay);
+            GUICore::ElementHandle element = GUI::progress_bar(context, node_core_id(node), property_f32(node, "fraction", 0.0f),
+                overlay, read_core_layout_input(node, read_size(node.properties[Name("size")])));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_selectable(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_selectable(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
-            GUI::selectable(context, node.label.c_str(), property_bool(node, "selected", false));
+            GUICore::ElementHandle element = GUI::selectable(context, node_core_id(node), node.label.c_str(),
+                property_bool(node, "selected", false), read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_checkbox(GUI::IContext* context, Node& node, const GenerateContext&)
-        {
-            bool& value = runtime_value(node, Name("value"), property_bool(node, "value", false));
-            GUI::checkbox(context, node.label.c_str(), &value);
-            return ok;
-        }
-
-        static RV generate_radio_button(GUI::IContext* context, Node& node, const GenerateContext&)
-        {
-            GUI::radio_button(context, node.label.c_str(), property_bool(node, "selected", false));
-            return ok;
-        }
-
-        static RV generate_toggle_switch(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_checkbox(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             bool& value = runtime_value(node, Name("value"), property_bool(node, "value", false));
-            GUI::toggle_switch(context, node.label.c_str(), &value);
+            GUICore::ElementHandle element = GUI::checkbox(context, node_core_id(node), node.label.c_str(), &value, read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_input_text(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_radio_button(GUICore::IContext* context, Node& node, const GenerateContext&)
+        {
+            GUICore::ElementHandle element = GUI::radio_button(context, node_core_id(node), node.label.c_str(),
+                property_bool(node, "selected", false), read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
+            return ok;
+        }
+
+        static RV generate_core_toggle_switch(GUICore::IContext* context, Node& node, const GenerateContext&)
+        {
+            bool& value = runtime_value(node, Name("value"), property_bool(node, "value", false));
+            GUICore::ElementHandle element = GUI::toggle_switch(context, node_core_id(node), node.label.c_str(), &value, read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
+            return ok;
+        }
+
+        static RV generate_core_input_text(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             String default_value(property_c_str(node, "value", ""));
             String& value = runtime_value(node, Name("value"), default_value);
-            GUI::input_text(context, node.label.c_str(), value);
+            GUICore::ElementHandle element = GUI::input_text(context, node_core_id(node), value, read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_image(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_image(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
-            GUI::image(context, nullptr, read_size(node.properties[Name("size")]));
+            GUICore::ElementHandle element = GUI::image(context, node_core_id(node), nullptr,
+                read_core_layout_input(node, read_size(node.properties[Name("size")])));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_collapsing_header(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
+        static RV generate_core_collapsing_header(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUI::ItemHandle handle = GUI::collapsing_header(context, node.label.c_str());
-            if(GUI::get_item_state(handle, GUI::State::open()))
+            if(GUI::collapsing_header(context, node_core_id(node), node.label.c_str(), true, read_core_layout_input(node)))
             {
                 return generate_children(context, node, generate_context);
             }
             return ok;
         }
 
-        static RV generate_tree_node(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
+        static RV generate_core_tree_node(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             GUI::TreeNodeFlag flags = GUI::TreeNodeFlag::none;
             if(property_bool(node, "selected", false)) flags |= GUI::TreeNodeFlag::selected;
             if(property_bool(node, "leaf", false)) flags |= GUI::TreeNodeFlag::leaf;
             if(property_bool(node, "default_open", false)) flags |= GUI::TreeNodeFlag::default_open;
-            GUI::ItemHandle handle = GUI::tree_node(context, node.label.c_str(), flags);
-            if(!test_flags(flags, GUI::TreeNodeFlag::leaf) && GUI::get_item_state(handle, GUI::State::open()))
+            if(GUI::tree_node(context, node_core_id(node), node.label.c_str(), flags, 0, read_core_layout_input(node)))
             {
-                GUI::tree_push(context, handle);
+                return generate_children(context, node, generate_context);
+            }
+            return ok;
+        }
+
+        static RV generate_core_tab_bar(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUICore::ElementHandle tab_bar = GUI::begin_tab_bar(context, node_core_id(node), node.label.c_str(),
+                GUI::TabBarFlag::fitting_shrink, read_core_layout_input(node, read_size(node.properties[Name("size")])));
+            RV r = generate_children(context, node, generate_context);
+            if(failed(r))
+            {
+                context->end_element();
+                return r;
+            }
+            return GUI::end_tab_bar(context, tab_bar);
+        }
+
+        static RV generate_core_tab_item(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUI::TabItemFlag flags = GUI::TabItemFlag::none;
+            if(property_bool(node, "selected", false))
+            {
+                flags |= GUI::TabItemFlag::selected;
+            }
+            bool open = property_bool(node, "open", true);
+            if(GUI::begin_tab_item(context, node_core_id(node), node.label.c_str(), &open, flags))
+            {
                 RV r = generate_children(context, node, generate_context);
-                GUI::tree_pop(context);
+                GUI::end_tab_item(context);
                 return r;
             }
             return ok;
         }
 
-        static RV generate_button_group(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_menu_bar(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, node_core_id(node), node.label.c_str(),
+                read_core_layout_input(node, read_size(node.properties[Name("size")])));
+            RV r = generate_children(context, node, generate_context);
+            if(failed(r))
+            {
+                context->end_element();
+                return r;
+            }
+            return GUI::end_menu_bar(context, menu_bar);
+        }
+
+        static RV generate_core_menu(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUICore::ElementHandle menu;
+            if(GUI::begin_menu(context, node_core_id(node), node.label.c_str(), node.enabled,
+                &menu, read_core_layout_input(node)))
+            {
+                RV r = generate_children(context, node, generate_context);
+                if(failed(r))
+                {
+                    return r;
+                }
+                f32 popup_width = property_f32(node, "popup_width", 190.0f);
+                f32 popup_height = property_f32(node, "popup_height", 240.0f);
+                return GUI::end_menu(context, RectF(0.0f, 0.0f, popup_width, popup_height));
+            }
+            return ok;
+        }
+
+        static RV generate_core_menu_item(GUICore::IContext* context, Node& node, const GenerateContext&)
+        {
+            bool checkable = property_bool(node, "checkable", false);
+            const c8* shortcut = property_c_str(node, "shortcut", "");
+            GUICore::ElementHandle element;
+            if(checkable)
+            {
+                bool& checked = runtime_value(node, Name("checked"), property_bool(node, "checked", false));
+                element = GUI::menu_item(context, node_core_id(node), node.label.c_str(), shortcut, &checked,
+                    node.enabled, read_core_layout_input(node));
+            }
+            else
+            {
+                element = GUI::menu_item(context, node_core_id(node), node.label.c_str(), shortcut,
+                    property_bool(node, "checked", false), node.enabled, read_core_layout_input(node));
+            }
+            apply_core_enabled(context, node, element);
+            return ok;
+        }
+
+        static RV generate_core_menu_separator(GUICore::IContext* context, Node& node, const GenerateContext&)
+        {
+            GUI::menu_separator(context, node_core_id(node), read_core_layout_input(node));
+            return ok;
+        }
+
+        static RV generate_core_popup(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUICore::ElementHandle owner = GUI::text_button(context, node_core_id(node), node.label.c_str(),
+                read_core_layout_input(node, read_size(node.properties[Name("size")])), node.enabled);
+            apply_core_enabled(context, node, owner);
+
+            GUICore::id_t popup_id = derived_core_id(node, "popup");
+            GUICore::InteractionState owner_state = context->get_interaction_state(owner.id);
+            Float2U& popup_position = runtime_value(node, Name("popup_position"), Float2U(0.0f));
+            if(node.enabled && owner_state.clicked)
+            {
+                popup_position = Float2U(owner_state.clicked_screen_position.x - owner_state.clicked_element_position.x,
+                    owner_state.clicked_screen_position.y - owner_state.clicked_element_position.y +
+                    owner_state.clicked_element_rect.height);
+                if(GUI::is_popup_open(context, popup_id))
+                {
+                    GUI::close_popup(context, popup_id);
+                }
+                else
+                {
+                    GUI::open_popup(context, popup_id);
+                }
+            }
+
+            GUI::PopupDesc desc;
+            desc.position = popup_position;
+            f32 popup_width = property_f32(node, "popup_width", 220.0f);
+            f32 popup_height = property_f32(node, "popup_height", 120.0f);
+            desc.layout = fixed_core_layout(popup_width, popup_height);
+            GUICore::ElementHandle popup;
+            if(GUI::begin_popup(context, popup_id, desc, &popup))
+            {
+                RV r = generate_children(context, node, generate_context);
+                if(failed(r))
+                {
+                    return r;
+                }
+                return GUI::end_popup(context, popup, RectF(0.0f, 0.0f, popup_width, popup_height));
+            }
+            return ok;
+        }
+
+        static RV generate_core_tooltip(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
+        {
+            GUICore::ElementHandle owner = GUI::text_button(context, node_core_id(node), node.label.c_str(),
+                read_core_layout_input(node, read_size(node.properties[Name("size")])), node.enabled);
+            apply_core_enabled(context, node, owner);
+
+            GUI::TooltipDesc desc;
+            desc.delay = property_f32(node, "delay", 0.0f);
+            desc.offset = Float2U(property_f32(node, "offset_x", 10.0f), property_f32(node, "offset_y", 12.0f));
+            f32 tooltip_width = property_f32(node, "tooltip_width", 180.0f);
+            f32 tooltip_height = property_f32(node, "tooltip_height", 48.0f);
+            desc.layout = fixed_core_layout(tooltip_width, tooltip_height);
+            desc.max_width = property_f32(node, "max_width", tooltip_width);
+            GUICore::ElementHandle tooltip;
+            if(GUI::begin_tooltip(context, derived_core_id(node, "tooltip"), owner, desc, &tooltip))
+            {
+                RV r = generate_children(context, node, generate_context);
+                if(failed(r))
+                {
+                    return r;
+                }
+                return GUI::end_tooltip(context, tooltip, RectF(0.0f, 0.0f, tooltip_width, tooltip_height));
+            }
+            return ok;
+        }
+
+        static RV generate_core_button_group(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             Vector<String> item_strings;
             Vector<const c8*> items;
@@ -490,6 +1032,7 @@ namespace Luna
             {
                 return ok;
             }
+            GUICore::ElementHandle element;
             if(property_bool(node, "multi_select", false))
             {
                 Vector<bool> default_values;
@@ -500,17 +1043,20 @@ namespace Luna
                 default_values.resize(items.size(), false);
                 Vector<bool>& selected_values = runtime_value(node, Name("selected"), default_values);
                 selected_values.resize(items.size(), false);
-                GUI::button_group(context, node.label.c_str(), Span<bool>(selected_values.data(), selected_values.size()), Span<const c8*>(items.data(), items.size()));
+                element = GUI::button_group(context, node_core_id(node), Span<bool>(selected_values.data(), selected_values.size()),
+                    Span<const c8*>(items.data(), items.size()), read_core_layout_input(node));
             }
             else
             {
                 i32& current_item = runtime_value(node, Name("current_item"), property_i32(node, "current_item", 0));
-                GUI::button_group(context, node.label.c_str(), &current_item, Span<const c8*>(items.data(), items.size()));
+                element = GUI::button_group(context, node_core_id(node), &current_item, Span<const c8*>(items.data(), items.size()),
+                    read_core_layout_input(node));
             }
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_combo(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_combo(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             Vector<String> item_strings;
             Vector<const c8*> items;
@@ -520,39 +1066,75 @@ namespace Luna
                 return ok;
             }
             i32& current_item = runtime_value(node, Name("current_item"), property_i32(node, "current_item", 0));
-            GUI::combo(context, node.label.c_str(), &current_item, Span<const c8*>(items.data(), items.size()));
+            GUICore::ElementHandle element = GUI::combo(context, node_core_id(node), node.label.c_str(), &current_item,
+                Span<const c8*>(items.data(), items.size()), read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_slider_float(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_slider_float(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             f32& value = runtime_value(node, Name("value"), property_f32(node, "value", 0.0f));
-            GUI::slider_float(context, node.label.c_str(), &value, property_f32(node, "min", 0.0f), property_f32(node, "max", 1.0f));
+            GUICore::ElementHandle element = GUI::slider_float(context, node_core_id(node), &value,
+                property_f32(node, "min", 0.0f), property_f32(node, "max", 1.0f), read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_slider_int(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_slider_int(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             i32& value = runtime_value(node, Name("value"), property_i32(node, "value", 0));
-            GUI::slider_int(context, node.label.c_str(), &value, property_i32(node, "min", 0), property_i32(node, "max", 100));
+            GUICore::ElementHandle element = GUI::slider_int(context, node_core_id(node), &value,
+                property_i32(node, "min", 0), property_i32(node, "max", 100), read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_drag_float(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_drag_float(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             f32& value = runtime_value(node, Name("value"), property_f32(node, "value", 0.0f));
-            GUI::drag_float(context, node.label.c_str(), &value, property_f32(node, "speed", 1.0f), property_f32(node, "min", 0.0f), property_f32(node, "max", 1.0f));
+            GUICore::ElementHandle element = GUI::drag_float(context, node_core_id(node), &value,
+                property_f32(node, "speed", 1.0f), property_f32(node, "min", 0.0f), property_f32(node, "max", 1.0f),
+                read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_drag_int(GUI::IContext* context, Node& node, const GenerateContext&)
+        static RV generate_core_drag_int(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             i32& value = runtime_value(node, Name("value"), property_i32(node, "value", 0));
-            GUI::drag_int(context, node.label.c_str(), &value, property_f32(node, "speed", 1.0f), property_i32(node, "min", 0), property_i32(node, "max", 100));
+            GUICore::ElementHandle element = GUI::drag_int(context, node_core_id(node), &value,
+                property_f32(node, "speed", 1.0f), property_i32(node, "min", 0), property_i32(node, "max", 100),
+                read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
             return ok;
         }
 
-        static RV generate_asset_reference(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
+        static RV generate_core_color_edit3(GUICore::IContext* context, Node& node, const GenerateContext&)
+        {
+            const f32 default_values[] = {1.0f, 1.0f, 1.0f};
+            Vector<f32>& value = runtime_value(node, Name("value"),
+                read_float_items(node.properties[Name("value")], Span<const f32>(default_values, 3)));
+            value.resize(3, 1.0f);
+            GUICore::ElementHandle element = GUI::color_edit3(context, node_core_id(node), node.label.c_str(),
+                value.data(), read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
+            return ok;
+        }
+
+        static RV generate_core_color_edit4(GUICore::IContext* context, Node& node, const GenerateContext&)
+        {
+            const f32 default_values[] = {1.0f, 1.0f, 1.0f, 1.0f};
+            Vector<f32>& value = runtime_value(node, Name("value"),
+                read_float_items(node.properties[Name("value")], Span<const f32>(default_values, 4)));
+            value.resize(4, 1.0f);
+            GUICore::ElementHandle element = GUI::color_edit4(context, node_core_id(node), node.label.c_str(),
+                value.data(), read_core_layout_input(node));
+            apply_core_enabled(context, node, element);
+            return ok;
+        }
+
+        static RV generate_core_asset_reference(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             Luna::Asset::asset_t asset_ref;
             RV deserialize_result = deserialize(asset_ref, property(node, "asset"));
@@ -589,7 +1171,7 @@ namespace Luna
 
         static Variant default_size(f32 width, f32 height)
         {
-            return write_size(GUI::Size::fixed(width, height));
+            return write_size(AssetSize::fixed(width, height));
         }
 
         static Variant string_array(Span<const c8* const> items)
@@ -612,12 +1194,12 @@ namespace Luna
             return r;
         }
 
-        static NodeTypeDesc make_desc(const c8* type, node_generate_func_t generate, Variant default_properties = Variant(VariantType::object))
+        static NodeTypeDesc make_desc(const c8* type, node_generate_core_func_t generate, Variant default_properties = Variant(VariantType::object))
         {
             NodeTypeDesc desc;
             desc.type = type;
             desc.default_properties = move(default_properties);
-            desc.on_generate = generate;
+            desc.on_generate_core = generate;
             return desc;
         }
 
@@ -658,10 +1240,10 @@ namespace Luna
             desc.default_properties[Name(key)] = move(default_value);
         }
 
-        static NodeTypeDesc make_layout_desc(const c8* type, node_generate_func_t generate)
+        static NodeTypeDesc make_layout_desc(const c8* type, node_generate_core_func_t generate)
         {
             NodeTypeDesc desc = make_desc(type, generate);
-            GUI::LayoutDesc layout_desc;
+            AssetLayoutDesc layout_desc;
             add_property(desc, "padding", "Padding", NodePropertyKind::edge_insets, write_edge_insets(layout_desc.padding), "Layout");
             add_property(desc, "gap", "Gap", NodePropertyKind::number, (f64)layout_desc.gap, "Layout", 0.0, 128.0, 1.0f);
             return desc;
@@ -669,18 +1251,16 @@ namespace Luna
 
         static void register_builtin_node_types()
         {
-            register_node_type(make_layout_desc("h_layout", generate_h_layout));
-            register_node_type(make_layout_desc("v_layout", generate_v_layout));
+            register_node_type(make_layout_desc("h_layout", generate_core_h_layout));
+            register_node_type(make_layout_desc("v_layout", generate_core_v_layout));
             {
-                NodeTypeDesc desc = make_desc("scroll_view", generate_scroll_view);
-                const c8* modes[] = {"auto_hide_overlay", "always_visible_reserved"};
+                NodeTypeDesc desc = make_desc("scroll_view", generate_core_scroll_view);
                 add_property(desc, "size", "Size", NodePropertyKind::size, default_size(320.0f, 240.0f), "Layout");
-                add_property(desc, "scroll_bar_mode", "Scroll Bar Mode", NodePropertyKind::enum_string, "auto_hide_overlay", "Scroll", 0.0, 1.0, 1.0f, Span<const c8* const>(modes, 2));
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("grid_layout", generate_grid_layout);
-                GUI::GridLayoutDesc grid_desc;
+                NodeTypeDesc desc = make_desc("grid_layout", generate_core_grid_layout);
+                AssetGridLayoutDesc grid_desc;
                 const c8* modes[] = {"fixed_cell_size", "fixed_columns"};
                 add_property(desc, "sizing_mode", "Sizing Mode", NodePropertyKind::enum_string, "fixed_cell_size", "Layout", 0.0, 1.0, 1.0f, Span<const c8* const>(modes, 2));
                 add_property(desc, "cell_width", "Cell Width", NodePropertyKind::number, (f64)grid_desc.cell_size.x, "Layout", 1.0, 4096.0, 1.0f);
@@ -692,15 +1272,15 @@ namespace Luna
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("canvas_layout", generate_canvas_layout);
-                GUI::CanvasLayoutDesc canvas_desc;
+                NodeTypeDesc desc = make_desc("canvas_layout", generate_core_canvas_layout);
+                AssetCanvasLayoutDesc canvas_desc;
                 add_property(desc, "size", "Size", NodePropertyKind::size, default_size(320.0f, 240.0f), "Layout");
                 add_property(desc, "padding", "Padding", NodePropertyKind::edge_insets, write_edge_insets(canvas_desc.padding), "Layout");
                 add_property(desc, "clip_children", "Clip Children", NodePropertyKind::boolean, true, "Layout");
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("table_layout", generate_table_layout);
+                NodeTypeDesc desc = make_desc("table_layout", generate_core_table_layout);
                 const f64 columns[] = {120.0, 180.0, 120.0};
                 const c8* backgrounds[] = {"none", "solid", "alternate_rows", "alternate_columns"};
                 add_property(desc, "columns", "Columns", NodePropertyKind::number_array, number_array(Span<const f64>(columns, 3)), "Table");
@@ -712,56 +1292,104 @@ namespace Luna
                 add_property(desc, "background_mode", "Background Mode", NodePropertyKind::enum_string, "alternate_rows", "Table", 0.0, 1.0, 1.0f, Span<const c8* const>(backgrounds, 4));
                 register_node_type(desc);
             }
-            register_node_type(make_desc("table_row", generate_table_row));
-            register_node_type(make_desc("text", generate_text));
-            register_node_type(make_desc("button", generate_button));
+            register_node_type(make_desc("table_row", generate_core_table_row));
+            register_node_type(make_desc("text", generate_core_text));
+            register_node_type(make_desc("button", generate_core_button));
             {
-                NodeTypeDesc desc = make_desc("progress_bar", generate_progress_bar);
+                NodeTypeDesc desc = make_desc("tab_bar", generate_core_tab_bar);
+                add_property(desc, "size", "Size", NodePropertyKind::size, default_size(320.0f, 140.0f), "Layout");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("tab_item", generate_core_tab_item);
+                add_property(desc, "selected", "Selected", NodePropertyKind::boolean, false, "State");
+                add_property(desc, "open", "Open", NodePropertyKind::boolean, true, "State");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("menu_bar", generate_core_menu_bar);
+                add_property(desc, "size", "Size", NodePropertyKind::size, default_size(320.0f, 28.0f), "Layout");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("menu", generate_core_menu);
+                add_property(desc, "popup_width", "Popup Width", NodePropertyKind::number, 190.0, "Menu", 48.0, 4096.0, 1.0f);
+                add_property(desc, "popup_height", "Popup Height", NodePropertyKind::number, 240.0, "Menu", 24.0, 4096.0, 1.0f);
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("menu_item", generate_core_menu_item);
+                add_property(desc, "checkable", "Checkable", NodePropertyKind::boolean, false, "State");
+                add_property(desc, "checked", "Checked", NodePropertyKind::boolean, false, "State");
+                add_property(desc, "shortcut", "Shortcut", NodePropertyKind::string, "", "Menu");
+                register_node_type(desc);
+            }
+            register_node_type(make_desc("menu_separator", generate_core_menu_separator));
+            {
+                NodeTypeDesc desc = make_desc("popup", generate_core_popup);
+                add_property(desc, "size", "Size", NodePropertyKind::size, default_size(120.0f, 28.0f), "Layout");
+                add_property(desc, "popup_width", "Popup Width", NodePropertyKind::number, 220.0, "Popup", 48.0, 4096.0, 1.0f);
+                add_property(desc, "popup_height", "Popup Height", NodePropertyKind::number, 120.0, "Popup", 24.0, 4096.0, 1.0f);
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("tooltip", generate_core_tooltip);
+                add_property(desc, "size", "Size", NodePropertyKind::size, default_size(140.0f, 28.0f), "Layout");
+                add_property(desc, "tooltip_width", "Tooltip Width", NodePropertyKind::number, 180.0, "Tooltip", 48.0, 4096.0, 1.0f);
+                add_property(desc, "tooltip_height", "Tooltip Height", NodePropertyKind::number, 48.0, "Tooltip", 24.0, 4096.0, 1.0f);
+                add_property(desc, "delay", "Delay", NodePropertyKind::number, 0.0, "Tooltip", 0.0, 10.0, 0.05f);
+                add_property(desc, "offset_x", "Offset X", NodePropertyKind::number, 10.0, "Tooltip", -4096.0, 4096.0, 1.0f);
+                add_property(desc, "offset_y", "Offset Y", NodePropertyKind::number, 12.0, "Tooltip", -4096.0, 4096.0, 1.0f);
+                add_property(desc, "max_width", "Max Width", NodePropertyKind::number, 180.0, "Tooltip", 48.0, 4096.0, 1.0f);
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("progress_bar", generate_core_progress_bar);
                 add_property(desc, "fraction", "Fraction", NodePropertyKind::number, 0.5, "Progress", 0.0, 1.0, 0.01f);
                 add_property(desc, "overlay", "Overlay", NodePropertyKind::string, "", "Progress");
                 add_property(desc, "size", "Size", NodePropertyKind::size, default_size(0.0f, 0.0f), "Layout");
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("selectable", generate_selectable);
+                NodeTypeDesc desc = make_desc("selectable", generate_core_selectable);
                 add_property(desc, "selected", "Selected", NodePropertyKind::boolean, false, "State");
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("checkbox", generate_checkbox);
+                NodeTypeDesc desc = make_desc("checkbox", generate_core_checkbox);
                 add_property(desc, "value", "Value", NodePropertyKind::boolean, false, "State");
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("radio_button", generate_radio_button);
+                NodeTypeDesc desc = make_desc("radio_button", generate_core_radio_button);
                 add_property(desc, "selected", "Selected", NodePropertyKind::boolean, false, "State");
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("toggle_switch", generate_toggle_switch);
+                NodeTypeDesc desc = make_desc("toggle_switch", generate_core_toggle_switch);
                 add_property(desc, "value", "Value", NodePropertyKind::boolean, false, "State");
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("input_text", generate_input_text);
+                NodeTypeDesc desc = make_desc("input_text", generate_core_input_text);
                 add_property(desc, "value", "Value", NodePropertyKind::string, "", "State");
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("image", generate_image);
+                NodeTypeDesc desc = make_desc("image", generate_core_image);
                 add_property(desc, "size", "Size", NodePropertyKind::size, default_size(64.0f, 64.0f), "Layout");
                 register_node_type(desc);
             }
-            register_node_type(make_desc("collapsing_header", generate_collapsing_header));
+            register_node_type(make_desc("collapsing_header", generate_core_collapsing_header));
             {
-                NodeTypeDesc desc = make_desc("tree_node", generate_tree_node);
+                NodeTypeDesc desc = make_desc("tree_node", generate_core_tree_node);
                 add_property(desc, "selected", "Selected", NodePropertyKind::boolean, false, "State");
                 add_property(desc, "leaf", "Leaf", NodePropertyKind::boolean, false, "Behavior");
                 add_property(desc, "default_open", "Default Open", NodePropertyKind::boolean, false, "Behavior");
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("button_group", generate_button_group);
+                NodeTypeDesc desc = make_desc("button_group", generate_core_button_group);
                 const c8* items[] = {"One", "Two", "Three"};
                 add_property(desc, "items", "Items", NodePropertyKind::string_array, string_array(Span<const c8* const>(items, 3)), "Items");
                 add_property(desc, "current_item", "Current Item", NodePropertyKind::integer, (i64)0, "State", 0.0, 64.0, 1.0f);
@@ -769,28 +1397,28 @@ namespace Luna
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("combo", generate_combo);
+                NodeTypeDesc desc = make_desc("combo", generate_core_combo);
                 const c8* items[] = {"Alpha", "Beta", "Gamma"};
                 add_property(desc, "items", "Items", NodePropertyKind::string_array, string_array(Span<const c8* const>(items, 3)), "Items");
                 add_property(desc, "current_item", "Current Item", NodePropertyKind::integer, (i64)0, "State", 0.0, 64.0, 1.0f);
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("slider_float", generate_slider_float);
+                NodeTypeDesc desc = make_desc("slider_float", generate_core_slider_float);
                 add_property(desc, "value", "Value", NodePropertyKind::number, 0.0, "Numeric", -10000.0, 10000.0, 0.01f);
                 add_property(desc, "min", "Min", NodePropertyKind::number, 0.0, "Numeric", -10000.0, 10000.0, 0.01f);
                 add_property(desc, "max", "Max", NodePropertyKind::number, 1.0, "Numeric", -10000.0, 10000.0, 0.01f);
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("slider_int", generate_slider_int);
+                NodeTypeDesc desc = make_desc("slider_int", generate_core_slider_int);
                 add_property(desc, "value", "Value", NodePropertyKind::integer, (i64)0, "Numeric", -10000.0, 10000.0, 1.0f);
                 add_property(desc, "min", "Min", NodePropertyKind::integer, (i64)0, "Numeric", -10000.0, 10000.0, 1.0f);
                 add_property(desc, "max", "Max", NodePropertyKind::integer, (i64)100, "Numeric", -10000.0, 10000.0, 1.0f);
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("drag_float", generate_drag_float);
+                NodeTypeDesc desc = make_desc("drag_float", generate_core_drag_float);
                 add_property(desc, "value", "Value", NodePropertyKind::number, 0.0, "Numeric", -10000.0, 10000.0, 0.01f);
                 add_property(desc, "speed", "Speed", NodePropertyKind::number, 1.0, "Numeric", 0.001, 1000.0, 0.01f);
                 add_property(desc, "min", "Min", NodePropertyKind::number, 0.0, "Numeric", -10000.0, 10000.0, 0.01f);
@@ -798,7 +1426,7 @@ namespace Luna
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc desc = make_desc("drag_int", generate_drag_int);
+                NodeTypeDesc desc = make_desc("drag_int", generate_core_drag_int);
                 add_property(desc, "value", "Value", NodePropertyKind::integer, (i64)0, "Numeric", -10000.0, 10000.0, 1.0f);
                 add_property(desc, "speed", "Speed", NodePropertyKind::number, 1.0, "Numeric", 0.001, 1000.0, 0.01f);
                 add_property(desc, "min", "Min", NodePropertyKind::integer, (i64)0, "Numeric", -10000.0, 10000.0, 1.0f);
@@ -806,7 +1434,19 @@ namespace Luna
                 register_node_type(desc);
             }
             {
-                NodeTypeDesc asset_ref = make_desc("asset_reference", generate_asset_reference);
+                NodeTypeDesc desc = make_desc("color_edit3", generate_core_color_edit3);
+                const f64 values[] = {1.0, 1.0, 1.0};
+                add_property(desc, "value", "Value", NodePropertyKind::number_array, number_array(Span<const f64>(values, 3)), "Color");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc desc = make_desc("color_edit4", generate_core_color_edit4);
+                const f64 values[] = {1.0, 1.0, 1.0, 1.0};
+                add_property(desc, "value", "Value", NodePropertyKind::number_array, number_array(Span<const f64>(values, 4)), "Color");
+                register_node_type(desc);
+            }
+            {
+                NodeTypeDesc asset_ref = make_desc("asset_reference", generate_core_asset_reference);
                 add_property(asset_ref, "asset", "Asset", NodePropertyKind::asset, Variant(), "Reference");
                 asset_ref.on_get_referred_assets = get_asset_reference_referred_assets;
                 register_node_type(asset_ref);
@@ -1147,19 +1787,22 @@ namespace Luna
             auto root = new_node("v_layout", "Root");
             if(succeeded(root))
             {
-                root.get()->layout_style = GUI::LayoutStyle::fill();
-                root.get()->has_layout_style = true;
+                root.get()->layout_input.width.kind = GUICore::SizeKind::expand;
+                root.get()->layout_input.width.value = 1.0f;
+                root.get()->layout_input.height.kind = GUICore::SizeKind::expand;
+                root.get()->layout_input.height.value = 1.0f;
+                root.get()->has_layout_input = true;
                 add_node(asset.get(), root.get());
             }
             return asset;
         }
 
-        LUNA_GUI_ASSET_API RV generate(GUI::IContext* context, Asset* asset, const GenerateContext& generate_context)
+        LUNA_GUI_ASSET_API RV generate(GUICore::IContext* context, Asset* asset, const GenerateContext& generate_context)
         {
             Guid root_id = get_root(asset);
             if(!context || !asset || root_id == Guid(0, 0))
             {
-                return set_error(BasicError::bad_arguments(), "GUIAsset::generate requires a valid context and asset root.");
+                return set_error(BasicError::bad_arguments(), "GUIAsset::generate requires a valid GUI Core context and asset root.");
             }
             Ref<Node> root = find_node(asset, root_id);
             if(!root)
@@ -1168,10 +1811,16 @@ namespace Luna
             }
             GenerateContext effective_context = generate_context;
             effective_context.asset = asset;
-            return generate_node(context, *root.get(), effective_context);
+            RV r = generate_node(context, *root.get(), effective_context);
+            if(failed(r))
+            {
+                return r;
+            }
+            return GUI::layout_editor_tree(context, context->find_element_handle(node_core_id(*root.get())),
+                core_generation_rect(context, effective_context));
         }
 
-        LUNA_GUI_ASSET_API RV generate_node(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
+        LUNA_GUI_ASSET_API RV generate_node(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             if(!context)
             {
@@ -1180,21 +1829,17 @@ namespace Luna
             lutry
             {
                 lulet(desc, get_node_type(node.type));
-                if(!desc.on_generate)
+                if(!desc.on_generate_core)
                 {
-                    return set_error(BasicError::not_supported(), "GUIAsset node type '%s' has no generate callback.", node.type.c_str());
+                    return set_error(BasicError::not_supported(), "GUIAsset node type '%s' has no GUI Core generate callback.", node.type.c_str());
                 }
                 if(node.id == Guid(0, 0))
                 {
                     node.id = random_guid();
                 }
-                GUI::push_id(context, node.id.high);
-                GUI::push_id(context, node.id.low);
-                apply_common_modifiers(context, node);
-                RV r = desc.on_generate(context, node, generate_context);
-                finish_common_modifiers(context, node);
-                GUI::pop_id(context);
-                GUI::pop_id(context);
+                apply_core_common_modifiers(context, node);
+                RV r = desc.on_generate_core(context, node, generate_context);
+                finish_core_common_modifiers(context, node);
                 if(failed(r))
                 {
                     return r;
@@ -1204,7 +1849,7 @@ namespace Luna
             return ok;
         }
 
-        LUNA_GUI_ASSET_API RV generate_children(GUI::IContext* context, Node& node, const GenerateContext& generate_context)
+        LUNA_GUI_ASSET_API RV generate_children(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             if(!generate_context.asset)
             {
@@ -1240,13 +1885,13 @@ namespace Luna
                 {
                     r[name_style] = node.style;
                 }
-                if(node.has_layout_style)
+                if(node.has_layout_input)
                 {
-                    r[name_layout] = write_layout_style(node.layout_style);
+                    r[name_layout] = write_layout_input(node.layout_input);
                 }
-                if(node.has_canvas_item_layout)
+                if(node.has_canvas_layout)
                 {
-                    r[name_canvas_layout] = write_canvas_item_layout(node.canvas_item_layout);
+                    r[name_canvas_layout] = write_canvas_layout(node.canvas_layout);
                 }
                 Variant children(VariantType::array);
                 for(const Guid& child : get_children(&node))
@@ -1286,13 +1931,13 @@ namespace Luna
                 node->style = data[name_style].str();
                 if(data[name_layout].valid())
                 {
-                    node->layout_style = read_layout_style(data[name_layout]);
-                    node->has_layout_style = true;
+                    node->layout_input = read_layout_input(data[name_layout]);
+                    node->has_layout_input = true;
                 }
                 if(data[name_canvas_layout].valid())
                 {
-                    node->canvas_item_layout = read_canvas_item_layout(data[name_canvas_layout]);
-                    node->has_canvas_item_layout = true;
+                    node->canvas_layout = read_canvas_layout(data[name_canvas_layout]);
+                    node->has_canvas_layout = true;
                 }
                 for(const Variant& child_data : data[name_children].values())
                 {
@@ -1513,7 +2158,12 @@ namespace Luna
             virtual const c8* get_name() override { return "GUIAsset"; }
             virtual RV on_register() override
             {
-                return add_dependency_modules(this, {GUI::module_gui(), module_asset(), module_variant_utils(), module_vfs()});
+                return add_dependency_modules(this, {
+                    GUI::module_gui(),
+                    GUICore::module_gui_core(),
+                    module_asset(),
+                    module_variant_utils(),
+                    module_vfs()});
             }
             virtual RV on_init() override
             {

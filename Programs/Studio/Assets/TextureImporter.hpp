@@ -62,7 +62,7 @@ namespace Luna
 
         TextureImporter() {}
 
-        virtual void on_render(GUI::IContext* context) override;
+        virtual void on_render(GUICore::IContext* context, const GUICore::LayoutInput& layout) override;
         virtual bool closed() override
         {
             return !m_open;

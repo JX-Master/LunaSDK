@@ -8,7 +8,7 @@
 * @date 2026/6/11
 */
 #pragma once
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/GUICore/GUICore.hpp>
 #include <Luna/Runtime/HashMap.hpp>
 #include <Luna/VG/ShapeBuffer.hpp>
 
@@ -19,11 +19,11 @@ namespace Luna
         struct PaletteIcons
         {
             Ref<VG::IShapeBuffer> shape_buffer;
-            HashMap<Name, GUI::ShapeDesc> icons;
-            GUI::ShapeDesc fallback_icon;
+            HashMap<Name, GUICore::ShapeDesc> icons;
+            GUICore::ShapeDesc fallback_icon;
         };
 
         void init_palette_icons(PaletteIcons& icons);
-        GUI::ShapeDesc& palette_icon(PaletteIcons& icons, const Name& type);
+        GUICore::ShapeDesc& palette_icon(PaletteIcons& icons, const Name& type);
     }
 }

@@ -20,6 +20,7 @@ public sealed class GUIEditorTargetRules : TargetRules
             "RHI",
             "Font",
             "VG",
+            "GUICore",
             "GUI",
             "GUIWindow",
             "Asset",

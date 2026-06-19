@@ -17,7 +17,7 @@
 #include <Luna/Image/RHIHelper.hpp>
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/Runtime/HashMap.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/GUI/Editor.hpp>
 #include "SceneEditorTypes.generated.hpp"
 
 namespace Luna
@@ -54,10 +54,8 @@ namespace Luna
         String m_actor_name_editing_text;
         bool m_actor_popup_open = false;
         Float2U m_actor_popup_position = Float2U(0.0f);
-        GUI::ItemHandle m_actor_popup_handle;
         bool m_new_component_popup_open = false;
         Float2U m_new_component_popup_position = Float2U(0.0f);
-        GUI::ItemHandle m_new_component_popup_handle;
 
         // States for scene viewport.
 
@@ -67,6 +65,8 @@ namespace Luna
         f32 m_camera_speed = 1.0f;
 
         bool m_navigating = false;
+        bool m_scene_pointer_initialized = false;
+        Float2U m_last_scene_pointer = Float2U(0.0f);
 
         bool m_open = true;
 
@@ -83,13 +83,12 @@ namespace Luna
         void on_actor_remove_component(SceneActor& scene_actor, typeinfo_t component);
         void on_actor_edit_component(SceneActor& scene_actor, typeinfo_t component);
 
-        void draw_actor_list(GUI::IContext* context, const RectF& rect);
-        void draw_actor_tree_node(GUI::IContext* context, Actor* actor, bool& open_actor_list_popup);
-        void draw_scene_settings(GUI::IContext* context, const RectF& rect);
-        void draw_scene(GUI::IContext* context, const RectF& rect);
-
-        void draw_components_grid(GUI::IContext* context, const RectF& rect);
-        virtual void on_render(GUI::IContext* context) override;
+        void draw_actor_list(GUICore::IContext* context, const GUICore::LayoutInput& layout);
+        void draw_actor_tree_node(GUICore::IContext* context, Actor* actor, bool& open_actor_list_popup);
+        void draw_scene_settings(GUICore::IContext* context, const GUICore::LayoutInput& layout);
+        void draw_scene(GUICore::IContext* context, const GUICore::LayoutInput& layout);
+        void draw_components_grid(GUICore::IContext* context, const GUICore::LayoutInput& layout);
+        virtual void on_render(GUICore::IContext* context, const GUICore::LayoutInput& layout) override;
         virtual bool closed() override
         {
             return !m_open;

@@ -8,7 +8,7 @@
 * @date 2026/6/4
 */
 #include <Luna/Font/Font.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/GUI/Editor.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/RHI/SwapChain.hpp>
@@ -55,10 +55,12 @@ namespace Luna
         Ref<Window::IWindow> window;
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
-        Ref<GUI::IContext> gui;
+        Ref<GUICore::IContext> gui;
         Ref<RHI::ITexture> curve_texture;
         Ref<VG::IShapeDrawList> shape_draw_list;
         Ref<VG::IShapeRenderer> shape_renderer;
+        Ref<VG::IShapeDrawList> gui_draw_list;
+        Ref<VG::IShapeRenderer> gui_renderer;
         u32 queue = U32_MAX;
         u32 width = 0;
         u32 height = 0;
@@ -81,6 +83,32 @@ namespace Luna
             Float2U(0.02f, 0.26f)
         };
     };
+
+    constexpr GUICore::id_t DEFAULT_LAYER_ID = 1;
+    constexpr GUICore::id_t ROOT_ID = 2;
+    constexpr GUICore::id_t IMAGE_HIT_ID = 100;
+    constexpr GUICore::id_t RESOLUTION_GROUP_ID = 101;
+    constexpr GUICore::id_t FIRST_TEXT_ID = 1000;
+    constexpr GUICore::id_t FIRST_OVERLAY_ID = 2000;
+
+    inline GUICore::LayoutInput fixed_layout(f32 width, f32 height)
+    {
+        GUICore::LayoutInput layout;
+        layout.width.kind = GUICore::SizeKind::pixels;
+        layout.width.value = width;
+        layout.height.kind = GUICore::SizeKind::pixels;
+        layout.height.value = height;
+        return layout;
+    }
+
+    inline void set_element_rect(GUICore::IContext* context, const GUICore::ElementHandle& element, const RectF& rect)
+    {
+        GUICore::LayoutResult layout;
+        layout.rect = rect;
+        layout.clip_rect = rect;
+        layout.content_size = Float2U(rect.width, rect.height);
+        context->set_layout_result(element, layout);
+    }
 
     inline Float2U rect_min(const RectF& rect)
     {
@@ -201,79 +229,65 @@ namespace Luna
         Float2U c3 = curve_point_to_rect(rect, app.control_points[9]);
         Float4U quad_line_color(0.95f, 0.95f, 1.0f, 0.48f);
         Float4U cubic_line_color(0.95f, 0.80f, 0.30f, 0.48f);
-        GUI::push_clip_rect(app.gui, rect);
-        GUI::draw_line(app.gui, p0, q0, quad_line_color, CONTROL_LINE_WIDTH);
-        GUI::draw_line(app.gui, q0, p1, quad_line_color, CONTROL_LINE_WIDTH);
-        GUI::draw_line(app.gui, p1, c0, cubic_line_color, CONTROL_LINE_WIDTH);
-        GUI::draw_line(app.gui, c0, c1, cubic_line_color, CONTROL_LINE_WIDTH);
-        GUI::draw_line(app.gui, c1, p2, cubic_line_color, CONTROL_LINE_WIDTH);
-        GUI::draw_line(app.gui, p2, q1, quad_line_color, CONTROL_LINE_WIDTH);
-        GUI::draw_line(app.gui, q1, p3, quad_line_color, CONTROL_LINE_WIDTH);
-        GUI::draw_line(app.gui, p3, c2, cubic_line_color, CONTROL_LINE_WIDTH);
-        GUI::draw_line(app.gui, c2, c3, cubic_line_color, CONTROL_LINE_WIDTH);
-        GUI::draw_line(app.gui, c3, p0, cubic_line_color, CONTROL_LINE_WIDTH);
+        GUI::draw_line(app.gui, FIRST_OVERLAY_ID, p0, q0, quad_line_color, CONTROL_LINE_WIDTH);
+        GUI::draw_line(app.gui, FIRST_OVERLAY_ID + 1, q0, p1, quad_line_color, CONTROL_LINE_WIDTH);
+        GUI::draw_line(app.gui, FIRST_OVERLAY_ID + 2, p1, c0, cubic_line_color, CONTROL_LINE_WIDTH);
+        GUI::draw_line(app.gui, FIRST_OVERLAY_ID + 3, c0, c1, cubic_line_color, CONTROL_LINE_WIDTH);
+        GUI::draw_line(app.gui, FIRST_OVERLAY_ID + 4, c1, p2, cubic_line_color, CONTROL_LINE_WIDTH);
+        GUI::draw_line(app.gui, FIRST_OVERLAY_ID + 5, p2, q1, quad_line_color, CONTROL_LINE_WIDTH);
+        GUI::draw_line(app.gui, FIRST_OVERLAY_ID + 6, q1, p3, quad_line_color, CONTROL_LINE_WIDTH);
+        GUI::draw_line(app.gui, FIRST_OVERLAY_ID + 7, p3, c2, cubic_line_color, CONTROL_LINE_WIDTH);
+        GUI::draw_line(app.gui, FIRST_OVERLAY_ID + 8, c2, c3, cubic_line_color, CONTROL_LINE_WIDTH);
+        GUI::draw_line(app.gui, FIRST_OVERLAY_ID + 9, c3, p0, cubic_line_color, CONTROL_LINE_WIDTH);
         for(u32 i = 0; i < NUM_CURVE_POINTS; ++i)
         {
             Float4U color = (i == 0 || i == 2 || i == 5 || i == 7) ?
                 Float4U(1.0f, 1.0f, 1.0f, 1.0f) :
                 Float4U(1.0f, 0.78f, 0.18f, 1.0f);
-            GUI::draw_circle(app.gui, curve_point_to_rect(rect, app.control_points[i]), CONTROL_POINT_RADIUS, color);
+            GUI::draw_circle(app.gui, FIRST_OVERLAY_ID + 10 + i,
+                curve_point_to_rect(rect, app.control_points[i]), CONTROL_POINT_RADIUS, color);
         }
-        GUI::pop_clip_rect(app.gui);
     }
 
-    void build_gui(App& app, GUI::ItemHandle& image_handle, const Float2U& surface_size)
+    void draw_label(GUICore::IContext* context, GUICore::id_t id, f32 x, f32 y, f32 width, const c8* text)
     {
-        GUI::LayoutDesc root_layout;
-        root_layout.padding = GUI::EdgeInsets::all(14.0f);
-        root_layout.gap = 10.0f;
-        GUI::begin_v_layout(app.gui, "VG Curve Test Root", RectF(0.0f, 0.0f, surface_size.x, surface_size.y), root_layout);
+        GUI::draw_text(context, id, RectF(x, y, width, 24.0f), text, Float4U(0.88f, 0.88f, 0.90f, 1.0f), 16.0f);
+    }
 
-        GUI::text(app.gui, "VG Cubic Curve Test");
+    void build_gui(App& app, const Float2U& surface_size)
+    {
+        GUICore::ElementHandle root = app.gui->begin_element(ROOT_ID, Name("VG Curve Test Root"));
+        set_element_rect(app.gui, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
 
-        GUI::LayoutDesc top_layout;
-        top_layout.gap = 10.0f;
-        top_layout.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
-        GUI::begin_h_layout(app.gui, "Toolbar", top_layout);
-        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(160.0f));
-        GUI::text(app.gui, "Texture resolution");
-        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed_width(420.0f));
-        GUI::button_group(app.gui, "Resolution", &app.resolution_index, Span<const c8*>(RESOLUTION_LABELS, NUM_RESOLUTIONS));
+        draw_label(app.gui, FIRST_TEXT_ID, 14.0f, 14.0f, 280.0f, "VG Cubic Curve Test");
+        draw_label(app.gui, FIRST_TEXT_ID + 1, 14.0f, 62.0f, 220.0f, "Texture resolution");
+        GUICore::ElementHandle resolution = GUI::button_group(app.gui, RESOLUTION_GROUP_ID,
+            &app.resolution_index, Span<const c8*>(RESOLUTION_LABELS, NUM_RESOLUTIONS), fixed_layout(420.0f, 34.0f));
+        set_element_rect(app.gui, resolution, RectF(220.0f, 54.0f, 420.0f, 34.0f));
         c8 status[128];
         snprintf(status, 128, "Actual render target: %ux%u", RESOLUTION_VALUES[app.resolution_index], RESOLUTION_VALUES[app.resolution_index]);
-        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
-        GUI::text(app.gui, status);
-        GUI::end_h_layout(app.gui);
+        draw_label(app.gui, FIRST_TEXT_ID + 2, 654.0f, 60.0f, 320.0f, status);
 
         f32 display_limit_x = max(surface_size.x - 360.0f, 220.0f);
         f32 display_limit_y = max(surface_size.y - 132.0f, 220.0f);
         app.display_size = min(TARGET_DISPLAY_SIZE, min(display_limit_x, display_limit_y));
+        app.image_rect = RectF(14.0f, 112.0f, app.display_size, app.display_size);
 
-        GUI::LayoutDesc content_layout;
-        content_layout.gap = 14.0f;
-        content_layout.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::begin;
-        GUI::begin_h_layout(app.gui, "Content", content_layout);
-        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fixed(app.display_size, app.display_size));
-        image_handle = GUI::image(app.gui, app.curve_texture, GUI::Size::fixed(app.display_size, app.display_size),
+        GUI::draw_image(app.gui, FIRST_TEXT_ID + 3, app.curve_texture, app.image_rect, Float4U(1.0f),
             GUI::ImageFlag::flip_y | GUI::ImageFlag::nearest);
-        RectF overlay_rect = GUI::get_item_state(image_handle, GUI::State::rect());
-        if(overlay_rect.width <= 1.0f || overlay_rect.height <= 1.0f)
+        GUICore::ElementHandle image_hit = GUI::hit_box(app.gui, IMAGE_HIT_ID, fixed_layout(app.display_size, app.display_size));
+        set_element_rect(app.gui, image_hit, app.image_rect);
+        if(app.image_rect.width > 1.0f && app.image_rect.height > 1.0f)
         {
-            overlay_rect = app.image_rect;
-        }
-        if(overlay_rect.width > 1.0f && overlay_rect.height > 1.0f)
-        {
-            draw_curve_overlay(app, overlay_rect);
+            draw_curve_overlay(app, app.image_rect);
         }
 
-        GUI::LayoutDesc side_layout;
-        side_layout.gap = 8.0f;
-        GUI::set_next_item_layout(app.gui, GUI::LayoutStyle::fill_width());
-        GUI::begin_v_layout(app.gui, "Side Panel", side_layout);
-        GUI::text(app.gui, "Drag control points on the texture.");
-        GUI::text(app.gui, "White points are anchors. Yellow points are controls.");
-        GUI::text(app.gui, "Quadratic: P0-Q0-P1 and P2-Q1-P3.");
-        GUI::text(app.gui, "Cubic: P1-C0-C1-P2 and P3-C2-C3-P0.");
+        f32 side_x = app.image_rect.offset_x + app.image_rect.width + 24.0f;
+        f32 side_y = app.image_rect.offset_y + 8.0f;
+        draw_label(app.gui, FIRST_TEXT_ID + 4, side_x, side_y, 520.0f, "Drag control points on the texture.");
+        draw_label(app.gui, FIRST_TEXT_ID + 5, side_x, side_y + 40.0f, 560.0f, "White points are anchors. Yellow points are controls.");
+        draw_label(app.gui, FIRST_TEXT_ID + 6, side_x, side_y + 80.0f, 560.0f, "Quadratic: P0-Q0-P1 and P2-Q1-P3.");
+        draw_label(app.gui, FIRST_TEXT_ID + 7, side_x, side_y + 120.0f, 560.0f, "Cubic: P1-C0-C1-P2 and P3-C2-C3-P0.");
         c8 dragging[64];
         if(app.dragging_point >= 0)
         {
@@ -283,23 +297,21 @@ namespace Luna
         {
             snprintf(dragging, 64, "Dragging none");
         }
-        GUI::text(app.gui, dragging);
+        draw_label(app.gui, FIRST_TEXT_ID + 8, side_x, side_y + 160.0f, 240.0f, dragging);
         for(u32 i = 0; i < NUM_CURVE_POINTS; ++i)
         {
             c8 line[128];
             snprintf(line, 128, "%s  x=%.3f  y=%.3f", POINT_LABELS[i], app.control_points[i].x, app.control_points[i].y);
-            GUI::text(app.gui, line);
+            draw_label(app.gui, FIRST_TEXT_ID + 9 + i, side_x, side_y + 200.0f + (f32)i * 32.0f, 260.0f, line);
         }
-        GUI::end_v_layout(app.gui);
-
-        GUI::end_h_layout(app.gui);
-        GUI::end_v_layout(app.gui);
+        app.gui->end_element();
     }
 
     void update_curve_interaction(App& app)
     {
-        bool left_down = GUI::is_pointer_button_down(app.gui, GUI::PointerButton::left);
-        Float2U pointer = GUI::get_pointer_position(app.gui);
+        GUICore::InteractionState image_state = app.gui->get_interaction_state(IMAGE_HIT_ID);
+        bool left_down = image_state.active;
+        Float2U pointer = image_state.pointer_screen_position;
         if(left_down && !app.was_left_down && point_in_rect(pointer, app.image_rect))
         {
             f32 best_distance_sq = 18.0f * 18.0f;
@@ -335,7 +347,14 @@ namespace Luna
     {
         lutry
         {
-            luexp(add_modules({ module_window(), module_rhi(), module_font(), module_vg(), GUI::module_gui(), GUIWindow::module_gui_window() }));
+            luexp(add_modules({
+                module_window(),
+                module_rhi(),
+                module_font(),
+                module_vg(),
+                GUICore::module_gui_core(),
+                GUI::module_gui(),
+                GUIWindow::module_gui_window() }));
             luexp(init_modules());
 
             luset(app.window, Window::new_window("Luna VG Cubic Curve Test"));
@@ -357,8 +376,11 @@ namespace Luna
             luset(app.cmdbuf, dev->new_command_buffer(app.queue));
             app.shape_draw_list = VG::new_shape_draw_list(dev);
             app.shape_renderer = VG::new_fill_shape_renderer();
-            app.gui = GUI::new_context(dev);
-            luexp(GUI::register_font(app.gui, Name("default"), Font::get_default_font()));
+            app.gui_draw_list = VG::new_shape_draw_list(dev);
+            app.gui_renderer = VG::new_fill_shape_renderer();
+            app.gui = GUICore::new_context();
+            GUI::register_editor_style_schemas(app.gui);
+            luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
             luexp(recreate_curve_texture(app));
         }
         lucatchret;
@@ -372,7 +394,7 @@ namespace Luna
             App app;
             luexp(init_app(app));
 
-            GUIWindow::GUIWindowInputAdapter input_adapter;
+            GUIWindow::GUICoreWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;
             GUIWindow::install_window_event_handler(&input_adapter);
@@ -402,24 +424,19 @@ namespace Luna
                 }
 
                 auto logical_sz = app.window->get_size();
-                GUI::FrameDesc frame;
-                frame.surface_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
+                GUICore::FrameDesc frame;
+                frame.screen_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
                 frame.framebuffer_size = fb_sz;
                 frame.dpi_scale = app.window->get_dpi_scale_factor();
                 frame.delta_time = 1.0f / 60.0f;
                 app.gui->begin_frame(frame);
+                GUIWindow::update_input(&input_adapter);
 
-                GUI::ItemHandle image_handle;
-                build_gui(app, image_handle, frame.surface_size);
-                lulet(desc, app.gui->end_build());
-                luexp(app.gui->submit(desc));
+                app.gui->push_layer(DEFAULT_LAYER_ID, Float2U(0.0f), Name("default"));
+                build_gui(app, frame.screen_size);
+                app.gui->pop_layer();
+                app.gui->route_input();
                 luexp(GUIWindow::update_text_input(&input_adapter));
-
-                RectF image_rect = GUI::get_item_state(image_handle, GUI::State::rect());
-                if(image_rect.width > 1.0f && image_rect.height > 1.0f)
-                {
-                    app.image_rect = image_rect;
-                }
                 update_curve_interaction(app);
 
                 expected_texture_size = RESOLUTION_VALUES[app.resolution_index];
@@ -434,7 +451,19 @@ namespace Luna
                 render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, Float4U(0.02f, 0.025f, 0.03f, 1.0f));
                 app.cmdbuf->begin_render_pass(render_pass);
                 app.cmdbuf->end_render_pass();
-                luexp(app.gui->render(app.cmdbuf, back_buffer));
+                luexp(app.gui->compile_draw_commands(app.gui_draw_list));
+                luexp(app.gui_draw_list->compile());
+                Span<const VG::ShapeDrawCall> gui_draw_calls = app.gui_draw_list->get_draw_calls();
+                if(!gui_draw_calls.empty())
+                {
+                    luexp(app.gui_renderer->begin(back_buffer));
+                    app.gui_renderer->draw(app.gui_draw_list->get_vertex_buffer(),
+                        app.gui_draw_list->get_index_buffer(),
+                        gui_draw_calls,
+                        nullptr);
+                    luexp(app.gui_renderer->end());
+                    app.gui_renderer->submit(app.cmdbuf);
+                }
                 app.cmdbuf->resource_barrier({}, {
                     { back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none }
                     });

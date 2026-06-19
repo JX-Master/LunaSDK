@@ -8,9 +8,9 @@
 * @date 2020/4/20
 */
 #pragma once
+#include "StudioEnv.hpp"
 #include <Luna/HID/HID.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/GUI/GUI.hpp>
 #include <Luna/Image/Image.hpp>
 #include <Luna/Image/DDSImage.hpp>
 #include <Luna/Font/Font.hpp>
@@ -98,55 +98,4 @@ namespace Luna
         return Asset::get_asset_data<_Ty>(asset);
     }
 
-    //! @interface IAssetEditor
-    //! Represents a window of the editor.
-    struct [[Luna::interface("{410f7868-38b5-4e3f-b291-8e58d2cb7372}")]] IAssetEditor : virtual Interface
-    {
-        virtual void on_render(GUI::IContext* context) = 0;
-        virtual bool closed() = 0;
-    };
-
-    struct AssetEditorDesc
-    {
-        ObjRef userdata;
-        //! Called when the tile is going to be drawn in asset browser.
-        void (*on_draw_tile)(GUI::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect);
-        //! Called when a new editor is requested to be open for the specified asset.
-        Ref<IAssetEditor>(*new_editor)(object_t userdata, Asset::asset_t editing_asset);
-    };
-
-    struct AssetImporterDesc
-    {
-        //! Called when a new importer is requested to be open for the specified asset.
-        Ref<IAssetEditor>(*new_importer)(const Path& create_dir);
-    };
-
-    struct AppEnv
-    {
-        HashSet<Name> new_asset_types; // Displayed on the "New" tab of asset browser.
-        HashMap<Name, AssetImporterDesc> importer_types;
-
-        HashMap<Name, AssetEditorDesc> editor_types;
-
-        HashSet<typeinfo_t> component_types;
-        HashSet<typeinfo_t> scene_component_types;
-
-        Ref<RHI::IDevice> device;
-
-        u32 graphics_queue;
-        u32 async_compute_queue;
-        u32 async_copy_queue;
-
-        void register_asset_importer_type(const Name& name, const AssetImporterDesc& desc)
-        {
-            importer_types.insert(Pair<Name, AssetImporterDesc>(name, desc));
-        }
-
-        void register_asset_editor_type(const Name& name, const AssetEditorDesc& desc)
-        {
-            editor_types.insert(Pair<Name, AssetEditorDesc>(name, desc));
-        }
-    };
-
-    extern AppEnv* g_env;
 }

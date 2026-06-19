@@ -9,51 +9,102 @@
 */
 #include "Texture.hpp"
 #include "TextureEditor.hpp"
+#include <Luna/GUI/Editor.hpp>
 
 namespace Luna
 {
-    void TextureEditor::on_render(GUI::IContext* context)
+    namespace
     {
-        Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(m_tex);
-        if (!tex)
+        GUICore::LayoutInput texture_size_layout(RHI::ITexture* texture)
         {
-            m_open = false;
-            return;
+            GUICore::LayoutInput layout;
+            if(texture)
+            {
+                auto desc = texture->get_desc();
+                layout.width.kind = GUICore::SizeKind::pixels;
+                layout.width.value = (f32)desc.width;
+                layout.height.kind = GUICore::SizeKind::pixels;
+                layout.height.value = (f32)desc.height;
+            }
+            return layout;
         }
 
-        char name[32];
-        snprintf(name, 32, "Texture###%d", (u32)(usize)this);
-
-        if(!m_open) return;
-
-        lutry
+        GUICore::LayoutInput fixed_height_layout(f32 height)
         {
-            auto desc = tex->get_desc();
-            GUI::begin_window(context, name, &m_open, GUI::Size::fixed(max((f32)desc.width + 16.0f, 220.0f), max((f32)desc.height + 46.0f, 120.0f)));
-            GUI::image(context, tex.get(), GUI::Size::fixed((f32)desc.width, (f32)desc.height));
-            GUI::end_window(context);
-        }
-        lucatch
-        {
-            GUI::begin_window(context, name, &m_open, GUI::Size::fixed(260.0f, 120.0f));
-            GUI::text(context, "Texture Unavailable.");
-            GUI::end_window(context);
+            GUICore::LayoutInput layout;
+            layout.width.kind = GUICore::SizeKind::expand;
+            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.height.value = height;
+            return layout;
         }
     }
-    static void on_draw_tex_tile(GUI::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
+
+    void TextureEditor::on_render(GUICore::IContext* context, const GUICore::LayoutInput& layout)
     {
-        if (Asset::get_asset_state(asset) == Asset::AssetState::loaded)
+        luassert(context);
+        if(!m_open)
+        {
+            return;
+        }
+        context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
+        GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("texture_editor"), "Texture Editor", layout);
+        Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(m_tex);
+        if(!tex)
+        {
+            GUI::text(context, context->make_id("unavailable"), "Texture Unavailable.", fixed_height_layout(28.0f));
+        }
+        else
+        {
+            GUI::image(context, context->make_id("texture"), tex.get(), texture_size_layout(tex.get()));
+        }
+        lupanic_if_failed(GUI::end_v_layout(context, root, GUICore::LinearLayoutDesc()));
+        context->pop_data_scope();
+    }
+
+    static void on_draw_tex_tile_core(GUICore::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
+    {
+        if(Asset::get_asset_state(asset) == Asset::AssetState::loaded)
         {
             Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
-            if (tex)
+            if(tex)
             {
-                GUI::draw_image(context, tex.get(), draw_rect);
+                GUI::draw_image(context, context->make_id((GUICore::id_t)(usize)asset.handle), tex.get(), draw_rect);
             }
         }
         else
         {
-            GUI::draw_text(context, draw_rect, "Texture", Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
+            GUI::draw_text(context, context->make_id((GUICore::id_t)(usize)asset.handle), draw_rect,
+                "Texture", Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
         }
+    }
+    static void on_draw_tex_tile_preview_core(GUICore::IContext* context, object_t userdata, Asset::asset_t asset,
+        const RectF& relative_rect)
+    {
+        if(Asset::get_asset_state(asset) == Asset::AssetState::loaded)
+        {
+            Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
+            if(tex)
+            {
+                GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::image;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = relative_rect;
+                command.color = Float4U(1.0f);
+                command.texture = tex.get();
+                context->draw(command);
+                return;
+            }
+        }
+        GUICore::DrawCommand command;
+        command.type = GUICore::DrawCommandType::text;
+        command.rect_reference = GUICore::DrawCommandRectReference::element;
+        command.rect = relative_rect;
+        command.color = Float4U(1.0f);
+        command.font_size = 16.0f;
+        command.horizontal_alignment = VG::TextAlignment::center;
+        command.vertical_alignment = VG::TextAlignment::center;
+        command.text = "Texture";
+        context->draw(command);
     }
     static Ref<IAssetEditor> new_tex_editor(object_t userdata, Asset::asset_t editing_asset)
     {
@@ -64,7 +115,8 @@ namespace Luna
     void register_texture_editor()
     {
         AssetEditorDesc desc;
-        desc.on_draw_tile = on_draw_tex_tile;
+        desc.on_draw_tile_core = on_draw_tex_tile_core;
+        desc.on_draw_tile_preview_core = on_draw_tex_tile_preview_core;
         desc.new_editor = new_tex_editor;
         g_env->register_asset_editor_type(get_static_texture_asset_type(), desc);
     }

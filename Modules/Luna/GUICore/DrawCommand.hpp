@@ -1,0 +1,127 @@
+/*!
+* This file is a portion of LunaSDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+*
+* @file DrawCommand.hpp
+* @author JXMaster
+* @date 2026/6/17
+*/
+#pragma once
+#include "Element.hpp"
+#include <Luna/VG/TextArranger.hpp>
+
+namespace Luna
+{
+    namespace VG
+    {
+        struct IShapeDrawList;
+        struct IShapeBuffer;
+    }
+
+    namespace GUICore
+    {
+        //! Identifies one GUI Core draw command kind.
+        enum class DrawCommandType : u8
+        {
+            //! Draws a solid rectangle.
+            rect,
+            //! Draws a rectangle with per-corner colors.
+            gradient_rect,
+            //! Draws a solid rounded rectangle.
+            rounded_rect,
+            //! Draws a line segment.
+            line,
+            //! Draws UTF-8 text.
+            text,
+            //! Draws a textured rectangle.
+            image,
+            //! Draws a VG shape command range.
+            shape,
+            //! Pushes a clip rectangle.
+            push_clip,
+            //! Pops the current clip rectangle.
+            pop_clip
+        };
+
+        //! Identifies the coordinate space used by a draw command rectangle.
+        enum class DrawCommandRectReference : u8
+        {
+            //! The command rectangle is already in layer coordinates.
+            layer,
+            //! The command rectangle is resolved relative to the owning element layout rectangle.
+            element
+        };
+
+        //! Describes one vector shape stored in a VG shape buffer.
+        struct ShapeDesc
+        {
+            //! The VG shape buffer that stores the shape command range.
+            VG::IShapeBuffer* buffer = nullptr;
+            //! Optional texture sampled through the shape. When this is not `nullptr`, the shape acts as the texture mask.
+            RHI::ITexture* texture = nullptr;
+            //! The first command point of the shape in @ref buffer.
+            u32 first_command = 0;
+            //! The number of command points in the shape.
+            u32 num_commands = 0;
+            //! The source shape bounds used to map shape coordinates to the destination rectangle.
+            //! @remark Bounds are interpreted in GUI shape coordinates, where Y increases downward.
+            RectF bounds = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+        };
+
+        //! One GUI-level draw command.
+        //! @remark Commands are intentionally primitive and widget-free. High-level packages decide which commands to emit.
+        struct DrawCommand
+        {
+            //! Command kind.
+            DrawCommandType type = DrawCommandType::rect;
+            //! Owning layer index, or @ref INVALID_LAYER when the command is not layer-scoped.
+            u32 layer = INVALID_LAYER;
+            //! Owning element index, or @ref INVALID_ELEMENT when the command is not element-scoped.
+            u32 element = INVALID_ELEMENT;
+            //! Destination rectangle or clip rectangle in layer coordinates.
+            RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            //! Coordinate reference used by @ref rect.
+            DrawCommandRectReference rect_reference = DrawCommandRectReference::layer;
+            //! Element-relative rectangle scale in left, top, right, bottom order.
+            //! @remark When @ref rect_reference is @ref DrawCommandRectReference::element, the resolved rectangle is
+            //! `element.rect + rect + element.rect.size * rect_layout_scale`. Negative or zero resolved sizes keep
+            //! the trailing inset semantics, so `rect = {4, 4, -8, -8}` means the element rect inset by four pixels.
+            Float4U rect_layout_scale = Float4U(0.0f);
+            //! Secondary point used by line commands.
+            Float2U point1 = Float2U(0.0f);
+            //! Primary color.
+            Float4U color = Float4U(1.0f);
+            //! Top-right color for gradient rectangle commands.
+            Float4U color_top_right = Float4U(1.0f);
+            //! Bottom-right color for gradient rectangle commands.
+            Float4U color_bottom_right = Float4U(1.0f);
+            //! Bottom-left color for gradient rectangle commands.
+            Float4U color_bottom_left = Float4U(1.0f);
+            //! Corner radius for rounded rectangles.
+            f32 radius = 0.0f;
+            //! Line width for line commands.
+            f32 line_width = 1.0f;
+            //! Font ID used by text commands.
+            Name font;
+            //! Font size used by text commands.
+            f32 font_size = 16.0f;
+            //! Horizontal text alignment used by text commands.
+            VG::TextAlignment horizontal_alignment = VG::TextAlignment::begin;
+            //! Vertical text alignment used by text commands.
+            VG::TextAlignment vertical_alignment = VG::TextAlignment::center;
+            //! Text payload used by text commands.
+            String text;
+            //! Texture used by image commands.
+            RHI::ITexture* texture = nullptr;
+            //! Minimum texture coordinate used by image and shape commands.
+            Float2U min_texcoord = Float2U(0.0f, 0.0f);
+            //! Maximum texture coordinate used by image and shape commands.
+            Float2U max_texcoord = Float2U(1.0f, 1.0f);
+            //! Whether image and shape commands should use nearest-neighbor texture sampling.
+            bool nearest_sampler = false;
+            //! Shape payload used by shape commands.
+            ShapeDesc shape;
+        };
+    }
+}

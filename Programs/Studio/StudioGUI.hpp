@@ -9,9 +9,13 @@
 */
 #pragma once
 #include <Luna/Asset/Asset.hpp>
-#include <Luna/GUI/GUI.hpp>
 
 namespace Luna
 {
-    bool gui_edit_asset_path(GUI::IContext* context, const c8* label, Asset::asset_t& asset, String& path_text, const c8* failure_title = "Failed to set asset reference");
+    namespace GUICore
+    {
+        struct IContext;
+    }
+
+    bool gui_edit_asset_path(GUICore::IContext* context, const c8* label, Asset::asset_t& asset, String& path_text, const c8* failure_title = "Failed to set asset reference");
 }

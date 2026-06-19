@@ -15,7 +15,7 @@
 #include <Luna/Runtime/Any.hpp>
 #include <Luna/Runtime/Span.hpp>
 #include <Luna/Asset/Asset.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/GUICore/GUICore.hpp>
 #include "GUIAsset.generated.hpp"
 
 #ifndef LUNA_GUI_ASSET_API
@@ -46,13 +46,13 @@ namespace Luna
             const Vector<Guid>& children(const Node* node);
         }
 
-        //! Callback used by one GUI asset node type to generate runtime GUI widgets.
-        //! @param[in] context The GUI context to build into.
+        //! Callback used by one GUI asset node type to generate GUI Core elements.
+        //! @param[in] context The GUI Core context to build into.
         //! @param[in,out] node The GUI asset node being generated. The node may keep transient runtime values
         //! for widgets that need stable pointers during the generated frame.
         //! @param[in] generate_context Shared generation context.
         //! @return Returns success or failure code.
-        using node_generate_func_t = RV(*)(GUI::IContext* context, Node& node, const GenerateContext& generate_context);
+        using node_generate_core_func_t = RV(*)(GUICore::IContext* context, Node& node, const GenerateContext& generate_context);
 
         //! Callback used by one GUI asset node type to report referred assets.
         //! @param[in] node The GUI asset node to inspect.
@@ -118,8 +118,8 @@ namespace Luna
             Variant default_properties;
             //! Design-time property schema used by GUI editors and external tooling.
             Vector<NodePropertyDesc> properties;
-            //! Callback used to generate runtime GUI widgets for this node type.
-            node_generate_func_t on_generate = nullptr;
+            //! Callback used to generate GUI Core elements for this node type.
+            node_generate_core_func_t on_generate_core = nullptr;
             //! Optional callback used to collect assets referred by this node type.
             node_get_referred_assets_func_t on_get_referred_assets = nullptr;
         };
@@ -131,11 +131,14 @@ namespace Luna
             Luna::Asset::asset_t owner_asset;
             //! The asset currently being generated.
             Asset* asset = nullptr;
+            //! Root rectangle used by GUI Core generation in layer coordinates.
+            //! @remark When width or height is not positive, GUI Core generation falls back to the current
+            //! context screen size.
+            RectF core_root_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
         };
 
         //! One editable GUI asset node stored by @ref Asset.
-        //! @remark This is design-time data. It is intentionally separate from @ref GUI::Node and is converted to
-        //! runtime GUI nodes only by @ref generate.
+        //! @remark This is design-time data. It is intentionally converted to runtime GUI Core elements by @ref generate.
         struct [[Luna::struct("{3FE4777D-7310-40AD-865E-AE08C0F3D31B}")]] Node
         {
             //! Stable node ID generated when the node is created and preserved across save/load.
@@ -146,14 +149,14 @@ namespace Luna
             String label;
             //! Type-specific editable properties.
             Variant properties = Variant(VariantType::object);
-            //! Optional layout style assigned before generating this node.
-            GUI::LayoutStyle layout_style;
-            //! Whether @ref layout_style should be applied.
-            bool has_layout_style = false;
+            //! Optional GUI Core layout input assigned before generating this node.
+            GUICore::LayoutInput layout_input;
+            //! Whether @ref layout_input should be applied.
+            bool has_layout_input = false;
             //! Optional canvas placement assigned before generating this node inside a canvas layout.
-            GUI::CanvasItemLayout canvas_item_layout;
-            //! Whether @ref canvas_item_layout should be applied.
-            bool has_canvas_item_layout = false;
+            GUICore::CanvasLayoutItem canvas_layout;
+            //! Whether @ref canvas_layout should be applied.
+            bool has_canvas_layout = false;
             //! Optional GUI style name bound before generating this node.
             Name style;
             //! Whether this node is enabled for interaction.
@@ -213,6 +216,12 @@ namespace Luna
         //! @param[in] label Optional node label.
         //! @return Returns the created node.
         LUNA_GUI_ASSET_API R<Ref<Node>> new_node(const Name& type, const c8* label = nullptr);
+
+        //! Gets the stable GUI Core element ID normally used when generating one GUI asset node.
+        //! @param[in] node The GUI asset node.
+        //! @return Returns the nonzero GUI Core ID derived from @ref Node::id.
+        //! @remark Custom node generators should use this helper instead of duplicating the ID mapping algorithm.
+        LUNA_GUI_ASSET_API GUICore::id_t node_core_id(const Node& node);
 
         //! Creates one GUI asset with a default vertical layout root.
         //! @return Returns the created asset.
@@ -305,26 +314,26 @@ namespace Luna
         //! @return Returns success or failure code.
         LUNA_GUI_ASSET_API RV reorder_node(Asset* asset, const Guid& id, usize index = USIZE_MAX);
 
-        //! Generates runtime GUI widgets from one GUI asset.
-        //! @param[in] context The GUI context to build into.
+        //! Generates GUI Core elements from one GUI asset.
+        //! @param[in] context The GUI Core context to build into.
         //! @param[in,out] asset The GUI asset to generate.
         //! @param[in] generate_context Optional generation context.
         //! @return Returns success or failure code.
-        LUNA_GUI_ASSET_API RV generate(GUI::IContext* context, Asset* asset, const GenerateContext& generate_context = GenerateContext());
+        LUNA_GUI_ASSET_API RV generate(GUICore::IContext* context, Asset* asset, const GenerateContext& generate_context = GenerateContext());
 
-        //! Generates runtime GUI widgets from one GUI asset node.
-        //! @param[in] context The GUI context to build into.
+        //! Generates GUI Core elements from one GUI asset node.
+        //! @param[in] context The GUI Core context to build into.
         //! @param[in,out] node The GUI asset node to generate.
         //! @param[in] generate_context Shared generation context.
         //! @return Returns success or failure code.
-        LUNA_GUI_ASSET_API RV generate_node(GUI::IContext* context, Node& node, const GenerateContext& generate_context = GenerateContext());
+        LUNA_GUI_ASSET_API RV generate_node(GUICore::IContext* context, Node& node, const GenerateContext& generate_context = GenerateContext());
 
-        //! Generates all children of one GUI asset node.
-        //! @param[in] context The GUI context to build into.
+        //! Generates GUI Core elements for all children of one GUI asset node.
+        //! @param[in] context The GUI Core context to build into.
         //! @param[in,out] node The parent node whose children should be generated.
         //! @param[in] generate_context Shared generation context.
         //! @return Returns success or failure code.
-        LUNA_GUI_ASSET_API RV generate_children(GUI::IContext* context, Node& node, const GenerateContext& generate_context = GenerateContext());
+        LUNA_GUI_ASSET_API RV generate_children(GUICore::IContext* context, Node& node, const GenerateContext& generate_context = GenerateContext());
 
         //! Serializes one GUI asset node to a schema-controlled variant object.
         //! @param[in] node The node to serialize.

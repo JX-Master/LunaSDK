@@ -9,8 +9,9 @@
 */
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/Font/Font.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/GUI/Editor.hpp>
 #include <Luna/GUIAsset/GUIAsset.hpp>
+#include <Luna/GUICore/GUICore.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Module.hpp>
@@ -22,6 +23,7 @@
 #include <Luna/VG/VG.hpp>
 #include <Luna/Window/AppMain.hpp>
 #include <Luna/Window/Window.hpp>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -36,6 +38,8 @@ namespace Luna
     static constexpr const c8* name_background_mode = "background_mode";
     static constexpr const c8* name_cell_height = "cell_height";
     static constexpr const c8* name_cell_width = "cell_width";
+    static constexpr const c8* name_checkable = "checkable";
+    static constexpr const c8* name_checked = "checked";
     static constexpr const c8* name_clip_children = "clip_children";
     static constexpr const c8* name_column_separators = "column_separators";
     static constexpr const c8* name_columns = "columns";
@@ -49,12 +53,18 @@ namespace Luna
     static constexpr const c8* name_max = "max";
     static constexpr const c8* name_min = "min";
     static constexpr const c8* name_multi_select = "multi_select";
+    static constexpr const c8* name_open = "open";
     static constexpr const c8* name_overlay = "overlay";
+    static constexpr const c8* name_popup_height = "popup_height";
+    static constexpr const c8* name_popup_width = "popup_width";
     static constexpr const c8* name_row_separators = "row_separators";
     static constexpr const c8* name_selected = "selected";
     static constexpr const c8* name_sizing_mode = "sizing_mode";
     static constexpr const c8* name_size = "size";
     static constexpr const c8* name_speed = "speed";
+    static constexpr const c8* name_shortcut = "shortcut";
+    static constexpr const c8* name_tooltip_height = "tooltip_height";
+    static constexpr const c8* name_tooltip_width = "tooltip_width";
     static constexpr const c8* name_value = "value";
     static constexpr const c8* name_virtualize_fixed_rows = "virtualize_fixed_rows";
 
@@ -73,10 +83,30 @@ namespace Luna
         return r;
     }
 
+    static Variant make_edge_insets(f32 left, f32 top, f32 right, f32 bottom)
+    {
+        Variant r(VariantType::object);
+        r[Name("left")] = (f64)left;
+        r[Name("top")] = (f64)top;
+        r[Name("right")] = (f64)right;
+        r[Name("bottom")] = (f64)bottom;
+        return r;
+    }
+
     static Variant make_items(Span<const c8*> values)
     {
         Variant r(VariantType::array);
         for(const c8* value : values)
+        {
+            r.push_back(value);
+        }
+        return r;
+    }
+
+    static Variant make_numbers(Span<const f64> values)
+    {
+        Variant r(VariantType::array);
+        for(f64 value : values)
         {
             r.push_back(value);
         }
@@ -89,6 +119,37 @@ namespace Luna
         Ref<GA::Node> node = GA::find_node(asset.get(), GA::get_root(asset.get()));
         luassert_always(node);
         return node;
+    }
+
+    static Ref<GA::Node> find_node_by_label(const Ref<GA::Asset>& asset, const Guid& id, const c8* label)
+    {
+        Ref<GA::Node> node = GA::find_node(asset.get(), id);
+        if(!node)
+        {
+            return nullptr;
+        }
+        if(!std::strcmp(node->label.c_str(), label))
+        {
+            return node;
+        }
+        for(Guid child_id : GA::get_children(node.get()))
+        {
+            Ref<GA::Node> child = find_node_by_label(asset, child_id, label);
+            if(child)
+            {
+                return child;
+            }
+        }
+        return nullptr;
+    }
+
+    static Ref<GA::Node> find_node_by_label(const Ref<GA::Asset>& asset, const c8* label)
+    {
+        if(!asset || GA::get_root(asset.get()) == Guid(0, 0))
+        {
+            return nullptr;
+        }
+        return find_node_by_label(asset, GA::get_root(asset.get()), label);
     }
 
     static void add_child_node(const Ref<GA::Asset>& asset, const Guid& parent, const Ref<GA::Node>& node)
@@ -120,9 +181,9 @@ namespace Luna
         return false;
     }
 
-    static RV generate_test_custom_node(GUI::IContext* context, GA::Node& node, const GA::GenerateContext&)
+    static RV generate_test_widget_node_core(GUICore::IContext* context, GA::Node& node, const GA::GenerateContext&)
     {
-        GUI::text(context, node.label.c_str());
+        GUI::text(context, GA::node_core_id(node), node.label.c_str());
         return ok;
     }
 
@@ -131,7 +192,7 @@ namespace Luna
         GA::NodeTypeDesc desc;
         desc.type = "test_custom";
         desc.default_properties = Variant(VariantType::object);
-        desc.on_generate = generate_test_custom_node;
+        desc.on_generate_core = generate_test_widget_node_core;
         GA::register_node_type(desc);
     }
 
@@ -149,8 +210,11 @@ namespace Luna
         Ref<GA::Asset> asset = GA::new_asset();
         Ref<GA::Node> root = root_node(asset);
         root->label = "GUIAsset Test Root";
-        root->layout_style = GUI::LayoutStyle::fill();
-        root->has_layout_style = true;
+        root->layout_input.width.kind = GUICore::SizeKind::expand;
+        root->layout_input.width.value = 1.0f;
+        root->layout_input.height.kind = GUICore::SizeKind::expand;
+        root->layout_input.height.value = 1.0f;
+        root->has_layout_input = true;
 
         Ref<GA::Node> header = add_child(asset, root->id, "h_layout", "Header");
         add_child(asset, header->id, "text", "Hello GUIAsset");
@@ -189,6 +253,11 @@ namespace Luna
         const c8* combo_items[] = {"Alpha", "Beta", "Gamma"};
         combo->properties[name_items] = make_items(Span<const c8*>(combo_items, 3));
         combo->properties[name_current_item] = (i64)2;
+        combo->layout_input.width.kind = GUICore::SizeKind::pixels;
+        combo->layout_input.width.value = 180.0f;
+        combo->layout_input.height.kind = GUICore::SizeKind::pixels;
+        combo->layout_input.height.value = 28.0f;
+        combo->has_layout_input = true;
 
         Ref<GA::Node> numeric = add_child(asset, root->id, "v_layout", "Numeric");
         Ref<GA::Node> slider_float = add_child(asset, numeric->id, "slider_float", "Slider Float");
@@ -210,6 +279,14 @@ namespace Luna
         drag_int->properties[name_min] = (i64)0;
         drag_int->properties[name_max] = (i64)100;
 
+        Ref<GA::Node> colors = add_child(asset, root->id, "v_layout", "Colors");
+        Ref<GA::Node> color3 = add_child(asset, colors->id, "color_edit3", "Color Edit 3");
+        const f64 color3_values[] = {0.2, 0.5, 0.9};
+        color3->properties[name_value] = make_numbers(Span<const f64>(color3_values, 3));
+        Ref<GA::Node> color4 = add_child(asset, colors->id, "color_edit4", "Color Edit 4");
+        const f64 color4_values[] = {0.9, 0.25, 0.1, 0.75};
+        color4->properties[name_value] = make_numbers(Span<const f64>(color4_values, 4));
+
         Ref<GA::Node> grid = add_child(asset, root->id, "grid_layout", "Grid");
         grid->properties[name_sizing_mode] = "fixed_columns";
         grid->properties[name_columns] = (u64)3;
@@ -223,10 +300,13 @@ namespace Luna
 
         Ref<GA::Node> canvas = add_child(asset, root->id, "canvas_layout", "Canvas");
         canvas->properties[name_size] = make_size(320.0f, 120.0f);
+        canvas->properties[Name("padding")] = make_edge_insets(8.0f, 10.0f, 0.0f, 0.0f);
         canvas->properties[name_clip_children] = true;
         Ref<GA::Node> canvas_text = add_child(asset, canvas->id, "text", "Canvas Child");
-        canvas_text->has_canvas_item_layout = true;
-        canvas_text->canvas_item_layout = GUI::CanvasItemLayout::fixed(Float2U(24.0f, 24.0f), Float2U(180.0f, 28.0f));
+        canvas_text->canvas_layout.anchor_min = Float2U(0.0f);
+        canvas_text->canvas_layout.anchor_max = Float2U(0.0f);
+        canvas_text->canvas_layout.offset = Float4U(24.0f, 24.0f, 204.0f, 52.0f);
+        canvas_text->has_canvas_layout = true;
 
         Ref<GA::Node> table = add_child(asset, root->id, "table_layout", "Table");
         Variant columns(VariantType::array);
@@ -268,6 +348,48 @@ namespace Luna
         auto serialized_asset = serialize(nested_asset);
         lupanic_if_failed(serialized_asset);
         asset_ref->properties[name_asset] = serialized_asset.get();
+
+        Ref<GA::Node> scroll = add_child(asset, root->id, "scroll_view", "Scroll Area");
+        scroll->properties[name_size] = make_size(160.0f, 40.0f);
+        Ref<GA::Node> scroll_text = add_child(asset, scroll->id, "text", "Scrollable Body");
+        scroll_text->layout_input.width.kind = GUICore::SizeKind::pixels;
+        scroll_text->layout_input.width.value = 160.0f;
+        scroll_text->layout_input.height.kind = GUICore::SizeKind::pixels;
+        scroll_text->layout_input.height.value = 160.0f;
+        scroll_text->has_layout_input = true;
+
+        Ref<GA::Node> tabs = add_child(asset, root->id, "tab_bar", "Tabs");
+        tabs->properties[name_size] = make_size(260.0f, 120.0f);
+        Ref<GA::Node> first_tab = add_child(asset, tabs->id, "tab_item", "Tab One");
+        add_child(asset, first_tab->id, "text", "Tab One Content");
+        Ref<GA::Node> second_tab = add_child(asset, tabs->id, "tab_item", "Tab Two");
+        second_tab->properties[name_open] = true;
+        add_child(asset, second_tab->id, "text", "Tab Two Content");
+
+        Ref<GA::Node> menu_bar = add_child(asset, root->id, "menu_bar", "Main Menu");
+        menu_bar->properties[name_size] = make_size(280.0f, 28.0f);
+        Ref<GA::Node> view_menu = add_child(asset, menu_bar->id, "menu", "View");
+        view_menu->properties[name_popup_width] = (f64)190.0;
+        view_menu->properties[name_popup_height] = (f64)72.0;
+        Ref<GA::Node> show_grid = add_child(asset, view_menu->id, "menu_item", "Show Grid");
+        show_grid->properties[name_checkable] = true;
+        show_grid->properties[name_checked] = false;
+        show_grid->properties[name_shortcut] = "Ctrl+G";
+        add_child(asset, view_menu->id, "menu_separator", "View Separator");
+        Ref<GA::Node> disabled_menu_item = add_child(asset, view_menu->id, "menu_item", "Disabled Item");
+        disabled_menu_item->enabled = false;
+
+        Ref<GA::Node> popup = add_child(asset, root->id, "popup", "Open Asset Popup");
+        popup->properties[name_size] = make_size(150.0f, 28.0f);
+        popup->properties[name_popup_width] = (f64)190.0;
+        popup->properties[name_popup_height] = (f64)56.0;
+        add_child(asset, popup->id, "text", "Asset Popup Content");
+
+        Ref<GA::Node> tooltip = add_child(asset, root->id, "tooltip", "Hover Asset Tooltip");
+        tooltip->properties[name_size] = make_size(170.0f, 28.0f);
+        tooltip->properties[name_tooltip_width] = (f64)190.0;
+        tooltip->properties[name_tooltip_height] = (f64)48.0;
+        add_child(asset, tooltip->id, "text", "Asset Tooltip Content");
 
         return asset;
     }
@@ -352,21 +474,274 @@ namespace Luna
         luassert_always(contains_asset(referred_assets, nested_asset));
     }
 
-    static void test_generate(const Ref<GA::Asset>& asset)
+    static bool has_debug_element(const GUICore::DebugInfo& debug_info, const c8* debug_name)
     {
-        Ref<GUI::IContext> context = GUI::new_context(RHI::get_main_device());
+        Name name(debug_name);
+        for(const GUICore::DebugElementInfo& element : debug_info.elements)
+        {
+            if(element.debug_name == name)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static const GUICore::DebugElementInfo* find_debug_element(const GUICore::DebugInfo& debug_info, const c8* debug_name)
+    {
+        Name name(debug_name);
+        for(const GUICore::DebugElementInfo& element : debug_info.elements)
+        {
+            if(element.debug_name == name)
+            {
+                return &element;
+            }
+        }
+        return nullptr;
+    }
+
+    static bool close_to(f32 lhs, f32 rhs)
+    {
+        return std::fabs(lhs - rhs) <= 0.01f;
+    }
+
+    static void assert_rect(const GUICore::DebugElementInfo& element, f32 x, f32 y, f32 width, f32 height)
+    {
+        if(!close_to(element.rect.offset_x, x) || !close_to(element.rect.offset_y, y) ||
+            !close_to(element.rect.width, width) || !close_to(element.rect.height, height))
+        {
+            std::printf("Rect mismatch for %s: actual %.2f %.2f %.2f %.2f, expected %.2f %.2f %.2f %.2f\n",
+                element.debug_name.c_str(), element.rect.offset_x, element.rect.offset_y, element.rect.width, element.rect.height,
+                x, y, width, height);
+        }
+        luassert_always(close_to(element.rect.offset_x, x));
+        luassert_always(close_to(element.rect.offset_y, y));
+        luassert_always(close_to(element.rect.width, width));
+        luassert_always(close_to(element.rect.height, height));
+    }
+
+    static GUICore::InputEvent pointer_event(GUICore::InputEventType type, const Float2U& position)
+    {
+        GUICore::InputEvent event;
+        event.type = type;
+        event.position = position;
+        event.button = GUICore::PointerButton::left;
+        return event;
+    }
+
+    static void add_pointer_click(GUICore::IContext* context, const Float2U& position)
+    {
+        context->add_input_event(pointer_event(GUICore::InputEventType::pointer_move, position));
+        context->add_input_event(pointer_event(GUICore::InputEventType::pointer_down, position));
+        context->add_input_event(pointer_event(GUICore::InputEventType::pointer_up, position));
+    }
+
+    static i32 runtime_i32(const Ref<GA::Node>& node, const Name& key, i32 default_value)
+    {
+        auto iter = node->runtime_values.find(key);
+        if(iter == node->runtime_values.end())
+        {
+            return default_value;
+        }
+        const i32* value = iter->second.as<i32>();
+        return value ? *value : default_value;
+    }
+
+    static bool runtime_bool(const Ref<GA::Node>& node, const Name& key, bool default_value)
+    {
+        auto iter = node->runtime_values.find(key);
+        if(iter == node->runtime_values.end())
+        {
+            return default_value;
+        }
+        const bool* value = iter->second.as<bool>();
+        return value ? *value : default_value;
+    }
+
+    static Float2U debug_element_screen_point(const GUICore::DebugInfo& debug_info,
+        const GUICore::DebugElementInfo& element, const Float2U& local_offset)
+    {
+        Float2U layer_position(0.0f);
+        if(element.layer < debug_info.layers.size())
+        {
+            layer_position = debug_info.layers[element.layer].screen_position;
+        }
+        return Float2U(layer_position.x + element.rect.offset_x + local_offset.x,
+            layer_position.y + element.rect.offset_y + local_offset.y);
+    }
+
+    static void test_generate_core(const Ref<GA::Asset>& asset)
+    {
+        Ref<GUICore::IContext> context = GUICore::new_context();
         luassert_always(context);
-        GUI::FrameDesc frame_desc;
-        frame_desc.surface_size = Float2U(800.0f, 600.0f);
+        GUICore::FrameDesc frame_desc;
+        frame_desc.screen_size = Float2U(800.0f, 600.0f);
         frame_desc.framebuffer_size = UInt2U(800, 600);
         frame_desc.delta_time = 1.0f / 60.0f;
+        GA::GenerateContext generate_context;
+        generate_context.core_root_rect = RectF(0.0f, 0.0f, 800.0f, 600.0f);
+        auto build_frame = [&]() {
+            context->push_layer(1, Float2U(0.0f), "GUIAssetTest");
+            lupanic_if_failed(GA::generate(context.get(), asset.get(), generate_context));
+            context->pop_layer();
+            context->route_input();
+        };
+
         context->begin_frame(frame_desc);
-        lupanic_if_failed(GA::generate(context.get(), asset.get()));
-        auto desc = context->end_build();
-        lupanic_if_failed(desc);
-        luassert_always(!desc.get().layers.empty());
-        luassert_always(desc.get().nodes.size() >= 24);
-        lupanic_if_failed(context->submit(desc.get()));
+        build_frame();
+
+        GUICore::DebugInfo debug_info = context->dump_debug_info();
+        luassert_always(debug_info.layers.size() == 1);
+        luassert_always(debug_info.elements.size() >= 24);
+        luassert_always(debug_info.draw_commands.size() > 0);
+        luassert_always(has_debug_element(debug_info, "Custom external node"));
+        luassert_always(has_debug_element(debug_info, "Nested GUIAsset text"));
+        luassert_always(has_debug_element(debug_info, "Color Edit 3"));
+        luassert_always(has_debug_element(debug_info, "Color Edit 4"));
+        luassert_always(has_debug_element(debug_info, "Tab One Content"));
+        luassert_always(!has_debug_element(debug_info, "Tab Two Content"));
+        luassert_always(has_debug_element(debug_info, "View"));
+        luassert_always(!has_debug_element(debug_info, "Show Grid"));
+        luassert_always(has_debug_element(debug_info, "Open Asset Popup"));
+        luassert_always(!has_debug_element(debug_info, "Asset Popup Content"));
+        luassert_always(has_debug_element(debug_info, "Hover Asset Tooltip"));
+        luassert_always(!has_debug_element(debug_info, "Asset Tooltip Content"));
+
+        const GUICore::DebugElementInfo* header = find_debug_element(debug_info, "Header");
+        luassert_always(header);
+        luassert_always(header->rect.height < 200.0f);
+        luassert_always(header->rect.width <= 800.0f);
+
+        const GUICore::DebugElementInfo* canvas_child = find_debug_element(debug_info, "Canvas Child");
+        luassert_always(canvas_child);
+        assert_rect(*canvas_child, 32.0f, 110.0f, 180.0f, 28.0f);
+
+        const GUICore::DebugElementInfo* first_index_cell = find_debug_element(debug_info, "Row 0");
+        const GUICore::DebugElementInfo* first_name_cell = find_debug_element(debug_info, "Table row 0");
+        const GUICore::DebugElementInfo* second_index_cell = find_debug_element(debug_info, "Row 1");
+        luassert_always(first_index_cell);
+        luassert_always(first_name_cell);
+        luassert_always(second_index_cell);
+        assert_rect(*first_index_cell, 0.0f, 202.0f, 96.0f, 24.0f);
+        assert_rect(*first_name_cell, 96.0f, 202.0f, 180.0f, 24.0f);
+        assert_rect(*second_index_cell, 0.0f, 226.0f, 96.0f, 24.0f);
+
+        const GUICore::DebugElementInfo* scroll_area = find_debug_element(debug_info, "Scroll Area");
+        const GUICore::DebugElementInfo* scroll_body = find_debug_element(debug_info, "Scrollable Body");
+        const GUICore::DebugElementInfo* combo = find_debug_element(debug_info, "Combo");
+        luassert_always(scroll_area);
+        luassert_always(scroll_body);
+        luassert_always(combo);
+        f32 scroll_body_initial_y = scroll_body->rect.offset_y;
+
+        Ref<GA::Node> combo_node = find_node_by_label(asset, "Combo");
+        luassert_always(combo_node);
+        luassert_always(runtime_i32(combo_node, Name("current_item"), -1) == 2);
+
+        context->begin_frame(frame_desc);
+        add_pointer_click(context.get(), debug_element_screen_point(debug_info, *combo, Float2U(12.0f)));
+        build_frame();
+
+        context->begin_frame(frame_desc);
+        build_frame();
+        debug_info = context->dump_debug_info();
+        luassert_always(debug_info.layers.size() == 2);
+        const GUICore::DebugElementInfo* combo_beta = find_debug_element(debug_info, "Beta");
+        luassert_always(combo_beta);
+
+        context->begin_frame(frame_desc);
+        add_pointer_click(context.get(), debug_element_screen_point(debug_info, *combo_beta, Float2U(12.0f)));
+        build_frame();
+        luassert_always(runtime_i32(combo_node, Name("current_item"), -1) == 2);
+
+        context->begin_frame(frame_desc);
+        build_frame();
+        luassert_always(runtime_i32(combo_node, Name("current_item"), -1) == 1);
+
+        context->begin_frame(frame_desc);
+        GUICore::InputEvent wheel;
+        wheel.type = GUICore::InputEventType::pointer_wheel;
+        wheel.position = Float2U(scroll_area->rect.offset_x + 8.0f, scroll_area->rect.offset_y + 8.0f);
+        wheel.wheel_delta = Float2U(0.0f, -8.0f);
+        context->add_input_event(wheel);
+        build_frame();
+
+        context->begin_frame(frame_desc);
+        build_frame();
+        debug_info = context->dump_debug_info();
+        scroll_body = find_debug_element(debug_info, "Scrollable Body");
+        luassert_always(scroll_body);
+        luassert_always(close_to(scroll_body->rect.offset_y, scroll_body_initial_y - 120.0f));
+        Ref<GA::Node> scroll_node = find_node_by_label(asset, "Scroll Area");
+        luassert_always(scroll_node);
+        object_t scroll_state_object = context->get_state(GUICore::make_state_id<GUI::CoreScrollViewState>(GA::node_core_id(*scroll_node.get())));
+        luassert_always(scroll_state_object);
+        GUI::CoreScrollViewState* scroll_state = cast_object<GUI::CoreScrollViewState>(scroll_state_object);
+        luassert_always(scroll_state && close_to(scroll_state->scroll.y, 120.0f));
+
+        const GUICore::DebugElementInfo* second_tab = find_debug_element(debug_info, "Tab Two");
+        luassert_always(second_tab);
+        context->begin_frame(frame_desc);
+        add_pointer_click(context.get(), debug_element_screen_point(debug_info, *second_tab, Float2U(12.0f)));
+        build_frame();
+
+        context->begin_frame(frame_desc);
+        build_frame();
+        debug_info = context->dump_debug_info();
+        luassert_always(!has_debug_element(debug_info, "Tab One Content"));
+        luassert_always(has_debug_element(debug_info, "Tab Two Content"));
+
+        const GUICore::DebugElementInfo* view_menu = find_debug_element(debug_info, "View");
+        luassert_always(view_menu);
+        Ref<GA::Node> show_grid_node = find_node_by_label(asset, "Show Grid");
+        luassert_always(show_grid_node);
+        luassert_always(!runtime_bool(show_grid_node, Name("checked"), false));
+
+        context->begin_frame(frame_desc);
+        add_pointer_click(context.get(), debug_element_screen_point(debug_info, *view_menu, Float2U(12.0f)));
+        build_frame();
+
+        context->begin_frame(frame_desc);
+        build_frame();
+        debug_info = context->dump_debug_info();
+        luassert_always(debug_info.layers.size() == 2);
+        const GUICore::DebugElementInfo* show_grid_item = find_debug_element(debug_info, "Show Grid");
+        luassert_always(show_grid_item);
+
+        context->begin_frame(frame_desc);
+        add_pointer_click(context.get(), debug_element_screen_point(debug_info, *show_grid_item, Float2U(36.0f, 13.0f)));
+        build_frame();
+        luassert_always(!runtime_bool(show_grid_node, Name("checked"), false));
+
+        context->begin_frame(frame_desc);
+        build_frame();
+        luassert_always(runtime_bool(show_grid_node, Name("checked"), false));
+
+        debug_info = context->dump_debug_info();
+        const GUICore::DebugElementInfo* tooltip_owner = find_debug_element(debug_info, "Hover Asset Tooltip");
+        luassert_always(tooltip_owner);
+        context->begin_frame(frame_desc);
+        context->add_input_event(pointer_event(GUICore::InputEventType::pointer_move,
+            debug_element_screen_point(debug_info, *tooltip_owner, Float2U(12.0f))));
+        build_frame();
+
+        context->begin_frame(frame_desc);
+        build_frame();
+        debug_info = context->dump_debug_info();
+        luassert_always(debug_info.layers.size() == 2);
+        luassert_always(has_debug_element(debug_info, "Asset Tooltip Content"));
+
+        const GUICore::DebugElementInfo* popup_trigger = find_debug_element(debug_info, "Open Asset Popup");
+        luassert_always(popup_trigger);
+        context->begin_frame(frame_desc);
+        add_pointer_click(context.get(), debug_element_screen_point(debug_info, *popup_trigger, Float2U(12.0f)));
+        build_frame();
+
+        context->begin_frame(frame_desc);
+        build_frame();
+        debug_info = context->dump_debug_info();
+        luassert_always(debug_info.layers.size() == 2);
+        luassert_always(has_debug_element(debug_info, "Asset Popup Content"));
     }
 
     static void run_gui_asset_tests()
@@ -384,7 +759,7 @@ namespace Luna
         test_node_indexing_and_mutation(asset);
         test_serialization_and_file_io(*asset.get());
         test_referred_assets(owner_handle, nested_handle, asset);
-        test_generate(asset);
+        test_generate_core(asset);
     }
 }
 
@@ -396,6 +771,7 @@ int luna_main(int, const char**)
         module_rhi(),
         module_font(),
         module_vg(),
+        GUICore::module_gui_core(),
         GUI::module_gui(),
         module_asset(),
         module_variant_utils(),

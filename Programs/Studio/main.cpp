@@ -18,7 +18,7 @@
 #include <Luna/RG/RG.hpp>
 #include <Luna/JobSystem/JobSystem.hpp>
 #include <Luna/ECS/ECS.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/GUI/Editor.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 
 #include <Luna/Window/AppMain.hpp>

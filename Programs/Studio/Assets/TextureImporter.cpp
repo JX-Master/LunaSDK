@@ -9,6 +9,7 @@
 */
 #include "Texture.hpp"
 #include "TextureImporter.hpp"
+#include <Luna/GUI/Editor.hpp>
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/File.hpp>
@@ -23,6 +24,92 @@
 
 namespace Luna
 {
+    namespace
+    {
+        GUICore::LayoutInput fixed_height(f32 height)
+        {
+            GUICore::LayoutInput layout;
+            layout.width.kind = GUICore::SizeKind::expand;
+            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.height.value = height;
+            return layout;
+        }
+
+        GUICore::LayoutInput fill_layout()
+        {
+            GUICore::LayoutInput layout;
+            layout.width.kind = GUICore::SizeKind::expand;
+            layout.height.kind = GUICore::SizeKind::expand;
+            return layout;
+        }
+
+        GUICore::LinearLayoutDesc vertical_layout(f32 gap = 6.0f)
+        {
+            GUICore::LinearLayoutDesc desc;
+            desc.axis = GUICore::LayoutAxis::y;
+            desc.gap = gap;
+            return desc;
+        }
+
+        RV select_texture_import_files(Vector<TextureFile>& files)
+        {
+            lutry
+            {
+                files.clear();
+                Window::FileDialogFilter filter;
+                filter.name = "Image File";
+                const c8* exts[] = {"jpg", "jpeg", "png", "tga", "bmp", "psd", "gif", "hdr", "pic", "dds"};
+                filter.extensions = {exts, 10};
+                lulet(img_paths, Window::open_file_dialog("Select Source File", {&filter, 1}, Path(), Window::FileDialogFlag::multi_select));
+                for(auto& img_path : img_paths)
+                {
+                    TextureFile file;
+                    lulet(img_file, open_file(img_path.encode(PathSeparator::system_preferred).c_str(),
+                        FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing));
+                    luset(file.m_file_data, load_file_data(img_file));
+                    if(img_path.extension() == "dds")
+                    {
+                        file.m_type = TextureFileType::dds;
+                        luset(file.m_dds_desc, Image::read_dds_image_file_desc(file.m_file_data.data(), file.m_file_data.size()));
+                    }
+                    else
+                    {
+                        file.m_type = TextureFileType::image;
+                        luset(file.m_desc, Image::read_image_file_desc(file.m_file_data.data(), file.m_file_data.size()));
+                        file.m_prefiler_type = TexturePrefilerType::normal;
+                    }
+                    file.m_path = img_path;
+                    img_path.remove_extension();
+                    file.m_asset_name = img_path.back().c_str();
+                    files.push_back(move(file));
+                }
+            }
+            lucatchret;
+            return ok;
+        }
+
+        const c8* print_image_format(Image::ImageFormat format)
+        {
+            switch(format)
+            {
+                case Image::ImageFormat::r8_unorm: return "R8 UNORM";
+                case Image::ImageFormat::r16_unorm: return "R16 UNORM";
+                case Image::ImageFormat::r32_float: return "R32 FLOAT";
+                case Image::ImageFormat::rg8_unorm: return "RG8 UNORM";
+                case Image::ImageFormat::rg16_unorm: return "RG16 UNORM";
+                case Image::ImageFormat::rg32_float: return "RG32 FLOAT";
+                case Image::ImageFormat::rgb8_unorm: return "RGB8 UNORM";
+                case Image::ImageFormat::rgb16_unorm: return "RGB16 UNORM";
+                case Image::ImageFormat::rgb32_float: return "RGB32 FLOAT";
+                case Image::ImageFormat::rgba8_unorm: return "RGBA8 UNORM";
+                case Image::ImageFormat::rgba16_unorm: return "RGBA16 UNORM";
+                case Image::ImageFormat::rgba32_float: return "RGBA32 FLOAT";
+                default: break;
+            }
+            return "Unknown";
+        }
+    }
+
     RV TextureImporter::init()
     {
         using namespace RHI;
@@ -466,185 +553,142 @@ namespace Luna
         return "unknown";
     }
 
-    void TextureImporter::on_render(GUI::IContext* context)
+    void TextureImporter::on_render(GUICore::IContext* context, const GUICore::LayoutInput& layout)
     {
-        char title[32];
-        snprintf(title, 32, "Texture Importer###%d", (u32)(usize)this);
-
-        if(!m_open) return;
-
-        GUI::begin_window(context, title, &m_open, GUI::Size::fixed(720.0f, 780.0f));
-        if (GUI::is_item_clicked(GUI::text_button(context, "Select Source File")))
+        if(!m_open)
         {
-            lutry
+            return;
+        }
+        context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
+        GUI::DockPanelStyle panel_style;
+        panel_style.min_floating_size = Float2U(520.0f, 420.0f);
+        GUICore::ElementHandle panel;
+        if(!GUI::begin_dock_panel(context, context->make_id("texture_importer"), "Texture Importer", &m_open,
+            panel_style, layout, &panel))
+        {
+            context->pop_data_scope();
+            return;
+        }
+
+        GUICore::ElementHandle select_source = GUI::text_button(context, context->make_id("select_source"),
+            "Select Source File", fixed_height(30.0f));
+        if(GUI::is_item_clicked(context, select_source))
+        {
+            RV r = select_texture_import_files(m_files);
+            if(failed(r) && r.errcode() != BasicError::interrupted())
             {
-                m_files.clear();
-                Window::FileDialogFilter filter;
-                filter.name = "Image File";
-                const c8* exts[] = {"jpg", "jpeg", "png", "tga", "bmp", "psd", "gif", "hdr", "pic", "dds"};
-                filter.extensions = {exts, 10};
-                lulet(img_paths, Window::open_file_dialog("Select Source File", {&filter, 1}, Path(), Window::FileDialogFlag::multi_select));
-                for(auto& img_path : img_paths)
-                {
-                    // Open file.
-                    TextureFile file;
-                    lulet(img_file, open_file(img_path.encode(PathSeparator::system_preferred).c_str(),
-                        FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing));
-                    luset(file.m_file_data, load_file_data(img_file));
-                    if(img_path.extension() == "dds")
-                    {
-                        file.m_type = TextureFileType::dds;
-                        luset(file.m_dds_desc, Image::read_dds_image_file_desc(file.m_file_data.data(), file.m_file_data.size()));
-                    }
-                    else
-                    {
-                        file.m_type = TextureFileType::image;
-                        luset(file.m_desc, Image::read_image_file_desc(file.m_file_data.data(), file.m_file_data.size()));
-                        file.m_prefiler_type = TexturePrefilerType::normal;
-                    }
-                    file.m_path = img_path;
-                    img_path.remove_extension();
-                    file.m_asset_name = img_path.back().c_str();
-                    m_files.push_back(move(file));
-                }
-            }
-            lucatch
-            {
-                if (luerr != BasicError::interrupted())
-                {
-                    auto _ = Window::message_box(explain(luerr), "Failed to import texture",
-                        Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                }
+                auto _ = Window::message_box(explain(r.errcode()), "Failed to import texture",
+                    Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
                 m_files.clear();
             }
         }
 
         if(m_files.empty())
         {
-            GUI::text(context, "No image file selected.");
+            GUI::text(context, context->make_id("empty"), "No image file selected.", fixed_height(26.0f));
         }
         else
         {
-            if(GUI::is_item_clicked(GUI::text_button(context, "Import All")))
+            GUICore::ElementHandle import_all = GUI::text_button(context, context->make_id("import_all"), "Import All",
+                fixed_height(30.0f));
+            if(GUI::is_item_clicked(context, import_all))
             {
                 for(auto& file : m_files)
                 {
                     if(!file.m_asset_name.empty())
                     {
                         import_texture_asset(m_create_dir, file);
-                    }    
+                    }
                 }
             }
-            GUI::begin_scroll_view(context, "Texture Importer Content", GUI::Size::fixed(704.0f, 700.0f));
+
+            GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, context->make_id("scroll"),
+                "Texture Importer Content", fill_layout());
+            GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"),
+                "Texture Importer Content", fill_layout());
             for(usize i = 0; i < m_files.size(); ++i)
             {
                 auto& file = m_files[i];
-                GUI::push_id(context, i);
-                GUI::text(context, file.m_path.encode().c_str());
-                GUI::text(context, "Texture Information:");
+                context->push_data_scope(context->make_id((GUICore::id_t)i));
+                GUI::text(context, context->make_id("path"), file.m_path.encode().c_str(), fixed_height(24.0f));
+                GUI::text(context, context->make_id("info_label"), "Texture Information:", fixed_height(24.0f));
                 if(file.m_type == TextureFileType::image)
                 {
                     String width_text;
                     String height_text;
+                    String format_text;
                     strprintf(width_text, "Width: %u", file.m_desc.width);
                     strprintf(height_text, "Height: %u", file.m_desc.height);
-                    GUI::text(context, width_text.c_str());
-                    GUI::text(context, height_text.c_str());
-                    const char* fmt = nullptr;
-                    switch (file.m_desc.format)
-                    {
-                    case Image::ImageFormat::r8_unorm:
-                        fmt = "R8 UNORM"; break;
-                    case Image::ImageFormat::r16_unorm:
-                        fmt = "R16 UNORM"; break;
-                    case Image::ImageFormat::r32_float:
-                        fmt = "R32 FLOAT"; break;
-                    case Image::ImageFormat::rg8_unorm:
-                        fmt = "RG8 UNORM"; break;
-                    case Image::ImageFormat::rg16_unorm:
-                        fmt = "RG16 UNORM"; break;
-                    case Image::ImageFormat::rg32_float:
-                        fmt = "RG32 FLOAT"; break;
-                    case Image::ImageFormat::rgb8_unorm:
-                        fmt = "RGB8 UNORM"; break;
-                    case Image::ImageFormat::rgb16_unorm:
-                        fmt = "RGB16 UNORM"; break;
-                    case Image::ImageFormat::rgb32_float:
-                        fmt = "RGB32 FLOAT"; break;
-                    case Image::ImageFormat::rgba8_unorm:
-                        fmt = "RGBA8 UNORM"; break;
-                    case Image::ImageFormat::rgba16_unorm:
-                        fmt = "RGBA16 UNORM"; break;
-                    case Image::ImageFormat::rgba32_float:
-                        fmt = "RGBA32 FLOAT"; break;
-                    default:
-                        lupanic();
-                        break;
-                    }
-                    String format_text;
-                    strprintf(format_text, "Format: %s", fmt);
-                    GUI::text(context, format_text.c_str());
+                    strprintf(format_text, "Format: %s", print_image_format(file.m_desc.format));
+                    GUI::text(context, context->make_id("width"), width_text.c_str(), fixed_height(22.0f));
+                    GUI::text(context, context->make_id("height"), height_text.c_str(), fixed_height(22.0f));
+                    GUI::text(context, context->make_id("format"), format_text.c_str(), fixed_height(22.0f));
                 }
                 else if(file.m_type == TextureFileType::dds)
                 {
+                    const c8* dimension = "Unknown Texture";
                     switch(file.m_dds_desc.dimension)
                     {
-                        case Image::DDSDimension::tex1d:
-                            GUI::text(context, "1D Texture");
-                            break;
-                        case Image::DDSDimension::tex2d:
-                            GUI::text(context, "2D Texture");
-                            break;
-                        case Image::DDSDimension::tex3d:
-                            GUI::text(context, "3D Texture");
-                            break;
-                        default: lupanic();
+                        case Image::DDSDimension::tex1d: dimension = "1D Texture"; break;
+                        case Image::DDSDimension::tex2d: dimension = "2D Texture"; break;
+                        case Image::DDSDimension::tex3d: dimension = "3D Texture"; break;
+                        default: break;
                     }
                     String width_text;
                     String height_text;
                     String depth_text;
                     String mips_text;
                     String array_text;
+                    String format_text;
                     strprintf(width_text, "Width: %u", file.m_dds_desc.width);
                     strprintf(height_text, "Height: %u", file.m_dds_desc.height);
                     strprintf(depth_text, "Depth: %u", file.m_dds_desc.depth);
                     strprintf(mips_text, "Mips: %u", file.m_dds_desc.mip_levels);
                     strprintf(array_text, "Array Size: %u", file.m_dds_desc.array_size);
-                    GUI::text(context, width_text.c_str());
-                    GUI::text(context, height_text.c_str());
-                    GUI::text(context, depth_text.c_str());
-                    GUI::text(context, mips_text.c_str());
-                    GUI::text(context, array_text.c_str());
-                    const char* fmt = print_dds_format(file.m_dds_desc.format);
-                    String format_text;
-                    strprintf(format_text, "Format: %s", fmt);
-                    GUI::text(context, format_text.c_str());
+                    strprintf(format_text, "Format: %s", print_dds_format(file.m_dds_desc.format));
+                    GUI::text(context, context->make_id("dimension"), dimension, fixed_height(22.0f));
+                    GUI::text(context, context->make_id("width"), width_text.c_str(), fixed_height(22.0f));
+                    GUI::text(context, context->make_id("height"), height_text.c_str(), fixed_height(22.0f));
+                    GUI::text(context, context->make_id("depth"), depth_text.c_str(), fixed_height(22.0f));
+                    GUI::text(context, context->make_id("mips"), mips_text.c_str(), fixed_height(22.0f));
+                    GUI::text(context, context->make_id("array"), array_text.c_str(), fixed_height(22.0f));
+                    GUI::text(context, context->make_id("format"), format_text.c_str(), fixed_height(22.0f));
                 }
-                GUI::text(context, "Import Settings:");
-                GUI::input_text(context, "Asset Name", file.m_asset_name);
+
+                GUI::text(context, context->make_id("settings_label"), "Import Settings:", fixed_height(24.0f));
+                GUI::text(context, context->make_id("asset_name_label"), "Asset Name", fixed_height(20.0f));
+                GUI::input_text(context, context->make_id("asset_name"), file.m_asset_name, fixed_height(28.0f));
                 if(file.m_type == TextureFileType::image)
                 {
                     i32 import_type = (i32)file.m_prefiler_type;
                     const c8* import_options[] = {"Texture", "Environment Map"};
-                    GUI::combo(context, "Import Type", &import_type, Span<const c8*>(import_options, 2));
+                    GUI::combo(context, context->make_id("import_type"), "Import Type", &import_type,
+                        Span<const c8*>(import_options, 2), fixed_height(30.0f));
                     file.m_prefiler_type = (TexturePrefilerType)import_type;
                 }
-                if (!file.m_asset_name.empty())
+                if(!file.m_asset_name.empty())
                 {
                     String import_path;
-                    strprintf(import_path, "The texture will be imported as: %s%s", m_create_dir.encode().c_str(), file.m_asset_name.c_str());
-                    GUI::text(context, import_path.c_str());
-                    if (GUI::is_item_clicked(GUI::text_button(context, "Import")))
+                    strprintf(import_path, "The texture will be imported as: %s%s", m_create_dir.encode().c_str(),
+                        file.m_asset_name.c_str());
+                    GUI::text(context, context->make_id("import_path"), import_path.c_str(), fixed_height(24.0f));
+                    GUICore::ElementHandle import_button = GUI::text_button(context, context->make_id("import"),
+                        "Import", fixed_height(30.0f));
+                    if(GUI::is_item_clicked(context, import_button))
                     {
                         import_texture_asset(m_create_dir, file);
                     }
                 }
-                GUI::pop_id(context);
+                context->pop_data_scope();
             }
-            GUI::end_scroll_view(context);
+            lupanic_if_failed(GUI::end_v_layout(context, content, vertical_layout(6.0f)));
+            lupanic_if_failed(GUI::end_scroll_view(context, scroll));
         }
-        GUI::end_window(context);
+
+        GUI::end_dock_panel(context);
+        context->pop_data_scope();
     }
+
     void register_texture_importer()
     {
         AssetImporterDesc desc;

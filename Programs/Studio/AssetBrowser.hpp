@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "StudioHeader.hpp"
+#include <Luna/GUI/Editor.hpp>
 #include <Luna/Runtime/HashSet.hpp>
 #include "AssetBrowser.generated.hpp"
 namespace Luna
@@ -43,7 +44,6 @@ namespace Luna
         Name m_popup_asset;
         bool m_asset_popup_open = false;
         Float2U m_asset_popup_position = Float2U(0.0f);
-        GUI::ItemHandle m_asset_popup_handle;
         Name m_editing_asset_name;
         String m_asset_name_editing_buf;
         //----- End of States for asset popup menu -----
@@ -59,10 +59,10 @@ namespace Luna
 
         void change_path(const Path& path);
 
-        void render(GUI::IContext* context, bool* open);
+        void render(GUICore::IContext* context, bool* open);
 
     private:
-        void navbar(GUI::IContext* context, const RectF& rect);
-        void tile_context(GUI::IContext* context, const RectF& rect);
+        void navbar(GUICore::IContext* context);
+        void tile_context(GUICore::IContext* context);
     };
 }

@@ -8,11 +8,14 @@
 * @date 2023/11/3
 */
 #include "MemoryProfiler.hpp"
+#include <Luna/GUI/Editor.hpp>
 
 namespace Luna
 {
     namespace
     {
+        using MemoryHeapSnapshot = HashMap<Name, HashMap<Name, Pair<usize, usize>>>;
+
         String memory_size_text(usize size)
         {
             String ret;
@@ -29,6 +32,58 @@ namespace Luna
                 strprintf(ret, "%llu", (u64)size);
             }
             return ret;
+        }
+
+        MemoryHeapSnapshot make_memory_heap_snapshot(const HashMap<usize, MemoryProfiler::MemoryBlockInfo>& blocks)
+        {
+            MemoryHeapSnapshot heaps;
+            Name _default = "Default";
+            Name _unknown = "[Unknown]";
+            for(auto& b : blocks)
+            {
+                auto domain = b.second.domain;
+                if(!domain) domain = _default;
+                auto iter = heaps.find(domain);
+                if(iter == heaps.end())
+                {
+                    iter = heaps.insert(make_pair(domain, HashMap<Name, Pair<usize, usize>>())).first;
+                }
+                auto type = b.second.type;
+                if(!type) type = _unknown;
+                auto iter2 = iter->second.find(type);
+                if(iter2 == iter->second.end())
+                {
+                    iter2 = iter->second.insert(make_pair(type, make_pair(0, 0))).first;
+                }
+                iter2->second.first += b.second.size;
+                iter2->second.second += 1;
+            }
+            return heaps;
+        }
+
+        GUICore::LayoutInput fixed_height(f32 height)
+        {
+            GUICore::LayoutInput layout;
+            layout.width.kind = GUICore::SizeKind::expand;
+            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.height.value = height;
+            return layout;
+        }
+
+        GUICore::TableTrackDesc table_column(f32 width)
+        {
+            GUICore::TableTrackDesc track;
+            track.kind = GUICore::TableTrackSizeKind::pixels;
+            track.value = width;
+            return track;
+        }
+
+        GUICore::TableTrackDesc table_row(f32 height)
+        {
+            GUICore::TableTrackDesc track;
+            track.kind = GUICore::TableTrackSizeKind::pixels;
+            track.value = height;
+            return track;
         }
     }
 
@@ -70,84 +125,73 @@ namespace Luna
         if(iter == m_memory_blocks.end()) return;
         iter->second.domain = move(d);
     }
-    void MemoryProfiler::render(GUI::IContext* context)
+    void MemoryProfiler::render(GUICore::IContext* context, const GUICore::LayoutInput& layout)
     {
+        luassert(context);
         LockGuard guard(m_lock);
         m_snapshoting = true;
-        // Take snapshot.
         auto blocks = m_memory_blocks;
         m_snapshoting = false;
         guard.unlock();
-        // Domain -> Type -> Size/Count
-        HashMap<Name, HashMap<Name, Pair<usize, usize>>> heaps;
-        Name _default = "Default";
-        Name _unknown = "[Unknown]";
-        for(auto& b : blocks)
-        {
-            auto domain = b.second.domain;
-            if(!domain) domain = _default;
-            auto iter = heaps.find(domain);
-            if(iter == heaps.end())
-            {
-                iter = heaps.insert(make_pair(domain, HashMap<Name, Pair<usize, usize>>())).first;
-            }
-            auto type = b.second.type;
-            if(!type) type = _unknown;
-            auto iter2 = iter->second.find(type);
-            if(iter2 == iter->second.end())
-            {
-                iter2 = iter->second.insert(make_pair(type, make_pair(0, 0))).first;
-            }
-            iter2->second.first += b.second.size;
-            iter2->second.second += 1;
-        }
-        GUI::begin_window(context, "Memory Usages", GUI::Size::fixed(500.0f, 1000.0f));
-        GUI::begin_scroll_view(context, "Memory Usage List", GUI::Size::fixed(484.0f, 940.0f));
+
+        MemoryHeapSnapshot heaps = make_memory_heap_snapshot(blocks);
+        GUICore::id_t scope = context->make_id("memory_profiler");
+        context->push_data_scope(scope);
+        GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("root"), "Memory Usages", layout);
+        GUI::text(context, context->make_id("title"), "Memory Usages", fixed_height(28.0f));
+        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, context->make_id("scroll"), "Memory Usage List", fixed_height(940.0f));
+        GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"), "Memory Usage Content");
         for(auto& h : heaps)
         {
-            GUI::ItemHandle heap_header = GUI::collapsing_header(context, h.first.c_str());
-            if(GUI::get_item_state(heap_header, GUI::State::open()))
+            context->push_data_scope(context->make_id(h.first.c_str()));
+            if(GUI::collapsing_header(context, context->make_id("heap"), h.first.c_str()))
             {
-                GUI::TableDesc table;
-                table.style.padding = GUI::EdgeInsets::xy(8.0f, 4.0f);
-                table.style.border_size = 1.0f;
-                table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
-                table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.72f);
-                table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.17f, 0.72f);
-                table.style.row_separators = true;
-                table.style.column_separators = true;
-                table.style.resize_fixed_columns = true;
-                table.column_sizes.push_back(GUI::TableTrackSize::fixed(240.0f));
-                table.column_sizes.push_back(GUI::TableTrackSize::fixed(110.0f));
-                table.column_sizes.push_back(GUI::TableTrackSize::fixed(120.0f));
-                GUI::begin_table_layout(context, h.first.c_str(), table);
+                GUICore::LayoutInput table_layout;
+                table_layout.width.kind = GUICore::SizeKind::pixels;
+                table_layout.width.value = 484.0f;
+                table_layout.height.kind = GUICore::SizeKind::fit;
+                table_layout.margin = Float4U(0.0f, 4.0f, 0.0f, 8.0f);
+                GUICore::ElementHandle table = GUI::begin_table_layout(context, context->make_id("table"), h.first.c_str(), table_layout);
+                GUICore::TableTrackDesc columns[3] = {
+                    table_column(240.0f),
+                    table_column(110.0f),
+                    table_column(120.0f)
+                };
+                GUI::set_table_columns(context, Span<const GUICore::TableTrackDesc>(columns, 3));
+                GUI::set_table_gap(context, Float2U(1.0f, 1.0f));
+                GUI::set_table_cell_padding(context, Float4U(8.0f, 4.0f, 8.0f, 4.0f));
+                GUICore::TableTrackDesc row = table_row(28.0f);
+                if(GUI::begin_table_row(context, row))
                 {
-                    if(GUI::begin_table_row(context))
+                    GUI::text(context, context->make_id("header_type"), "Type");
+                    GUI::text(context, context->make_id("header_size"), "Size");
+                    GUI::text(context, context->make_id("header_count"), "Allocation Count");
+                    GUI::end_table_row(context);
+                }
+                for(auto& a : h.second)
+                {
+                    context->push_data_scope(context->make_id(a.first.c_str()));
+                    if(GUI::begin_table_row(context, row))
                     {
-                        GUI::text(context, "Type");
-                        GUI::text(context, "Size");
-                        GUI::text(context, "Allocation Count");
+                        String count_text;
+                        strprintf(count_text, "%llu", (u64)a.second.second);
+                        GUI::text(context, context->make_id("type"), a.first.c_str());
+                        GUI::text(context, context->make_id("size"), memory_size_text(a.second.first).c_str());
+                        GUI::text(context, context->make_id("count"), count_text.c_str());
                         GUI::end_table_row(context);
                     }
-                    for(auto& a : h.second)
-                    {
-                        if(GUI::begin_table_row(context))
-                        {
-                            String count_text;
-                            strprintf(count_text, "%llu", (u64)a.second.second);
-                            GUI::text(context, a.first.c_str());
-                            GUI::text(context, memory_size_text(a.second.first).c_str());
-                            GUI::text(context, count_text.c_str());
-                            GUI::end_table_row(context);
-                        }
-                    }
-                    GUI::end_table_layout(context);
+                    context->pop_data_scope();
                 }
+                lupanic_if_failed(GUI::end_table_layout(context, table));
             }
+            context->pop_data_scope();
         }
-        GUI::end_scroll_view(context);
-        GUI::end_window(context);
+        lupanic_if_failed(GUI::end_v_layout(context, content, GUICore::LinearLayoutDesc()));
+        lupanic_if_failed(GUI::end_scroll_view(context, scroll));
+        lupanic_if_failed(GUI::end_v_layout(context, root, GUICore::LinearLayoutDesc()));
+        context->pop_data_scope();
     }
+
     void MemoryProfilerCallback::operator()(const ProfilerEvent& event)
     {
         switch(event.id)

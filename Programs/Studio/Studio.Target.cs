@@ -40,6 +40,7 @@ public sealed class StudioTargetRules : TargetRules
             "Scene.hpp",
             "SceneRenderer.hpp",
             "SceneSettings.hpp",
+            "StudioEnv.hpp",
             "StudioHeader.hpp",
             "Transform.hpp");
         Sources("**.cpp");
@@ -69,6 +70,8 @@ public sealed class StudioTargetRules : TargetRules
             "RHI",
             "Image",
             "Font",
+            "VG",
+            "GUICore",
             "GUI",
             "GUIWindow",
             "Asset",

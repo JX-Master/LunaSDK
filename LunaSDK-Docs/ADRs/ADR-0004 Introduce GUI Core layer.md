@@ -19,8 +19,6 @@ This makes the module powerful, but it also creates architectural pressure. Even
 
 At the same time, GUIEditor and GUIAsset need stable design-time and runtime metadata. Visual editing should not depend on private widget implementation details, and custom user widgets should not require modifying the core GUI module. A lower-level GUI core layer can provide a small set of orthogonal primitives that are easier to inspect, test, record, replay, and compose.
 
-The external PanGui project validates a similar direction: a GUI core can be data-oriented, widget-free, immediate-mode friendly, and focused on layout, input, state, style, interaction, and draw command generation. LunaSDK should adapt this idea to its own runtime, reflection, VG, RHI, Font, Studio, and GUIEditor constraints.
-
 Since common GUI concepts will be moved into `GUICore`, the high-level immediate API does not need to remain a fully generic widget framework. Instead, LunaSDK should support multiple immediate API packages for different application domains. Each package can make stronger visual and interaction assumptions, keep its implementation smaller, and still interoperate with other packages because they all build the same `GUICore` element tree.
 
 ## Decision
