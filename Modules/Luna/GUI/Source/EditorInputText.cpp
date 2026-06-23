@@ -31,12 +31,12 @@ namespace Luna
             bool enabled = true, bool readonly = false)
         {
             GUICore::Interactable interactable;
-            interactable.hit_test = true;
-            interactable.hoverable = true;
-            interactable.activatable = true;
-            interactable.focusable = true;
-            interactable.disabled = !enabled;
-            interactable.readonly_ = readonly;
+            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+            set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::focusable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::disabled, !enabled);
+            set_flags(interactable.flags, GUICore::InteractableFlag::read_only, readonly);
             context->set_interactable(element, interactable);
         }
 

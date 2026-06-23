@@ -13,6 +13,6 @@ public sealed class GUITestTargetRules : TargetRules
         Kind = BuildTargetKind.Executable;
         Headers("Source/*.hpp");
         Sources("Source/**.cpp");
-        DependsOn("Runtime", "RHI", "Font", "VG", "GUICore", "GUI");
+        DependsOn("Runtime", "Window", "RHI", "RHIUtility", "Font", "VG", "GUICore", "GUI", "GUIWindow");
     }
 }

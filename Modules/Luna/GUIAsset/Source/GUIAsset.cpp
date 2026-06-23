@@ -500,7 +500,7 @@ namespace Luna
                 return;
             }
             GUICore::Interactable interactable = core_element->interactable;
-            interactable.disabled = true;
+            set_flags(interactable.flags, GUICore::InteractableFlag::disabled);
             context->set_interactable(element, interactable);
         }
 

@@ -16,6 +16,16 @@ namespace Luna
 {
     namespace GUI
     {
+        static bool valid_core_element(GUICore::IContext* context, const GUICore::ElementHandle& element)
+        {
+            if(!context || !element.id || element.generation != context->generation())
+            {
+                return false;
+            }
+            const GUICore::Element* core_element = context->get_element(element.index);
+            return core_element && core_element->id == element.id;
+        }
+
         static Ref<EditorLayoutPassState> layout_pass_state(GUICore::IContext* context)
         {
             id_t state_id = GUICore::make_state_id<EditorLayoutPassState>(0);
@@ -36,7 +46,7 @@ namespace Luna
         static RV set_deferred_layout_request(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             EditorLayoutRequest&& request)
         {
-            if(!context || !layout.id || layout.context != context->get_object() || layout.generation != context->generation())
+            if(!valid_core_element(context, layout))
             {
                 return BasicError::bad_arguments();
             }
@@ -242,7 +252,7 @@ namespace Luna
         static RV apply_scroll_view_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             const RectF& rect, GUICore::ScrollViewportLayoutDesc desc)
         {
-            if(!context || !layout.id || layout.context != context->get_object() || layout.generation != context->generation())
+            if(!valid_core_element(context, layout))
             {
                 return BasicError::bad_arguments();
             }
@@ -310,7 +320,7 @@ namespace Luna
                 {
                     continue;
                 }
-                GUICore::ElementHandle child_handle { element.context, child->id, child_index, element.generation };
+                GUICore::ElementHandle child_handle { child->id, child_index, element.generation };
                 RV r = layout_editor_subtree(context, state, child_handle);
                 if(failed(r))
                 {
@@ -521,9 +531,9 @@ namespace Luna
             apply_routed_scroll_input(context, id, *state);
             set_scroll_view_state(context, id, state);
             GUICore::Interactable interactable;
-            interactable.hit_test = true;
-            interactable.hoverable = true;
-            interactable.scrollable = true;
+            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+            set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::scrollable);
             context->set_interactable(element, interactable);
             return element;
         }
@@ -703,7 +713,7 @@ namespace Luna
         LUNA_GUI_API RV layout_editor_tree(GUICore::IContext* context, const GUICore::ElementHandle& root,
             const RectF& rect)
         {
-            if(!context || !root.id || root.context != context->get_object() || root.generation != context->generation())
+            if(!valid_core_element(context, root))
             {
                 return BasicError::bad_arguments();
             }

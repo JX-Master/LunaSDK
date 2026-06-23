@@ -29,11 +29,11 @@ namespace Luna
             bool enabled = true)
         {
             GUICore::Interactable interactable;
-            interactable.hit_test = true;
-            interactable.hoverable = true;
-            interactable.activatable = true;
-            interactable.focusable = true;
-            interactable.disabled = !enabled;
+            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+            set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::focusable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::disabled, !enabled);
             context->set_interactable(element, interactable);
         }
 

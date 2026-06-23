@@ -18,7 +18,7 @@ namespace Luna
         static const GUICore::Element* valid_element(GUICore::IContext* context, const GUICore::ElementHandle& handle)
         {
             if(!context || !handle.id || handle.index == GUICore::INVALID_ELEMENT ||
-                handle.context != context->get_object() || handle.generation != context->generation())
+                handle.generation != context->generation())
             {
                 return nullptr;
             }

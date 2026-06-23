@@ -21,3 +21,13 @@
 - Always ask for the user whether to draft a new ADR if new features are introduced or big feature changes are made. Bugfixes generally do not require a new ADR.
 - ADRs are placed in `LunaSDK-Docs/Manual/ADRs`. Read [ADR template](LunaSDK-Docs/ADRs/ADR-0001%20ADR%20template.md) first to know how to write a new ADR.
 - If a new ADR is required, write ADR and refer to it before writing real codes.
+
+## Documentation
+- Always ask for the user whether to draft new docs if new modules or features are implemented.
+- New docs are placed in LunaSDK-Docs/Drafts. Resource files referred by docs are placed in LunaSDK-Docs/Res. Docs are in Obsidian-specific markdown format.
+- One module can have multiple doc pages (markdown files), one page per feature. Prevent writing one big page for all features of one module. See docs of RHI module as an example.
+- The documentation should include the following contents, in order:
+    1. The designed functionality of the feature, like what this feature does, what problem this feature solves, and how it provides the function.
+    2. The concepts used by the feature. Concepts are used to describe parts that compose the feature, this may map to concrete types, functions, etc, and may also refer to higher level concepts.
+    3. The programming guide of every component of the feature, from feature initialization to shutdown.
+    4. When needed, provide code examples that describe the feature.

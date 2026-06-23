@@ -19,7 +19,7 @@ namespace Luna
         struct PerformanceCounters
         {
             //! Context generation of the frame represented by these counters.
-            u64 frame_generation = 0;
+            u32 frame_generation = 0;
             //! Number of layers in the frame.
             u32 layer_count = 0;
             //! Number of elements in the frame.
@@ -82,7 +82,7 @@ namespace Luna
             //! Related element ID, or zero when the pass is not tied to one element.
             id_t element = 0;
             //! Context generation when the pass was logged.
-            u64 frame_generation = 0;
+            u32 frame_generation = 0;
             //! Optional elapsed time in milliseconds.
             f64 duration_ms = 0.0;
             //! Optional human-readable details.
@@ -205,8 +205,8 @@ namespace Luna
             bool scrollable = false;
             //! Whether this element is disabled for interaction.
             bool disabled = false;
-            //! Whether this element is readonly.
-            bool readonly_ = false;
+            //! Whether this element is read-only.
+            bool read_only = false;
             //! Focus scope attached to this element.
             id_t focus_scope = 0;
             //! Payload types this element can provide as a drag-drop source.

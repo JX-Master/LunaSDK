@@ -412,7 +412,7 @@ namespace Luna
                 result.rect = child_rect;
                 result.clip_rect = desc.clip_children ? intersect_rect(child_rect, child_clip) : child_clip;
                 result.content_size = Float2U(child_rect.width, child_rect.height);
-                context->set_layout_result(ElementHandle { element.context, child->id, children[i], element.generation }, result);
+                context->set_layout_result(ElementHandle { child->id, children[i], element.generation }, result);
 
                 cursor += main + margin_end(child->layout.margin, main_axis);
                 if(i + 1 < children.size())
@@ -496,7 +496,7 @@ namespace Luna
                 result.rect = child_rect;
                 result.clip_rect = desc.clip_children ? intersect_rect(child_rect, child_clip) : child_clip;
                 result.content_size = Float2U(child_rect.width, child_rect.height);
-                context->set_layout_result(ElementHandle { element.context, child->id, children[i], element.generation }, result);
+                context->set_layout_result(ElementHandle { child->id, children[i], element.generation }, result);
 
                 measured_width = max(measured_width, (f32)(column + 1) * cell_width + (f32)column * desc.gap.x);
                 measured_height = max(measured_height, (f32)(row + 1) * cell_height + (f32)row * desc.gap.y);
@@ -546,7 +546,7 @@ namespace Luna
                 result.rect = child_rect;
                 result.clip_rect = desc.clip_children ? intersect_rect(child_rect, child_clip) : child_clip;
                 result.content_size = Float2U(child_rect.width, child_rect.height);
-                context->set_layout_result(ElementHandle { element.context, child->id, child_index, element.generation }, result);
+                context->set_layout_result(ElementHandle { child->id, child_index, element.generation }, result);
 
                 measured_width = max(measured_width, width + child->layout.margin.x + child->layout.margin.z);
                 measured_height = max(measured_height, height + child->layout.margin.y + child->layout.margin.w);
@@ -625,7 +625,7 @@ namespace Luna
                 result.rect = child_rect;
                 result.clip_rect = desc.clip_children ? intersect_rect(child_rect, child_clip) : child_clip;
                 result.content_size = Float2U(child_rect.width, child_rect.height);
-                context->set_layout_result(ElementHandle { element.context, child->id, child_index, element.generation }, result);
+                context->set_layout_result(ElementHandle { child->id, child_index, element.generation }, result);
 
                 measured_width = max(measured_width, child_rect.offset_x + child_rect.width - content_rect.offset_x);
                 measured_height = max(measured_height, child_rect.offset_y + child_rect.height - content_rect.offset_y);
@@ -678,7 +678,7 @@ namespace Luna
                 result.rect = child_rect;
                 result.clip_rect = desc.clip_children ? intersect_rect(child_rect, child_clip) : child_clip;
                 result.content_size = Float2U(child_rect.width, child_rect.height);
-                context->set_layout_result(ElementHandle { element.context, child->id, child_index, element.generation }, result);
+                context->set_layout_result(ElementHandle { child->id, child_index, element.generation }, result);
 
                 measured_width = max(measured_width, width + child->layout.margin.x + child->layout.margin.z);
                 measured_height = max(measured_height, height + child->layout.margin.y + child->layout.margin.w);
@@ -757,7 +757,7 @@ namespace Luna
                 result.rect = child_rect;
                 result.clip_rect = desc.clip_children ? intersect_rect(child_rect, child_clip) : child_clip;
                 result.content_size = Float2U(child_rect.width, child_rect.height);
-                context->set_layout_result(ElementHandle { element.context, child->id, child_index, element.generation }, result);
+                context->set_layout_result(ElementHandle { child->id, child_index, element.generation }, result);
             }
 
             LayoutResult parent_result;

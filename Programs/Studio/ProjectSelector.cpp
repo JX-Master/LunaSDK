@@ -202,9 +202,9 @@ namespace Luna
         GUICore::ElementHandle element = context->begin_element(id, Name("recent_projects_scroll"));
         context->set_layout(element, fixed_layout(rect.width, rect.height));
         GUICore::Interactable interactable;
-        interactable.hit_test = true;
-        interactable.hoverable = true;
-        interactable.scrollable = true;
+        set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+        set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
+        set_flags(interactable.flags, GUICore::InteractableFlag::scrollable);
         context->set_interactable(element, interactable);
         set_element_rect(context, element, rect);
         return element;

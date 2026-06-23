@@ -21,7 +21,7 @@ namespace Luna
         {
             ObjRef data;
             StateLifetime lifetime = StateLifetime::next_frame;
-            u64 last_touched_generation = 0;
+            u32 last_touched_generation = 0;
         };
 
         struct DragDropPayloadStorage
@@ -96,11 +96,11 @@ namespace Luna
             bool m_pointer_down[5] = {};
             bool m_key_down[256] = {};
             KeyModifierFlag m_key_modifiers = KeyModifierFlag::none;
-            u64 m_generation = 0;
+            u32 m_generation = 0;
             PerformanceCounters m_counters;
 
             virtual void begin_frame(const FrameDesc& desc) override;
-            virtual u64 generation() const override;
+            virtual u32 generation() const override;
             virtual FrameDesc get_frame_desc() const override;
             virtual Float2U get_pointer_position() const override;
             virtual Float2U get_pointer_delta() const override;

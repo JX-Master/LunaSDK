@@ -16,6 +16,16 @@ namespace Luna
 {
     namespace GUI
     {
+        static bool valid_core_element(GUICore::IContext* context, const GUICore::ElementHandle& element)
+        {
+            if(!context || !element.id || element.generation != context->generation())
+            {
+                return false;
+            }
+            const GUICore::Element* core_element = context->get_element(element.index);
+            return core_element && core_element->id == element.id;
+        }
+
         static GUICore::StyleValue style_value(GUICore::IContext* context, const Name& entry,
             const GUICore::StyleValue& default_value)
         {
@@ -167,7 +177,7 @@ namespace Luna
 
         static RV defer_menu_bar_layout(GUICore::IContext* context, const GUICore::ElementHandle& menu_bar)
         {
-            if(!context || !menu_bar.id || menu_bar.context != context->get_object() || menu_bar.generation != context->generation())
+            if(!valid_core_element(context, menu_bar))
             {
                 return BasicError::bad_arguments();
             }
@@ -199,11 +209,11 @@ namespace Luna
         static void set_menu_interactable(GUICore::IContext* context, const GUICore::ElementHandle& element, bool enabled)
         {
             GUICore::Interactable interactable;
-            interactable.hit_test = true;
-            interactable.hoverable = true;
-            interactable.activatable = true;
-            interactable.focusable = true;
-            interactable.disabled = !enabled;
+            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+            set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::focusable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::disabled, !enabled);
             context->set_interactable(element, interactable);
         }
 
@@ -311,7 +321,7 @@ namespace Luna
 
         LUNA_GUI_API RV layout_menu_bar(GUICore::IContext* context, const GUICore::ElementHandle& menu_bar, const RectF& rect)
         {
-            if(!context || !menu_bar.id || menu_bar.context != context->get_object() || menu_bar.generation != context->generation())
+            if(!valid_core_element(context, menu_bar))
             {
                 return BasicError::bad_arguments();
             }

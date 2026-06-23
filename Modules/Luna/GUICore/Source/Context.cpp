@@ -120,7 +120,7 @@ namespace Luna
             log_debug_pass(DebugPassKind::state, Name("gc_states"), Name("begin_frame"), 0, nullptr, m_counters.state_gc_ms);
         }
 
-        u64 Context::generation() const
+        u32 Context::generation() const
         {
             lutsassert();
             return m_generation;
@@ -278,7 +278,7 @@ namespace Luna
             m_elements.push_back(move(element));
             m_element_indices.insert(make_pair(id, index));
             m_element_stack.push_back(index);
-            return ElementHandle { get_object(), id, index, m_generation };
+            return ElementHandle { id, index, m_generation };
         }
 
         void Context::end_element()
@@ -290,7 +290,7 @@ namespace Luna
 
         Element* Context::mutable_element(const ElementHandle& element)
         {
-            if(element.context != get_object() || element.generation != m_generation || element.index >= m_elements.size())
+            if(!element.id || element.generation != m_generation || element.index >= m_elements.size())
             {
                 return nullptr;
             }
@@ -373,7 +373,7 @@ namespace Luna
             {
                 return ElementHandle();
             }
-            return ElementHandle { const_cast<Context*>(this)->get_object(), id, iter->second, m_generation };
+            return ElementHandle { id, iter->second, m_generation };
         }
 
         void Context::record_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command)
@@ -875,8 +875,8 @@ namespace Luna
 
         bool Context::point_hits_element(const Element& element, const Float2U& screen_position) const
         {
-            if((!element.interactable.hit_test && !element.interactable.blocks_pointer_input) ||
-                element.interactable.disabled || element.layer >= m_layers.size())
+            if((!has_flags(element.interactable, InteractableFlag::hit_test) && !has_flags(element.interactable, InteractableFlag::blocks_pointer_input)) ||
+                has_flags(element.interactable, InteractableFlag::disabled) || element.layer >= m_layers.size())
             {
                 return false;
             }
@@ -902,7 +902,7 @@ namespace Luna
 
         bool Context::element_stops_pointer_input(const Element& element) const
         {
-            return element.interactable.blocks_pointer_input ||
+            return has_flags(element.interactable, InteractableFlag::blocks_pointer_input) ||
                 element.interactable.pointer_input_propagation == PointerInputPropagation::stop;
         }
 
@@ -922,7 +922,7 @@ namespace Luna
                     }
                     if(point_hits_element(element, screen_position))
                     {
-                        return ElementHandle { const_cast<Context*>(this)->get_object(), element.id, element_index, m_generation };
+                        return ElementHandle { element.id, element_index, m_generation };
                     }
                 }
             }
@@ -947,13 +947,13 @@ namespace Luna
                     {
                         continue;
                     }
-                    if(element.interactable.hit_test && element_stops_pointer_input(element))
+                    if(has_flags(element.interactable, InteractableFlag::hit_test) && element_stops_pointer_input(element))
                     {
-                        return ElementHandle { const_cast<Context*>(this)->get_object(), element.id, element_index, m_generation };
+                        return ElementHandle { element.id, element_index, m_generation };
                     }
-                    if(element.interactable.blocks_pointer_input)
+                    if(has_flags(element.interactable, InteractableFlag::blocks_pointer_input))
                     {
-                        return ElementHandle { const_cast<Context*>(this)->get_object(), element.id, element_index, m_generation };
+                        return ElementHandle { element.id, element_index, m_generation };
                     }
                 }
             }
@@ -1026,7 +1026,7 @@ namespace Luna
 
         bool Context::element_can_focus(const Element& element) const
         {
-            return element.interactable.focusable && !element.interactable.disabled;
+            return has_flags(element.interactable, InteractableFlag::focusable) && !has_flags(element.interactable, InteractableFlag::disabled);
         }
 
         bool Context::element_has_drag_source_type(const Element& element, const Name& payload_type) const
@@ -1062,7 +1062,7 @@ namespace Luna
             const Element* element = find_element(element_id);
             while(element)
             {
-                if(element->interactable.scrollable && !element->interactable.disabled)
+                if(has_flags(element->interactable, InteractableFlag::scrollable) && !has_flags(element->interactable, InteractableFlag::disabled))
                 {
                     return element->id;
                 }
@@ -1105,7 +1105,7 @@ namespace Luna
                 return;
             }
             const Element* element = find_element(id);
-            if(element && element->interactable.activatable && !element->interactable.disabled && !element->interactable.readonly_)
+            if(element && has_flags(element->interactable, InteractableFlag::activatable) && !has_flags(element->interactable, InteractableFlag::disabled) && !has_flags(element->interactable, InteractableFlag::read_only))
             {
                 m_active_element = id;
             }
@@ -1130,7 +1130,7 @@ namespace Luna
         {
             lutsassert();
             const Element* element = get_element(source.index);
-            if(!element || element->id != source.id || source.generation != m_generation || source.context != get_object() ||
+            if(!element || element->id != source.id || source.generation != m_generation ||
                 !element_has_drag_source_type(*element, payload_type) || (data_size && !data))
             {
                 return BasicError::bad_arguments();
@@ -1173,7 +1173,7 @@ namespace Luna
             m_drag_drop.payload_view.data_size = m_drag_drop.data.size();
             auto iter = m_element_indices.find(m_drag_drop.source_id);
             m_drag_drop.payload_view.source = iter == m_element_indices.end() ?
-                ElementHandle() : ElementHandle { get_object(), m_drag_drop.source_id, iter->second, m_generation };
+                ElementHandle() : ElementHandle { m_drag_drop.source_id, iter->second, m_generation };
             m_drag_drop.payload_view.target = ElementHandle();
             m_drag_drop.payload_view.delivery = false;
             return &m_drag_drop.payload_view;
@@ -1201,7 +1201,7 @@ namespace Luna
                     {
                         if(element_has_drag_target_type(element, payload_type))
                         {
-                            return ElementHandle { const_cast<Context*>(this)->get_object(), element.id, element_index, m_generation };
+                            return ElementHandle { element.id, element_index, m_generation };
                         }
                         if(element_stops_pointer_input(element))
                         {
@@ -1235,7 +1235,7 @@ namespace Luna
             storage.data = m_drag_drop.data;
             auto source_iter = m_element_indices.find(m_drag_drop.source_id);
             storage.source = source_iter == m_element_indices.end() ?
-                ElementHandle() : ElementHandle { get_object(), m_drag_drop.source_id, source_iter->second, m_generation };
+                ElementHandle() : ElementHandle { m_drag_drop.source_id, source_iter->second, m_generation };
             storage.target = target;
             storage.delivery = true;
             m_drag_drop.deliveries.insert_or_assign(target.id, move(storage));
@@ -1244,7 +1244,8 @@ namespace Luna
         const DragDropPayload* Context::get_drag_drop_delivery(const ElementHandle& target, const Name& payload_type)
         {
             lutsassert();
-            if(target.context != get_object() || target.generation != m_generation || payload_type.empty())
+            const Element* element = get_element(target.index);
+            if(!element || element->id != target.id || target.generation != m_generation || payload_type.empty())
             {
                 return nullptr;
             }
@@ -1417,7 +1418,7 @@ namespace Luna
                 if(hit.id)
                 {
                     const Element* element = get_element(hit.index);
-                    if(element && element->interactable.hit_test && element->interactable.hoverable)
+                    if(element && has_flags(element->interactable, InteractableFlag::hit_test) && has_flags(element->interactable, InteractableFlag::hoverable))
                     {
                         m_hovered_element = hit.id;
                     }
@@ -1473,7 +1474,7 @@ namespace Luna
                     {
                         ElementHandle hit = hit_test_input_target(m_pointer_position);
                         const Element* element = get_element(hit.index);
-                        if(element && element->interactable.hit_test && !element->interactable.disabled)
+                        if(element && has_flags(element->interactable, InteractableFlag::hit_test) && !has_flags(element->interactable, InteractableFlag::disabled))
                         {
                             deliver_input_event(hit.id, event);
                         }
@@ -1482,13 +1483,13 @@ namespace Luna
                     {
                         ElementHandle hit = hit_test_input_target(m_pointer_position);
                         const Element* element = get_element(hit.index);
-                        if(element && element->interactable.hit_test && !element->interactable.disabled)
+                        if(element && has_flags(element->interactable, InteractableFlag::hit_test) && !has_flags(element->interactable, InteractableFlag::disabled))
                         {
-                            if(element->interactable.activatable && !element->interactable.readonly_)
+                            if(has_flags(element->interactable, InteractableFlag::activatable) && !has_flags(element->interactable, InteractableFlag::read_only))
                             {
                                 m_active_element = hit.id;
                             }
-                            if(element->interactable.focusable)
+                            if(has_flags(element->interactable, InteractableFlag::focusable))
                             {
                                 m_focused_element = hit.id;
                             }
@@ -1519,7 +1520,8 @@ namespace Luna
                         const Element* active_element = find_element(m_active_element);
                         deliver_input_event(m_active_element, event);
                         if(hit.id == m_active_element && active_element &&
-                            active_element->interactable.activatable && !active_element->interactable.readonly_)
+                            has_flags(active_element->interactable, InteractableFlag::activatable) &&
+                            !has_flags(active_element->interactable, InteractableFlag::read_only))
                         {
                             InteractionState& state = get_or_create_interaction(m_active_element);
                             state.clicked = true;
@@ -1547,7 +1549,7 @@ namespace Luna
                     {
                         ElementHandle hit = hit_test_input_target(m_pointer_position);
                         const Element* element = get_element(hit.index);
-                        if(element && element->interactable.hit_test)
+                        if(element && has_flags(element->interactable, InteractableFlag::hit_test))
                         {
                             deliver_input_event(hit.id, event);
                         }
@@ -1568,7 +1570,7 @@ namespace Luna
                     else
                     {
                         const Element* element = get_element(hit.index);
-                        if(element && element->interactable.hit_test)
+                        if(element && has_flags(element->interactable, InteractableFlag::hit_test))
                         {
                             deliver_input_event(hit.id, event);
                         }
@@ -1958,15 +1960,15 @@ namespace Luna
                 element_info.rect = element.layout_result.rect;
                 element_info.clip_rect = element.layout_result.clip_rect;
                 element_info.content_size = element.layout_result.content_size;
-                element_info.hit_test = element.interactable.hit_test;
-                element_info.blocks_pointer_input = element.interactable.blocks_pointer_input;
+                element_info.hit_test = has_flags(element.interactable, InteractableFlag::hit_test);
+                element_info.blocks_pointer_input = has_flags(element.interactable, InteractableFlag::blocks_pointer_input);
                 element_info.pointer_input_propagation = element.interactable.pointer_input_propagation;
-                element_info.hoverable = element.interactable.hoverable;
-                element_info.activatable = element.interactable.activatable;
-                element_info.focusable = element.interactable.focusable;
-                element_info.scrollable = element.interactable.scrollable;
-                element_info.disabled = element.interactable.disabled;
-                element_info.readonly_ = element.interactable.readonly_;
+                element_info.hoverable = has_flags(element.interactable, InteractableFlag::hoverable);
+                element_info.activatable = has_flags(element.interactable, InteractableFlag::activatable);
+                element_info.focusable = has_flags(element.interactable, InteractableFlag::focusable);
+                element_info.scrollable = has_flags(element.interactable, InteractableFlag::scrollable);
+                element_info.disabled = has_flags(element.interactable, InteractableFlag::disabled);
+                element_info.read_only = has_flags(element.interactable, InteractableFlag::read_only);
                 element_info.focus_scope = element.interactable.focus_scope;
                 element_info.drag_source_types = element.interactable.drag_source_types;
                 element_info.drag_target_types = element.interactable.drag_target_types;
@@ -2080,7 +2082,7 @@ namespace Luna
                     erase = true;
                 }
                 else if(iter->second.lifetime == StateLifetime::next_frame &&
-                    m_generation > iter->second.last_touched_generation + 1)
+                    (m_generation - iter->second.last_touched_generation) > 1)
                 {
                     erase = true;
                 }
@@ -2109,7 +2111,7 @@ namespace Luna
             m_counters.interactable_count = 0;
             for(const Element& element : m_elements)
             {
-                if(element.interactable.hit_test)
+                if(has_flags(element.interactable, InteractableFlag::hit_test))
                 {
                     ++m_counters.interactable_count;
                 }

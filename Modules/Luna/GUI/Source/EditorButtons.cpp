@@ -43,11 +43,11 @@ namespace Luna
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("button"));
             context->set_layout(element, layout);
             GUICore::Interactable interactable;
-            interactable.hit_test = true;
-            interactable.hoverable = true;
-            interactable.activatable = true;
-            interactable.focusable = true;
-            interactable.disabled = !enabled;
+            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+            set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::focusable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::disabled, !enabled);
             context->set_interactable(element, interactable);
 
             GUICore::InteractionState interaction = context->get_interaction_state(id);

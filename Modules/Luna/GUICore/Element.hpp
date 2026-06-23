@@ -81,26 +81,43 @@ namespace Luna
             pass_through
         };
 
+        struct Interactable;
+
+        //! Bit flags describing reusable input behavior attached to one element.
+        enum class InteractableFlag : u16
+        {
+            //! No interactable behavior.
+            none = 0x0000,
+            //! This element participates in hit testing.
+            hit_test = 0x0001,
+            //! This element blocks pointer hit testing from reaching lower layers or elements behind it.
+            //! @remark A blocking element does not receive input events unless @ref hit_test is also enabled.
+            blocks_pointer_input = 0x0002,
+            //! This element can become hovered.
+            hoverable = 0x0004,
+            //! This element can become active through pointer interaction.
+            activatable = 0x0008,
+            //! This element can receive keyboard focus.
+            focusable = 0x0010,
+            //! This element can receive pointer wheel events routed from descendant hit targets.
+            scrollable = 0x0020,
+            //! This element is disabled for interaction.
+            disabled = 0x0040,
+            //! This element is read-only.
+            read_only = 0x0080
+        };
+
+        //! Checks whether one or more interactable flags are set.
+        //! @param[in] interactable The interactable data to test.
+        //! @param[in] flags The flags to test.
+        //! @return Returns `true` if all flags in @p flags are set.
+        inline bool has_flags(const Interactable& interactable, InteractableFlag flags);
+
         //! Describes reusable input behavior attached to one element.
         struct Interactable
         {
-            //! Whether this element participates in hit testing.
-            bool hit_test = false;
-            //! Whether this element blocks pointer hit testing from reaching lower layers or elements behind it.
-            //! @remark A blocking element does not receive input events unless @ref hit_test is also enabled.
-            bool blocks_pointer_input = false;
-            //! Whether this element can become hovered.
-            bool hoverable = false;
-            //! Whether this element can become active through pointer interaction.
-            bool activatable = false;
-            //! Whether this element can receive keyboard focus.
-            bool focusable = false;
-            //! Whether this element can receive pointer wheel events routed from descendant hit targets.
-            bool scrollable = false;
-            //! Whether this element is disabled for interaction.
-            bool disabled = false;
-            //! Whether this element is readonly.
-            bool readonly_ = false;
+            //! Interactable behavior flags.
+            InteractableFlag flags = InteractableFlag::none;
             //! Controls whether pointer input can continue to lower elements after this element is hit.
             PointerInputPropagation pointer_input_propagation = PointerInputPropagation::stop;
             //! Optional focus scope ID.
@@ -110,6 +127,11 @@ namespace Luna
             //! Payload types this element can accept as a drag-drop target.
             Vector<Name> drag_target_types;
         };
+
+        inline bool has_flags(const Interactable& interactable, InteractableFlag flags)
+        {
+            return test_flags(interactable.flags, flags);
+        }
 
         //! Per-frame and cross-frame interaction state produced by GUI Core input routing.
         struct InteractionState
@@ -207,14 +229,12 @@ namespace Luna
         //! Handle returned by GUI Core element creation APIs.
         struct ElementHandle
         {
-            //! The context that created this handle.
-            object_t context = nullptr;
             //! Stable element ID.
             id_t id = 0;
             //! Element index in the current frame.
             u32 index = INVALID_ELEMENT;
             //! Context generation that produced this handle.
-            u64 generation = 0;
+            u32 generation = 0;
         };
     }
 }

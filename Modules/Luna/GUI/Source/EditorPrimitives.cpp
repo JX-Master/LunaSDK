@@ -93,10 +93,10 @@ namespace Luna
             GUICore::ElementHandle element = context->begin_element(id, Name("hit_box"));
             context->set_layout(element, layout);
             GUICore::Interactable interactable;
-            interactable.hit_test = true;
-            interactable.hoverable = true;
-            interactable.activatable = true;
-            interactable.focusable = true;
+            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+            set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::focusable);
             context->set_interactable(element, interactable);
             context->end_element();
             return element;

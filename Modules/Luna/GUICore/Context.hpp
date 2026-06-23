@@ -28,7 +28,7 @@ namespace Luna
 
             //! Gets the current context generation.
             //! @return Returns the generation value used to validate frame-local handles.
-            virtual u64 generation() const = 0;
+            virtual u32 generation() const = 0;
 
             //! Gets the frame description supplied to the latest @ref begin_frame call.
             //! @return Returns the current frame description.
@@ -235,7 +235,7 @@ namespace Luna
 
             //! Sets keyboard focus to one focusable element.
             //! @param[in] id The stable element ID. Passing zero clears focus.
-            //! @remark The target element must exist, be focusable and not disabled. Readonly elements can still receive focus.
+            //! @remark The target element must exist, be focusable and not disabled. Read-only elements can still receive focus.
             virtual void focus_element(id_t id) = 0;
 
             //! Gets the currently focused element ID.
@@ -244,7 +244,7 @@ namespace Luna
 
             //! Captures subsequent pointer movement and release events to one element.
             //! @param[in] id The element ID that should capture pointer input. Passing zero clears pointer capture.
-            //! @remark The target element must exist, be activatable, not disabled, and not readonly. Pointer capture
+            //! @remark The target element must exist, be activatable, not disabled, and not read-only. Pointer capture
             //! is reported as the element's active interaction state during input routing.
             virtual void capture_pointer(id_t id) = 0;
 

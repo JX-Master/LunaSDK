@@ -16,6 +16,16 @@ namespace Luna
 {
     namespace GUI
     {
+        static bool valid_core_element(GUICore::IContext* context, const GUICore::ElementHandle& element)
+        {
+            if(!context || !element.id || element.generation != context->generation())
+            {
+                return false;
+            }
+            const GUICore::Element* core_element = context->get_element(element.index);
+            return core_element && core_element->id == element.id;
+        }
+
         static GUICore::StyleValue style_value(GUICore::IContext* context, const Name& entry,
             const GUICore::StyleValue& default_value)
         {
@@ -29,10 +39,10 @@ namespace Luna
         static void set_basic_interactable(GUICore::IContext* context, const GUICore::ElementHandle& element)
         {
             GUICore::Interactable interactable;
-            interactable.hit_test = true;
-            interactable.hoverable = true;
-            interactable.activatable = true;
-            interactable.focusable = true;
+            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+            set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
+            set_flags(interactable.flags, GUICore::InteractableFlag::focusable);
             context->set_interactable(element, interactable);
         }
 
@@ -125,7 +135,7 @@ namespace Luna
 
         static RV defer_tab_bar_layout(GUICore::IContext* context, const GUICore::ElementHandle& tab_bar)
         {
-            if(!context || !tab_bar.id || tab_bar.context != context->get_object() || tab_bar.generation != context->generation())
+            if(!valid_core_element(context, tab_bar))
             {
                 return BasicError::bad_arguments();
             }
@@ -149,7 +159,7 @@ namespace Luna
             f32 font_size = style_value(context, Name("gui.editor.tab.font_size"), GUICore::style_f32(15.0f)).number.x;
             f32 close_width = close_button ? 20.0f : 0.0f;
             usize len = label ? strlen(label) : 0;
-            return max((f32)len * font_size * 0.52f + padding_x * 2.0f + close_width, 48.0f);
+            return max((f32)len * font_size * 0.68f + padding_x * 2.0f + close_width, 84.0f);
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_tab_bar(GUICore::IContext* context, GUICore::id_t id,
@@ -252,7 +262,7 @@ namespace Luna
 
         static RV finish_tab_bar_build(GUICore::IContext* context, const GUICore::ElementHandle& tab_bar)
         {
-            if(!context || !tab_bar.id || tab_bar.context != context->get_object() || tab_bar.generation != context->generation())
+            if(!valid_core_element(context, tab_bar))
             {
                 return BasicError::bad_arguments();
             }
@@ -294,11 +304,7 @@ namespace Luna
                         break;
                     }
                     u32 next = child_element->next_sibling;
-                    GUICore::ElementHandle child_handle;
-                    child_handle.context = context;
-                    child_handle.id = child_element->id;
-                    child_handle.index = child;
-                    child_handle.generation = context->generation();
+                    GUICore::ElementHandle child_handle { child_element->id, child, context->generation() };
                     GUICore::LayoutResult child_layout;
                     if(tab_header_contains(*state.get(), child_element->id))
                     {

@@ -111,6 +111,8 @@ namespace Luna
         }
 
         static GUICore::LayoutInput core_slider_with_input_text_layout();
+        static GUICore::LayoutInput core_slider_with_input_view_layout(const GUICore::LayoutInput& layout,
+            const RectF& rect, u8 count);
 
         static void core_sync_float_input_text(GUICore::IContext* context, SliderWithInputState& state,
             GUICore::id_t input_id, f32* value, u32 index, f32 min_value, f32 max_value)
@@ -187,7 +189,7 @@ namespace Luna
 
         static GUICore::ElementHandle core_slider_float_with_input_component(GUICore::IContext* context,
             GUICore::id_t id, const c8* label, SliderWithInputState& state, f32* value, u32 index,
-            f32 min_value, f32 max_value, const RectF& rect, const GUICore::LayoutInput& layout)
+            f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
         {
             GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label ? label : "slider_float_with_input", layout);
             GUI::slider_float(context, core_slider_with_input_id(id, "slider"), value ? value + index : nullptr,
@@ -196,13 +198,13 @@ namespace Luna
             core_sync_float_input_text(context, state, input_id, value, index, min_value, max_value);
             GUICore::LinearLayoutDesc row_desc;
             row_desc.gap = 8.0f;
-            lupanic_if_failed(GUI::end_h_layout(context, row, rect, row_desc));
+            lupanic_if_failed(GUI::end_h_layout(context, row, row_desc));
             return row;
         }
 
         static GUICore::ElementHandle core_slider_int_with_input_component(GUICore::IContext* context,
             GUICore::id_t id, const c8* label, SliderWithInputState& state, i32* value, u32 index,
-            i32 min_value, i32 max_value, const RectF& rect, const GUICore::LayoutInput& layout)
+            i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
         {
             GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label ? label : "slider_int_with_input", layout);
             GUI::slider_int(context, core_slider_with_input_id(id, "slider"), value ? value + index : nullptr,
@@ -211,8 +213,27 @@ namespace Luna
             core_sync_int_input_text(context, state, input_id, value, index, min_value, max_value);
             GUICore::LinearLayoutDesc row_desc;
             row_desc.gap = 8.0f;
-            lupanic_if_failed(GUI::end_h_layout(context, row, rect, row_desc));
+            lupanic_if_failed(GUI::end_h_layout(context, row, row_desc));
             return row;
+        }
+
+        static GUICore::LayoutInput core_slider_with_input_view_layout(const GUICore::LayoutInput& layout,
+            const RectF& rect, u8 count)
+        {
+            GUICore::LayoutInput r = layout;
+            if(count > 1)
+            {
+                f32 gap = 4.0f;
+                f32 row_height = max(rect.height, 30.0f);
+                f32 desired_height = row_height * (f32)count + gap * ((f32)count - 1.0f);
+                if(r.height.kind == GUICore::SizeKind::fit || r.height.kind == GUICore::SizeKind::fit_largest ||
+                    (r.height.kind == GUICore::SizeKind::pixels && r.height.value < desired_height))
+                {
+                    r.height.kind = GUICore::SizeKind::pixels;
+                    r.height.value = desired_height;
+                }
+            }
+            return r;
         }
 
         static GUICore::ElementHandle core_slider_float_with_input_view(GUICore::IContext* context, GUICore::id_t id,
@@ -224,26 +245,22 @@ namespace Luna
             core_resize_slider_with_input_state(*state, count, true);
             if(count <= 1)
             {
+                GUICore::LayoutInput view_layout = core_slider_with_input_view_layout(layout, rect, count);
                 return core_slider_float_with_input_component(context, id, label, *state, value, 0, min_value, max_value,
-                    rect, layout);
+                    view_layout);
             }
-            GUICore::ElementHandle column = GUI::begin_v_layout(context, id, label ? label : "slider_float_with_input", layout);
+            GUICore::LayoutInput view_layout = core_slider_with_input_view_layout(layout, rect, count);
+            GUICore::ElementHandle column = GUI::begin_v_layout(context, id, label ? label : "slider_float_with_input", view_layout);
             const c8* components[] = { "X", "Y", "Z", "W" };
-            f32 gap = 4.0f;
-            f32 row_height = count ? max((rect.height - gap * ((f32)count - 1.0f)) / (f32)count, 0.0f) : 0.0f;
             for(u32 i = 0; i < count; ++i)
             {
                 GUICore::id_t row_id = core_slider_with_input_id(id, "row", i);
-                RectF row_rect(rect.offset_x, rect.offset_y + (row_height + gap) * (f32)i, rect.width, row_height);
                 core_slider_float_with_input_component(context, row_id, components[i], *state, value, i,
-                    min_value, max_value, row_rect, core_slider_with_input_row_layout());
+                    min_value, max_value, core_slider_with_input_row_layout());
             }
-            GUICore::LayoutResult result;
-            result.rect = rect;
-            result.clip_rect = rect;
-            result.content_size = Float2U(rect.width, rect.height);
-            context->set_layout_result(column, result);
-            context->end_element();
+            GUICore::LinearLayoutDesc column_desc;
+            column_desc.gap = 4.0f;
+            lupanic_if_failed(GUI::end_v_layout(context, column, column_desc));
             return column;
         }
 
@@ -256,26 +273,22 @@ namespace Luna
             core_resize_slider_with_input_state(*state, count, false);
             if(count <= 1)
             {
+                GUICore::LayoutInput view_layout = core_slider_with_input_view_layout(layout, rect, count);
                 return core_slider_int_with_input_component(context, id, label, *state, value, 0, min_value, max_value,
-                    rect, layout);
+                    view_layout);
             }
-            GUICore::ElementHandle column = GUI::begin_v_layout(context, id, label ? label : "slider_int_with_input", layout);
+            GUICore::LayoutInput view_layout = core_slider_with_input_view_layout(layout, rect, count);
+            GUICore::ElementHandle column = GUI::begin_v_layout(context, id, label ? label : "slider_int_with_input", view_layout);
             const c8* components[] = { "X", "Y", "Z", "W" };
-            f32 gap = 4.0f;
-            f32 row_height = count ? max((rect.height - gap * ((f32)count - 1.0f)) / (f32)count, 0.0f) : 0.0f;
             for(u32 i = 0; i < count; ++i)
             {
                 GUICore::id_t row_id = core_slider_with_input_id(id, "row", i);
-                RectF row_rect(rect.offset_x, rect.offset_y + (row_height + gap) * (f32)i, rect.width, row_height);
                 core_slider_int_with_input_component(context, row_id, components[i], *state, value, i,
-                    min_value, max_value, row_rect, core_slider_with_input_row_layout());
+                    min_value, max_value, core_slider_with_input_row_layout());
             }
-            GUICore::LayoutResult result;
-            result.rect = rect;
-            result.clip_rect = rect;
-            result.content_size = Float2U(rect.width, rect.height);
-            context->set_layout_result(column, result);
-            context->end_element();
+            GUICore::LinearLayoutDesc column_desc;
+            column_desc.gap = 4.0f;
+            lupanic_if_failed(GUI::end_v_layout(context, column, column_desc));
             return column;
         }
 
