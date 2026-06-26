@@ -15,10 +15,33 @@ using namespace Luna;
 
 namespace
 {
+    constexpr u32 ROUTING_DEMO_NODE_COUNT = 10;
+    constexpr u32 ROUTING_DEMO_LAYER_COUNT = 2;
+    constexpr u32 ROUTING_DEMO_NO_PARENT = U32_MAX;
+
+    struct RoutingDemoNodeSetting
+    {
+        GUICore::InteractableFlag flags = GUICore::InteractableFlag::none;
+        GUICore::PointerInputPropagation propagation = GUICore::PointerInputPropagation::stop;
+    };
+
+    struct RoutingDemoNodeDesc
+    {
+        const c8* name;
+        u32 layer;
+        u32 parent;
+        RectF rect;
+        Float4U color;
+        RoutingDemoNodeSetting default_setting;
+    };
+
     struct CoreDemoState
     {
         bool option = true;
         bool readonly = false;
+        bool input_routing_initialized = false;
+        u32 selected_routing_node = 1;
+        RoutingDemoNodeSetting input_routing_nodes[ROUTING_DEMO_NODE_COUNT];
         f32 linear_gap = 8.0f;
         f32 grid_cell_width = 96.0f;
         f32 grid_cell_height = 64.0f;
@@ -32,6 +55,47 @@ namespace
         bool style_unset_text = false;
         bool capture_debug_timeline = false;
         GUICore::DebugFrameTimeline timeline;
+    };
+
+    RoutingDemoNodeSetting routing_setting(GUICore::InteractableFlag flags,
+        GUICore::PointerInputPropagation propagation = GUICore::PointerInputPropagation::stop)
+    {
+        RoutingDemoNodeSetting setting;
+        setting.flags = flags;
+        setting.propagation = propagation;
+        return setting;
+    }
+
+    const RoutingDemoNodeDesc ROUTING_DEMO_NODES[ROUTING_DEMO_NODE_COUNT] = {
+        { "Base Layer Root", 0, ROUTING_DEMO_NO_PARENT, RectF(0.0f, 0.0f, 620.0f, 330.0f), Float4U(0.08f, 0.11f, 0.15f, 0.94f),
+            routing_setting(GUICore::InteractableFlag::blocks_pointer_input) },
+        { "Left Panel", 0, 0, RectF(24.0f, 50.0f, 300.0f, 190.0f), Float4U(0.10f, 0.20f, 0.30f, 0.90f),
+            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable) },
+        { "Focusable Button", 0, 1, RectF(52.0f, 84.0f, 170.0f, 46.0f), Float4U(0.08f, 0.36f, 0.58f, 0.95f),
+            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable |
+                GUICore::InteractableFlag::activatable | GUICore::InteractableFlag::focusable) },
+        { "Clipped Child", 0, 1, RectF(206.0f, 172.0f, 170.0f, 72.0f), Float4U(0.38f, 0.22f, 0.12f, 0.88f),
+            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable |
+                GUICore::InteractableFlag::activatable) },
+        { "Input Blocker", 0, 0, RectF(364.0f, 72.0f, 190.0f, 94.0f), Float4U(0.34f, 0.11f, 0.16f, 0.72f),
+            routing_setting(GUICore::InteractableFlag::blocks_pointer_input) },
+        { "Pass-through Overlay", 0, 0, RectF(384.0f, 210.0f, 202.0f, 64.0f), Float4U(0.54f, 0.42f, 0.08f, 0.56f),
+            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable,
+                GUICore::PointerInputPropagation::pass_through) },
+        { "Floating Layer Root", 1, ROUTING_DEMO_NO_PARENT, RectF(0.0f, 0.0f, 360.0f, 210.0f), Float4U(0.08f, 0.10f, 0.14f, 0.92f),
+            routing_setting(GUICore::InteractableFlag::blocks_pointer_input) },
+        { "Floating Panel", 1, 6, RectF(32.0f, 42.0f, 260.0f, 122.0f), Float4U(0.12f, 0.17f, 0.30f, 0.92f),
+            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable) },
+        { "Top Button", 1, 7, RectF(62.0f, 76.0f, 160.0f, 44.0f), Float4U(0.04f, 0.40f, 0.65f, 0.96f),
+            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable |
+                GUICore::InteractableFlag::activatable | GUICore::InteractableFlag::focusable) },
+        { "Top Blocker", 1, 7, RectF(150.0f, 116.0f, 180.0f, 70.0f), Float4U(0.46f, 0.10f, 0.28f, 0.62f),
+            routing_setting(GUICore::InteractableFlag::blocks_pointer_input) }
+    };
+
+    const c8* ROUTING_DEMO_LAYER_NAMES[ROUTING_DEMO_LAYER_COUNT] = {
+        "Base Layer",
+        "Floating Layer"
     };
 
     GUICore::LayoutInput row_layout()
@@ -49,6 +113,290 @@ namespace
         Test::label_value(context, id, label, value);
     }
 
+    RectF intersect_local_rect(const RectF& a, const RectF& b)
+    {
+        f32 min_x = max(a.offset_x, b.offset_x);
+        f32 min_y = max(a.offset_y, b.offset_y);
+        f32 max_x = min(a.offset_x + a.width, b.offset_x + b.width);
+        f32 max_y = min(a.offset_y + a.height, b.offset_y + b.height);
+        return RectF(min_x, min_y, max(max_x - min_x, 0.0f), max(max_y - min_y, 0.0f));
+    }
+
+    GUICore::id_t routing_node_id(u32 node)
+    {
+        return Test::demo_id("core.input.routing.node", node);
+    }
+
+    u32 routing_node_index_from_id(GUICore::id_t id)
+    {
+        for(u32 i = 0; i < ROUTING_DEMO_NODE_COUNT; ++i)
+        {
+            if(routing_node_id(i) == id)
+            {
+                return i;
+            }
+        }
+        return U32_MAX;
+    }
+
+    void initialize_input_routing_state(CoreDemoState& state)
+    {
+        if(state.input_routing_initialized)
+        {
+            return;
+        }
+        for(u32 i = 0; i < ROUTING_DEMO_NODE_COUNT; ++i)
+        {
+            state.input_routing_nodes[i] = ROUTING_DEMO_NODES[i].default_setting;
+        }
+        state.input_routing_initialized = true;
+    }
+
+    void draw_element_line(GUICore::IContext* context, const GUICore::ElementHandle& element,
+        const Float2U& begin, const Float2U& end, const Float4U& color, f32 width)
+    {
+        GUICore::DrawCommand command;
+        command.type = GUICore::DrawCommandType::line;
+        command.rect_reference = GUICore::DrawCommandRectReference::element;
+        command.rect = RectF(begin.x, begin.y, 0.0f, 0.0f);
+        command.point1 = end;
+        command.color = color;
+        command.line_width = width;
+        context->draw_for_element(element, command);
+    }
+
+    void draw_element_outline(GUICore::IContext* context, const GUICore::ElementHandle& element,
+        const RectF& local_rect, const Float4U& color, f32 width)
+    {
+        if(local_rect.width <= 0.0f || local_rect.height <= 0.0f)
+        {
+            return;
+        }
+        Float2U p0(local_rect.offset_x, local_rect.offset_y);
+        Float2U p1(local_rect.offset_x + local_rect.width, local_rect.offset_y);
+        Float2U p2(local_rect.offset_x + local_rect.width, local_rect.offset_y + local_rect.height);
+        Float2U p3(local_rect.offset_x, local_rect.offset_y + local_rect.height);
+        draw_element_line(context, element, p0, p1, color, width);
+        draw_element_line(context, element, p1, p2, color, width);
+        draw_element_line(context, element, p2, p3, color, width);
+        draw_element_line(context, element, p3, p0, color, width);
+    }
+
+    void draw_element_background(GUICore::IContext* context, const GUICore::ElementHandle& element,
+        const Float4U& color, f32 radius = 4.0f)
+    {
+        GUICore::DrawCommand command;
+        command.type = GUICore::DrawCommandType::rounded_rect;
+        command.rect_reference = GUICore::DrawCommandRectReference::element;
+        command.rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+        command.color = color;
+        command.radius = radius;
+        context->draw_for_element(element, command);
+    }
+
+    void draw_element_label(GUICore::IContext* context, const GUICore::ElementHandle& element, const c8* label,
+        const Float4U& color = Float4U(0.94f, 0.96f, 0.98f, 1.0f))
+    {
+        GUICore::DrawCommand command;
+        command.type = GUICore::DrawCommandType::text;
+        command.rect_reference = GUICore::DrawCommandRectReference::element;
+        command.rect = RectF(8.0f, 4.0f, -16.0f, 22.0f);
+        command.text = label ? label : "";
+        command.color = color;
+        command.font_size = 13.0f;
+        context->draw_for_element(element, command);
+    }
+
+    void set_routing_interactable(GUICore::IContext* context, const GUICore::ElementHandle& element,
+        const RoutingDemoNodeSetting& setting)
+    {
+        GUICore::Interactable interactable;
+        interactable.flags = setting.flags;
+        interactable.pointer_input_propagation = setting.propagation;
+        context->set_interactable(element, interactable);
+    }
+
+    void build_routing_demo_node(GUICore::IContext* context, CoreDemoState& state, u32 node,
+        const RectF& parent_clip)
+    {
+        const RoutingDemoNodeDesc& desc = ROUTING_DEMO_NODES[node];
+        GUICore::ElementHandle element = context->begin_element(routing_node_id(node), Name(desc.name));
+        GUICore::LayoutInput layout;
+        layout.width.kind = GUICore::SizeKind::pixels;
+        layout.width.value = desc.rect.width;
+        layout.height.kind = GUICore::SizeKind::pixels;
+        layout.height.value = desc.rect.height;
+        context->set_layout(element, layout);
+
+        RectF clip = parent_clip.width > 0.0f || parent_clip.height > 0.0f ? intersect_local_rect(desc.rect, parent_clip) : desc.rect;
+        GUICore::LayoutResult result;
+        result.rect = desc.rect;
+        result.clip_rect = clip;
+        result.content_size = Float2U(desc.rect.width, desc.rect.height);
+        context->set_layout_result(element, result);
+        set_routing_interactable(context, element, state.input_routing_nodes[node]);
+
+        draw_element_background(context, element, desc.color);
+        draw_element_label(context, element, desc.name);
+        draw_element_outline(context, element, RectF(0.0f, 0.0f, desc.rect.width, desc.rect.height),
+            Float4U(0.08f, 0.86f, 1.0f, 0.95f), 1.5f);
+        RectF local_clip(clip.offset_x - desc.rect.offset_x, clip.offset_y - desc.rect.offset_y, clip.width, clip.height);
+        draw_element_outline(context, element, local_clip, Float4U(1.0f, 0.72f, 0.10f, 0.95f), 1.5f);
+
+        for(u32 i = 0; i < ROUTING_DEMO_NODE_COUNT; ++i)
+        {
+            if(ROUTING_DEMO_NODES[i].layer == desc.layer && ROUTING_DEMO_NODES[i].parent == node)
+            {
+                build_routing_demo_node(context, state, i, clip);
+            }
+        }
+        context->end_element();
+    }
+
+    void draw_routing_hit_overlay(GUICore::IContext* context, const GUICore::ElementHandle& hit)
+    {
+        if(routing_node_index_from_id(hit.id) == U32_MAX)
+        {
+            return;
+        }
+        const GUICore::Element* element = context->get_element(hit.index);
+        if(!element)
+        {
+            return;
+        }
+        draw_element_outline(context, hit, RectF(-3.0f, -3.0f, element->layout_result.rect.width + 6.0f,
+            element->layout_result.rect.height + 6.0f), Float4U(0.20f, 1.0f, 0.38f, 1.0f), 3.0f);
+    }
+
+    void build_routing_demo_layers(GUICore::IContext* context, CoreDemoState& state)
+    {
+        initialize_input_routing_state(state);
+        const Float2U layer_positions[ROUTING_DEMO_LAYER_COUNT] = {
+            Float2U(34.0f, 185.0f),
+            Float2U(330.0f, 155.0f)
+        };
+        for(u32 layer = 0; layer < ROUTING_DEMO_LAYER_COUNT; ++layer)
+        {
+            context->push_layer(Test::demo_id("core.input.routing.layer", layer), layer_positions[layer],
+                Name(ROUTING_DEMO_LAYER_NAMES[layer]));
+            for(u32 i = 0; i < ROUTING_DEMO_NODE_COUNT; ++i)
+            {
+                if(ROUTING_DEMO_NODES[i].layer == layer && ROUTING_DEMO_NODES[i].parent == ROUTING_DEMO_NO_PARENT)
+                {
+                    build_routing_demo_node(context, state, i, RectF(0.0f, 0.0f, 0.0f, 0.0f));
+                }
+            }
+            context->pop_layer();
+        }
+        draw_routing_hit_overlay(context, context->hit_test(context->get_pointer_position()));
+    }
+
+    const c8* routing_node_name_from_id(GUICore::id_t id)
+    {
+        u32 index = routing_node_index_from_id(id);
+        if(index != U32_MAX)
+        {
+            return ROUTING_DEMO_NODES[index].name;
+        }
+        return "(none)";
+    }
+
+    void set_flag_from_bool(GUICore::InteractableFlag& flags, GUICore::InteractableFlag flag, bool value)
+    {
+        set_flags(flags, flag, value);
+    }
+
+    void edit_routing_flag(GUICore::IContext* context, CoreDemoState& state, GUICore::InteractableFlag flag,
+        const c8* label, u32 row)
+    {
+        RoutingDemoNodeSetting& setting = state.input_routing_nodes[state.selected_routing_node];
+        bool value = test_flags(setting.flags, flag);
+        GUI::checkbox(context, Test::demo_id("core.input.routing.setting", row), label, &value, row_layout());
+        set_flag_from_bool(setting.flags, flag, value);
+    }
+
+    void build_routing_tree_node(GUICore::IContext* context, CoreDemoState& state, u32 node, u32 depth)
+    {
+        GUI::TreeNodeFlag flags = GUI::TreeNodeFlag::default_open;
+        bool leaf = true;
+        for(u32 i = 0; i < ROUTING_DEMO_NODE_COUNT; ++i)
+        {
+            if(ROUTING_DEMO_NODES[i].layer == ROUTING_DEMO_NODES[node].layer && ROUTING_DEMO_NODES[i].parent == node)
+            {
+                leaf = false;
+                break;
+            }
+        }
+        if(leaf)
+        {
+            set_flags(flags, GUI::TreeNodeFlag::leaf);
+        }
+        if(state.selected_routing_node == node)
+        {
+            set_flags(flags, GUI::TreeNodeFlag::selected);
+        }
+        GUICore::ElementHandle handle;
+        bool open = GUI::tree_node(context, Test::demo_id("core.input.routing.tree.node", node),
+            ROUTING_DEMO_NODES[node].name, flags, depth, row_layout(), &handle);
+        if(GUI::is_item_clicked(context, handle))
+        {
+            state.selected_routing_node = node;
+        }
+        if(open)
+        {
+            for(u32 i = 0; i < ROUTING_DEMO_NODE_COUNT; ++i)
+            {
+                if(ROUTING_DEMO_NODES[i].layer == ROUTING_DEMO_NODES[node].layer && ROUTING_DEMO_NODES[i].parent == node)
+                {
+                    build_routing_tree_node(context, state, i, depth + 1);
+                }
+            }
+        }
+    }
+
+    void build_routing_tree_view(GUICore::IContext* context, CoreDemoState& state)
+    {
+        add_text(context, Test::demo_id("core.input.routing.tree.title"), "Element Tree");
+        for(u32 layer = 0; layer < ROUTING_DEMO_LAYER_COUNT; ++layer)
+        {
+            if(GUI::tree_node(context, Test::demo_id("core.input.routing.tree.layer", layer),
+                ROUTING_DEMO_LAYER_NAMES[layer], GUI::TreeNodeFlag::default_open, 0, row_layout()))
+            {
+                for(u32 i = 0; i < ROUTING_DEMO_NODE_COUNT; ++i)
+                {
+                    if(ROUTING_DEMO_NODES[i].layer == layer && ROUTING_DEMO_NODES[i].parent == ROUTING_DEMO_NO_PARENT)
+                    {
+                        build_routing_tree_node(context, state, i, 1);
+                    }
+                }
+            }
+        }
+    }
+
+    void build_routing_inspector(GUICore::IContext* context, CoreDemoState& state)
+    {
+        add_text(context, Test::demo_id("core.input.routing.inspector.title"), "Selected Interactable");
+        u32 selected = min(state.selected_routing_node, ROUTING_DEMO_NODE_COUNT - 1);
+        state.selected_routing_node = selected;
+        char text[256];
+        snprintf(text, sizeof(text), "%s  id=%llu", ROUTING_DEMO_NODES[selected].name,
+            (unsigned long long)routing_node_id(selected));
+        add_text(context, Test::demo_id("core.input.routing.inspector.name"), text);
+        edit_routing_flag(context, state, GUICore::InteractableFlag::hit_test, "hit_test", 0);
+        edit_routing_flag(context, state, GUICore::InteractableFlag::blocks_pointer_input, "blocks_pointer_input", 1);
+        edit_routing_flag(context, state, GUICore::InteractableFlag::hoverable, "hoverable", 2);
+        edit_routing_flag(context, state, GUICore::InteractableFlag::activatable, "activatable", 3);
+        edit_routing_flag(context, state, GUICore::InteractableFlag::focusable, "focusable", 4);
+        edit_routing_flag(context, state, GUICore::InteractableFlag::scrollable, "scrollable", 5);
+        edit_routing_flag(context, state, GUICore::InteractableFlag::disabled, "disabled", 6);
+        edit_routing_flag(context, state, GUICore::InteractableFlag::read_only, "read_only", 7);
+        bool pass_through = state.input_routing_nodes[selected].propagation == GUICore::PointerInputPropagation::pass_through;
+        GUI::checkbox(context, Test::demo_id("core.input.routing.setting.pass"), "pointer_input_propagation = pass_through",
+            &pass_through, row_layout());
+        state.input_routing_nodes[selected].propagation = pass_through ?
+            GUICore::PointerInputPropagation::pass_through : GUICore::PointerInputPropagation::stop;
+    }
+
     void end_page_body(GUICore::IContext* context, const GUICore::ElementHandle& body, const GUICore::ElementHandle& scroll)
     {
         GUICore::LinearLayoutDesc body_desc;
@@ -60,47 +408,60 @@ namespace
 
     void build_input_page(GUICore::IContext* context, CoreDemoState& state)
     {
+        initialize_input_routing_state(state);
+        state.selected_routing_node = min(state.selected_routing_node, ROUTING_DEMO_NODE_COUNT - 1);
         GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("core.input.scroll"), "Input page", Test::fill_layout());
         GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.input.body"), "Input body", Test::fill_layout());
-        add_text(context, Test::demo_id("core.input.title"), "Input routing and interactable graph");
-        GUICore::ElementHandle button = GUI::text_button(context, Test::demo_id("core.input.button"), "Hover, click and focus me", Test::fill_width_layout(34.0f));
-        GUICore::ElementHandle readonly_button = GUI::text_button(context, Test::demo_id("core.input.readonly.visual"), "Readonly-style button state sample", Test::fill_width_layout(34.0f), !state.readonly);
-        (void)readonly_button;
-        GUI::checkbox(context, Test::demo_id("core.input.disabled.toggle"), "Disable the second button", &state.readonly, row_layout());
+        add_text(context, Test::demo_id("core.input.title"), "Input routing: layers, hierarchy, hit testing and interactable flags");
+        add_text(context, Test::demo_id("core.input.legend"), "Cyan outline = layout rect, amber outline = clip rect, green outline = current hit element.");
+        GUI::text(context, Test::demo_id("core.input.routing.canvas.placeholder"),
+            "Routing graph is drawn in two GUI Core layers above this reserved area.", Test::fill_width_layout(360.0f));
+        build_routing_demo_layers(context, state);
 
         char text[256];
         Float2U pointer = context->get_pointer_position();
         snprintf(text, sizeof(text), "x=%.1f y=%.1f inside=%s", pointer.x, pointer.y, context->is_pointer_inside() ? "yes" : "no");
         add_status(context, Test::demo_id("core.input.pointer"), "Pointer", text);
-        GUICore::InteractionState interaction = context->get_interaction_state(button.id);
-        snprintf(text, sizeof(text), "hovered=%s active=%s focused=%s clicked=%s double=%s",
-            interaction.hovered ? "yes" : "no", interaction.active ? "yes" : "no",
-            interaction.focused ? "yes" : "no", interaction.clicked ? "yes" : "no",
-            interaction.double_clicked ? "yes" : "no");
-        add_status(context, Test::demo_id("core.input.button.state"), "Button state", text);
+        GUICore::ElementHandle hit = context->hit_test(pointer);
+        GUICore::id_t routing_hit_id = routing_node_index_from_id(hit.id) == U32_MAX ? 0 : hit.id;
+        snprintf(text, sizeof(text), "%s  id=%llu", routing_node_name_from_id(routing_hit_id), (unsigned long long)routing_hit_id);
+        add_status(context, Test::demo_id("core.input.hit.test"), "Current hit", text);
         snprintf(text, sizeof(text), "focused=%llu captured=%llu",
             (unsigned long long)context->focused_element(), (unsigned long long)context->captured_element());
         add_status(context, Test::demo_id("core.input.focus.state"), "Focus/capture", text);
-        snprintf(text, sizeof(text), "delivered=%u routed=%u tab_down=%s primary_down=%s",
-            (u32)context->get_delivered_input_events(button.id).size(),
-            (u32)context->get_routed_input_events(button.id).size(),
+        GUICore::id_t selected_id = routing_node_id(state.selected_routing_node);
+        GUICore::InteractionState interaction = context->get_interaction_state(selected_id);
+        snprintf(text, sizeof(text), "hovered=%s active=%s focused=%s clicked=%s double=%s delivered=%u routed=%u",
+            interaction.hovered ? "yes" : "no", interaction.active ? "yes" : "no",
+            interaction.focused ? "yes" : "no", interaction.clicked ? "yes" : "no",
+            interaction.double_clicked ? "yes" : "no",
+            (u32)context->get_delivered_input_events(selected_id).size(),
+            (u32)context->get_routed_input_events(selected_id).size());
+        add_status(context, Test::demo_id("core.input.selected.state"), "Selected state", text);
+        snprintf(text, sizeof(text), "tab_down=%s primary_down=%s",
             context->is_key_down(KeyCode::tab) ? "yes" : "no",
             context->is_pointer_button_down(GUICore::PointerButton::left) ? "yes" : "no");
         add_status(context, Test::demo_id("core.input.routed.events"), "Delivered events", text);
-        GUICore::ElementHandle hit = context->hit_test(pointer);
-        snprintf(text, sizeof(text), "hit=%llu", (unsigned long long)hit.id);
-        add_status(context, Test::demo_id("core.input.hit.test"), "Hit test", text);
 
-        add_text(context, Test::demo_id("core.input.note"), "Try Tab/Shift+Tab and arrow keys after focusing a button.");
-        GUICore::ElementHandle focus_row = GUI::begin_h_layout(context, Test::demo_id("core.input.focus.row"), "Focus row",
-            Test::fill_width_layout(44.0f));
-        GUI::text_button(context, Test::demo_id("core.input.focus.a"), "Focus A", Test::fixed_layout(120.0f, 32.0f));
-        GUI::text_button(context, Test::demo_id("core.input.focus.b"), "Focus B", Test::fixed_layout(120.0f, 32.0f));
-        GUI::text_button(context, Test::demo_id("core.input.focus.c"), "Focus C", Test::fixed_layout(120.0f, 32.0f));
-        GUICore::LinearLayoutDesc focus_desc;
-        focus_desc.axis = GUICore::LayoutAxis::x;
-        focus_desc.gap = 8.0f;
-        lupanic_if_failed(GUI::end_h_layout(context, focus_row, focus_desc));
+        GUICore::ElementHandle editor_row = GUI::begin_h_layout(context, Test::demo_id("core.input.routing.editor.row"),
+            "Routing editor", Test::fill_width_layout(420.0f));
+        GUICore::ElementHandle tree_column = GUI::begin_v_layout(context, Test::demo_id("core.input.routing.tree.column"),
+            "Routing tree", Test::fixed_layout(360.0f, 410.0f));
+        build_routing_tree_view(context, state);
+        GUICore::LinearLayoutDesc column_desc;
+        column_desc.axis = GUICore::LayoutAxis::y;
+        column_desc.gap = 4.0f;
+        lupanic_if_failed(GUI::end_v_layout(context, tree_column, column_desc));
+
+        GUICore::ElementHandle inspector_column = GUI::begin_v_layout(context, Test::demo_id("core.input.routing.inspector.column"),
+            "Routing inspector", Test::fill_width_layout(410.0f));
+        build_routing_inspector(context, state);
+        lupanic_if_failed(GUI::end_v_layout(context, inspector_column, column_desc));
+
+        GUICore::LinearLayoutDesc editor_desc;
+        editor_desc.axis = GUICore::LayoutAxis::x;
+        editor_desc.gap = 16.0f;
+        lupanic_if_failed(GUI::end_h_layout(context, editor_row, editor_desc));
 
         end_page_body(context, body, scroll);
     }
