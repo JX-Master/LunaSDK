@@ -8,12 +8,14 @@
 * @date 2026/6/17
 */
 #pragma once
-#include "Base.hpp"
+#include "Input.hpp"
 
 namespace Luna
 {
     namespace GUICore
     {
+        struct IContext;
+
         //! Specifies how a size value should be interpreted by layout algorithms.
         enum class SizeKind : u8
         {
@@ -129,6 +131,65 @@ namespace Luna
             return test_flags(interactable.flags, flags);
         }
 
+        //! Controls how one element handles navigation input.
+        enum class NavigationMode : u8
+        {
+            //! Let GUI Core run its automatic navigation behavior.
+            automatic,
+            //! Consume the navigation input without moving focus or invoking callbacks.
+            none,
+            //! Invoke the element navigation callback.
+            callback
+        };
+
+        //! Describes one navigation request passed to a navigation callback.
+        struct NavigationRequest
+        {
+            //! Element that receives the navigation request.
+            id_t source = 0;
+            //! Original navigation input event kind.
+            InputEventType event_type = InputEventType::navigation_dpad;
+            //! Direction payload for @ref InputEventType::navigation_dpad requests.
+            NavigationDirection direction = NavigationDirection::right;
+            //! Move payload for @ref InputEventType::navigation_move requests.
+            NavigationMove move = NavigationMove::forward;
+            //! Original input event.
+            InputEvent event;
+        };
+
+        //! Called when one element receives a navigation request in @ref NavigationMode::callback mode.
+        //! @param[in] context The context that owns the source element.
+        //! @param[in] request The navigation request.
+        //! @param[in] userdata User data stored in @ref NavigationConfig.
+        //! @return Returns `true` if the callback handled the request. Returns `false` to consume it as a no-op.
+        //! @remark Call @ref IContext::navigate_default inside the callback to explicitly fall back to automatic behavior.
+        using NavigationCallback = bool(*)(IContext* context, const NavigationRequest& request, void* userdata);
+
+        //! Describes navigation input behavior attached to one element.
+        struct NavigationConfig
+        {
+            //! Behavior for @ref NavigationDirection::left.
+            NavigationMode left = NavigationMode::automatic;
+            //! Behavior for @ref NavigationDirection::right.
+            NavigationMode right = NavigationMode::automatic;
+            //! Behavior for @ref NavigationDirection::up.
+            NavigationMode up = NavigationMode::automatic;
+            //! Behavior for @ref NavigationDirection::down.
+            NavigationMode down = NavigationMode::automatic;
+            //! Behavior for @ref NavigationMove::forward.
+            NavigationMode forward = NavigationMode::automatic;
+            //! Behavior for @ref NavigationMove::backward.
+            NavigationMode backward = NavigationMode::automatic;
+            //! Behavior for @ref InputEventType::navigation_confirm.
+            NavigationMode confirm = NavigationMode::automatic;
+            //! Behavior for @ref InputEventType::navigation_back.
+            NavigationMode back = NavigationMode::automatic;
+            //! Callback used when the selected navigation mode is @ref NavigationMode::callback.
+            NavigationCallback callback = nullptr;
+            //! User data passed to @ref callback.
+            void* userdata = nullptr;
+        };
+
         //! Per-frame and cross-frame interaction state produced by GUI Core input routing.
         struct InteractionState
         {
@@ -197,6 +258,8 @@ namespace Luna
             LayoutResult layout_result;
             //! Optional interaction behavior.
             Interactable interactable;
+            //! Optional navigation behavior.
+            NavigationConfig navigation;
             //! First draw command emitted by this element.
             u32 first_draw_command = U32_MAX;
             //! Number of draw commands emitted by this element.

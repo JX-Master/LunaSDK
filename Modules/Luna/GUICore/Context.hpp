@@ -147,6 +147,16 @@ namespace Luna
             //! @param[in] interactable The interactable data to attach.
             virtual void set_interactable(const ElementHandle& element, const Interactable& interactable) = 0;
 
+            //! Sets navigation input behavior for an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @param[in] navigation The navigation behavior to attach.
+            virtual void set_navigation_config(const ElementHandle& element, const NavigationConfig& navigation) = 0;
+
+            //! Gets navigation input behavior for an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @return Returns the element navigation behavior. Invalid handles return default automatic behavior.
+            virtual NavigationConfig get_navigation_config(const ElementHandle& element) const = 0;
+
             //! Sets drag-drop source payload types for an element.
             //! @param[in] element The element handle returned by @ref begin_element.
             //! @param[in] types Payload types this source explicitly provides.
@@ -287,6 +297,12 @@ namespace Luna
             //! Gets the currently focused element ID.
             //! @return Returns the focused element ID, or zero when no element is focused.
             virtual id_t focused_element() const = 0;
+
+            //! Runs the default automatic navigation behavior for one request.
+            //! @param[in] request The navigation request to process.
+            //! @return Returns `true` if the request changed focus or produced the default action.
+            //! @remark Navigation callbacks can call this to explicitly fall back to GUI Core automatic behavior.
+            virtual bool navigate_default(const NavigationRequest& request) = 0;
 
             //! Captures subsequent pointer movement and release events to one element.
             //! @param[in] id The element ID that should capture pointer input. Passing zero clears pointer capture.

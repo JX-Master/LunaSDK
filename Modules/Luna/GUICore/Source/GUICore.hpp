@@ -122,6 +122,8 @@ namespace Luna
             virtual void set_layout(const ElementHandle& element, const LayoutInput& layout) override;
             virtual void set_layout_result(const ElementHandle& element, const LayoutResult& result) override;
             virtual void set_interactable(const ElementHandle& element, const Interactable& interactable) override;
+            virtual void set_navigation_config(const ElementHandle& element, const NavigationConfig& navigation) override;
+            virtual NavigationConfig get_navigation_config(const ElementHandle& element) const override;
             virtual void set_drag_drop_source_types(const ElementHandle& element, Span<const Name> types) override;
             virtual void set_drag_drop_target_types(const ElementHandle& element, Span<const Name> types) override;
             virtual void bind_style(const ElementHandle& element, const Name& style) override;
@@ -145,6 +147,7 @@ namespace Luna
             virtual Span<const RoutedInputEvent> get_routed_input_events(id_t id) override;
             virtual void focus_element(id_t id) override;
             virtual id_t focused_element() const override;
+            virtual bool navigate_default(const NavigationRequest& request) override;
             virtual void capture_pointer(id_t id) override;
             virtual void release_pointer_capture(id_t id = 0) override;
             virtual id_t captured_element() const override;
@@ -189,8 +192,9 @@ namespace Luna
             bool element_has_drag_target_type(const Element& element, const Name& payload_type) const;
             id_t focus_scope_of(id_t element_id) const;
             id_t scroll_target_of(id_t element_id) const;
-            void move_focus(bool reverse);
+            bool move_focus(bool reverse);
             bool move_focus_spatial(NavigationDirection direction);
+            bool navigate(const NavigationRequest& request);
             FontDesc resolve_font(const Name& id) const;
             RectF to_screen_rect(u32 layer_index, const RectF& rect) const;
             RectF to_vg_rect(const RectF& screen_rect) const;

@@ -325,6 +325,26 @@ namespace Luna
             }
         }
 
+        void Context::set_navigation_config(const ElementHandle& element, const NavigationConfig& navigation)
+        {
+            lutsassert();
+            if(Element* e = mutable_element(element))
+            {
+                e->navigation = navigation;
+            }
+        }
+
+        NavigationConfig Context::get_navigation_config(const ElementHandle& element) const
+        {
+            lutsassert();
+            if(!element.id || element.generation != m_generation || element.index >= m_elements.size())
+            {
+                return NavigationConfig();
+            }
+            const Element& e = m_elements[element.index];
+            return e.id == element.id ? e.navigation : NavigationConfig();
+        }
+
         void Context::set_drag_drop_source_types(const ElementHandle& element, Span<const Name> types)
         {
             lutsassert();
@@ -1239,8 +1259,9 @@ namespace Luna
             return make_drag_drop_payload_view(iter->second);
         }
 
-        void Context::move_focus(bool reverse)
+        bool Context::move_focus(bool reverse)
         {
+            id_t old_focus = m_focused_element;
             id_t scope = focus_scope_of(m_focused_element);
             Vector<id_t> candidates;
             for(const Element& element : m_elements)
@@ -1253,7 +1274,7 @@ namespace Luna
             if(candidates.empty())
             {
                 m_focused_element = 0;
-                return;
+                return old_focus != m_focused_element;
             }
             usize current_index = USIZE_MAX;
             for(usize i = 0; i < candidates.size(); ++i)
@@ -1267,7 +1288,7 @@ namespace Luna
             if(current_index == USIZE_MAX)
             {
                 m_focused_element = reverse ? candidates.back() : candidates.front();
-                return;
+                return old_focus != m_focused_element;
             }
             if(reverse)
             {
@@ -1277,6 +1298,7 @@ namespace Luna
             {
                 m_focused_element = candidates[(current_index + 1) % candidates.size()];
             }
+            return old_focus != m_focused_element;
         }
 
         bool Context::move_focus_spatial(NavigationDirection direction)
@@ -1344,6 +1366,91 @@ namespace Luna
             }
             m_focused_element = best_id;
             return true;
+        }
+
+        static NavigationMode get_navigation_mode(const NavigationConfig& navigation, const NavigationRequest& request)
+        {
+            switch(request.event_type)
+            {
+            case InputEventType::navigation_dpad:
+                switch(request.direction)
+                {
+                case NavigationDirection::left: return navigation.left;
+                case NavigationDirection::right: return navigation.right;
+                case NavigationDirection::up: return navigation.up;
+                case NavigationDirection::down: return navigation.down;
+                default: return NavigationMode::automatic;
+                }
+            case InputEventType::navigation_move:
+                return request.move == NavigationMove::backward ? navigation.backward : navigation.forward;
+            case InputEventType::navigation_confirm:
+                return navigation.confirm;
+            case InputEventType::navigation_back:
+                return navigation.back;
+            default:
+                return NavigationMode::automatic;
+            }
+        }
+
+        bool Context::navigate_default(const NavigationRequest& request)
+        {
+            lutsassert();
+            switch(request.event_type)
+            {
+            case InputEventType::navigation_dpad:
+                return move_focus_spatial(request.direction);
+            case InputEventType::navigation_move:
+                return move_focus(request.move == NavigationMove::backward);
+            case InputEventType::navigation_confirm:
+            {
+                id_t target = request.source ? request.source : m_focused_element;
+                deliver_input_event(target, request.event);
+                const Element* element = find_element(target);
+                if(element && element_can_focus(*element) &&
+                    has_flags(element->interactable, InteractableFlag::activatable) &&
+                    !has_flags(element->interactable, InteractableFlag::read_only))
+                {
+                    InteractionState& state = get_or_create_interaction(target);
+                    state.clicked = true;
+                    state.clicked_screen_position = element_screen_center(m_layers.cspan(), *element);
+                    if(element->layer < m_layers.size())
+                    {
+                        state.clicked_element_position = element_local_position(
+                            *element, m_layers[element->layer], state.clicked_screen_position);
+                        state.clicked_element_rect = element->layout_result.rect;
+                    }
+                    return true;
+                }
+                return target != 0;
+            }
+            case InputEventType::navigation_back:
+            {
+                id_t target = request.source ? request.source : m_focused_element;
+                deliver_input_event(target, request.event);
+                return target != 0;
+            }
+            default:
+                return false;
+            }
+        }
+
+        bool Context::navigate(const NavigationRequest& request)
+        {
+            lutsassert();
+            const Element* element = find_element(request.source);
+            NavigationMode mode = element ? get_navigation_mode(element->navigation, request) : NavigationMode::automatic;
+            switch(mode)
+            {
+            case NavigationMode::automatic:
+                return navigate_default(request);
+            case NavigationMode::none:
+                return true;
+            case NavigationMode::callback:
+                return element && element->navigation.callback ?
+                    element->navigation.callback(this, request, element->navigation.userdata) : false;
+            default:
+                return false;
+            }
         }
 
         void Context::route_input()
@@ -1588,41 +1695,53 @@ namespace Luna
                     deliver_input_event(m_focused_element, event);
                     break;
                 case InputEventType::navigation_dpad:
+                {
                     m_key_modifiers = event.modifiers;
-                    if(!move_focus_spatial(event.navigation_direction))
-                    {
-                        deliver_input_event(m_focused_element, event);
-                    }
+                    NavigationRequest request;
+                    request.source = m_focused_element;
+                    request.event_type = event.type;
+                    request.direction = event.navigation_direction;
+                    request.move = event.navigation_move;
+                    request.event = event;
+                    navigate(request);
                     break;
+                }
                 case InputEventType::navigation_move:
+                {
                     m_key_modifiers = event.modifiers;
-                    move_focus(event.navigation_move == NavigationMove::backward);
+                    NavigationRequest request;
+                    request.source = m_focused_element;
+                    request.event_type = event.type;
+                    request.direction = event.navigation_direction;
+                    request.move = event.navigation_move;
+                    request.event = event;
+                    navigate(request);
                     break;
+                }
                 case InputEventType::navigation_confirm:
                 {
                     m_key_modifiers = event.modifiers;
-                    deliver_input_event(m_focused_element, event);
-                    const Element* element = find_element(m_focused_element);
-                    if(element && element_can_focus(*element) &&
-                        has_flags(element->interactable, InteractableFlag::activatable) &&
-                        !has_flags(element->interactable, InteractableFlag::read_only))
-                    {
-                        InteractionState& state = get_or_create_interaction(m_focused_element);
-                        state.clicked = true;
-                        state.clicked_screen_position = element_screen_center(m_layers.cspan(), *element);
-                        if(element->layer < m_layers.size())
-                        {
-                            state.clicked_element_position = element_local_position(
-                                *element, m_layers[element->layer], state.clicked_screen_position);
-                            state.clicked_element_rect = element->layout_result.rect;
-                        }
-                    }
+                    NavigationRequest request;
+                    request.source = m_focused_element;
+                    request.event_type = event.type;
+                    request.direction = event.navigation_direction;
+                    request.move = event.navigation_move;
+                    request.event = event;
+                    navigate(request);
                     break;
                 }
                 case InputEventType::navigation_back:
+                {
                     m_key_modifiers = event.modifiers;
-                    deliver_input_event(m_focused_element, event);
+                    NavigationRequest request;
+                    request.source = m_focused_element;
+                    request.event_type = event.type;
+                    request.direction = event.navigation_direction;
+                    request.move = event.navigation_move;
+                    request.event = event;
+                    navigate(request);
                     break;
+                }
                 case InputEventType::focus:
                     break;
                 case InputEventType::blur:
