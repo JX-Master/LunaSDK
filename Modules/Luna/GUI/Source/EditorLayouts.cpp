@@ -206,11 +206,19 @@ namespace Luna
             return scroll;
         }
 
-        static Float2U scroll_viewport_content_size(const RectF& rect, const GUICore::LayoutInput& layout)
+        static RectF scroll_viewport_content_rect(const RectF& rect, const GUICore::LayoutInput& layout)
         {
-            return Float2U(
+            return RectF(
+                rect.offset_x + layout.padding.x,
+                rect.offset_y + layout.padding.y,
                 max(rect.width - layout.padding.x - layout.padding.z, 0.0f),
                 max(rect.height - layout.padding.y - layout.padding.w, 0.0f));
+        }
+
+        static Float2U scroll_viewport_content_size(const RectF& rect, const GUICore::LayoutInput& layout)
+        {
+            RectF content_rect = scroll_viewport_content_rect(rect, layout);
+            return Float2U(content_rect.width, content_rect.height);
         }
 
         static Ref<CoreScrollViewState> scroll_view_state(GUICore::IContext* context, GUICore::id_t id)
@@ -264,29 +272,92 @@ namespace Luna
             }
             state->viewport_size = scroll_viewport_content_size(rect, element->layout);
             desc.scroll_offset = clamp_scroll_offset(state->scroll, state->content_size, state->viewport_size);
-            RV r = GUICore::layout_scroll_viewport(context, layout, rect, desc);
-            if(failed(r))
+            state->scroll = desc.scroll_offset;
+            set_scroll_view_state(context, layout.id, state);
+            return GUICore::layout_scroll_viewport(context, layout, rect, desc);
+        }
+
+        static bool is_scroll_layout_request(const EditorLayoutPassState& layout_pass, GUICore::id_t id)
+        {
+            auto iter = layout_pass.requests.find(id);
+            return iter != layout_pass.requests.end() &&
+                (iter->second.kind == EditorLayoutRequestKind::scroll_view ||
+                    iter->second.kind == EditorLayoutRequestKind::scroll_viewport);
+        }
+
+        static void accumulate_scroll_content_bounds(GUICore::IContext* context, const EditorLayoutPassState& layout_pass,
+            u32 element_index, const RectF& content_rect, const Float2U& scroll_offset, Float2U& content_size)
+        {
+            const GUICore::Element* element = context->get_element(element_index);
+            if(!element)
             {
-                return r;
+                return;
             }
-            element = context->get_element(layout.index);
+            const GUICore::LayoutResult& layout = element->layout_result;
+            bool scroll_layout = is_scroll_layout_request(layout_pass, element->id);
+            f32 left = layout.rect.offset_x - content_rect.offset_x + scroll_offset.x;
+            f32 top = layout.rect.offset_y - content_rect.offset_y + scroll_offset.y;
+            f32 right = left + (scroll_layout ? layout.rect.width : max(layout.rect.width, layout.content_size.x));
+            f32 bottom = top + (scroll_layout ? layout.rect.height : max(layout.rect.height, layout.content_size.y));
+            content_size.x = max(content_size.x, right);
+            content_size.y = max(content_size.y, bottom);
+
+            if(scroll_layout)
+            {
+                return;
+            }
+            for(u32 child = element->first_child; child != GUICore::INVALID_ELEMENT;)
+            {
+                const GUICore::Element* child_element = context->get_element(child);
+                if(!child_element)
+                {
+                    break;
+                }
+                u32 next = child_element->next_sibling;
+                accumulate_scroll_content_bounds(context, layout_pass, child, content_rect, scroll_offset, content_size);
+                child = next;
+            }
+        }
+
+        static Float2U resolved_scroll_view_content_size(GUICore::IContext* context, const EditorLayoutPassState& layout_pass,
+            const GUICore::Element& element, const GUICore::ScrollViewportLayoutDesc& desc)
+        {
+            RectF content_rect = scroll_viewport_content_rect(element.layout_result.rect, element.layout);
+            Float2U content_size(0.0f, 0.0f);
+            Vector<u32> children = collect_children(context, element);
+            for(u32 child_index : children)
+            {
+                accumulate_scroll_content_bounds(context, layout_pass, child_index, content_rect, desc.scroll_offset, content_size);
+            }
+            return content_size;
+        }
+
+        static RV finalize_scroll_view_layout(GUICore::IContext* context, const EditorLayoutPassState& layout_pass,
+            const GUICore::ElementHandle& layout, const GUICore::ScrollViewportLayoutDesc& desc, bool update_state)
+        {
+            const GUICore::Element* element = context->get_element(layout.index);
             if(!element || element->id != layout.id)
             {
                 return BasicError::bad_arguments();
             }
-            state->content_size = element->layout_result.content_size;
-            Float2U clamped_scroll = clamp_scroll_offset(desc.scroll_offset, state->content_size, state->viewport_size);
-            if(clamped_scroll.x != desc.scroll_offset.x || clamped_scroll.y != desc.scroll_offset.y)
+            GUICore::ScrollViewportLayoutDesc measure_desc = desc;
+            Ref<CoreScrollViewState> state;
+            if(update_state)
             {
-                desc.scroll_offset = clamped_scroll;
-                r = GUICore::layout_scroll_viewport(context, layout, rect, desc);
-                if(failed(r))
-                {
-                    return r;
-                }
+                state = scroll_view_state(context, layout.id);
+                measure_desc.scroll_offset = state->scroll;
             }
-            state->scroll = clamped_scroll;
-            set_scroll_view_state(context, layout.id, state);
+            Float2U content_size = resolved_scroll_view_content_size(context, layout_pass, *element, measure_desc);
+            GUICore::LayoutResult result = element->layout_result;
+            result.content_size = content_size;
+            context->set_layout_result(layout, result);
+            if(update_state)
+            {
+                state->viewport_size = scroll_viewport_content_size(result.rect, element->layout);
+                state->content_size = content_size;
+                state->scroll = clamp_scroll_offset(state->scroll, state->content_size, state->viewport_size);
+                set_scroll_view_state(context, layout.id, state);
+            }
             return ok;
         }
 
@@ -327,6 +398,19 @@ namespace Luna
                     return r;
                 }
             }
+            if(request_iter != state->requests.end())
+            {
+                const EditorLayoutRequest& request = request_iter->second;
+                if(request.kind == EditorLayoutRequestKind::scroll_viewport || request.kind == EditorLayoutRequestKind::scroll_view)
+                {
+                    RV r = finalize_scroll_view_layout(context, *state, element, request.scroll_viewport,
+                        request.kind == EditorLayoutRequestKind::scroll_view);
+                    if(failed(r))
+                    {
+                        return r;
+                    }
+                }
+            }
             return ok;
         }
 
@@ -337,6 +421,22 @@ namespace Luna
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name(default_label));
             context->set_layout(element, layout);
             return element;
+        }
+
+        static void push_element_clip(GUICore::IContext* context, const Float4U& inset)
+        {
+            GUICore::DrawCommand command;
+            command.type = GUICore::DrawCommandType::push_clip;
+            command.rect_reference = GUICore::DrawCommandRectReference::element;
+            command.rect = RectF(inset.x, inset.y, -inset.z, -inset.w);
+            context->draw(command);
+        }
+
+        static void pop_element_clip(GUICore::IContext* context)
+        {
+            GUICore::DrawCommand command;
+            command.type = GUICore::DrawCommandType::pop_clip;
+            context->draw(command);
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_h_layout(GUICore::IContext* context, GUICore::id_t id,
@@ -499,7 +599,9 @@ namespace Luna
         LUNA_GUI_API GUICore::ElementHandle begin_scroll_viewport(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, const GUICore::LayoutInput& layout)
         {
-            return begin_core_layout(context, id, label, "scroll_viewport", layout);
+            GUICore::ElementHandle element = begin_core_layout(context, id, label, "scroll_viewport", layout);
+            push_element_clip(context, layout.padding);
+            return element;
         }
 
         LUNA_GUI_API RV end_scroll_viewport(GUICore::IContext* context, const GUICore::ElementHandle& layout,
@@ -510,6 +612,7 @@ namespace Luna
             request.kind = EditorLayoutRequestKind::scroll_viewport;
             request.scroll_viewport = desc;
             RV r = set_deferred_layout_request(context, layout, move(request));
+            pop_element_clip(context);
             context->end_element();
             return r;
         }
@@ -519,6 +622,7 @@ namespace Luna
         {
             luassert(context);
             RV r = GUICore::layout_scroll_viewport(context, layout, rect, desc);
+            pop_element_clip(context);
             context->end_element();
             return r;
         }
@@ -527,11 +631,12 @@ namespace Luna
             const c8* label, const GUICore::LayoutInput& layout)
         {
             GUICore::ElementHandle element = begin_core_layout(context, id, label, "scroll_view", layout);
+            push_element_clip(context, layout.padding);
             Ref<CoreScrollViewState> state = scroll_view_state(context, id);
             apply_routed_scroll_input(context, id, *state);
             set_scroll_view_state(context, id, state);
             GUICore::Interactable interactable;
-            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+            interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
             set_flags(interactable.flags, GUICore::InteractableFlag::scrollable);
             context->set_interactable(element, interactable);
@@ -546,6 +651,7 @@ namespace Luna
             request.kind = EditorLayoutRequestKind::scroll_view;
             request.scroll_viewport = desc;
             RV r = set_deferred_layout_request(context, layout, move(request));
+            pop_element_clip(context);
             context->end_element();
             return r;
         }
@@ -555,6 +661,7 @@ namespace Luna
         {
             luassert(context);
             RV r = apply_scroll_view_layout(context, layout, rect, desc);
+            pop_element_clip(context);
             context->end_element();
             return r;
         }

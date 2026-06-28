@@ -150,12 +150,71 @@ namespace Luna
             return true;
         }
 
+        static bool make_navigation_event(const GUICore::InputEvent& key_event, GUICore::InputEvent& nav_event)
+        {
+            if(key_event.type != GUICore::InputEventType::key_down)
+            {
+                return false;
+            }
+            nav_event = GUICore::InputEvent();
+            nav_event.device_id = key_event.device_id;
+            nav_event.modifiers = key_event.modifiers;
+            switch(key_event.key)
+            {
+            case KeyCode::left:
+                nav_event.type = GUICore::InputEventType::navigation_dpad;
+                nav_event.navigation_direction = GUICore::NavigationDirection::left;
+                return true;
+            case KeyCode::right:
+                nav_event.type = GUICore::InputEventType::navigation_dpad;
+                nav_event.navigation_direction = GUICore::NavigationDirection::right;
+                return true;
+            case KeyCode::up:
+                nav_event.type = GUICore::InputEventType::navigation_dpad;
+                nav_event.navigation_direction = GUICore::NavigationDirection::up;
+                return true;
+            case KeyCode::down:
+                nav_event.type = GUICore::InputEventType::navigation_dpad;
+                nav_event.navigation_direction = GUICore::NavigationDirection::down;
+                return true;
+            case KeyCode::tab:
+                nav_event.type = GUICore::InputEventType::navigation_move;
+                nav_event.navigation_move = ((u8)key_event.modifiers & (u8)GUICore::KeyModifierFlag::shift) ?
+                    GUICore::NavigationMove::backward : GUICore::NavigationMove::forward;
+                return true;
+            case KeyCode::enter:
+                nav_event.type = GUICore::InputEventType::navigation_confirm;
+                return true;
+            case KeyCode::esc:
+                nav_event.type = GUICore::InputEventType::navigation_back;
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        static void append_translated_input_event(Vector<GUICore::InputEvent>& events, GUICore::InputEvent&& event)
+        {
+            GUICore::InputEvent nav_event;
+            bool has_nav_event = make_navigation_event(event, nav_event);
+            events.push_back(move(event));
+            if(has_nav_event)
+            {
+                events.push_back(move(nav_event));
+            }
+        }
+
         LUNA_GUI_WINDOW_API bool handle_window_event(object_t event, Window::IWindow* window, GUICore::IContext* gui)
         {
             if(!window || !gui) return false;
             GUICore::InputEvent ge;
             if(!translate_core_window_event(event, window, ge)) return false;
             gui->add_input_event(ge);
+            GUICore::InputEvent nav_event;
+            if(make_navigation_event(ge, nav_event))
+            {
+                gui->add_input_event(nav_event);
+            }
             return true;
         }
 
@@ -166,7 +225,7 @@ namespace Luna
             GUICore::InputEvent ge;
             if(translate_core_window_event(event, adapter->window, ge))
             {
-                adapter->pending_events.push_back(move(ge));
+                append_translated_input_event(adapter->pending_events, move(ge));
             }
             if(adapter->forward_events && adapter->next_event_handler)
             {

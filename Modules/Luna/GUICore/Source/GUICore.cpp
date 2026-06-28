@@ -11,6 +11,8 @@
 #define LUNA_GUICORE_API LUNA_EXPORT
 #include "GUICore.hpp"
 #include "GUICore.meta.generated.hpp"
+#include <Luna/RHI/RHI.hpp>
+#include <Luna/VG/VG.hpp>
 
 namespace Luna
 {

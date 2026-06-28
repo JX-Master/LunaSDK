@@ -21,16 +21,20 @@ Keyboard keys use `Luna::KeyCode` from Runtime. GUI Core does not define another
 ### Interactable
 `GUICore::Interactable` is optional element data that enables input behavior. Most boolean capabilities are packed in `InteractableFlag`:
 
-1. `hit_test`: participate in hit testing.
-2. `blocks_pointer_input`: block input from reaching lower layers or elements behind this one.
-3. `hoverable`: produce hover state.
-4. `activatable`: produce active/capture/click state.
-5. `focusable`: receive keyboard focus.
-6. `scrollable`: receive wheel events routed from descendant hit targets.
-7. `disabled`: ignore interactive behavior.
-8. `read_only`: allow focus but prevent active editing behavior.
+1. `hoverable`: produce hover state.
+2. `activatable`: produce active/capture/click state.
+3. `focusable`: receive keyboard focus.
+4. `scrollable`: receive wheel events routed from descendant hit targets.
+5. `disabled`: ignore interactive behavior.
+6. `read_only`: allow focus but prevent active editing behavior.
 
-`pointer_input_propagation`, `focus_scope` and drag-drop source/target payload type lists remain separate fields because they are not simple capability bits.
+`pointer_hit_behavior`, `focus_scope` and drag-drop source/target payload type lists remain separate fields because they are not simple capability bits.
+`PointerHitBehavior` controls pointer hit routing:
+
+1. `none`: do not participate in pointer hit testing.
+2. `pass_through`: report the element through hit-test callbacks, then continue to lower elements.
+3. `target`: receive pointer events and stop routing.
+4. `block`: stop routing without receiving pointer events.
 
 ### Interaction state
 `GUICore::InteractionState` is produced by `IContext::route_input`. It reports state for an element and its subtree, including hover, active, focus, click, double-click and pointer positions.
@@ -66,7 +70,7 @@ Call these after `begin_frame` and before `route_input`.
 ### Attach interactable data
 ```cpp
 GUICore::Interactable interactable;
-set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
 set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
 set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
 set_flags(interactable.flags, GUICore::InteractableFlag::focusable);
@@ -90,7 +94,7 @@ Input routing depends on layout results. Route after layout, not before it.
 3. Clear active or focused IDs when the corresponding element was not rebuilt, became disabled or can no longer receive the requested state.
 4. Process every queued input event in order. Pointer events update pointer position, pointer delta, modifier keys and the inside-screen flag before routing.
 5. Hit testing walks layers from top to bottom, then elements from newest to oldest inside each layer. An element can be hit only when its layout rectangle contains the pointer and its non-empty `clip_rect` also contains the pointer.
-6. Pointer target selection uses `hit_test_input_target`. A hit-testable element with `pointer_input_propagation == stop` becomes the target. An element with `blocks_pointer_input` can block lower elements even when it is not otherwise interactive. A pass-through hit-testable element can still be returned by `hit_test` for debug use, but it does not stop routing.
+6. Pointer target selection uses `hit_test`. Elements with `PointerHitBehavior::pass_through` are reported to the optional hit-test callback, then routing continues. Elements with `PointerHitBehavior::target` become the event target and stop routing. Elements with `PointerHitBehavior::block` stop routing without receiving pointer events.
 7. Pointer movement is delivered to the active captured element when one exists; otherwise it is delivered to the currently hovered element.
 8. Pointer down is delivered to the hit target. A left-button down can set the active element when the target is activatable and not read-only, and can set keyboard focus when the target is focusable.
 9. Pointer up is delivered to the active element when pointer capture is active. A left-button up over the same active element produces `clicked`, and may produce `double_clicked` when it is close enough in time and screen distance to the previous click.
@@ -124,16 +128,21 @@ if(hit.index != GUICore::INVALID_ELEMENT)
 }
 ```
 
-Hit testing checks upper layers before lower layers.
+Hit testing checks upper layers before lower layers. Pass a callback to observe every visited element before routing stops:
+
+```cpp
+context->hit_test(context->get_pointer_position(), [](const GUICore::HitTestVisit& visit) {
+    // Inspect visit.element, visit.pointer_hit_behavior, visit.event_target and visit.routing_stop.
+});
+```
 
 ### Use pass-through hit boxes
-Set `pointer_input_propagation` to `pass_through` when an element should be visible to hit testing and debug tools but should not stop pointer routing.
+Set `pointer_hit_behavior` to `pass_through` when an element should be visible to hit-test callbacks and debug tools but should not stop pointer routing.
 
 ```cpp
 GUICore::Interactable overlay;
-set_flags(overlay.flags, GUICore::InteractableFlag::hit_test);
+overlay.pointer_hit_behavior = GUICore::PointerHitBehavior::pass_through;
 set_flags(overlay.flags, GUICore::InteractableFlag::hoverable);
-overlay.pointer_input_propagation = GUICore::PointerInputPropagation::pass_through;
 context->set_interactable(overlay_element, overlay);
 ```
 
@@ -195,7 +204,7 @@ GUICore::ElementHandle item = context->begin_element(context->make_id("raw-butto
 context->set_layout(item, button_layout);
 
 GUICore::Interactable interactable;
-set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
 set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
 set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
 set_flags(interactable.flags, GUICore::InteractableFlag::focusable);

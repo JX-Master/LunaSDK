@@ -39,7 +39,7 @@ namespace Luna
         static void set_basic_interactable(GUICore::IContext* context, const GUICore::ElementHandle& element)
         {
             GUICore::Interactable interactable;
-            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+            interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
             set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
             set_flags(interactable.flags, GUICore::InteractableFlag::focusable);
@@ -315,16 +315,21 @@ namespace Luna
                     }
                     else
                     {
-                        f32 content_height = 24.0f;
+                        f32 remaining_height = max(rect.offset_y + rect.height - content_y, 1.0f);
+                        f32 content_height = remaining_height;
                         if(child_element->layout.height.kind == GUICore::SizeKind::pixels)
                         {
                             content_height = child_element->layout.height.value;
+                        }
+                        else if(child_element->layout.height.kind == GUICore::SizeKind::percent)
+                        {
+                            content_height = remaining_height * child_element->layout.height.value;
                         }
                         else if(child_element->layout_result.content_size.y > 0.0f)
                         {
                             content_height = child_element->layout_result.content_size.y;
                         }
-                        content_height = min(content_height, max(rect.offset_y + rect.height - content_y, 1.0f));
+                        content_height = min(content_height, remaining_height);
                         child_layout.rect = RectF(rect.offset_x, content_y, rect.width, content_height);
                         child_layout.clip_rect = intersect_rect(child_layout.rect, rect);
                         content_y += content_height + content_gap;

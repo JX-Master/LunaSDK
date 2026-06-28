@@ -138,7 +138,8 @@ namespace Luna
             virtual void request_text_input(const ElementHandle& element, i32 cursor) override;
             virtual TextInputState get_text_input_state() override;
             virtual void route_input() override;
-            virtual ElementHandle hit_test(const Float2U& screen_position) const override;
+            virtual ElementHandle hit_test(const Float2U& screen_position, HitTestCallback* callback = nullptr,
+                void* userdata = nullptr) const override;
             virtual InteractionState get_interaction_state(id_t id) const override;
             virtual Span<const InputEvent> get_delivered_input_events(id_t id) override;
             virtual Span<const RoutedInputEvent> get_routed_input_events(id_t id) override;
@@ -183,15 +184,13 @@ namespace Luna
             void deliver_input_event(id_t id, const InputEvent& event);
             void record_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command);
             bool point_hits_element(const Element& element, const Float2U& screen_position) const;
-            bool element_stops_pointer_input(const Element& element) const;
-            ElementHandle hit_test_input_target(const Float2U& screen_position) const;
             bool element_can_focus(const Element& element) const;
             bool element_has_drag_source_type(const Element& element, const Name& payload_type) const;
             bool element_has_drag_target_type(const Element& element, const Name& payload_type) const;
             id_t focus_scope_of(id_t element_id) const;
             id_t scroll_target_of(id_t element_id) const;
             void move_focus(bool reverse);
-            bool move_focus_spatial(KeyCode direction);
+            bool move_focus_spatial(NavigationDirection direction);
             FontDesc resolve_font(const Name& id) const;
             RectF to_screen_rect(u32 layer_index, const RectF& rect) const;
             RectF to_vg_rect(const RectF& screen_rect) const;

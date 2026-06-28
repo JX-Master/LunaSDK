@@ -875,7 +875,7 @@ namespace Luna
 
         bool Context::point_hits_element(const Element& element, const Float2U& screen_position) const
         {
-            if((!has_flags(element.interactable, InteractableFlag::hit_test) && !has_flags(element.interactable, InteractableFlag::blocks_pointer_input)) ||
+            if(element.interactable.pointer_hit_behavior == PointerHitBehavior::none ||
                 has_flags(element.interactable, InteractableFlag::disabled) || element.layer >= m_layers.size())
             {
                 return false;
@@ -900,36 +900,7 @@ namespace Luna
             return true;
         }
 
-        bool Context::element_stops_pointer_input(const Element& element) const
-        {
-            return has_flags(element.interactable, InteractableFlag::blocks_pointer_input) ||
-                element.interactable.pointer_input_propagation == PointerInputPropagation::stop;
-        }
-
-        ElementHandle Context::hit_test(const Float2U& screen_position) const
-        {
-            lutsassert();
-            for(usize layer_reverse_index = m_layers.size(); layer_reverse_index > 0; --layer_reverse_index)
-            {
-                u32 layer_index = (u32)(layer_reverse_index - 1);
-                for(usize element_reverse_index = m_elements.size(); element_reverse_index > 0; --element_reverse_index)
-                {
-                    u32 element_index = (u32)(element_reverse_index - 1);
-                    const Element& element = m_elements[element_index];
-                    if(element.layer != layer_index)
-                    {
-                        continue;
-                    }
-                    if(point_hits_element(element, screen_position))
-                    {
-                        return ElementHandle { element.id, element_index, m_generation };
-                    }
-                }
-            }
-            return ElementHandle();
-        }
-
-        ElementHandle Context::hit_test_input_target(const Float2U& screen_position) const
+        ElementHandle Context::hit_test(const Float2U& screen_position, HitTestCallback* callback, void* userdata) const
         {
             lutsassert();
             for(usize layer_reverse_index = m_layers.size(); layer_reverse_index > 0; --layer_reverse_index)
@@ -947,13 +918,23 @@ namespace Luna
                     {
                         continue;
                     }
-                    if(has_flags(element.interactable, InteractableFlag::hit_test) && element_stops_pointer_input(element))
+                    ElementHandle handle { element.id, element_index, m_generation };
+                    PointerHitBehavior hit_behavior = element.interactable.pointer_hit_behavior;
+                    bool is_event_target = hit_behavior == PointerHitBehavior::target;
+                    bool is_routing_stop = hit_behavior == PointerHitBehavior::target || hit_behavior == PointerHitBehavior::block;
+                    if(callback)
                     {
-                        return ElementHandle { element.id, element_index, m_generation };
+                        HitTestVisit visit;
+                        visit.element = handle;
+                        visit.element_data = &element;
+                        visit.event_target = is_event_target;
+                        visit.routing_stop = is_routing_stop;
+                        visit.pointer_hit_behavior = hit_behavior;
+                        callback(visit, userdata);
                     }
-                    if(has_flags(element.interactable, InteractableFlag::blocks_pointer_input))
+                    if(is_routing_stop)
                     {
-                        return ElementHandle { element.id, element_index, m_generation };
+                        return handle;
                     }
                 }
             }
@@ -1203,7 +1184,8 @@ namespace Luna
                         {
                             return ElementHandle { element.id, element_index, m_generation };
                         }
-                        if(element_stops_pointer_input(element))
+                        if(element.interactable.pointer_hit_behavior == PointerHitBehavior::target ||
+                            element.interactable.pointer_hit_behavior == PointerHitBehavior::block)
                         {
                             return ElementHandle();
                         }
@@ -1297,7 +1279,7 @@ namespace Luna
             }
         }
 
-        bool Context::move_focus_spatial(KeyCode direction)
+        bool Context::move_focus_spatial(NavigationDirection direction)
         {
             const Element* current = find_element(m_focused_element);
             if(!current || !element_can_focus(*current))
@@ -1325,22 +1307,22 @@ namespace Luna
                 f32 secondary = 0.0f;
                 switch(direction)
                 {
-                case KeyCode::left:
+                case NavigationDirection::left:
                     if(dx >= 0.0f) continue;
                     primary = -dx;
                     secondary = dy >= 0.0f ? dy : -dy;
                     break;
-                case KeyCode::right:
+                case NavigationDirection::right:
                     if(dx <= 0.0f) continue;
                     primary = dx;
                     secondary = dy >= 0.0f ? dy : -dy;
                     break;
-                case KeyCode::up:
+                case NavigationDirection::up:
                     if(dy >= 0.0f) continue;
                     primary = -dy;
                     secondary = dx >= 0.0f ? dx : -dx;
                     break;
-                case KeyCode::down:
+                case NavigationDirection::down:
                     if(dy <= 0.0f) continue;
                     primary = dy;
                     secondary = dx >= 0.0f ? dx : -dx;
@@ -1414,11 +1396,12 @@ namespace Luna
                 {
                     return;
                 }
-                ElementHandle hit = hit_test_input_target(m_pointer_position);
+                ElementHandle hit = hit_test(m_pointer_position);
                 if(hit.id)
                 {
                     const Element* element = get_element(hit.index);
-                    if(element && has_flags(element->interactable, InteractableFlag::hit_test) && has_flags(element->interactable, InteractableFlag::hoverable))
+                    if(element && element->interactable.pointer_hit_behavior == PointerHitBehavior::target &&
+                        has_flags(element->interactable, InteractableFlag::hoverable))
                     {
                         m_hovered_element = hit.id;
                     }
@@ -1472,18 +1455,20 @@ namespace Luna
                         m_pointer_down[(u32)event.button] = true;
                     }
                     {
-                        ElementHandle hit = hit_test_input_target(m_pointer_position);
+                        ElementHandle hit = hit_test(m_pointer_position);
                         const Element* element = get_element(hit.index);
-                        if(element && has_flags(element->interactable, InteractableFlag::hit_test) && !has_flags(element->interactable, InteractableFlag::disabled))
+                        if(element && element->interactable.pointer_hit_behavior == PointerHitBehavior::target &&
+                            !has_flags(element->interactable, InteractableFlag::disabled))
                         {
                             deliver_input_event(hit.id, event);
                         }
                     }
                     if(event.button == PointerButton::left)
                     {
-                        ElementHandle hit = hit_test_input_target(m_pointer_position);
+                        ElementHandle hit = hit_test(m_pointer_position);
                         const Element* element = get_element(hit.index);
-                        if(element && has_flags(element->interactable, InteractableFlag::hit_test) && !has_flags(element->interactable, InteractableFlag::disabled))
+                        if(element && element->interactable.pointer_hit_behavior == PointerHitBehavior::target &&
+                            !has_flags(element->interactable, InteractableFlag::disabled))
                         {
                             if(has_flags(element->interactable, InteractableFlag::activatable) && !has_flags(element->interactable, InteractableFlag::read_only))
                             {
@@ -1516,7 +1501,7 @@ namespace Luna
                     }
                     if(event.button == PointerButton::left && m_active_element)
                     {
-                        ElementHandle hit = hit_test_input_target(m_pointer_position);
+                        ElementHandle hit = hit_test(m_pointer_position);
                         const Element* active_element = find_element(m_active_element);
                         deliver_input_event(m_active_element, event);
                         if(hit.id == m_active_element && active_element &&
@@ -1547,9 +1532,9 @@ namespace Luna
                     }
                     else
                     {
-                        ElementHandle hit = hit_test_input_target(m_pointer_position);
+                        ElementHandle hit = hit_test(m_pointer_position);
                         const Element* element = get_element(hit.index);
-                        if(element && has_flags(element->interactable, InteractableFlag::hit_test))
+                        if(element && element->interactable.pointer_hit_behavior == PointerHitBehavior::target)
                         {
                             deliver_input_event(hit.id, event);
                         }
@@ -1561,7 +1546,7 @@ namespace Luna
                     update_pointer_position(event.position);
                     update_pointer_inside();
                     update_hover();
-                    ElementHandle hit = hit_test_input_target(m_pointer_position);
+                    ElementHandle hit = hit_test(m_pointer_position);
                     id_t scroll_target = scroll_target_of(hit.id);
                     if(scroll_target)
                     {
@@ -1570,7 +1555,7 @@ namespace Luna
                     else
                     {
                         const Element* element = get_element(hit.index);
-                        if(element && has_flags(element->interactable, InteractableFlag::hit_test))
+                        if(element && element->interactable.pointer_hit_behavior == PointerHitBehavior::target)
                         {
                             deliver_input_event(hit.id, event);
                         }
@@ -1585,22 +1570,7 @@ namespace Luna
                     {
                         m_key_down[key_index] = true;
                     }
-                    if(event.key == KeyCode::tab)
-                    {
-                        move_focus(((u8)event.modifiers & (u8)KeyModifierFlag::shift) != 0);
-                    }
-                    else if(event.key == KeyCode::left || event.key == KeyCode::right ||
-                        event.key == KeyCode::up || event.key == KeyCode::down)
-                    {
-                        if(!move_focus_spatial(event.key))
-                        {
-                            deliver_input_event(m_focused_element, event);
-                        }
-                    }
-                    else
-                    {
-                        deliver_input_event(m_focused_element, event);
-                    }
+                    deliver_input_event(m_focused_element, event);
                     break;
                 }
                 case InputEventType::key_up:
@@ -1615,6 +1585,42 @@ namespace Luna
                     break;
                 }
                 case InputEventType::text_utf8:
+                    deliver_input_event(m_focused_element, event);
+                    break;
+                case InputEventType::navigation_dpad:
+                    m_key_modifiers = event.modifiers;
+                    if(!move_focus_spatial(event.navigation_direction))
+                    {
+                        deliver_input_event(m_focused_element, event);
+                    }
+                    break;
+                case InputEventType::navigation_move:
+                    m_key_modifiers = event.modifiers;
+                    move_focus(event.navigation_move == NavigationMove::backward);
+                    break;
+                case InputEventType::navigation_confirm:
+                {
+                    m_key_modifiers = event.modifiers;
+                    deliver_input_event(m_focused_element, event);
+                    const Element* element = find_element(m_focused_element);
+                    if(element && element_can_focus(*element) &&
+                        has_flags(element->interactable, InteractableFlag::activatable) &&
+                        !has_flags(element->interactable, InteractableFlag::read_only))
+                    {
+                        InteractionState& state = get_or_create_interaction(m_focused_element);
+                        state.clicked = true;
+                        state.clicked_screen_position = element_screen_center(m_layers.cspan(), *element);
+                        if(element->layer < m_layers.size())
+                        {
+                            state.clicked_element_position = element_local_position(
+                                *element, m_layers[element->layer], state.clicked_screen_position);
+                            state.clicked_element_rect = element->layout_result.rect;
+                        }
+                    }
+                    break;
+                }
+                case InputEventType::navigation_back:
+                    m_key_modifiers = event.modifiers;
                     deliver_input_event(m_focused_element, event);
                     break;
                 case InputEventType::focus:
@@ -1960,9 +1966,7 @@ namespace Luna
                 element_info.rect = element.layout_result.rect;
                 element_info.clip_rect = element.layout_result.clip_rect;
                 element_info.content_size = element.layout_result.content_size;
-                element_info.hit_test = has_flags(element.interactable, InteractableFlag::hit_test);
-                element_info.blocks_pointer_input = has_flags(element.interactable, InteractableFlag::blocks_pointer_input);
-                element_info.pointer_input_propagation = element.interactable.pointer_input_propagation;
+                element_info.pointer_hit_behavior = element.interactable.pointer_hit_behavior;
                 element_info.hoverable = has_flags(element.interactable, InteractableFlag::hoverable);
                 element_info.activatable = has_flags(element.interactable, InteractableFlag::activatable);
                 element_info.focusable = has_flags(element.interactable, InteractableFlag::focusable);
@@ -2111,7 +2115,7 @@ namespace Luna
             m_counters.interactable_count = 0;
             for(const Element& element : m_elements)
             {
-                if(has_flags(element.interactable, InteractableFlag::hit_test))
+                if(element.interactable.pointer_hit_behavior != PointerHitBehavior::none)
                 {
                     ++m_counters.interactable_count;
                 }

@@ -128,6 +128,17 @@ namespace Luna
                     max(rect.height - inset.y - inset.w, 0.0f));
             }
 
+            bool rect_valid(const RectF& rect)
+            {
+                return rect.width > 0.0f || rect.height > 0.0f;
+            }
+
+            RectF inherited_layout_clip(const Element& parent, const RectF& rect)
+            {
+                bool has_previous_layout = rect_valid(parent.layout_result.rect) || rect_valid(parent.layout_result.clip_rect);
+                return has_previous_layout ? intersect_rect(rect, parent.layout_result.clip_rect) : rect;
+            }
+
             Vector<u32> collect_children(IContext* context, const Element& parent)
             {
                 Vector<u32> children;
@@ -379,7 +390,8 @@ namespace Luna
             f32 total_gap = children.empty() ? 0.0f : desc.gap * (f32)(children.size() - 1);
             f32 remaining_main = max(available_main - fixed_outer_main - total_gap, 0.0f);
             f32 cursor = main_axis == LayoutAxis::x ? content_rect.offset_x : content_rect.offset_y;
-            RectF child_clip = desc.clip_children ? content_rect : rect;
+            RectF parent_clip = inherited_layout_clip(*parent, rect);
+            RectF child_clip = desc.clip_children ? intersect_rect(content_rect, parent_clip) : parent_clip;
 
             f32 measured_main = 0.0f;
             f32 measured_cross = 0.0f;
@@ -426,7 +438,7 @@ namespace Luna
 
             LayoutResult parent_result;
             parent_result.rect = rect;
-            parent_result.clip_rect = rect;
+            parent_result.clip_rect = parent_clip;
             if(main_axis == LayoutAxis::x)
             {
                 parent_result.content_size = Float2U(measured_main, measured_cross);
@@ -477,7 +489,8 @@ namespace Luna
                 cell_width = max((content_rect.width - total_gap) / (f32)column_count, 0.0f);
             }
 
-            RectF child_clip = desc.clip_children ? content_rect : rect;
+            RectF parent_clip = inherited_layout_clip(*parent, rect);
+            RectF child_clip = desc.clip_children ? intersect_rect(content_rect, parent_clip) : parent_clip;
             f32 measured_width = 0.0f;
             f32 measured_height = 0.0f;
             for(usize i = 0; i < children.size(); ++i)
@@ -504,7 +517,7 @@ namespace Luna
 
             LayoutResult parent_result;
             parent_result.rect = rect;
-            parent_result.clip_rect = rect;
+            parent_result.clip_rect = parent_clip;
             parent_result.content_size = Float2U(measured_width, measured_height);
             context->set_layout_result(element, parent_result);
             return ok;
@@ -526,7 +539,8 @@ namespace Luna
 
             RectF content_rect = inset_rect(rect, parent->layout.padding);
             Vector<u32> children = collect_children(context, *parent);
-            RectF child_clip = desc.clip_children ? content_rect : rect;
+            RectF parent_clip = inherited_layout_clip(*parent, rect);
+            RectF child_clip = desc.clip_children ? intersect_rect(content_rect, parent_clip) : parent_clip;
             f32 largest_width = largest_content_size(context, children, LayoutAxis::x);
             f32 largest_height = largest_content_size(context, children, LayoutAxis::y);
             f32 measured_width = 0.0f;
@@ -554,7 +568,7 @@ namespace Luna
 
             LayoutResult parent_result;
             parent_result.rect = rect;
-            parent_result.clip_rect = rect;
+            parent_result.clip_rect = parent_clip;
             parent_result.content_size = Float2U(measured_width, measured_height);
             context->set_layout_result(element, parent_result);
             return ok;
@@ -576,7 +590,8 @@ namespace Luna
 
             RectF content_rect = inset_rect(rect, parent->layout.padding);
             Vector<u32> children = collect_children(context, *parent);
-            RectF child_clip = desc.clip_children ? content_rect : rect;
+            RectF parent_clip = inherited_layout_clip(*parent, rect);
+            RectF child_clip = desc.clip_children ? intersect_rect(content_rect, parent_clip) : parent_clip;
             f32 largest_width = largest_content_size(context, children, LayoutAxis::x);
             f32 largest_height = largest_content_size(context, children, LayoutAxis::y);
             f32 measured_width = 0.0f;
@@ -633,7 +648,7 @@ namespace Luna
 
             LayoutResult parent_result;
             parent_result.rect = rect;
-            parent_result.clip_rect = rect;
+            parent_result.clip_rect = parent_clip;
             parent_result.content_size = Float2U(measured_width, measured_height);
             context->set_layout_result(element, parent_result);
             return ok;
@@ -656,7 +671,8 @@ namespace Luna
 
             RectF content_rect = inset_rect(rect, parent->layout.padding);
             Vector<u32> children = collect_children(context, *parent);
-            RectF child_clip = desc.clip_children ? content_rect : rect;
+            RectF parent_clip = inherited_layout_clip(*parent, rect);
+            RectF child_clip = desc.clip_children ? intersect_rect(content_rect, parent_clip) : parent_clip;
             f32 largest_width = largest_content_size(context, children, LayoutAxis::x);
             f32 largest_height = largest_content_size(context, children, LayoutAxis::y);
             f32 measured_width = 0.0f;
@@ -686,7 +702,7 @@ namespace Luna
 
             LayoutResult parent_result;
             parent_result.rect = rect;
-            parent_result.clip_rect = rect;
+            parent_result.clip_rect = parent_clip;
             parent_result.content_size = Float2U(measured_width, measured_height);
             context->set_layout_result(element, parent_result);
             return ok;
@@ -730,7 +746,8 @@ namespace Luna
                 cursor += row_sizes[i] + desc.gap.y;
             }
 
-            RectF child_clip = desc.clip_children ? content_rect : rect;
+            RectF parent_clip = inherited_layout_clip(*parent, rect);
+            RectF child_clip = desc.clip_children ? intersect_rect(content_rect, parent_clip) : parent_clip;
             for(const TableLayoutCell& cell : desc.cells)
             {
                 u32 row_span = max(cell.row_span, 1U);
@@ -762,7 +779,7 @@ namespace Luna
 
             LayoutResult parent_result;
             parent_result.rect = rect;
-            parent_result.clip_rect = rect;
+            parent_result.clip_rect = parent_clip;
             parent_result.content_size = Float2U(
                 sum_tracks(Span<const f32>(column_sizes.data(), column_sizes.size()), 0, (u32)column_sizes.size(), desc.gap.x),
                 sum_tracks(Span<const f32>(row_sizes.data(), row_sizes.size()), 0, (u32)row_sizes.size(), desc.gap.y));

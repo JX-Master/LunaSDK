@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "DrawCommand.hpp"
+#include "Input.hpp"
 #include "Style.hpp"
 
 namespace Luna
@@ -189,12 +190,8 @@ namespace Luna
             RectF clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             //! Measured content size.
             Float2U content_size = Float2U(0.0f);
-            //! Whether this element participates in hit testing.
-            bool hit_test = false;
-            //! Whether this element blocks pointer hit testing from reaching content behind it.
-            bool blocks_pointer_input = false;
-            //! Pointer routing propagation behavior used when this element is hit.
-            PointerInputPropagation pointer_input_propagation = PointerInputPropagation::stop;
+            //! Pointer hit-test behavior.
+            PointerHitBehavior pointer_hit_behavior = PointerHitBehavior::none;
             //! Whether this element can become hovered.
             bool hoverable = false;
             //! Whether this element can become active through pointer interaction.

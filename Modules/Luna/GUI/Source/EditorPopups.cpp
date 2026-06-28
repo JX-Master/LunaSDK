@@ -186,8 +186,7 @@ namespace Luna
             GUICore::ElementHandle popup = context->begin_element(derived_id(id, "popup_root"), Name("popup"));
             context->set_layout(popup, layer_panel_layout(context, "popup", desc.layout));
             GUICore::Interactable interactable;
-            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
-            set_flags(interactable.flags, GUICore::InteractableFlag::blocks_pointer_input);
+            interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
             context->set_interactable(popup, interactable);
             draw_layer_panel_chrome(context, "popup", Float4U(0.08f, 0.10f, 0.13f, 0.98f),

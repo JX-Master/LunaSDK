@@ -241,8 +241,15 @@ namespace Luna
                 debug_text(context, row, "Height", format_size_value(element->layout.height));
 
                 debug_section(context, row, "Input");
-                debug_text_bool(context, row, "Hit Test", element->hit_test);
-                debug_text_bool(context, row, "Blocks Pointer", element->blocks_pointer_input);
+                const c8* hit_behavior = "none";
+                switch(element->pointer_hit_behavior)
+                {
+                case GUICore::PointerHitBehavior::pass_through: hit_behavior = "pass_through"; break;
+                case GUICore::PointerHitBehavior::target: hit_behavior = "target"; break;
+                case GUICore::PointerHitBehavior::block: hit_behavior = "block"; break;
+                default: break;
+                }
+                debug_text(context, row, "Pointer Hit", hit_behavior);
                 debug_text_bool(context, row, "Hoverable", element->hoverable);
                 debug_text_bool(context, row, "Activatable", element->activatable);
                 debug_text_bool(context, row, "Focusable", element->focusable);

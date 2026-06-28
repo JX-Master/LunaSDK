@@ -248,8 +248,7 @@ namespace Luna
             GUICore::ElementHandle panel = context->begin_element(id, label ? Name(label) : Name("dock_panel"));
             context->set_layout(panel, panel_layout);
             GUICore::Interactable interactable;
-            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
-            set_flags(interactable.flags, GUICore::InteractableFlag::blocks_pointer_input);
+            interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
             set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
             set_flags(interactable.flags, GUICore::InteractableFlag::focusable);

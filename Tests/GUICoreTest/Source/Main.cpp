@@ -22,7 +22,7 @@ namespace
     struct RoutingDemoNodeSetting
     {
         GUICore::InteractableFlag flags = GUICore::InteractableFlag::none;
-        GUICore::PointerInputPropagation propagation = GUICore::PointerInputPropagation::stop;
+        GUICore::PointerHitBehavior hit_behavior = GUICore::PointerHitBehavior::none;
     };
 
     struct RoutingDemoNodeDesc
@@ -33,6 +33,12 @@ namespace
         RectF rect;
         Float4U color;
         RoutingDemoNodeSetting default_setting;
+    };
+
+    struct RoutingHitTraversal
+    {
+        GUICore::ElementHandle target;
+        Vector<GUICore::HitTestVisit> visits;
     };
 
     struct CoreDemoState
@@ -57,40 +63,39 @@ namespace
         GUICore::DebugFrameTimeline timeline;
     };
 
-    RoutingDemoNodeSetting routing_setting(GUICore::InteractableFlag flags,
-        GUICore::PointerInputPropagation propagation = GUICore::PointerInputPropagation::stop)
+    RoutingDemoNodeSetting routing_setting(GUICore::PointerHitBehavior hit_behavior,
+        GUICore::InteractableFlag flags = GUICore::InteractableFlag::none)
     {
         RoutingDemoNodeSetting setting;
         setting.flags = flags;
-        setting.propagation = propagation;
+        setting.hit_behavior = hit_behavior;
         return setting;
     }
 
     const RoutingDemoNodeDesc ROUTING_DEMO_NODES[ROUTING_DEMO_NODE_COUNT] = {
         { "Base Layer Root", 0, ROUTING_DEMO_NO_PARENT, RectF(0.0f, 0.0f, 620.0f, 330.0f), Float4U(0.08f, 0.11f, 0.15f, 0.94f),
-            routing_setting(GUICore::InteractableFlag::blocks_pointer_input) },
+            routing_setting(GUICore::PointerHitBehavior::block) },
         { "Left Panel", 0, 0, RectF(24.0f, 50.0f, 300.0f, 190.0f), Float4U(0.10f, 0.20f, 0.30f, 0.90f),
-            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable) },
+            routing_setting(GUICore::PointerHitBehavior::target, GUICore::InteractableFlag::hoverable) },
         { "Focusable Button", 0, 1, RectF(52.0f, 84.0f, 170.0f, 46.0f), Float4U(0.08f, 0.36f, 0.58f, 0.95f),
-            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable |
+            routing_setting(GUICore::PointerHitBehavior::target, GUICore::InteractableFlag::hoverable |
                 GUICore::InteractableFlag::activatable | GUICore::InteractableFlag::focusable) },
         { "Clipped Child", 0, 1, RectF(206.0f, 172.0f, 170.0f, 72.0f), Float4U(0.38f, 0.22f, 0.12f, 0.88f),
-            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable |
+            routing_setting(GUICore::PointerHitBehavior::target, GUICore::InteractableFlag::hoverable |
                 GUICore::InteractableFlag::activatable) },
         { "Input Blocker", 0, 0, RectF(364.0f, 72.0f, 190.0f, 94.0f), Float4U(0.34f, 0.11f, 0.16f, 0.72f),
-            routing_setting(GUICore::InteractableFlag::blocks_pointer_input) },
+            routing_setting(GUICore::PointerHitBehavior::block) },
         { "Pass-through Overlay", 0, 0, RectF(384.0f, 210.0f, 202.0f, 64.0f), Float4U(0.54f, 0.42f, 0.08f, 0.56f),
-            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable,
-                GUICore::PointerInputPropagation::pass_through) },
+            routing_setting(GUICore::PointerHitBehavior::pass_through, GUICore::InteractableFlag::hoverable) },
         { "Floating Layer Root", 1, ROUTING_DEMO_NO_PARENT, RectF(0.0f, 0.0f, 360.0f, 210.0f), Float4U(0.08f, 0.10f, 0.14f, 0.92f),
-            routing_setting(GUICore::InteractableFlag::blocks_pointer_input) },
+            routing_setting(GUICore::PointerHitBehavior::block) },
         { "Floating Panel", 1, 6, RectF(32.0f, 42.0f, 260.0f, 122.0f), Float4U(0.12f, 0.17f, 0.30f, 0.92f),
-            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable) },
+            routing_setting(GUICore::PointerHitBehavior::target, GUICore::InteractableFlag::hoverable) },
         { "Top Button", 1, 7, RectF(62.0f, 76.0f, 160.0f, 44.0f), Float4U(0.04f, 0.40f, 0.65f, 0.96f),
-            routing_setting(GUICore::InteractableFlag::hit_test | GUICore::InteractableFlag::hoverable |
+            routing_setting(GUICore::PointerHitBehavior::target, GUICore::InteractableFlag::hoverable |
                 GUICore::InteractableFlag::activatable | GUICore::InteractableFlag::focusable) },
         { "Top Blocker", 1, 7, RectF(150.0f, 116.0f, 180.0f, 70.0f), Float4U(0.46f, 0.10f, 0.28f, 0.62f),
-            routing_setting(GUICore::InteractableFlag::blocks_pointer_input) }
+            routing_setting(GUICore::PointerHitBehavior::block) }
     };
 
     const c8* ROUTING_DEMO_LAYER_NAMES[ROUTING_DEMO_LAYER_COUNT] = {
@@ -101,6 +106,15 @@ namespace
     GUICore::LayoutInput row_layout()
     {
         return Test::fill_width_layout(30.0f);
+    }
+
+    GUICore::LayoutInput scroll_content_layout(f32 min_height)
+    {
+        GUICore::LayoutInput layout;
+        layout.width.kind = GUICore::SizeKind::expand;
+        layout.height.kind = GUICore::SizeKind::fit;
+        layout.height.min = min_height;
+        return layout;
     }
 
     void add_text(GUICore::IContext* context, GUICore::id_t id, const c8* text)
@@ -212,7 +226,7 @@ namespace
     {
         GUICore::Interactable interactable;
         interactable.flags = setting.flags;
-        interactable.pointer_input_propagation = setting.propagation;
+        interactable.pointer_hit_behavior = setting.hit_behavior;
         context->set_interactable(element, interactable);
     }
 
@@ -253,27 +267,43 @@ namespace
         context->end_element();
     }
 
-    void draw_routing_hit_overlay(GUICore::IContext* context, const GUICore::ElementHandle& hit)
+    void draw_routing_target_overlay(GUICore::IContext* context, const GUICore::ElementHandle& target)
     {
-        if(routing_node_index_from_id(hit.id) == U32_MAX)
+        if(routing_node_index_from_id(target.id) == U32_MAX)
         {
             return;
         }
-        const GUICore::Element* element = context->get_element(hit.index);
+        const GUICore::Element* element = context->get_element(target.index);
         if(!element)
         {
             return;
         }
-        draw_element_outline(context, hit, RectF(-3.0f, -3.0f, element->layout_result.rect.width + 6.0f,
+        draw_element_outline(context, target, RectF(-3.0f, -3.0f, element->layout_result.rect.width + 6.0f,
             element->layout_result.rect.height + 6.0f), Float4U(0.20f, 1.0f, 0.38f, 1.0f), 3.0f);
+    }
+
+    RoutingHitTraversal collect_routing_hit_traversal(GUICore::IContext* context, const Float2U& screen_position)
+    {
+        RoutingHitTraversal traversal;
+        traversal.target = context->hit_test(screen_position, [&](const GUICore::HitTestVisit& visit) {
+            if(routing_node_index_from_id(visit.element.id) != U32_MAX)
+            {
+                traversal.visits.push_back(visit);
+            }
+        });
+        if(routing_node_index_from_id(traversal.target.id) == U32_MAX)
+        {
+            traversal.target = GUICore::ElementHandle();
+        }
+        return traversal;
     }
 
     void build_routing_demo_layers(GUICore::IContext* context, CoreDemoState& state)
     {
         initialize_input_routing_state(state);
         const Float2U layer_positions[ROUTING_DEMO_LAYER_COUNT] = {
-            Float2U(34.0f, 185.0f),
-            Float2U(330.0f, 155.0f)
+            Float2U(34.0f, 100.0f),
+            Float2U(330.0f, 70.0f)
         };
         for(u32 layer = 0; layer < ROUTING_DEMO_LAYER_COUNT; ++layer)
         {
@@ -288,7 +318,7 @@ namespace
             }
             context->pop_layer();
         }
-        draw_routing_hit_overlay(context, context->hit_test(context->get_pointer_position()));
+        draw_routing_target_overlay(context, collect_routing_hit_traversal(context, context->get_pointer_position()).target);
     }
 
     const c8* routing_node_name_from_id(GUICore::id_t id)
@@ -299,6 +329,62 @@ namespace
             return ROUTING_DEMO_NODES[index].name;
         }
         return "(none)";
+    }
+
+    void build_routing_traversal_view(GUICore::IContext* context, const RoutingHitTraversal& traversal)
+    {
+        add_text(context, Test::demo_id("core.input.routing.traversal.title"), "Hit traversal");
+        if(traversal.visits.empty())
+        {
+            add_text(context, Test::demo_id("core.input.routing.traversal.empty"), "(none inside the routing demo graph)");
+            return;
+        }
+        char text[256];
+        for(usize i = 0; i < traversal.visits.size(); ++i)
+        {
+            const GUICore::HitTestVisit& visit = traversal.visits[i];
+            const c8* role = visit.routing_stop ? (visit.event_target ? "event target" : "blocker") :
+                (visit.pointer_hit_behavior == GUICore::PointerHitBehavior::pass_through ? "pass-through" : "visited");
+            snprintf(text, sizeof(text), "%02u  %s  layer=%u  %s",
+                (u32)i,
+                routing_node_name_from_id(visit.element.id),
+                visit.element_data ? visit.element_data->layer : 0,
+                role);
+            add_text(context, Test::demo_id("core.input.routing.traversal.item", (u64)i), text);
+        }
+    }
+
+    const c8* pointer_hit_behavior_name(GUICore::PointerHitBehavior behavior)
+    {
+        switch(behavior)
+        {
+        case GUICore::PointerHitBehavior::pass_through: return "Pass";
+        case GUICore::PointerHitBehavior::target: return "Target";
+        case GUICore::PointerHitBehavior::block: return "Block";
+        default: return "None";
+        }
+    }
+
+    i32 pointer_hit_behavior_index(GUICore::PointerHitBehavior behavior)
+    {
+        switch(behavior)
+        {
+        case GUICore::PointerHitBehavior::pass_through: return 1;
+        case GUICore::PointerHitBehavior::target: return 2;
+        case GUICore::PointerHitBehavior::block: return 3;
+        default: return 0;
+        }
+    }
+
+    GUICore::PointerHitBehavior pointer_hit_behavior_from_index(i32 index)
+    {
+        switch(index)
+        {
+        case 1: return GUICore::PointerHitBehavior::pass_through;
+        case 2: return GUICore::PointerHitBehavior::target;
+        case 3: return GUICore::PointerHitBehavior::block;
+        default: return GUICore::PointerHitBehavior::none;
+        }
     }
 
     void set_flag_from_bool(GUICore::InteractableFlag& flags, GUICore::InteractableFlag flag, bool value)
@@ -382,19 +468,20 @@ namespace
         snprintf(text, sizeof(text), "%s  id=%llu", ROUTING_DEMO_NODES[selected].name,
             (unsigned long long)routing_node_id(selected));
         add_text(context, Test::demo_id("core.input.routing.inspector.name"), text);
-        edit_routing_flag(context, state, GUICore::InteractableFlag::hit_test, "hit_test", 0);
-        edit_routing_flag(context, state, GUICore::InteractableFlag::blocks_pointer_input, "blocks_pointer_input", 1);
+        snprintf(text, sizeof(text), "PointerHitBehavior = %s",
+            pointer_hit_behavior_name(state.input_routing_nodes[selected].hit_behavior));
+        add_text(context, Test::demo_id("core.input.routing.inspector.behavior.label"), text);
+        const c8* behavior_items[] = { "None", "Pass", "Target", "Block" };
+        i32 behavior_index = pointer_hit_behavior_index(state.input_routing_nodes[selected].hit_behavior);
+        GUI::button_group(context, Test::demo_id("core.input.routing.inspector.behavior"),
+            &behavior_index, Span<const c8*>(behavior_items, 4), Test::fill_width_layout(34.0f));
+        state.input_routing_nodes[selected].hit_behavior = pointer_hit_behavior_from_index(behavior_index);
         edit_routing_flag(context, state, GUICore::InteractableFlag::hoverable, "hoverable", 2);
         edit_routing_flag(context, state, GUICore::InteractableFlag::activatable, "activatable", 3);
         edit_routing_flag(context, state, GUICore::InteractableFlag::focusable, "focusable", 4);
         edit_routing_flag(context, state, GUICore::InteractableFlag::scrollable, "scrollable", 5);
         edit_routing_flag(context, state, GUICore::InteractableFlag::disabled, "disabled", 6);
         edit_routing_flag(context, state, GUICore::InteractableFlag::read_only, "read_only", 7);
-        bool pass_through = state.input_routing_nodes[selected].propagation == GUICore::PointerInputPropagation::pass_through;
-        GUI::checkbox(context, Test::demo_id("core.input.routing.setting.pass"), "pointer_input_propagation = pass_through",
-            &pass_through, row_layout());
-        state.input_routing_nodes[selected].propagation = pass_through ?
-            GUICore::PointerInputPropagation::pass_through : GUICore::PointerInputPropagation::stop;
     }
 
     void end_page_body(GUICore::IContext* context, const GUICore::ElementHandle& body, const GUICore::ElementHandle& scroll)
@@ -413,19 +500,47 @@ namespace
         GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("core.input.scroll"), "Input page", Test::fill_layout());
         GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.input.body"), "Input body", Test::fill_layout());
         add_text(context, Test::demo_id("core.input.title"), "Input routing: layers, hierarchy, hit testing and interactable flags");
-        add_text(context, Test::demo_id("core.input.legend"), "Cyan outline = layout rect, amber outline = clip rect, green outline = current hit element.");
+        add_text(context, Test::demo_id("core.input.legend"), "Cyan outline = layout rect, amber outline = clip rect, green outline = routing stop.");
         GUI::text(context, Test::demo_id("core.input.routing.canvas.placeholder"),
-            "Routing graph is drawn in two GUI Core layers above this reserved area.", Test::fill_width_layout(360.0f));
+            "Routing graph is drawn in two GUI Core layers above this reserved area.", Test::fill_width_layout(260.0f));
         build_routing_demo_layers(context, state);
 
         char text[256];
         Float2U pointer = context->get_pointer_position();
+        RoutingHitTraversal traversal = collect_routing_hit_traversal(context, pointer);
+
+        GUICore::ElementHandle editor_row = GUI::begin_h_layout(context, Test::demo_id("core.input.routing.editor.row"),
+            "Routing editor", Test::fill_width_layout(420.0f));
+        GUICore::ElementHandle tree_scroll = GUI::begin_scroll_view(context, Test::demo_id("core.input.routing.tree.scroll"),
+            "Routing tree scroll", Test::fixed_layout(360.0f, 410.0f));
+        GUICore::ElementHandle tree_column = GUI::begin_v_layout(context, Test::demo_id("core.input.routing.tree.column"),
+            "Routing tree", scroll_content_layout(410.0f));
+        build_routing_tree_view(context, state);
+        build_routing_traversal_view(context, traversal);
+        GUICore::LinearLayoutDesc column_desc;
+        column_desc.axis = GUICore::LayoutAxis::y;
+        column_desc.gap = 4.0f;
+        lupanic_if_failed(GUI::end_v_layout(context, tree_column, column_desc));
+        lupanic_if_failed(GUI::end_scroll_view(context, tree_scroll));
+
+        GUICore::ElementHandle inspector_scroll = GUI::begin_scroll_view(context, Test::demo_id("core.input.routing.inspector.scroll"),
+            "Routing inspector scroll", Test::fill_width_layout(410.0f));
+        GUICore::ElementHandle inspector_column = GUI::begin_v_layout(context, Test::demo_id("core.input.routing.inspector.column"),
+            "Routing inspector", scroll_content_layout(410.0f));
+        build_routing_inspector(context, state);
+        lupanic_if_failed(GUI::end_v_layout(context, inspector_column, column_desc));
+        lupanic_if_failed(GUI::end_scroll_view(context, inspector_scroll));
+
+        GUICore::LinearLayoutDesc editor_desc;
+        editor_desc.axis = GUICore::LayoutAxis::x;
+        editor_desc.gap = 16.0f;
+        lupanic_if_failed(GUI::end_h_layout(context, editor_row, editor_desc));
+
         snprintf(text, sizeof(text), "x=%.1f y=%.1f inside=%s", pointer.x, pointer.y, context->is_pointer_inside() ? "yes" : "no");
         add_status(context, Test::demo_id("core.input.pointer"), "Pointer", text);
-        GUICore::ElementHandle hit = context->hit_test(pointer);
-        GUICore::id_t routing_hit_id = routing_node_index_from_id(hit.id) == U32_MAX ? 0 : hit.id;
-        snprintf(text, sizeof(text), "%s  id=%llu", routing_node_name_from_id(routing_hit_id), (unsigned long long)routing_hit_id);
-        add_status(context, Test::demo_id("core.input.hit.test"), "Current hit", text);
+        snprintf(text, sizeof(text), "%s  id=%llu", routing_node_name_from_id(traversal.target.id),
+            (unsigned long long)traversal.target.id);
+        add_status(context, Test::demo_id("core.input.hit.test"), "Routing stop", text);
         snprintf(text, sizeof(text), "focused=%llu captured=%llu",
             (unsigned long long)context->focused_element(), (unsigned long long)context->captured_element());
         add_status(context, Test::demo_id("core.input.focus.state"), "Focus/capture", text);
@@ -442,26 +557,6 @@ namespace
             context->is_key_down(KeyCode::tab) ? "yes" : "no",
             context->is_pointer_button_down(GUICore::PointerButton::left) ? "yes" : "no");
         add_status(context, Test::demo_id("core.input.routed.events"), "Delivered events", text);
-
-        GUICore::ElementHandle editor_row = GUI::begin_h_layout(context, Test::demo_id("core.input.routing.editor.row"),
-            "Routing editor", Test::fill_width_layout(420.0f));
-        GUICore::ElementHandle tree_column = GUI::begin_v_layout(context, Test::demo_id("core.input.routing.tree.column"),
-            "Routing tree", Test::fixed_layout(360.0f, 410.0f));
-        build_routing_tree_view(context, state);
-        GUICore::LinearLayoutDesc column_desc;
-        column_desc.axis = GUICore::LayoutAxis::y;
-        column_desc.gap = 4.0f;
-        lupanic_if_failed(GUI::end_v_layout(context, tree_column, column_desc));
-
-        GUICore::ElementHandle inspector_column = GUI::begin_v_layout(context, Test::demo_id("core.input.routing.inspector.column"),
-            "Routing inspector", Test::fill_width_layout(410.0f));
-        build_routing_inspector(context, state);
-        lupanic_if_failed(GUI::end_v_layout(context, inspector_column, column_desc));
-
-        GUICore::LinearLayoutDesc editor_desc;
-        editor_desc.axis = GUICore::LayoutAxis::x;
-        editor_desc.gap = 16.0f;
-        lupanic_if_failed(GUI::end_h_layout(context, editor_row, editor_desc));
 
         end_page_body(context, body, scroll);
     }
@@ -643,7 +738,7 @@ namespace
         GUICore::ElementHandle raw = context->begin_element(Test::demo_id("core.element.raw"), Name("Raw GUICore Element"));
         context->set_layout(raw, Test::fill_width_layout(82.0f));
         GUICore::Interactable interactable;
-        set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+        interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
         set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
         set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
         set_flags(interactable.flags, GUICore::InteractableFlag::focusable);
@@ -698,10 +793,9 @@ namespace
         GUICore::ElementHandle front = GUI::hit_box(context, Test::demo_id("core.element.propagation.front"),
             Test::fixed_layout(300.0f, 48.0f));
         GUICore::Interactable front_interactable;
-        set_flags(front_interactable.flags, GUICore::InteractableFlag::hit_test);
+        front_interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::pass_through;
         set_flags(front_interactable.flags, GUICore::InteractableFlag::hoverable);
         set_flags(front_interactable.flags, GUICore::InteractableFlag::activatable);
-        front_interactable.pointer_input_propagation = GUICore::PointerInputPropagation::pass_through;
         context->set_interactable(front, front_interactable);
         GUICore::DrawCommand front_bg;
         front_bg.type = GUICore::DrawCommandType::rounded_rect;

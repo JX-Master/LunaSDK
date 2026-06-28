@@ -29,7 +29,7 @@ namespace Luna
         static void set_basic_interactable(GUICore::IContext* context, const GUICore::ElementHandle& element)
         {
             GUICore::Interactable interactable;
-            set_flags(interactable.flags, GUICore::InteractableFlag::hit_test);
+            interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
             set_flags(interactable.flags, GUICore::InteractableFlag::activatable);
             set_flags(interactable.flags, GUICore::InteractableFlag::focusable);

@@ -69,16 +69,17 @@ namespace Luna
             Float2U content_size = Float2U(0.0f);
         };
 
-        //! Controls how one hit element affects pointer routing to elements behind it.
-        enum class PointerInputPropagation : u8
+        //! Controls how one element participates in pointer hit testing.
+        enum class PointerHitBehavior : u8
         {
-            //! Pointer input stops at this element when it is hit.
-            //! @remark This preserves the traditional topmost GUI hit-test behavior.
-            stop,
-            //! Pointer input can continue to elements below this one.
-            //! @remark The element is still visible to @ref IContext::hit_test and debug tooling, but internal
-            //! input routing skips it when selecting the event target.
-            pass_through
+            //! This element does not participate in pointer hit testing.
+            none,
+            //! This element is reported by hit testing, then pointer routing continues to lower elements.
+            pass_through,
+            //! This element can receive pointer events and stops pointer routing.
+            target,
+            //! This element stops pointer routing without receiving pointer events.
+            block
         };
 
         struct Interactable;
@@ -88,11 +89,6 @@ namespace Luna
         {
             //! No interactable behavior.
             none = 0x0000,
-            //! This element participates in hit testing.
-            hit_test = 0x0001,
-            //! This element blocks pointer hit testing from reaching lower layers or elements behind it.
-            //! @remark A blocking element does not receive input events unless @ref hit_test is also enabled.
-            blocks_pointer_input = 0x0002,
             //! This element can become hovered.
             hoverable = 0x0004,
             //! This element can become active through pointer interaction.
@@ -118,8 +114,8 @@ namespace Luna
         {
             //! Interactable behavior flags.
             InteractableFlag flags = InteractableFlag::none;
-            //! Controls whether pointer input can continue to lower elements after this element is hit.
-            PointerInputPropagation pointer_input_propagation = PointerInputPropagation::stop;
+            //! Pointer hit-test behavior.
+            PointerHitBehavior pointer_hit_behavior = PointerHitBehavior::none;
             //! Optional focus scope ID.
             id_t focus_scope = 0;
             //! Payload types this element can provide as a drag-drop source.

@@ -10,12 +10,33 @@
 #pragma once
 #include "Debug.hpp"
 #include "DragDrop.hpp"
+#include "Input.hpp"
 #include "Context.generated.hpp"
 
 namespace Luna
 {
     namespace GUICore
     {
+        //! Describes one element visited by @ref IContext::hit_test.
+        struct HitTestVisit
+        {
+            //! Visited element handle.
+            ElementHandle element;
+            //! Visited element data.
+            const Element* element_data = nullptr;
+            //! Whether this element can receive pointer events for this hit-test traversal.
+            bool event_target = false;
+            //! Whether hit-test traversal stops at this element.
+            bool routing_stop = false;
+            //! Pointer hit behavior that caused this visit.
+            PointerHitBehavior pointer_hit_behavior = PointerHitBehavior::none;
+        };
+
+        //! Called for every element visited by @ref IContext::hit_test.
+        //! @param[in] visit The visited element information.
+        //! @param[in] userdata User data passed to @ref IContext::hit_test.
+        using HitTestCallback = void(const HitTestVisit& visit, void* userdata);
+
         //! @interface IContext
         //! Owns GUI Core frame data, layers, elements, input events, state objects, styles and draw commands.
         //! @remark GUI Core contexts are widget-free. High-level immediate API packages operate on this interface to
@@ -211,8 +232,33 @@ namespace Luna
 
             //! Hit-tests one screen position through layers and interactable elements.
             //! @param[in] screen_position The position in screen logical coordinates.
-            //! @return Returns the topmost hit element handle, or an invalid handle if nothing was hit.
-            virtual ElementHandle hit_test(const Float2U& screen_position) const = 0;
+            //! @param[in] callback Optional callback invoked for every element that passes hit testing before routing stops.
+            //! @param[in] userdata Opaque user data passed to @p callback.
+            //! @return Returns the final pointer routing stop, or an invalid handle if nothing was hit.
+            //! @remark The traversal checks upper layers first and newer elements first.
+            //! @ref PointerHitBehavior::pass_through elements are reported to @p callback, then traversal continues
+            //! to lower elements. Traversal stops at @ref PointerHitBehavior::target and @ref PointerHitBehavior::block.
+            virtual ElementHandle hit_test(const Float2U& screen_position, HitTestCallback* callback = nullptr,
+                void* userdata = nullptr) const = 0;
+
+            //! Hit-tests one screen position and reports every visited element through one function object.
+            //! @param[in] screen_position The position in screen logical coordinates.
+            //! @param[in] callback The callback object invoked for every visited element.
+            //! @return Returns the final pointer routing stop, or an invalid handle if nothing was hit.
+            template <typename _Callback>
+            ElementHandle hit_test(const Float2U& screen_position, _Callback&& callback) const
+            {
+                using Callback = remove_reference_t<_Callback>;
+                struct CallbackContext
+                {
+                    Callback* callback;
+                };
+                CallbackContext callback_context { &callback };
+                return hit_test(screen_position, [](const HitTestVisit& visit, void* userdata) {
+                    CallbackContext* callback_context = (CallbackContext*)userdata;
+                    (*callback_context->callback)(visit);
+                }, &callback_context);
+            }
 
             //! Gets the latest routed interaction state for one element.
             //! @param[in] id The stable element ID.
