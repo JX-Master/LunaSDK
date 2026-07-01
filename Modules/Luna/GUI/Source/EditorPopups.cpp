@@ -17,8 +17,8 @@ namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API RV set_editor_linear_layout_config(GUICore::IContext* context,
-            const GUICore::ElementHandle& layout, const GUICore::LinearLayoutDesc& desc);
+        LUNA_GUI_API RV set_editor_flex_layout_config(GUICore::IContext* context,
+            const GUICore::ElementHandle& layout, const GUICore::FlexLayoutDesc& desc);
 
         static GUICore::StyleValue style_value(GUICore::IContext* context, const Name& entry,
             const GUICore::StyleValue& default_value)
@@ -137,12 +137,12 @@ namespace Luna
         static RV end_layer_panel(GUICore::IContext* context, const GUICore::ElementHandle& panel, const RectF& rect,
             const c8* prefix)
         {
-            GUICore::LinearLayoutDesc layout_desc;
+            GUICore::FlexLayoutDesc layout_desc;
             layout_desc.axis = GUICore::LayoutAxis::y;
             String gap_entry;
             strprintf(gap_entry, "gui.editor.%s.gap", prefix);
-            layout_desc.gap = style_value(context, Name(gap_entry.c_str()), GUICore::style_f32(4.0f)).number.x;
-            RV r = set_editor_linear_layout_config(context, panel, layout_desc);
+            layout_desc.main_axis_gap = style_value(context, Name(gap_entry.c_str()), GUICore::style_f32(4.0f)).number.x;
+            RV r = set_editor_flex_layout_config(context, panel, layout_desc);
             context->end_element();
             context->pop_layer();
             if(succeeded(r))
@@ -272,9 +272,9 @@ namespace Luna
             f32 width = min(max((f32)text_len * 8.0f + 20.0f, 80.0f), max(desc.max_width, 80.0f));
             f32 height = 30.0f;
             GUICore::LayoutInput text_layout;
-            text_layout.width.kind = GUICore::SizeKind::pixels;
+            text_layout.width.kind = GUICore::SizeKind::fixed;
             text_layout.width.value = width - 12.0f;
-            text_layout.height.kind = GUICore::SizeKind::pixels;
+            text_layout.height.kind = GUICore::SizeKind::fixed;
             text_layout.height.value = 22.0f;
             text(context, derived_id(id, "tooltip_text"), content ? content : "", text_layout);
             lupanic_if_failed(end_tooltip(context, tooltip, RectF(0.0f, 0.0f, width, height)));

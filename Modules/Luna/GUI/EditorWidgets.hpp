@@ -92,19 +92,19 @@ namespace Luna
             const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
         //! Ends the current horizontal linear layout and defers arranging its direct children until @ref layout_editor_tree.
         LUNA_GUI_API RV end_h_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            GUICore::LinearLayoutDesc desc);
+            GUICore::FlexLayoutDesc desc);
         //! Ends the current horizontal linear layout and applies GUI Core linear layout to its direct children.
         LUNA_GUI_API RV end_h_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            const RectF& rect, GUICore::LinearLayoutDesc desc = GUICore::LinearLayoutDesc());
+            const RectF& rect, GUICore::FlexLayoutDesc desc = GUICore::FlexLayoutDesc());
         //! Begins a vertical linear layout directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_v_layout(GUICore::IContext* context, GUICore::id_t id,
             const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
         //! Ends the current vertical linear layout and defers arranging its direct children until @ref layout_editor_tree.
         LUNA_GUI_API RV end_v_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            GUICore::LinearLayoutDesc desc);
+            GUICore::FlexLayoutDesc desc);
         //! Ends the current vertical linear layout and applies GUI Core linear layout to its direct children.
         LUNA_GUI_API RV end_v_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            const RectF& rect, GUICore::LinearLayoutDesc desc = GUICore::LinearLayoutDesc());
+            const RectF& rect, GUICore::FlexLayoutDesc desc = GUICore::FlexLayoutDesc());
         //! Begins a focus scope directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_focus_scope(GUICore::IContext* context, GUICore::id_t id,
             const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());

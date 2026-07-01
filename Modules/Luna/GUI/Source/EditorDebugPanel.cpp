@@ -22,8 +22,9 @@ namespace Luna
             GUICore::LayoutInput fixed_height(f32 height)
             {
                 GUICore::LayoutInput layout;
-                layout.width.kind = GUICore::SizeKind::expand;
-                layout.height.kind = GUICore::SizeKind::pixels;
+                layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+                layout.height.kind = GUICore::SizeKind::fixed;
                 layout.height.value = height;
                 return layout;
             }
@@ -31,25 +32,30 @@ namespace Luna
             GUICore::LayoutInput fixed_width(f32 width)
             {
                 GUICore::LayoutInput layout;
-                layout.width.kind = GUICore::SizeKind::pixels;
+                layout.width.kind = GUICore::SizeKind::fixed;
                 layout.width.value = width;
-                layout.height.kind = GUICore::SizeKind::expand;
+                layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.value = 1.0f;
                 return layout;
             }
 
             GUICore::LayoutInput fill_layout()
             {
                 GUICore::LayoutInput layout;
-                layout.width.kind = GUICore::SizeKind::expand;
-                layout.height.kind = GUICore::SizeKind::expand;
+                layout.width.kind = GUICore::SizeKind::percent;
+                layout.width.value = 1.0f;
+                layout.height.kind = GUICore::SizeKind::percent;
+                layout.height.value = 1.0f;
+                layout.flex_grow = 1.0f;
                 return layout;
             }
 
             GUICore::LayoutInput content_height(f32 height)
             {
                 GUICore::LayoutInput layout;
-                layout.width.kind = GUICore::SizeKind::expand;
-                layout.height.kind = GUICore::SizeKind::pixels;
+                layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+                layout.height.kind = GUICore::SizeKind::fixed;
                 layout.height.value = max(height, 1.0f);
                 return layout;
             }
@@ -73,17 +79,11 @@ namespace Luna
                 const c8* kind = "fit";
                 switch(value.kind)
                 {
-                case GUICore::SizeKind::pixels:
-                    kind = "pixels";
+                case GUICore::SizeKind::fixed:
+                    kind = "fixed";
                     break;
                 case GUICore::SizeKind::percent:
                     kind = "percent";
-                    break;
-                case GUICore::SizeKind::ratio:
-                    kind = "ratio";
-                    break;
-                case GUICore::SizeKind::expand:
-                    kind = "expand";
                     break;
                 default:
                     break;
@@ -403,7 +403,7 @@ namespace Luna
                 }
                 ++row_index;
             }
-            lupanic_if_failed(end_v_layout(context, tree, GUICore::LinearLayoutDesc()));
+            lupanic_if_failed(end_v_layout(context, tree, GUICore::FlexLayoutDesc()));
             lupanic_if_failed(end_scroll_view(context, tree_viewport));
 
             GUICore::ElementHandle details_viewport = begin_scroll_view(context, details_viewport_id, "Element Details Viewport",
@@ -411,16 +411,16 @@ namespace Luna
             GUICore::ElementHandle details = begin_v_layout(context, details_content_id, "Element Details",
                 content_height(details_content_height));
             draw_element_details(context, info, selected_element);
-            lupanic_if_failed(end_v_layout(context, details, GUICore::LinearLayoutDesc()));
+            lupanic_if_failed(end_v_layout(context, details, GUICore::FlexLayoutDesc()));
             lupanic_if_failed(end_scroll_view(context, details_viewport));
 
-            GUICore::LinearLayoutDesc body_layout;
-            body_layout.gap = 12.0f;
+            GUICore::FlexLayoutDesc body_layout;
+            body_layout.main_axis_gap = 12.0f;
             lupanic_if_failed(end_h_layout(context, body, body_layout));
             context->pop_data_scope();
 
-            GUICore::LinearLayoutDesc root_layout;
-            root_layout.gap = 8.0f;
+            GUICore::FlexLayoutDesc root_layout;
+            root_layout.main_axis_gap = 8.0f;
             lupanic_if_failed(end_v_layout(context, root, root_layout));
             lupanic_if_failed(context->set_state(GUICore::make_state_id<CoreDebugPanelState>(id), state.object(),
                 GUICore::StateLifetime::next_frame));

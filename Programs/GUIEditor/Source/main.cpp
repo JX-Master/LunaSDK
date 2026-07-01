@@ -226,16 +226,17 @@ namespace Luna
             GUICore::LayoutInput layout;
             if(width > 0.0f)
             {
-                layout.width.kind = GUICore::SizeKind::pixels;
+                layout.width.kind = GUICore::SizeKind::fixed;
                 layout.width.value = width;
             }
             else
             {
-                layout.width.kind = GUICore::SizeKind::expand;
+                layout.width.kind = GUICore::SizeKind::percent;
+                layout.width.value = 1.0f;
             }
             if(height > 0.0f)
             {
-                layout.height.kind = GUICore::SizeKind::pixels;
+                layout.height.kind = GUICore::SizeKind::fixed;
                 layout.height.value = height;
             }
             return layout;
@@ -794,8 +795,8 @@ namespace Luna
             GUI::text(context, core_derived_id(id, "label"), label, core_inspector_label_layout());
             GUICore::ElementHandle input = GUI::input_text(context, core_derived_id(id, "input"), value,
                 core_inspector_field_layout());
-            GUICore::LinearLayoutDesc desc;
-            desc.gap = 8.0f;
+            GUICore::FlexLayoutDesc desc;
+            desc.main_axis_gap = 8.0f;
             lupanic_if_failed(GUI::end_h_layout(context, row, desc));
             return input;
         }
@@ -807,8 +808,8 @@ namespace Luna
             GUI::text(context, core_derived_id(id, "label"), label, core_inspector_label_layout());
             GUICore::ElementHandle checkbox = GUI::checkbox(context, core_derived_id(id, "checkbox"), "", value,
                 core_inspector_field_layout());
-            GUICore::LinearLayoutDesc desc;
-            desc.gap = 8.0f;
+            GUICore::FlexLayoutDesc desc;
+            desc.main_axis_gap = 8.0f;
             lupanic_if_failed(GUI::end_h_layout(context, row, desc));
             return checkbox;
         }
@@ -820,8 +821,8 @@ namespace Luna
             GUI::text(context, core_derived_id(id, "label"), label, core_inspector_label_layout());
             GUICore::ElementHandle drag = GUI::drag_int(context, core_derived_id(id, "drag"), value,
                 speed, min_value, max_value, core_inspector_field_layout());
-            GUICore::LinearLayoutDesc desc;
-            desc.gap = 8.0f;
+            GUICore::FlexLayoutDesc desc;
+            desc.main_axis_gap = 8.0f;
             lupanic_if_failed(GUI::end_h_layout(context, row, desc));
             return drag;
         }
@@ -833,8 +834,8 @@ namespace Luna
             GUI::text(context, core_derived_id(id, "label"), label, core_inspector_label_layout());
             GUICore::ElementHandle drag = GUI::drag_float(context, core_derived_id(id, "drag"), value,
                 speed, min_value, max_value, core_inspector_field_layout());
-            GUICore::LinearLayoutDesc desc;
-            desc.gap = 8.0f;
+            GUICore::FlexLayoutDesc desc;
+            desc.main_axis_gap = 8.0f;
             lupanic_if_failed(GUI::end_h_layout(context, row, desc));
             return drag;
         }
@@ -861,8 +862,8 @@ namespace Luna
                 drag = GUI::drag_float4(context, core_derived_id(id, "drag"), value, speed, min_value, max_value,
                     core_inspector_field_layout(height));
             }
-            GUICore::LinearLayoutDesc desc;
-            desc.gap = 8.0f;
+            GUICore::FlexLayoutDesc desc;
+            desc.main_axis_gap = 8.0f;
             lupanic_if_failed(GUI::end_h_layout(context, row, desc));
             return drag;
         }
@@ -874,8 +875,8 @@ namespace Luna
             GUI::text(context, core_derived_id(id, "label"), label, core_inspector_label_layout());
             GUICore::ElementHandle combo = GUI::combo(context, core_derived_id(id, "combo"), label, value, items,
                 core_inspector_field_layout());
-            GUICore::LinearLayoutDesc desc;
-            desc.gap = 8.0f;
+            GUICore::FlexLayoutDesc desc;
+            desc.main_axis_gap = 8.0f;
             lupanic_if_failed(GUI::end_h_layout(context, row, desc));
             return combo;
         }
@@ -1021,8 +1022,8 @@ namespace Luna
                 GUI::text(app.editor_core.get(), core_derived_id(id, "key"), kv.first.c_str(), core_inspector_label_layout());
                 String value_text = variant_to_text(kv.second);
                 GUI::text(app.editor_core.get(), core_derived_id(id, "value"), value_text.c_str(), core_inspector_field_layout());
-                GUICore::LinearLayoutDesc desc;
-                desc.gap = 8.0f;
+                GUICore::FlexLayoutDesc desc;
+                desc.main_axis_gap = 8.0f;
                 lupanic_if_failed(GUI::end_h_layout(app.editor_core.get(), row, desc));
             }
         }
@@ -1081,8 +1082,8 @@ namespace Luna
                         "Property Type", core_inspector_label_layout());
                     GUI::button_group(app.editor_core.get(), core_id("gui_editor.inspector.manual.type", 0),
                         &app.property_type, Span<const c8*>(type_items, 4), core_inspector_field_layout());
-                    GUICore::LinearLayoutDesc type_desc;
-                    type_desc.gap = 8.0f;
+                    GUICore::FlexLayoutDesc type_desc;
+                    type_desc.main_axis_gap = 8.0f;
                     lupanic_if_failed(GUI::end_h_layout(app.editor_core.get(), type_row, type_desc));
                     core_labeled_input_text(app.editor_core.get(), core_id("gui_editor.inspector.manual.value", 0),
                         "Property Value", app.property_value);
@@ -1092,8 +1093,8 @@ namespace Luna
                         core_id("gui_editor.inspector.manual.set", 0), "Set Property", core_layout_pixels(120.0f, 28.0f));
                     handles.core_erase_property = GUI::text_button(app.editor_core.get(),
                         core_id("gui_editor.inspector.manual.erase", 0), "Erase Property", core_layout_pixels(120.0f, 28.0f));
-                    GUICore::LinearLayoutDesc action_desc;
-                    action_desc.gap = 8.0f;
+                    GUICore::FlexLayoutDesc action_desc;
+                    action_desc.main_axis_gap = 8.0f;
                     lupanic_if_failed(GUI::end_h_layout(app.editor_core.get(), actions, action_desc));
                 }
             }
@@ -1115,8 +1116,11 @@ namespace Luna
                 GUI::text(app.editor_core.get(), core_id("gui_editor.preview.error", 0), app.preview_error.c_str(), core_text_layout());
             }
             GUICore::LayoutInput canvas_layout;
-            canvas_layout.width.kind = GUICore::SizeKind::expand;
-            canvas_layout.height.kind = GUICore::SizeKind::expand;
+            canvas_layout.width.kind = GUICore::SizeKind::percent;
+            canvas_layout.width.value = 1.0f;
+            canvas_layout.height.kind = GUICore::SizeKind::percent;
+            canvas_layout.height.value = 1.0f;
+            canvas_layout.flex_grow = 1.0f;
             handles.preview_canvas = GUI::hit_box(app.editor_core.get(), core_id("gui_editor.preview.canvas", 0),
                 canvas_layout);
             handles.core_preview_drop_target = handles.preview_canvas;
@@ -1126,8 +1130,9 @@ namespace Luna
         static GUICore::LayoutInput core_text_layout()
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = 24.0f;
             return layout;
         }
@@ -1185,8 +1190,8 @@ namespace Luna
                     core_id("gui_editor.tree.actions", 0), "Tree Actions", core_layout_pixels(0.0f, 30.0f));
                 handles.core_new_node = GUI::text_button(app.editor_core.get(), core_id("gui_editor.tree.new", 0),
                     "New", core_layout_pixels(78.0f, 28.0f), !app.node_types.empty());
-                GUICore::LinearLayoutDesc action_desc;
-                action_desc.gap = 4.0f;
+                GUICore::FlexLayoutDesc action_desc;
+                action_desc.main_axis_gap = 4.0f;
                 lupanic_if_failed(GUI::end_h_layout(app.editor_core.get(), actions, action_desc));
                 build_core_node_tree(app, handles, *document, GA::get_root(document->asset.get()), 0);
             }
@@ -1349,9 +1354,9 @@ namespace Luna
             context->push_layer(core_id("gui_editor.layer.main", 0), Float2U(0.0f), Name("GUIEditor Main"));
 
             GUICore::LayoutInput root_layout;
-            root_layout.width.kind = GUICore::SizeKind::pixels;
+            root_layout.width.kind = GUICore::SizeKind::fixed;
             root_layout.width.value = surface_size.x;
-            root_layout.height.kind = GUICore::SizeKind::pixels;
+            root_layout.height.kind = GUICore::SizeKind::fixed;
             root_layout.height.value = surface_size.y;
             GUICore::ElementHandle root = GUI::begin_v_layout(context, core_id("gui_editor.root", 0),
                 "GUIEditor Root", root_layout);

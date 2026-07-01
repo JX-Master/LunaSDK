@@ -89,9 +89,9 @@ namespace Luna
         inline GUICore::LayoutInput fixed_layout(f32 width, f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = width;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -99,16 +99,20 @@ namespace Luna
         inline GUICore::LayoutInput fill_layout()
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::expand;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.value = 1.0f;
+            layout.flex_grow = 1.0f;
             return layout;
         }
 
         inline GUICore::LayoutInput fill_width_layout(f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -128,7 +132,10 @@ namespace Luna
             GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label, fill_width_layout(28.0f));
             GUI::text(context, id + 1, label, fixed_layout(180.0f, 24.0f));
             GUI::text(context, id + 2, value, fill_width_layout(24.0f));
-            lupanic_if_failed(GUI::end_h_layout(context, row, GUICore::LinearLayoutDesc { GUICore::LayoutAxis::x, 8.0f, true }));
+            GUICore::FlexLayoutDesc desc;
+            desc.axis = GUICore::LayoutAxis::x;
+            desc.main_axis_gap = 8.0f;
+            lupanic_if_failed(GUI::end_h_layout(context, row, desc));
             return row;
         }
 

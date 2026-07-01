@@ -131,9 +131,9 @@ namespace Luna
         GUICore::LayoutInput fixed_size(f32 width, f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = width;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -141,8 +141,9 @@ namespace Luna
         GUICore::LayoutInput fixed_height(f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -150,16 +151,19 @@ namespace Luna
         GUICore::LayoutInput fill_layout()
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::expand;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.value = 1.0f;
+            layout.flex_grow = 1.0f;
             return layout;
         }
 
-        GUICore::LinearLayoutDesc linear_desc(GUICore::LayoutAxis axis, f32 gap = 0.0f)
+        GUICore::FlexLayoutDesc linear_desc(GUICore::LayoutAxis axis, f32 gap = 0.0f)
         {
-            GUICore::LinearLayoutDesc desc;
+            GUICore::FlexLayoutDesc desc;
             desc.axis = axis;
-            desc.gap = gap;
+            desc.main_axis_gap = gap;
             return desc;
         }
 

@@ -22,16 +22,10 @@ namespace Luna
         {
             //! Use content-driven size.
             fit,
-            //! Use the largest measured content size among sibling elements on the same axis.
-            fit_largest,
-            //! Use an absolute pixel size.
-            pixels,
-            //! Use a percentage of the parent size.
-            percent,
-            //! Consume remaining space using a weighted ratio.
-            ratio,
-            //! Expand to the available size.
-            expand
+            //! Use an absolute logical-coordinate size.
+            fixed,
+            //! Use a percentage of the parent content size.
+            percent
         };
 
         //! Describes one axis size request.
@@ -39,8 +33,7 @@ namespace Luna
         {
             //! The size interpretation mode.
             SizeKind kind = SizeKind::fit;
-            //! The numeric value used by @ref SizeKind::pixels, @ref SizeKind::percent, @ref SizeKind::ratio
-            //! and @ref SizeKind::expand.
+            //! The numeric value used by @ref SizeKind::fixed and @ref SizeKind::percent.
             f32 value = 0.0f;
             //! Minimum resolved size.
             f32 min = 0.0f;
@@ -59,6 +52,10 @@ namespace Luna
             Float4U margin = Float4U(0.0f);
             //! Padding in left, top, right, bottom order.
             Float4U padding = Float4U(0.0f);
+            //! Flex grow factor used by flex layout on the main axis. Zero disables growing.
+            f32 flex_grow = 0.0f;
+            //! Flex shrink factor used by flex layout on the main axis. Zero disables shrinking.
+            f32 flex_shrink = 1.0f;
         };
 
         //! Identifies one linear layout axis.
@@ -70,13 +67,55 @@ namespace Luna
             y
         };
 
-        //! Describes one linear layout pass.
-        struct LinearLayoutDesc
+        //! Identifies how flex layout wraps children into multiple lines.
+        enum class FlexWrap : u8
+        {
+            //! Places all children on one line.
+            none,
+            //! Wraps children to additional lines in the cross-axis positive direction.
+            wrap,
+            //! Wraps children to additional lines in the cross-axis negative direction.
+            wrap_reverse
+        };
+
+        //! Identifies how flex layout distributes free space.
+        enum class FlexAlignment : u8
+        {
+            //! Aligns items to the start of the axis.
+            start,
+            //! Aligns items to the center of the axis.
+            center,
+            //! Aligns items to the end of the axis.
+            end,
+            //! Stretches items or lines to consume the available cross-axis space.
+            stretch,
+            //! Places equal space between adjacent items or lines.
+            space_between,
+            //! Places equal space around every item or line.
+            space_around,
+            //! Places equal space before, between and after every item or line.
+            space_evenly
+        };
+
+        //! Describes one flex layout pass.
+        struct FlexLayoutDesc
         {
             //! Child placement axis.
             LayoutAxis axis = LayoutAxis::y;
-            //! Gap between adjacent children.
-            f32 gap = 0.0f;
+            //! Whether the main-axis placement direction is reversed.
+            bool reverse = false;
+            //! Wrapping mode.
+            FlexWrap wrap = FlexWrap::none;
+            //! Main-axis alignment, equivalent to CSS `justify-content`.
+            FlexAlignment main_alignment = FlexAlignment::start;
+            //! Cross-axis item alignment, equivalent to CSS `align-items`.
+            FlexAlignment cross_alignment = FlexAlignment::stretch;
+            //! Cross-axis line alignment, equivalent to CSS `align-content`.
+            FlexAlignment line_alignment = FlexAlignment::start;
+            //! Gap between adjacent children on the main axis.
+            f32 main_axis_gap = 0.0f;
+            //! Gap between adjacent flex lines on the cross axis.
+            f32 cross_axis_gap = 0.0f;
             //! Whether child clip rectangles should be intersected with the parent content rectangle.
             bool clip_children = true;
         };

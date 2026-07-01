@@ -55,8 +55,9 @@ namespace Luna
         GUICore::LayoutInput fixed_height_layout(f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -64,8 +65,11 @@ namespace Luna
         GUICore::LayoutInput fill_layout()
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::expand;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.value = 1.0f;
+            layout.flex_grow = 1.0f;
             return layout;
         }
     }
@@ -321,7 +325,7 @@ namespace Luna
                 }
             }
             luexp(GUI::end_dock_space(m_gui, dock_space, dock_rect));
-            luexp(GUI::end_v_layout(m_gui, root, screen_rect, GUICore::LinearLayoutDesc()));
+            luexp(GUI::end_v_layout(m_gui, root, screen_rect, GUICore::FlexLayoutDesc()));
             m_gui->pop_layer();
             m_gui->route_input();
             luexp(GUIWindow::update_text_input(m_window, m_gui));

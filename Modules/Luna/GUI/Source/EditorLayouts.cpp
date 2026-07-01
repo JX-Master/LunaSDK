@@ -120,19 +120,19 @@ namespace Luna
             return Span<const _Ty>(ret, values.size());
         }
 
-        static void fill_linear_layout_config(GUICore::IContext* context, GUICore::LayoutConfig& config,
-            const GUICore::LinearLayoutDesc& desc)
+        static void fill_flex_layout_config(GUICore::IContext* context, GUICore::LayoutConfig& config,
+            const GUICore::FlexLayoutDesc& desc)
         {
-            config.name = Name("gui.core.linear");
-            config.callback = GUICore::layout_linear;
+            config.name = Name("gui.core.flex");
+            config.callback = GUICore::layout_flex;
             config.userdata = allocate_layout_userdata(context, desc);
         }
 
-        LUNA_GUI_API RV set_editor_linear_layout_config(GUICore::IContext* context,
-            const GUICore::ElementHandle& layout, const GUICore::LinearLayoutDesc& desc)
+        LUNA_GUI_API RV set_editor_flex_layout_config(GUICore::IContext* context,
+            const GUICore::ElementHandle& layout, const GUICore::FlexLayoutDesc& desc)
         {
             GUICore::LayoutConfig config;
-            fill_linear_layout_config(context, config, desc);
+            fill_flex_layout_config(context, config, desc);
             return set_element_layout_config(context, layout, config);
         }
 
@@ -529,24 +529,24 @@ namespace Luna
         }
 
         LUNA_GUI_API RV end_h_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            GUICore::LinearLayoutDesc desc)
+            GUICore::FlexLayoutDesc desc)
         {
             luassert(context);
             desc.axis = GUICore::LayoutAxis::x;
             GUICore::LayoutConfig config;
-            fill_linear_layout_config(context, config, desc);
+            fill_flex_layout_config(context, config, desc);
             RV r = set_element_layout_config(context, layout, config);
             context->end_element();
             return r;
         }
 
         LUNA_GUI_API RV end_h_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            const RectF& rect, GUICore::LinearLayoutDesc desc)
+            const RectF& rect, GUICore::FlexLayoutDesc desc)
         {
             luassert(context);
             desc.axis = GUICore::LayoutAxis::x;
             GUICore::LayoutConfig config;
-            fill_linear_layout_config(context, config, desc);
+            fill_flex_layout_config(context, config, desc);
             RV r = set_element_layout_config(context, layout, config);
             context->end_element();
             if(succeeded(r))
@@ -563,24 +563,24 @@ namespace Luna
         }
 
         LUNA_GUI_API RV end_v_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            GUICore::LinearLayoutDesc desc)
+            GUICore::FlexLayoutDesc desc)
         {
             luassert(context);
             desc.axis = GUICore::LayoutAxis::y;
             GUICore::LayoutConfig config;
-            fill_linear_layout_config(context, config, desc);
+            fill_flex_layout_config(context, config, desc);
             RV r = set_element_layout_config(context, layout, config);
             context->end_element();
             return r;
         }
 
         LUNA_GUI_API RV end_v_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            const RectF& rect, GUICore::LinearLayoutDesc desc)
+            const RectF& rect, GUICore::FlexLayoutDesc desc)
         {
             luassert(context);
             desc.axis = GUICore::LayoutAxis::y;
             GUICore::LayoutConfig config;
-            fill_linear_layout_config(context, config, desc);
+            fill_flex_layout_config(context, config, desc);
             RV r = set_element_layout_config(context, layout, config);
             context->end_element();
             if(succeeded(r))

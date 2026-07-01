@@ -27,9 +27,9 @@ namespace Luna
         GUICore::LayoutInput fixed_size(f32 width, f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = width;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -37,8 +37,9 @@ namespace Luna
         GUICore::LayoutInput fixed_height(f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -46,8 +47,11 @@ namespace Luna
         GUICore::LayoutInput fill()
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::expand;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.value = 1.0f;
+            layout.flex_grow = 1.0f;
             return layout;
         }
 
@@ -60,9 +64,9 @@ namespace Luna
 
         void end_core_gui_property_row(GUICore::IContext* context, const CoreGUIPropertyRow& row)
         {
-            GUICore::LinearLayoutDesc desc;
+            GUICore::FlexLayoutDesc desc;
             desc.axis = GUICore::LayoutAxis::x;
-            desc.gap = 8.0f;
+            desc.main_axis_gap = 8.0f;
             lupanic_if_failed(GUI::end_h_layout(context, row.row, desc));
         }
 
@@ -387,14 +391,14 @@ namespace Luna
         {
             GUI::text(context, context->make_id("path"), "(drop asset here)", fixed_height(32.0f));
         }
-        GUICore::LinearLayoutDesc path_desc;
+        GUICore::FlexLayoutDesc path_desc;
         path_desc.axis = GUICore::LayoutAxis::x;
-        path_desc.gap = 8.0f;
+        path_desc.main_axis_gap = 8.0f;
         lupanic_if_failed(GUI::end_h_layout(context, path_row, path_desc));
 
-        GUICore::LinearLayoutDesc content_desc;
+        GUICore::FlexLayoutDesc content_desc;
         content_desc.axis = GUICore::LayoutAxis::y;
-        content_desc.gap = 6.0f;
+        content_desc.main_axis_gap = 6.0f;
         lupanic_if_failed(GUI::end_v_layout(context, content, content_desc));
         end_core_gui_property_row(context, row);
 

@@ -83,12 +83,12 @@ namespace Luna
             GUICore::LayoutInput layout;
             if(width > 0.0f)
             {
-                layout.width.kind = GUICore::SizeKind::pixels;
+                layout.width.kind = GUICore::SizeKind::fixed;
                 layout.width.value = width;
             }
             if(height > 0.0f)
             {
-                layout.height.kind = GUICore::SizeKind::pixels;
+                layout.height.kind = GUICore::SizeKind::fixed;
                 layout.height.value = height;
             }
             return layout;
@@ -324,10 +324,10 @@ namespace Luna
             result.clip_rect = rect;
             result.content_size = Float2U(rect.width, rect.height);
             context->set_layout_result(menu_bar, result);
-            GUICore::LinearLayoutDesc layout_desc;
+            GUICore::FlexLayoutDesc layout_desc;
             layout_desc.axis = GUICore::LayoutAxis::x;
-            layout_desc.gap = style_value(context, Name("gui.editor.menu_bar.gap"), GUICore::style_f32(4.0f)).number.x;
-            return GUICore::layout_linear(context, menu_bar, rect, &layout_desc);
+            layout_desc.main_axis_gap = style_value(context, Name("gui.editor.menu_bar.gap"), GUICore::style_f32(4.0f)).number.x;
+            return GUICore::layout_flex(context, menu_bar, rect, &layout_desc);
         }
 
         LUNA_GUI_API bool begin_menu(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool enabled,
@@ -359,12 +359,12 @@ namespace Luna
             GUICore::LayoutInput item_layout = layout;
             if(item_layout.width.kind == GUICore::SizeKind::fit)
             {
-                item_layout.width.kind = top_level ? GUICore::SizeKind::pixels : GUICore::SizeKind::expand;
-                item_layout.width.value = top_level ? menu_label_width(context, label, true, true, false) : 0.0f;
+                item_layout.width.kind = top_level ? GUICore::SizeKind::fixed : GUICore::SizeKind::percent;
+                item_layout.width.value = top_level ? menu_label_width(context, label, true, true, false) : 1.0f;
             }
             if(item_layout.height.kind == GUICore::SizeKind::fit)
             {
-                item_layout.height.kind = GUICore::SizeKind::pixels;
+                item_layout.height.kind = GUICore::SizeKind::fixed;
                 item_layout.height.value = top_level ? 24.0f : 26.0f;
             }
 
@@ -419,11 +419,12 @@ namespace Luna
             GUICore::LayoutInput item_layout = layout;
             if(item_layout.width.kind == GUICore::SizeKind::fit)
             {
-                item_layout.width.kind = GUICore::SizeKind::expand;
+                item_layout.width.kind = GUICore::SizeKind::percent;
+                item_layout.width.value = 1.0f;
             }
             if(item_layout.height.kind == GUICore::SizeKind::fit)
             {
-                item_layout.height.kind = GUICore::SizeKind::pixels;
+                item_layout.height.kind = GUICore::SizeKind::fixed;
                 item_layout.height.value = 26.0f;
             }
             GUICore::ElementHandle item = context->begin_element(id, label ? Name(label) : Name("menu_item"));
@@ -452,11 +453,12 @@ namespace Luna
             GUICore::LayoutInput separator_layout = layout;
             if(separator_layout.width.kind == GUICore::SizeKind::fit)
             {
-                separator_layout.width.kind = GUICore::SizeKind::expand;
+                separator_layout.width.kind = GUICore::SizeKind::percent;
+                separator_layout.width.value = 1.0f;
             }
             if(separator_layout.height.kind == GUICore::SizeKind::fit)
             {
-                separator_layout.height.kind = GUICore::SizeKind::pixels;
+                separator_layout.height.kind = GUICore::SizeKind::fixed;
                 separator_layout.height.value = 7.0f;
             }
             GUICore::ElementHandle separator = context->begin_element(id, Name("menu_separator"));

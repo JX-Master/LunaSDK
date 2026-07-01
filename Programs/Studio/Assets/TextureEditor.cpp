@@ -21,9 +21,9 @@ namespace Luna
             if(texture)
             {
                 auto desc = texture->get_desc();
-                layout.width.kind = GUICore::SizeKind::pixels;
+                layout.width.kind = GUICore::SizeKind::fixed;
                 layout.width.value = (f32)desc.width;
-                layout.height.kind = GUICore::SizeKind::pixels;
+                layout.height.kind = GUICore::SizeKind::fixed;
                 layout.height.value = (f32)desc.height;
             }
             return layout;
@@ -32,8 +32,9 @@ namespace Luna
         GUICore::LayoutInput fixed_height_layout(f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -57,7 +58,7 @@ namespace Luna
         {
             GUI::image(context, context->make_id("texture"), tex.get(), texture_size_layout(tex.get()));
         }
-        lupanic_if_failed(GUI::end_v_layout(context, root, GUICore::LinearLayoutDesc()));
+        lupanic_if_failed(GUI::end_v_layout(context, root, GUICore::FlexLayoutDesc()));
         context->pop_data_scope();
     }
 

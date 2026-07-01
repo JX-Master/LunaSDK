@@ -115,7 +115,8 @@ namespace
     GUICore::LayoutInput scroll_content_layout(f32 min_height)
     {
         GUICore::LayoutInput layout;
-        layout.width.kind = GUICore::SizeKind::expand;
+        layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
         layout.height.kind = GUICore::SizeKind::fit;
         layout.height.min = min_height;
         return layout;
@@ -249,9 +250,9 @@ namespace
         const RoutingDemoNodeDesc& desc = ROUTING_DEMO_NODES[node];
         GUICore::ElementHandle element = context->begin_element(routing_node_id(node), Name(desc.name));
         GUICore::LayoutInput layout;
-        layout.width.kind = GUICore::SizeKind::pixels;
+        layout.width.kind = GUICore::SizeKind::fixed;
         layout.width.value = desc.rect.width;
-        layout.height.kind = GUICore::SizeKind::pixels;
+        layout.height.kind = GUICore::SizeKind::fixed;
         layout.height.value = desc.rect.height;
         context->set_layout(element, layout);
 
@@ -508,9 +509,9 @@ namespace
 
     void end_page_body(GUICore::IContext* context, const GUICore::ElementHandle& body, const GUICore::ElementHandle& scroll)
     {
-        GUICore::LinearLayoutDesc body_desc;
+        GUICore::FlexLayoutDesc body_desc;
         body_desc.axis = GUICore::LayoutAxis::y;
-        body_desc.gap = 8.0f;
+        body_desc.main_axis_gap = 8.0f;
         lupanic_if_failed(GUI::end_v_layout(context, body, body_desc));
         lupanic_if_failed(GUI::end_scroll_view(context, scroll));
     }
@@ -540,9 +541,9 @@ namespace
             "Routing tree", scroll_content_layout(410.0f));
         build_routing_tree_view(context, state);
         build_routing_traversal_view(context, traversal);
-        GUICore::LinearLayoutDesc column_desc;
+        GUICore::FlexLayoutDesc column_desc;
         column_desc.axis = GUICore::LayoutAxis::y;
-        column_desc.gap = 4.0f;
+        column_desc.main_axis_gap = 4.0f;
         lupanic_if_failed(GUI::end_v_layout(context, tree_column, column_desc));
         lupanic_if_failed(GUI::end_scroll_view(context, tree_scroll));
 
@@ -554,9 +555,9 @@ namespace
         lupanic_if_failed(GUI::end_v_layout(context, inspector_column, column_desc));
         lupanic_if_failed(GUI::end_scroll_view(context, inspector_scroll));
 
-        GUICore::LinearLayoutDesc editor_desc;
+        GUICore::FlexLayoutDesc editor_desc;
         editor_desc.axis = GUICore::LayoutAxis::x;
-        editor_desc.gap = 16.0f;
+        editor_desc.main_axis_gap = 16.0f;
         lupanic_if_failed(GUI::end_h_layout(context, editor_row, editor_desc));
 
         snprintf(text, sizeof(text), "x=%.1f y=%.1f inside=%s", pointer.x, pointer.y, context->is_pointer_inside() ? "yes" : "no");
@@ -596,9 +597,9 @@ namespace
         GUI::text_button(context, Test::demo_id("core.layout.h.a"), "Left", Test::fixed_layout(120.0f, 36.0f));
         GUI::text_button(context, Test::demo_id("core.layout.h.b"), "Middle expands", Test::fill_width_layout(36.0f));
         GUI::text_button(context, Test::demo_id("core.layout.h.c"), "Right", Test::fixed_layout(120.0f, 36.0f));
-        GUICore::LinearLayoutDesc h_desc;
+        GUICore::FlexLayoutDesc h_desc;
         h_desc.axis = GUICore::LayoutAxis::x;
-        h_desc.gap = state.linear_gap;
+        h_desc.main_axis_gap = state.linear_gap;
         lupanic_if_failed(GUI::end_h_layout(context, h, h_desc));
 
         GUI::slider_float_with_input(context, Test::demo_id("core.layout.cell.w"), "Grid cell width", &state.grid_cell_width, 48.0f, 180.0f,
@@ -663,9 +664,9 @@ namespace
             snprintf(label, sizeof(label), "Manual item %u", i);
             GUI::text_button(context, Test::demo_id("core.layout.viewport.item", i), label, Test::fixed_layout(220.0f, 30.0f));
         }
-        GUICore::LinearLayoutDesc viewport_content_desc;
+        GUICore::FlexLayoutDesc viewport_content_desc;
         viewport_content_desc.axis = GUICore::LayoutAxis::y;
-        viewport_content_desc.gap = 6.0f;
+        viewport_content_desc.main_axis_gap = 6.0f;
         lupanic_if_failed(GUI::end_v_layout(context, viewport_content, viewport_content_desc));
         GUICore::ScrollViewportLayoutDesc viewport_desc;
         viewport_desc.scroll_offset = Float2U(state.scroll_offset_x, state.scroll_offset_y);
@@ -985,9 +986,9 @@ namespace
         {
             GUICore::clear_debug_frames(state.timeline);
         }
-        GUICore::LinearLayoutDesc timeline_button_desc;
+        GUICore::FlexLayoutDesc timeline_button_desc;
         timeline_button_desc.axis = GUICore::LayoutAxis::x;
-        timeline_button_desc.gap = 8.0f;
+        timeline_button_desc.main_axis_gap = 8.0f;
         lupanic_if_failed(GUI::end_h_layout(context, timeline_buttons, timeline_button_desc));
         const GUICore::DebugInfo* frame = GUICore::current_debug_frame(state.timeline);
         snprintf(text, sizeof(text), "frames=%u cursor=%u current_elements=%u",

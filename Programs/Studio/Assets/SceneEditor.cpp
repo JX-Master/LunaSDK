@@ -36,8 +36,9 @@ namespace Luna
         GUICore::LayoutInput core_fixed_height(f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -45,9 +46,9 @@ namespace Luna
         GUICore::LayoutInput core_fixed_size(f32 width, f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = width;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -55,34 +56,38 @@ namespace Luna
         GUICore::LayoutInput core_fixed_width(f32 width)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = width;
-            layout.height.kind = GUICore::SizeKind::expand;
+            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.value = 1.0f;
             return layout;
         }
 
         GUICore::LayoutInput core_fill()
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::expand;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.value = 1.0f;
+            layout.flex_grow = 1.0f;
             return layout;
         }
 
         GUICore::LayoutInput core_ratio_height(f32 ratio)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::ratio;
-            layout.height.value = ratio;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.flex_grow = ratio;
             return layout;
         }
 
-        GUICore::LinearLayoutDesc core_linear(GUICore::LayoutAxis axis, f32 gap = 6.0f, bool clip_children = false)
+        GUICore::FlexLayoutDesc core_linear(GUICore::LayoutAxis axis, f32 gap = 6.0f, bool clip_children = false)
         {
-            GUICore::LinearLayoutDesc desc;
+            GUICore::FlexLayoutDesc desc;
             desc.axis = axis;
-            desc.gap = gap;
+            desc.main_axis_gap = gap;
             desc.clip_children = clip_children;
             return desc;
         }

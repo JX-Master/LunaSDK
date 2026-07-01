@@ -306,7 +306,7 @@ namespace Luna
                     {
                         f32 remaining_height = max(rect.offset_y + rect.height - content_y, 1.0f);
                         f32 content_height = remaining_height;
-                        if(child_element->layout.height.kind == GUICore::SizeKind::pixels)
+                        if(child_element->layout.height.kind == GUICore::SizeKind::fixed)
                         {
                             content_height = child_element->layout.height.value;
                         }

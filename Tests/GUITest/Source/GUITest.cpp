@@ -154,9 +154,9 @@ namespace
 
     void end_page(GUICore::IContext* context, const GUICore::ElementHandle& body, const GUICore::ElementHandle& scroll)
     {
-        GUICore::LinearLayoutDesc desc;
+        GUICore::FlexLayoutDesc desc;
         desc.axis = GUICore::LayoutAxis::y;
-        desc.gap = 8.0f;
+        desc.main_axis_gap = 8.0f;
         lupanic_if_failed(GUI::end_v_layout(context, body, desc));
         lupanic_if_failed(GUI::end_scroll_view(context, scroll));
     }
@@ -175,9 +175,9 @@ namespace
         GUI::shape_button(context, Test::demo_id("gui.buttons.shape.button"), "Shape Button", state.icon_shape, Test::fixed_layout(80.0f, 36.0f));
         GUI::shape_button(context, Test::demo_id("gui.buttons.shape.button.disabled"), "Disabled Shape Button",
             state.icon_shape, Test::fixed_layout(80.0f, 36.0f), 6.0f, false);
-        GUICore::LinearLayoutDesc shape_row_desc;
+        GUICore::FlexLayoutDesc shape_row_desc;
         shape_row_desc.axis = GUICore::LayoutAxis::x;
-        shape_row_desc.gap = 8.0f;
+        shape_row_desc.main_axis_gap = 8.0f;
         lupanic_if_failed(GUI::end_h_layout(context, shape_row, shape_row_desc));
         GUICore::ElementHandle button = GUI::begin_button(context, Test::demo_id("gui.buttons.container"), "Container Button", tall_row_layout());
         GUI::text(context, Test::demo_id("gui.buttons.container.text"), "Button container with custom child text", Test::fill_layout());
@@ -364,9 +364,9 @@ namespace
         GUI::text_button(context, Test::demo_id("gui.layout.h.0"), "Fixed", Test::fixed_layout(120.0f, 28.0f));
         GUI::text_button(context, Test::demo_id("gui.layout.h.1"), "Fill", Test::fill_width_layout(28.0f));
         GUI::text_button(context, Test::demo_id("gui.layout.h.2"), "Fixed", Test::fixed_layout(120.0f, 28.0f));
-        GUICore::LinearLayoutDesc h_desc;
+        GUICore::FlexLayoutDesc h_desc;
         h_desc.axis = GUICore::LayoutAxis::x;
-        h_desc.gap = 8.0f;
+        h_desc.main_axis_gap = 8.0f;
         lupanic_if_failed(GUI::end_h_layout(context, h, h_desc));
 
         GUICore::ElementHandle grid = GUI::begin_grid_layout(context, Test::demo_id("gui.layout.grid"), "GridLayout", Test::fill_width_layout(180.0f));

@@ -57,12 +57,12 @@ namespace Luna
             GUICore::LayoutInput layout;
             if(width > 0.0f)
             {
-                layout.width.kind = GUICore::SizeKind::pixels;
+                layout.width.kind = GUICore::SizeKind::fixed;
                 layout.width.value = width;
             }
             if(height > 0.0f)
             {
-                layout.height.kind = GUICore::SizeKind::pixels;
+                layout.height.kind = GUICore::SizeKind::fixed;
                 layout.height.value = height;
             }
             return layout;

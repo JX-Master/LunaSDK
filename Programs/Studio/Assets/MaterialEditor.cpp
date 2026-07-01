@@ -20,17 +20,18 @@ namespace Luna
         GUICore::LayoutInput fixed_height(f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::LinearLayoutDesc vertical_editor_layout()
+        GUICore::FlexLayoutDesc vertical_editor_layout()
         {
-            GUICore::LinearLayoutDesc desc;
+            GUICore::FlexLayoutDesc desc;
             desc.axis = GUICore::LayoutAxis::y;
-            desc.gap = 8.0f;
+            desc.main_axis_gap = 8.0f;
             return desc;
         }
     }

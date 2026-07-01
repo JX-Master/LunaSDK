@@ -14,15 +14,16 @@ namespace Luna
 {
     namespace GUICore
     {
-        //! Applies one linear layout algorithm to the direct children of one element.
+        //! Applies one flex layout algorithm to the direct children of one element.
         //! @param[in] context The GUI Core context that owns @p element.
         //! @param[in] element The parent element whose direct children will be arranged.
         //! @param[in] rect The parent rectangle in layer coordinates.
-        //! @param[in] userdata Pointer to @ref LinearLayoutDesc owned by the caller.
+        //! @param[in] userdata Pointer to @ref FlexLayoutDesc owned by the caller.
         //! @return Returns success or failure code.
-        //! @remark This is a data-oriented layout helper. It operates through public element records and writes
-        //! layout results back to the supplied context without knowing any widget type.
-        LUNA_GUICORE_API RV layout_linear(IContext* context, const ElementHandle& element, const RectF& rect, void* userdata);
+        //! @remark Flex layout first measures child subtrees to derive minimum, desired and maximum sizes, then
+        //! distributes free or missing main-axis space with flex grow and shrink constraints before arranging
+        //! children recursively through @ref IContext::apply_layout.
+        LUNA_GUICORE_API RV layout_flex(IContext* context, const ElementHandle& element, const RectF& rect, void* userdata);
 
         //! Applies one row-major grid layout algorithm to the direct children of one element.
         //! @param[in] context The GUI Core context that owns @p element.

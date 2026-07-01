@@ -154,9 +154,9 @@ namespace Luna
     static GUICore::LayoutInput fixed_layout(f32 width, f32 height)
     {
         GUICore::LayoutInput layout;
-        layout.width.kind = GUICore::SizeKind::pixels;
+        layout.width.kind = GUICore::SizeKind::fixed;
         layout.width.value = width;
-        layout.height.kind = GUICore::SizeKind::pixels;
+        layout.height.kind = GUICore::SizeKind::fixed;
         layout.height.value = height;
         return layout;
     }

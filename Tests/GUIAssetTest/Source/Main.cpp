@@ -210,10 +210,11 @@ namespace Luna
         Ref<GA::Asset> asset = GA::new_asset();
         Ref<GA::Node> root = root_node(asset);
         root->label = "GUIAsset Test Root";
-        root->layout_input.width.kind = GUICore::SizeKind::expand;
+        root->layout_input.width.kind = GUICore::SizeKind::percent;
         root->layout_input.width.value = 1.0f;
-        root->layout_input.height.kind = GUICore::SizeKind::expand;
+        root->layout_input.height.kind = GUICore::SizeKind::percent;
         root->layout_input.height.value = 1.0f;
+        root->layout_input.flex_grow = 1.0f;
         root->has_layout_input = true;
 
         Ref<GA::Node> header = add_child(asset, root->id, "h_layout", "Header");
@@ -253,9 +254,9 @@ namespace Luna
         const c8* combo_items[] = {"Alpha", "Beta", "Gamma"};
         combo->properties[name_items] = make_items(Span<const c8*>(combo_items, 3));
         combo->properties[name_current_item] = (i64)2;
-        combo->layout_input.width.kind = GUICore::SizeKind::pixels;
+        combo->layout_input.width.kind = GUICore::SizeKind::fixed;
         combo->layout_input.width.value = 180.0f;
-        combo->layout_input.height.kind = GUICore::SizeKind::pixels;
+        combo->layout_input.height.kind = GUICore::SizeKind::fixed;
         combo->layout_input.height.value = 28.0f;
         combo->has_layout_input = true;
 
@@ -352,9 +353,9 @@ namespace Luna
         Ref<GA::Node> scroll = add_child(asset, root->id, "scroll_view", "Scroll Area");
         scroll->properties[name_size] = make_size(160.0f, 40.0f);
         Ref<GA::Node> scroll_text = add_child(asset, scroll->id, "text", "Scrollable Body");
-        scroll_text->layout_input.width.kind = GUICore::SizeKind::pixels;
+        scroll_text->layout_input.width.kind = GUICore::SizeKind::fixed;
         scroll_text->layout_input.width.value = 160.0f;
-        scroll_text->layout_input.height.kind = GUICore::SizeKind::pixels;
+        scroll_text->layout_input.height.kind = GUICore::SizeKind::fixed;
         scroll_text->layout_input.height.value = 160.0f;
         scroll_text->has_layout_input = true;
 

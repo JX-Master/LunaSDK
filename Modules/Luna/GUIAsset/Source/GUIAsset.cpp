@@ -342,10 +342,17 @@ namespace Luna
             else if(data[Name("width_policy")].valid())
             {
                 AssetSizePolicy policy = (AssetSizePolicy)data[Name("width_policy")].unum((u64)AssetSizePolicy::hug);
-                r.width.kind = policy == AssetSizePolicy::fixed ? GUICore::SizeKind::pixels :
-                    (policy == AssetSizePolicy::fill ? GUICore::SizeKind::ratio : GUICore::SizeKind::fit);
-                r.width.value = policy == AssetSizePolicy::fixed ?
-                    (f32)data[Name("fixed_width")].fnum(0.0) : (f32)data[Name("fill_weight_x")].fnum(1.0);
+                if(policy == AssetSizePolicy::fixed)
+                {
+                    r.width.kind = GUICore::SizeKind::fixed;
+                    r.width.value = (f32)data[Name("fixed_width")].fnum(0.0);
+                }
+                else if(policy == AssetSizePolicy::fill)
+                {
+                    r.width.kind = GUICore::SizeKind::percent;
+                    r.width.value = 1.0f;
+                    r.flex_grow = max(r.flex_grow, (f32)data[Name("fill_weight_x")].fnum(1.0));
+                }
             }
             if(data[Name("height")].type() == VariantType::object)
             {
@@ -354,10 +361,17 @@ namespace Luna
             else if(data[Name("height_policy")].valid())
             {
                 AssetSizePolicy policy = (AssetSizePolicy)data[Name("height_policy")].unum((u64)AssetSizePolicy::hug);
-                r.height.kind = policy == AssetSizePolicy::fixed ? GUICore::SizeKind::pixels :
-                    (policy == AssetSizePolicy::fill ? GUICore::SizeKind::ratio : GUICore::SizeKind::fit);
-                r.height.value = policy == AssetSizePolicy::fixed ?
-                    (f32)data[Name("fixed_height")].fnum(0.0) : (f32)data[Name("fill_weight_y")].fnum(1.0);
+                if(policy == AssetSizePolicy::fixed)
+                {
+                    r.height.kind = GUICore::SizeKind::fixed;
+                    r.height.value = (f32)data[Name("fixed_height")].fnum(0.0);
+                }
+                else if(policy == AssetSizePolicy::fill)
+                {
+                    r.height.kind = GUICore::SizeKind::percent;
+                    r.height.value = 1.0f;
+                    r.flex_grow = max(r.flex_grow, (f32)data[Name("fill_weight_y")].fnum(1.0));
+                }
             }
             AssetEdgeInsets margin = read_edge_insets(data[Name("margin")]);
             AssetEdgeInsets padding = read_edge_insets(data[Name("padding")]);
@@ -430,12 +444,12 @@ namespace Luna
             GUICore::LayoutInput input = read_core_layout_input(node);
             if(size.width > 0.0f)
             {
-                input.width.kind = GUICore::SizeKind::pixels;
+                input.width.kind = GUICore::SizeKind::fixed;
                 input.width.value = size.width;
             }
             if(size.height > 0.0f)
             {
-                input.height.kind = GUICore::SizeKind::pixels;
+                input.height.kind = GUICore::SizeKind::fixed;
                 input.height.value = size.height;
             }
             return input;
@@ -446,12 +460,12 @@ namespace Luna
             GUICore::LayoutInput input;
             if(width > 0.0f)
             {
-                input.width.kind = GUICore::SizeKind::pixels;
+                input.width.kind = GUICore::SizeKind::fixed;
                 input.width.value = width;
             }
             if(height > 0.0f)
             {
-                input.height.kind = GUICore::SizeKind::pixels;
+                input.height.kind = GUICore::SizeKind::fixed;
                 input.height.value = height;
             }
             return input;
@@ -557,12 +571,12 @@ namespace Luna
             }
             if(!stretch_x)
             {
-                node.layout_input.width.kind = GUICore::SizeKind::pixels;
+                node.layout_input.width.kind = GUICore::SizeKind::fixed;
                 node.layout_input.width.value = max(node.canvas_layout.offset.z - node.canvas_layout.offset.x, 1.0f);
             }
             if(!stretch_y)
             {
-                node.layout_input.height.kind = GUICore::SizeKind::pixels;
+                node.layout_input.height.kind = GUICore::SizeKind::fixed;
                 node.layout_input.height.value = max(node.canvas_layout.offset.w - node.canvas_layout.offset.y, 1.0f);
             }
             node.has_layout_input = true;
@@ -603,8 +617,8 @@ namespace Luna
                 context->end_element();
                 return r;
             }
-            GUICore::LinearLayoutDesc desc;
-            desc.gap = read_layout_desc(node.properties).gap;
+            GUICore::FlexLayoutDesc desc;
+            desc.main_axis_gap = read_layout_desc(node.properties).gap;
             return GUI::end_h_layout(context, layout, desc);
         }
 
@@ -617,8 +631,8 @@ namespace Luna
                 context->end_element();
                 return r;
             }
-            GUICore::LinearLayoutDesc desc;
-            desc.gap = read_layout_desc(node.properties).gap;
+            GUICore::FlexLayoutDesc desc;
+            desc.main_axis_gap = read_layout_desc(node.properties).gap;
             return GUI::end_v_layout(context, layout, desc);
         }
 
@@ -768,8 +782,8 @@ namespace Luna
                 context->end_element();
                 return r;
             }
-            GUICore::LinearLayoutDesc desc;
-            desc.gap = 0.0f;
+            GUICore::FlexLayoutDesc desc;
+            desc.main_axis_gap = 0.0f;
             return GUI::end_h_layout(context, layout, desc);
         }
 
@@ -1787,10 +1801,11 @@ namespace Luna
             auto root = new_node("v_layout", "Root");
             if(succeeded(root))
             {
-                root.get()->layout_input.width.kind = GUICore::SizeKind::expand;
+                root.get()->layout_input.width.kind = GUICore::SizeKind::percent;
                 root.get()->layout_input.width.value = 1.0f;
-                root.get()->layout_input.height.kind = GUICore::SizeKind::expand;
+                root.get()->layout_input.height.kind = GUICore::SizeKind::percent;
                 root.get()->layout_input.height.value = 1.0f;
+                root.get()->layout_input.flex_grow = 1.0f;
                 root.get()->has_layout_input = true;
                 add_node(asset.get(), root.get());
             }

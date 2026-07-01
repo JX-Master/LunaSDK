@@ -64,8 +64,9 @@ namespace Luna
         GUICore::LayoutInput fixed_height(f32 height)
         {
             GUICore::LayoutInput layout;
-            layout.width.kind = GUICore::SizeKind::expand;
-            layout.height.kind = GUICore::SizeKind::pixels;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
@@ -147,7 +148,7 @@ namespace Luna
             if(GUI::collapsing_header(context, context->make_id("heap"), h.first.c_str()))
             {
                 GUICore::LayoutInput table_layout;
-                table_layout.width.kind = GUICore::SizeKind::pixels;
+                table_layout.width.kind = GUICore::SizeKind::fixed;
                 table_layout.width.value = 484.0f;
                 table_layout.height.kind = GUICore::SizeKind::fit;
                 table_layout.margin = Float4U(0.0f, 4.0f, 0.0f, 8.0f);
@@ -186,9 +187,9 @@ namespace Luna
             }
             context->pop_data_scope();
         }
-        lupanic_if_failed(GUI::end_v_layout(context, content, GUICore::LinearLayoutDesc()));
+        lupanic_if_failed(GUI::end_v_layout(context, content, GUICore::FlexLayoutDesc()));
         lupanic_if_failed(GUI::end_scroll_view(context, scroll));
-        lupanic_if_failed(GUI::end_v_layout(context, root, GUICore::LinearLayoutDesc()));
+        lupanic_if_failed(GUI::end_v_layout(context, root, GUICore::FlexLayoutDesc()));
         context->pop_data_scope();
     }
 
