@@ -136,11 +136,24 @@ namespace Luna
             //! @param[in] layout The layout input to attach.
             virtual void set_layout(const ElementHandle& element, const LayoutInput& layout) = 0;
 
+            //! Sets child layout callback data for an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @param[in] config The layout callback configuration copied into the element.
+            virtual void set_layout_config(const ElementHandle& element, const LayoutConfig& config) = 0;
+
             //! Sets layout result for an element.
             //! @param[in] element The element handle returned by @ref begin_element.
             //! @param[in] result The layout result to attach.
             //! @remark This is primarily useful while layout algorithms are being migrated into GUI Core.
             virtual void set_layout_result(const ElementHandle& element, const LayoutResult& result) = 0;
+
+            //! Applies the layout callback tree rooted at one element.
+            //! @param[in] root The root element to arrange.
+            //! @param[in] rect The root rectangle in layer coordinates.
+            //! @return Returns success or failure code.
+            //! @remark Layout is a context-owned pass. The root rectangle is written first, then each element's
+            //! attached @ref LayoutConfig callback is applied top-down with optional finalize callbacks.
+            virtual RV apply_layout(const ElementHandle& root, const RectF& rect) = 0;
 
             //! Sets interactable data for an element.
             //! @param[in] element The element handle returned by @ref begin_element.

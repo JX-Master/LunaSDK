@@ -15,6 +15,7 @@ namespace Luna
     namespace GUICore
     {
         struct IContext;
+        struct ElementHandle;
 
         //! Specifies how a size value should be interpreted by layout algorithms.
         enum class SizeKind : u8
@@ -58,6 +59,178 @@ namespace Luna
             Float4U margin = Float4U(0.0f);
             //! Padding in left, top, right, bottom order.
             Float4U padding = Float4U(0.0f);
+        };
+
+        //! Identifies one linear layout axis.
+        enum class LayoutAxis : u8
+        {
+            //! Lays out children from left to right.
+            x,
+            //! Lays out children from top to bottom.
+            y
+        };
+
+        //! Describes one linear layout pass.
+        struct LinearLayoutDesc
+        {
+            //! Child placement axis.
+            LayoutAxis axis = LayoutAxis::y;
+            //! Gap between adjacent children.
+            f32 gap = 0.0f;
+            //! Whether child clip rectangles should be intersected with the parent content rectangle.
+            bool clip_children = true;
+        };
+
+        //! Identifies how grid layout derives its column count and cell size.
+        enum class GridLayoutMode : u8
+        {
+            //! Uses @ref GridLayoutDesc::cell_size as an absolute cell size and derives the column count from available width.
+            fixed_cell_size,
+            //! Uses @ref GridLayoutDesc::column_count and derives the cell width from available width.
+            fixed_column_count
+        };
+
+        //! Describes one row-major grid layout pass.
+        struct GridLayoutDesc
+        {
+            //! Grid sizing mode.
+            GridLayoutMode mode = GridLayoutMode::fixed_cell_size;
+            //! Cell size in layer logical coordinates.
+            //! @remark In @ref GridLayoutMode::fixed_column_count mode, `x` is ignored and `y` is used as row height.
+            Float2U cell_size = Float2U(64.0f, 64.0f);
+            //! Number of columns used by @ref GridLayoutMode::fixed_column_count mode.
+            u32 column_count = 1;
+            //! Gap between adjacent cells.
+            Float2U gap = Float2U(0.0f);
+            //! Whether child clip rectangles should be intersected with the parent content rectangle.
+            bool clip_children = true;
+        };
+
+        //! Describes one stack layout pass.
+        struct StackLayoutDesc
+        {
+            //! Child alignment inside the parent content rectangle. `(0, 0)` means top-left and `(0.5, 0.5)` means center.
+            Float2U alignment = Float2U(0.0f);
+            //! Whether child clip rectangles should be intersected with the parent content rectangle.
+            bool clip_children = true;
+        };
+
+        //! Describes one child placement rule for canvas layout.
+        struct CanvasLayoutItem
+        {
+            //! Child element ID this rule applies to. Zero means the rule is ignored for ID matching.
+            id_t element_id = 0;
+            //! Minimum anchor in parent content rectangle normalized coordinates.
+            Float2U anchor_min = Float2U(0.0f);
+            //! Maximum anchor in parent content rectangle normalized coordinates.
+            //! @remark If one axis has equal min/max anchors, that axis uses the child layout size and pivot.
+            //! If one axis has different anchors, that axis stretches between the two anchored edges.
+            Float2U anchor_max = Float2U(0.0f);
+            //! Offset in left, top, right, bottom order.
+            //! @remark For non-stretched axes, only the left/top component for that axis is used as anchored position offset.
+            Float4U offset = Float4U(0.0f);
+            //! Pivot used when an axis is not stretched. `(0, 0)` means top-left and `(0.5, 0.5)` means center.
+            Float2U pivot = Float2U(0.0f);
+        };
+
+        //! Describes one canvas layout pass.
+        struct CanvasLayoutDesc
+        {
+            //! Placement records matched by child element ID.
+            Span<const CanvasLayoutItem> items;
+            //! Fallback placement used when no item matches a child.
+            CanvasLayoutItem default_item;
+            //! Whether child clip rectangles should be intersected with the parent content rectangle.
+            bool clip_children = true;
+        };
+
+        //! Describes one scroll viewport layout pass.
+        struct ScrollViewportLayoutDesc
+        {
+            //! Current content scroll offset in layer logical coordinates.
+            Float2U scroll_offset = Float2U(0.0f);
+            //! Whether child clip rectangles should be intersected with the viewport content rectangle.
+            bool clip_children = true;
+        };
+
+        //! Identifies how one table track size is resolved.
+        enum class TableTrackSizeKind : u8
+        {
+            //! Uses the largest measured cell content on this track.
+            fit,
+            //! Uses an absolute pixel size.
+            pixels,
+            //! Uses a percentage of the table content size.
+            percent,
+            //! Consumes remaining space using a weighted ratio.
+            ratio
+        };
+
+        //! Describes one table row or column track.
+        struct TableTrackDesc
+        {
+            //! Track sizing mode.
+            TableTrackSizeKind kind = TableTrackSizeKind::fit;
+            //! Numeric value used by @ref TableTrackSizeKind::pixels, @ref TableTrackSizeKind::percent and
+            //! @ref TableTrackSizeKind::ratio.
+            f32 value = 0.0f;
+            //! Minimum resolved track size.
+            f32 min = 0.0f;
+            //! Maximum resolved track size. Values less than zero mean no maximum.
+            f32 max = -1.0f;
+        };
+
+        //! Describes one child-to-cell attachment for table layout.
+        struct TableLayoutCell
+        {
+            //! Child element ID this cell applies to.
+            id_t element_id = 0;
+            //! Zero-based row index.
+            u32 row = 0;
+            //! Zero-based column index.
+            u32 column = 0;
+            //! Number of rows occupied by the cell. Zero is treated as one.
+            u32 row_span = 1;
+            //! Number of columns occupied by the cell. Zero is treated as one.
+            u32 column_span = 1;
+            //! Cell padding in left, top, right, bottom order.
+            Float4U padding = Float4U(0.0f);
+        };
+
+        //! Describes one table track layout pass.
+        struct TableLayoutDesc
+        {
+            //! Column tracks.
+            Span<const TableTrackDesc> columns;
+            //! Row tracks.
+            Span<const TableTrackDesc> rows;
+            //! Child-to-cell attachments.
+            Span<const TableLayoutCell> cells;
+            //! Gap between adjacent columns and rows.
+            Float2U gap = Float2U(0.0f);
+            //! Whether child clip rectangles should be intersected with the table content rectangle.
+            bool clip_children = true;
+        };
+
+        //! Called by @ref IContext::apply_layout to arrange or finalize one element subtree.
+        //! @param[in] context The context that owns @p element.
+        //! @param[in] element The element being arranged.
+        //! @param[in] rect The element rectangle in layer coordinates.
+        //! @param[in] userdata User data stored in @ref LayoutConfig.
+        //! @return Returns success or failure code.
+        using LayoutCallback = RV(*)(IContext* context, const ElementHandle& element, const RectF& rect, void* userdata);
+
+        //! Describes how one element arranges its direct children.
+        struct LayoutConfig
+        {
+            //! Optional identifier for package-defined or core-provided layout algorithms.
+            Name name;
+            //! Arrange callback. If this is `nullptr`, the element does not arrange its children.
+            LayoutCallback callback = nullptr;
+            //! Optional post-order callback called after children are arranged.
+            LayoutCallback finalize_callback = nullptr;
+            //! User data passed to layout callbacks. The owner that installs the callback owns this memory.
+            void* userdata = nullptr;
         };
 
         //! Describes the layout result of one element.
@@ -301,6 +474,8 @@ namespace Luna
             Name debug_name;
             //! Layout input for this element.
             LayoutInput layout;
+            //! Child layout callback data attached to this element.
+            LayoutConfig layout_config;
             //! Layout result for this element.
             LayoutResult layout_result;
             //! Optional interaction behavior.

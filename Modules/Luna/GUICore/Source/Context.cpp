@@ -307,6 +307,15 @@ namespace Luna
             }
         }
 
+        void Context::set_layout_config(const ElementHandle& element, const LayoutConfig& config)
+        {
+            lutsassert();
+            if(Element* e = mutable_element(element))
+            {
+                e->layout_config = config;
+            }
+        }
+
         void Context::set_layout_result(const ElementHandle& element, const LayoutResult& result)
         {
             lutsassert();
@@ -314,6 +323,91 @@ namespace Luna
             {
                 e->layout_result = result;
             }
+        }
+
+        RV Context::apply_layout(const ElementHandle& root, const RectF& rect)
+        {
+            lutsassert();
+            if(!root.id || root.generation != m_generation || root.index >= m_elements.size() ||
+                m_elements[root.index].id != root.id)
+            {
+                return BasicError::bad_arguments();
+            }
+            LayoutResult root_result;
+            root_result.rect = rect;
+            root_result.clip_rect = rect;
+            root_result.content_size = Float2U(rect.width, rect.height);
+            set_layout_result(root, root_result);
+            return apply_layout_subtree(root);
+        }
+
+        RV Context::apply_element_layout(const ElementHandle& element)
+        {
+            if(!element.id || element.generation != m_generation || element.index >= m_elements.size())
+            {
+                return BasicError::bad_arguments();
+            }
+            Element* e = mutable_element(element);
+            if(!e)
+            {
+                return BasicError::bad_arguments();
+            }
+            const LayoutConfig& config = e->layout_config;
+            RectF rect = e->layout_result.rect;
+            if(config.callback)
+            {
+                return config.callback(this, element, rect, config.userdata);
+            }
+            return ok;
+        }
+
+        RV Context::apply_layout_subtree(const ElementHandle& element)
+        {
+            RV r = apply_element_layout(element);
+            if(failed(r))
+            {
+                return r;
+            }
+            const Element* e = get_element(element.index);
+            if(!e || e->id != element.id)
+            {
+                return BasicError::bad_arguments();
+            }
+            Vector<u32> children;
+            for(u32 child = e->first_child; child != INVALID_ELEMENT;)
+            {
+                const Element* child_element = get_element(child);
+                if(!child_element)
+                {
+                    break;
+                }
+                children.push_back(child);
+                child = child_element->next_sibling;
+            }
+            for(u32 child_index : children)
+            {
+                const Element* child = get_element(child_index);
+                if(!child)
+                {
+                    continue;
+                }
+                r = apply_layout_subtree(ElementHandle { child->id, child_index, m_generation });
+                if(failed(r))
+                {
+                    return r;
+                }
+            }
+            e = get_element(element.index);
+            if(!e || e->id != element.id)
+            {
+                return BasicError::bad_arguments();
+            }
+            const LayoutConfig& config = e->layout_config;
+            if(config.finalize_callback)
+            {
+                return config.finalize_callback(this, element, e->layout_result.rect, config.userdata);
+            }
+            return ok;
         }
 
         void Context::set_interactable(const ElementHandle& element, const Interactable& interactable)

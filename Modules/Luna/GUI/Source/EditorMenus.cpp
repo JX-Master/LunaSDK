@@ -158,21 +158,13 @@ namespace Luna
             return state;
         }
 
-        static Ref<EditorLayoutPassState> layout_pass_state(GUICore::IContext* context)
+        LUNA_GUI_API RV layout_menu_bar(GUICore::IContext* context, const GUICore::ElementHandle& menu_bar,
+            const RectF& rect);
+
+        static RV menu_bar_layout_callback(GUICore::IContext* context, const GUICore::ElementHandle& menu_bar,
+            const RectF& rect, void*)
         {
-            id_t state_id = GUICore::make_state_id<EditorLayoutPassState>(0);
-            Ref<EditorLayoutPassState> state;
-            if(object_t state_obj = context->get_state(state_id))
-            {
-                object_retain(state_obj);
-                state.attach(state_obj);
-            }
-            else
-            {
-                state = new_object<EditorLayoutPassState>();
-            }
-            lupanic_if_failed(context->set_state(state_id, state.object(), GUICore::StateLifetime::current_frame));
-            return state;
+            return layout_menu_bar(context, menu_bar, rect);
         }
 
         static RV defer_menu_bar_layout(GUICore::IContext* context, const GUICore::ElementHandle& menu_bar)
@@ -181,12 +173,10 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            Ref<EditorLayoutPassState> state = layout_pass_state(context);
-            EditorLayoutRequest request;
-            request.kind = EditorLayoutRequestKind::menu_bar;
-            state->requests.insert_or_assign(menu_bar.id, move(request));
-            lupanic_if_failed(context->set_state(GUICore::make_state_id<EditorLayoutPassState>(0), state.object(),
-                GUICore::StateLifetime::current_frame));
+            GUICore::LayoutConfig config;
+            config.name = Name("gui.editor.menu_bar");
+            config.callback = menu_bar_layout_callback;
+            context->set_layout_config(menu_bar, config);
             return ok;
         }
 
@@ -303,8 +293,12 @@ namespace Luna
             Ref<CoreMenuBuildState> build_state = menu_build_state(context);
             luassert(!build_state->menu_bar_stack.empty());
             build_state->menu_bar_stack.pop_back();
-            RV r = layout_menu_bar(context, menu_bar, rect);
+            RV r = defer_menu_bar_layout(context, menu_bar);
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(menu_bar, rect);
+            }
             return r;
         }
 
@@ -333,7 +327,7 @@ namespace Luna
             GUICore::LinearLayoutDesc layout_desc;
             layout_desc.axis = GUICore::LayoutAxis::x;
             layout_desc.gap = style_value(context, Name("gui.editor.menu_bar.gap"), GUICore::style_f32(4.0f)).number.x;
-            return GUICore::layout_linear(context, menu_bar, rect, layout_desc);
+            return GUICore::layout_linear(context, menu_bar, rect, &layout_desc);
         }
 
         LUNA_GUI_API bool begin_menu(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool enabled,

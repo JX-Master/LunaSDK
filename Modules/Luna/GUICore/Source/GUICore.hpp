@@ -120,7 +120,9 @@ namespace Luna
             virtual ElementHandle begin_element(id_t id, const Name& debug_name = Name()) override;
             virtual void end_element() override;
             virtual void set_layout(const ElementHandle& element, const LayoutInput& layout) override;
+            virtual void set_layout_config(const ElementHandle& element, const LayoutConfig& config) override;
             virtual void set_layout_result(const ElementHandle& element, const LayoutResult& result) override;
+            virtual RV apply_layout(const ElementHandle& root, const RectF& rect) override;
             virtual void set_interactable(const ElementHandle& element, const Interactable& interactable) override;
             virtual void set_navigation_config(const ElementHandle& element, const NavigationConfig& navigation) override;
             virtual NavigationConfig get_navigation_config(const ElementHandle& element) const override;
@@ -183,6 +185,8 @@ namespace Luna
             void gc_states();
             void refresh_counters();
             Element* mutable_element(const ElementHandle& element);
+            RV apply_layout_subtree(const ElementHandle& element);
+            RV apply_element_layout(const ElementHandle& element);
             Style& get_or_create_style(const Name& name);
             InteractionState& get_or_create_interaction(id_t id);
             void mark_subtree_interaction(id_t id, bool hovered, bool active, bool focused, bool clicked, bool double_clicked);

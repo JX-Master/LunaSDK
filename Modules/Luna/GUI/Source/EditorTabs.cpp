@@ -116,21 +116,12 @@ namespace Luna
             return state;
         }
 
-        static Ref<EditorLayoutPassState> layout_pass_state(GUICore::IContext* context)
+        LUNA_GUI_API RV layout_tab_bar(GUICore::IContext* context, const GUICore::ElementHandle& tab_bar, const RectF& rect);
+
+        static RV tab_bar_layout_callback(GUICore::IContext* context, const GUICore::ElementHandle& tab_bar,
+            const RectF& rect, void*)
         {
-            id_t state_id = GUICore::make_state_id<EditorLayoutPassState>(0);
-            Ref<EditorLayoutPassState> state;
-            if(object_t state_obj = context->get_state(state_id))
-            {
-                object_retain(state_obj);
-                state.attach(state_obj);
-            }
-            else
-            {
-                state = new_object<EditorLayoutPassState>();
-            }
-            lupanic_if_failed(context->set_state(state_id, state.object(), GUICore::StateLifetime::current_frame));
-            return state;
+            return layout_tab_bar(context, tab_bar, rect);
         }
 
         static RV defer_tab_bar_layout(GUICore::IContext* context, const GUICore::ElementHandle& tab_bar)
@@ -139,12 +130,10 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            Ref<EditorLayoutPassState> state = layout_pass_state(context);
-            EditorLayoutRequest request;
-            request.kind = EditorLayoutRequestKind::tab_bar;
-            state->requests.insert_or_assign(tab_bar.id, move(request));
-            lupanic_if_failed(context->set_state(GUICore::make_state_id<EditorLayoutPassState>(0), state.object(),
-                GUICore::StateLifetime::current_frame));
+            GUICore::LayoutConfig config;
+            config.name = Name("gui.editor.tab_bar");
+            config.callback = tab_bar_layout_callback;
+            context->set_layout_config(tab_bar, config);
             return ok;
         }
 
@@ -365,9 +354,13 @@ namespace Luna
             RV r = finish_tab_bar_build(context, tab_bar);
             if(succeeded(r))
             {
-                r = layout_tab_bar(context, tab_bar, rect);
+                r = defer_tab_bar_layout(context, tab_bar);
             }
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(tab_bar, rect);
+            }
             return r;
         }
     }

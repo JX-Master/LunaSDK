@@ -10,6 +10,7 @@
 #pragma once
 #include "Base.hpp"
 #include <Luna/GUICore/GUICore.hpp>
+#include <Luna/Runtime/Blob.hpp>
 #include <Luna/Runtime/Unicode.hpp>
 #include "EditorState.generated.hpp"
 
@@ -361,6 +362,19 @@ namespace Luna
             Vector<CoreTableBuildScope> stack;
         };
 
+        //! Per-frame arena that stores layout callback userdata owned by the editor-style immediate API package.
+        struct [[Luna::struct("{B86C4B88-A3AE-46A4-B40A-30FB1202AE73}")]] CoreLayoutUserdataArenaState
+        {
+            //! Stable memory blocks used for bump allocation.
+            Vector<Blob> blocks;
+            //! Active frame generation.
+            u32 generation = U32_MAX;
+            //! Current block index.
+            usize block_index = 0;
+            //! Current byte offset in the active block.
+            usize offset = 0;
+        };
+
         //! Persistent open state used by editor-style popup layers.
         struct [[Luna::struct("{2E1149AD-DE84-4E34-AE28-393843D3E6B7}")]] CorePopupState
         {
@@ -473,70 +487,6 @@ namespace Luna
             }
             return false;
         }
-
-        //! Identifies one deferred layout primitive requested by the editor-style immediate API package.
-        enum class EditorLayoutRequestKind : u8
-        {
-            //! No layout primitive is attached.
-            none,
-            //! Horizontal or vertical linear layout.
-            linear,
-            //! Row-major grid layout.
-            grid,
-            //! Stack layout.
-            stack,
-            //! Anchor-based canvas layout.
-            canvas,
-            //! Scroll viewport layout.
-            scroll_viewport,
-            //! Editor-style scroll view with package-managed scroll state.
-            scroll_view,
-            //! Table track layout.
-            table,
-            //! Editor-style tab bar layout.
-            tab_bar,
-            //! Editor-style menu bar layout.
-            menu_bar
-        };
-
-        //! Deferred layout data for one editor-style element.
-        //! @remark This is high-level package state. The GUICore element tree remains typeless.
-        struct EditorLayoutRequest
-        {
-            //! Requested layout primitive.
-            EditorLayoutRequestKind kind = EditorLayoutRequestKind::none;
-            //! Linear layout options used by @ref EditorLayoutRequestKind::linear.
-            GUICore::LinearLayoutDesc linear;
-            //! Grid layout options used by @ref EditorLayoutRequestKind::grid.
-            GUICore::GridLayoutDesc grid;
-            //! Stack layout options used by @ref EditorLayoutRequestKind::stack.
-            GUICore::StackLayoutDesc stack;
-            //! Canvas layout default item used by @ref EditorLayoutRequestKind::canvas.
-            GUICore::CanvasLayoutItem canvas_default_item;
-            //! Canvas layout item records copied from the caller.
-            Vector<GUICore::CanvasLayoutItem> canvas_items;
-            //! Whether canvas children are clipped.
-            bool canvas_clip_children = true;
-            //! Scroll viewport options used by @ref EditorLayoutRequestKind::scroll_viewport.
-            GUICore::ScrollViewportLayoutDesc scroll_viewport;
-            //! Table column records copied from the caller.
-            Vector<GUICore::TableTrackDesc> table_columns;
-            //! Table row records copied from the caller.
-            Vector<GUICore::TableTrackDesc> table_rows;
-            //! Table cell attachment records copied from the caller.
-            Vector<GUICore::TableLayoutCell> table_cells;
-            //! Table gap.
-            Float2U table_gap = Float2U(0.0f);
-            //! Whether table children are clipped.
-            bool table_clip_children = true;
-        };
-
-        //! Per-frame deferred layout requests used by the editor-style immediate API package.
-        struct [[Luna::struct("{CDBF6CAA-450E-43F4-8BD1-A715E9207F53}")]] EditorLayoutPassState
-        {
-            //! Requests keyed by element ID.
-            HashMap<id_t, EditorLayoutRequest, GUICore::IdHash> requests;
-        };
 
         //! Runtime edit state used by editor-style text input widgets.
         struct [[Luna::struct("{DC801B89-9DEE-4456-8036-9F8C9A7C8A8A}")]] InputEditState

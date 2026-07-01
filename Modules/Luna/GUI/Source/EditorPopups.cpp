@@ -17,6 +17,9 @@ namespace Luna
 {
     namespace GUI
     {
+        LUNA_GUI_API RV set_editor_linear_layout_config(GUICore::IContext* context,
+            const GUICore::ElementHandle& layout, const GUICore::LinearLayoutDesc& desc);
+
         static GUICore::StyleValue style_value(GUICore::IContext* context, const Name& entry,
             const GUICore::StyleValue& default_value)
         {
@@ -134,18 +137,18 @@ namespace Luna
         static RV end_layer_panel(GUICore::IContext* context, const GUICore::ElementHandle& panel, const RectF& rect,
             const c8* prefix)
         {
-            GUICore::LayoutResult result;
-            result.rect = rect;
-            result.clip_rect = rect;
-            context->set_layout_result(panel, result);
             GUICore::LinearLayoutDesc layout_desc;
             layout_desc.axis = GUICore::LayoutAxis::y;
             String gap_entry;
             strprintf(gap_entry, "gui.editor.%s.gap", prefix);
             layout_desc.gap = style_value(context, Name(gap_entry.c_str()), GUICore::style_f32(4.0f)).number.x;
-            RV r = GUICore::layout_linear(context, panel, rect, layout_desc);
+            RV r = set_editor_linear_layout_config(context, panel, layout_desc);
             context->end_element();
             context->pop_layer();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(panel, rect);
+            }
             return r;
         }
 

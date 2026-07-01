@@ -26,10 +26,21 @@ namespace Luna
             return core_element && core_element->id == element.id;
         }
 
-        static Ref<EditorLayoutPassState> layout_pass_state(GUICore::IContext* context)
+        static RV set_element_layout_config(GUICore::IContext* context, const GUICore::ElementHandle& layout,
+            const GUICore::LayoutConfig& config)
         {
-            id_t state_id = GUICore::make_state_id<EditorLayoutPassState>(0);
-            Ref<EditorLayoutPassState> state;
+            if(!valid_core_element(context, layout))
+            {
+                return BasicError::bad_arguments();
+            }
+            context->set_layout_config(layout, config);
+            return ok;
+        }
+
+        static Ref<CoreLayoutUserdataArenaState> layout_userdata_arena_state(GUICore::IContext* context)
+        {
+            id_t state_id = GUICore::make_state_id<CoreLayoutUserdataArenaState>(0);
+            Ref<CoreLayoutUserdataArenaState> state;
             if(object_t state_obj = context->get_state(state_id))
             {
                 object_retain(state_obj);
@@ -37,24 +48,125 @@ namespace Luna
             }
             else
             {
-                state = new_object<EditorLayoutPassState>();
+                state = new_object<CoreLayoutUserdataArenaState>();
             }
-            lupanic_if_failed(context->set_state(state_id, state.object(), GUICore::StateLifetime::current_frame));
+            if(state->generation != context->generation())
+            {
+                state->generation = context->generation();
+                state->block_index = 0;
+                state->offset = 0;
+            }
+            lupanic_if_failed(context->set_state(state_id, state.object(), GUICore::StateLifetime::next_frame));
             return state;
         }
 
-        static RV set_deferred_layout_request(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            EditorLayoutRequest&& request)
+        static void* allocate_layout_userdata_raw(GUICore::IContext* context, usize size, usize alignment)
         {
-            if(!valid_core_element(context, layout))
+            luassert(context);
+            Ref<CoreLayoutUserdataArenaState> state = layout_userdata_arena_state(context);
+            size = max(size, (usize)1);
+            alignment = max(alignment, (usize)1);
+            constexpr usize block_alignment = 16;
+            constexpr usize default_block_size = 4096;
+            usize required_block_size = max(default_block_size, align_upper(size, block_alignment));
+            for(;;)
             {
-                return BasicError::bad_arguments();
+                if(state->block_index >= state->blocks.size())
+                {
+                    state->blocks.push_back(Blob(required_block_size, block_alignment));
+                }
+                Blob& block = state->blocks[state->block_index];
+                if(block.size() < size)
+                {
+                    if(state->offset == 0)
+                    {
+                        block.resize(required_block_size, false);
+                    }
+                    else
+                    {
+                        ++state->block_index;
+                        state->offset = 0;
+                        continue;
+                    }
+                }
+                usize offset = align_upper(state->offset, alignment);
+                if(offset + size <= block.size())
+                {
+                    state->offset = offset + size;
+                    return (void*)((byte_t*)block.data() + offset);
+                }
+                ++state->block_index;
+                state->offset = 0;
             }
-            Ref<EditorLayoutPassState> state = layout_pass_state(context);
-            state->requests.insert_or_assign(layout.id, move(request));
-            lupanic_if_failed(context->set_state(GUICore::make_state_id<EditorLayoutPassState>(0), state.object(),
-                GUICore::StateLifetime::current_frame));
-            return ok;
+        }
+
+        template <typename _Ty>
+        static _Ty* allocate_layout_userdata(GUICore::IContext* context, const _Ty& value)
+        {
+            _Ty* ret = (_Ty*)allocate_layout_userdata_raw(context, sizeof(_Ty), alignof(_Ty));
+            *ret = value;
+            return ret;
+        }
+
+        template <typename _Ty>
+        static Span<const _Ty> allocate_layout_userdata_span(GUICore::IContext* context, Span<const _Ty> values)
+        {
+            if(values.empty())
+            {
+                return Span<const _Ty>();
+            }
+            _Ty* ret = (_Ty*)allocate_layout_userdata_raw(context, sizeof(_Ty) * values.size(), alignof(_Ty));
+            memcpy(ret, values.data(), sizeof(_Ty) * values.size());
+            return Span<const _Ty>(ret, values.size());
+        }
+
+        static void fill_linear_layout_config(GUICore::IContext* context, GUICore::LayoutConfig& config,
+            const GUICore::LinearLayoutDesc& desc)
+        {
+            config.name = Name("gui.core.linear");
+            config.callback = GUICore::layout_linear;
+            config.userdata = allocate_layout_userdata(context, desc);
+        }
+
+        LUNA_GUI_API RV set_editor_linear_layout_config(GUICore::IContext* context,
+            const GUICore::ElementHandle& layout, const GUICore::LinearLayoutDesc& desc)
+        {
+            GUICore::LayoutConfig config;
+            fill_linear_layout_config(context, config, desc);
+            return set_element_layout_config(context, layout, config);
+        }
+
+        static void set_grid_layout_config(GUICore::IContext* context, GUICore::LayoutConfig& config,
+            const GUICore::GridLayoutDesc& desc)
+        {
+            config.name = Name("gui.core.grid");
+            config.callback = GUICore::layout_grid;
+            config.userdata = allocate_layout_userdata(context, desc);
+        }
+
+        static void set_stack_layout_config(GUICore::IContext* context, GUICore::LayoutConfig& config,
+            const GUICore::StackLayoutDesc& desc)
+        {
+            config.name = Name("gui.core.stack");
+            config.callback = GUICore::layout_stack;
+            config.userdata = allocate_layout_userdata(context, desc);
+        }
+
+        static void set_canvas_layout_config(GUICore::IContext* context, GUICore::LayoutConfig& config,
+            const GUICore::CanvasLayoutDesc& desc)
+        {
+            config.name = Name("gui.core.canvas");
+            config.callback = GUICore::layout_canvas;
+            GUICore::CanvasLayoutDesc packed;
+            packed.default_item = desc.default_item;
+            packed.items = allocate_layout_userdata_span(context, desc.items);
+            packed.clip_children = desc.clip_children;
+            config.userdata = allocate_layout_userdata(context, packed);
+        }
+
+        static const GUICore::ScrollViewportLayoutDesc* scroll_viewport_layout_desc(const GUICore::Element& element)
+        {
+            return (const GUICore::ScrollViewportLayoutDesc*)element.layout_config.userdata;
         }
 
         static Vector<u32> collect_children(GUICore::IContext* context, const GUICore::Element& parent)
@@ -109,15 +221,18 @@ namespace Luna
             }
         }
 
-        static void set_table_request_from_scope(EditorLayoutRequest& request, const CoreTableBuildScope& scope,
-            Span<const GUICore::TableTrackDesc> columns)
+        static void set_table_config_from_desc(GUICore::IContext* context, GUICore::LayoutConfig& config,
+            const GUICore::TableLayoutDesc& desc)
         {
-            request.kind = EditorLayoutRequestKind::table;
-            request.table_columns.assign(columns.begin(), columns.end());
-            request.table_rows.assign(scope.rows.begin(), scope.rows.end());
-            request.table_cells.assign(scope.cells.begin(), scope.cells.end());
-            request.table_gap = scope.gap;
-            request.table_clip_children = scope.clip_children;
+            config.name = Name("gui.core.table");
+            config.callback = GUICore::layout_table;
+            GUICore::TableLayoutDesc packed;
+            packed.columns = allocate_layout_userdata_span(context, desc.columns);
+            packed.rows = allocate_layout_userdata_span(context, desc.rows);
+            packed.cells = allocate_layout_userdata_span(context, desc.cells);
+            packed.gap = desc.gap;
+            packed.clip_children = desc.clip_children;
+            config.userdata = allocate_layout_userdata(context, packed);
         }
 
         static Vector<GUICore::TableTrackDesc> default_table_columns(const CoreTableBuildScope& scope)
@@ -132,8 +247,7 @@ namespace Luna
             return columns;
         }
 
-        static RV apply_table_scope_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            const RectF& rect, const CoreTableBuildScope& scope)
+        static GUICore::LayoutConfig table_config_from_scope(GUICore::IContext* context, const CoreTableBuildScope& scope)
         {
             Vector<GUICore::TableTrackDesc> default_columns;
             Span<const GUICore::TableTrackDesc> columns(scope.columns.data(), scope.columns.size());
@@ -148,53 +262,13 @@ namespace Luna
             desc.cells = Span<const GUICore::TableLayoutCell>(scope.cells.data(), scope.cells.size());
             desc.gap = scope.gap;
             desc.clip_children = scope.clip_children;
-            return GUICore::layout_table(context, layout, rect, desc);
+            GUICore::LayoutConfig config;
+            set_table_config_from_desc(context, config, desc);
+            return config;
         }
 
         static RV apply_scroll_view_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             const RectF& rect, GUICore::ScrollViewportLayoutDesc desc);
-
-        static RV apply_deferred_layout_request(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            const RectF& rect, const EditorLayoutRequest& request)
-        {
-            switch(request.kind)
-            {
-            case EditorLayoutRequestKind::linear:
-                return GUICore::layout_linear(context, layout, rect, request.linear);
-            case EditorLayoutRequestKind::grid:
-                return GUICore::layout_grid(context, layout, rect, request.grid);
-            case EditorLayoutRequestKind::stack:
-                return GUICore::layout_stack(context, layout, rect, request.stack);
-            case EditorLayoutRequestKind::canvas:
-            {
-                GUICore::CanvasLayoutDesc desc;
-                desc.default_item = request.canvas_default_item;
-                desc.items = Span<const GUICore::CanvasLayoutItem>(request.canvas_items.data(), request.canvas_items.size());
-                desc.clip_children = request.canvas_clip_children;
-                return GUICore::layout_canvas(context, layout, rect, desc);
-            }
-            case EditorLayoutRequestKind::scroll_viewport:
-                return GUICore::layout_scroll_viewport(context, layout, rect, request.scroll_viewport);
-            case EditorLayoutRequestKind::scroll_view:
-                return apply_scroll_view_layout(context, layout, rect, request.scroll_viewport);
-            case EditorLayoutRequestKind::table:
-            {
-                GUICore::TableLayoutDesc desc;
-                desc.columns = Span<const GUICore::TableTrackDesc>(request.table_columns.data(), request.table_columns.size());
-                desc.rows = Span<const GUICore::TableTrackDesc>(request.table_rows.data(), request.table_rows.size());
-                desc.cells = Span<const GUICore::TableLayoutCell>(request.table_cells.data(), request.table_cells.size());
-                desc.gap = request.table_gap;
-                desc.clip_children = request.table_clip_children;
-                return GUICore::layout_table(context, layout, rect, desc);
-            }
-            case EditorLayoutRequestKind::tab_bar:
-                return layout_tab_bar(context, layout, rect);
-            case EditorLayoutRequestKind::menu_bar:
-                return layout_menu_bar(context, layout, rect);
-            default:
-                return ok;
-            }
-        }
 
         static Float2U clamp_scroll_offset(Float2U scroll, const Float2U& content_size, const Float2U& viewport_size)
         {
@@ -274,18 +348,21 @@ namespace Luna
             desc.scroll_offset = clamp_scroll_offset(state->scroll, state->content_size, state->viewport_size);
             state->scroll = desc.scroll_offset;
             set_scroll_view_state(context, layout.id, state);
-            return GUICore::layout_scroll_viewport(context, layout, rect, desc);
+            return GUICore::layout_scroll_viewport(context, layout, rect, &desc);
         }
 
-        static bool is_scroll_layout_request(const EditorLayoutPassState& layout_pass, GUICore::id_t id)
+        static bool is_scroll_layout_element(const GUICore::Element& element)
         {
-            auto iter = layout_pass.requests.find(id);
-            return iter != layout_pass.requests.end() &&
-                (iter->second.kind == EditorLayoutRequestKind::scroll_view ||
-                    iter->second.kind == EditorLayoutRequestKind::scroll_viewport);
+            if(element.layout_config.callback == GUICore::layout_scroll_viewport)
+            {
+                return true;
+            }
+            return element.layout_config.name == Name("gui.editor.scroll_view") ||
+                element.layout_config.name == Name("gui.editor.scroll_viewport") ||
+                element.layout_config.name == Name("gui.core.scroll_viewport");
         }
 
-        static void accumulate_scroll_content_bounds(GUICore::IContext* context, const EditorLayoutPassState& layout_pass,
+        static void accumulate_scroll_content_bounds(GUICore::IContext* context,
             u32 element_index, const RectF& content_rect, const Float2U& scroll_offset, Float2U& content_size)
         {
             const GUICore::Element* element = context->get_element(element_index);
@@ -294,7 +371,7 @@ namespace Luna
                 return;
             }
             const GUICore::LayoutResult& layout = element->layout_result;
-            bool scroll_layout = is_scroll_layout_request(layout_pass, element->id);
+            bool scroll_layout = is_scroll_layout_element(*element);
             f32 left = layout.rect.offset_x - content_rect.offset_x + scroll_offset.x;
             f32 top = layout.rect.offset_y - content_rect.offset_y + scroll_offset.y;
             f32 right = left + (scroll_layout ? layout.rect.width : max(layout.rect.width, layout.content_size.x));
@@ -314,12 +391,12 @@ namespace Luna
                     break;
                 }
                 u32 next = child_element->next_sibling;
-                accumulate_scroll_content_bounds(context, layout_pass, child, content_rect, scroll_offset, content_size);
+                accumulate_scroll_content_bounds(context, child, content_rect, scroll_offset, content_size);
                 child = next;
             }
         }
 
-        static Float2U resolved_scroll_view_content_size(GUICore::IContext* context, const EditorLayoutPassState& layout_pass,
+        static Float2U resolved_scroll_view_content_size(GUICore::IContext* context,
             const GUICore::Element& element, const GUICore::ScrollViewportLayoutDesc& desc)
         {
             RectF content_rect = scroll_viewport_content_rect(element.layout_result.rect, element.layout);
@@ -327,12 +404,12 @@ namespace Luna
             Vector<u32> children = collect_children(context, element);
             for(u32 child_index : children)
             {
-                accumulate_scroll_content_bounds(context, layout_pass, child_index, content_rect, desc.scroll_offset, content_size);
+                accumulate_scroll_content_bounds(context, child_index, content_rect, desc.scroll_offset, content_size);
             }
             return content_size;
         }
 
-        static RV finalize_scroll_view_layout(GUICore::IContext* context, const EditorLayoutPassState& layout_pass,
+        static RV finalize_scroll_view_layout(GUICore::IContext* context,
             const GUICore::ElementHandle& layout, const GUICore::ScrollViewportLayoutDesc& desc, bool update_state)
         {
             const GUICore::Element* element = context->get_element(layout.index);
@@ -347,7 +424,7 @@ namespace Luna
                 state = scroll_view_state(context, layout.id);
                 measure_desc.scroll_offset = state->scroll;
             }
-            Float2U content_size = resolved_scroll_view_content_size(context, layout_pass, *element, measure_desc);
+            Float2U content_size = resolved_scroll_view_content_size(context, *element, measure_desc);
             GUICore::LayoutResult result = element->layout_result;
             result.content_size = content_size;
             context->set_layout_result(layout, result);
@@ -361,57 +438,63 @@ namespace Luna
             return ok;
         }
 
-        static RV layout_editor_subtree(GUICore::IContext* context, const Ref<EditorLayoutPassState>& state,
-            const GUICore::ElementHandle& element)
+        static RV scroll_view_layout_callback(GUICore::IContext* context, const GUICore::ElementHandle& layout,
+            const RectF& rect, void*)
         {
-            const GUICore::Element* core_element = context->get_element(element.index);
-            if(!core_element || core_element->id != element.id)
+            const GUICore::Element* element = context->get_element(layout.index);
+            if(!element || element->id != layout.id)
             {
                 return BasicError::bad_arguments();
             }
-            auto request_iter = state->requests.find(element.id);
-            if(request_iter != state->requests.end())
+            const GUICore::ScrollViewportLayoutDesc* desc = scroll_viewport_layout_desc(*element);
+            if(!desc)
             {
-                RV r = apply_deferred_layout_request(context, element, core_element->layout_result.rect, request_iter->second);
-                if(failed(r))
-                {
-                    return r;
-                }
-                core_element = context->get_element(element.index);
-                if(!core_element || core_element->id != element.id)
-                {
-                    return BasicError::bad_arguments();
-                }
+                return BasicError::bad_arguments();
             }
-            Vector<u32> children = collect_children(context, *core_element);
-            for(u32 child_index : children)
+            return apply_scroll_view_layout(context, layout, rect, *desc);
+        }
+
+        static RV scroll_view_finalize_callback(GUICore::IContext* context, const GUICore::ElementHandle& layout,
+            const RectF&, void*)
+        {
+            const GUICore::Element* element = context->get_element(layout.index);
+            if(!element || element->id != layout.id)
             {
-                const GUICore::Element* child = context->get_element(child_index);
-                if(!child)
-                {
-                    continue;
-                }
-                GUICore::ElementHandle child_handle { child->id, child_index, element.generation };
-                RV r = layout_editor_subtree(context, state, child_handle);
-                if(failed(r))
-                {
-                    return r;
-                }
+                return BasicError::bad_arguments();
             }
-            if(request_iter != state->requests.end())
+            const GUICore::ScrollViewportLayoutDesc* desc = scroll_viewport_layout_desc(*element);
+            if(!desc)
             {
-                const EditorLayoutRequest& request = request_iter->second;
-                if(request.kind == EditorLayoutRequestKind::scroll_viewport || request.kind == EditorLayoutRequestKind::scroll_view)
-                {
-                    RV r = finalize_scroll_view_layout(context, *state, element, request.scroll_viewport,
-                        request.kind == EditorLayoutRequestKind::scroll_view);
-                    if(failed(r))
-                    {
-                        return r;
-                    }
-                }
+                return BasicError::bad_arguments();
             }
-            return ok;
+            return finalize_scroll_view_layout(context, layout, *desc, true);
+        }
+
+        static RV scroll_viewport_layout_callback(GUICore::IContext* context, const GUICore::ElementHandle& layout,
+            const RectF& rect, void*)
+        {
+            const GUICore::Element* element = context->get_element(layout.index);
+            if(!element || element->id != layout.id)
+            {
+                return BasicError::bad_arguments();
+            }
+            return GUICore::layout_scroll_viewport(context, layout, rect, element->layout_config.userdata);
+        }
+
+        static RV scroll_viewport_finalize_callback(GUICore::IContext* context, const GUICore::ElementHandle& layout,
+            const RectF&, void*)
+        {
+            const GUICore::Element* element = context->get_element(layout.index);
+            if(!element || element->id != layout.id)
+            {
+                return BasicError::bad_arguments();
+            }
+            const GUICore::ScrollViewportLayoutDesc* desc = scroll_viewport_layout_desc(*element);
+            if(!desc)
+            {
+                return BasicError::bad_arguments();
+            }
+            return finalize_scroll_view_layout(context, layout, *desc, false);
         }
 
         static GUICore::ElementHandle begin_core_layout(GUICore::IContext* context, GUICore::id_t id,
@@ -450,10 +533,9 @@ namespace Luna
         {
             luassert(context);
             desc.axis = GUICore::LayoutAxis::x;
-            EditorLayoutRequest request;
-            request.kind = EditorLayoutRequestKind::linear;
-            request.linear = desc;
-            RV r = set_deferred_layout_request(context, layout, move(request));
+            GUICore::LayoutConfig config;
+            fill_linear_layout_config(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             context->end_element();
             return r;
         }
@@ -463,8 +545,14 @@ namespace Luna
         {
             luassert(context);
             desc.axis = GUICore::LayoutAxis::x;
-            RV r = GUICore::layout_linear(context, layout, rect, desc);
+            GUICore::LayoutConfig config;
+            fill_linear_layout_config(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(layout, rect);
+            }
             return r;
         }
 
@@ -479,10 +567,9 @@ namespace Luna
         {
             luassert(context);
             desc.axis = GUICore::LayoutAxis::y;
-            EditorLayoutRequest request;
-            request.kind = EditorLayoutRequestKind::linear;
-            request.linear = desc;
-            RV r = set_deferred_layout_request(context, layout, move(request));
+            GUICore::LayoutConfig config;
+            fill_linear_layout_config(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             context->end_element();
             return r;
         }
@@ -492,8 +579,14 @@ namespace Luna
         {
             luassert(context);
             desc.axis = GUICore::LayoutAxis::y;
-            RV r = GUICore::layout_linear(context, layout, rect, desc);
+            GUICore::LayoutConfig config;
+            fill_linear_layout_config(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(layout, rect);
+            }
             return r;
         }
 
@@ -523,10 +616,9 @@ namespace Luna
             const GUICore::GridLayoutDesc& desc)
         {
             luassert(context);
-            EditorLayoutRequest request;
-            request.kind = EditorLayoutRequestKind::grid;
-            request.grid = desc;
-            RV r = set_deferred_layout_request(context, layout, move(request));
+            GUICore::LayoutConfig config;
+            set_grid_layout_config(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             context->end_element();
             return r;
         }
@@ -535,8 +627,14 @@ namespace Luna
             const RectF& rect, const GUICore::GridLayoutDesc& desc)
         {
             luassert(context);
-            RV r = GUICore::layout_grid(context, layout, rect, desc);
+            GUICore::LayoutConfig config;
+            set_grid_layout_config(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(layout, rect);
+            }
             return r;
         }
 
@@ -550,10 +648,9 @@ namespace Luna
             const GUICore::StackLayoutDesc& desc)
         {
             luassert(context);
-            EditorLayoutRequest request;
-            request.kind = EditorLayoutRequestKind::stack;
-            request.stack = desc;
-            RV r = set_deferred_layout_request(context, layout, move(request));
+            GUICore::LayoutConfig config;
+            set_stack_layout_config(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             context->end_element();
             return r;
         }
@@ -562,8 +659,14 @@ namespace Luna
             const RectF& rect, const GUICore::StackLayoutDesc& desc)
         {
             luassert(context);
-            RV r = GUICore::layout_stack(context, layout, rect, desc);
+            GUICore::LayoutConfig config;
+            set_stack_layout_config(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(layout, rect);
+            }
             return r;
         }
 
@@ -577,12 +680,9 @@ namespace Luna
             const GUICore::CanvasLayoutDesc& desc)
         {
             luassert(context);
-            EditorLayoutRequest request;
-            request.kind = EditorLayoutRequestKind::canvas;
-            request.canvas_default_item = desc.default_item;
-            request.canvas_clip_children = desc.clip_children;
-            request.canvas_items.assign(desc.items.begin(), desc.items.end());
-            RV r = set_deferred_layout_request(context, layout, move(request));
+            GUICore::LayoutConfig config;
+            set_canvas_layout_config(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             context->end_element();
             return r;
         }
@@ -591,8 +691,14 @@ namespace Luna
             const RectF& rect, const GUICore::CanvasLayoutDesc& desc)
         {
             luassert(context);
-            RV r = GUICore::layout_canvas(context, layout, rect, desc);
+            GUICore::LayoutConfig config;
+            set_canvas_layout_config(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(layout, rect);
+            }
             return r;
         }
 
@@ -608,10 +714,12 @@ namespace Luna
             const GUICore::ScrollViewportLayoutDesc& desc)
         {
             luassert(context);
-            EditorLayoutRequest request;
-            request.kind = EditorLayoutRequestKind::scroll_viewport;
-            request.scroll_viewport = desc;
-            RV r = set_deferred_layout_request(context, layout, move(request));
+            GUICore::LayoutConfig config;
+            config.name = Name("gui.editor.scroll_viewport");
+            config.callback = scroll_viewport_layout_callback;
+            config.finalize_callback = scroll_viewport_finalize_callback;
+            config.userdata = allocate_layout_userdata(context, desc);
+            RV r = set_element_layout_config(context, layout, config);
             pop_element_clip(context);
             context->end_element();
             return r;
@@ -621,9 +729,18 @@ namespace Luna
             const RectF& rect, const GUICore::ScrollViewportLayoutDesc& desc)
         {
             luassert(context);
-            RV r = GUICore::layout_scroll_viewport(context, layout, rect, desc);
+            GUICore::LayoutConfig config;
+            config.name = Name("gui.editor.scroll_viewport");
+            config.callback = scroll_viewport_layout_callback;
+            config.finalize_callback = scroll_viewport_finalize_callback;
+            config.userdata = allocate_layout_userdata(context, desc);
+            RV r = set_element_layout_config(context, layout, config);
             pop_element_clip(context);
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(layout, rect);
+            }
             return r;
         }
 
@@ -647,10 +764,12 @@ namespace Luna
             const GUICore::ScrollViewportLayoutDesc& desc)
         {
             luassert(context);
-            EditorLayoutRequest request;
-            request.kind = EditorLayoutRequestKind::scroll_view;
-            request.scroll_viewport = desc;
-            RV r = set_deferred_layout_request(context, layout, move(request));
+            GUICore::LayoutConfig config;
+            config.name = Name("gui.editor.scroll_view");
+            config.callback = scroll_view_layout_callback;
+            config.finalize_callback = scroll_view_finalize_callback;
+            config.userdata = allocate_layout_userdata(context, desc);
+            RV r = set_element_layout_config(context, layout, config);
             pop_element_clip(context);
             context->end_element();
             return r;
@@ -660,9 +779,18 @@ namespace Luna
             const RectF& rect, const GUICore::ScrollViewportLayoutDesc& desc)
         {
             luassert(context);
-            RV r = apply_scroll_view_layout(context, layout, rect, desc);
+            GUICore::LayoutConfig config;
+            config.name = Name("gui.editor.scroll_view");
+            config.callback = scroll_view_layout_callback;
+            config.finalize_callback = scroll_view_finalize_callback;
+            config.userdata = allocate_layout_userdata(context, desc);
+            RV r = set_element_layout_config(context, layout, config);
             pop_element_clip(context);
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(layout, rect);
+            }
             return r;
         }
 
@@ -760,16 +888,8 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            EditorLayoutRequest request;
-            Vector<GUICore::TableTrackDesc> default_columns;
-            Span<const GUICore::TableTrackDesc> columns(scope->columns.data(), scope->columns.size());
-            if(columns.empty())
-            {
-                default_columns = default_table_columns(*scope);
-                columns = Span<const GUICore::TableTrackDesc>(default_columns.data(), default_columns.size());
-            }
-            set_table_request_from_scope(request, *scope, columns);
-            RV r = set_deferred_layout_request(context, layout, move(request));
+            GUICore::LayoutConfig config = table_config_from_scope(context, *scope);
+            RV r = set_element_layout_config(context, layout, config);
             pop_table_scope(context, layout.id);
             context->end_element();
             return r;
@@ -784,9 +904,14 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            RV r = apply_table_scope_layout(context, layout, rect, *scope);
+            GUICore::LayoutConfig config = table_config_from_scope(context, *scope);
+            RV r = set_element_layout_config(context, layout, config);
             pop_table_scope(context, layout.id);
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(layout, rect);
+            }
             return r;
         }
 
@@ -794,14 +919,9 @@ namespace Luna
             const GUICore::TableLayoutDesc& desc)
         {
             luassert(context);
-            EditorLayoutRequest request;
-            request.kind = EditorLayoutRequestKind::table;
-            request.table_columns.assign(desc.columns.begin(), desc.columns.end());
-            request.table_rows.assign(desc.rows.begin(), desc.rows.end());
-            request.table_cells.assign(desc.cells.begin(), desc.cells.end());
-            request.table_gap = desc.gap;
-            request.table_clip_children = desc.clip_children;
-            RV r = set_deferred_layout_request(context, layout, move(request));
+            GUICore::LayoutConfig config;
+            set_table_config_from_desc(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             pop_table_scope(context, layout.id);
             context->end_element();
             return r;
@@ -811,9 +931,15 @@ namespace Luna
             const RectF& rect, const GUICore::TableLayoutDesc& desc)
         {
             luassert(context);
-            RV r = GUICore::layout_table(context, layout, rect, desc);
+            GUICore::LayoutConfig config;
+            set_table_config_from_desc(context, config, desc);
+            RV r = set_element_layout_config(context, layout, config);
             pop_table_scope(context, layout.id);
             context->end_element();
+            if(succeeded(r))
+            {
+                r = context->apply_layout(layout, rect);
+            }
             return r;
         }
 
@@ -829,13 +955,7 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            GUICore::LayoutResult root_result;
-            root_result.rect = rect;
-            root_result.clip_rect = rect;
-            root_result.content_size = Float2U(rect.width, rect.height);
-            context->set_layout_result(root, root_result);
-            Ref<EditorLayoutPassState> state = layout_pass_state(context);
-            return layout_editor_subtree(context, state, root);
+            return context->apply_layout(root, rect);
         }
     }
 }

@@ -16,6 +16,9 @@ namespace Luna
 {
     namespace GUI
     {
+        LUNA_GUI_API RV set_editor_linear_layout_config(GUICore::IContext* context,
+            const GUICore::ElementHandle& layout, const GUICore::LinearLayoutDesc& desc);
+
         static GUICore::StyleValue style_value(GUICore::IContext* context, const Name& entry,
             const GUICore::StyleValue& default_value)
         {
@@ -340,18 +343,11 @@ namespace Luna
                 layout_desc.axis = GUICore::LayoutAxis::y;
                 layout_desc.gap = style_value(context, Name("gui.editor.dock_panel.gap"),
                     GUICore::style_f32(4.0f)).number.x;
-                RV r = GUICore::layout_linear(context, panel.handle, panel_rect, layout_desc);
-                if(failed(r) && succeeded(result))
+                RV r = set_editor_linear_layout_config(context, panel.handle, layout_desc);
+                if(succeeded(r))
                 {
-                    result = r;
+                    r = layout_editor_tree(context, panel.handle, panel_rect);
                 }
-                GUICore::LayoutResult layout_result;
-                layout_result.rect = panel_rect;
-                layout_result.clip_rect = intersect_rect_local(panel_rect, rect);
-                RectF content = dock_panel_content_rect(panel_rect, panel.style);
-                layout_result.content_size = Float2U(content.width, content.height);
-                context->set_layout_result(panel.handle, layout_result);
-                r = layout_editor_tree(context, panel.handle, panel_rect);
                 if(failed(r) && succeeded(result))
                 {
                     result = r;
