@@ -196,15 +196,136 @@ namespace Luna
 
             MeasuredSize measure_element(IContext* context, u32 element_index, const Float2U& available);
 
-            MeasuredSize measure_leaf_element(const Element& element, const Float2U& available)
+            void include_content_bounds(Float2U& content, f32 min_x, f32 min_y, f32 max_x, f32 max_y)
+            {
+                content.x = max(content.x, max(max_x, 0.0f) - min(min_x, 0.0f));
+                content.y = max(content.y, max(max_y, 0.0f) - min(min_y, 0.0f));
+            }
+
+            FontDesc resolve_measure_font(IContext* context, const Name& id)
+            {
+                FontDesc font = context->get_font(id);
+                if(!font.font)
+                {
+                    font.font = Font::get_default_font();
+                    font.font_index = 0;
+                }
+                return font;
+            }
+
+            Float2U measure_text_content(IContext* context, const DrawCommand& command,
+                const Float2U& available_content)
+            {
+                if(command.text.empty() || command.font_size <= 0.0f)
+                {
+                    return Float2U(0.0f);
+                }
+                f32 leading_x = max(command.rect.offset_x, 0.0f);
+                f32 trailing_x = command.rect.width <= 0.0f ? max(-command.rect.width, 0.0f) : 0.0f;
+                f32 leading_y = max(command.rect.offset_y, 0.0f);
+                f32 trailing_y = command.rect.height <= 0.0f ? max(-command.rect.height, 0.0f) : 0.0f;
+                f32 text_width = command.rect.width > 0.0f ?
+                    command.rect.width :
+                    max(available_content.x - leading_x - trailing_x, 0.0f);
+                f32 text_height = command.rect.height > 0.0f ?
+                    command.rect.height :
+                    max(available_content.y - leading_y - trailing_y, 0.0f);
+                if(text_width <= 0.0f || text_height <= 0.0f)
+                {
+                    return Float2U(leading_x + trailing_x, leading_y + trailing_y);
+                }
+                FontDesc font = resolve_measure_font(context, command.font);
+                if(!font.font)
+                {
+                    return Float2U(leading_x + trailing_x, leading_y + trailing_y);
+                }
+                VG::TextArrangeSection section;
+                section.font_file = font.font;
+                section.font_index = font.font_index;
+                section.font_size = command.font_size;
+                section.color = command.color;
+                section.num_chars = command.text.size();
+                VG::TextArrangeResult arranged = VG::arrange_text(command.text.c_str(), command.text.size(),
+                    Span<const VG::TextArrangeSection>(&section, 1), RectF(0.0f, 0.0f, text_width, text_height),
+                    command.vertical_alignment, command.horizontal_alignment);
+                return Float2U(leading_x + arranged.bounding_rect.width + trailing_x,
+                    leading_y + arranged.bounding_rect.height + trailing_y);
+            }
+
+            Float2U measure_leaf_content(IContext* context, u32 element_index, const Element& element,
+                const Float2U& available)
+            {
+                Float2U available_content(
+                    max(available.x - element.layout.margin.x - element.layout.margin.z -
+                        element.layout.padding.x - element.layout.padding.z, 0.0f),
+                    max(available.y - element.layout.margin.y - element.layout.margin.w -
+                        element.layout.padding.y - element.layout.padding.w, 0.0f));
+                Float2U content(0.0f);
+                for(const DrawCommand& command : context->get_draw_commands())
+                {
+                    if(command.element != element_index)
+                    {
+                        continue;
+                    }
+                    switch(command.type)
+                    {
+                    case DrawCommandType::text:
+                    {
+                        Float2U text_size = measure_text_content(context, command, available_content);
+                        content.x = max(content.x, text_size.x);
+                        content.y = max(content.y, text_size.y);
+                        break;
+                    }
+                    case DrawCommandType::rect:
+                    case DrawCommandType::gradient_rect:
+                    case DrawCommandType::rounded_rect:
+                    case DrawCommandType::image:
+                    case DrawCommandType::shape:
+                        if(command.rect_reference == DrawCommandRectReference::element &&
+                            command.rect.width > 0.0f && command.rect.height > 0.0f)
+                        {
+                            include_content_bounds(content, command.rect.offset_x, command.rect.offset_y,
+                                command.rect.offset_x + command.rect.width,
+                                command.rect.offset_y + command.rect.height);
+                        }
+                        else if(command.rect_reference == DrawCommandRectReference::layer &&
+                            command.rect.width > 0.0f && command.rect.height > 0.0f)
+                        {
+                            content.x = max(content.x, command.rect.width);
+                            content.y = max(content.y, command.rect.height);
+                        }
+                        break;
+                    case DrawCommandType::line:
+                        if(command.rect_reference == DrawCommandRectReference::element)
+                        {
+                            f32 half_width = command.line_width * 0.5f;
+                            include_content_bounds(content,
+                                min(command.rect.offset_x, command.point1.x) - half_width,
+                                min(command.rect.offset_y, command.point1.y) - half_width,
+                                max(command.rect.offset_x, command.point1.x) + half_width,
+                                max(command.rect.offset_y, command.point1.y) + half_width);
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                }
+                return content;
+            }
+
+            MeasuredSize measure_leaf_element(IContext* context, u32 element_index, const Element& element,
+                const Float2U& available)
             {
                 MeasuredSize r;
+                Float2U content = measure_leaf_content(context, element_index, element, available);
                 for(LayoutAxis axis : { LayoutAxis::x, LayoutAxis::y })
                 {
                     const SizeValue& size = requested_size(element.layout, axis);
                     f32 available_axis = axis_value(available, axis);
-                    f32 desired = resolve_basis_size(element, axis, available_axis);
-                    f32 minimum = max(size.min, size.kind == SizeKind::fit ? desired : 0.0f);
+                    f32 padding = padding_begin(element.layout.padding, axis) + padding_end(element.layout.padding, axis);
+                    f32 content_axis = axis_value(content, axis) + padding;
+                    f32 desired = size.kind == SizeKind::fit ? content_axis : resolve_basis_size(element, axis, available_axis);
+                    f32 minimum = size.min;
                     f32 maximum = resolve_axis_maximum(size);
                     desired = min(max(desired, minimum), maximum);
                     set_axis_value(r.minimum, axis, minimum);
@@ -531,7 +652,7 @@ namespace Luna
                     const FlexLayoutDesc& desc = *reinterpret_cast<const FlexLayoutDesc*>(element->layout_config.userdata);
                     return measure_flex_element(context, *element, available, desc);
                 }
-                return measure_leaf_element(*element, available);
+                return measure_leaf_element(context, element_index, *element, available);
             }
 
             const CanvasLayoutItem& find_canvas_item(const CanvasLayoutDesc& desc, id_t element_id)

@@ -510,6 +510,12 @@ namespace Luna
             return ElementHandle { id, iter->second, m_generation };
         }
 
+        Span<const DrawCommand> Context::get_draw_commands() const
+        {
+            lutsassert();
+            return m_draw_commands.cspan();
+        }
+
         void Context::record_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command)
         {
             DrawCommand cmd = command;

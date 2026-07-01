@@ -212,6 +212,12 @@ namespace Luna
             //! @return Returns the current-frame element handle, or an invalid handle if no element with this ID exists.
             virtual ElementHandle find_element_handle(id_t id) const = 0;
 
+            //! Gets all recorded draw commands in frame submission order.
+            //! @return Returns a read-only span of draw commands recorded in the current frame.
+            //! @remark Layout algorithms can inspect commands owned by one element to derive content-driven
+            //! sizes. Callers should filter by @ref DrawCommand::element when they need element-local commands.
+            virtual Span<const DrawCommand> get_draw_commands() const = 0;
+
             //! Records one primitive draw command.
             //! @param[in] command The command to append to the current layer and current element.
             virtual void draw(const DrawCommand& command) = 0;

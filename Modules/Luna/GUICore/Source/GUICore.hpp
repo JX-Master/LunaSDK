@@ -134,6 +134,7 @@ namespace Luna
             virtual const Element* get_element(u32 index) const override;
             virtual const Element* find_element(id_t id) const override;
             virtual ElementHandle find_element_handle(id_t id) const override;
+            virtual Span<const DrawCommand> get_draw_commands() const override;
             virtual void draw(const DrawCommand& command) override;
             virtual void draw_for_element(const ElementHandle& element, const DrawCommand& command) override;
             virtual RV compile_draw_commands(VG::IShapeDrawList* draw_list) override;
