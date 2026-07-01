@@ -42,22 +42,40 @@ namespace
         Vector<GUICore::HitTestVisit> visits;
     };
 
+    struct FlexDemoChildState
+    {
+        f32 min_size = 0.0f;
+        bool max_unbounded = true;
+        f32 max_size = 360.0f;
+        f32 grow = 0.0f;
+        f32 shrink = 1.0f;
+    };
+
+    struct FlexDemoState
+    {
+        f32 container_height = 190.0f;
+        f32 fixed_basis = 150.0f;
+        f32 percent_basis = 0.35f;
+        f32 cross_basis = 56.0f;
+        f32 main_gap = 10.0f;
+        f32 cross_gap = 10.0f;
+        bool reverse = false;
+        i32 wrap = 0;
+        i32 main_alignment = 0;
+        i32 cross_alignment = 3;
+        i32 line_alignment = 0;
+        FlexDemoChildState children[3];
+    };
+
     struct CoreDemoState
     {
         bool option = true;
         bool readonly = false;
         bool input_routing_initialized = false;
+        bool flex_initialized = false;
         u32 selected_routing_node = 1;
         RoutingDemoNodeSetting input_routing_nodes[ROUTING_DEMO_NODE_COUNT];
-        f32 linear_gap = 8.0f;
-        f32 grid_cell_width = 96.0f;
-        f32 grid_cell_height = 64.0f;
-        i32 grid_columns = 4;
-        f32 split = 0.35f;
-        f32 scroll_offset_x = 0.0f;
-        f32 scroll_offset_y = 0.0f;
-        bool grid_fixed_columns = false;
-        bool stack_center = true;
+        FlexDemoState flex;
         bool style_enabled = true;
         bool style_unset_text = false;
         bool capture_debug_timeline = false;
@@ -116,7 +134,7 @@ namespace
     {
         GUICore::LayoutInput layout;
         layout.width.kind = GUICore::SizeKind::percent;
-            layout.width.value = 1.0f;
+        layout.width.value = 1.0f;
         layout.height.kind = GUICore::SizeKind::fit;
         layout.height.min = min_height;
         return layout;
@@ -169,6 +187,30 @@ namespace
             state.input_routing_nodes[i] = ROUTING_DEMO_NODES[i].default_setting;
         }
         state.input_routing_initialized = true;
+    }
+
+    void initialize_flex_demo_state(CoreDemoState& state)
+    {
+        if(state.flex_initialized)
+        {
+            return;
+        }
+        state.flex.children[0].min_size = 72.0f;
+        state.flex.children[0].max_unbounded = false;
+        state.flex.children[0].max_size = 240.0f;
+        state.flex.children[0].grow = 0.0f;
+        state.flex.children[0].shrink = 1.0f;
+        state.flex.children[1].min_size = 64.0f;
+        state.flex.children[1].max_unbounded = true;
+        state.flex.children[1].max_size = 420.0f;
+        state.flex.children[1].grow = 1.0f;
+        state.flex.children[1].shrink = 1.0f;
+        state.flex.children[2].min_size = 0.0f;
+        state.flex.children[2].max_unbounded = false;
+        state.flex.children[2].max_size = 260.0f;
+        state.flex.children[2].grow = 0.0f;
+        state.flex.children[2].shrink = 1.0f;
+        state.flex_initialized = true;
     }
 
     void draw_element_line(GUICore::IContext* context, const GUICore::ElementHandle& element,
@@ -511,7 +553,7 @@ namespace
     {
         GUICore::FlexLayoutDesc body_desc;
         body_desc.axis = GUICore::LayoutAxis::y;
-        body_desc.main_axis_gap = 8.0f;
+        body_desc.main_axis_gap = 12.0f;
         lupanic_if_failed(GUI::end_v_layout(context, body, body_desc));
         lupanic_if_failed(GUI::end_scroll_view(context, scroll));
     }
@@ -521,7 +563,7 @@ namespace
         initialize_input_routing_state(state);
         state.selected_routing_node = min(state.selected_routing_node, ROUTING_DEMO_NODE_COUNT - 1);
         GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("core.input.scroll"), "Input page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.input.body"), "Input body", Test::fill_layout());
+        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.input.body"), "Input body", scroll_content_layout(0.0f));
         add_text(context, Test::demo_id("core.input.title"), "Input routing: layers, hierarchy, custom hit testing and interactable flags");
         add_text(context, Test::demo_id("core.input.legend"),
             "Cyan outline = layout rect, amber outline = clip rect, green outline = routing stop. Circle Hit Button only hits inside the circle.");
@@ -585,116 +627,254 @@ namespace
         end_page_body(context, body, scroll);
     }
 
+    GUICore::FlexAlignment flex_alignment_from_index(i32 index)
+    {
+        switch(index)
+        {
+        case 1:
+            return GUICore::FlexAlignment::center;
+        case 2:
+            return GUICore::FlexAlignment::end;
+        case 3:
+            return GUICore::FlexAlignment::stretch;
+        case 4:
+            return GUICore::FlexAlignment::space_between;
+        case 5:
+            return GUICore::FlexAlignment::space_around;
+        case 6:
+            return GUICore::FlexAlignment::space_evenly;
+        default:
+            return GUICore::FlexAlignment::start;
+        }
+    }
+
+    GUICore::FlexWrap flex_wrap_from_index(i32 index)
+    {
+        switch(index)
+        {
+        case 1:
+            return GUICore::FlexWrap::wrap;
+        case 2:
+            return GUICore::FlexWrap::wrap_reverse;
+        default:
+            return GUICore::FlexWrap::none;
+        }
+    }
+
+    GUICore::FlexLayoutDesc flex_demo_desc(const FlexDemoState& state, GUICore::LayoutAxis axis)
+    {
+        GUICore::FlexLayoutDesc desc;
+        desc.axis = axis;
+        desc.reverse = state.reverse;
+        desc.wrap = flex_wrap_from_index(state.wrap);
+        desc.main_alignment = flex_alignment_from_index(state.main_alignment);
+        desc.cross_alignment = flex_alignment_from_index(state.cross_alignment);
+        desc.line_alignment = flex_alignment_from_index(state.line_alignment);
+        desc.main_axis_gap = state.main_gap;
+        desc.cross_axis_gap = state.cross_gap;
+        return desc;
+    }
+
+    GUICore::LayoutInput flex_demo_child_layout(const FlexDemoState& state, u32 child_index, GUICore::LayoutAxis axis)
+    {
+        GUICore::LayoutInput layout;
+        GUICore::SizeValue& main = axis == GUICore::LayoutAxis::x ? layout.width : layout.height;
+        GUICore::SizeValue& cross = axis == GUICore::LayoutAxis::x ? layout.height : layout.width;
+        if(child_index == 0)
+        {
+            main.kind = GUICore::SizeKind::fixed;
+            main.value = state.fixed_basis;
+        }
+        else if(child_index == 1)
+        {
+            main.kind = GUICore::SizeKind::percent;
+            main.value = state.percent_basis;
+        }
+        else
+        {
+            main.kind = GUICore::SizeKind::fit;
+        }
+        const FlexDemoChildState& child = state.children[child_index];
+        main.min = child.min_size;
+        main.max = child.max_unbounded ? -1.0f : child.max_size;
+        cross.kind = GUICore::SizeKind::fixed;
+        cross.value = state.cross_basis;
+        cross.min = 20.0f;
+        cross.max = child.max_unbounded ? -1.0f : max(child.max_size, state.cross_basis);
+        layout.flex_grow = child.grow;
+        layout.flex_shrink = child.shrink;
+        layout.margin = Float4U(0.0f);
+        layout.padding = Float4U(8.0f, 4.0f, 8.0f, 4.0f);
+        return layout;
+    }
+
+    GUICore::id_t flex_demo_child_id(GUICore::id_t parent_id, const c8* local_name)
+    {
+        return Test::hash_cstr(local_name, parent_id);
+    }
+
+    f32 flex_demo_clamp_size(f32 value, const FlexDemoChildState& state)
+    {
+        value = max(value, state.min_size);
+        if(!state.max_unbounded)
+        {
+            value = min(value, state.max_size);
+        }
+        return value;
+    }
+
+    f32 flex_demo_vertical_preview_height(const FlexDemoState& state)
+    {
+        f32 percent = min(max(state.percent_basis, 0.0f), 0.90f);
+        f32 fixed_main = flex_demo_clamp_size(state.fixed_basis, state.children[0]);
+        f32 hug_main = flex_demo_clamp_size(44.0f, state.children[2]);
+        f32 fixed_sum = fixed_main + hug_main + state.main_gap * 2.0f;
+        f32 desired_height = fixed_sum / max(1.0f - percent, 0.10f);
+        f32 min_height = state.children[0].min_size + state.children[1].min_size + state.children[2].min_size +
+            state.main_gap * 2.0f;
+        return max(max(state.container_height, desired_height), min_height) + 24.0f;
+    }
+
+    void flex_demo_slider(GUICore::IContext* context, GUICore::id_t id, const c8* label,
+        f32* value, f32 min_value, f32 max_value)
+    {
+        GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label, Test::fill_width_layout(34.0f));
+        GUI::text(context, flex_demo_child_id(id, "label"), label, Test::fixed_layout(180.0f, 28.0f));
+        GUI::slider_float_with_input(context, flex_demo_child_id(id, "editor"), label, value, min_value, max_value,
+            RectF(0.0f, 0.0f, 280.0f, 30.0f), Test::fill_width_layout(30.0f));
+        GUICore::FlexLayoutDesc desc;
+        desc.axis = GUICore::LayoutAxis::x;
+        desc.main_axis_gap = 10.0f;
+        lupanic_if_failed(GUI::end_h_layout(context, row, desc));
+    }
+
+    void flex_demo_button_group(GUICore::IContext* context, GUICore::id_t id, const c8* label,
+        i32* value, Span<const c8*> items)
+    {
+        GUI::text(context, flex_demo_child_id(id, "label"), label, Test::fixed_layout(180.0f, 26.0f));
+        GUI::button_group(context, flex_demo_child_id(id, "buttons"), value, items, Test::fill_width_layout(30.0f));
+    }
+
+    void flex_demo_checkbox(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool* value)
+    {
+        GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label, Test::fill_width_layout(34.0f));
+        GUI::checkbox(context, flex_demo_child_id(id, "check"), "", value, Test::fixed_layout(24.0f, 30.0f));
+        GUI::text(context, flex_demo_child_id(id, "label"), label, Test::fill_width_layout(28.0f));
+        GUICore::FlexLayoutDesc desc;
+        desc.axis = GUICore::LayoutAxis::x;
+        desc.main_axis_gap = 8.0f;
+        lupanic_if_failed(GUI::end_h_layout(context, row, desc));
+    }
+
+    void build_flex_child_editor(GUICore::IContext* context, FlexDemoState& state, u32 child_index,
+        const c8* label, GUICore::id_t id)
+    {
+        FlexDemoChildState& child = state.children[child_index];
+        if(!GUI::collapsing_header(context, id + 10, label, child_index == 0, row_layout()))
+        {
+            return;
+        }
+        GUICore::ElementHandle section = GUI::begin_v_layout(context, id + 15, label,
+            Test::fill_width_layout(child.max_unbounded ? 200.0f : 206.0f));
+        flex_demo_slider(context, id + 20, "Minimum main size", &child.min_size, 0.0f, 260.0f);
+        flex_demo_checkbox(context, id + 30, "Maximum size is unbounded", &child.max_unbounded);
+        if(!child.max_unbounded)
+        {
+            flex_demo_slider(context, id + 40, "Maximum main size", &child.max_size, 32.0f, 620.0f);
+            child.max_size = max(child.max_size, child.min_size);
+        }
+        else
+        {
+            add_status(context, id + 40, "Maximum main size", "unbounded");
+        }
+        flex_demo_slider(context, id + 60, "flex-grow", &child.grow, 0.0f, 4.0f);
+        flex_demo_slider(context, id + 80, "flex-shrink", &child.shrink, 0.0f, 4.0f);
+        GUICore::FlexLayoutDesc section_desc;
+        section_desc.axis = GUICore::LayoutAxis::y;
+        section_desc.main_axis_gap = 8.0f;
+        lupanic_if_failed(GUI::end_v_layout(context, section, section_desc));
+    }
+
+    void build_flex_demo_container(GUICore::IContext* context, const FlexDemoState& state,
+        GUICore::LayoutAxis axis, GUICore::id_t id, const c8* title)
+    {
+        add_text(context, id + 10, title);
+        f32 preview_height = axis == GUICore::LayoutAxis::x ? state.container_height : flex_demo_vertical_preview_height(state);
+        GUICore::LayoutInput container_layout = Test::fill_width_layout(preview_height);
+        GUICore::ElementHandle flex = axis == GUICore::LayoutAxis::x ?
+            GUI::begin_h_layout(context, id + 20, title, container_layout) :
+            GUI::begin_v_layout(context, id + 20, title, container_layout);
+        draw_element_background(context, flex, Float4U(0.060f, 0.080f, 0.100f, 1.0f), 6.0f);
+        GUI::text_button(context, id + 100, "fixed basis", flex_demo_child_layout(state, 0, axis));
+        GUI::text_button(context, id + 120, "percentage basis", flex_demo_child_layout(state, 1, axis));
+        GUI::text_button(context, id + 140, "hug text content", flex_demo_child_layout(state, 2, axis));
+        GUICore::FlexLayoutDesc desc = flex_demo_desc(state, axis);
+        if(axis == GUICore::LayoutAxis::x)
+        {
+            lupanic_if_failed(GUI::end_h_layout(context, flex, desc));
+        }
+        else
+        {
+            lupanic_if_failed(GUI::end_v_layout(context, flex, desc));
+        }
+    }
+
     void build_layout_page(GUICore::IContext* context, CoreDemoState& state)
     {
+        initialize_flex_demo_state(state);
         GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("core.layout.scroll"), "Layout page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.layout.body"), "Layout body", Test::fill_layout());
-        add_text(context, Test::demo_id("core.layout.title"), "Layout primitives");
-        GUI::slider_float_with_input(context, Test::demo_id("core.layout.gap"), "Linear gap", &state.linear_gap, 0.0f, 32.0f,
-            RectF(0.0f, 0.0f, 420.0f, 30.0f), Test::fill_width_layout(34.0f));
+        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.layout.body"), "Layout body", scroll_content_layout(0.0f));
+        FlexDemoState& flex = state.flex;
+        add_text(context, Test::demo_id("core.layout.title"), "Flex layout playground");
+        add_text(context, Test::demo_id("core.layout.note"),
+            "Both previews contain fixed, percentage and hug text items. Resize the window or change constraints to test measure, grow and shrink.");
 
-        GUICore::ElementHandle h = GUI::begin_h_layout(context, Test::demo_id("core.layout.h"), "HLayout", Test::fill_width_layout(44.0f));
-        GUI::text_button(context, Test::demo_id("core.layout.h.a"), "Left", Test::fixed_layout(120.0f, 36.0f));
-        GUI::text_button(context, Test::demo_id("core.layout.h.b"), "Middle expands", Test::fill_width_layout(36.0f));
-        GUI::text_button(context, Test::demo_id("core.layout.h.c"), "Right", Test::fixed_layout(120.0f, 36.0f));
-        GUICore::FlexLayoutDesc h_desc;
-        h_desc.axis = GUICore::LayoutAxis::x;
-        h_desc.main_axis_gap = state.linear_gap;
-        lupanic_if_failed(GUI::end_h_layout(context, h, h_desc));
+        static const c8* wrap_items[] = { "No Wrap", "Wrap", "Wrap Reverse" };
+        static const c8* align_items[] = { "Start", "Center", "End", "Stretch", "Between", "Around", "Evenly" };
 
-        GUI::slider_float_with_input(context, Test::demo_id("core.layout.cell.w"), "Grid cell width", &state.grid_cell_width, 48.0f, 180.0f,
-            RectF(0.0f, 0.0f, 420.0f, 30.0f), Test::fill_width_layout(34.0f));
-        GUI::slider_float_with_input(context, Test::demo_id("core.layout.cell.h"), "Grid cell height", &state.grid_cell_height, 32.0f, 120.0f,
-            RectF(0.0f, 0.0f, 420.0f, 30.0f), Test::fill_width_layout(34.0f));
-        GUI::checkbox(context, Test::demo_id("core.layout.grid.mode"), "Grid uses fixed column count", &state.grid_fixed_columns, row_layout());
-        GUI::slider_int_with_input(context, Test::demo_id("core.layout.grid.columns"), "Grid columns", &state.grid_columns, 1, 8,
-            RectF(0.0f, 0.0f, 420.0f, 30.0f), Test::fill_width_layout(34.0f));
-        GUICore::ElementHandle grid = GUI::begin_grid_layout(context, Test::demo_id("core.layout.grid"), "Grid", Test::fill_width_layout(180.0f));
-        for(u32 i = 0; i < 12; ++i)
-        {
-            char label[32];
-            snprintf(label, sizeof(label), "Cell %02u", i);
-            GUI::text_button(context, Test::demo_id("core.layout.grid.cell", i), label, Test::fill_layout());
-        }
-        GUICore::GridLayoutDesc grid_desc;
-        grid_desc.mode = state.grid_fixed_columns ? GUICore::GridLayoutMode::fixed_column_count : GUICore::GridLayoutMode::fixed_cell_size;
-        grid_desc.cell_size = Float2U(state.grid_cell_width, state.grid_cell_height);
-        grid_desc.column_count = (u32)max(state.grid_columns, 1);
-        grid_desc.gap = Float2U(8.0f, 8.0f);
-        lupanic_if_failed(GUI::end_grid_layout(context, grid, grid_desc));
+        flex_demo_slider(context, Test::demo_id("core.layout.container.height"), "Container height", &flex.container_height, 96.0f, 420.0f);
+        flex_demo_slider(context, Test::demo_id("core.layout.fixed.basis"), "Fixed child main size", &flex.fixed_basis, 40.0f, 420.0f);
+        flex_demo_slider(context, Test::demo_id("core.layout.percent.basis"), "Percentage child basis", &flex.percent_basis, 0.05f, 0.90f);
+        flex_demo_slider(context, Test::demo_id("core.layout.cross.basis"), "Child cross size", &flex.cross_basis, 24.0f, 160.0f);
+        flex_demo_slider(context, Test::demo_id("core.layout.main.gap"), "Main axis gap", &flex.main_gap, 0.0f, 48.0f);
+        flex_demo_slider(context, Test::demo_id("core.layout.cross.gap"), "Cross axis gap", &flex.cross_gap, 0.0f, 48.0f);
+        flex_demo_checkbox(context, Test::demo_id("core.layout.reverse"), "Reverse main-axis item order", &flex.reverse);
 
-        GUI::checkbox(context, Test::demo_id("core.layout.stack.center"), "Stack children centered", &state.stack_center, row_layout());
-        GUICore::ElementHandle stack = GUI::begin_stack_layout(context, Test::demo_id("core.layout.stack"), "Stack", Test::fill_width_layout(130.0f));
-        GUI::text_button(context, Test::demo_id("core.layout.stack.back"), "Back layer", Test::fixed_layout(260.0f, 96.0f));
-        GUI::text_button(context, Test::demo_id("core.layout.stack.front"), "Front layer", Test::fixed_layout(150.0f, 48.0f));
-        GUICore::StackLayoutDesc stack_desc;
-        stack_desc.alignment = state.stack_center ? Float2U(0.5f, 0.5f) : Float2U(0.0f, 0.0f);
-        lupanic_if_failed(GUI::end_stack_layout(context, stack, stack_desc));
+        GUICore::ElementHandle wrap_row = GUI::begin_h_layout(context, Test::demo_id("core.layout.wrap.row"),
+            "Wrap row", Test::fill_width_layout(34.0f));
+        flex_demo_button_group(context, Test::demo_id("core.layout.wrap"), "flex-wrap", &flex.wrap,
+            Span<const c8*>(wrap_items, 3));
+        GUICore::FlexLayoutDesc row_desc;
+        row_desc.axis = GUICore::LayoutAxis::x;
+        row_desc.main_axis_gap = 8.0f;
+        lupanic_if_failed(GUI::end_h_layout(context, wrap_row, row_desc));
 
-        GUI::slider_float_with_input(context, Test::demo_id("core.layout.canvas.split"), "Canvas anchor X", &state.split, 0.0f, 1.0f,
-            RectF(0.0f, 0.0f, 420.0f, 30.0f), Test::fill_width_layout(34.0f));
-        GUICore::ElementHandle canvas = GUI::begin_canvas_layout(context, Test::demo_id("core.layout.canvas"), "Canvas", Test::fill_width_layout(150.0f));
-        GUICore::ElementHandle anchored_a = GUI::text_button(context, Test::demo_id("core.layout.canvas.a"), "Anchored A", Test::fixed_layout(120.0f, 32.0f));
-        GUICore::ElementHandle anchored_b = GUI::text_button(context, Test::demo_id("core.layout.canvas.b"), "Stretch B", Test::fixed_layout(120.0f, 32.0f));
-        GUICore::CanvasLayoutItem canvas_items[2];
-        canvas_items[0].element_id = anchored_a.id;
-        canvas_items[0].anchor_min = Float2U(state.split, 0.0f);
-        canvas_items[0].anchor_max = Float2U(state.split, 0.0f);
-        canvas_items[0].offset = Float4U(0.0f, 12.0f, 0.0f, 0.0f);
-        canvas_items[0].pivot = Float2U(0.5f, 0.0f);
-        canvas_items[1].element_id = anchored_b.id;
-        canvas_items[1].anchor_min = Float2U(0.05f, 0.45f);
-        canvas_items[1].anchor_max = Float2U(0.95f, 0.45f);
-        canvas_items[1].offset = Float4U(0.0f, 0.0f, 0.0f, 36.0f);
-        GUICore::CanvasLayoutDesc canvas_desc;
-        canvas_desc.items = Span<const GUICore::CanvasLayoutItem>(canvas_items, 2);
-        lupanic_if_failed(GUI::end_canvas_layout(context, canvas, canvas_desc));
+        GUICore::ElementHandle main_align_row = GUI::begin_h_layout(context, Test::demo_id("core.layout.main.align.row"),
+            "Main alignment row", Test::fill_width_layout(34.0f));
+        flex_demo_button_group(context, Test::demo_id("core.layout.main.align"), "justify-content", &flex.main_alignment,
+            Span<const c8*>(align_items, 7));
+        lupanic_if_failed(GUI::end_h_layout(context, main_align_row, row_desc));
 
-        GUI::slider_float_with_input(context, Test::demo_id("core.layout.scroll.x"), "Manual scroll X", &state.scroll_offset_x, 0.0f, 260.0f,
-            RectF(0.0f, 0.0f, 420.0f, 30.0f), Test::fill_width_layout(34.0f));
-        GUI::slider_float_with_input(context, Test::demo_id("core.layout.scroll.y"), "Manual scroll Y", &state.scroll_offset_y, 0.0f, 260.0f,
-            RectF(0.0f, 0.0f, 420.0f, 30.0f), Test::fill_width_layout(34.0f));
-        GUICore::ElementHandle viewport = GUI::begin_scroll_viewport(context, Test::demo_id("core.layout.viewport"), "Manual viewport",
-            Test::fill_width_layout(130.0f));
-        GUICore::ElementHandle viewport_content = GUI::begin_v_layout(context, Test::demo_id("core.layout.viewport.content"),
-            "Manual viewport content", Test::fixed_layout(320.0f, 280.0f));
-        for(u32 i = 0; i < 8; ++i)
-        {
-            char label[32];
-            snprintf(label, sizeof(label), "Manual item %u", i);
-            GUI::text_button(context, Test::demo_id("core.layout.viewport.item", i), label, Test::fixed_layout(220.0f, 30.0f));
-        }
-        GUICore::FlexLayoutDesc viewport_content_desc;
-        viewport_content_desc.axis = GUICore::LayoutAxis::y;
-        viewport_content_desc.main_axis_gap = 6.0f;
-        lupanic_if_failed(GUI::end_v_layout(context, viewport_content, viewport_content_desc));
-        GUICore::ScrollViewportLayoutDesc viewport_desc;
-        viewport_desc.scroll_offset = Float2U(state.scroll_offset_x, state.scroll_offset_y);
-        lupanic_if_failed(GUI::end_scroll_viewport(context, viewport, viewport_desc));
+        GUICore::ElementHandle cross_align_row = GUI::begin_h_layout(context, Test::demo_id("core.layout.cross.align.row"),
+            "Cross alignment row", Test::fill_width_layout(34.0f));
+        flex_demo_button_group(context, Test::demo_id("core.layout.cross.align"), "align-items", &flex.cross_alignment,
+            Span<const c8*>(align_items, 7));
+        lupanic_if_failed(GUI::end_h_layout(context, cross_align_row, row_desc));
 
-        GUICore::ElementHandle table = GUI::begin_table_layout(context, Test::demo_id("core.layout.table"), "Table", Test::fill_width_layout(132.0f));
-        GUICore::TableTrackDesc columns[3];
-        columns[0].kind = GUICore::TableTrackSizeKind::pixels;
-        columns[0].value = 120.0f;
-        columns[1].kind = GUICore::TableTrackSizeKind::ratio;
-        columns[1].value = 1.0f;
-        columns[2].kind = GUICore::TableTrackSizeKind::pixels;
-        columns[2].value = 180.0f;
-        GUI::set_table_columns(context, Span<const GUICore::TableTrackDesc>(columns, 3));
-        GUI::set_table_gap(context, Float2U(4.0f, 4.0f));
-        GUI::set_table_cell_padding(context, Float4U(4.0f, 2.0f, 4.0f, 2.0f));
-        for(u32 row = 0; row < 4; ++row)
-        {
-            GUI::begin_table_row(context, GUICore::TableTrackDesc { GUICore::TableTrackSizeKind::pixels, 28.0f, 0.0f, -1.0f });
-            for(u32 col = 0; col < 3; ++col)
-            {
-                char label[32];
-                snprintf(label, sizeof(label), "R%u C%u", row, col);
-                GUI::text(context, Test::demo_id("core.layout.table.cell", row * 8 + col), label, Test::fill_layout());
-            }
-            GUI::end_table_row(context);
-        }
-        lupanic_if_failed(GUI::end_table_layout(context, table));
+        GUICore::ElementHandle line_align_row = GUI::begin_h_layout(context, Test::demo_id("core.layout.line.align.row"),
+            "Line alignment row", Test::fill_width_layout(34.0f));
+        flex_demo_button_group(context, Test::demo_id("core.layout.line.align"), "align-content", &flex.line_alignment,
+            Span<const c8*>(align_items, 7));
+        lupanic_if_failed(GUI::end_h_layout(context, line_align_row, row_desc));
+
+        build_flex_demo_container(context, flex, GUICore::LayoutAxis::x, Test::demo_id("core.layout.preview.horizontal"),
+            "Horizontal flex");
+        build_flex_demo_container(context, flex, GUICore::LayoutAxis::y, Test::demo_id("core.layout.preview.vertical"),
+            "Vertical flex");
+
+        build_flex_child_editor(context, flex, 0, "Fixed child constraints", Test::demo_id("core.layout.fixed.child"));
+        build_flex_child_editor(context, flex, 1, "Percentage child constraints", Test::demo_id("core.layout.percent.child"));
+        build_flex_child_editor(context, flex, 2, "Hug text child constraints", Test::demo_id("core.layout.hug.child"));
 
         end_page_body(context, body, scroll);
     }
@@ -702,7 +882,7 @@ namespace
     void build_draw_page(GUICore::IContext* context)
     {
         GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("core.draw.scroll"), "Draw page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.draw.body"), "Draw body", Test::fill_layout());
+        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.draw.body"), "Draw body", scroll_content_layout(0.0f));
         add_text(context, Test::demo_id("core.draw.title"), "Primitive draw commands");
         GUICore::ElementHandle canvas = context->begin_element(Test::demo_id("core.draw.canvas"), Name("Draw canvas"));
         context->set_layout(canvas, Test::fill_width_layout(360.0f));
@@ -750,7 +930,7 @@ namespace
     void build_element_page(GUICore::IContext* context)
     {
         GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("core.element.scroll"), "Element page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.element.body"), "Element body", Test::fill_layout());
+        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.element.body"), "Element body", scroll_content_layout(0.0f));
         add_text(context, Test::demo_id("core.element.title"), "Typeless element tree, data scopes and raw draw commands");
         context->push_data_scope(Test::demo_id("core.element.scope"));
         GUICore::id_t scoped_id = context->make_id("scoped-local-id");
@@ -847,7 +1027,7 @@ namespace
     void build_state_style_page(GUICore::IContext* context, CoreDemoState& state)
     {
         GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("core.state.scroll"), "State page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.state.body"), "State body", Test::fill_layout());
+        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.state.body"), "State body", scroll_content_layout(0.0f));
         add_text(context, Test::demo_id("core.state.title"), "State store and style system");
         GUI::checkbox(context, Test::demo_id("core.state.option"), "Process option stored by demo state", &state.option, row_layout());
         GUI::checkbox(context, Test::demo_id("core.state.style.enabled"), "Use custom style scope", &state.style_enabled, row_layout());
@@ -947,7 +1127,7 @@ namespace
     void build_debug_page(GUICore::IContext* context, CoreDemoState& state)
     {
         GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("core.debug.scroll"), "Debug page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.debug.body"), "Debug body", Test::fill_layout());
+        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.debug.body"), "Debug body", scroll_content_layout(0.0f));
         add_text(context, Test::demo_id("core.debug.title"), "Debug and instrumentation");
         context->log_debug_issue(GUICore::DebugIssueSeverity::info, Name("core.test"),
             "Sample issue logged by GUICoreTest.", Test::demo_id("core.debug.title"));

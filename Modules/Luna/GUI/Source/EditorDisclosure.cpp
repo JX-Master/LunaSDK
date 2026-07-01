@@ -64,12 +64,14 @@ namespace Luna
         }
 
         static void draw_relative_text(GUICore::IContext* context, const RectF& rect, const c8* text,
-            const Float4U& color, f32 font_size, VG::TextAlignment horizontal_alignment = VG::TextAlignment::begin)
+            const Float4U& color, f32 font_size, VG::TextAlignment horizontal_alignment = VG::TextAlignment::begin,
+            const Float4U& scale = Float4U(0.0f))
         {
             GUICore::DrawCommand command;
             command.type = GUICore::DrawCommandType::text;
             command.rect_reference = GUICore::DrawCommandRectReference::element;
             command.rect = rect;
+            command.rect_layout_scale = scale;
             command.color = color;
             command.font_size = font_size;
             command.horizontal_alignment = horizontal_alignment;
@@ -140,7 +142,8 @@ namespace Luna
             Float4U text_color = style_value(context, Name("gui.editor.collapsing_header.text_color"),
                 GUICore::style_f32x4(Float4U(1.0f))).number;
             f32 font_size = style_value(context, Name("gui.editor.collapsing_header.font_size"), GUICore::style_f32(16.0f)).number.x;
-            draw_relative_text(context, RectF(28.0f, 0.0f, -34.0f, 0.0f), label, text_color, font_size);
+            draw_relative_text(context, RectF(28.0f, 0.0f, -34.0f, 0.0f), label, text_color, font_size,
+                VG::TextAlignment::begin, Float4U(0.0f, 0.0f, 1.0f, 1.0f));
             context->end_element();
             return open;
         }

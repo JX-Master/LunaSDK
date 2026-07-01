@@ -1212,8 +1212,15 @@ namespace Luna
                 const Element* child = context->get_element(child_index);
                 f32 available_width = max(content_rect.width - child->layout.margin.x - child->layout.margin.z, 0.0f);
                 f32 available_height = max(content_rect.height - child->layout.margin.y - child->layout.margin.w, 0.0f);
-                f32 width = resolve_stack_axis_size(*child, LayoutAxis::x, available_width);
-                f32 height = resolve_stack_axis_size(*child, LayoutAxis::y, available_height);
+                MeasuredSize measured = measure_element(context, child_index, Float2U(available_width, available_height));
+                const SizeValue& requested_width = requested_size(child->layout, LayoutAxis::x);
+                const SizeValue& requested_height = requested_size(child->layout, LayoutAxis::y);
+                f32 width = requested_width.kind == SizeKind::fit ?
+                    measured.desired.x :
+                    resolve_stack_axis_size(*child, LayoutAxis::x, available_width);
+                f32 height = requested_height.kind == SizeKind::fit ?
+                    measured.desired.y :
+                    resolve_stack_axis_size(*child, LayoutAxis::y, available_height);
                 RectF child_rect(
                     content_rect.offset_x - desc.scroll_offset.x + child->layout.margin.x,
                     content_rect.offset_y - desc.scroll_offset.y + child->layout.margin.y,
