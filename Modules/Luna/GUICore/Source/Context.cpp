@@ -345,6 +345,26 @@ namespace Luna
             return e.id == element.id ? e.navigation : NavigationConfig();
         }
 
+        void Context::set_hit_test_config(const ElementHandle& element, const ElementHitTestConfig& hit_test)
+        {
+            lutsassert();
+            if(Element* e = mutable_element(element))
+            {
+                e->hit_test = hit_test;
+            }
+        }
+
+        ElementHitTestConfig Context::get_hit_test_config(const ElementHandle& element) const
+        {
+            lutsassert();
+            if(!element.id || element.generation != m_generation || element.index >= m_elements.size())
+            {
+                return ElementHitTestConfig();
+            }
+            const Element& e = m_elements[element.index];
+            return e.id == element.id ? e.hit_test : ElementHitTestConfig();
+        }
+
         void Context::set_drag_drop_source_types(const ElementHandle& element, Span<const Name> types)
         {
             lutsassert();
@@ -916,6 +936,30 @@ namespace Luna
                 {
                     return false;
                 }
+            }
+            if(element.hit_test.mode == ElementHitTestMode::callback)
+            {
+                if(!element.hit_test.callback)
+                {
+                    return false;
+                }
+                ElementHitTestRequest request;
+                request.source = element.id;
+                request.screen_position = screen_position;
+                request.element_position = Float2U(p.x - rect.offset_x, p.y - rect.offset_y);
+                request.element_rect = rect;
+                request.element_clip_rect = clip;
+                request.screen_rect = RectF(
+                    layer.screen_position.x + rect.offset_x,
+                    layer.screen_position.y + rect.offset_y,
+                    rect.width,
+                    rect.height);
+                request.screen_clip_rect = RectF(
+                    layer.screen_position.x + clip.offset_x,
+                    layer.screen_position.y + clip.offset_y,
+                    clip.width,
+                    clip.height);
+                return element.hit_test.callback(this, request, element.hit_test.userdata);
             }
             return true;
         }
@@ -2086,6 +2130,8 @@ namespace Luna
                 element_info.clip_rect = element.layout_result.clip_rect;
                 element_info.content_size = element.layout_result.content_size;
                 element_info.pointer_hit_behavior = element.interactable.pointer_hit_behavior;
+                element_info.hit_test_mode = element.hit_test.mode;
+                element_info.has_hit_test_callback = element.hit_test.callback != nullptr;
                 element_info.hoverable = has_flags(element.interactable, InteractableFlag::hoverable);
                 element_info.activatable = has_flags(element.interactable, InteractableFlag::activatable);
                 element_info.focusable = has_flags(element.interactable, InteractableFlag::focusable);

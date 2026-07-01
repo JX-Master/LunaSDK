@@ -250,6 +250,14 @@ namespace Luna
                 default: break;
                 }
                 debug_text(context, row, "Pointer Hit", hit_behavior);
+                const c8* hit_test_mode = "rect";
+                switch(element->hit_test_mode)
+                {
+                case GUICore::ElementHitTestMode::callback: hit_test_mode = "callback"; break;
+                default: break;
+                }
+                debug_text(context, row, "Hit Test", hit_test_mode);
+                debug_text_bool(context, row, "Hit Test Callback", element->has_hit_test_callback);
                 debug_text_bool(context, row, "Hoverable", element->hoverable);
                 debug_text_bool(context, row, "Activatable", element->activatable);
                 debug_text_bool(context, row, "Focusable", element->focusable);

@@ -190,6 +190,53 @@ namespace Luna
             void* userdata = nullptr;
         };
 
+        //! Controls how one element decides whether a pointer position is inside its hit region.
+        enum class ElementHitTestMode : u8
+        {
+            //! Use the element layout rectangle.
+            rect,
+            //! Use @ref ElementHitTestConfig::callback after the default layout rectangle and clip checks pass.
+            callback
+        };
+
+        //! Describes one custom element hit-test request.
+        struct ElementHitTestRequest
+        {
+            //! Element being tested.
+            id_t source = 0;
+            //! Pointer position in screen coordinates.
+            Float2U screen_position = Float2U(0.0f);
+            //! Pointer position relative to the element layout rectangle's top-left corner.
+            Float2U element_position = Float2U(0.0f);
+            //! Element layout rectangle in layer coordinates.
+            RectF element_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            //! Element clip rectangle in layer coordinates.
+            RectF element_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            //! Element layout rectangle in screen coordinates.
+            RectF screen_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            //! Element clip rectangle in screen coordinates.
+            RectF screen_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+        };
+
+        //! Called when one element uses @ref ElementHitTestMode::callback.
+        //! @param[in] context The context that owns the tested element.
+        //! @param[in] request The custom hit-test request.
+        //! @param[in] userdata User data stored in @ref ElementHitTestConfig.
+        //! @return Returns `true` if the pointer hits the element's custom shape.
+        //! @remark The callback is a shape refinement inside the element layout rectangle and clip rectangle.
+        using ElementHitTestCallback = bool(*)(const IContext* context, const ElementHitTestRequest& request, void* userdata);
+
+        //! Describes custom pointer hit-test behavior attached to one element.
+        struct ElementHitTestConfig
+        {
+            //! Hit-test mode used by this element.
+            ElementHitTestMode mode = ElementHitTestMode::rect;
+            //! Callback used when @ref mode is @ref ElementHitTestMode::callback.
+            ElementHitTestCallback callback = nullptr;
+            //! User data passed to @ref callback.
+            void* userdata = nullptr;
+        };
+
         //! Per-frame and cross-frame interaction state produced by GUI Core input routing.
         struct InteractionState
         {
@@ -260,6 +307,8 @@ namespace Luna
             Interactable interactable;
             //! Optional navigation behavior.
             NavigationConfig navigation;
+            //! Optional custom pointer hit-test behavior.
+            ElementHitTestConfig hit_test;
             //! First draw command emitted by this element.
             u32 first_draw_command = U32_MAX;
             //! Number of draw commands emitted by this element.

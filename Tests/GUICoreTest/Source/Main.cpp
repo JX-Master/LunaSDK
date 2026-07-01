@@ -15,9 +15,10 @@ using namespace Luna;
 
 namespace
 {
-    constexpr u32 ROUTING_DEMO_NODE_COUNT = 10;
+    constexpr u32 ROUTING_DEMO_NODE_COUNT = 11;
     constexpr u32 ROUTING_DEMO_LAYER_COUNT = 2;
     constexpr u32 ROUTING_DEMO_NO_PARENT = U32_MAX;
+    constexpr u32 ROUTING_DEMO_CIRCLE_NODE = 10;
 
     struct RoutingDemoNodeSetting
     {
@@ -95,7 +96,10 @@ namespace
             routing_setting(GUICore::PointerHitBehavior::target, GUICore::InteractableFlag::hoverable |
                 GUICore::InteractableFlag::activatable | GUICore::InteractableFlag::focusable) },
         { "Top Blocker", 1, 7, RectF(150.0f, 116.0f, 180.0f, 70.0f), Float4U(0.46f, 0.10f, 0.28f, 0.62f),
-            routing_setting(GUICore::PointerHitBehavior::block) }
+            routing_setting(GUICore::PointerHitBehavior::block) },
+        { "Circle Hit Button", 0, 0, RectF(484.0f, 228.0f, 86.0f, 86.0f), Float4U(0.08f, 0.42f, 0.58f, 0.94f),
+            routing_setting(GUICore::PointerHitBehavior::target, GUICore::InteractableFlag::hoverable |
+                GUICore::InteractableFlag::activatable | GUICore::InteractableFlag::focusable) }
     };
 
     const c8* ROUTING_DEMO_LAYER_NAMES[ROUTING_DEMO_LAYER_COUNT] = {
@@ -230,6 +234,15 @@ namespace
         context->set_interactable(element, interactable);
     }
 
+    bool circle_hit_test(const GUICore::IContext*, const GUICore::ElementHitTestRequest& request, void*)
+    {
+        f32 radius = min(request.element_rect.width, request.element_rect.height) * 0.5f;
+        Float2U center(request.element_rect.width * 0.5f, request.element_rect.height * 0.5f);
+        f32 dx = request.element_position.x - center.x;
+        f32 dy = request.element_position.y - center.y;
+        return dx * dx + dy * dy <= radius * radius;
+    }
+
     void build_routing_demo_node(GUICore::IContext* context, CoreDemoState& state, u32 node,
         const RectF& parent_clip)
     {
@@ -249,8 +262,15 @@ namespace
         result.content_size = Float2U(desc.rect.width, desc.rect.height);
         context->set_layout_result(element, result);
         set_routing_interactable(context, element, state.input_routing_nodes[node]);
+        if(node == ROUTING_DEMO_CIRCLE_NODE)
+        {
+            GUICore::ElementHitTestConfig hit_test;
+            hit_test.mode = GUICore::ElementHitTestMode::callback;
+            hit_test.callback = circle_hit_test;
+            context->set_hit_test_config(element, hit_test);
+        }
 
-        draw_element_background(context, element, desc.color);
+        draw_element_background(context, element, desc.color, node == ROUTING_DEMO_CIRCLE_NODE ? desc.rect.width * 0.5f : 4.0f);
         draw_element_label(context, element, desc.name);
         draw_element_outline(context, element, RectF(0.0f, 0.0f, desc.rect.width, desc.rect.height),
             Float4U(0.08f, 0.86f, 1.0f, 0.95f), 1.5f);
@@ -471,6 +491,8 @@ namespace
         snprintf(text, sizeof(text), "PointerHitBehavior = %s",
             pointer_hit_behavior_name(state.input_routing_nodes[selected].hit_behavior));
         add_text(context, Test::demo_id("core.input.routing.inspector.behavior.label"), text);
+        add_text(context, Test::demo_id("core.input.routing.inspector.hit.shape"),
+            selected == ROUTING_DEMO_CIRCLE_NODE ? "Hit Test = circle callback inside layout rect" : "Hit Test = default layout rectangle");
         const c8* behavior_items[] = { "None", "Pass", "Target", "Block" };
         i32 behavior_index = pointer_hit_behavior_index(state.input_routing_nodes[selected].hit_behavior);
         GUI::button_group(context, Test::demo_id("core.input.routing.inspector.behavior"),
@@ -499,8 +521,9 @@ namespace
         state.selected_routing_node = min(state.selected_routing_node, ROUTING_DEMO_NODE_COUNT - 1);
         GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("core.input.scroll"), "Input page", Test::fill_layout());
         GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("core.input.body"), "Input body", Test::fill_layout());
-        add_text(context, Test::demo_id("core.input.title"), "Input routing: layers, hierarchy, hit testing and interactable flags");
-        add_text(context, Test::demo_id("core.input.legend"), "Cyan outline = layout rect, amber outline = clip rect, green outline = routing stop.");
+        add_text(context, Test::demo_id("core.input.title"), "Input routing: layers, hierarchy, custom hit testing and interactable flags");
+        add_text(context, Test::demo_id("core.input.legend"),
+            "Cyan outline = layout rect, amber outline = clip rect, green outline = routing stop. Circle Hit Button only hits inside the circle.");
         GUI::text(context, Test::demo_id("core.input.routing.canvas.placeholder"),
             "Routing graph is drawn in two GUI Core layers above this reserved area.", Test::fill_width_layout(260.0f));
         build_routing_demo_layers(context, state);

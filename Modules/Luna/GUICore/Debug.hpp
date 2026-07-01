@@ -192,6 +192,10 @@ namespace Luna
             Float2U content_size = Float2U(0.0f);
             //! Pointer hit-test behavior.
             PointerHitBehavior pointer_hit_behavior = PointerHitBehavior::none;
+            //! Element hit-test mode.
+            ElementHitTestMode hit_test_mode = ElementHitTestMode::rect;
+            //! Whether this element has a custom hit-test callback installed.
+            bool has_hit_test_callback = false;
             //! Whether this element can become hovered.
             bool hoverable = false;
             //! Whether this element can become active through pointer interaction.

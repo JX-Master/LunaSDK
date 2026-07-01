@@ -157,6 +157,18 @@ namespace Luna
             //! @return Returns the element navigation behavior. Invalid handles return default automatic behavior.
             virtual NavigationConfig get_navigation_config(const ElementHandle& element) const = 0;
 
+            //! Sets custom pointer hit-test behavior for an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @param[in] hit_test The hit-test behavior to attach.
+            //! @remark The default behavior is rectangle hit testing. Custom callbacks refine hits inside the element
+            //! layout rectangle and clip rectangle.
+            virtual void set_hit_test_config(const ElementHandle& element, const ElementHitTestConfig& hit_test) = 0;
+
+            //! Gets custom pointer hit-test behavior for an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @return Returns the element hit-test behavior. Invalid handles return default rectangle behavior.
+            virtual ElementHitTestConfig get_hit_test_config(const ElementHandle& element) const = 0;
+
             //! Sets drag-drop source payload types for an element.
             //! @param[in] element The element handle returned by @ref begin_element.
             //! @param[in] types Payload types this source explicitly provides.

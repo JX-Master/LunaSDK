@@ -124,6 +124,8 @@ namespace Luna
             virtual void set_interactable(const ElementHandle& element, const Interactable& interactable) override;
             virtual void set_navigation_config(const ElementHandle& element, const NavigationConfig& navigation) override;
             virtual NavigationConfig get_navigation_config(const ElementHandle& element) const override;
+            virtual void set_hit_test_config(const ElementHandle& element, const ElementHitTestConfig& hit_test) override;
+            virtual ElementHitTestConfig get_hit_test_config(const ElementHandle& element) const override;
             virtual void set_drag_drop_source_types(const ElementHandle& element, Span<const Name> types) override;
             virtual void set_drag_drop_target_types(const ElementHandle& element, Span<const Name> types) override;
             virtual void bind_style(const ElementHandle& element, const Name& style) override;
