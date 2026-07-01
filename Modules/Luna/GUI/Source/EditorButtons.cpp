@@ -37,11 +37,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_button(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            const GUICore::LayoutInput& layout, bool enabled)
+            const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("button"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             GUICore::Interactable interactable;
             interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
@@ -72,7 +72,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle text_button(GUICore::IContext* context, GUICore::id_t id, const c8* text,
-            const GUICore::LayoutInput& layout, bool enabled)
+            const GUICore::LayoutConfig& layout, bool enabled)
         {
             GUICore::ElementHandle element = begin_button(context, id, text, layout, enabled);
             GUICore::DrawCommand command;
@@ -92,7 +92,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle shape_button(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            const GUICore::ShapeDesc& shape, const GUICore::LayoutInput& layout, f32 padding, bool enabled)
+            const GUICore::ShapeDesc& shape, const GUICore::LayoutConfig& layout, f32 padding, bool enabled)
         {
             GUICore::ElementHandle element = begin_button(context, id, label, layout, enabled);
             GUICore::DrawCommand command;

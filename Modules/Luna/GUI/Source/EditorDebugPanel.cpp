@@ -19,9 +19,9 @@ namespace Luna
     {
         namespace
         {
-            GUICore::LayoutInput fixed_height(f32 height)
+            GUICore::LayoutConfig fixed_height(f32 height)
             {
-                GUICore::LayoutInput layout;
+                GUICore::LayoutConfig layout;
                 layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
                 layout.height.kind = GUICore::SizeKind::fixed;
@@ -29,9 +29,9 @@ namespace Luna
                 return layout;
             }
 
-            GUICore::LayoutInput fixed_width(f32 width)
+            GUICore::LayoutConfig fixed_width(f32 width)
             {
-                GUICore::LayoutInput layout;
+                GUICore::LayoutConfig layout;
                 layout.width.kind = GUICore::SizeKind::fixed;
                 layout.width.value = width;
                 layout.height.kind = GUICore::SizeKind::percent;
@@ -39,9 +39,9 @@ namespace Luna
                 return layout;
             }
 
-            GUICore::LayoutInput fill_layout()
+            GUICore::LayoutConfig fill_layout()
             {
-                GUICore::LayoutInput layout;
+                GUICore::LayoutConfig layout;
                 layout.width.kind = GUICore::SizeKind::percent;
                 layout.width.value = 1.0f;
                 layout.height.kind = GUICore::SizeKind::percent;
@@ -50,9 +50,9 @@ namespace Luna
                 return layout;
             }
 
-            GUICore::LayoutInput content_height(f32 height)
+            GUICore::LayoutConfig content_height(f32 height)
             {
-                GUICore::LayoutInput layout;
+                GUICore::LayoutConfig layout;
                 layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
                 layout.height.kind = GUICore::SizeKind::fixed;
@@ -297,7 +297,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle show_debug_info(GUICore::IContext* context, GUICore::id_t id,
-            const GUICore::DebugInfo& info, const GUICore::LayoutInput& layout)
+            const GUICore::DebugInfo& info, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             Ref<CoreDebugPanelState> state = debug_panel_state(context, id);

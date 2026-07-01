@@ -26,7 +26,7 @@ namespace Luna
 
         bool m_open = true;
 
-        virtual void on_render(GUICore::IContext* context, const GUICore::LayoutInput& layout) override;
+        virtual void on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout) override;
         virtual bool closed() override
         {
             return !m_open;

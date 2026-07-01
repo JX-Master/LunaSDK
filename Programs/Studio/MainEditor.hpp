@@ -24,7 +24,7 @@ namespace Luna
     namespace GUICore
     {
         struct IContext;
-        struct LayoutInput;
+        struct LayoutConfig;
     }
     namespace VG
     {
@@ -75,7 +75,7 @@ namespace Luna
         HashMap<Asset::asset_t, AssetVersion> m_assets_version;
 
         void draw_main_menu_bar(GUICore::IContext* context, const RectF& rect);
-        bool draw_asset_editor(IAssetEditor* editor, GUICore::IContext* context, const GUICore::LayoutInput& layout);
+        bool draw_asset_editor(IAssetEditor* editor, GUICore::IContext* context, const GUICore::LayoutConfig& layout);
 
     public:
 

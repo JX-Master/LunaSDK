@@ -48,9 +48,9 @@ namespace Luna
             context->draw(command);
         }
 
-        static GUICore::LayoutInput fixed_layout(f32 width, f32 height)
+        static GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             if(width > 0.0f)
             {
                 layout.width.kind = GUICore::SizeKind::fixed;
@@ -146,7 +146,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle combo(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            i32* current_item, Span<const c8*> items, const GUICore::LayoutInput& layout)
+            i32* current_item, Span<const c8*> items, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             if(current_item && !items.empty())
@@ -187,7 +187,7 @@ namespace Luna
 
             bool open = is_popup_open(context, popup_id);
             GUICore::ElementHandle preview = context->begin_element(id, label ? Name(label) : Name("combo"));
-            context->set_layout(preview, layout);
+            context->set_layout_config(preview, layout);
             set_basic_interactable(context, preview);
             Float4U background = style_value(context, open ? Name("gui.editor.combo.background_open") :
                 (preview_interaction.hovered ? Name("gui.editor.combo.background_hovered") : Name("gui.editor.combo.background")),
@@ -219,7 +219,7 @@ namespace Luna
                 GUICore::ElementHandle popup;
                 if(begin_popup(context, popup_id, popup_desc, &popup))
                 {
-                    GUICore::LayoutInput item_layout;
+                    GUICore::LayoutConfig item_layout;
                     item_layout.width.kind = GUICore::SizeKind::percent;
                     item_layout.width.value = 1.0f;
                     item_layout.height.kind = GUICore::SizeKind::fixed;

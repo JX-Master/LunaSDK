@@ -100,11 +100,11 @@ namespace Luna
         }
 
         static GUICore::ElementHandle begin_core_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const c8* default_label, const GUICore::LayoutInput& layout)
+            const c8* label, const c8* default_label, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name(default_label));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             return element;
         }
 
@@ -202,7 +202,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_dock_space(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             GUICore::ElementHandle element = begin_core_layout(context, id, label, "dock_space", layout);
@@ -225,7 +225,7 @@ namespace Luna
         }
 
         LUNA_GUI_API bool begin_dock_panel(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            bool* open, const DockPanelStyle& style, const GUICore::LayoutInput& layout, GUICore::ElementHandle* out_handle)
+            bool* open, const DockPanelStyle& style, const GUICore::LayoutConfig& layout, GUICore::ElementHandle* out_handle)
         {
             luassert(context && id);
             if(open && !*open)
@@ -239,7 +239,7 @@ namespace Luna
             Ref<CoreDockBuildState> build_state = dock_build_state(context);
             luassert(!build_state->stack.empty());
 
-            GUICore::LayoutInput panel_layout = layout;
+            GUICore::LayoutConfig panel_layout = layout;
             f32 padding = style_value(context, Name("gui.editor.dock_panel.padding"), GUICore::style_f32(6.0f)).number.x;
             f32 border = max(style.border_size, 0.0f);
             f32 title = style.title_bar ? max(style.title_bar_height, 0.0f) : 0.0f;
@@ -249,7 +249,7 @@ namespace Luna
             panel_layout.padding.w += border + padding;
 
             GUICore::ElementHandle panel = context->begin_element(id, label ? Name(label) : Name("dock_panel"));
-            context->set_layout(panel, panel_layout);
+            context->set_layout_config(panel, panel_layout);
             GUICore::Interactable interactable;
             interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);

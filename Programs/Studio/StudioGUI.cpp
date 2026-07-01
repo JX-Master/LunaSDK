@@ -15,9 +15,9 @@ namespace Luna
 {
     namespace
     {
-        GUICore::LayoutInput fixed_size(f32 width, f32 height)
+        GUICore::LayoutConfig fixed_size(f32 width, f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = width;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -25,9 +25,9 @@ namespace Luna
             return layout;
         }
 
-        GUICore::LayoutInput fill_width(f32 height)
+        GUICore::LayoutConfig fill_width(f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -83,7 +83,7 @@ namespace Luna
 
         GUICore::id_t scope = context->make_id(label);
         context->push_data_scope(scope);
-        GUICore::LayoutInput row_layout = fill_width(30.0f);
+        GUICore::LayoutConfig row_layout = fill_width(30.0f);
         GUICore::ElementHandle row = GUI::begin_h_layout(context, context->make_id("row"), label, row_layout);
         GUI::text(context, context->make_id("label"), label, fixed_size(112.0f, 30.0f));
         GUI::input_text(context, context->make_id("path"), path_text, fill_width(30.0f));

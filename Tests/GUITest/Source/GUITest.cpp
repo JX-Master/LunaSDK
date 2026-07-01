@@ -76,12 +76,12 @@ namespace
         c8 text[32];
     };
 
-    GUICore::LayoutInput row_layout()
+    GUICore::LayoutConfig row_layout()
     {
         return Test::fill_width_layout(32.0f);
     }
 
-    GUICore::LayoutInput tall_row_layout()
+    GUICore::LayoutConfig tall_row_layout()
     {
         return Test::fill_width_layout(42.0f);
     }

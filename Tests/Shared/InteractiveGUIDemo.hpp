@@ -86,9 +86,9 @@ namespace Luna
             return hash_bytes(&value, sizeof(value), h);
         }
 
-        inline GUICore::LayoutInput fixed_layout(f32 width, f32 height)
+        inline GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = width;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -96,9 +96,9 @@ namespace Luna
             return layout;
         }
 
-        inline GUICore::LayoutInput fill_layout()
+        inline GUICore::LayoutConfig fill_layout()
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::percent;
@@ -107,9 +107,9 @@ namespace Luna
             return layout;
         }
 
-        inline GUICore::LayoutInput fill_width_layout(f32 height)
+        inline GUICore::LayoutConfig fill_width_layout(f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::fixed;

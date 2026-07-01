@@ -1,4 +1,4 @@
-GUI Core layout algorithms operate on typeless element data. They  read `LayoutInput` from parent and child elements, then write `LayoutResult` back to the context.
+GUI Core layout algorithms operate on typeless element data. They  read `LayoutConfig` from parent and child elements, then write `LayoutResult` back to the context.
 
 ## Designed functionality
 The layout system provides reusable layout primitives for higher-level GUI packages and applications:
@@ -11,8 +11,8 @@ The layout system provides reusable layout primitives for higher-level GUI packa
 GUI Core layout helpers are intentionally primitive. A high-level package may combine them with widget-specific measurement, scrollbars, table headers, virtualization or editor metadata.
 
 ## Concepts
-### Layout input
-`GUICore::LayoutInput` is attached to each element. It contains:
+### Layout config
+`GUICore::LayoutConfig` is attached to each element. It contains:
 
 1. Width and height `SizeValue`.
 2. Margin.
@@ -45,15 +45,16 @@ Some layout data belongs to the parent algorithm instead of the child:
 This keeps child elements typeless and allows one child to be placed by different parent algorithms in different contexts.
 
 ## Programming guide
-### Attach layout input
+### Attach layout config
 ```cpp
-GUICore::LayoutInput input;
-input.width.kind = GUICore::SizeKind::expand;
-input.height.kind = GUICore::SizeKind::pixels;
-input.height.value = 40.0f;
-input.margin = Float4U(4.0f, 2.0f, 4.0f, 2.0f);
-input.padding = Float4U(8.0f, 4.0f, 8.0f, 4.0f);
-context->set_layout(element, input);
+GUICore::LayoutConfig config;
+config.width.kind = GUICore::SizeKind::percent;
+config.width.value = 1.0f;
+config.height.kind = GUICore::SizeKind::fixed;
+config.height.value = 40.0f;
+config.margin = Float4U(4.0f, 2.0f, 4.0f, 2.0f);
+config.padding = Float4U(8.0f, 4.0f, 8.0f, 4.0f);
+context->set_layout_config(element, config);
 ```
 
 ### Run a linear layout
@@ -171,7 +172,7 @@ After the root result is written, run child layout algorithms from the root down
 ### Vertical tool panel
 ```cpp
 GUICore::ElementHandle panel = context->begin_element(context->make_id("inspector"), Name("Inspector"));
-context->set_layout(panel, panel_layout);
+context->set_layout_config(panel, panel_layout);
 
 // Build direct children here.
 

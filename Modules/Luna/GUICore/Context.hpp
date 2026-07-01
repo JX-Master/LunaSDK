@@ -131,14 +131,9 @@ namespace Luna
             //! Ends the current element.
             virtual void end_element() = 0;
 
-            //! Sets layout input for an element.
+            //! Sets layout configuration for an element.
             //! @param[in] element The element handle returned by @ref begin_element.
-            //! @param[in] layout The layout input to attach.
-            virtual void set_layout(const ElementHandle& element, const LayoutInput& layout) = 0;
-
-            //! Sets child layout callback data for an element.
-            //! @param[in] element The element handle returned by @ref begin_element.
-            //! @param[in] config The layout callback configuration copied into the element.
+            //! @param[in] config The layout configuration copied into the element.
             virtual void set_layout_config(const ElementHandle& element, const LayoutConfig& config) = 0;
 
             //! Sets layout result for an element.

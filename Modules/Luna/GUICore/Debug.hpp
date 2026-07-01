@@ -182,8 +182,8 @@ namespace Luna
             Name style;
             //! Debug name.
             Name debug_name;
-            //! Layout input attached to this element.
-            LayoutInput layout;
+            //! Layout configuration attached to this element.
+            LayoutConfig layout;
             //! Layout rectangle.
             RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             //! Clip rectangle.

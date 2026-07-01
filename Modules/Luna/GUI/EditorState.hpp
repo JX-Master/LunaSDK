@@ -100,7 +100,7 @@ namespace Luna
             //! Popup top-left position in screen logical coordinates.
             Float2U position = Float2U(0.0f);
             //! Requested popup root layout. Fit axes use the popup content hug size.
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             //! Popup lifetime and input flags.
             PopupFlag flags = PopupFlag::managed | PopupFlag::close_on_outside_click | PopupFlag::close_on_escape | PopupFlag::close_on_blur;
         };
@@ -111,7 +111,7 @@ namespace Luna
             //! Offset from owner hover position to tooltip layer position.
             Float2U offset = Float2U(14.0f, 18.0f);
             //! Requested tooltip root layout. Fit axes use the tooltip content hug size.
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             //! Hover delay before the tooltip is displayed, in seconds.
             f32 delay = 0.35f;
             //! Preferred text wrapping width for simple text tooltips.

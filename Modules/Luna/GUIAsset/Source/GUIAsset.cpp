@@ -322,7 +322,7 @@ namespace Luna
             return r;
         }
 
-        static Variant write_layout_input(const GUICore::LayoutInput& value)
+        static Variant write_layout_config(const GUICore::LayoutConfig& value)
         {
             Variant r(VariantType::object);
             r[Name("width")] = write_core_size_value(value.width);
@@ -332,9 +332,9 @@ namespace Luna
             return r;
         }
 
-        static GUICore::LayoutInput read_layout_input(const Variant& data)
+        static GUICore::LayoutConfig read_layout_config(const Variant& data)
         {
-            GUICore::LayoutInput r;
+            GUICore::LayoutConfig r;
             if(data[Name("width")].type() == VariantType::object)
             {
                 r.width = read_core_size_value(data[Name("width")], r.width);
@@ -423,14 +423,14 @@ namespace Luna
             return GUICore::make_scoped_id(node_core_id(node), local_name);
         }
 
-        static GUICore::LayoutInput read_core_layout_input(const Node& node)
+        static GUICore::LayoutConfig read_core_layout_config(const Node& node)
         {
-            GUICore::LayoutInput input;
+            GUICore::LayoutConfig input;
             AssetEdgeInsets padding = read_edge_insets(node.properties[Name("padding")]);
             input.padding = Float4U(padding.left, padding.top, padding.right, padding.bottom);
-            if(node.has_layout_input)
+            if(node.has_layout_config)
             {
-                input = node.layout_input;
+                input = node.layout_config;
                 if(padding.left != 0.0f || padding.top != 0.0f || padding.right != 0.0f || padding.bottom != 0.0f)
                 {
                     input.padding = Float4U(padding.left, padding.top, padding.right, padding.bottom);
@@ -439,9 +439,9 @@ namespace Luna
             return input;
         }
 
-        static GUICore::LayoutInput read_core_layout_input(const Node& node, const AssetSize& size)
+        static GUICore::LayoutConfig read_core_layout_config(const Node& node, const AssetSize& size)
         {
-            GUICore::LayoutInput input = read_core_layout_input(node);
+            GUICore::LayoutConfig input = read_core_layout_config(node);
             if(size.width > 0.0f)
             {
                 input.width.kind = GUICore::SizeKind::fixed;
@@ -455,9 +455,9 @@ namespace Luna
             return input;
         }
 
-        static GUICore::LayoutInput fixed_core_layout(f32 width, f32 height)
+        static GUICore::LayoutConfig fixed_core_layout(f32 width, f32 height)
         {
-            GUICore::LayoutInput input;
+            GUICore::LayoutConfig input;
             if(width > 0.0f)
             {
                 input.width.kind = GUICore::SizeKind::fixed;
@@ -571,15 +571,15 @@ namespace Luna
             }
             if(!stretch_x)
             {
-                node.layout_input.width.kind = GUICore::SizeKind::fixed;
-                node.layout_input.width.value = max(node.canvas_layout.offset.z - node.canvas_layout.offset.x, 1.0f);
+                node.layout_config.width.kind = GUICore::SizeKind::fixed;
+                node.layout_config.width.value = max(node.canvas_layout.offset.z - node.canvas_layout.offset.x, 1.0f);
             }
             if(!stretch_y)
             {
-                node.layout_input.height.kind = GUICore::SizeKind::fixed;
-                node.layout_input.height.value = max(node.canvas_layout.offset.w - node.canvas_layout.offset.y, 1.0f);
+                node.layout_config.height.kind = GUICore::SizeKind::fixed;
+                node.layout_config.height.value = max(node.canvas_layout.offset.w - node.canvas_layout.offset.y, 1.0f);
             }
-            node.has_layout_input = true;
+            node.has_layout_config = true;
         }
 
         static void read_core_table_columns(const Node& node, Vector<GUICore::TableTrackDesc>& columns)
@@ -610,7 +610,7 @@ namespace Luna
 
         static RV generate_core_h_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUICore::ElementHandle layout = GUI::begin_h_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            GUICore::ElementHandle layout = GUI::begin_h_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_config(node));
             RV r = generate_children(context, node, generate_context);
             if(failed(r))
             {
@@ -624,7 +624,7 @@ namespace Luna
 
         static RV generate_core_v_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUICore::ElementHandle layout = GUI::begin_v_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            GUICore::ElementHandle layout = GUI::begin_v_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_config(node));
             RV r = generate_children(context, node, generate_context);
             if(failed(r))
             {
@@ -639,7 +639,7 @@ namespace Luna
         static RV generate_core_scroll_view(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             GUICore::ElementHandle layout = GUI::begin_scroll_view(context, node_core_id(node), node.label.c_str(),
-                read_core_layout_input(node, read_size(node.properties[Name("size")])));
+                read_core_layout_config(node, read_size(node.properties[Name("size")])));
             RV r = generate_children(context, node, generate_context);
             if(failed(r))
             {
@@ -651,7 +651,7 @@ namespace Luna
 
         static RV generate_core_grid_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUICore::ElementHandle layout = GUI::begin_grid_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            GUICore::ElementHandle layout = GUI::begin_grid_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_config(node));
             RV r = generate_children(context, node, generate_context);
             if(failed(r))
             {
@@ -664,7 +664,7 @@ namespace Luna
         static RV generate_core_canvas_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             GUICore::ElementHandle layout = GUI::begin_canvas_layout(context, node_core_id(node), node.label.c_str(),
-                read_core_layout_input(node, read_size(node.properties[Name("size")])));
+                read_core_layout_config(node, read_size(node.properties[Name("size")])));
             Vector<GUICore::CanvasLayoutItem> items;
             for(const Guid& child_id : AssetTopologyAccess::children(&node))
             {
@@ -673,16 +673,16 @@ namespace Luna
                 {
                     continue;
                 }
-                bool old_has_layout_input = child->has_layout_input;
-                GUICore::LayoutInput old_layout_input = child->layout_input;
+                bool old_has_layout_config = child->has_layout_config;
+                GUICore::LayoutConfig old_layout_config = child->layout_config;
                 if(child->has_canvas_layout)
                 {
                     items.push_back(core_canvas_item(*child.get()));
                     apply_core_canvas_item_size(*child.get());
                 }
                 RV r = generate_node(context, *child.get(), generate_context);
-                child->has_layout_input = old_has_layout_input;
-                child->layout_input = old_layout_input;
+                child->has_layout_config = old_has_layout_config;
+                child->layout_config = old_layout_config;
                 if(failed(r))
                 {
                     context->end_element();
@@ -697,7 +697,7 @@ namespace Luna
 
         static RV generate_core_table_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUICore::ElementHandle layout = GUI::begin_table_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            GUICore::ElementHandle layout = GUI::begin_table_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_config(node));
             Vector<GUICore::TableLayoutCell> cells;
             u32 row_index = 0;
 
@@ -775,7 +775,7 @@ namespace Luna
 
         static RV generate_core_table_row(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUICore::ElementHandle layout = GUI::begin_h_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            GUICore::ElementHandle layout = GUI::begin_h_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_config(node));
             RV r = generate_children(context, node, generate_context);
             if(failed(r))
             {
@@ -789,14 +789,14 @@ namespace Luna
 
         static RV generate_core_text(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
-            GUICore::ElementHandle element = GUI::text(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            GUICore::ElementHandle element = GUI::text(context, node_core_id(node), node.label.c_str(), read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
 
         static RV generate_core_button(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
-            GUICore::ElementHandle element = GUI::text_button(context, node_core_id(node), node.label.c_str(), read_core_layout_input(node));
+            GUICore::ElementHandle element = GUI::text_button(context, node_core_id(node), node.label.c_str(), read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -806,7 +806,7 @@ namespace Luna
             const Variant& overlay_value = property(node, "overlay");
             const c8* overlay = overlay_value.valid() ? overlay_value.c_str("") : nullptr;
             GUICore::ElementHandle element = GUI::progress_bar(context, node_core_id(node), property_f32(node, "fraction", 0.0f),
-                overlay, read_core_layout_input(node, read_size(node.properties[Name("size")])));
+                overlay, read_core_layout_config(node, read_size(node.properties[Name("size")])));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -814,7 +814,7 @@ namespace Luna
         static RV generate_core_selectable(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             GUICore::ElementHandle element = GUI::selectable(context, node_core_id(node), node.label.c_str(),
-                property_bool(node, "selected", false), read_core_layout_input(node));
+                property_bool(node, "selected", false), read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -822,7 +822,7 @@ namespace Luna
         static RV generate_core_checkbox(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             bool& value = runtime_value(node, Name("value"), property_bool(node, "value", false));
-            GUICore::ElementHandle element = GUI::checkbox(context, node_core_id(node), node.label.c_str(), &value, read_core_layout_input(node));
+            GUICore::ElementHandle element = GUI::checkbox(context, node_core_id(node), node.label.c_str(), &value, read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -830,7 +830,7 @@ namespace Luna
         static RV generate_core_radio_button(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             GUICore::ElementHandle element = GUI::radio_button(context, node_core_id(node), node.label.c_str(),
-                property_bool(node, "selected", false), read_core_layout_input(node));
+                property_bool(node, "selected", false), read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -838,7 +838,7 @@ namespace Luna
         static RV generate_core_toggle_switch(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             bool& value = runtime_value(node, Name("value"), property_bool(node, "value", false));
-            GUICore::ElementHandle element = GUI::toggle_switch(context, node_core_id(node), node.label.c_str(), &value, read_core_layout_input(node));
+            GUICore::ElementHandle element = GUI::toggle_switch(context, node_core_id(node), node.label.c_str(), &value, read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -847,7 +847,7 @@ namespace Luna
         {
             String default_value(property_c_str(node, "value", ""));
             String& value = runtime_value(node, Name("value"), default_value);
-            GUICore::ElementHandle element = GUI::input_text(context, node_core_id(node), value, read_core_layout_input(node));
+            GUICore::ElementHandle element = GUI::input_text(context, node_core_id(node), value, read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -855,14 +855,14 @@ namespace Luna
         static RV generate_core_image(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             GUICore::ElementHandle element = GUI::image(context, node_core_id(node), nullptr,
-                read_core_layout_input(node, read_size(node.properties[Name("size")])));
+                read_core_layout_config(node, read_size(node.properties[Name("size")])));
             apply_core_enabled(context, node, element);
             return ok;
         }
 
         static RV generate_core_collapsing_header(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            if(GUI::collapsing_header(context, node_core_id(node), node.label.c_str(), true, read_core_layout_input(node)))
+            if(GUI::collapsing_header(context, node_core_id(node), node.label.c_str(), true, read_core_layout_config(node)))
             {
                 return generate_children(context, node, generate_context);
             }
@@ -875,7 +875,7 @@ namespace Luna
             if(property_bool(node, "selected", false)) flags |= GUI::TreeNodeFlag::selected;
             if(property_bool(node, "leaf", false)) flags |= GUI::TreeNodeFlag::leaf;
             if(property_bool(node, "default_open", false)) flags |= GUI::TreeNodeFlag::default_open;
-            if(GUI::tree_node(context, node_core_id(node), node.label.c_str(), flags, 0, read_core_layout_input(node)))
+            if(GUI::tree_node(context, node_core_id(node), node.label.c_str(), flags, 0, read_core_layout_config(node)))
             {
                 return generate_children(context, node, generate_context);
             }
@@ -885,7 +885,7 @@ namespace Luna
         static RV generate_core_tab_bar(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             GUICore::ElementHandle tab_bar = GUI::begin_tab_bar(context, node_core_id(node), node.label.c_str(),
-                GUI::TabBarFlag::fitting_shrink, read_core_layout_input(node, read_size(node.properties[Name("size")])));
+                GUI::TabBarFlag::fitting_shrink, read_core_layout_config(node, read_size(node.properties[Name("size")])));
             RV r = generate_children(context, node, generate_context);
             if(failed(r))
             {
@@ -915,7 +915,7 @@ namespace Luna
         static RV generate_core_menu_bar(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, node_core_id(node), node.label.c_str(),
-                read_core_layout_input(node, read_size(node.properties[Name("size")])));
+                read_core_layout_config(node, read_size(node.properties[Name("size")])));
             RV r = generate_children(context, node, generate_context);
             if(failed(r))
             {
@@ -929,7 +929,7 @@ namespace Luna
         {
             GUICore::ElementHandle menu;
             if(GUI::begin_menu(context, node_core_id(node), node.label.c_str(), node.enabled,
-                &menu, read_core_layout_input(node)))
+                &menu, read_core_layout_config(node)))
             {
                 RV r = generate_children(context, node, generate_context);
                 if(failed(r))
@@ -952,12 +952,12 @@ namespace Luna
             {
                 bool& checked = runtime_value(node, Name("checked"), property_bool(node, "checked", false));
                 element = GUI::menu_item(context, node_core_id(node), node.label.c_str(), shortcut, &checked,
-                    node.enabled, read_core_layout_input(node));
+                    node.enabled, read_core_layout_config(node));
             }
             else
             {
                 element = GUI::menu_item(context, node_core_id(node), node.label.c_str(), shortcut,
-                    property_bool(node, "checked", false), node.enabled, read_core_layout_input(node));
+                    property_bool(node, "checked", false), node.enabled, read_core_layout_config(node));
             }
             apply_core_enabled(context, node, element);
             return ok;
@@ -965,14 +965,14 @@ namespace Luna
 
         static RV generate_core_menu_separator(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
-            GUI::menu_separator(context, node_core_id(node), read_core_layout_input(node));
+            GUI::menu_separator(context, node_core_id(node), read_core_layout_config(node));
             return ok;
         }
 
         static RV generate_core_popup(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             GUICore::ElementHandle owner = GUI::text_button(context, node_core_id(node), node.label.c_str(),
-                read_core_layout_input(node, read_size(node.properties[Name("size")])), node.enabled);
+                read_core_layout_config(node, read_size(node.properties[Name("size")])), node.enabled);
             apply_core_enabled(context, node, owner);
 
             GUICore::id_t popup_id = derived_core_id(node, "popup");
@@ -1014,7 +1014,7 @@ namespace Luna
         static RV generate_core_tooltip(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             GUICore::ElementHandle owner = GUI::text_button(context, node_core_id(node), node.label.c_str(),
-                read_core_layout_input(node, read_size(node.properties[Name("size")])), node.enabled);
+                read_core_layout_config(node, read_size(node.properties[Name("size")])), node.enabled);
             apply_core_enabled(context, node, owner);
 
             GUI::TooltipDesc desc;
@@ -1058,13 +1058,13 @@ namespace Luna
                 Vector<bool>& selected_values = runtime_value(node, Name("selected"), default_values);
                 selected_values.resize(items.size(), false);
                 element = GUI::button_group(context, node_core_id(node), Span<bool>(selected_values.data(), selected_values.size()),
-                    Span<const c8*>(items.data(), items.size()), read_core_layout_input(node));
+                    Span<const c8*>(items.data(), items.size()), read_core_layout_config(node));
             }
             else
             {
                 i32& current_item = runtime_value(node, Name("current_item"), property_i32(node, "current_item", 0));
                 element = GUI::button_group(context, node_core_id(node), &current_item, Span<const c8*>(items.data(), items.size()),
-                    read_core_layout_input(node));
+                    read_core_layout_config(node));
             }
             apply_core_enabled(context, node, element);
             return ok;
@@ -1081,7 +1081,7 @@ namespace Luna
             }
             i32& current_item = runtime_value(node, Name("current_item"), property_i32(node, "current_item", 0));
             GUICore::ElementHandle element = GUI::combo(context, node_core_id(node), node.label.c_str(), &current_item,
-                Span<const c8*>(items.data(), items.size()), read_core_layout_input(node));
+                Span<const c8*>(items.data(), items.size()), read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -1090,7 +1090,7 @@ namespace Luna
         {
             f32& value = runtime_value(node, Name("value"), property_f32(node, "value", 0.0f));
             GUICore::ElementHandle element = GUI::slider_float(context, node_core_id(node), &value,
-                property_f32(node, "min", 0.0f), property_f32(node, "max", 1.0f), read_core_layout_input(node));
+                property_f32(node, "min", 0.0f), property_f32(node, "max", 1.0f), read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -1099,7 +1099,7 @@ namespace Luna
         {
             i32& value = runtime_value(node, Name("value"), property_i32(node, "value", 0));
             GUICore::ElementHandle element = GUI::slider_int(context, node_core_id(node), &value,
-                property_i32(node, "min", 0), property_i32(node, "max", 100), read_core_layout_input(node));
+                property_i32(node, "min", 0), property_i32(node, "max", 100), read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -1109,7 +1109,7 @@ namespace Luna
             f32& value = runtime_value(node, Name("value"), property_f32(node, "value", 0.0f));
             GUICore::ElementHandle element = GUI::drag_float(context, node_core_id(node), &value,
                 property_f32(node, "speed", 1.0f), property_f32(node, "min", 0.0f), property_f32(node, "max", 1.0f),
-                read_core_layout_input(node));
+                read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -1119,7 +1119,7 @@ namespace Luna
             i32& value = runtime_value(node, Name("value"), property_i32(node, "value", 0));
             GUICore::ElementHandle element = GUI::drag_int(context, node_core_id(node), &value,
                 property_f32(node, "speed", 1.0f), property_i32(node, "min", 0), property_i32(node, "max", 100),
-                read_core_layout_input(node));
+                read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -1131,7 +1131,7 @@ namespace Luna
                 read_float_items(node.properties[Name("value")], Span<const f32>(default_values, 3)));
             value.resize(3, 1.0f);
             GUICore::ElementHandle element = GUI::color_edit3(context, node_core_id(node), node.label.c_str(),
-                value.data(), read_core_layout_input(node));
+                value.data(), read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -1143,7 +1143,7 @@ namespace Luna
                 read_float_items(node.properties[Name("value")], Span<const f32>(default_values, 4)));
             value.resize(4, 1.0f);
             GUICore::ElementHandle element = GUI::color_edit4(context, node_core_id(node), node.label.c_str(),
-                value.data(), read_core_layout_input(node));
+                value.data(), read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -1801,12 +1801,12 @@ namespace Luna
             auto root = new_node("v_layout", "Root");
             if(succeeded(root))
             {
-                root.get()->layout_input.width.kind = GUICore::SizeKind::percent;
-                root.get()->layout_input.width.value = 1.0f;
-                root.get()->layout_input.height.kind = GUICore::SizeKind::percent;
-                root.get()->layout_input.height.value = 1.0f;
-                root.get()->layout_input.flex_grow = 1.0f;
-                root.get()->has_layout_input = true;
+                root.get()->layout_config.width.kind = GUICore::SizeKind::percent;
+                root.get()->layout_config.width.value = 1.0f;
+                root.get()->layout_config.height.kind = GUICore::SizeKind::percent;
+                root.get()->layout_config.height.value = 1.0f;
+                root.get()->layout_config.flex_grow = 1.0f;
+                root.get()->has_layout_config = true;
                 add_node(asset.get(), root.get());
             }
             return asset;
@@ -1900,9 +1900,9 @@ namespace Luna
                 {
                     r[name_style] = node.style;
                 }
-                if(node.has_layout_input)
+                if(node.has_layout_config)
                 {
-                    r[name_layout] = write_layout_input(node.layout_input);
+                    r[name_layout] = write_layout_config(node.layout_config);
                 }
                 if(node.has_canvas_layout)
                 {
@@ -1946,8 +1946,8 @@ namespace Luna
                 node->style = data[name_style].str();
                 if(data[name_layout].valid())
                 {
-                    node->layout_input = read_layout_input(data[name_layout]);
-                    node->has_layout_input = true;
+                    node->layout_config = read_layout_config(data[name_layout]);
+                    node->has_layout_config = true;
                 }
                 if(data[name_canvas_layout].valid())
                 {

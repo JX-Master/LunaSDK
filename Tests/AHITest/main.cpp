@@ -242,9 +242,9 @@ namespace Luna
     constexpr GUICore::id_t FIRST_SOURCE_ID = 2000;
     constexpr GUICore::id_t SOURCE_ID_STRIDE = 16;
 
-    inline GUICore::LayoutInput fixed_layout(f32 width, f32 height)
+    inline GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
     {
-        GUICore::LayoutInput layout;
+        GUICore::LayoutConfig layout;
         layout.width.kind = GUICore::SizeKind::fixed;
         layout.width.value = width;
         layout.height.kind = GUICore::SizeKind::fixed;

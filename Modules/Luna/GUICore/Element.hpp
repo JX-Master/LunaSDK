@@ -41,8 +41,16 @@ namespace Luna
             f32 max = -1.0f;
         };
 
-        //! Describes layout input attached to one typeless element.
-        struct LayoutInput
+        //! Called by @ref IContext::apply_layout to arrange or finalize one element subtree.
+        //! @param[in] context The context that owns @p element.
+        //! @param[in] element The element being arranged.
+        //! @param[in] rect The element rectangle in layer coordinates.
+        //! @param[in] userdata User data stored in @ref LayoutConfig.
+        //! @return Returns success or failure code.
+        using LayoutCallback = RV(*)(IContext* context, const ElementHandle& element, const RectF& rect, void* userdata);
+
+        //! Describes layout data attached to one typeless element.
+        struct LayoutConfig
         {
             //! Width request.
             SizeValue width;
@@ -56,6 +64,14 @@ namespace Luna
             f32 flex_grow = 0.0f;
             //! Flex shrink factor used by flex layout on the main axis. Zero disables shrinking.
             f32 flex_shrink = 1.0f;
+            //! Optional identifier for package-defined or core-provided layout algorithms.
+            Name name;
+            //! Arrange callback. If this is `nullptr`, the element does not arrange its children.
+            LayoutCallback callback = nullptr;
+            //! Optional post-order callback called after children are arranged.
+            LayoutCallback finalize_callback = nullptr;
+            //! User data passed to layout callbacks. The owner that installs the callback owns this memory.
+            void* userdata = nullptr;
         };
 
         //! Identifies one linear layout axis.
@@ -249,27 +265,6 @@ namespace Luna
             Float2U gap = Float2U(0.0f);
             //! Whether child clip rectangles should be intersected with the table content rectangle.
             bool clip_children = true;
-        };
-
-        //! Called by @ref IContext::apply_layout to arrange or finalize one element subtree.
-        //! @param[in] context The context that owns @p element.
-        //! @param[in] element The element being arranged.
-        //! @param[in] rect The element rectangle in layer coordinates.
-        //! @param[in] userdata User data stored in @ref LayoutConfig.
-        //! @return Returns success or failure code.
-        using LayoutCallback = RV(*)(IContext* context, const ElementHandle& element, const RectF& rect, void* userdata);
-
-        //! Describes how one element arranges its direct children.
-        struct LayoutConfig
-        {
-            //! Optional identifier for package-defined or core-provided layout algorithms.
-            Name name;
-            //! Arrange callback. If this is `nullptr`, the element does not arrange its children.
-            LayoutCallback callback = nullptr;
-            //! Optional post-order callback called after children are arranged.
-            LayoutCallback finalize_callback = nullptr;
-            //! User data passed to layout callbacks. The owner that installs the callback owns this memory.
-            void* userdata = nullptr;
         };
 
         //! Describes the layout result of one element.
@@ -511,10 +506,8 @@ namespace Luna
             Name style;
             //! Human-readable debug name.
             Name debug_name;
-            //! Layout input for this element.
-            LayoutInput layout;
-            //! Child layout callback data attached to this element.
-            LayoutConfig layout_config;
+            //! Layout configuration for this element.
+            LayoutConfig layout;
             //! Layout result for this element.
             LayoutResult layout_result;
             //! Optional interaction behavior.

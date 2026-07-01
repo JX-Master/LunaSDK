@@ -201,7 +201,7 @@ if(payload)
 ### A clickable raw element
 ```cpp
 GUICore::ElementHandle item = context->begin_element(context->make_id("raw-button"), Name("Raw Button"));
-context->set_layout(item, button_layout);
+context->set_layout_config(item, button_layout);
 
 GUICore::Interactable interactable;
 interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;

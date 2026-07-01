@@ -221,9 +221,9 @@ namespace Luna
             return hash_cstr(salt, id);
         }
 
-        static GUICore::LayoutInput core_layout_pixels(f32 width, f32 height)
+        static GUICore::LayoutConfig core_layout_pixels(f32 width, f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             if(width > 0.0f)
             {
                 layout.width.kind = GUICore::SizeKind::fixed;
@@ -751,19 +751,19 @@ namespace Luna
             return *handles.property_edits.back().get();
         }
 
-        static GUICore::LayoutInput core_text_layout();
+        static GUICore::LayoutConfig core_text_layout();
 
-        static GUICore::LayoutInput core_inspector_row_layout(f32 height = 30.0f)
+        static GUICore::LayoutConfig core_inspector_row_layout(f32 height = 30.0f)
         {
             return core_layout_pixels(0.0f, height);
         }
 
-        static GUICore::LayoutInput core_inspector_label_layout()
+        static GUICore::LayoutConfig core_inspector_label_layout()
         {
             return core_layout_pixels(112.0f, 28.0f);
         }
 
-        static GUICore::LayoutInput core_inspector_field_layout(f32 height = 28.0f)
+        static GUICore::LayoutConfig core_inspector_field_layout(f32 height = 28.0f)
         {
             return core_layout_pixels(0.0f, height);
         }
@@ -1115,7 +1115,7 @@ namespace Luna
             {
                 GUI::text(app.editor_core.get(), core_id("gui_editor.preview.error", 0), app.preview_error.c_str(), core_text_layout());
             }
-            GUICore::LayoutInput canvas_layout;
+            GUICore::LayoutConfig canvas_layout;
             canvas_layout.width.kind = GUICore::SizeKind::percent;
             canvas_layout.width.value = 1.0f;
             canvas_layout.height.kind = GUICore::SizeKind::percent;
@@ -1127,9 +1127,9 @@ namespace Luna
             register_core_tree_drop_target(app, handles.core_preview_drop_target);
         }
 
-        static GUICore::LayoutInput core_text_layout()
+        static GUICore::LayoutConfig core_text_layout()
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -1353,7 +1353,7 @@ namespace Luna
             GUICore::IContext* context = app.editor_core.get();
             context->push_layer(core_id("gui_editor.layer.main", 0), Float2U(0.0f), Name("GUIEditor Main"));
 
-            GUICore::LayoutInput root_layout;
+            GUICore::LayoutConfig root_layout;
             root_layout.width.kind = GUICore::SizeKind::fixed;
             root_layout.width.value = surface_size.x;
             root_layout.height.kind = GUICore::SizeKind::fixed;

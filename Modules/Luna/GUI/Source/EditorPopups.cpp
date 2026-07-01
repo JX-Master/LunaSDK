@@ -99,10 +99,10 @@ namespace Luna
             return state;
         }
 
-        static GUICore::LayoutInput layer_panel_layout(GUICore::IContext* context, const c8* prefix,
-            const GUICore::LayoutInput& input)
+        static GUICore::LayoutConfig layer_panel_layout(GUICore::IContext* context, const c8* prefix,
+            const GUICore::LayoutConfig& input)
         {
-            GUICore::LayoutInput layout = input;
+            GUICore::LayoutConfig layout = input;
             String padding_entry;
             strprintf(padding_entry, "gui.editor.%s.padding", prefix);
             f32 padding = style_value(context, Name(padding_entry.c_str()), GUICore::style_f32(6.0f)).number.x;
@@ -187,7 +187,7 @@ namespace Luna
             }
             context->push_layer(id, desc.position, Name("popup"));
             GUICore::ElementHandle popup = context->begin_element(derived_id(id, "popup_root"), Name("popup"));
-            context->set_layout(popup, layer_panel_layout(context, "popup", desc.layout));
+            context->set_layout_config(popup, layer_panel_layout(context, "popup", desc.layout));
             GUICore::Interactable interactable;
             interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
@@ -243,7 +243,7 @@ namespace Luna
                 owner_state.pointer_screen_position.y + desc.offset.y);
             context->push_layer(id, position, Name("tooltip"));
             GUICore::ElementHandle tooltip = context->begin_element(derived_id(id, "tooltip_root"), Name("tooltip"));
-            context->set_layout(tooltip, layer_panel_layout(context, "tooltip", desc.layout));
+            context->set_layout_config(tooltip, layer_panel_layout(context, "tooltip", desc.layout));
             draw_layer_panel_chrome(context, "tooltip", Float4U(0.05f, 0.06f, 0.07f, 0.97f),
                 Float4U(0.28f, 0.33f, 0.40f, 1.0f), 4.0f);
             if(out_handle)
@@ -271,7 +271,7 @@ namespace Luna
             usize text_len = content ? strlen(content) : 0;
             f32 width = min(max((f32)text_len * 8.0f + 20.0f, 80.0f), max(desc.max_width, 80.0f));
             f32 height = 30.0f;
-            GUICore::LayoutInput text_layout;
+            GUICore::LayoutConfig text_layout;
             text_layout.width.kind = GUICore::SizeKind::fixed;
             text_layout.width.value = width - 12.0f;
             text_layout.height.kind = GUICore::SizeKind::fixed;

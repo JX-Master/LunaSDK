@@ -52,9 +52,9 @@ namespace Luna
             binding.value_count = count;
         }
 
-        static GUICore::LayoutInput fixed_layout(f32 width, f32 height)
+        static GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             if(width > 0.0f)
             {
                 layout.width.kind = GUICore::SizeKind::fixed;
@@ -385,7 +385,7 @@ namespace Luna
         }
 
         static GUICore::ElementHandle add_core_color_edit_view(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count, const GUICore::LayoutInput& layout)
+            f32* f32_value, u8* u8_value, u32* u32_value, ColorValueType type, u8 count, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             ColorBinding binding;
@@ -393,7 +393,7 @@ namespace Luna
             write_color_value(binding, read_color_value(binding));
 
             GUICore::ElementHandle preview = context->begin_element(id, label ? Name(label) : Name("color_edit"));
-            context->set_layout(preview, layout);
+            context->set_layout_config(preview, layout);
             core_set_basic_interactable(context, preview);
             GUICore::InteractionState preview_interaction = context->get_interaction_state(id);
             Float4U background = core_style_value(context, preview_interaction.hovered ? Name("gui.editor.color_edit.background_hovered") :
@@ -522,37 +522,37 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle color_edit3(GUICore::IContext* context, GUICore::id_t id, const c8* label, f32* value,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             return add_core_color_edit_view(context, id, label, value, nullptr, nullptr, ColorValueType::f32, 3, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle color_edit4(GUICore::IContext* context, GUICore::id_t id, const c8* label, f32* value,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             return add_core_color_edit_view(context, id, label, value, nullptr, nullptr, ColorValueType::f32, 4, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle color_edit3(GUICore::IContext* context, GUICore::id_t id, const c8* label, u8* value,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             return add_core_color_edit_view(context, id, label, nullptr, value, nullptr, ColorValueType::u8, 3, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle color_edit4(GUICore::IContext* context, GUICore::id_t id, const c8* label, u8* value,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             return add_core_color_edit_view(context, id, label, nullptr, value, nullptr, ColorValueType::u8, 4, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle color_edit3(GUICore::IContext* context, GUICore::id_t id, const c8* label, u32* value,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             return add_core_color_edit_view(context, id, label, nullptr, nullptr, value, ColorValueType::rgba8, 3, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle color_edit4(GUICore::IContext* context, GUICore::id_t id, const c8* label, u32* value,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             return add_core_color_edit_view(context, id, label, nullptr, nullptr, value, ColorValueType::rgba8, 4, layout);
         }

@@ -87,11 +87,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle selectable(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool selected,
-            const GUICore::LayoutInput& layout, bool enabled)
+            const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("selectable"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled);
             if(selected)
             {
@@ -110,11 +110,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle checkbox(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool checked,
-            const GUICore::LayoutInput& layout, bool enabled)
+            const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("checkbox"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled);
             Float4U border = style_value(context, Name("gui.editor.check.border"),
                 GUICore::style_f32x4(Float4U(0.55f, 0.64f, 0.76f, 1.0f))).number;
@@ -150,7 +150,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle checkbox(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool* value,
-            const GUICore::LayoutInput& layout, bool enabled)
+            const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
             if(enabled && value && context->get_interaction_state(id).clicked)
@@ -161,11 +161,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle radio_button(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool selected,
-            const GUICore::LayoutInput& layout, bool enabled)
+            const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("radio_button"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled);
             Float4U border = style_value(context, Name("gui.editor.check.border"),
                 GUICore::style_f32x4(Float4U(0.55f, 0.64f, 0.76f, 1.0f))).number;
@@ -196,7 +196,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle radio_button(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool* value,
-            const GUICore::LayoutInput& layout, bool enabled)
+            const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
             if(enabled && value && context->get_interaction_state(id).clicked)
@@ -207,7 +207,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle radio_button(GUICore::IContext* context, GUICore::id_t id, const c8* label, i32* value,
-            i32 button_value, const GUICore::LayoutInput& layout, bool enabled)
+            i32 button_value, const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
             if(enabled && value && context->get_interaction_state(id).clicked)
@@ -218,11 +218,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle toggle_switch(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool checked,
-            const GUICore::LayoutInput& layout, bool enabled)
+            const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("toggle_switch"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled);
             f32 target = checked ? 1.0f : 0.0f;
             f32 animation = target;
@@ -282,7 +282,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle toggle_switch(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool* value,
-            const GUICore::LayoutInput& layout, bool enabled)
+            const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
             if(enabled && value && context->get_interaction_state(id).clicked)

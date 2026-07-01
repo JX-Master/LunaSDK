@@ -128,9 +128,9 @@ namespace Luna
 
     namespace
     {
-        GUICore::LayoutInput fixed_size(f32 width, f32 height)
+        GUICore::LayoutConfig fixed_size(f32 width, f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = width;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -138,9 +138,9 @@ namespace Luna
             return layout;
         }
 
-        GUICore::LayoutInput fixed_height(f32 height)
+        GUICore::LayoutConfig fixed_height(f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -148,9 +148,9 @@ namespace Luna
             return layout;
         }
 
-        GUICore::LayoutInput fill_layout()
+        GUICore::LayoutConfig fill_layout()
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::percent;

@@ -45,59 +45,59 @@ namespace Luna
         //! Adds a scalar float slider paired with a text input editor directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_float_with_input(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a two-component float slider paired with text input editors directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_float2_with_input(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a three-component float slider paired with text input editors directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_float3_with_input(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a four-component float slider paired with text input editors directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_float4_with_input(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
 
         //! Adds a scalar integer slider paired with a text input editor directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_int_with_input(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a two-component integer slider paired with text input editors directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_int2_with_input(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a three-component integer slider paired with text input editors directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_int3_with_input(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a four-component integer slider paired with text input editors directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_int4_with_input(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
 
         //! Adds an editor-style combo box view directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle combo(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            i32* current_item, Span<const c8*> items, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            i32* current_item, Span<const c8*> items, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
 
         //! Adds a three-channel color edit view for f32 values directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle color_edit3(GUICore::IContext* context, GUICore::id_t id, const c8* label, f32* value,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a four-channel color edit view for f32 values directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle color_edit4(GUICore::IContext* context, GUICore::id_t id, const c8* label, f32* value,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a three-channel color edit view for u8 values directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle color_edit3(GUICore::IContext* context, GUICore::id_t id, const c8* label, u8* value,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a four-channel color edit view for u8 values directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle color_edit4(GUICore::IContext* context, GUICore::id_t id, const c8* label, u8* value,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a three-channel color edit view for RGBA8 values directly to a GUI Core context. Alpha is forced to 255.
         LUNA_GUI_API GUICore::ElementHandle color_edit3(GUICore::IContext* context, GUICore::id_t id, const c8* label, u32* value,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a four-channel color edit view for RGBA8 values directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle color_edit4(GUICore::IContext* context, GUICore::id_t id, const c8* label, u32* value,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
 
         //! @}
     }

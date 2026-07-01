@@ -156,11 +156,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle input_text(GUICore::IContext* context, GUICore::id_t id, String& value,
-            const GUICore::LayoutInput& layout, bool enabled, bool readonly)
+            const GUICore::LayoutConfig& layout, bool enabled, bool readonly)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, Name("input_text"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled, readonly);
 
             Ref<InputEditState> state = input_edit_state(context, id);

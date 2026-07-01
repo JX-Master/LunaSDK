@@ -37,11 +37,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle text(GUICore::IContext* context, GUICore::id_t id, const c8* text,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, text ? Name(text) : Name("text"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             GUICore::DrawCommand command;
             command.type = GUICore::DrawCommandType::text;
             command.rect_reference = GUICore::DrawCommandRectReference::element;
@@ -58,11 +58,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle image(GUICore::IContext* context, GUICore::id_t id, RHI::ITexture* texture,
-            const GUICore::LayoutInput& layout, ImageFlag flags)
+            const GUICore::LayoutConfig& layout, ImageFlag flags)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, Name("image"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             GUICore::DrawCommand command = element_rect_command(GUICore::DrawCommandType::image, Float4U(1.0f));
             command.texture = texture;
             command.min_texcoord = Float2U(0.0f, test_flags(flags, ImageFlag::flip_y) ? 1.0f : 0.0f);
@@ -74,11 +74,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle shape(GUICore::IContext* context, GUICore::id_t id, const GUICore::ShapeDesc& shape,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, Name("shape"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             GUICore::DrawCommand command = element_rect_command(GUICore::DrawCommandType::shape, Float4U(1.0f));
             command.shape = shape;
             context->draw(command);
@@ -87,11 +87,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle hit_box(GUICore::IContext* context, GUICore::id_t id,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, Name("hit_box"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             GUICore::Interactable interactable;
             interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);

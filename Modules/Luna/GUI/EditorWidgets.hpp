@@ -82,14 +82,14 @@ namespace Luna
         //! @remark The debug panel is a high-level editor-style view. It consumes @ref GUICore::DebugInfo but does not
         //! inspect or mutate GUI Core private runtime storage.
         LUNA_GUI_API GUICore::ElementHandle show_debug_info(GUICore::IContext* context, GUICore::id_t id,
-            const GUICore::DebugInfo& info, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::DebugInfo& info, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! @}
 
         //! @name Direct GUI Core editor widgets
         //! @{
         //! Begins a horizontal linear layout directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_h_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends the current horizontal linear layout and defers arranging its direct children until @ref layout_editor_tree.
         LUNA_GUI_API RV end_h_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             GUICore::FlexLayoutDesc desc);
@@ -98,7 +98,7 @@ namespace Luna
             const RectF& rect, GUICore::FlexLayoutDesc desc = GUICore::FlexLayoutDesc());
         //! Begins a vertical linear layout directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_v_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends the current vertical linear layout and defers arranging its direct children until @ref layout_editor_tree.
         LUNA_GUI_API RV end_v_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             GUICore::FlexLayoutDesc desc);
@@ -107,12 +107,12 @@ namespace Luna
             const RectF& rect, GUICore::FlexLayoutDesc desc = GUICore::FlexLayoutDesc());
         //! Begins a focus scope directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_focus_scope(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends the current direct GUI Core focus scope.
         LUNA_GUI_API void end_focus_scope(GUICore::IContext* context);
         //! Begins a row-major grid layout directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_grid_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends the current grid layout and defers arranging its direct children until @ref layout_editor_tree.
         LUNA_GUI_API RV end_grid_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             const GUICore::GridLayoutDesc& desc);
@@ -121,7 +121,7 @@ namespace Luna
             const RectF& rect, const GUICore::GridLayoutDesc& desc = GUICore::GridLayoutDesc());
         //! Begins a stack layout directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_stack_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends the current stack layout and defers arranging its direct children until @ref layout_editor_tree.
         LUNA_GUI_API RV end_stack_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             const GUICore::StackLayoutDesc& desc);
@@ -130,7 +130,7 @@ namespace Luna
             const RectF& rect, const GUICore::StackLayoutDesc& desc = GUICore::StackLayoutDesc());
         //! Begins an anchor-based canvas layout directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_canvas_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends the current canvas layout and defers arranging its direct children until @ref layout_editor_tree.
         LUNA_GUI_API RV end_canvas_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             const GUICore::CanvasLayoutDesc& desc);
@@ -139,7 +139,7 @@ namespace Luna
             const RectF& rect, const GUICore::CanvasLayoutDesc& desc = GUICore::CanvasLayoutDesc());
         //! Begins a dock space directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_dock_space(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Replaces the layout descriptor stored for a direct GUI Core dock space.
         LUNA_GUI_API void set_dockspace_layout(GUICore::IContext* context, GUICore::id_t dock_space,
             const DockSpaceLayoutDesc& desc);
@@ -149,12 +149,12 @@ namespace Luna
         //! Begins a dock panel inside the current direct GUI Core dock space.
         LUNA_GUI_API bool begin_dock_panel(GUICore::IContext* context, GUICore::id_t id, const c8* label,
             bool* open = nullptr, const DockPanelStyle& style = DockPanelStyle(),
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), GUICore::ElementHandle* out_handle = nullptr);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), GUICore::ElementHandle* out_handle = nullptr);
         //! Ends the current direct GUI Core dock panel.
         LUNA_GUI_API void end_dock_panel(GUICore::IContext* context);
         //! Begins a scroll viewport layout directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_scroll_viewport(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends the current scroll viewport and defers arranging its direct children until @ref layout_editor_tree.
         LUNA_GUI_API RV end_scroll_viewport(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             const GUICore::ScrollViewportLayoutDesc& desc = GUICore::ScrollViewportLayoutDesc());
@@ -165,7 +165,7 @@ namespace Luna
         //! @remark The scroll view manages wheel input, offset clamping and package-level scroll state, then delegates
         //! clipping and child translation to @ref GUICore::layout_scroll_viewport.
         LUNA_GUI_API GUICore::ElementHandle begin_scroll_view(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends the current scroll view and defers arranging its direct children until @ref layout_editor_tree.
         LUNA_GUI_API RV end_scroll_view(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             const GUICore::ScrollViewportLayoutDesc& desc = GUICore::ScrollViewportLayoutDesc());
@@ -174,7 +174,7 @@ namespace Luna
             const RectF& rect, const GUICore::ScrollViewportLayoutDesc& desc = GUICore::ScrollViewportLayoutDesc());
         //! Begins a table track layout directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_table_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Sets column tracks for the current direct GUI Core table layout.
         //! @param[in] context The GUI Core context.
         //! @param[in] columns Column track descriptors copied into the current table build scope.
@@ -218,16 +218,16 @@ namespace Luna
 
         //! Adds a text element directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle text(GUICore::IContext* context, GUICore::id_t id, const c8* text,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds an image element directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle image(GUICore::IContext* context, GUICore::id_t id, RHI::ITexture* texture,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), ImageFlag flags = ImageFlag::none);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), ImageFlag flags = ImageFlag::none);
         //! Adds a shape element directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle shape(GUICore::IContext* context, GUICore::id_t id, const GUICore::ShapeDesc& shape,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds an invisible hit-test region directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle hit_box(GUICore::IContext* context, GUICore::id_t id,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds an absolute-positioned rectangle draw element directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle draw_rect(GUICore::IContext* context, GUICore::id_t id,
             const RectF& rect, const Float4U& color, f32 radius = 0.0f);
@@ -248,116 +248,116 @@ namespace Luna
 
         //! Begins an interactive button container directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_button(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true);
         //! Ends the current GUI Core button container.
         LUNA_GUI_API void end_button(GUICore::IContext* context);
         //! Adds a text button directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle text_button(GUICore::IContext* context, GUICore::id_t id, const c8* text,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true);
         //! Adds a shape icon button directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle shape_button(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            const GUICore::ShapeDesc& shape, const GUICore::LayoutInput& layout = GUICore::LayoutInput(), f32 padding = 6.0f,
+            const GUICore::ShapeDesc& shape, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), f32 padding = 6.0f,
             bool enabled = true);
         //! Adds a selectable item directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle selectable(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool selected,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true);
         //! Adds a checkbox directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle checkbox(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool checked,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true);
         //! Adds a checkbox bound to a boolean value directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle checkbox(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool* value,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true);
         //! Adds a radio button directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle radio_button(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool selected,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true);
         //! Adds a radio button bound to a boolean value directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle radio_button(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool* value,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true);
         //! Adds one radio button bound to an integer selection directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle radio_button(GUICore::IContext* context, GUICore::id_t id, const c8* label, i32* value,
-            i32 button_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true);
+            i32 button_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true);
         //! Adds an animated switch directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle toggle_switch(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool checked,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true);
         //! Adds an animated switch bound to a boolean value directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle toggle_switch(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool* value,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true);
         //! Adds a single-selection segmented button group directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle button_group(GUICore::IContext* context, GUICore::id_t id,
-            i32* current_item, Span<const c8*> items, const GUICore::LayoutInput& layout = GUICore::LayoutInput(),
+            i32* current_item, Span<const c8*> items, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),
             bool enabled = true);
         //! Adds a multi-selection segmented button group directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle button_group(GUICore::IContext* context, GUICore::id_t id,
-            Span<bool> selected, Span<const c8*> items, const GUICore::LayoutInput& layout = GUICore::LayoutInput(),
+            Span<bool> selected, Span<const c8*> items, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),
             bool enabled = true);
         //! Adds an editable single-line UTF-8 text input directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle input_text(GUICore::IContext* context, GUICore::id_t id, String& value,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), bool enabled = true, bool readonly = false);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), bool enabled = true, bool readonly = false);
         //! Adds a collapsing header directly to a GUI Core context.
         LUNA_GUI_API bool collapsing_header(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            bool default_open = true, const GUICore::LayoutInput& layout = GUICore::LayoutInput(),
+            bool default_open = true, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),
             GUICore::ElementHandle* out_handle = nullptr);
         //! Adds a tree node directly to a GUI Core context.
         LUNA_GUI_API bool tree_node(GUICore::IContext* context, GUICore::id_t id, const c8* label,
             TreeNodeFlag flags = TreeNodeFlag::none, u32 indent_depth = 0,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput(), GUICore::ElementHandle* out_handle = nullptr);
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), GUICore::ElementHandle* out_handle = nullptr);
         //! Adds a progress bar directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle progress_bar(GUICore::IContext* context, GUICore::id_t id, f32 fraction,
-            const c8* overlay = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* overlay = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
 
         //! Adds a single-value floating-point slider directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_float(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 min_value, f32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a two-component floating-point slider directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_float2(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 min_value, f32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a three-component floating-point slider directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_float3(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 min_value, f32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a four-component floating-point slider directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_float4(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 min_value, f32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a single-value integer slider directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_int(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            i32 min_value, i32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a two-component integer slider directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_int2(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            i32 min_value, i32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a three-component integer slider directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_int3(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            i32 min_value, i32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a four-component integer slider directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle slider_int4(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            i32 min_value, i32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a single-value floating-point drag editor directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle drag_float(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a two-component floating-point drag editor directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle drag_float2(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a three-component floating-point drag editor directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle drag_float3(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a four-component floating-point drag editor directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle drag_float4(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a single-value integer drag editor directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle drag_int(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a two-component integer drag editor directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle drag_int2(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a three-component integer drag editor directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle drag_int3(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds a four-component integer drag editor directly to a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle drag_int4(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
 
         //! Begins a tab bar directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_tab_bar(GUICore::IContext* context, GUICore::id_t id,
             const c8* label = nullptr, TabBarFlag flags = TabBarFlag::fitting_shrink,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends a direct GUI Core tab bar and defers arranging its headers and selected content until @ref layout_editor_tree.
         LUNA_GUI_API RV end_tab_bar(GUICore::IContext* context, const GUICore::ElementHandle& tab_bar);
         //! Ends a direct GUI Core tab bar and lays out its headers and selected content.
@@ -391,7 +391,7 @@ namespace Luna
             const GUICore::ElementHandle& owner, const c8* content, const TooltipDesc& desc = TooltipDesc());
         //! Begins a menu bar directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_menu_bar(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends a direct GUI Core menu bar and defers arranging its menu children until @ref layout_editor_tree.
         LUNA_GUI_API RV end_menu_bar(GUICore::IContext* context, const GUICore::ElementHandle& menu_bar);
         //! Ends a direct GUI Core menu bar and lays out its direct menu children horizontally.
@@ -400,20 +400,20 @@ namespace Luna
         LUNA_GUI_API RV layout_menu_bar(GUICore::IContext* context, const GUICore::ElementHandle& menu_bar, const RectF& rect);
         //! Begins a menu or submenu directly in a GUI Core context.
         LUNA_GUI_API bool begin_menu(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool enabled = true,
-            GUICore::ElementHandle* out_handle = nullptr, const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            GUICore::ElementHandle* out_handle = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends a direct GUI Core menu or submenu popup layer.
         LUNA_GUI_API RV end_menu(GUICore::IContext* context, const RectF& rect);
         //! Adds one direct GUI Core menu item.
         LUNA_GUI_API GUICore::ElementHandle menu_item(GUICore::IContext* context, GUICore::id_t id, const c8* label,
             const c8* shortcut = nullptr, bool selected = false, bool enabled = true,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds one direct GUI Core checkable menu item.
         LUNA_GUI_API GUICore::ElementHandle menu_item(GUICore::IContext* context, GUICore::id_t id, const c8* label,
             const c8* shortcut, bool* selected, bool enabled = true,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Adds one direct GUI Core menu separator.
         LUNA_GUI_API GUICore::ElementHandle menu_separator(GUICore::IContext* context, GUICore::id_t id,
-            const GUICore::LayoutInput& layout = GUICore::LayoutInput());
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
 
         //! Sets the payload types that a direct GUI Core element can provide as a drag-drop source.
         LUNA_GUI_API void set_drag_drop_source_types(GUICore::IContext* context, const GUICore::ElementHandle& source,

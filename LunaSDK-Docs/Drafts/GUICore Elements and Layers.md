@@ -29,7 +29,7 @@ context->pop_data_scope();
 2. Layer and topology indexes.
 3. Bound style name.
 4. Debug name.
-5. Layout input and result.
+5. Layout config and result.
 6. Interactable data.
 7. Draw command range.
 
@@ -77,10 +77,10 @@ Layers are appended in bottom-to-top order. Later layers render above earlier la
 
 ```cpp
 GUICore::ElementHandle panel = context->begin_element(context->make_id("panel"), Name("Panel"));
-context->set_layout(panel, panel_layout);
+context->set_layout_config(panel, panel_layout);
 
 GUICore::ElementHandle label = context->begin_element(context->make_id("title"), Name("Title"));
-context->set_layout(label, label_layout);
+context->set_layout_config(label, label_layout);
 context->end_element();
 
 context->end_element();
@@ -94,15 +94,15 @@ panel
 ```
 
 ### Attach layout data
-Each element can receive a `LayoutInput`. Layout algorithms later write `LayoutResult`.
+Each element can receive a `LayoutConfig`. Layout algorithms later write `LayoutResult`.
 
 ```cpp
-GUICore::LayoutInput layout;
+GUICore::LayoutConfig layout;
 layout.width.kind = GUICore::SizeKind::expand;
 layout.height.kind = GUICore::SizeKind::pixels;
 layout.height.value = 32.0f;
 layout.padding = Float4U(8.0f, 4.0f, 8.0f, 4.0f);
-context->set_layout(element, layout);
+context->set_layout_config(element, layout);
 ```
 
 ### Attach interaction data
@@ -144,7 +144,7 @@ if(open_popup)
     context->push_layer(context->make_id("file-popup"), popup_screen_pos, Name("File Popup"));
 
     GUICore::ElementHandle root = context->begin_element(context->make_id("file-popup-root"), Name("Popup Root"));
-    context->set_layout(root, popup_layout);
+    context->set_layout_config(root, popup_layout);
 
     // Add menu item elements here.
 
@@ -164,7 +164,7 @@ for(usize i = first_visible; i < last_visible; ++i)
 {
     context->push_data_scope(GUICore::make_scoped_id(list.id, track_ids[i]));
     GUICore::ElementHandle row = context->begin_element(context->make_id("row"), Name("Track Row"));
-    context->set_layout(row, row_layout);
+    context->set_layout_config(row, row_layout);
     context->end_element();
     context->pop_data_scope();
 }

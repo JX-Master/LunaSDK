@@ -119,7 +119,6 @@ namespace Luna
             virtual id_t make_id(const c8* local_name) const override;
             virtual ElementHandle begin_element(id_t id, const Name& debug_name = Name()) override;
             virtual void end_element() override;
-            virtual void set_layout(const ElementHandle& element, const LayoutInput& layout) override;
             virtual void set_layout_config(const ElementHandle& element, const LayoutConfig& config) override;
             virtual void set_layout_result(const ElementHandle& element, const LayoutResult& result) override;
             virtual RV apply_layout(const ElementHandle& root, const RectF& rect) override;

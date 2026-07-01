@@ -110,8 +110,8 @@ namespace Luna
             strprintf(text, "%d", value);
         }
 
-        static GUICore::LayoutInput core_slider_with_input_text_layout();
-        static GUICore::LayoutInput core_slider_with_input_view_layout(const GUICore::LayoutInput& layout,
+        static GUICore::LayoutConfig core_slider_with_input_text_layout();
+        static GUICore::LayoutConfig core_slider_with_input_view_layout(const GUICore::LayoutConfig& layout,
             const RectF& rect, u8 count);
 
         static void core_sync_float_input_text(GUICore::IContext* context, SliderWithInputState& state,
@@ -160,27 +160,27 @@ namespace Luna
             }
         }
 
-        static GUICore::LayoutInput core_slider_with_input_row_layout()
+        static GUICore::LayoutConfig core_slider_with_input_row_layout()
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.flex_grow = 1.0f;
             return layout;
         }
 
-        static GUICore::LayoutInput core_slider_with_input_slider_layout()
+        static GUICore::LayoutConfig core_slider_with_input_slider_layout()
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.flex_grow = 1.0f;
             layout.height.kind = GUICore::SizeKind::percent;
             layout.height.value = 1.0f;
             return layout;
         }
 
-        static GUICore::LayoutInput core_slider_with_input_text_layout()
+        static GUICore::LayoutConfig core_slider_with_input_text_layout()
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = 72.0f;
             layout.height.kind = GUICore::SizeKind::percent;
@@ -190,7 +190,7 @@ namespace Luna
 
         static GUICore::ElementHandle core_slider_float_with_input_component(GUICore::IContext* context,
             GUICore::id_t id, const c8* label, SliderWithInputState& state, f32* value, u32 index,
-            f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label ? label : "slider_float_with_input", layout);
             GUI::slider_float(context, core_slider_with_input_id(id, "slider"), value ? value + index : nullptr,
@@ -205,7 +205,7 @@ namespace Luna
 
         static GUICore::ElementHandle core_slider_int_with_input_component(GUICore::IContext* context,
             GUICore::id_t id, const c8* label, SliderWithInputState& state, i32* value, u32 index,
-            i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label ? label : "slider_int_with_input", layout);
             GUI::slider_int(context, core_slider_with_input_id(id, "slider"), value ? value + index : nullptr,
@@ -218,10 +218,10 @@ namespace Luna
             return row;
         }
 
-        static GUICore::LayoutInput core_slider_with_input_view_layout(const GUICore::LayoutInput& layout,
+        static GUICore::LayoutConfig core_slider_with_input_view_layout(const GUICore::LayoutConfig& layout,
             const RectF& rect, u8 count)
         {
-            GUICore::LayoutInput r = layout;
+            GUICore::LayoutConfig r = layout;
             if(count > 1)
             {
                 f32 gap = 4.0f;
@@ -239,18 +239,18 @@ namespace Luna
 
         static GUICore::ElementHandle core_slider_float_with_input_view(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, f32* value, u8 count, f32 min_value, f32 max_value, const RectF& rect,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             luassert(context && id && count);
             Ref<SliderWithInputState> state = core_slider_with_input_state(context, id);
             core_resize_slider_with_input_state(*state, count, true);
             if(count <= 1)
             {
-                GUICore::LayoutInput view_layout = core_slider_with_input_view_layout(layout, rect, count);
+                GUICore::LayoutConfig view_layout = core_slider_with_input_view_layout(layout, rect, count);
                 return core_slider_float_with_input_component(context, id, label, *state, value, 0, min_value, max_value,
                     view_layout);
             }
-            GUICore::LayoutInput view_layout = core_slider_with_input_view_layout(layout, rect, count);
+            GUICore::LayoutConfig view_layout = core_slider_with_input_view_layout(layout, rect, count);
             GUICore::ElementHandle column = GUI::begin_v_layout(context, id, label ? label : "slider_float_with_input", view_layout);
             const c8* components[] = { "X", "Y", "Z", "W" };
             for(u32 i = 0; i < count; ++i)
@@ -267,18 +267,18 @@ namespace Luna
 
         static GUICore::ElementHandle core_slider_int_with_input_view(GUICore::IContext* context, GUICore::id_t id,
             const c8* label, i32* value, u8 count, i32 min_value, i32 max_value, const RectF& rect,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             luassert(context && id && count);
             Ref<SliderWithInputState> state = core_slider_with_input_state(context, id);
             core_resize_slider_with_input_state(*state, count, false);
             if(count <= 1)
             {
-                GUICore::LayoutInput view_layout = core_slider_with_input_view_layout(layout, rect, count);
+                GUICore::LayoutConfig view_layout = core_slider_with_input_view_layout(layout, rect, count);
                 return core_slider_int_with_input_component(context, id, label, *state, value, 0, min_value, max_value,
                     view_layout);
             }
-            GUICore::LayoutInput view_layout = core_slider_with_input_view_layout(layout, rect, count);
+            GUICore::LayoutConfig view_layout = core_slider_with_input_view_layout(layout, rect, count);
             GUICore::ElementHandle column = GUI::begin_v_layout(context, id, label ? label : "slider_int_with_input", view_layout);
             const c8* components[] = { "X", "Y", "Z", "W" };
             for(u32 i = 0; i < count; ++i)
@@ -294,49 +294,49 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_float_with_input(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect, const GUICore::LayoutInput& layout)
+            const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect, const GUICore::LayoutConfig& layout)
         {
             return core_slider_float_with_input_view(context, id, label, value, 1, min_value, max_value, rect, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_float2_with_input(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect, const GUICore::LayoutInput& layout)
+            const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect, const GUICore::LayoutConfig& layout)
         {
             return core_slider_float_with_input_view(context, id, label, value, 2, min_value, max_value, rect, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_float3_with_input(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect, const GUICore::LayoutInput& layout)
+            const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect, const GUICore::LayoutConfig& layout)
         {
             return core_slider_float_with_input_view(context, id, label, value, 3, min_value, max_value, rect, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_float4_with_input(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect, const GUICore::LayoutInput& layout)
+            const c8* label, f32* value, f32 min_value, f32 max_value, const RectF& rect, const GUICore::LayoutConfig& layout)
         {
             return core_slider_float_with_input_view(context, id, label, value, 4, min_value, max_value, rect, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_int_with_input(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect, const GUICore::LayoutInput& layout)
+            const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect, const GUICore::LayoutConfig& layout)
         {
             return core_slider_int_with_input_view(context, id, label, value, 1, min_value, max_value, rect, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_int2_with_input(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect, const GUICore::LayoutInput& layout)
+            const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect, const GUICore::LayoutConfig& layout)
         {
             return core_slider_int_with_input_view(context, id, label, value, 2, min_value, max_value, rect, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_int3_with_input(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect, const GUICore::LayoutInput& layout)
+            const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect, const GUICore::LayoutConfig& layout)
         {
             return core_slider_int_with_input_view(context, id, label, value, 3, min_value, max_value, rect, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_int4_with_input(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect, const GUICore::LayoutInput& layout)
+            const c8* label, i32* value, i32 min_value, i32 max_value, const RectF& rect, const GUICore::LayoutConfig& layout)
         {
             return core_slider_int_with_input_view(context, id, label, value, 4, min_value, max_value, rect, layout);
         }

@@ -33,7 +33,13 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            context->set_layout_config(layout, config);
+            const GUICore::Element* element = context->get_element(layout.index);
+            GUICore::LayoutConfig merged = element->layout;
+            merged.name = config.name;
+            merged.callback = config.callback;
+            merged.finalize_callback = config.finalize_callback;
+            merged.userdata = config.userdata;
+            context->set_layout_config(layout, merged);
             return ok;
         }
 
@@ -166,7 +172,7 @@ namespace Luna
 
         static const GUICore::ScrollViewportLayoutDesc* scroll_viewport_layout_desc(const GUICore::Element& element)
         {
-            return (const GUICore::ScrollViewportLayoutDesc*)element.layout_config.userdata;
+            return (const GUICore::ScrollViewportLayoutDesc*)element.layout.userdata;
         }
 
         static Vector<u32> collect_children(GUICore::IContext* context, const GUICore::Element& parent)
@@ -280,7 +286,7 @@ namespace Luna
             return scroll;
         }
 
-        static RectF scroll_viewport_content_rect(const RectF& rect, const GUICore::LayoutInput& layout)
+        static RectF scroll_viewport_content_rect(const RectF& rect, const GUICore::LayoutConfig& layout)
         {
             return RectF(
                 rect.offset_x + layout.padding.x,
@@ -289,7 +295,7 @@ namespace Luna
                 max(rect.height - layout.padding.y - layout.padding.w, 0.0f));
         }
 
-        static Float2U scroll_viewport_content_size(const RectF& rect, const GUICore::LayoutInput& layout)
+        static Float2U scroll_viewport_content_size(const RectF& rect, const GUICore::LayoutConfig& layout)
         {
             RectF content_rect = scroll_viewport_content_rect(rect, layout);
             return Float2U(content_rect.width, content_rect.height);
@@ -353,13 +359,13 @@ namespace Luna
 
         static bool is_scroll_layout_element(const GUICore::Element& element)
         {
-            if(element.layout_config.callback == GUICore::layout_scroll_viewport)
+            if(element.layout.callback == GUICore::layout_scroll_viewport)
             {
                 return true;
             }
-            return element.layout_config.name == Name("gui.editor.scroll_view") ||
-                element.layout_config.name == Name("gui.editor.scroll_viewport") ||
-                element.layout_config.name == Name("gui.core.scroll_viewport");
+            return element.layout.name == Name("gui.editor.scroll_view") ||
+                element.layout.name == Name("gui.editor.scroll_viewport") ||
+                element.layout.name == Name("gui.core.scroll_viewport");
         }
 
         static void accumulate_scroll_content_bounds(GUICore::IContext* context,
@@ -478,7 +484,7 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            return GUICore::layout_scroll_viewport(context, layout, rect, element->layout_config.userdata);
+            return GUICore::layout_scroll_viewport(context, layout, rect, element->layout.userdata);
         }
 
         static RV scroll_viewport_finalize_callback(GUICore::IContext* context, const GUICore::ElementHandle& layout,
@@ -498,11 +504,11 @@ namespace Luna
         }
 
         static GUICore::ElementHandle begin_core_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const c8* default_label, const GUICore::LayoutInput& layout)
+            const c8* label, const c8* default_label, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name(default_label));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             return element;
         }
 
@@ -523,7 +529,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_h_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             return begin_core_layout(context, id, label, "h_layout", layout);
         }
@@ -557,7 +563,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_v_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             return begin_core_layout(context, id, label, "v_layout", layout);
         }
@@ -591,7 +597,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_focus_scope(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             GUICore::ElementHandle element = begin_core_layout(context, id, label, "focus_scope", layout);
             GUICore::Interactable interactable;
@@ -607,7 +613,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_grid_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             return begin_core_layout(context, id, label, "grid_layout", layout);
         }
@@ -639,7 +645,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_stack_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             return begin_core_layout(context, id, label, "stack_layout", layout);
         }
@@ -671,7 +677,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_canvas_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             return begin_core_layout(context, id, label, "canvas_layout", layout);
         }
@@ -703,7 +709,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_scroll_viewport(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             GUICore::ElementHandle element = begin_core_layout(context, id, label, "scroll_viewport", layout);
             push_element_clip(context, layout.padding);
@@ -745,7 +751,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_scroll_view(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             GUICore::ElementHandle element = begin_core_layout(context, id, label, "scroll_view", layout);
             push_element_clip(context, layout.padding);
@@ -795,7 +801,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_table_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             GUICore::ElementHandle element = begin_core_layout(context, id, label, "table_layout", layout);
             Ref<CoreTableBuildState> state = table_build_state(context);

@@ -41,12 +41,12 @@ namespace Luna
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, Name("draw_rect"));
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = max(rect.width, 1.0f);
             layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = max(rect.height, 1.0f);
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_absolute_layout_result(context, element,
                 RectF(rect.offset_x, rect.offset_y, max(rect.width, 1.0f), max(rect.height, 1.0f)));
 
@@ -67,12 +67,12 @@ namespace Luna
             f32 r = max(radius, 0.5f);
             RectF rect(center.x - r, center.y - r, r * 2.0f, r * 2.0f);
             GUICore::ElementHandle element = context->begin_element(id, Name("draw_circle"));
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = rect.width;
             layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = rect.height;
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_absolute_layout_result(context, element, rect);
 
             GUICore::DrawCommand command;
@@ -97,12 +97,12 @@ namespace Luna
             f32 max_y = max(begin.y, end.y) + half_width;
             RectF bounds(min_x, min_y, max(max_x - min_x, 1.0f), max(max_y - min_y, 1.0f));
             GUICore::ElementHandle element = context->begin_element(id, Name("draw_line"));
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = bounds.width;
             layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = bounds.height;
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_absolute_layout_result(context, element, bounds);
 
             GUICore::DrawCommand command;
@@ -122,12 +122,12 @@ namespace Luna
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, text ? Name(text) : Name("draw_text"));
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = max(rect.width, 1.0f);
             layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = max(rect.height, 1.0f);
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_absolute_layout_result(context, element,
                 RectF(rect.offset_x, rect.offset_y, max(rect.width, 1.0f), max(rect.height, 1.0f)));
 
@@ -149,12 +149,12 @@ namespace Luna
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, Name("draw_image"));
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = max(rect.width, 1.0f);
             layout.height.kind = GUICore::SizeKind::fixed;
             layout.height.value = max(rect.height, 1.0f);
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_absolute_layout_result(context, element,
                 RectF(rect.offset_x, rect.offset_y, max(rect.width, 1.0f), max(rect.height, 1.0f)));
 

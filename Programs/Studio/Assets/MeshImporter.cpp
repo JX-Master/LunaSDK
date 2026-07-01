@@ -21,9 +21,9 @@ namespace Luna
 {
     namespace
     {
-        GUICore::LayoutInput fixed_height(f32 height)
+        GUICore::LayoutConfig fixed_height(f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -31,9 +31,9 @@ namespace Luna
             return layout;
         }
 
-        GUICore::LayoutInput fill_layout()
+        GUICore::LayoutConfig fill_layout()
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::percent;
@@ -273,7 +273,7 @@ namespace Luna
         }
     }
 
-    void MeshImporter::on_render(GUICore::IContext* context, const GUICore::LayoutInput& layout)
+    void MeshImporter::on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
     {
         if(!m_open)
         {

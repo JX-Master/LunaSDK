@@ -33,9 +33,9 @@ namespace Luna
 {
     namespace
     {
-        GUICore::LayoutInput core_fixed_height(f32 height)
+        GUICore::LayoutConfig core_fixed_height(f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -43,9 +43,9 @@ namespace Luna
             return layout;
         }
 
-        GUICore::LayoutInput core_fixed_size(f32 width, f32 height)
+        GUICore::LayoutConfig core_fixed_size(f32 width, f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = width;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -53,9 +53,9 @@ namespace Luna
             return layout;
         }
 
-        GUICore::LayoutInput core_fixed_width(f32 width)
+        GUICore::LayoutConfig core_fixed_width(f32 width)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = width;
             layout.height.kind = GUICore::SizeKind::percent;
@@ -63,9 +63,9 @@ namespace Luna
             return layout;
         }
 
-        GUICore::LayoutInput core_fill()
+        GUICore::LayoutConfig core_fill()
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::percent;
@@ -74,9 +74,9 @@ namespace Luna
             return layout;
         }
 
-        GUICore::LayoutInput core_ratio_height(f32 ratio)
+        GUICore::LayoutConfig core_ratio_height(f32 ratio)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.flex_grow = ratio;
@@ -356,7 +356,7 @@ namespace Luna
         draw_actor_tree_node_core(this, context, actor, open_popup, 0);
     }
 
-    void SceneEditor::draw_actor_list(GUICore::IContext* context, const GUICore::LayoutInput& layout)
+    void SceneEditor::draw_actor_list(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
     {
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
         GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("actor_list"), "Actor List", layout);
@@ -442,7 +442,7 @@ namespace Luna
         lupanic_if_failed(GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f)));
     }
 
-    void SceneEditor::draw_scene_settings(GUICore::IContext* context, const GUICore::LayoutInput& layout)
+    void SceneEditor::draw_scene_settings(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
     {
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
         GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("scene_settings"), "Scene Settings",
@@ -465,7 +465,7 @@ namespace Luna
         lupanic_if_failed(GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f)));
     }
 
-    void SceneEditor::draw_scene(GUICore::IContext* context, const GUICore::LayoutInput& layout)
+    void SceneEditor::draw_scene(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
     {
         lutry
         {
@@ -700,7 +700,7 @@ namespace Luna
         }
     }
 
-    void SceneEditor::draw_components_grid(GUICore::IContext* context, const GUICore::LayoutInput& layout)
+    void SceneEditor::draw_components_grid(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
     {
         GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("components_grid"), "Components Grid",
             layout);
@@ -860,7 +860,7 @@ namespace Luna
         lupanic_if_failed(GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f)));
     }
 
-    void SceneEditor::on_render(GUICore::IContext* context, const GUICore::LayoutInput& layout)
+    void SceneEditor::on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
     {
         if(!m_open)
         {

@@ -36,7 +36,7 @@ Logical screen coordinates use a top-left origin, X to the right and Y downward.
 ### Element tree
 The element tree is typeless. Every node is a `GUICore::Element` record with the same storage shape. Behavior is defined by data attached to the element:
 
-1. `LayoutInput`
+1. `LayoutConfig`
 2. `LayoutResult`
 3. `Interactable`
 4. Style binding
@@ -127,15 +127,15 @@ The application still owns the RHI render pass, command buffer, swapchain or ren
 context->push_layer(1, Float2U(0.0f), Name("default"));
 
 GUICore::ElementHandle root = context->begin_element(1, Name("Root"));
-context->set_layout(root, GUICore::LayoutInput {});
+context->set_layout_config(root, GUICore::LayoutConfig {});
 
 GUICore::ElementHandle item = context->begin_element(context->make_id("hello"), Name("Hello item"));
-GUICore::LayoutInput layout;
+GUICore::LayoutConfig layout;
 layout.width.kind = GUICore::SizeKind::pixels;
 layout.width.value = 220.0f;
 layout.height.kind = GUICore::SizeKind::pixels;
 layout.height.value = 36.0f;
-context->set_layout(item, layout);
+context->set_layout_config(item, layout);
 
 GUICore::DrawCommand text;
 text.type = GUICore::DrawCommandType::text;

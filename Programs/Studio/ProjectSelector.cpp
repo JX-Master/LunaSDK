@@ -151,9 +151,9 @@ namespace Luna
     constexpr GUICore::id_t PROJECT_SELECTOR_FIRST_RECENT_ID = 2000;
     constexpr GUICore::id_t PROJECT_SELECTOR_RECENT_STRIDE = 8;
 
-    static GUICore::LayoutInput fixed_layout(f32 width, f32 height)
+    static GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
     {
-        GUICore::LayoutInput layout;
+        GUICore::LayoutConfig layout;
         layout.width.kind = GUICore::SizeKind::fixed;
         layout.width.value = width;
         layout.height.kind = GUICore::SizeKind::fixed;
@@ -200,7 +200,7 @@ namespace Luna
     static GUICore::ElementHandle begin_scroll_region(GUICore::IContext* context, GUICore::id_t id, const RectF& rect)
     {
         GUICore::ElementHandle element = context->begin_element(id, Name("recent_projects_scroll"));
-        context->set_layout(element, fixed_layout(rect.width, rect.height));
+        context->set_layout_config(element, fixed_layout(rect.width, rect.height));
         GUICore::Interactable interactable;
         interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
         set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);

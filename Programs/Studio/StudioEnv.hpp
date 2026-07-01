@@ -21,14 +21,14 @@ namespace Luna
     namespace GUICore
     {
         struct IContext;
-        struct LayoutInput;
+        struct LayoutConfig;
     }
 
     //! @interface IAssetEditor
     //! Represents a window of the editor.
     struct [[Luna::interface("{410f7868-38b5-4e3f-b291-8e58d2cb7372}")]] IAssetEditor : virtual Interface
     {
-        virtual void on_render(GUICore::IContext* context, const GUICore::LayoutInput& layout) = 0;
+        virtual void on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout) = 0;
         virtual bool closed() = 0;
     };
 

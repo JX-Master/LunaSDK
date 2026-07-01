@@ -127,14 +127,14 @@ namespace Luna
         }
 
         static GUICore::ElementHandle button_group_impl(GUICore::IContext* context, GUICore::id_t id, i32* current_item,
-            Span<bool> selected, Span<const c8*> items, const GUICore::LayoutInput& layout, bool enabled)
+            Span<bool> selected, Span<const c8*> items, const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
             u32 count = (u32)items.size();
             button_group_apply_click(context, id, current_item, selected, count, enabled);
 
             GUICore::ElementHandle element = context->begin_element(id, Name("button_group"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled);
             if(!count)
             {
@@ -284,13 +284,13 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle button_group(GUICore::IContext* context, GUICore::id_t id,
-            i32* current_item, Span<const c8*> items, const GUICore::LayoutInput& layout, bool enabled)
+            i32* current_item, Span<const c8*> items, const GUICore::LayoutConfig& layout, bool enabled)
         {
             return button_group_impl(context, id, current_item, Span<bool>(), items, layout, enabled);
         }
 
         LUNA_GUI_API GUICore::ElementHandle button_group(GUICore::IContext* context, GUICore::id_t id,
-            Span<bool> selected, Span<const c8*> items, const GUICore::LayoutInput& layout, bool enabled)
+            Span<bool> selected, Span<const c8*> items, const GUICore::LayoutConfig& layout, bool enabled)
         {
             return button_group_impl(context, id, nullptr, selected, items, layout, enabled);
         }

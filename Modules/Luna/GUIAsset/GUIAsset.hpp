@@ -149,10 +149,10 @@ namespace Luna
             String label;
             //! Type-specific editable properties.
             Variant properties = Variant(VariantType::object);
-            //! Optional GUI Core layout input assigned before generating this node.
-            GUICore::LayoutInput layout_input;
-            //! Whether @ref layout_input should be applied.
-            bool has_layout_input = false;
+            //! Optional GUI Core layout configuration assigned before generating this node.
+            GUICore::LayoutConfig layout_config;
+            //! Whether @ref layout_config should be applied.
+            bool has_layout_config = false;
             //! Optional canvas placement assigned before generating this node inside a canvas layout.
             GUICore::CanvasLayoutItem canvas_layout;
             //! Whether @ref canvas_layout should be applied.

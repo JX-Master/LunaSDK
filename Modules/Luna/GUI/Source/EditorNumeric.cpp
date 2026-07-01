@@ -106,10 +106,10 @@ namespace Luna
         }
 
         static GUICore::ElementHandle slider(GUICore::IContext* context, GUICore::id_t id, Span<const f32> fractions,
-            const GUICore::LayoutInput& layout, const Name& debug_name)
+            const GUICore::LayoutConfig& layout, const Name& debug_name)
         {
             GUICore::ElementHandle element = context->begin_element(id, debug_name);
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_basic_interactable(context, element);
 
             f32 track_width = style_value(context, Name("gui.editor.slider.track_width"), GUICore::style_f32(2.0f)).number.x;
@@ -142,7 +142,7 @@ namespace Luna
         }
 
         static GUICore::ElementHandle slider_float_n(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            u8 count, f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            u8 count, f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             Vector<f32> fractions(count);
@@ -161,31 +161,31 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_float(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             return slider_float_n(context, id, value, 1, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_float2(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             return slider_float_n(context, id, value, 2, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_float3(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             return slider_float_n(context, id, value, 3, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_float4(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             return slider_float_n(context, id, value, 4, min_value, max_value, layout);
         }
 
         static GUICore::ElementHandle slider_int_n(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            u8 count, i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            u8 count, i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             Vector<f32> fractions(count);
@@ -207,25 +207,25 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_int(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             return slider_int_n(context, id, value, 1, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_int2(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             return slider_int_n(context, id, value, 2, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_int3(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             return slider_int_n(context, id, value, 3, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_int4(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             return slider_int_n(context, id, value, 4, min_value, max_value, layout);
         }
@@ -259,10 +259,10 @@ namespace Luna
         }
 
         static GUICore::ElementHandle drag_draw(GUICore::IContext* context, GUICore::id_t id, Span<const String> labels,
-            const GUICore::LayoutInput& layout, const Name& debug_name)
+            const GUICore::LayoutConfig& layout, const Name& debug_name)
         {
             GUICore::ElementHandle element = context->begin_element(id, debug_name);
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_basic_interactable(context, element);
 
             GUICore::InteractionState interaction = context->get_interaction_state(id);
@@ -331,7 +331,7 @@ namespace Luna
         }
 
         static GUICore::ElementHandle drag_float_n(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            u8 count, f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            u8 count, f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id && count);
             drag_apply_float(context, id, value, count, speed, min_value, max_value);
@@ -344,25 +344,25 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle drag_float(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             return drag_float_n(context, id, value, 1, speed, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle drag_float2(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             return drag_float_n(context, id, value, 2, speed, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle drag_float3(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             return drag_float_n(context, id, value, 3, speed, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle drag_float4(GUICore::IContext* context, GUICore::id_t id, f32* value,
-            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutInput& layout)
+            f32 speed, f32 min_value, f32 max_value, const GUICore::LayoutConfig& layout)
         {
             return drag_float_n(context, id, value, 4, speed, min_value, max_value, layout);
         }
@@ -403,7 +403,7 @@ namespace Luna
         }
 
         static GUICore::ElementHandle drag_int_n(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            u8 count, f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            u8 count, f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id && count);
             drag_apply_int(context, id, value, count, speed, min_value, max_value);
@@ -416,25 +416,25 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle drag_int(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             return drag_int_n(context, id, value, 1, speed, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle drag_int2(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             return drag_int_n(context, id, value, 2, speed, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle drag_int3(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             return drag_int_n(context, id, value, 3, speed, min_value, max_value, layout);
         }
 
         LUNA_GUI_API GUICore::ElementHandle drag_int4(GUICore::IContext* context, GUICore::id_t id, i32* value,
-            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutInput& layout)
+            f32 speed, i32 min_value, i32 max_value, const GUICore::LayoutConfig& layout)
         {
             return drag_int_n(context, id, value, 4, speed, min_value, max_value, layout);
         }

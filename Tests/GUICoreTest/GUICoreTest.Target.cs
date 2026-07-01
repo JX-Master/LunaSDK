@@ -12,6 +12,6 @@ public sealed class GUICoreTestTargetRules : TargetRules
         Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("Source/**.cpp");
-        DependsOn("Runtime", "Window", "RHI", "Font", "VG", "GUICore", "GUI", "GUIWindow");
+        DependsOn("Runtime", "Window", "RHI", "Font", "VG", "GUICore", "GUIWindow");
     }
 }

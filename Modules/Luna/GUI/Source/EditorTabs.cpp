@@ -130,9 +130,12 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            GUICore::LayoutConfig config;
+            const GUICore::Element* element = context->get_element(tab_bar.index);
+            GUICore::LayoutConfig config = element->layout;
             config.name = Name("gui.editor.tab_bar");
             config.callback = tab_bar_layout_callback;
+            config.finalize_callback = nullptr;
+            config.userdata = nullptr;
             context->set_layout_config(tab_bar, config);
             return ok;
         }
@@ -152,12 +155,12 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_tab_bar(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, TabBarFlag flags, const GUICore::LayoutInput& layout)
+            const c8* label, TabBarFlag flags, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             (void)flags;
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("tab_bar"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
 
             Float4U background = style_value(context, Name("gui.editor.tab_bar.background"),
                 GUICore::style_f32x4(Float4U(0.08f, 0.10f, 0.13f, 0.75f))).number;

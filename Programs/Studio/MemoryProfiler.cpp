@@ -61,9 +61,9 @@ namespace Luna
             return heaps;
         }
 
-        GUICore::LayoutInput fixed_height(f32 height)
+        GUICore::LayoutConfig fixed_height(f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -126,7 +126,7 @@ namespace Luna
         if(iter == m_memory_blocks.end()) return;
         iter->second.domain = move(d);
     }
-    void MemoryProfiler::render(GUICore::IContext* context, const GUICore::LayoutInput& layout)
+    void MemoryProfiler::render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
     {
         luassert(context);
         LockGuard guard(m_lock);
@@ -147,7 +147,7 @@ namespace Luna
             context->push_data_scope(context->make_id(h.first.c_str()));
             if(GUI::collapsing_header(context, context->make_id("heap"), h.first.c_str()))
             {
-                GUICore::LayoutInput table_layout;
+                GUICore::LayoutConfig table_layout;
                 table_layout.width.kind = GUICore::SizeKind::fixed;
                 table_layout.width.value = 484.0f;
                 table_layout.height.kind = GUICore::SizeKind::fit;

@@ -298,21 +298,12 @@ namespace Luna
             return e.id == element.id ? &e : nullptr;
         }
 
-        void Context::set_layout(const ElementHandle& element, const LayoutInput& layout)
-        {
-            lutsassert();
-            if(Element* e = mutable_element(element))
-            {
-                e->layout = layout;
-            }
-        }
-
         void Context::set_layout_config(const ElementHandle& element, const LayoutConfig& config)
         {
             lutsassert();
             if(Element* e = mutable_element(element))
             {
-                e->layout_config = config;
+                e->layout = config;
             }
         }
 
@@ -352,7 +343,7 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            const LayoutConfig& config = e->layout_config;
+            const LayoutConfig& config = e->layout;
             RectF rect = e->layout_result.rect;
             if(config.callback)
             {
@@ -402,7 +393,7 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            const LayoutConfig& config = e->layout_config;
+            const LayoutConfig& config = e->layout;
             if(config.finalize_callback)
             {
                 return config.finalize_callback(this, element, e->layout_result.rect, config.userdata);

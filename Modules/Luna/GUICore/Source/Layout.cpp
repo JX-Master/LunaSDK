@@ -34,7 +34,7 @@ namespace Luna
                 }
             }
 
-            const SizeValue& requested_size(const LayoutInput& layout, LayoutAxis axis)
+            const SizeValue& requested_size(const LayoutConfig& layout, LayoutAxis axis)
             {
                 return axis == LayoutAxis::x ? layout.width : layout.height;
             }
@@ -647,9 +647,9 @@ namespace Luna
                 {
                     return MeasuredSize();
                 }
-                if(element->layout_config.callback == layout_flex && element->layout_config.userdata)
+                if(element->layout.callback == layout_flex && element->layout.userdata)
                 {
-                    const FlexLayoutDesc& desc = *reinterpret_cast<const FlexLayoutDesc*>(element->layout_config.userdata);
+                    const FlexLayoutDesc& desc = *reinterpret_cast<const FlexLayoutDesc*>(element->layout.userdata);
                     return measure_flex_element(context, *element, available, desc);
                 }
                 return measure_leaf_element(context, element_index, *element, available);

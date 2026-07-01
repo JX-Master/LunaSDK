@@ -52,9 +52,9 @@ namespace Luna
 
     namespace
     {
-        GUICore::LayoutInput fixed_height_layout(f32 height)
+        GUICore::LayoutConfig fixed_height_layout(f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::fixed;
@@ -62,9 +62,9 @@ namespace Luna
             return layout;
         }
 
-        GUICore::LayoutInput fill_layout()
+        GUICore::LayoutConfig fill_layout()
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.height.kind = GUICore::SizeKind::percent;
@@ -124,7 +124,7 @@ namespace Luna
         context->pop_data_scope();
     }
 
-    bool MainEditor::draw_asset_editor(IAssetEditor* editor, GUICore::IContext* context, const GUICore::LayoutInput& layout)
+    bool MainEditor::draw_asset_editor(IAssetEditor* editor, GUICore::IContext* context, const GUICore::LayoutConfig& layout)
     {
         if(!editor || !context)
         {

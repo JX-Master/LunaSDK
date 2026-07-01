@@ -78,9 +78,9 @@ namespace Luna
             context->draw(command);
         }
 
-        static GUICore::LayoutInput fixed_layout(f32 width, f32 height)
+        static GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
         {
-            GUICore::LayoutInput layout;
+            GUICore::LayoutConfig layout;
             if(width > 0.0f)
             {
                 layout.width.kind = GUICore::SizeKind::fixed;
@@ -173,9 +173,12 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            GUICore::LayoutConfig config;
+            const GUICore::Element* element = context->get_element(menu_bar.index);
+            GUICore::LayoutConfig config = element->layout;
             config.name = Name("gui.editor.menu_bar");
             config.callback = menu_bar_layout_callback;
+            config.finalize_callback = nullptr;
+            config.userdata = nullptr;
             context->set_layout_config(menu_bar, config);
             return ok;
         }
@@ -266,11 +269,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle begin_menu_bar(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutInput& layout)
+            const c8* label, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             GUICore::ElementHandle menu_bar = context->begin_element(id, label ? Name(label) : Name("menu_bar"));
-            context->set_layout(menu_bar, layout);
+            context->set_layout_config(menu_bar, layout);
             Float4U background = style_value(context, Name("gui.editor.menu_bar.background"),
                 GUICore::style_f32x4(Float4U(0.08f, 0.10f, 0.13f, 0.75f))).number;
             Float4U border = style_value(context, Name("gui.editor.menu_bar.border"),
@@ -331,7 +334,7 @@ namespace Luna
         }
 
         LUNA_GUI_API bool begin_menu(GUICore::IContext* context, GUICore::id_t id, const c8* label, bool enabled,
-            GUICore::ElementHandle* out_handle, const GUICore::LayoutInput& layout)
+            GUICore::ElementHandle* out_handle, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             Ref<CoreMenuBuildState> build_state = menu_build_state(context);
@@ -356,7 +359,7 @@ namespace Luna
             }
 
             bool open = is_popup_open(context, popup_id);
-            GUICore::LayoutInput item_layout = layout;
+            GUICore::LayoutConfig item_layout = layout;
             if(item_layout.width.kind == GUICore::SizeKind::fit)
             {
                 item_layout.width.kind = top_level ? GUICore::SizeKind::fixed : GUICore::SizeKind::percent;
@@ -373,7 +376,7 @@ namespace Luna
             {
                 *out_handle = item;
             }
-            context->set_layout(item, item_layout);
+            context->set_layout_config(item, item_layout);
             set_menu_interactable(context, item, enabled);
             draw_menu_item_chrome(context, label, nullptr, false, enabled, top_level, true, open, interaction);
             context->end_element();
@@ -408,7 +411,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle menu_item(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            const c8* shortcut, bool selected, bool enabled, const GUICore::LayoutInput& layout)
+            const c8* shortcut, bool selected, bool enabled, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             GUICore::InteractionState interaction = context->get_interaction_state(id);
@@ -416,7 +419,7 @@ namespace Luna
             {
                 close_open_menus(context);
             }
-            GUICore::LayoutInput item_layout = layout;
+            GUICore::LayoutConfig item_layout = layout;
             if(item_layout.width.kind == GUICore::SizeKind::fit)
             {
                 item_layout.width.kind = GUICore::SizeKind::percent;
@@ -428,7 +431,7 @@ namespace Luna
                 item_layout.height.value = 26.0f;
             }
             GUICore::ElementHandle item = context->begin_element(id, label ? Name(label) : Name("menu_item"));
-            context->set_layout(item, item_layout);
+            context->set_layout_config(item, item_layout);
             set_menu_interactable(context, item, enabled);
             draw_menu_item_chrome(context, label, shortcut, selected, enabled, false, false, false, interaction);
             context->end_element();
@@ -436,7 +439,7 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle menu_item(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            const c8* shortcut, bool* selected, bool enabled, const GUICore::LayoutInput& layout)
+            const c8* shortcut, bool* selected, bool enabled, const GUICore::LayoutConfig& layout)
         {
             GUICore::InteractionState interaction = context->get_interaction_state(id);
             if(enabled && selected && interaction.clicked)
@@ -447,10 +450,10 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle menu_separator(GUICore::IContext* context, GUICore::id_t id,
-            const GUICore::LayoutInput& layout)
+            const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
-            GUICore::LayoutInput separator_layout = layout;
+            GUICore::LayoutConfig separator_layout = layout;
             if(separator_layout.width.kind == GUICore::SizeKind::fit)
             {
                 separator_layout.width.kind = GUICore::SizeKind::percent;
@@ -462,7 +465,7 @@ namespace Luna
                 separator_layout.height.value = 7.0f;
             }
             GUICore::ElementHandle separator = context->begin_element(id, Name("menu_separator"));
-            context->set_layout(separator, separator_layout);
+            context->set_layout_config(separator, separator_layout);
             f32 padding = style_value(context, Name("gui.editor.menu_separator.padding"),
                 GUICore::style_f32(8.0f)).number.x;
             Float4U color = style_value(context, Name("gui.editor.menu_separator.color"),

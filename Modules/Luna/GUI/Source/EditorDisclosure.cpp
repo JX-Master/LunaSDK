@@ -81,7 +81,7 @@ namespace Luna
         }
 
         LUNA_GUI_API bool collapsing_header(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            bool default_open, const GUICore::LayoutInput& layout, GUICore::ElementHandle* out_handle)
+            bool default_open, const GUICore::LayoutConfig& layout, GUICore::ElementHandle* out_handle)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("collapsing_header"));
@@ -89,7 +89,7 @@ namespace Luna
             {
                 *out_handle = element;
             }
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_basic_interactable(context, element);
 
             id_t state_id = GUICore::make_state_id<DisclosureState>(id);
@@ -149,7 +149,7 @@ namespace Luna
         }
 
         LUNA_GUI_API bool tree_node(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-            TreeNodeFlag flags, u32 indent_depth, const GUICore::LayoutInput& layout, GUICore::ElementHandle* out_handle)
+            TreeNodeFlag flags, u32 indent_depth, const GUICore::LayoutConfig& layout, GUICore::ElementHandle* out_handle)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("tree_node"));
@@ -157,7 +157,7 @@ namespace Luna
             {
                 *out_handle = element;
             }
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             set_basic_interactable(context, element);
 
             bool leaf = test_flags(flags, TreeNodeFlag::leaf);
@@ -239,11 +239,11 @@ namespace Luna
         }
 
         LUNA_GUI_API GUICore::ElementHandle progress_bar(GUICore::IContext* context, GUICore::id_t id, f32 fraction,
-            const c8* overlay, const GUICore::LayoutInput& layout)
+            const c8* overlay, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, Name("progress_bar"));
-            context->set_layout(element, layout);
+            context->set_layout_config(element, layout);
             f32 progress = clamp(fraction, 0.0f, 1.0f);
             f32 border_size = style_value(context, Name("gui.editor.progress.border_size"), GUICore::style_f32(1.0f)).number.x;
             f32 radius = style_value(context, Name("gui.editor.progress.radius"), GUICore::style_f32(5.0f)).number.x;
