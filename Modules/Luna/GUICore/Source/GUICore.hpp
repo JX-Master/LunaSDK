@@ -83,8 +83,9 @@ namespace Luna
             HashMap<id_t, Vector<RoutedInputEvent>, IdHash> m_routed_input_deliveries;
             DragDropState m_drag_drop;
             Ref<VG::IFontAtlas> m_font_atlas;
-            id_t m_hovered_element = 0;
-            id_t m_active_element = 0;
+            Vector<id_t> m_hovered_elements;
+            id_t m_pointer_capture_element = 0;
+            Vector<id_t> m_active_elements;
             id_t m_focused_element = 0;
             id_t m_last_clicked_element = 0;
             Float2U m_pointer_position = Float2U(0.0f);

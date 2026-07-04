@@ -111,8 +111,8 @@ namespace Luna::GUICoreTest
 
     void bullet(GUICore::IContext* context, f32 x, f32 y, const c8* text)
     {
-        draw_rect(context, RectF(x, y + 7.0f, 5.0f, 5.0f), Float4U(0.28f, 0.74f, 0.92f, 1.0f), 2.5f);
-        draw_text(context, RectF(x + 14.0f, y, 360.0f, 24.0f), text, 16.0f, Float4U(0.78f, 0.84f, 0.90f, 1.0f));
+        draw_rect(context, RectF(x, y + 8.0f, 5.0f, 5.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f), 2.5f);
+        draw_text(context, RectF(x + 16.0f, y, 520.0f, 28.0f), text, 19.0f, Float4U(0.05f, 0.05f, 0.05f, 1.0f));
     }
 
     GUICore::ElementHandle begin_panel(GUICore::IContext* context, GUICore::id_t id, const c8* title,
@@ -120,11 +120,10 @@ namespace Luna::GUICoreTest
     {
         GUICore::ElementHandle panel = context->begin_element(id, Name(title));
         context->set_layout_config(panel, fixed_layout(width, height));
-        draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.065f, 0.086f, 0.105f, 0.96f), 8.0f);
-        draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 42.0f), Float4U(0.085f, 0.115f, 0.140f, 1.0f), 8.0f);
-        draw_line(context, Float2U(0.0f, 42.0f), Float2U(width, 42.0f), Float4U(0.19f, 0.27f, 0.34f, 1.0f), 1.0f);
-        draw_outline(context, RectF(0.0f, 0.0f, width, height), Float4U(0.15f, 0.23f, 0.30f, 1.0f), 1.0f);
-        draw_text(context, RectF(18.0f, 11.0f, width - 36.0f, 28.0f), title, 20.0f, Float4U(0.94f, 0.96f, 0.98f, 1.0f));
+        draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(1.0f, 1.0f, 1.0f, 1.0f), 0.0f);
+        draw_line(context, Float2U(0.0f, 44.0f), Float2U(width, 44.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f), 1.25f);
+        draw_outline(context, RectF(0.0f, 0.0f, width, height), Float4U(0.78f, 0.78f, 0.78f, 1.0f), 1.0f);
+        draw_text(context, RectF(18.0f, 9.0f, width - 36.0f, 32.0f), title, 23.0f, Float4U(0.0f, 0.0f, 0.0f, 1.0f));
         return panel;
     }
 
@@ -135,8 +134,8 @@ namespace Luna::GUICoreTest
 
     void panel_label_value(GUICore::IContext* context, f32 y, const c8* label, const c8* value)
     {
-        draw_text(context, RectF(18.0f, y, 128.0f, 24.0f), label, 15.0f, Float4U(0.56f, 0.64f, 0.70f, 1.0f));
-        draw_text(context, RectF(150.0f, y, 250.0f, 24.0f), value, 15.0f, Float4U(0.82f, 0.87f, 0.92f, 1.0f));
+        draw_text(context, RectF(18.0f, y, 148.0f, 26.0f), label, 17.0f, Float4U(0.32f, 0.32f, 0.32f, 1.0f));
+        draw_text(context, RectF(170.0f, y, 300.0f, 26.0f), value, 17.0f, Float4U(0.02f, 0.02f, 0.02f, 1.0f));
     }
 
     bool circle_hit_test(const GUICore::IContext*, const GUICore::ElementHitTestRequest& request, void*)

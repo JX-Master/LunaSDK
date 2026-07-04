@@ -47,37 +47,51 @@ namespace
         using namespace GUICoreTest;
 
         state.sheet_items.clear();
-        add_canvas_item(state.sheet_items, ID_HEADER, 40.0f, 36.0f);
-        add_canvas_item(state.sheet_items, ID_FRAME, 40.0f, 190.0f);
-        add_canvas_item(state.sheet_items, ID_ELEMENT_TREE, 430.0f, 190.0f);
-        add_canvas_item(state.sheet_items, ID_LAYOUT, 820.0f, 190.0f);
-        add_canvas_item(state.sheet_items, ID_INPUT, 40.0f, 530.0f);
-        add_canvas_item(state.sheet_items, ID_HIT_RECT, 64.0f, 720.0f);
-        add_canvas_item(state.sheet_items, ID_HIT_CIRCLE, 228.0f, 704.0f);
-        add_canvas_item(state.sheet_items, ID_HIT_PASS, 340.0f, 720.0f);
-        add_canvas_item(state.sheet_items, ID_DRAW, 590.0f, 530.0f);
-        add_canvas_item(state.sheet_items, ID_STATE, 1090.0f, 530.0f);
-        add_canvas_item(state.sheet_items, ID_DEBUG, 590.0f, 820.0f);
-        add_canvas_item(state.sheet_items, ID_CANVAS, 1090.0f, 820.0f);
+        add_canvas_item(state.sheet_items, ID_HEADER, 48.0f, 42.0f);
+        if(state.slice_index == 0)
+        {
+            add_canvas_item(state.sheet_items, ID_INPUT, 64.0f, 174.0f);
+        }
+        else if(state.slice_index == 1)
+        {
+            add_canvas_item(state.sheet_items, ID_KEYBOARD, 64.0f, 174.0f);
+        }
+        else if(state.slice_index == 2)
+        {
+            add_canvas_item(state.sheet_items, ID_NAVIGATION, 64.0f, 174.0f);
+        }
+        else
+        {
+            add_canvas_item(state.sheet_items, ID_LAYOUT, 64.0f, 172.0f);
+            add_canvas_item(state.sheet_items, ID_LAYOUT_FLEX_ROW, 78.0f, 328.0f);
+            add_canvas_item(state.sheet_items, ID_LAYOUT_FLEX_COLUMN, 78.0f, 522.0f);
+            add_canvas_item(state.sheet_items, ID_LAYOUT_SCROLL, 900.0f, 328.0f);
+            add_canvas_item(state.sheet_items, ID_LAYOUT_STACK, 566.0f, 522.0f);
+            add_canvas_item(state.sheet_items, ID_LAYOUT_CANVAS, 930.0f, 522.0f);
+        }
 
         GUICore::ElementHandle sheet = context->begin_element(ID_SHEET, Name("Fixed Cheat Sheet"));
         context->set_layout_config(sheet, fixed_layout(SHEET_WIDTH, SHEET_HEIGHT));
-        draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.045f, 0.058f, 0.070f, 1.0f), 12.0f);
-        draw_outline(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT), Float4U(0.16f, 0.24f, 0.30f, 1.0f), 1.0f);
+        draw_rect(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT), Float4U(1.0f, 1.0f, 1.0f, 1.0f), 0.0f);
+        draw_outline(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT), Float4U(0.74f, 0.74f, 0.74f, 1.0f), 1.0f);
 
-        build_header(context);
-        build_frame_panel(context, state);
-        build_element_tree_panel(context);
-        build_layout_panel(context);
-        build_input_panel(context);
-        build_hit_sample(context, ID_HIT_RECT, "target", Float4U(0.07f, 0.28f, 0.42f, 1.0f));
-        build_hit_sample(context, ID_HIT_CIRCLE, "circle", Float4U(0.28f, 0.18f, 0.44f, 1.0f), true);
-        build_hit_sample(context, ID_HIT_PASS, "pass", Float4U(0.36f, 0.25f, 0.08f, 0.82f), false,
-            GUICore::PointerHitBehavior::pass_through);
-        build_draw_panel(context);
-        build_state_panel(context);
-        build_debug_panel(context);
-        build_canvas_panel(context);
+        build_slide_header(context, state);
+        if(state.slice_index == 0)
+        {
+            build_pointer_input_slice(context, state);
+        }
+        else if(state.slice_index == 1)
+        {
+            build_keyboard_input_slice(context, state);
+        }
+        else if(state.slice_index == 2)
+        {
+            build_navigation_input_slice(context, state);
+        }
+        else
+        {
+            build_layout_slice(context);
+        }
 
         state.sheet_canvas.items = Span<const GUICore::CanvasLayoutItem>(state.sheet_items.data(), state.sheet_items.size());
         state.sheet_canvas.default_item = GUICore::CanvasLayoutItem();
@@ -120,7 +134,7 @@ namespace
             }));
             luexp(init_modules());
 
-            luset(app.window, Window::new_window("Luna GUICore Cheat Sheet"));
+            luset(app.window, Window::new_window("Luna GUICore Slides"));
             auto dev = RHI::get_main_device();
             u32 num_queues = dev->get_num_command_queues();
             for(u32 i = 0; i < num_queues; ++i)
@@ -211,6 +225,19 @@ namespace
                 frame.delta_time = 1.0f / 60.0f;
                 app.gui->begin_frame(frame);
                 GUIWindow::update_input(&input_adapter);
+                bool z_down = app.gui->is_key_down(KeyCode::z);
+                bool x_down = app.gui->is_key_down(KeyCode::x);
+                bool test_text_input_focused = app.gui->focused_element() == GUICoreTest::ID_IME_INPUT;
+                if(z_down && !app.sheet.z_down && !test_text_input_focused)
+                {
+                    app.sheet.slice_index = app.sheet.slice_index ? app.sheet.slice_index - 1 : GUICoreTest::NUM_SLICES - 1;
+                }
+                if(x_down && !app.sheet.x_down && !test_text_input_focused)
+                {
+                    app.sheet.slice_index = (app.sheet.slice_index + 1) % GUICoreTest::NUM_SLICES;
+                }
+                app.sheet.z_down = z_down;
+                app.sheet.x_down = x_down;
                 GUICore::ElementHandle root = build_frame(app.gui, app.sheet);
                 luexp(app.gui->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
                 app.gui->route_input();
@@ -227,7 +254,7 @@ namespace
                 lulet(back_buffer, app.swap_chain->get_current_back_buffer());
                 RHI::RenderPassDesc render_pass;
                 render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store,
-                    Float4U(0.020f, 0.024f, 0.028f, 1.0f));
+                    Float4U(0.90f, 0.90f, 0.90f, 1.0f));
                 app.cmdbuf->begin_render_pass(render_pass);
                 app.cmdbuf->end_render_pass();
                 luexp(render_core_test(app, back_buffer));

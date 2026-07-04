@@ -13,34 +13,59 @@
 
 namespace Luna::GUICoreTest
 {
-    inline constexpr f32 SHEET_WIDTH = 1580.0f;
-    inline constexpr f32 SHEET_HEIGHT = 1080.0f;
+    inline constexpr f32 SHEET_WIDTH = 1366.0f;
+    inline constexpr f32 SHEET_HEIGHT = 768.0f;
+    inline constexpr u32 NUM_SLICES = 4;
 
     enum : GUICore::id_t
     {
         ID_SCREEN_ROOT = 1,
         ID_SHEET = 2,
         ID_HEADER = 10,
-        ID_FRAME = 20,
-        ID_ELEMENT_TREE = 30,
-        ID_LAYOUT = 40,
-        ID_INPUT = 50,
-        ID_DRAW = 60,
-        ID_STATE = 70,
-        ID_DEBUG = 80,
-        ID_CANVAS = 90,
-        ID_HIT_RECT = 100,
-        ID_HIT_CIRCLE = 101,
-        ID_HIT_PASS = 102
+        ID_INPUT = 20,
+        ID_LAYOUT = 30,
+        ID_POINTER_BASE_LAYER = 40,
+        ID_POINTER_TOP_LAYER = 41,
+        ID_POINTER_A = 42,
+        ID_POINTER_B = 43,
+        ID_POINTER_C = 44,
+        ID_POINTER_D = 45,
+        ID_POINTER_E = 46,
+        ID_KEYBOARD = 50,
+        ID_NAVIGATION = 51,
+        ID_NAV_DEMO = 52,
+        ID_IME_INPUT = 53,
+        ID_NAV_GRID_BASE = 100,
+        ID_NAV_SUBMENU_BASE = 120,
+        ID_LAYOUT_FLEX_ROW = 60,
+        ID_LAYOUT_FLEX_COLUMN = 61,
+        ID_LAYOUT_FIXED_CHILD = 62,
+        ID_LAYOUT_PERCENT_CHILD = 63,
+        ID_LAYOUT_FIT_CHILD = 64,
+        ID_LAYOUT_STACK = 65,
+        ID_LAYOUT_CANVAS = 66,
+        ID_LAYOUT_SCROLL = 67
     };
 
     struct CoreSheetState
     {
+        u32 slice_index = 0;
+        bool z_down = false;
+        bool x_down = false;
         Float2U sheet_position = Float2U(36.0f, 36.0f);
         GUICore::CanvasLayoutItem screen_item;
         GUICore::CanvasLayoutDesc screen_canvas;
         Vector<GUICore::CanvasLayoutItem> sheet_items;
         GUICore::CanvasLayoutDesc sheet_canvas;
+        Vector<GUICore::CanvasLayoutItem> pointer_items;
+        GUICore::CanvasLayoutDesc pointer_canvas;
+        String ime_text;
+        Vector<GUICore::CanvasLayoutItem> keyboard_items;
+        GUICore::CanvasLayoutDesc keyboard_canvas;
+        bool navigation_submenu_open = false;
+        GUICore::id_t navigation_pending_focus = 0;
+        Vector<GUICore::CanvasLayoutItem> navigation_items;
+        GUICore::CanvasLayoutDesc navigation_canvas;
     };
 
     GUICore::LayoutConfig fixed_layout(f32 width, f32 height);
@@ -66,16 +91,9 @@ namespace Luna::GUICoreTest
     void set_interactable(GUICore::IContext* context, const GUICore::ElementHandle& element,
         GUICore::PointerHitBehavior hit_behavior, GUICore::InteractableFlag flags);
 
-    void build_header(GUICore::IContext* context);
-    void build_frame_panel(GUICore::IContext* context, const CoreSheetState& state);
-    void build_element_tree_panel(GUICore::IContext* context);
-    void build_layout_panel(GUICore::IContext* context);
-    void build_input_panel(GUICore::IContext* context);
-    void build_hit_sample(GUICore::IContext* context, GUICore::id_t id, const c8* label,
-        const Float4U& base, bool circle = false,
-        GUICore::PointerHitBehavior behavior = GUICore::PointerHitBehavior::target);
-    void build_draw_panel(GUICore::IContext* context);
-    void build_state_panel(GUICore::IContext* context);
-    void build_debug_panel(GUICore::IContext* context);
-    void build_canvas_panel(GUICore::IContext* context);
+    void build_slide_header(GUICore::IContext* context, const CoreSheetState& state);
+    void build_pointer_input_slice(GUICore::IContext* context, CoreSheetState& state);
+    void build_keyboard_input_slice(GUICore::IContext* context, CoreSheetState& state);
+    void build_navigation_input_slice(GUICore::IContext* context, CoreSheetState& state);
+    void build_layout_slice(GUICore::IContext* context);
 }

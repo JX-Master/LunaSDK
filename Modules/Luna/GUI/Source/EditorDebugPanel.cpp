@@ -67,6 +67,18 @@ namespace Luna
                 return ret;
             }
 
+            bool contains_id(Span<const GUICore::id_t> ids, GUICore::id_t id)
+            {
+                for(GUICore::id_t candidate : ids)
+                {
+                    if(candidate == id)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
             String format_rect(const RectF& rect)
             {
                 String ret;
@@ -264,7 +276,7 @@ namespace Luna
                 debug_text_bool(context, row, "Disabled", element->disabled);
                 debug_text_bool(context, row, "Hovered", element->hovered);
                 debug_text_bool(context, row, "Active", element->active);
-                debug_text_bool(context, row, "Captured", element->captured);
+                debug_text_bool(context, row, "Pointer Captured", element->pointer_captured);
                 debug_text_bool(context, row, "Focused", element->focused);
                 debug_text_bool(context, row, "Clicked", element->clicked);
                 debug_text_bool(context, row, "Double Clicked", element->double_clicked);
@@ -391,12 +403,13 @@ namespace Luna
                 label.append(element.debug_name.empty() ? "element" : element.debug_name.c_str());
                 label.append("  #");
                 label.append(format_id(element.id));
-                if(info.hovered_element == element.id)
+                bool hovered = contains_id(info.hovered_elements.cspan(), element.id);
+                if(hovered)
                 {
                     label.append("  <hover>");
                 }
                 GUICore::ElementHandle row = selectable(context, context->make_id((GUICore::id_t)(100000 + row_index)),
-                    label.c_str(), state->selected_element == element.id || info.hovered_element == element.id, fixed_height(24.0f));
+                    label.c_str(), state->selected_element == element.id || hovered, fixed_height(24.0f));
                 if(is_item_clicked(context, row))
                 {
                     state->selected_element = element.id;

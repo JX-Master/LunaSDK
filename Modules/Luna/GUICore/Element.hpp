@@ -283,7 +283,7 @@ namespace Luna
         {
             //! This element does not participate in pointer hit testing.
             none,
-            //! This element is reported by hit testing, then pointer routing continues to lower elements.
+            //! This element receives pointer events, then pointer routing continues to lower elements.
             pass_through,
             //! This element can receive pointer events and stops pointer routing.
             target,

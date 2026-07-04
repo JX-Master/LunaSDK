@@ -70,6 +70,18 @@ namespace Luna
                 return false;
             }
 
+            bool contains_id(Span<const id_t> ids, id_t id)
+            {
+                for(id_t candidate : ids)
+                {
+                    if(candidate == id)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
             Float2U element_screen_center(Span<const Layer> layers, const Element& element)
             {
                 const RectF& rect = element.layout_result.rect;
@@ -112,7 +124,7 @@ namespace Luna
             m_element_indices.clear();
             m_drag_drop.deliveries.clear();
             m_text_input_request = TextInputRequest();
-            m_hovered_element = 0;
+            m_hovered_elements.clear();
             m_counters = PerformanceCounters();
             m_counters.frame_generation = m_generation;
             m_counters.state_gc_ms = perf_elapsed_ms(gc_begin, gc_end);
@@ -1075,7 +1087,8 @@ namespace Luna
                     }
                     ElementHandle handle { element.id, element_index, m_generation };
                     PointerHitBehavior hit_behavior = element.interactable.pointer_hit_behavior;
-                    bool is_event_target = hit_behavior == PointerHitBehavior::target;
+                    bool is_event_target = hit_behavior == PointerHitBehavior::target ||
+                        hit_behavior == PointerHitBehavior::pass_through;
                     bool is_routing_stop = hit_behavior == PointerHitBehavior::target || hit_behavior == PointerHitBehavior::block;
                     if(callback)
                     {
@@ -1237,29 +1250,34 @@ namespace Luna
             lutsassert();
             if(!id)
             {
-                m_active_element = 0;
+                m_pointer_capture_element = 0;
+                m_active_elements.clear();
                 return;
             }
             const Element* element = find_element(id);
             if(element && has_flags(element->interactable, InteractableFlag::activatable) && !has_flags(element->interactable, InteractableFlag::disabled) && !has_flags(element->interactable, InteractableFlag::read_only))
             {
-                m_active_element = id;
+                m_pointer_capture_element = id;
+                m_active_elements.clear();
+                m_active_elements.push_back(id);
             }
         }
 
         void Context::release_pointer_capture(id_t id)
         {
             lutsassert();
-            if(!id || m_active_element == id)
+            if(!id || m_pointer_capture_element == id)
             {
-                m_active_element = 0;
+                m_pointer_capture_element = 0;
+                m_active_elements.clear();
+                return;
             }
         }
 
         id_t Context::captured_element() const
         {
             lutsassert();
-            return m_active_element;
+            return m_pointer_capture_element;
         }
 
         RV Context::start_drag_drop(const ElementHandle& source, const Name& payload_type, const void* data, usize data_size)
@@ -1621,9 +1639,38 @@ namespace Luna
                     ++iter;
                 }
             }
-            if(m_element_indices.find(m_active_element) == m_element_indices.end())
+            auto element_can_activate = [&](id_t id) -> bool
             {
-                m_active_element = 0;
+                const Element* element = find_element(id);
+                return element && has_flags(element->interactable, InteractableFlag::activatable) &&
+                    !has_flags(element->interactable, InteractableFlag::disabled) &&
+                    !has_flags(element->interactable, InteractableFlag::read_only);
+            };
+            if(m_pointer_capture_element && !element_can_activate(m_pointer_capture_element))
+            {
+                m_pointer_capture_element = 0;
+            }
+            for(auto iter = m_active_elements.begin(); iter != m_active_elements.end();)
+            {
+                if(!element_can_activate(*iter))
+                {
+                    iter = m_active_elements.erase(iter);
+                }
+                else
+                {
+                    ++iter;
+                }
+            }
+            if(m_active_elements.empty())
+            {
+                if(element_can_activate(m_pointer_capture_element))
+                {
+                    m_active_elements.push_back(m_pointer_capture_element);
+                }
+                else
+                {
+                    m_pointer_capture_element = 0;
+                }
             }
             if(m_element_indices.find(m_focused_element) == m_element_indices.end() ||
                 (m_focused_element && !element_can_focus(*find_element(m_focused_element))))
@@ -1631,21 +1678,45 @@ namespace Luna
                 m_focused_element = 0;
             }
 
-            auto update_hover = [&]()
+            Vector<ElementHandle> pointer_targets;
+            auto collect_pointer_targets = [&](Vector<ElementHandle>& targets)
             {
-                m_hovered_element = 0;
+                targets.clear();
                 if(!m_pointer_inside)
                 {
                     return;
                 }
-                ElementHandle hit = hit_test(m_pointer_position);
-                if(hit.id)
+                hit_test(m_pointer_position, [](const HitTestVisit& visit, void* userdata) {
+                    if(visit.event_target)
+                    {
+                        Vector<ElementHandle>* targets = (Vector<ElementHandle>*)userdata;
+                        targets->push_back(visit.element);
+                    }
+                }, &targets);
+            };
+
+            auto deliver_to_pointer_targets = [&](Span<const ElementHandle> targets, const InputEvent& event)
+            {
+                for(const ElementHandle& target : targets)
+                {
+                    deliver_input_event(target.id, event);
+                }
+            };
+
+            auto update_hover = [&]()
+            {
+                m_hovered_elements.clear();
+                if(!m_pointer_inside)
+                {
+                    return;
+                }
+                collect_pointer_targets(pointer_targets);
+                for(const ElementHandle& hit : pointer_targets)
                 {
                     const Element* element = get_element(hit.index);
-                    if(element && element->interactable.pointer_hit_behavior == PointerHitBehavior::target &&
-                        has_flags(element->interactable, InteractableFlag::hoverable))
+                    if(element && has_flags(element->interactable, InteractableFlag::hoverable))
                     {
-                        m_hovered_element = hit.id;
+                        m_hovered_elements.push_back(hit.id);
                     }
                 }
             };
@@ -1678,14 +1749,25 @@ namespace Luna
                     m_key_modifiers = event.modifiers;
                     m_pointer_inside = false;
                     update_pointer_position(event.position);
-                    m_hovered_element = 0;
+                    m_hovered_elements.clear();
                     break;
                 case InputEventType::pointer_move:
                     m_key_modifiers = event.modifiers;
                     update_pointer_position(event.position);
                     update_pointer_inside();
                     update_hover();
-                    deliver_input_event(m_active_element ? m_active_element : m_hovered_element, event);
+                    if(!m_active_elements.empty())
+                    {
+                        for(id_t active : m_active_elements)
+                        {
+                            deliver_input_event(active, event);
+                        }
+                    }
+                    else
+                    {
+                        collect_pointer_targets(pointer_targets);
+                        deliver_to_pointer_targets(pointer_targets.cspan(), event);
+                    }
                     break;
                 case InputEventType::pointer_down:
                     m_key_modifiers = event.modifiers;
@@ -1696,30 +1778,37 @@ namespace Luna
                     {
                         m_pointer_down[(u32)event.button] = true;
                     }
-                    {
-                        ElementHandle hit = hit_test(m_pointer_position);
-                        const Element* element = get_element(hit.index);
-                        if(element && element->interactable.pointer_hit_behavior == PointerHitBehavior::target &&
-                            !has_flags(element->interactable, InteractableFlag::disabled))
-                        {
-                            deliver_input_event(hit.id, event);
-                        }
-                    }
+                    collect_pointer_targets(pointer_targets);
+                    deliver_to_pointer_targets(pointer_targets.cspan(), event);
                     if(event.button == PointerButton::left)
                     {
-                        ElementHandle hit = hit_test(m_pointer_position);
-                        const Element* element = get_element(hit.index);
-                        if(element && element->interactable.pointer_hit_behavior == PointerHitBehavior::target &&
-                            !has_flags(element->interactable, InteractableFlag::disabled))
+                        m_active_elements.clear();
+                        m_pointer_capture_element = 0;
+                        bool focused_set = false;
+                        for(const ElementHandle& hit : pointer_targets)
                         {
+                            const Element* element = get_element(hit.index);
+                            if(!element)
+                            {
+                                continue;
+                            }
                             if(has_flags(element->interactable, InteractableFlag::activatable) && !has_flags(element->interactable, InteractableFlag::read_only))
                             {
-                                m_active_element = hit.id;
+                                if(!m_pointer_capture_element)
+                                {
+                                    m_pointer_capture_element = hit.id;
+                                }
+                                m_active_elements.push_back(hit.id);
                             }
-                            if(has_flags(element->interactable, InteractableFlag::focusable))
+                            if(!focused_set && has_flags(element->interactable, InteractableFlag::focusable))
                             {
                                 m_focused_element = hit.id;
+                                focused_set = true;
                             }
+                        }
+                        if(!focused_set)
+                        {
+                            m_focused_element = 0;
                         }
                     }
                     break;
@@ -1738,48 +1827,63 @@ namespace Luna
                         deliver_input_event(target.id, event);
                         deliver_drag_drop_payload(target);
                         clear_drag_drop();
-                        m_active_element = 0;
+                        m_pointer_capture_element = 0;
+                        m_active_elements.clear();
                         break;
                     }
-                    if(event.button == PointerButton::left && m_active_element)
+                    if(event.button == PointerButton::left && !m_active_elements.empty())
                     {
-                        ElementHandle hit = hit_test(m_pointer_position);
-                        const Element* active_element = find_element(m_active_element);
-                        deliver_input_event(m_active_element, event);
-                        if(hit.id == m_active_element && active_element &&
-                            has_flags(active_element->interactable, InteractableFlag::activatable) &&
-                            !has_flags(active_element->interactable, InteractableFlag::read_only))
+                        collect_pointer_targets(pointer_targets);
+                        Vector<id_t> pointer_target_ids;
+                        for(const ElementHandle& target : pointer_targets)
                         {
-                            InteractionState& state = get_or_create_interaction(m_active_element);
-                            state.clicked = true;
-                            f32 click_dx = m_pointer_position.x - m_last_clicked_position.x;
-                            f32 click_dy = m_pointer_position.y - m_last_clicked_position.y;
-                            constexpr f32 DOUBLE_CLICK_MAX_INTERVAL = 0.35f;
-                            constexpr f32 DOUBLE_CLICK_MAX_DISTANCE = 6.0f;
-                            state.double_clicked =
-                                m_last_clicked_element == m_active_element &&
-                                (m_elapsed_time - m_last_clicked_time) <= DOUBLE_CLICK_MAX_INTERVAL &&
-                                (click_dx * click_dx + click_dy * click_dy) <= DOUBLE_CLICK_MAX_DISTANCE * DOUBLE_CLICK_MAX_DISTANCE;
-                            m_last_clicked_element = m_active_element;
-                            m_last_clicked_time = m_elapsed_time;
-                            m_last_clicked_position = m_pointer_position;
-                            state.clicked_screen_position = m_pointer_position;
-                            if(active_element->layer < m_layers.size())
+                            pointer_target_ids.push_back(target.id);
+                        }
+                        id_t clicked_representative = 0;
+                        id_t previous_clicked_element = m_last_clicked_element;
+                        f32 previous_clicked_time = m_last_clicked_time;
+                        Float2U previous_clicked_position = m_last_clicked_position;
+                        for(id_t active : m_active_elements)
+                        {
+                            const Element* active_element = find_element(active);
+                            deliver_input_event(active, event);
+                            if(contains_id(pointer_target_ids.cspan(), active) && active_element && element_can_activate(active))
                             {
-                                state.clicked_element_position = element_local_position(*active_element, m_layers[active_element->layer], m_pointer_position);
-                                state.clicked_element_rect = active_element->layout_result.rect;
+                                InteractionState& state = get_or_create_interaction(active);
+                                state.clicked = true;
+                                f32 click_dx = m_pointer_position.x - previous_clicked_position.x;
+                                f32 click_dy = m_pointer_position.y - previous_clicked_position.y;
+                                constexpr f32 DOUBLE_CLICK_MAX_INTERVAL = 0.35f;
+                                constexpr f32 DOUBLE_CLICK_MAX_DISTANCE = 6.0f;
+                                state.double_clicked =
+                                    previous_clicked_element == active &&
+                                    (m_elapsed_time - previous_clicked_time) <= DOUBLE_CLICK_MAX_INTERVAL &&
+                                    (click_dx * click_dx + click_dy * click_dy) <= DOUBLE_CLICK_MAX_DISTANCE * DOUBLE_CLICK_MAX_DISTANCE;
+                                state.clicked_screen_position = m_pointer_position;
+                                if(active_element->layer < m_layers.size())
+                                {
+                                    state.clicked_element_position = element_local_position(*active_element, m_layers[active_element->layer], m_pointer_position);
+                                    state.clicked_element_rect = active_element->layout_result.rect;
+                                }
+                                if(!clicked_representative)
+                                {
+                                    clicked_representative = active;
+                                }
                             }
                         }
-                        m_active_element = 0;
+                        if(clicked_representative)
+                        {
+                            m_last_clicked_element = clicked_representative;
+                            m_last_clicked_time = m_elapsed_time;
+                            m_last_clicked_position = m_pointer_position;
+                        }
+                        m_pointer_capture_element = 0;
+                        m_active_elements.clear();
                     }
                     else
                     {
-                        ElementHandle hit = hit_test(m_pointer_position);
-                        const Element* element = get_element(hit.index);
-                        if(element && element->interactable.pointer_hit_behavior == PointerHitBehavior::target)
-                        {
-                            deliver_input_event(hit.id, event);
-                        }
+                        collect_pointer_targets(pointer_targets);
+                        deliver_to_pointer_targets(pointer_targets.cspan(), event);
                     }
                     break;
                 case InputEventType::pointer_wheel:
@@ -1788,19 +1892,23 @@ namespace Luna
                     update_pointer_position(event.position);
                     update_pointer_inside();
                     update_hover();
-                    ElementHandle hit = hit_test(m_pointer_position);
-                    id_t scroll_target = scroll_target_of(hit.id);
+                    collect_pointer_targets(pointer_targets);
+                    id_t scroll_target = 0;
+                    for(const ElementHandle& target : pointer_targets)
+                    {
+                        scroll_target = scroll_target_of(target.id);
+                        if(scroll_target)
+                        {
+                            break;
+                        }
+                    }
                     if(scroll_target)
                     {
                         deliver_input_event(scroll_target, event);
                     }
                     else
                     {
-                        const Element* element = get_element(hit.index);
-                        if(element && element->interactable.pointer_hit_behavior == PointerHitBehavior::target)
-                        {
-                            deliver_input_event(hit.id, event);
-                        }
+                        deliver_to_pointer_targets(pointer_targets.cspan(), event);
                     }
                     break;
                 }
@@ -1881,8 +1989,9 @@ namespace Luna
                     break;
                 case InputEventType::blur:
                     m_pointer_inside = false;
-                    m_hovered_element = 0;
-                    m_active_element = 0;
+                    m_hovered_elements.clear();
+                    m_pointer_capture_element = 0;
+                    m_active_elements.clear();
                     m_focused_element = 0;
                     m_last_clicked_element = 0;
                     m_last_clicked_time = -1000.0f;
@@ -1902,13 +2011,14 @@ namespace Luna
                 }
             }
 
-            if(m_hovered_element)
+            update_hover();
+            for(id_t hovered : m_hovered_elements)
             {
-                get_or_create_interaction(m_hovered_element).hovered = true;
+                get_or_create_interaction(hovered).hovered = true;
             }
-            if(m_active_element)
+            for(id_t active : m_active_elements)
             {
-                get_or_create_interaction(m_active_element).active = true;
+                get_or_create_interaction(active).active = true;
             }
             if(m_focused_element)
             {
@@ -2243,7 +2353,7 @@ namespace Luna
                 InteractionState interaction = get_interaction_state(element.id);
                 element_info.hovered = interaction.hovered;
                 element_info.active = interaction.active;
-                element_info.captured = element.id == m_active_element;
+                element_info.pointer_captured = element.id == m_pointer_capture_element;
                 element_info.focused = interaction.focused;
                 element_info.clicked = interaction.clicked;
                 element_info.double_clicked = interaction.double_clicked;
@@ -2291,9 +2401,9 @@ namespace Luna
                 }
                 info.input_deliveries.push_back(move(delivery_info));
             }
-            info.hovered_element = m_hovered_element;
-            info.active_element = m_active_element;
-            info.captured_element = m_active_element;
+            info.hovered_elements = m_hovered_elements;
+            info.active_elements = m_active_elements;
+            info.pointer_capture_element = m_pointer_capture_element;
             info.focused_element = m_focused_element;
             info.focused_scope = focus_scope_of(m_focused_element);
             info.drag_drop_active = m_drag_drop.active;

@@ -221,7 +221,7 @@ namespace Luna
             //! Whether this element was active after the latest input routing pass.
             bool active = false;
             //! Whether this element currently owns pointer capture.
-            bool captured = false;
+            bool pointer_captured = false;
             //! Whether this element was focused after the latest input routing pass.
             bool focused = false;
             //! Whether this element was clicked during the latest input routing pass.
@@ -303,12 +303,12 @@ namespace Luna
             Vector<DebugPassInfo> passes;
             //! Active data scope stack when the snapshot is produced.
             Vector<id_t> data_scope_stack;
-            //! Hit-test result for the current pointer position, or zero when no element was hit.
-            id_t hovered_element = 0;
-            //! Current active element, or zero when no element is active.
-            id_t active_element = 0;
+            //! Elements hovered after the latest input routing pass.
+            Vector<id_t> hovered_elements;
+            //! Elements active after the latest input routing pass.
+            Vector<id_t> active_elements;
             //! Current pointer capture element, or zero when no element captures pointer input.
-            id_t captured_element = 0;
+            id_t pointer_capture_element = 0;
             //! Current focused element, or zero when no element is focused.
             id_t focused_element = 0;
             //! Current focus scope ID, or zero when the focus is in the root scope.

@@ -272,7 +272,7 @@ namespace Luna
             //! @param[in] userdata Opaque user data passed to @p callback.
             //! @return Returns the final pointer routing stop, or an invalid handle if nothing was hit.
             //! @remark The traversal checks upper layers first and newer elements first.
-            //! @ref PointerHitBehavior::pass_through elements are reported to @p callback, then traversal continues
+            //! @ref PointerHitBehavior::pass_through elements are reported as event targets, then traversal continues
             //! to lower elements. Traversal stops at @ref PointerHitBehavior::target and @ref PointerHitBehavior::block.
             virtual ElementHandle hit_test(const Float2U& screen_position, HitTestCallback* callback = nullptr,
                 void* userdata = nullptr) const = 0;
