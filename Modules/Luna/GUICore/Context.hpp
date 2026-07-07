@@ -150,6 +150,14 @@ namespace Luna
             //! attached @ref LayoutConfig callback is applied top-down with optional finalize callbacks.
             virtual RV apply_layout(const ElementHandle& root, const RectF& rect) = 0;
 
+            //! Measures one element using its layout configuration and optional measure callback.
+            //! @param[in] element The element to measure.
+            //! @param[in] available_size Available element-box size before margin is applied.
+            //! @return Returns resolved element-box minimum, desired and maximum sizes, excluding margin.
+            //! @remark If the element does not provide a measure callback, `fit` axes use zero content size and
+            //! resolve to padding plus explicit @ref SizeValue constraints.
+            virtual MeasureResult measure_element(const ElementHandle& element, const Float2U& available_size) = 0;
+
             //! Sets interactable data for an element.
             //! @param[in] element The element handle returned by @ref begin_element.
             //! @param[in] interactable The interactable data to attach.

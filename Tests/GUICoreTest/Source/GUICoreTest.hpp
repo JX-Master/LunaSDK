@@ -15,7 +15,9 @@ namespace Luna::GUICoreTest
 {
     inline constexpr f32 SHEET_WIDTH = 1366.0f;
     inline constexpr f32 SHEET_HEIGHT = 768.0f;
-    inline constexpr u32 NUM_SLICES = 4;
+    inline constexpr u32 NUM_INPUT_SLICES = 3;
+    inline constexpr u32 NUM_LAYOUT_SLICES = 15;
+    inline constexpr u32 NUM_SLICES = NUM_INPUT_SLICES + NUM_LAYOUT_SLICES;
 
     enum : GUICore::id_t
     {
@@ -44,7 +46,8 @@ namespace Luna::GUICoreTest
         ID_LAYOUT_FIT_CHILD = 64,
         ID_LAYOUT_STACK = 65,
         ID_LAYOUT_CANVAS = 66,
-        ID_LAYOUT_SCROLL = 67
+        ID_LAYOUT_SCROLL = 67,
+        ID_LAYOUT_DEMO_BASE = 1000
     };
 
     struct CoreSheetState
@@ -59,6 +62,8 @@ namespace Luna::GUICoreTest
         GUICore::CanvasLayoutDesc sheet_canvas;
         Vector<GUICore::CanvasLayoutItem> pointer_items;
         GUICore::CanvasLayoutDesc pointer_canvas;
+        Vector<GUICore::CanvasLayoutItem> pointer_base_items;
+        GUICore::CanvasLayoutDesc pointer_base_canvas;
         String ime_text;
         Vector<GUICore::CanvasLayoutItem> keyboard_items;
         GUICore::CanvasLayoutDesc keyboard_canvas;
@@ -95,5 +100,8 @@ namespace Luna::GUICoreTest
     void build_pointer_input_slice(GUICore::IContext* context, CoreSheetState& state);
     void build_keyboard_input_slice(GUICore::IContext* context, CoreSheetState& state);
     void build_navigation_input_slice(GUICore::IContext* context, CoreSheetState& state);
-    void build_layout_slice(GUICore::IContext* context);
+    const c8* layout_slice_title(u32 layout_slice);
+    const c8* layout_slice_subtitle(u32 layout_slice);
+    void add_layout_slice_items(CoreSheetState& state, u32 layout_slice);
+    void build_layout_slice(GUICore::IContext* context, u32 layout_slice);
 }

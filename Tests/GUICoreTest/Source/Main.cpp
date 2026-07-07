@@ -62,12 +62,7 @@ namespace
         }
         else
         {
-            add_canvas_item(state.sheet_items, ID_LAYOUT, 64.0f, 172.0f);
-            add_canvas_item(state.sheet_items, ID_LAYOUT_FLEX_ROW, 78.0f, 328.0f);
-            add_canvas_item(state.sheet_items, ID_LAYOUT_FLEX_COLUMN, 78.0f, 522.0f);
-            add_canvas_item(state.sheet_items, ID_LAYOUT_SCROLL, 900.0f, 328.0f);
-            add_canvas_item(state.sheet_items, ID_LAYOUT_STACK, 566.0f, 522.0f);
-            add_canvas_item(state.sheet_items, ID_LAYOUT_CANVAS, 930.0f, 522.0f);
+            add_layout_slice_items(state, state.slice_index - NUM_INPUT_SLICES);
         }
 
         GUICore::ElementHandle sheet = context->begin_element(ID_SHEET, Name("Fixed Cheat Sheet"));
@@ -90,7 +85,7 @@ namespace
         }
         else
         {
-            build_layout_slice(context);
+            build_layout_slice(context, state.slice_index - NUM_INPUT_SLICES);
         }
 
         state.sheet_canvas.items = Span<const GUICore::CanvasLayoutItem>(state.sheet_items.data(), state.sheet_items.size());

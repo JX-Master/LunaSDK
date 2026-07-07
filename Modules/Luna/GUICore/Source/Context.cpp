@@ -58,6 +58,15 @@ namespace Luna
                 return clip_rect.width > 0.0f || clip_rect.height > 0.0f;
             }
 
+            RectF merge_clip_rect(const RectF& a, const RectF& b)
+            {
+                if(has_clip(a) && has_clip(b))
+                {
+                    return intersect_rect(a, b);
+                }
+                return has_clip(a) ? a : b;
+            }
+
             bool contains_name(Span<const Name> names, const Name& name)
             {
                 for(const Name& candidate : names)
@@ -342,6 +351,74 @@ namespace Luna
             root_result.content_size = Float2U(rect.width, rect.height);
             set_layout_result(root, root_result);
             return apply_layout_subtree(root);
+        }
+
+        MeasureResult Context::measure_element(const ElementHandle& element, const Float2U& available_size)
+        {
+            lutsassert();
+            if(!element.id || element.generation != m_generation || element.index >= m_elements.size() ||
+                m_elements[element.index].id != element.id)
+            {
+                return MeasureResult();
+            }
+            const Element& e = m_elements[element.index];
+            MeasureResult content;
+            if(e.layout.measure_callback)
+            {
+                Float2U available_content(
+                    max(available_size.x - e.layout.margin.x - e.layout.margin.z - e.layout.padding.x - e.layout.padding.z, 0.0f),
+                    max(available_size.y - e.layout.margin.y - e.layout.margin.w - e.layout.padding.y - e.layout.padding.w, 0.0f));
+                content = e.layout.measure_callback(this, element, available_content, e.layout.userdata);
+            }
+            MeasureResult result;
+            for(LayoutAxis axis : { LayoutAxis::x, LayoutAxis::y })
+            {
+                const SizeValue& size = axis == LayoutAxis::x ? e.layout.width : e.layout.height;
+                f32 available_axis = axis == LayoutAxis::x ? available_size.x : available_size.y;
+                f32 padding = axis == LayoutAxis::x ?
+                    e.layout.padding.x + e.layout.padding.z :
+                    e.layout.padding.y + e.layout.padding.w;
+                f32 content_min = (axis == LayoutAxis::x ? content.minimum.x : content.minimum.y) + padding;
+                f32 content_desired = (axis == LayoutAxis::x ? content.desired.x : content.desired.y) + padding;
+                f32 content_max = axis == LayoutAxis::x ? content.maximum.x : content.maximum.y;
+                content_max = content_max >= F32_MAX * 0.5f ? F32_MAX : content_max + padding;
+                f32 minimum = size.kind == SizeKind::fit ? max(size.min, content_min) : size.min;
+                f32 maximum = size.max >= 0.0f ? size.max : F32_MAX;
+                if(size.kind == SizeKind::fit)
+                {
+                    maximum = min(maximum, content_max);
+                }
+                maximum = max(maximum, minimum);
+                f32 desired = 0.0f;
+                switch(size.kind)
+                {
+                case SizeKind::fixed:
+                    desired = size.value;
+                    break;
+                case SizeKind::percent:
+                    desired = available_axis * size.value;
+                    break;
+                case SizeKind::fit:
+                    desired = content_desired;
+                    break;
+                default:
+                    break;
+                }
+                desired = min(max(desired, minimum), maximum);
+                if(axis == LayoutAxis::x)
+                {
+                    result.minimum.x = minimum;
+                    result.desired.x = desired;
+                    result.maximum.x = maximum;
+                }
+                else
+                {
+                    result.minimum.y = minimum;
+                    result.desired.y = desired;
+                    result.maximum.y = maximum;
+                }
+            }
+            return result;
         }
 
         RV Context::apply_element_layout(const ElementHandle& element)
@@ -664,13 +741,16 @@ namespace Luna
                     }
                     const DrawCommand& command = m_draw_commands[command_index];
                     RectF resolved_rect = resolve_draw_rect(command, Span<const Element>(m_elements.data(), m_elements.size()));
+                    RectF element_clip;
+                    if(command.element != INVALID_ELEMENT && command.element < m_elements.size())
+                    {
+                        element_clip = to_screen_rect(layer_index, m_elements[command.element].layout_result.clip_rect);
+                    }
                     if(command.type == DrawCommandType::push_clip)
                     {
                         RectF screen_clip = to_screen_rect(layer_index, resolved_rect);
-                        if(!clip_stack.empty())
-                        {
-                            screen_clip = intersect_rect(clip_stack.back(), screen_clip);
-                        }
+                        screen_clip = merge_clip_rect(screen_clip, element_clip);
+                        screen_clip = clip_stack.empty() ? screen_clip : intersect_rect(clip_stack.back(), screen_clip);
                         clip_stack.push_back(screen_clip);
                         continue;
                     }
@@ -683,7 +763,7 @@ namespace Luna
                         continue;
                     }
 
-                    RectF clip_rect = clip_stack.empty() ? RectF(0.0f, 0.0f, 0.0f, 0.0f) : clip_stack.back();
+                    RectF clip_rect = clip_stack.empty() ? element_clip : merge_clip_rect(clip_stack.back(), element_clip);
                     RectF vg_clip = has_clip(clip_rect) ? to_vg_rect(clip_rect) : RectF(0.0f, 0.0f, 0.0f, 0.0f);
                     draw_list->set_clip_rect(vg_clip);
                     draw_list->set_texture(nullptr);

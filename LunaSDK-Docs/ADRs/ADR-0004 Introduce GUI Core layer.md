@@ -85,8 +85,9 @@ This decision removes the following concepts from the long-term high-level `GUI`
 
 5. **Layout engine**
    - Provides reusable layout primitives rather than widget-specific layout code.
-   - Initial primitives should include linear layout, stack/canvas placement, grid layout, table tracks, scroll viewport layout, and clipping.
-   - The size model should evolve from the current fixed/hug/fill model to a more expressive axis model that can represent pixels, percent, ratio, fill/expand, fit-content, fit-largest, and min/max constraints.
+   - Initial primitives should include flex layout, stack/canvas placement, grid layout, table tracks, scroll viewport layout, and clipping.
+   - The element axis size model should stay small: `fixed`, `percent`, and `fit` with explicit min/max constraints. Content-driven `fit` sizing is supplied by measure callbacks owned by higher-level packages instead of by scanning draw commands or hard-coding text knowledge into GUICore.
+   - Specialized sizing such as ratio table tracks belongs to the specific parent layout primitive that owns that placement policy.
    - Layout should be axis-agnostic where practical so that width and height logic do not diverge.
    - Layouting is implemented by independent functions operating on element data, not as element methods.
 
@@ -377,5 +378,6 @@ This ADR does not require an immediate full rewrite. It defines the target archi
 The name `GUICore` is intentionally explicit. It should be understood as a lower-level primitive layer, not as a widget API. Normal application code should usually use one of the immediate API packages built on top of `GUICore`.
 
 ## Version history
+* **2026/7/4** Clarified the layout model: flex replaces the old linear-layout wording, element sizing is fixed/percent/fit with min/max constraints, and content-driven measurement is supplied by package-owned measure callbacks.
 * **2026/6/17** Revised the decision to remove `GUI::Node`, `GUI::RenderProxy`, and `GUI::IContext` from the long-term architecture, define the element tree as typeless data, and narrow the default `GUI` module into one editor-style immediate API package.
 * **2026/6/16** Proposed.

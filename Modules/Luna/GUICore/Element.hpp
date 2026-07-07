@@ -41,6 +41,28 @@ namespace Luna
             f32 max = -1.0f;
         };
 
+        //! Describes the minimum, desired and maximum content size returned by a measure callback.
+        //! @remark These sizes describe the element content box before padding is added. Layout algorithms add
+        //! padding and apply @ref SizeValue constraints when resolving the final element box size.
+        struct MeasureResult
+        {
+            //! Minimum content size that can still present the element meaningfully.
+            Float2U minimum = Float2U(0.0f);
+            //! Preferred content size when neither flex grow nor flex shrink is applied.
+            Float2U desired = Float2U(0.0f);
+            //! Maximum content size. Use `F32_MAX` on an axis to mark it as unbounded.
+            Float2U maximum = Float2U(F32_MAX, F32_MAX);
+        };
+
+        //! Called by layout measurement to compute package-defined content size for one element.
+        //! @param[in] context The context that owns @p element.
+        //! @param[in] element The element being measured.
+        //! @param[in] available_content_size Available content-box size after margin and padding are removed.
+        //! @param[in] userdata User data stored in @ref LayoutConfig.
+        //! @return Returns content-box minimum, desired and maximum sizes.
+        using MeasureCallback = MeasureResult(*)(IContext* context, const ElementHandle& element,
+            const Float2U& available_content_size, void* userdata);
+
         //! Called by @ref IContext::apply_layout to arrange or finalize one element subtree.
         //! @param[in] context The context that owns @p element.
         //! @param[in] element The element being arranged.
@@ -66,6 +88,8 @@ namespace Luna
             f32 flex_shrink = 1.0f;
             //! Optional identifier for package-defined or core-provided layout algorithms.
             Name name;
+            //! Optional content measure callback. If this is `nullptr`, content minimum and desired sizes are zero.
+            MeasureCallback measure_callback = nullptr;
             //! Arrange callback. If this is `nullptr`, the element does not arrange its children.
             LayoutCallback callback = nullptr;
             //! Optional post-order callback called after children are arranged.

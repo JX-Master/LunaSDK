@@ -348,23 +348,27 @@ namespace Luna::GUICoreTest
         context->set_layout_config(panel, fixed_layout(SHEET_WIDTH - 128.0f, 528.0f));
         state.pointer_items.clear();
         add_canvas_item(state.pointer_items, ID_POINTER_BASE_LAYER, 0.0f, 0.0f);
-        add_canvas_item(state.pointer_items, ID_POINTER_A, 62.0f, 104.0f);
-        add_canvas_item(state.pointer_items, ID_POINTER_B, 320.0f, 104.0f);
         add_canvas_item(state.pointer_items, ID_POINTER_TOP_LAYER, 520.0f, 48.0f);
         add_canvas_item(state.pointer_items, ID_POINTER_C, 570.0f, 144.0f);
         add_canvas_item(state.pointer_items, ID_POINTER_E, 792.0f, 144.0f);
         add_canvas_item(state.pointer_items, ID_POINTER_D, 570.0f, 238.0f);
+        state.pointer_base_items.clear();
+        add_canvas_item(state.pointer_base_items, ID_POINTER_A, 62.0f, 104.0f);
+        add_canvas_item(state.pointer_base_items, ID_POINTER_B, 320.0f, 104.0f);
 
         GUICore::ElementHandle base = context->begin_element(ID_POINTER_BASE_LAYER, Name("Bottom Layer Element"));
         context->set_layout_config(base, fixed_layout(1160.0f, 290.0f));
         draw_rect(context, RectF(0.0f, 0.0f, 1160.0f, 290.0f), Float4U(0.05f, 0.92f, 0.48f, 1.0f), 0.0f);
         pointer_label(context, 28.0f, 26.0f, "Bottom Layer Element", "PHB: none");
-        context->end_element();
-
         pointer_demo_element(context, ID_POINTER_A, 190.0f, 108.0f, "Element A", "PHB: target",
             GUICore::PointerHitBehavior::target);
         pointer_demo_element(context, ID_POINTER_B, 808.0f, 214.0f, "Element B", "PHB: target",
             GUICore::PointerHitBehavior::target, "Partly covered");
+        state.pointer_base_canvas.items = Span<const GUICore::CanvasLayoutItem>(state.pointer_base_items.data(), state.pointer_base_items.size());
+        state.pointer_base_canvas.default_item = GUICore::CanvasLayoutItem();
+        state.pointer_base_canvas.clip_children = true;
+        set_canvas_layout(context, base, &state.pointer_base_canvas);
+        context->end_element();
 
         GUICore::ElementHandle top = context->begin_element(ID_POINTER_TOP_LAYER, Name("Top Layer Element"));
         context->set_layout_config(top, fixed_layout(608.0f, 264.0f));

@@ -36,6 +36,7 @@ namespace Luna
             const GUICore::Element* element = context->get_element(layout.index);
             GUICore::LayoutConfig merged = element->layout;
             merged.name = config.name;
+            merged.measure_callback = config.measure_callback;
             merged.callback = config.callback;
             merged.finalize_callback = config.finalize_callback;
             merged.userdata = config.userdata;
@@ -130,6 +131,7 @@ namespace Luna
             const GUICore::FlexLayoutDesc& desc)
         {
             config.name = Name("gui.core.flex");
+            config.measure_callback = GUICore::measure_flex;
             config.callback = GUICore::layout_flex;
             config.userdata = allocate_layout_userdata(context, desc);
         }

@@ -10,6 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUICORE_API LUNA_EXPORT
 #include "../Layout.hpp"
+#include "GUICore.hpp"
 
 namespace Luna
 {
@@ -78,22 +79,12 @@ namespace Luna
                 return RectF(min_x, min_y, max(max_x - min_x, 0.0f), max(max_y - min_y, 0.0f));
             }
 
-            f32 clamp_size(f32 value, const SizeValue& size)
+            f32 clamp_size(f32 value, f32 minimum, f32 maximum)
             {
-                f32 r = max(value, size.min);
-                if(size.max >= 0.0f)
-                {
-                    r = min(r, size.max);
-                }
-                return r;
+                return min(max(value, minimum), maximum);
             }
 
-            f32 content_axis_size(const Element& element, LayoutAxis axis)
-            {
-                return axis_value(element.layout_result.content_size, axis);
-            }
-
-            f32 resolve_basis_size(const Element& element, LayoutAxis axis, f32 available)
+            f32 resolve_requested_axis_size(const Element& element, LayoutAxis axis, f32 available, f32 content_desired)
             {
                 const SizeValue& size = requested_size(element.layout, axis);
                 f32 value = 0.0f;
@@ -106,13 +97,13 @@ namespace Luna
                     value = available * size.value;
                     break;
                 case SizeKind::fit:
-                    value = content_axis_size(element, axis);
+                    value = content_desired;
                     break;
                 default:
                     value = 0.0f;
                     break;
                 }
-                return clamp_size(value, size);
+                return value;
             }
 
             f32 resolve_axis_maximum(const SizeValue& size)
@@ -137,7 +128,7 @@ namespace Luna
             RectF inherited_layout_clip(const Element& parent, const RectF& rect)
             {
                 bool has_previous_layout = rect_valid(parent.layout_result.rect) || rect_valid(parent.layout_result.clip_rect);
-                return has_previous_layout ? intersect_rect(rect, parent.layout_result.clip_rect) : rect;
+                return has_previous_layout ? parent.layout_result.clip_rect : rect;
             }
 
             Vector<u32> collect_children(IContext* context, const Element& parent)
@@ -156,22 +147,18 @@ namespace Luna
                 return children;
             }
 
-            f32 resolve_stack_axis_size(const Element& child, LayoutAxis axis, f32 available)
+            f32 resolve_measured_axis_size(const Element& child, LayoutAxis axis, f32 available,
+                const MeasureResult& measured)
             {
-                return resolve_basis_size(child, axis, available);
+                const SizeValue& size = requested_size(child.layout, axis);
+                f32 desired = resolve_requested_axis_size(child, axis, available, axis_value(measured.desired, axis));
+                return clamp_size(desired, axis_value(measured.minimum, axis), axis_value(measured.maximum, axis));
             }
-
-            struct MeasuredSize
-            {
-                Float2U minimum;
-                Float2U desired;
-                Float2U maximum = Float2U(F32_MAX, F32_MAX);
-            };
 
             struct FlexItem
             {
                 u32 element_index = INVALID_ELEMENT;
-                MeasuredSize measured;
+                MeasureResult measured;
                 f32 outer_min = 0.0f;
                 f32 outer_desired = 0.0f;
                 f32 outer_max = F32_MAX;
@@ -194,145 +181,71 @@ namespace Luna
                 f32 cross_size = 0.0f;
             };
 
-            MeasuredSize measure_element(IContext* context, u32 element_index, const Float2U& available);
+            MeasureResult measure_element_by_index(IContext* context, u32 element_index, const Float2U& available);
 
-            void include_content_bounds(Float2U& content, f32 min_x, f32 min_y, f32 max_x, f32 max_y)
+            Float2U content_available_size(const Element& element, const Float2U& available)
             {
-                content.x = max(content.x, max(max_x, 0.0f) - min(min_x, 0.0f));
-                content.y = max(content.y, max(max_y, 0.0f) - min(min_y, 0.0f));
-            }
-
-            FontDesc resolve_measure_font(IContext* context, const Name& id)
-            {
-                FontDesc font = context->get_font(id);
-                if(!font.font)
-                {
-                    font.font = Font::get_default_font();
-                    font.font_index = 0;
-                }
-                return font;
-            }
-
-            Float2U measure_text_content(IContext* context, const DrawCommand& command,
-                const Float2U& available_content)
-            {
-                if(command.text.empty() || command.font_size <= 0.0f)
-                {
-                    return Float2U(0.0f);
-                }
-                f32 leading_x = max(command.rect.offset_x, 0.0f);
-                f32 trailing_x = command.rect.width <= 0.0f ? max(-command.rect.width, 0.0f) : 0.0f;
-                f32 leading_y = max(command.rect.offset_y, 0.0f);
-                f32 trailing_y = command.rect.height <= 0.0f ? max(-command.rect.height, 0.0f) : 0.0f;
-                f32 text_width = command.rect.width > 0.0f ?
-                    command.rect.width :
-                    max(available_content.x - leading_x - trailing_x, 0.0f);
-                f32 text_height = command.rect.height > 0.0f ?
-                    command.rect.height :
-                    max(available_content.y - leading_y - trailing_y, 0.0f);
-                if(text_width <= 0.0f || text_height <= 0.0f)
-                {
-                    return Float2U(leading_x + trailing_x, leading_y + trailing_y);
-                }
-                FontDesc font = resolve_measure_font(context, command.font);
-                if(!font.font)
-                {
-                    return Float2U(leading_x + trailing_x, leading_y + trailing_y);
-                }
-                VG::TextArrangeSection section;
-                section.font_file = font.font;
-                section.font_index = font.font_index;
-                section.font_size = command.font_size;
-                section.color = command.color;
-                section.num_chars = command.text.size();
-                VG::TextArrangeResult arranged = VG::arrange_text(command.text.c_str(), command.text.size(),
-                    Span<const VG::TextArrangeSection>(&section, 1), RectF(0.0f, 0.0f, text_width, text_height),
-                    command.vertical_alignment, command.horizontal_alignment);
-                return Float2U(leading_x + arranged.bounding_rect.width + trailing_x,
-                    leading_y + arranged.bounding_rect.height + trailing_y);
-            }
-
-            Float2U measure_leaf_content(IContext* context, u32 element_index, const Element& element,
-                const Float2U& available)
-            {
-                Float2U available_content(
+                return Float2U(
                     max(available.x - element.layout.margin.x - element.layout.margin.z -
                         element.layout.padding.x - element.layout.padding.z, 0.0f),
                     max(available.y - element.layout.margin.y - element.layout.margin.w -
                         element.layout.padding.y - element.layout.padding.w, 0.0f));
-                Float2U content(0.0f);
-                for(const DrawCommand& command : context->get_draw_commands())
-                {
-                    if(command.element != element_index)
-                    {
-                        continue;
-                    }
-                    switch(command.type)
-                    {
-                    case DrawCommandType::text:
-                    {
-                        Float2U text_size = measure_text_content(context, command, available_content);
-                        content.x = max(content.x, text_size.x);
-                        content.y = max(content.y, text_size.y);
-                        break;
-                    }
-                    case DrawCommandType::rect:
-                    case DrawCommandType::gradient_rect:
-                    case DrawCommandType::rounded_rect:
-                    case DrawCommandType::image:
-                    case DrawCommandType::shape:
-                        if(command.rect_reference == DrawCommandRectReference::element &&
-                            command.rect.width > 0.0f && command.rect.height > 0.0f)
-                        {
-                            include_content_bounds(content, command.rect.offset_x, command.rect.offset_y,
-                                command.rect.offset_x + command.rect.width,
-                                command.rect.offset_y + command.rect.height);
-                        }
-                        else if(command.rect_reference == DrawCommandRectReference::layer &&
-                            command.rect.width > 0.0f && command.rect.height > 0.0f)
-                        {
-                            content.x = max(content.x, command.rect.width);
-                            content.y = max(content.y, command.rect.height);
-                        }
-                        break;
-                    case DrawCommandType::line:
-                        if(command.rect_reference == DrawCommandRectReference::element)
-                        {
-                            f32 half_width = command.line_width * 0.5f;
-                            include_content_bounds(content,
-                                min(command.rect.offset_x, command.point1.x) - half_width,
-                                min(command.rect.offset_y, command.point1.y) - half_width,
-                                max(command.rect.offset_x, command.point1.x) + half_width,
-                                max(command.rect.offset_y, command.point1.y) + half_width);
-                        }
-                        break;
-                    default:
-                        break;
-                    }
-                }
-                return content;
             }
 
-            MeasuredSize measure_leaf_element(IContext* context, u32 element_index, const Element& element,
-                const Float2U& available)
+            MeasureResult sanitize_content_measure(const MeasureResult& content)
             {
-                MeasuredSize r;
-                Float2U content = measure_leaf_content(context, element_index, element, available);
+                MeasureResult r = content;
+                r.minimum.x = max(r.minimum.x, 0.0f);
+                r.minimum.y = max(r.minimum.y, 0.0f);
+                r.desired.x = max(r.desired.x, r.minimum.x);
+                r.desired.y = max(r.desired.y, r.minimum.y);
+                r.maximum.x = max(r.maximum.x, r.minimum.x);
+                r.maximum.y = max(r.maximum.y, r.minimum.y);
+                return r;
+            }
+
+            MeasureResult resolve_element_measure(const Element& element, const Float2U& available,
+                const MeasureResult& content_measure)
+            {
+                MeasureResult content = sanitize_content_measure(content_measure);
+                MeasureResult r;
                 for(LayoutAxis axis : { LayoutAxis::x, LayoutAxis::y })
                 {
                     const SizeValue& size = requested_size(element.layout, axis);
                     f32 available_axis = axis_value(available, axis);
                     f32 padding = padding_begin(element.layout.padding, axis) + padding_end(element.layout.padding, axis);
-                    f32 content_axis = axis_value(content, axis) + padding;
-                    f32 desired = size.kind == SizeKind::fit ? content_axis : resolve_basis_size(element, axis, available_axis);
-                    f32 minimum = size.min;
-                    f32 maximum = resolve_axis_maximum(size);
-                    desired = min(max(desired, minimum), maximum);
+                    f32 content_min = axis_value(content.minimum, axis) + padding;
+                    f32 content_desired = axis_value(content.desired, axis) + padding;
+                    f32 content_max = axis_value(content.maximum, axis);
+                    content_max = content_max >= F32_MAX * 0.5f ? F32_MAX : content_max + padding;
+                    f32 minimum = size.kind == SizeKind::fit ? max(size.min, content_min) : size.min;
+                    f32 maximum = min(resolve_axis_maximum(size), size.kind == SizeKind::fit ? content_max : F32_MAX);
+                    maximum = max(maximum, minimum);
+                    f32 desired = resolve_requested_axis_size(element, axis, available_axis, content_desired);
+                    desired = clamp_size(desired, minimum, maximum);
                     set_axis_value(r.minimum, axis, minimum);
                     set_axis_value(r.desired, axis, desired);
                     set_axis_value(r.maximum, axis, maximum);
                 }
                 return r;
+            }
+
+            MeasureResult measure_content(IContext* context, u32 element_index, const Element& element,
+                const Float2U& available)
+            {
+                if(!element.layout.measure_callback)
+                {
+                    return MeasureResult();
+                }
+                ElementHandle handle { element.id, element_index, context->generation() };
+                return element.layout.measure_callback(context, handle, content_available_size(element, available),
+                    element.layout.userdata);
+            }
+
+            MeasureResult measure_leaf_element(IContext* context, u32 element_index, const Element& element,
+                const Float2U& available)
+            {
+                return resolve_element_measure(element, available, measure_content(context, element_index, element, available));
             }
 
             void append_flex_line(Vector<FlexLine>& lines, u32 first_item, u32 item_count,
@@ -364,7 +277,7 @@ namespace Luna
                     {
                         continue;
                     }
-                    MeasuredSize measured = measure_element(context, child_index, available);
+                    MeasureResult measured = measure_element_by_index(context, child_index, available);
                     FlexItem item;
                     item.element_index = child_index;
                     item.measured = measured;
@@ -573,19 +486,16 @@ namespace Luna
                 }
             }
 
-            MeasuredSize measure_flex_element(IContext* context, const Element& element,
-                const Float2U& available, const FlexLayoutDesc& desc)
+            MeasureResult measure_flex_content(IContext* context, const Element& element,
+                const Float2U& available_content, const FlexLayoutDesc& desc)
             {
                 LayoutAxis main_axis = desc.axis;
                 LayoutAxis cross_axis = main_axis == LayoutAxis::x ? LayoutAxis::y : LayoutAxis::x;
-                Float2U content_available(
-                    max(available.x - element.layout.padding.x - element.layout.padding.z, 0.0f),
-                    max(available.y - element.layout.padding.y - element.layout.padding.w, 0.0f));
                 Vector<u32> children = collect_children(context, element);
                 Vector<FlexItem> items;
-                build_flex_items(context, children, content_available, main_axis, cross_axis, items);
+                build_flex_items(context, children, available_content, main_axis, cross_axis, items);
                 Vector<FlexLine> lines;
-                build_flex_lines(items, desc, axis_value(content_available, main_axis), lines);
+                build_flex_lines(items, desc, axis_value(available_content, main_axis), lines);
 
                 f32 min_main = 0.0f;
                 f32 desired_main = 0.0f;
@@ -617,40 +527,28 @@ namespace Luna
                     min_cross += line_min_cross;
                     desired_cross += line.cross_size;
                 }
-                min_main += padding_begin(element.layout.padding, main_axis) + padding_end(element.layout.padding, main_axis);
-                desired_main += padding_begin(element.layout.padding, main_axis) + padding_end(element.layout.padding, main_axis);
-                min_cross += padding_begin(element.layout.padding, cross_axis) + padding_end(element.layout.padding, cross_axis);
-                desired_cross += padding_begin(element.layout.padding, cross_axis) + padding_end(element.layout.padding, cross_axis);
 
-                MeasuredSize r;
-                for(LayoutAxis axis : { LayoutAxis::x, LayoutAxis::y })
+                MeasureResult r;
+                if(main_axis == LayoutAxis::x)
                 {
-                    const SizeValue& size = requested_size(element.layout, axis);
-                    f32 axis_available = axis_value(available, axis);
-                    f32 content_min = axis == main_axis ? min_main : min_cross;
-                    f32 content_desired = axis == main_axis ? desired_main : desired_cross;
-                    f32 basis = size.kind == SizeKind::fit ? content_desired : resolve_basis_size(element, axis, axis_available);
-                    f32 minimum = max(size.min, size.kind == SizeKind::fit ? content_min : 0.0f);
-                    f32 maximum = resolve_axis_maximum(size);
-                    f32 desired = min(max(basis, minimum), maximum);
-                    set_axis_value(r.minimum, axis, minimum);
-                    set_axis_value(r.desired, axis, desired);
-                    set_axis_value(r.maximum, axis, maximum);
+                    r.minimum = Float2U(min_main, min_cross);
+                    r.desired = Float2U(desired_main, desired_cross);
                 }
+                else
+                {
+                    r.minimum = Float2U(min_cross, min_main);
+                    r.desired = Float2U(desired_cross, desired_main);
+                }
+                r.maximum = Float2U(F32_MAX, F32_MAX);
                 return r;
             }
 
-            MeasuredSize measure_element(IContext* context, u32 element_index, const Float2U& available)
+            MeasureResult measure_element_by_index(IContext* context, u32 element_index, const Float2U& available)
             {
                 const Element* element = context->get_element(element_index);
                 if(!element)
                 {
-                    return MeasuredSize();
-                }
-                if(element->layout.callback == layout_flex && element->layout.userdata)
-                {
-                    const FlexLayoutDesc& desc = *reinterpret_cast<const FlexLayoutDesc*>(element->layout.userdata);
-                    return measure_flex_element(context, *element, available, desc);
+                    return MeasureResult();
                 }
                 return measure_leaf_element(context, element_index, *element, available);
             }
@@ -765,15 +663,16 @@ namespace Luna
                     {
                         continue;
                     }
+                    MeasureResult measured = measure_element_by_index(context, child_index, Float2U(available, available));
                     f32 desired = 0.0f;
                     if(columns)
                     {
-                        desired = resolve_basis_size(*child, LayoutAxis::x, available) +
+                        desired = measured.desired.x +
                             child->layout.margin.x + child->layout.margin.z + cell.padding.x + cell.padding.z;
                     }
                     else
                     {
-                        desired = resolve_basis_size(*child, LayoutAxis::y, available) +
+                        desired = measured.desired.y +
                             child->layout.margin.y + child->layout.margin.w + cell.padding.y + cell.padding.w;
                     }
                     out_sizes[track_index] = max(out_sizes[track_index], clamp_table_track_size(desired, track));
@@ -803,6 +702,23 @@ namespace Luna
                     }
                 }
             }
+        }
+
+        LUNA_GUICORE_API MeasureResult measure_flex(IContext* context, const ElementHandle& element,
+            const Float2U& available_content_size, void* userdata)
+        {
+            if(!context || !userdata)
+            {
+                return MeasureResult();
+            }
+            const Element* parent = context->get_element(element.index);
+            if(!parent || parent->id != element.id)
+            {
+                return MeasureResult();
+            }
+            const FlexLayoutDesc& desc = *reinterpret_cast<const FlexLayoutDesc*>(userdata);
+            context->log_debug_pass(DebugPassKind::layout, Name("measure_flex"), Name("measure_callback"), parent->id);
+            return measure_flex_content(context, *parent, available_content_size, desc);
         }
 
         LUNA_GUICORE_API RV layout_flex(IContext* context, const ElementHandle& element, const RectF& rect,
@@ -874,10 +790,8 @@ namespace Luna
             f32 measured_main = 0.0f;
             f32 measured_cross = total_cross;
             f32 cross_cursor = line_offset;
-            for(u32 visual_line = 0; visual_line < (u32)lines.size(); ++visual_line)
+            for(u32 line_index = 0; line_index < (u32)lines.size(); ++line_index)
             {
-                u32 line_index = desc.wrap == FlexWrap::wrap_reverse ?
-                    (u32)lines.size() - 1 - visual_line : visual_line;
                 FlexLine& line = lines[line_index];
                 f32 main_offset = 0.0f;
                 f32 main_gap = desc.main_axis_gap;
@@ -946,7 +860,7 @@ namespace Luna
                 }
                 measured_main = max(measured_main, line.resolved_main);
                 cross_cursor += line.cross_size;
-                if(visual_line + 1 < lines.size())
+                if(line_index + 1 < lines.size())
                 {
                     cross_cursor += line_gap;
                 }
@@ -1074,8 +988,9 @@ namespace Luna
                 const Element* child = context->get_element(child_index);
                 f32 available_width = max(content_rect.width - child->layout.margin.x - child->layout.margin.z, 0.0f);
                 f32 available_height = max(content_rect.height - child->layout.margin.y - child->layout.margin.w, 0.0f);
-                f32 width = resolve_stack_axis_size(*child, LayoutAxis::x, available_width);
-                f32 height = resolve_stack_axis_size(*child, LayoutAxis::y, available_height);
+                MeasureResult measured = measure_element_by_index(context, child_index, Float2U(available_width, available_height));
+                f32 width = resolve_measured_axis_size(*child, LayoutAxis::x, available_width, measured);
+                f32 height = resolve_measured_axis_size(*child, LayoutAxis::y, available_height, measured);
                 f32 offset_x = content_rect.offset_x + child->layout.margin.x + max(available_width - width, 0.0f) * desc.alignment.x;
                 f32 offset_y = content_rect.offset_y + child->layout.margin.y + max(available_height - height, 0.0f) * desc.alignment.y;
 
@@ -1132,6 +1047,7 @@ namespace Luna
                 bool stretch_y = item.anchor_min.y != item.anchor_max.y;
                 f32 available_width = max(content_rect.width - child->layout.margin.x - child->layout.margin.z, 0.0f);
                 f32 available_height = max(content_rect.height - child->layout.margin.y - child->layout.margin.w, 0.0f);
+                MeasureResult measured = measure_element_by_index(context, child_index, Float2U(available_width, available_height));
 
                 f32 left = 0.0f;
                 f32 top = 0.0f;
@@ -1145,7 +1061,7 @@ namespace Luna
                 }
                 else
                 {
-                    width = resolve_stack_axis_size(*child, LayoutAxis::x, available_width);
+                    width = resolve_measured_axis_size(*child, LayoutAxis::x, available_width, measured);
                     f32 anchor_x = resolve_canvas_axis_position(content_rect.offset_x, content_rect.width, item.anchor_min.x, item.offset.x);
                     left = anchor_x - width * item.pivot.x;
                 }
@@ -1157,7 +1073,7 @@ namespace Luna
                 }
                 else
                 {
-                    height = resolve_stack_axis_size(*child, LayoutAxis::y, available_height);
+                    height = resolve_measured_axis_size(*child, LayoutAxis::y, available_height, measured);
                     f32 anchor_y = resolve_canvas_axis_position(content_rect.offset_y, content_rect.height, item.anchor_min.y, item.offset.y);
                     top = anchor_y - height * item.pivot.y;
                 }
@@ -1212,15 +1128,15 @@ namespace Luna
                 const Element* child = context->get_element(child_index);
                 f32 available_width = max(content_rect.width - child->layout.margin.x - child->layout.margin.z, 0.0f);
                 f32 available_height = max(content_rect.height - child->layout.margin.y - child->layout.margin.w, 0.0f);
-                MeasuredSize measured = measure_element(context, child_index, Float2U(available_width, available_height));
+                MeasureResult measured = measure_element_by_index(context, child_index, Float2U(available_width, available_height));
                 const SizeValue& requested_width = requested_size(child->layout, LayoutAxis::x);
                 const SizeValue& requested_height = requested_size(child->layout, LayoutAxis::y);
                 f32 width = requested_width.kind == SizeKind::fit ?
                     measured.desired.x :
-                    resolve_stack_axis_size(*child, LayoutAxis::x, available_width);
+                    resolve_measured_axis_size(*child, LayoutAxis::x, available_width, measured);
                 f32 height = requested_height.kind == SizeKind::fit ?
                     measured.desired.y :
-                    resolve_stack_axis_size(*child, LayoutAxis::y, available_height);
+                    resolve_measured_axis_size(*child, LayoutAxis::y, available_height, measured);
                 RectF child_rect(
                     content_rect.offset_x - desc.scroll_offset.x + child->layout.margin.x,
                     content_rect.offset_y - desc.scroll_offset.y + child->layout.margin.y,

@@ -14,6 +14,17 @@ namespace Luna
 {
     namespace GUICore
     {
+        //! Measures the content size required by a flex layout element.
+        //! @param[in] context The GUI Core context that owns @p element.
+        //! @param[in] element The flex container element.
+        //! @param[in] available_content_size Available parent content-box size.
+        //! @param[in] userdata Pointer to @ref FlexLayoutDesc owned by the caller.
+        //! @return Returns content-box minimum, desired and maximum sizes for the flex container.
+        //! @remark Install this function into @ref LayoutConfig::measure_callback together with
+        //! @ref layout_flex when an element should hug its flex children on `fit` axes.
+        LUNA_GUICORE_API MeasureResult measure_flex(IContext* context, const ElementHandle& element,
+            const Float2U& available_content_size, void* userdata);
+
         //! Applies one flex layout algorithm to the direct children of one element.
         //! @param[in] context The GUI Core context that owns @p element.
         //! @param[in] element The parent element whose direct children will be arranged.

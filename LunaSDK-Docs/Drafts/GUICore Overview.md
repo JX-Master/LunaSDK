@@ -131,9 +131,9 @@ context->set_layout_config(root, GUICore::LayoutConfig {});
 
 GUICore::ElementHandle item = context->begin_element(context->make_id("hello"), Name("Hello item"));
 GUICore::LayoutConfig layout;
-layout.width.kind = GUICore::SizeKind::pixels;
+layout.width.kind = GUICore::SizeKind::fixed;
 layout.width.value = 220.0f;
-layout.height.kind = GUICore::SizeKind::pixels;
+layout.height.kind = GUICore::SizeKind::fixed;
 layout.height.value = 36.0f;
 context->set_layout_config(item, layout);
 
@@ -162,9 +162,9 @@ GUICore::ElementHandle row = GUI::begin_h_layout(
 GUI::text_button(context, context->make_id("build"), "Build", button_layout);
 GUI::text_button(context, context->make_id("run"), "Run", button_layout);
 
-GUICore::LinearLayoutDesc desc;
+GUICore::FlexLayoutDesc desc;
 desc.axis = GUICore::LayoutAxis::x;
-desc.gap = 8.0f;
+desc.main_axis_gap = 8.0f;
 luexp(GUI::end_h_layout(context, row, desc));
 ```
 

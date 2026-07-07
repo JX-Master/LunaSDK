@@ -48,6 +48,10 @@ This describes an inset rectangle: left/top offset by 4 pixels, width/height equ
 ### Font
 Text draw commands reference fonts by `Name`. Register fonts on the context before using them.
 
+Text draw commands do not participate in layout measurement. If an element should use text-driven `fit` sizing,
+the higher-level package must install a `LayoutConfig::measure_callback` that measures the text with its own
+text, font and font-size data. See [[GUICore Layout]] for the measure callback contract.
+
 ```cpp
 luexp(context->register_font(Name("default"), Font::get_default_font()));
 ```

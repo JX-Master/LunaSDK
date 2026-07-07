@@ -123,6 +123,7 @@ namespace Luna
             virtual void set_layout_config(const ElementHandle& element, const LayoutConfig& config) override;
             virtual void set_layout_result(const ElementHandle& element, const LayoutResult& result) override;
             virtual RV apply_layout(const ElementHandle& root, const RectF& rect) override;
+            virtual MeasureResult measure_element(const ElementHandle& element, const Float2U& available_size) override;
             virtual void set_interactable(const ElementHandle& element, const Interactable& interactable) override;
             virtual void set_navigation_config(const ElementHandle& element, const NavigationConfig& navigation) override;
             virtual NavigationConfig get_navigation_config(const ElementHandle& element) const override;

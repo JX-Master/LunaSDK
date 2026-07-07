@@ -98,8 +98,9 @@ Each element can receive a `LayoutConfig`. Layout algorithms later write `Layout
 
 ```cpp
 GUICore::LayoutConfig layout;
-layout.width.kind = GUICore::SizeKind::expand;
-layout.height.kind = GUICore::SizeKind::pixels;
+layout.width.kind = GUICore::SizeKind::percent;
+layout.width.value = 1.0f;
+layout.height.kind = GUICore::SizeKind::fixed;
 layout.height.value = 32.0f;
 layout.padding = Float4U(8.0f, 4.0f, 8.0f, 4.0f);
 context->set_layout_config(element, layout);
