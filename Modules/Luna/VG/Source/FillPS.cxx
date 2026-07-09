@@ -389,7 +389,7 @@ float ellipse_test_y_axis(float2 v0, float2 v1, float2 center, float2 radius, bo
     return sign * saturate(yt * pixels_per_unit.y + 0.5f);
 }
 
-float clip_rect_test(float2 pos, float4 clip_rect, float2 pixels_per_unit)
+float clip_rect_test(float2 pos, float4 clip_rect)
 {
     float4 rect = float4{clip_rect.xy, clip_rect.xy + clip_rect.zw};
     rect -= float4{pos, pos};
@@ -397,11 +397,7 @@ float clip_rect_test(float2 pos, float4 clip_rect, float2 pixels_per_unit)
     {
         return 0.0f;
     }
-    float2 dist0 = abs(rect.xy);
-    float2 dist1 = abs(rect.zw);
-    float2 dist = min(dist0, dist1);
-    dist = saturate(dist * pixels_per_unit);
-    return min(dist.x, dist.y);
+    return 1.0f;
 }
 
 [[cppsl::fragment]]
@@ -490,9 +486,7 @@ PSOut ps_main(PSIn v)
     float coverage = max(abs(coverage_x * weight_x + coverage_y * weight_y) / max(weight_x + weight_y, 0.0001220703125f), min(abs(coverage_x), abs(coverage_y)));
     if (any(g_set0.g_cbuffer.clip_rect != float4{0.0f, 0.0f, 0.0f, 0.0f}))
     {
-        float2 pos_units_per_pixel = fwidth(v.position_2d);
-        float2 pixels_per_pos_unit = 1.0f / pos_units_per_pixel;
-        coverage *= clip_rect_test(v.position_2d, g_set0.g_cbuffer.clip_rect, pixels_per_pos_unit);
+        coverage *= clip_rect_test(v.position_2d, g_set0.g_cbuffer.clip_rect);
     }
 
     PSOut o;
