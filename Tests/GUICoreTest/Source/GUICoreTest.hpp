@@ -16,7 +16,7 @@ namespace Luna::GUICoreTest
     inline constexpr f32 SHEET_WIDTH = 1366.0f;
     inline constexpr f32 SHEET_HEIGHT = 768.0f;
     inline constexpr u32 NUM_INPUT_SLICES = 3;
-    inline constexpr u32 NUM_LAYOUT_SLICES = 14;
+    inline constexpr u32 NUM_LAYOUT_SLICES = 15;
     inline constexpr u32 NUM_SLICES = NUM_INPUT_SLICES + NUM_LAYOUT_SLICES;
 
     enum : GUICore::id_t

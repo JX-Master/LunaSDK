@@ -35,7 +35,8 @@ namespace Luna::GUICoreTest
             flex_item_sizing,
             flex_clipping,
             grid_layout,
-            canvas_layout,
+            canvas_non_stretch,
+            canvas_stretch,
             scroll_viewport_layout,
             table_layout
         };
@@ -166,6 +167,24 @@ namespace Luna::GUICoreTest
             context->set_layout_config(child, fixed_layout(width, height));
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), color, 0.0f);
             draw_element_text(context, label, 17.0f);
+            context->end_element();
+        }
+
+        void marker_box(GUICore::IContext* context, GUICore::id_t id, const c8* label, f32 width, f32 height,
+            const Float4U& color, bool outline)
+        {
+            GUICore::ElementHandle marker = context->begin_element(id, Name(label));
+            context->set_layout_config(marker, fixed_layout(width, height));
+            if(outline)
+            {
+                draw_outline(context, RectF(0.0f, 0.0f, width, height), color, 2.0f);
+                draw_line(context, Float2U(0.0f, height * 0.5f), Float2U(width, height * 0.5f), color, 1.25f);
+                draw_line(context, Float2U(width * 0.5f, 0.0f), Float2U(width * 0.5f, height), color, 1.25f);
+            }
+            else
+            {
+                draw_rect(context, RectF(0.0f, 0.0f, width, height), color, min(width, height) * 0.5f);
+            }
             context->end_element();
         }
 
@@ -493,42 +512,138 @@ namespace Luna::GUICoreTest
             }
         }
 
-        void build_canvas_layout(GUICore::IContext* context)
+        void build_canvas_non_stretch_case(GUICore::IContext* context, u32 case_index, const c8* title,
+            const Float2U& anchor, const Float4U& offset, const Float2U& pivot)
         {
-            text_block(context, "Canvas uses parent-owned anchor, offset and pivot records keyed by child element ID.");
-            static GUICore::CanvasLayoutItem items[3];
-            static GUICore::CanvasLayoutDesc desc;
-            items[0].element_id = child_id(demo_id(0), 0);
-            items[0].anchor_min = Float2U(0.0f, 0.0f);
-            items[0].anchor_max = Float2U(0.0f, 0.0f);
-            items[0].offset = Float4U(24.0f, 28.0f, 0.0f, 0.0f);
-            items[0].pivot = Float2U(0.0f);
-            items[1].element_id = child_id(demo_id(0), 1);
-            items[1].anchor_min = Float2U(0.5f, 0.5f);
-            items[1].anchor_max = Float2U(0.5f, 0.5f);
-            items[1].offset = Float4U(0.0f);
-            items[1].pivot = Float2U(0.5f, 0.5f);
-            items[2].element_id = child_id(demo_id(0), 2);
-            items[2].anchor_min = Float2U(0.0f, 1.0f);
-            items[2].anchor_max = Float2U(1.0f, 1.0f);
-            items[2].offset = Float4U(24.0f, -58.0f, 24.0f, 0.0f);
-            items[2].pivot = Float2U(0.0f, 1.0f);
-            desc.items = Span<const GUICore::CanvasLayoutItem>(items, 3);
-            desc.clip_children = true;
+            constexpr f32 WIDTH = 340.0f;
+            constexpr f32 HEIGHT = 168.0f;
+            constexpr f32 PADDING = 12.0f;
+            GUICore::id_t id = demo_id(case_index);
+            GUICore::id_t box_id = child_id(id, 0);
+            GUICore::id_t anchor_id = child_id(id, 1);
+            GUICore::id_t pivot_id = child_id(id, 2);
 
-            GUICore::ElementHandle canvas = context->begin_element(demo_id(0), Name("Canvas Demo"));
-            GUICore::LayoutConfig canvas_layout = fixed_layout(680.0f, 280.0f);
-            canvas_layout.padding = Float4U(10.0f);
-            context->set_layout_config(canvas, canvas_layout);
+            static GUICore::CanvasLayoutItem items[3][3];
+            static GUICore::CanvasLayoutDesc descs[3];
+            GUICore::CanvasLayoutItem& box_item = items[case_index][0];
+            box_item = GUICore::CanvasLayoutItem();
+            box_item.element_id = box_id;
+            box_item.anchor_min = anchor;
+            box_item.anchor_max = anchor;
+            box_item.offset = offset;
+            box_item.pivot = pivot;
+
+            GUICore::CanvasLayoutItem& anchor_item = items[case_index][1];
+            anchor_item = GUICore::CanvasLayoutItem();
+            anchor_item.element_id = anchor_id;
+            anchor_item.anchor_min = anchor;
+            anchor_item.anchor_max = anchor;
+            anchor_item.offset = offset;
+            anchor_item.pivot = Float2U(0.5f, 0.5f);
+
+            GUICore::CanvasLayoutItem& pivot_item = items[case_index][2];
+            pivot_item = anchor_item;
+            pivot_item.element_id = pivot_id;
+
+            descs[case_index] = GUICore::CanvasLayoutDesc();
+            descs[case_index].items = Span<const GUICore::CanvasLayoutItem>(items[case_index], 3);
+            descs[case_index].clip_children = true;
+
+            GUICore::ElementHandle canvas = context->begin_element(id, Name(title));
+            GUICore::LayoutConfig layout = fixed_layout(WIDTH, HEIGHT);
+            layout.padding = Float4U(PADDING);
+            context->set_layout_config(canvas, layout);
+            draw_text(context, RectF(0.0f, -32.0f, WIDTH, 26.0f), title, 20.0f,
+                Float4U(0.0f, 0.0f, 0.0f, 1.0f));
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.97f, 0.97f, 0.97f, 1.0f));
-            draw_outline(context, RectF(0.0f, 0.0f, 680.0f, 280.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f));
-            draw_text(context, RectF(0.0f, -32.0f, 420.0f, 26.0f), "anchors + offsets + pivots",
-                20.0f, Float4U(0.0f, 0.0f, 0.0f, 1.0f));
-            plain_box(context, child_id(demo_id(0), 0), "top-left offset", 150.0f, 54.0f);
-            plain_box(context, child_id(demo_id(0), 1), "center pivot", 150.0f, 54.0f);
-            plain_box(context, child_id(demo_id(0), 2), "stretched bottom strip", 120.0f, 42.0f);
-            set_canvas_layout(context, canvas, &desc);
+            draw_outline(context, RectF(0.0f, 0.0f, WIDTH, HEIGHT), Float4U(0.0f, 0.0f, 0.0f, 1.0f));
+            draw_outline(context, RectF(PADDING, PADDING, WIDTH - PADDING * 2.0f, HEIGHT - PADDING * 2.0f),
+                Float4U(0.68f, 0.68f, 0.68f, 1.0f));
+            draw_text(context, RectF(14.0f, HEIGHT - 36.0f, WIDTH - 28.0f, 24.0f),
+                "pos = anchor + offset - measured_size * pivot", 14.0f, Float4U(0.22f, 0.22f, 0.22f, 1.0f),
+                VG::TextAlignment::center);
+            plain_box(context, box_id, "fixed child", 112.0f, 54.0f);
+            marker_box(context, anchor_id, "anchor point", 18.0f, 18.0f, Float4U(0.0f, 0.36f, 0.95f, 1.0f), true);
+            marker_box(context, pivot_id, "pivot point", 8.0f, 8.0f, Float4U(0.95f, 0.12f, 0.12f, 1.0f), false);
+            set_canvas_layout(context, canvas, &descs[case_index]);
             context->end_element();
+        }
+
+        void build_canvas_non_stretch(GUICore::IContext* context)
+        {
+            text_block(context, "Non-stretch axes use anchor point, offset and pivot. The child keeps its measured fixed size.");
+            build_canvas_non_stretch_case(context, 0, "top-left anchor, top-left pivot",
+                Float2U(0.0f, 0.0f), Float4U(28.0f, 28.0f, 0.0f, 0.0f), Float2U(0.0f, 0.0f));
+            build_canvas_non_stretch_case(context, 1, "center anchor, center pivot",
+                Float2U(0.5f, 0.5f), Float4U(0.0f), Float2U(0.5f, 0.5f));
+            build_canvas_non_stretch_case(context, 2, "bottom-right anchor, bottom-right pivot",
+                Float2U(1.0f, 1.0f), Float4U(-28.0f, -28.0f, 0.0f, 0.0f), Float2U(1.0f, 1.0f));
+        }
+
+        void build_canvas_stretch_case(GUICore::IContext* context, u32 case_index, const c8* title,
+            f32 width, f32 height, const Float2U& anchor_min, const Float2U& anchor_max, const Float4U& offset)
+        {
+            constexpr f32 PADDING = 12.0f;
+            GUICore::id_t id = demo_id(case_index);
+            GUICore::id_t child = child_id(id, 0);
+            GUICore::id_t anchor_rect = child_id(id, 1);
+
+            static GUICore::CanvasLayoutItem items[3][2];
+            static GUICore::CanvasLayoutDesc descs[3];
+            GUICore::CanvasLayoutItem& child_item = items[case_index][0];
+            child_item = GUICore::CanvasLayoutItem();
+            child_item.element_id = child;
+            child_item.anchor_min = anchor_min;
+            child_item.anchor_max = anchor_max;
+            child_item.offset = offset;
+
+            GUICore::CanvasLayoutItem& anchor_item = items[case_index][1];
+            anchor_item = GUICore::CanvasLayoutItem();
+            anchor_item.element_id = anchor_rect;
+            anchor_item.anchor_min = anchor_min;
+            anchor_item.anchor_max = anchor_max;
+
+            descs[case_index] = GUICore::CanvasLayoutDesc();
+            descs[case_index].items = Span<const GUICore::CanvasLayoutItem>(items[case_index], 2);
+            descs[case_index].clip_children = true;
+
+            f32 content_width = width - PADDING * 2.0f;
+            f32 content_height = height - PADDING * 2.0f;
+            f32 anchor_width = content_width * (anchor_max.x - anchor_min.x);
+            f32 anchor_height = content_height * (anchor_max.y - anchor_min.y);
+
+            GUICore::ElementHandle canvas = context->begin_element(id, Name(title));
+            GUICore::LayoutConfig layout = fixed_layout(width, height);
+            layout.padding = Float4U(PADDING);
+            context->set_layout_config(canvas, layout);
+            draw_text(context, RectF(0.0f, -32.0f, width, 26.0f), title, 20.0f,
+                Float4U(0.0f, 0.0f, 0.0f, 1.0f));
+            draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.97f, 0.97f, 0.97f, 1.0f));
+            draw_outline(context, RectF(0.0f, 0.0f, width, height), Float4U(0.0f, 0.0f, 0.0f, 1.0f));
+            draw_outline(context, RectF(PADDING, PADDING, content_width, content_height), Float4U(0.68f, 0.68f, 0.68f, 1.0f));
+            draw_text(context, RectF(14.0f, height - 30.0f, width - 28.0f, 22.0f),
+                "begin = anchor_min + offset_begin, end = anchor_max + offset_end", 13.0f,
+                Float4U(0.22f, 0.22f, 0.22f, 1.0f), VG::TextAlignment::center);
+
+            plain_box(context, child, "stretched child", 80.0f, 40.0f, Float4U(0.90f, 0.92f, 0.96f, 0.92f));
+            GUICore::ElementHandle marker = context->begin_element(anchor_rect, Name("anchor rect"));
+            context->set_layout_config(marker, fixed_layout(anchor_width, anchor_height));
+            draw_outline(context, RectF(0.0f, 0.0f, anchor_width, anchor_height), Float4U(0.95f, 0.55f, 0.0f, 1.0f), 2.0f);
+            context->end_element();
+
+            set_canvas_layout(context, canvas, &descs[case_index]);
+            context->end_element();
+        }
+
+        void build_canvas_stretch(GUICore::IContext* context)
+        {
+            text_block(context, "Stretch axes use anchor rect plus left/top/right/bottom offsets. Pivot and measured size do not control that axis.");
+            build_canvas_stretch_case(context, 0, "small canvas, same anchor rect", 330.0f, 170.0f,
+                Float2U(0.15f, 0.20f), Float2U(0.85f, 0.70f), Float4U(0.0f));
+            build_canvas_stretch_case(context, 1, "larger canvas, same anchor rect", 390.0f, 210.0f,
+                Float2U(0.15f, 0.20f), Float2U(0.85f, 0.70f), Float4U(0.0f));
+            build_canvas_stretch_case(context, 2, "anchor rect with inward offsets", 390.0f, 210.0f,
+                Float2U(0.10f, 0.16f), Float2U(0.92f, 0.78f), Float4U(24.0f, 18.0f, -28.0f, -22.0f));
         }
 
         void build_scroll_viewport_layout(GUICore::IContext* context)
@@ -626,7 +741,8 @@ namespace Luna::GUICoreTest
         case flex_item_sizing: return "Flex: Item Sizing";
         case flex_clipping: return "Flex: Clipping";
         case grid_layout: return "Grid Layout";
-        case canvas_layout: return "Canvas Layout";
+        case canvas_non_stretch: return "Canvas: Non-Stretch";
+        case canvas_stretch: return "Canvas: Stretch";
         case scroll_viewport_layout: return "Scroll Viewport Layout";
         case table_layout: return "Table Layout";
         default: return "GUICore Layout";
@@ -648,7 +764,8 @@ namespace Luna::GUICoreTest
         case flex_item_sizing: return "Children combine size kinds, constraints, grow and shrink.";
         case flex_clipping: return "Clipping controls child clip rect propagation.";
         case grid_layout: return "Grid places children in row-major tiles.";
-        case canvas_layout: return "Canvas places children with anchors, offsets and pivots.";
+        case canvas_non_stretch: return "Non-stretch axes use measured child size, anchor point, offset and pivot.";
+        case canvas_stretch: return "Stretch axes derive child size from an anchor rectangle and edge offsets.";
         case scroll_viewport_layout: return "ScrollViewport translates and clips content.";
         case table_layout: return "Table uses explicit tracks and child-to-cell attachments.";
         default: return "Layout is data on elements, evaluated by context-level algorithms.";
@@ -678,12 +795,13 @@ namespace Luna::GUICoreTest
             break;
         case flex_wrap:
         case flex_gap:
+        case canvas_non_stretch:
+        case canvas_stretch:
             add_case_grid(state, 3);
             break;
         case flex_line_alignment:
             add_case_grid(state, 7);
             break;
-        case canvas_layout:
         case scroll_viewport_layout:
         case table_layout:
             add_canvas_item(state.sheet_items, demo_id(0), 112.0f, 282.0f);
@@ -731,8 +849,11 @@ namespace Luna::GUICoreTest
         case grid_layout:
             build_grid_layout(context);
             break;
-        case canvas_layout:
-            build_canvas_layout(context);
+        case canvas_non_stretch:
+            build_canvas_non_stretch(context);
+            break;
+        case canvas_stretch:
+            build_canvas_stretch(context);
             break;
         case scroll_viewport_layout:
             build_scroll_viewport_layout(context);
