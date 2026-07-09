@@ -35,7 +35,6 @@ namespace Luna::GUICoreTest
             flex_item_sizing,
             flex_clipping,
             grid_layout,
-            stack_layout,
             canvas_layout,
             scroll_viewport_layout,
             table_layout
@@ -206,10 +205,9 @@ namespace Luna::GUICoreTest
             text_block(context, "Each layout algorithm gets its own slice. Flex gets extra slices for every core parameter group.");
             concept_case(context, demo_id(0), "Flex", "Ordered row or column layout with grow, shrink, wrap and alignment.");
             concept_case(context, demo_id(1), "Grid", "Row-major tiled cells for browsers and icon palettes.");
-            concept_case(context, demo_id(2), "Stack", "Overlay children in one parent content rectangle.");
-            concept_case(context, demo_id(3), "Canvas", "Anchor, offset and pivot based placement.");
-            concept_case(context, demo_id(4), "ScrollViewport", "Translate and clip scroll content.");
-            concept_case(context, demo_id(5), "Table", "Explicit tracks and cell attachments.");
+            concept_case(context, demo_id(2), "Canvas", "Anchor, offset and pivot based placement.");
+            concept_case(context, demo_id(3), "ScrollViewport", "Translate and clip scroll content.");
+            concept_case(context, demo_id(4), "Table", "Explicit tracks and cell attachments.");
         }
 
         void build_flex_axis(GUICore::IContext* context)
@@ -495,30 +493,6 @@ namespace Luna::GUICoreTest
             }
         }
 
-        void build_stack_layout(GUICore::IContext* context)
-        {
-            text_block(context, "Stack overlays children in the same parent content rect, using one normalized alignment value.");
-            static GUICore::StackLayoutDesc descs[2];
-            descs[0].alignment = Float2U(0.0f, 0.0f);
-            descs[1].alignment = Float2U(0.5f, 0.5f);
-            for(u32 c = 0; c < 2; ++c)
-            {
-                GUICore::LayoutConfig layout = fixed_layout(360.0f, 180.0f);
-                layout.padding = Float4U(10.0f);
-                layout.callback = GUICore::layout_stack;
-                layout.userdata = &descs[c];
-                GUICore::ElementHandle stack = context->begin_element(demo_id(c), Name(c ? "Center Stack" : "Top Left Stack"));
-                context->set_layout_config(stack, layout);
-                draw_text(context, RectF(0.0f, -32.0f, 340.0f, 26.0f), c ? "alignment = (0.5, 0.5)" : "alignment = (0, 0)",
-                    20.0f, Float4U(0.0f, 0.0f, 0.0f, 1.0f));
-                draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.97f, 0.97f, 0.97f, 1.0f));
-                draw_outline(context, RectF(0.0f, 0.0f, 360.0f, 180.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f));
-                plain_box(context, child_id(demo_id(c), 0), "A", 170.0f, 78.0f, Float4U(0.86f, 0.92f, 1.0f, 0.86f));
-                plain_box(context, child_id(demo_id(c), 1), "B", 120.0f, 54.0f, Float4U(1.0f, 0.86f, 0.86f, 0.86f));
-                context->end_element();
-            }
-        }
-
         void build_canvas_layout(GUICore::IContext* context)
         {
             text_block(context, "Canvas uses parent-owned anchor, offset and pivot records keyed by child element ID.");
@@ -652,7 +626,6 @@ namespace Luna::GUICoreTest
         case flex_item_sizing: return "Flex: Item Sizing";
         case flex_clipping: return "Flex: Clipping";
         case grid_layout: return "Grid Layout";
-        case stack_layout: return "Stack Layout";
         case canvas_layout: return "Canvas Layout";
         case scroll_viewport_layout: return "Scroll Viewport Layout";
         case table_layout: return "Table Layout";
@@ -675,7 +648,6 @@ namespace Luna::GUICoreTest
         case flex_item_sizing: return "Children combine size kinds, constraints, grow and shrink.";
         case flex_clipping: return "Clipping controls child clip rect propagation.";
         case grid_layout: return "Grid places children in row-major tiles.";
-        case stack_layout: return "Stack overlays children with normalized alignment.";
         case canvas_layout: return "Canvas places children with anchors, offsets and pivots.";
         case scroll_viewport_layout: return "ScrollViewport translates and clips content.";
         case table_layout: return "Table uses explicit tracks and child-to-cell attachments.";
@@ -689,6 +661,8 @@ namespace Luna::GUICoreTest
         switch(layout_slice)
         {
         case layout_overview:
+            add_case_grid(state, 5);
+            break;
         case flex_main_alignment:
         case flex_item_sizing:
             add_case_grid(state, 6);
@@ -696,7 +670,6 @@ namespace Luna::GUICoreTest
         case flex_axis:
         case flex_clipping:
         case grid_layout:
-        case stack_layout:
             add_case_grid(state, 2);
             break;
         case flex_reverse:
@@ -757,9 +730,6 @@ namespace Luna::GUICoreTest
             break;
         case grid_layout:
             build_grid_layout(context);
-            break;
-        case stack_layout:
-            build_stack_layout(context);
             break;
         case canvas_layout:
             build_canvas_layout(context);

@@ -119,15 +119,6 @@ namespace Luna
         //! Ends the current grid layout and applies GUI Core grid layout to its direct children.
         LUNA_GUI_API RV end_grid_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
             const RectF& rect, const GUICore::GridLayoutDesc& desc = GUICore::GridLayoutDesc());
-        //! Begins a stack layout directly in a GUI Core context.
-        LUNA_GUI_API GUICore::ElementHandle begin_stack_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
-        //! Ends the current stack layout and defers arranging its direct children until @ref layout_editor_tree.
-        LUNA_GUI_API RV end_stack_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            const GUICore::StackLayoutDesc& desc);
-        //! Ends the current stack layout and applies GUI Core stack layout to its direct children.
-        LUNA_GUI_API RV end_stack_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            const RectF& rect, const GUICore::StackLayoutDesc& desc = GUICore::StackLayoutDesc());
         //! Begins an anchor-based canvas layout directly in a GUI Core context.
         LUNA_GUI_API GUICore::ElementHandle begin_canvas_layout(GUICore::IContext* context, GUICore::id_t id,
             const c8* label = nullptr, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());

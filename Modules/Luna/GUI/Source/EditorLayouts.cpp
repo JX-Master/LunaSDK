@@ -152,14 +152,6 @@ namespace Luna
             config.userdata = allocate_layout_userdata(context, desc);
         }
 
-        static void set_stack_layout_config(GUICore::IContext* context, GUICore::LayoutConfig& config,
-            const GUICore::StackLayoutDesc& desc)
-        {
-            config.name = Name("gui.core.stack");
-            config.callback = GUICore::layout_stack;
-            config.userdata = allocate_layout_userdata(context, desc);
-        }
-
         static void set_canvas_layout_config(GUICore::IContext* context, GUICore::LayoutConfig& config,
             const GUICore::CanvasLayoutDesc& desc)
         {
@@ -637,38 +629,6 @@ namespace Luna
             luassert(context);
             GUICore::LayoutConfig config;
             set_grid_layout_config(context, config, desc);
-            RV r = set_element_layout_config(context, layout, config);
-            context->end_element();
-            if(succeeded(r))
-            {
-                r = context->apply_layout(layout, rect);
-            }
-            return r;
-        }
-
-        LUNA_GUI_API GUICore::ElementHandle begin_stack_layout(GUICore::IContext* context, GUICore::id_t id,
-            const c8* label, const GUICore::LayoutConfig& layout)
-        {
-            return begin_core_layout(context, id, label, "stack_layout", layout);
-        }
-
-        LUNA_GUI_API RV end_stack_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            const GUICore::StackLayoutDesc& desc)
-        {
-            luassert(context);
-            GUICore::LayoutConfig config;
-            set_stack_layout_config(context, config, desc);
-            RV r = set_element_layout_config(context, layout, config);
-            context->end_element();
-            return r;
-        }
-
-        LUNA_GUI_API RV end_stack_layout(GUICore::IContext* context, const GUICore::ElementHandle& layout,
-            const RectF& rect, const GUICore::StackLayoutDesc& desc)
-        {
-            luassert(context);
-            GUICore::LayoutConfig config;
-            set_stack_layout_config(context, config, desc);
             RV r = set_element_layout_config(context, layout, config);
             context->end_element();
             if(succeeded(r))

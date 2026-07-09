@@ -185,15 +185,6 @@ namespace Luna
             bool clip_children = true;
         };
 
-        //! Describes one stack layout pass.
-        struct StackLayoutDesc
-        {
-            //! Child alignment inside the parent content rectangle. `(0, 0)` means top-left and `(0.5, 0.5)` means center.
-            Float2U alignment = Float2U(0.0f);
-            //! Whether child clip rectangles should be intersected with the parent content rectangle.
-            bool clip_children = true;
-        };
-
         //! Describes one child placement rule for canvas layout.
         struct CanvasLayoutItem
         {

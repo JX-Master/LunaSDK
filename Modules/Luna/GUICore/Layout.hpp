@@ -46,16 +46,6 @@ namespace Luna
         //! provide scrolling by itself; callers can combine it with scroll viewport primitives.
         LUNA_GUICORE_API RV layout_grid(IContext* context, const ElementHandle& element, const RectF& rect, void* userdata);
 
-        //! Applies one stack layout algorithm to the direct children of one element.
-        //! @param[in] context The GUI Core context that owns @p element.
-        //! @param[in] element The parent element whose direct children will be arranged.
-        //! @param[in] rect The parent rectangle in layer coordinates.
-        //! @param[in] userdata Pointer to @ref StackLayoutDesc owned by the caller.
-        //! @return Returns success or failure code.
-        //! @remark Stack layout overlays all children in the same parent content rectangle. It is useful for
-        //! overlays, layered chrome, popup bodies and as a building block for future canvas-style placement.
-        LUNA_GUICORE_API RV layout_stack(IContext* context, const ElementHandle& element, const RectF& rect, void* userdata);
-
         //! Applies one anchor-based canvas layout algorithm to the direct children of one element.
         //! @param[in] context The GUI Core context that owns @p element.
         //! @param[in] element The parent element whose direct children will be arranged.

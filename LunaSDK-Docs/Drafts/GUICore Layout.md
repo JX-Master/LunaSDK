@@ -171,21 +171,6 @@ desc.column_count = 4;
 desc.cell_size.y = 80.0f;
 ```
 
-### Run a stack layout
-`layout_stack` overlays all direct children in the same parent content rectangle.
-
-```cpp
-GUICore::StackLayoutDesc desc;
-desc.alignment = Float2U(0.5f, 0.5f);
-
-GUICore::LayoutConfig stack_layout;
-stack_layout.callback = GUICore::layout_stack;
-stack_layout.userdata = &desc;
-context->set_layout_config(stack, stack_layout);
-```
-
-This is useful for overlays, visual chrome and simple popup bodies.
-
 ### Run a canvas layout
 `layout_canvas` uses Unity-style normalized anchors and offsets.
 

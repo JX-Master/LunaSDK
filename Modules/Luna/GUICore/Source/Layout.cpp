@@ -958,61 +958,6 @@ namespace Luna
             return ok;
         }
 
-        LUNA_GUICORE_API RV layout_stack(IContext* context, const ElementHandle& element, const RectF& rect,
-            void* userdata)
-        {
-            if(!context)
-            {
-                return BasicError::bad_arguments();
-            }
-            const Element* parent = context->get_element(element.index);
-            if(!parent || parent->id != element.id)
-            {
-                return BasicError::bad_arguments();
-            }
-            if(!userdata)
-            {
-                return BasicError::bad_arguments();
-            }
-            const StackLayoutDesc& desc = *reinterpret_cast<const StackLayoutDesc*>(userdata);
-            context->log_debug_pass(DebugPassKind::layout, Name("layout_stack"), Name("explicit_layout_call"), parent->id);
-
-            RectF content_rect = inset_rect(rect, parent->layout.padding);
-            Vector<u32> children = collect_children(context, *parent);
-            RectF parent_clip = inherited_layout_clip(*parent, rect);
-            RectF child_clip = desc.clip_children ? intersect_rect(content_rect, parent_clip) : parent_clip;
-            f32 measured_width = 0.0f;
-            f32 measured_height = 0.0f;
-            for(u32 child_index : children)
-            {
-                const Element* child = context->get_element(child_index);
-                f32 available_width = max(content_rect.width - child->layout.margin.x - child->layout.margin.z, 0.0f);
-                f32 available_height = max(content_rect.height - child->layout.margin.y - child->layout.margin.w, 0.0f);
-                MeasureResult measured = measure_element_by_index(context, child_index, Float2U(available_width, available_height));
-                f32 width = resolve_measured_axis_size(*child, LayoutAxis::x, available_width, measured);
-                f32 height = resolve_measured_axis_size(*child, LayoutAxis::y, available_height, measured);
-                f32 offset_x = content_rect.offset_x + child->layout.margin.x + max(available_width - width, 0.0f) * desc.alignment.x;
-                f32 offset_y = content_rect.offset_y + child->layout.margin.y + max(available_height - height, 0.0f) * desc.alignment.y;
-
-                RectF child_rect(offset_x, offset_y, width, height);
-                LayoutResult result;
-                result.rect = child_rect;
-                result.clip_rect = desc.clip_children ? intersect_rect(child_rect, child_clip) : child_clip;
-                result.content_size = Float2U(child_rect.width, child_rect.height);
-                context->set_layout_result(ElementHandle { child->id, child_index, element.generation }, result);
-
-                measured_width = max(measured_width, width + child->layout.margin.x + child->layout.margin.z);
-                measured_height = max(measured_height, height + child->layout.margin.y + child->layout.margin.w);
-            }
-
-            LayoutResult parent_result;
-            parent_result.rect = rect;
-            parent_result.clip_rect = parent_clip;
-            parent_result.content_size = Float2U(measured_width, measured_height);
-            context->set_layout_result(element, parent_result);
-            return ok;
-        }
-
         LUNA_GUICORE_API RV layout_canvas(IContext* context, const ElementHandle& element, const RectF& rect,
             void* userdata)
         {

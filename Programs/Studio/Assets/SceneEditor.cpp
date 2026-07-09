@@ -546,13 +546,36 @@ namespace Luna
                 luexp(m_renderer.reset(settings));
             }
 
-            GUICore::ElementHandle viewport = GUI::begin_stack_layout(context, context->make_id("viewport"), "Scene Viewport",
+            GUICore::ElementHandle viewport = GUI::begin_canvas_layout(context, context->make_id("viewport"), "Scene Viewport",
                 core_fill());
-            GUICore::ElementHandle viewport_hit = GUI::hit_box(context, context->make_id("viewport_hit"), core_fill());
+            Vector<GUICore::CanvasLayoutItem> viewport_layout_items;
+            auto add_fill_viewport_item = [&](GUICore::id_t id)
+            {
+                GUICore::CanvasLayoutItem item;
+                item.element_id = id;
+                item.anchor_min = Float2U(0.0f);
+                item.anchor_max = Float2U(1.0f);
+                viewport_layout_items.push_back(item);
+            };
+            auto add_top_viewport_item = [&](GUICore::id_t id, f32 y)
+            {
+                GUICore::CanvasLayoutItem item;
+                item.element_id = id;
+                item.anchor_min = Float2U(0.0f, 0.0f);
+                item.anchor_max = Float2U(1.0f, 0.0f);
+                item.offset = Float4U(8.0f, y, -8.0f, 0.0f);
+                viewport_layout_items.push_back(item);
+            };
+
+            GUICore::id_t viewport_hit_id = context->make_id("viewport_hit");
+            add_fill_viewport_item(viewport_hit_id);
+            GUICore::ElementHandle viewport_hit = GUI::hit_box(context, viewport_hit_id, core_fill());
 
             if(!s)
             {
-                GUI::text(context, context->make_id("loading"), "Scene Loading", core_fill());
+                GUICore::id_t loading_id = context->make_id("loading");
+                add_fill_viewport_item(loading_id);
+                GUI::text(context, loading_id, "Scene Loading", core_fill());
             }
             else
             {
@@ -561,12 +584,15 @@ namespace Luna
                 Camera* camera_component = camera_actor ? camera_actor->get_component<Camera>() : nullptr;
                 if(!camera_actor)
                 {
-                    GUI::text(context, context->make_id("no_camera"), "Set a camera in scene settings to start.", core_fill());
+                    GUICore::id_t no_camera_id = context->make_id("no_camera");
+                    add_fill_viewport_item(no_camera_id);
+                    GUI::text(context, no_camera_id, "Set a camera in scene settings to start.", core_fill());
                 }
                 else if(!camera_component)
                 {
-                    GUI::text(context, context->make_id("no_camera_component"),
-                        "Actor camera actor does not have a camera component", core_fill());
+                    GUICore::id_t no_camera_component_id = context->make_id("no_camera_component");
+                    add_fill_viewport_item(no_camera_component_id);
+                    GUI::text(context, no_camera_component_id, "Actor camera actor does not have a camera component", core_fill());
                 }
                 else
                 {
@@ -595,7 +621,9 @@ namespace Luna
                     m_renderer.command_buffer->wait();
                     luassert_always(succeeded(m_renderer.command_buffer->reset()));
 
-                    GUI::image(context, context->make_id("scene_texture"), m_renderer.render_texture.get(),
+                    GUICore::id_t scene_texture_id = context->make_id("scene_texture");
+                    add_fill_viewport_item(scene_texture_id);
+                    GUI::image(context, scene_texture_id, m_renderer.render_texture.get(),
                         core_fill(), GUI::ImageFlag::flip_y);
 
                     bool scene_pointer_hovered = GUI::is_item_hovered(context, viewport_hit);
@@ -680,15 +708,22 @@ namespace Luna
                     {
                         String debug_text;
                         strprintf(debug_text, "Frame Size: %ux%u", renderer_settings.screen_size.x, renderer_settings.screen_size.y);
-                        GUI::text(context, context->make_id("frame_size"), debug_text.c_str(), core_fixed_height(22.0f));
+                        GUICore::id_t frame_size_id = context->make_id("frame_size");
+                        add_top_viewport_item(frame_size_id, 8.0f);
+                        GUI::text(context, frame_size_id, debug_text.c_str(), core_fixed_height(22.0f));
                         f32 fps = frame.delta_time > 0.0f ? 1.0f / frame.delta_time : 0.0f;
                         strprintf(debug_text, "FPS: %f", fps);
-                        GUI::text(context, context->make_id("fps"), debug_text.c_str(), core_fixed_height(22.0f));
+                        GUICore::id_t fps_id = context->make_id("fps");
+                        add_top_viewport_item(fps_id, 32.0f);
+                        GUI::text(context, fps_id, debug_text.c_str(), core_fixed_height(22.0f));
                     }
                 }
             }
 
-            lupanic_if_failed(GUI::end_stack_layout(context, viewport, GUICore::StackLayoutDesc()));
+            GUICore::CanvasLayoutDesc viewport_layout;
+            viewport_layout.items = Span<const GUICore::CanvasLayoutItem>(viewport_layout_items.data(), viewport_layout_items.size());
+            viewport_layout.clip_children = true;
+            lupanic_if_failed(GUI::end_canvas_layout(context, viewport, viewport_layout));
             lupanic_if_failed(GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f)));
         }
         lucatch
