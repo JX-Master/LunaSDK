@@ -46,16 +46,6 @@ namespace Luna
             GUICore::ElementHandle handle;
         };
 
-        struct PalettePayload
-        {
-            u32 type_index = 0;
-        };
-
-        struct TreeNodePayload
-        {
-            Guid node;
-        };
-
         struct CoreTypeItemHandle
         {
             u32 type_index = 0;
@@ -93,14 +83,12 @@ namespace Luna
             GUICore::ElementHandle core_node_context_move_up;
             GUICore::ElementHandle core_node_context_move_down;
             GUICore::ElementHandle core_node_context_delete;
-            GUICore::ElementHandle core_preview_drop_target;
             GUICore::ElementHandle core_common_label;
             GUICore::ElementHandle core_common_style;
             GUICore::ElementHandle core_common_enabled;
             GUICore::ElementHandle core_set_property;
             GUICore::ElementHandle core_erase_property;
             Vector<CoreNodeHandle> core_tree_nodes;
-            Vector<CoreTypeItemHandle> core_palette_items;
             Vector<CoreTypeItemHandle> core_new_node_items;
             Vector<UniquePtr<PropertyEditHandle>> property_edits;
         };
@@ -148,23 +136,6 @@ namespace Luna
             bool shortcut_move_down_down = false;
             String preview_error;
         };
-
-        enum class TreeDropPlacement : u8
-        {
-            child,
-            before,
-            after
-        };
-
-        static Name palette_payload_type()
-        {
-            return Name("gui_editor.palette_node");
-        }
-
-        static Name tree_node_payload_type()
-        {
-            return Name("gui_editor.tree_node");
-        }
 
         static u64 hash_bytes(const void* data, usize size, u64 h = 14695981039346656037ull)
         {
@@ -484,52 +455,6 @@ namespace Luna
             return false;
         }
 
-        static TreeDropPlacement tree_drop_placement(App& app, EditorDocument& document, const CoreNodeHandle& target)
-        {
-            if(target.node == GA::get_root(document.asset.get()))
-            {
-                return TreeDropPlacement::child;
-            }
-            RectF rect = GUI::get_item_rect(app.editor_core.get(), target.handle);
-            if(rect.height <= 1.0f)
-            {
-                return TreeDropPlacement::child;
-            }
-            Float2U pointer = app.editor_core->get_pointer_position();
-            f32 y = pointer.y - rect.offset_y;
-            if(y < rect.height * 0.25f)
-            {
-                return TreeDropPlacement::before;
-            }
-            if(y > rect.height * 0.75f)
-            {
-                return TreeDropPlacement::after;
-            }
-            return TreeDropPlacement::child;
-        }
-
-        static RV create_node_at(EditorService& service, EditorDocument& document, const Name& type, const c8* label, const Guid& parent, usize index)
-        {
-            return service.create_node(document.id, parent, type, label, index);
-        }
-
-        static RV move_node_at(EditorService& service, EditorDocument& document, const Guid& node, const Guid& parent, usize index)
-        {
-            if(node == Guid(0, 0) || node == GA::get_root(document.asset.get()))
-            {
-                return BasicError::bad_arguments();
-            }
-            return service.move_node(document.id, node, parent, index);
-        }
-
-        static void set_drop_status(EditorService& service, const RV& result)
-        {
-            if(failed(result))
-            {
-                service.last_status = explain(result.errcode());
-            }
-        }
-
         static bool can_remove_node(EditorDocument* document, const Guid& node)
         {
             return document && document->asset && node != Guid(0, 0) &&
@@ -652,45 +577,6 @@ namespace Luna
             }
         }
 
-        static void register_core_tree_drop_target(App& app, const GUICore::ElementHandle& handle)
-        {
-            if(GUI::begin_drag_drop_target(app.editor_core.get(), handle, palette_payload_type()))
-            {
-                GUI::end_drag_drop_target(app.editor_core.get());
-            }
-            if(GUI::begin_drag_drop_target(app.editor_core.get(), handle, tree_node_payload_type()))
-            {
-                GUI::end_drag_drop_target(app.editor_core.get());
-            }
-        }
-
-        static void register_core_tree_drag_source(App& app, EditorDocument& document, const Guid& id,
-            const GUICore::ElementHandle& handle)
-        {
-            if(id == GA::get_root(document.asset.get()))
-            {
-                return;
-            }
-            TreeNodePayload payload;
-            payload.node = id;
-            if(GUI::begin_drag_drop_source(app.editor_core.get(), handle, tree_node_payload_type()))
-            {
-                GUI::set_drag_drop_payload(app.editor_core.get(), &payload, sizeof(payload));
-                GUI::end_drag_drop_source(app.editor_core.get());
-            }
-        }
-
-        static void register_core_palette_drag_source(App& app, usize type_index, const GUICore::ElementHandle& handle)
-        {
-            PalettePayload payload;
-            payload.type_index = (u32)type_index;
-            if(GUI::begin_drag_drop_source(app.editor_core.get(), handle, palette_payload_type()))
-            {
-                GUI::set_drag_drop_payload(app.editor_core.get(), &payload, sizeof(payload));
-                GUI::end_drag_drop_source(app.editor_core.get());
-            }
-        }
-
         static void build_core_node_tree(App& app, FrameHandles& handles, EditorDocument& document,
             const Guid& id, u32 indent_depth)
         {
@@ -714,8 +600,6 @@ namespace Luna
             bool open = GUI::tree_node(app.editor_core.get(), core_id("gui_editor.tree_node", id), label, flags,
                 indent_depth, core_layout_pixels(0.0f, 26.0f), &handle);
             handles.core_tree_nodes.push_back({id, handle});
-            register_core_tree_drag_source(app, document, id, handle);
-            register_core_tree_drop_target(app, handle);
             if(open && GA::get_child_count(node.get()) > 0)
             {
                 for(const Guid& child : GA::get_children(node.get()))
@@ -1110,7 +994,7 @@ namespace Luna
             }
             GUI::text(app.editor_core.get(), core_id("gui_editor.preview.title", 0), "Live Preview", core_text_layout());
             GUI::text(app.editor_core.get(), core_id("gui_editor.preview.help", 0),
-                "Drag palette or tree nodes into this panel to append to root.", core_text_layout());
+                "Preview of the active GUI document.", core_text_layout());
             if(!app.preview_error.empty())
             {
                 GUI::text(app.editor_core.get(), core_id("gui_editor.preview.error", 0), app.preview_error.c_str(), core_text_layout());
@@ -1123,8 +1007,6 @@ namespace Luna
             canvas_layout.flex_grow = 1.0f;
             handles.preview_canvas = GUI::hit_box(app.editor_core.get(), core_id("gui_editor.preview.canvas", 0),
                 canvas_layout);
-            handles.core_preview_drop_target = handles.preview_canvas;
-            register_core_tree_drop_target(app, handles.core_preview_drop_target);
         }
 
         static GUICore::LayoutConfig core_text_layout()
@@ -1137,7 +1019,7 @@ namespace Luna
             return layout;
         }
 
-        static void build_core_palette_panel(App& app, FrameHandles& handles)
+        static void build_core_palette_panel(App& app)
         {
             GUI::text(app.editor_core.get(), core_id("gui_editor.palette.title", 0), "Palette", core_text_layout());
 
@@ -1159,11 +1041,9 @@ namespace Luna
                     continue;
                 }
                 GUICore::ShapeDesc& icon = palette_icon(app.palette_icons, app.node_types[i]);
-                GUICore::ElementHandle button = GUI::shape_button(app.editor_core.get(),
+                GUI::shape_button(app.editor_core.get(),
                     core_id("gui_editor.palette.item", (u64)i), app.node_types[i].c_str(), icon,
                     core_layout_pixels(42.0f, 38.0f), 8.0f);
-                handles.core_palette_items.push_back({(u32)i, button});
-                register_core_palette_drag_source(app, i, button);
             }
             GUICore::GridLayoutDesc grid_desc;
             grid_desc.mode = GUICore::GridLayoutMode::fixed_column_count;
@@ -1411,7 +1291,7 @@ namespace Luna
 
             if(GUI::begin_dock_panel(context, palette_id, "Node Palette"))
             {
-                build_core_palette_panel(app, handles);
+                build_core_palette_panel(app);
                 GUI::end_dock_panel(context);
             }
             if(app.show_preview)
@@ -1514,124 +1394,6 @@ namespace Luna
                 app.inspector_node = Guid(0, 0);
                 sync_inspector(app);
             }
-        }
-
-        static bool resolve_drop_destination(EditorDocument& document, const Guid& target, TreeDropPlacement placement, Guid& parent, usize& index)
-        {
-            if(placement == TreeDropPlacement::child || target == GA::get_root(document.asset.get()))
-            {
-                parent = target;
-                index = USIZE_MAX;
-                return true;
-            }
-            usize target_index = 0;
-            usize count = 0;
-            if(!node_order(&document, target, parent, target_index, count))
-            {
-                parent = target;
-                index = USIZE_MAX;
-                return true;
-            }
-            index = placement == TreeDropPlacement::after ? target_index + 1 : target_index;
-            return true;
-        }
-
-        static usize adjust_move_index(EditorDocument& document, const Guid& node, const Guid& parent, usize index)
-        {
-            if(index == USIZE_MAX)
-            {
-                return index;
-            }
-            Guid old_parent;
-            usize old_index = 0;
-            usize old_count = 0;
-            if(node_order(&document, node, old_parent, old_index, old_count) && old_parent == parent && index > old_index)
-            {
-                --index;
-            }
-            return index;
-        }
-
-        static bool process_core_palette_drop(App& app, EditorDocument& document,
-            const GUICore::ElementHandle& target, const Guid& parent, usize index)
-        {
-            const GUICore::DragDropPayload* payload = GUI::accept_drag_drop_payload(app.editor_core.get(), target, palette_payload_type());
-            if(!payload)
-            {
-                return false;
-            }
-            const PalettePayload* data = payload->data_as<PalettePayload>();
-            if(!data || (usize)data->type_index >= app.node_types.size())
-            {
-                app.service.last_status = "Invalid palette drag payload.";
-                return true;
-            }
-            RV r = create_node_at(app.service, document, app.node_types[data->type_index],
-                app.node_types[data->type_index].c_str(), parent, index);
-            set_drop_status(app.service, r);
-            app.inspector_node = Guid(0, 0);
-            return true;
-        }
-
-        static bool process_core_tree_node_drop(App& app, EditorDocument& document,
-            const GUICore::ElementHandle& target, const Guid& parent, usize index)
-        {
-            const GUICore::DragDropPayload* payload = GUI::accept_drag_drop_payload(app.editor_core.get(), target, tree_node_payload_type());
-            if(!payload)
-            {
-                return false;
-            }
-            const TreeNodePayload* data = payload->data_as<TreeNodePayload>();
-            if(!data || data->node == Guid(0, 0))
-            {
-                app.service.last_status = "Invalid tree node drag payload.";
-                return true;
-            }
-            if(data->node == parent)
-            {
-                app.service.last_status = "Cannot move a node under itself.";
-                return true;
-            }
-            usize move_index = adjust_move_index(document, data->node, parent, index);
-            RV r = move_node_at(app.service, document, data->node, parent, move_index);
-            set_drop_status(app.service, r);
-            app.inspector_node = Guid(0, 0);
-            return true;
-        }
-
-        static bool process_drop_actions(App& app, const FrameHandles& handles, EditorDocument& document)
-        {
-            for(const CoreNodeHandle& target : handles.core_tree_nodes)
-            {
-                TreeDropPlacement placement = tree_drop_placement(app, document, target);
-                Guid parent;
-                usize index = USIZE_MAX;
-                if(!resolve_drop_destination(document, target.node, placement, parent, index))
-                {
-                    continue;
-                }
-                if(process_core_palette_drop(app, document, target.handle, parent, index))
-                {
-                    return true;
-                }
-                if(process_core_tree_node_drop(app, document, target.handle, parent, index))
-                {
-                    return true;
-                }
-            }
-            if(GUI::is_item_valid(app.editor_core.get(), handles.core_preview_drop_target))
-            {
-                Guid root = GA::get_root(document.asset.get());
-                if(process_core_palette_drop(app, document, handles.core_preview_drop_target, root, USIZE_MAX))
-                {
-                    return true;
-                }
-                if(process_core_tree_node_drop(app, document, handles.core_preview_drop_target, root, USIZE_MAX))
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         static Variant property_edit_value(const PropertyEditHandle& edit)
@@ -1819,10 +1581,6 @@ namespace Luna
                     app.inspector_node = Guid(0, 0);
                     return;
                 }
-            }
-            if(process_drop_actions(app, handles, *document))
-            {
-                return;
             }
             if(process_property_edits(app, handles, *document))
             {

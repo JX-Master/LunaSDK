@@ -2,7 +2,7 @@
 Proposed.
 
 ## Last updated
-2026/6/17
+2026/7/12
 
 ## Background
 LunaSDK currently has a `GUI` module that has already moved away from the old ImGui backend. The current implementation uses explicit GUI contexts, per-frame descriptions, layers, state objects, style entries, render proxies, VG-backed drawing, and GUI debugging support. This direction has proven useful for Studio, GUIEditor, in-game GUI rendering, and custom vector rendering.
@@ -10,7 +10,7 @@ LunaSDK currently has a `GUI` module that has already moved away from the old Im
 However, the current `GUI` module still mixes several responsibilities in one layer:
 
 1. It stores a runtime node tree.
-2. It owns input routing, focus, hover, active, drag-drop, popup, scroll, table, tab, and dock interaction rules.
+2. It owns input routing, focus, hover, active, popup, scroll, table, tab, and dock interaction rules.
 3. It provides built-in widgets and views.
 4. It translates widget state and style into draw commands.
 5. It exposes debug information and editor metadata.
@@ -59,15 +59,15 @@ This decision removes the following concepts from the long-term high-level `GUI`
 
 1. **Element tree**
    - Stores per-frame GUI elements in dense arrays.
-   - Each element has a stable ID, layer ID, parent/child/sibling topology, layout input, layout result, style binding, interaction binding, draw command ranges, and debug metadata.
+   - Each element has a stable ID, layer ID, parent/child/sibling topology, layout input, layout result, style binding, interaction binding, draw-command ownership metadata, and debug metadata.
    - The element tree is the core-level ground truth for the submitted frame.
    - The tree is typeless. Every element has the same concrete storage type.
    - Elements do not use inheritance, virtual methods, or per-widget subclasses to define behavior.
-   - Element behavior is defined only by the data attached to the element, such as layout records, interactable records, draw command ranges, clip records, state IDs, and debug tags.
+   - Element behavior is defined only by the data attached to the element, such as layout records, interactable records, draw command ownership metadata, clip records, and debug tags. State IDs are derived by callers from stable owner IDs and boxed state types rather than stored by elements.
    - An element may represent a text label, a button chrome, a shape, a layout container, a hit-test region, or any other primitive submitted by higher-level code, but the core element itself does not know that semantic widget type.
 
 2. **Layer system**
-   - A layer owns one root element tree and one draw list.
+   - A layer owns one root element tree and an ordered draw-command index list. GUI Core compiles all layers into one destination VG draw list in painter order.
    - Layers are stored in bottom-to-top Z order and are rendered with painter's algorithm.
    - Input is routed from top layers to bottom layers.
    - Popups, tooltips, drag previews, modal panels, debug overlays, and normal content are represented as layers instead of special widget cases.
@@ -85,31 +85,31 @@ This decision removes the following concepts from the long-term high-level `GUI`
 
 5. **Layout engine**
    - Provides reusable layout primitives rather than widget-specific layout code.
-   - Initial primitives should include flex layout, stack/canvas placement, grid layout, table tracks, scroll viewport layout, and clipping.
+   - Initial primitives should include flex layout, canvas placement, grid layout, table tracks, scroll viewport layout, and clipping.
    - The element axis size model should stay small: `fixed`, `percent`, and `fit` with explicit min/max constraints. Content-driven `fit` sizing is supplied by measure callbacks owned by higher-level packages instead of by scanning draw commands or hard-coding text knowledge into GUICore.
    - Specialized sizing such as ratio table tracks belongs to the specific parent layout primitive that owns that placement policy.
    - Layout should be axis-agnostic where practical so that width and height logic do not diverge.
    - Layouting is implemented by independent functions operating on element data, not as element methods.
 
 6. **Interactable graph**
-   - Provides reusable input primitives for hover, active, focus, capture, disabled, readonly, focus scopes, keyboard navigation, drag-drop sources, drag-drop targets, and hit testing.
+   - Provides reusable input primitives for hover, active, focus, capture, disabled, readonly, focus scopes, keyboard navigation, and hit testing.
    - Supports parent-child interactable relationships so compound widgets can query whether any child is hovered, active, or focused.
    - This system is the long-term replacement for widget-specific input branches in the current GUI context.
 
 7. **Input router**
    - Consumes GUI input events.
-   - Routes pointer, keyboard, text, scroll, focus, blur, capture, and drag-drop events through layers and interactables.
+   - Routes pointer, keyboard, text, scroll, focus, blur, and capture events through layers and interactables.
    - Supports focus scopes and keyboard navigation.
    - Supports scroll routing and future scroll-to-rect propagation.
 
 8. **Draw command generation**
    - Records GUI-level draw commands that are later translated to VG draw lists.
-   - Provides primitive commands for rectangles, rounded rectangles, gradients, text, images, shapes, lines, clipping, and draw-state changes.
+   - Provides primitive commands for rectangles, rounded rectangles, gradients, text, images, shapes, lines, and clipping.
    - Does not know widget rendering policies.
    - High-level immediate API packages submit these commands directly.
 
 9. **Debug and instrumentation**
-   - Provides a serializable debug snapshot for element trees, layers, layout inputs/results, interactables, input routing, style resolution, draw commands, and performance counters.
+   - Provides an in-memory debug snapshot for element trees, layers, layout inputs/results, interactables, input routing, style resolution, draw commands, and performance counters. A portable external-tool representation is a separate projection because runtime callbacks, userdata, and resources are pointer-valued.
    - Should eventually support input recording, input replay, frame stepping, issue logging, and layout/input pass reason logging.
 
 ### Data and algorithm separation
@@ -120,11 +120,12 @@ Core features should be implemented as independent functions or systems:
 1. Layout functions operate on layout data and write layout results.
 2. Input routing functions operate on layers, elements, and interactable records.
 3. Rendering functions operate on draw commands and emit VG draw lists.
-4. Drag-drop functions operate on interactable records and payload data.
-5. Style functions operate on style records and requested style keys.
-6. Debug functions serialize the data needed to inspect the frame.
+4. Style functions operate on style records and requested style keys.
+5. Debug functions capture the data needed to inspect the frame in-process.
 
 These features must remain orthogonal where possible. A caller should be able to use layout without using input routing, use draw commands without using high-level widgets, or use interactables without using a particular widget package.
+
+Drag-drop is a composite interaction protocol rather than a GUICore primitive. GUICore does not store payloads, source or target type lists, deliveries, or drag-drop state, and its input router does not special-case pointer release for dropping. A high-level package may implement drag-drop by composing generic hit testing, pointer capture, routed input events, context state, layers, and draw commands. Different packages may choose different payload protocols, activation thresholds, previews, target feedback, and delivery lifetimes.
 
 ### Immediate API package responsibilities
 The existing `GUI` module becomes one high-level immediate API package built on top of `GUICore`.
@@ -136,6 +137,7 @@ An immediate API package owns:
 3. The visual style and interaction behavior of those controls.
 4. The small set of user-facing customization points intentionally supported by that package.
 5. GUIAsset runtime generation helpers for widgets provided by that package.
+6. Optional composite interaction protocols such as drag-drop when required by that package.
 
 An immediate API package does not need to be universally customizable. The default `GUI` package should expose simple customization points such as margins, spacing, colors, font choices, and selected behavior flags. It should not promise that users can completely replace the rendering logic of every control.
 
@@ -148,7 +150,7 @@ In the new model, a high-level immediate API directly emits the draw commands fo
 
 Style usage schema remains useful, but it is no longer attached to `GUI::RenderProxy`. Instead:
 
-1. `GUICore` provides style records, style resolution, and debug serialization.
+1. `GUICore` provides style records, style resolution, and in-memory debug snapshots.
 2. Immediate API packages declare the style keys that their APIs read.
 3. GUIEditor and debug tools consume these declarations to display editable style properties.
 4. Core draw primitives remain widget-independent.
@@ -218,7 +220,6 @@ Implement core interactables before migrating most widgets. This phase should in
 3. Focus scopes.
 4. Keyboard navigation basics.
 5. Pointer hit testing through layers.
-6. Drag-drop source and target filtering.
 
 The goal of this phase is to replace the most fragile widget-specific input code with reusable primitives.
 
@@ -378,6 +379,7 @@ This ADR does not require an immediate full rewrite. It defines the target archi
 The name `GUICore` is intentionally explicit. It should be understood as a lower-level primitive layer, not as a widget API. Normal application code should usually use one of the immediate API packages built on top of `GUICore`.
 
 ## Version history
+* **2026/7/12** Reconciled the approved architecture with the implementation: layers keep ordered command indexes and compile into one VG draw list; Stack Layout is removed; element state IDs are derived externally; and DebugInfo is an in-memory snapshot rather than a wire format.
 * **2026/7/4** Clarified the layout model: flex replaces the old linear-layout wording, element sizing is fixed/percent/fit with min/max constraints, and content-driven measurement is supplied by package-owned measure callbacks.
 * **2026/6/17** Revised the decision to remove `GUI::Node`, `GUI::RenderProxy`, and `GUI::IContext` from the long-term architecture, define the element tree as typeless data, and narrow the default `GUI` module into one editor-style immediate API package.
 * **2026/6/16** Proposed.

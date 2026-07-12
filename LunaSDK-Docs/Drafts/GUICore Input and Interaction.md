@@ -7,16 +7,19 @@ The input and interaction system provides reusable primitives for higher-level G
 2. Route pointer and keyboard events through layers and hit-testable elements.
 3. Maintain hover, active, focus, capture and click state.
 4. Deliver raw and element-local input events to target elements.
-5. Provide drag-drop source, target and payload routing.
-6. Keep platform text input and clipboard integration separate from Window.
+5. Keep platform text input and clipboard integration separate from Window.
 
 GUI Core routes input. It does not interpret a routed event as a specific widget action such as slider drag, text editing or menu navigation. That interpretation belongs to the immediate API package.
 
+Composite protocols such as drag-drop also belong to high-level packages. They can be implemented by combining generic hit testing, pointer capture, routed input events, state objects, layers and draw commands without adding payload or source/target concepts to GUI Core.
+
 ## Concepts
 ### Input event
-`GUICore::InputEvent` describes pointer, keyboard, UTF-8 text and focus events. Pointer positions are in screen logical coordinates with a top-left origin.
+`GUICore::InputEvent` describes pointer, keyboard, UTF-8 text, semantic navigation and focus events. Pointer positions are in screen logical coordinates with a top-left origin.
 
 Keyboard keys use `Luna::KeyCode` from Runtime. GUI Core does not define another key enum.
+
+`device_id` and `pointer_id` are preserved in submitted and delivered events, but the current context maintains one shared pointer stream and one shared keyboard state. Simultaneous multi-pointer routing is not implemented: separate pointer IDs do not receive independent hover, button or capture state.
 
 ### Interactable
 `GUICore::Interactable` is optional element data that enables input behavior. Most boolean capabilities are packed in `InteractableFlag`:
@@ -26,18 +29,32 @@ Keyboard keys use `Luna::KeyCode` from Runtime. GUI Core does not define another
 3. `focusable`: receive keyboard focus.
 4. `scrollable`: receive wheel events routed from descendant hit targets.
 5. `disabled`: ignore interactive behavior.
-6. `read_only`: allow focus but prevent active editing behavior.
+6. `read_only`: allow focus and raw event delivery, but suppress automatic active, pointer-capture and click state.
 
-`pointer_hit_behavior`, `focus_scope` and drag-drop source/target payload type lists remain separate fields because they are not simple capability bits.
+`pointer_hit_behavior` and `focus_scope` remain separate fields because they are not simple capability bits.
 `PointerHitBehavior` controls pointer hit routing:
 
 1. `none`: do not participate in pointer hit testing.
-2. `pass_through`: report the element through hit-test callbacks, then continue to lower elements.
+2. `pass_through`: receive pointer events and interaction state, then continue to lower elements.
 3. `target`: receive pointer events and stop routing.
 4. `block`: stop routing without receiving pointer events.
 
 ### Interaction state
 `GUICore::InteractionState` is produced by `IContext::route_input`. It reports state for an element and its subtree, including hover, active, focus, click, double-click and pointer positions.
+
+Multiple `pass_through` elements can be hovered or active at the same time. `active` means an element participates in the current primary pointer interaction; use `IContext::captured_element` to identify the single representative pointer-capture owner.
+
+### Semantic navigation
+Navigation is represented by intent-level input events instead of hard-wired keyboard behavior:
+
+1. `navigation_dpad`: directional focus movement.
+2. `navigation_move`: sequential forward or backward focus movement.
+3. `navigation_confirm`: activate or confirm the focused element.
+4. `navigation_back`: request back or cancel behavior from the focused element.
+
+GUI Core does not translate `KeyCode` values into these events. The host adapter decides the mapping. The default `GUIWindow` adapter maps arrow keys to D-pad, Tab and Shift+Tab to sequential movement, Enter to confirm, and Escape to back; it also forwards the original key event.
+
+Each element has a `NavigationConfig`. Every direction and action can use `automatic`, `none`, or `callback` behavior. Callback mode receives a `NavigationRequest` and can call `focus_element` for custom navigation or `navigate_default` to explicitly request the automatic fallback.
 
 ### Delivered events
 `get_delivered_input_events` returns input events delivered to one element. `get_routed_input_events` additionally includes element-local pointer positions.
@@ -46,9 +63,6 @@ Keyboard keys use `Luna::KeyCode` from Runtime. GUI Core does not define another
 Text editing controls request platform text input with `request_text_input`. The host reads `get_text_input_state` and activates IME or virtual keyboard behavior.
 
 Clipboard access is provided by `ClipboardIO` callbacks. Window-backed adapters and in-game hosts install these callbacks; GUI Core itself does not depend on Window.
-
-### Drag-drop
-Drag-drop source and target support is explicit. A source must declare provided payload types, and a target must declare accepted payload types.
 
 ## Programming guide
 ### Queue input
@@ -94,19 +108,18 @@ Input routing depends on layout results. Route after layout, not before it.
 3. Clear active or focused IDs when the corresponding element was not rebuilt, became disabled or can no longer receive the requested state.
 4. Process every queued input event in order. Pointer events update pointer position, pointer delta, modifier keys and the inside-screen flag before routing.
 5. Hit testing walks layers from top to bottom, then elements from newest to oldest inside each layer. An element can be hit only when its layout rectangle contains the pointer and its non-empty `clip_rect` also contains the pointer.
-6. Pointer target selection uses `hit_test`. Elements with `PointerHitBehavior::pass_through` are reported to the optional hit-test callback, then routing continues. Elements with `PointerHitBehavior::target` become the event target and stop routing. Elements with `PointerHitBehavior::block` stop routing without receiving pointer events.
-7. Pointer movement is delivered to the active captured element when one exists; otherwise it is delivered to the currently hovered element.
-8. Pointer down is delivered to the hit target. A left-button down can set the active element when the target is activatable and not read-only, and can set keyboard focus when the target is focusable.
-9. Pointer up is delivered to the active element when pointer capture is active. A left-button up over the same active element produces `clicked`, and may produce `double_clicked` when it is close enough in time and screen distance to the previous click.
-10. Wheel events are delivered to the nearest scrollable ancestor of the hit target. If no scrollable ancestor exists, the event is delivered to the hit target.
-11. Keyboard and UTF-8 text events are delivered to the focused element. `Tab` moves focus through focusable elements; arrow keys first try spatial focus movement and fall back to delivery when no spatial target is found.
-12. Drag-drop release looks for the topmost hit target that explicitly accepts the active payload type, delivers the pointer-up event to that target, stores the delivery payload and clears the active drag-drop state.
-13. `blur` clears pointer-inside, hover, active, focus, last-click state, key/button states and active drag-drop state.
-14. After all events are processed, the context writes final `hovered`, `active` and `focused` flags, then propagates hover/active/focus/click/double-click state to ancestors as subtree flags.
+6. Pointer target selection uses `hit_test`. Both `PointerHitBehavior::pass_through` and `PointerHitBehavior::target` are event targets. Pass-through targets receive events and let traversal continue; target and block stop traversal, while block receives no events.
+7. Pointer movement is delivered to every active element during a primary pointer interaction. Otherwise it is delivered to every current event target, including pass-through targets.
+8. Pointer down is delivered to every current event target. A left-button down can activate every compatible activatable target, choose the first such target as the representative capture owner, and focus the first compatible focusable target.
+9. A left-button up is delivered to every active target. Each active target still under the pointer can produce `clicked`, and may produce `double_clicked` when it is close enough in time and screen distance to its previous click. Non-primary releases follow the current hit target list and do not release primary capture.
+10. Wheel events are delivered to the nearest scrollable ancestor of the highest routed event target that has one. If none has a scrollable ancestor, they are delivered to the routed event targets.
+11. Raw keyboard and UTF-8 text events are delivered to the focused element. Navigation occurs only when the host submits one of the semantic `navigation_*` events.
+12. `blur` clears pointer-inside, hover, active, focus, last-click state and key/button states.
+13. After all events are processed, the context writes final `hovered`, `active` and `focused` flags, then propagates hover/active/focus/click/double-click state to ancestors as subtree flags.
 
 The router records two event streams. `get_delivered_input_events` returns the original events delivered to an element. `get_routed_input_events` also includes element-local pointer coordinates computed from the element layout rectangle and its layer screen position.
 
-`LayoutResult::clip_rect` participates in hit testing, but drawing is clipped only by explicit `DrawCommandType::push_clip` and `DrawCommandType::pop_clip` commands. Layout clipping and draw clipping are intentionally separate so a package can choose where clip-stack changes are worth the rendering cost.
+`LayoutResult::clip_rect` participates in hit testing and is automatically intersected with every element-owned draw command during compilation. `DrawCommandType::push_clip` and `DrawCommandType::pop_clip` add optional nested clipping to that automatic element clip.
 
 ### Query interaction state
 ```cpp
@@ -121,14 +134,14 @@ if(state.clicked)
 
 ### Use hit testing
 ```cpp
-GUICore::ElementHandle hit = context->hit_test(context->get_pointer_position());
-if(hit.index != GUICore::INVALID_ELEMENT)
+GUICore::ElementHandle routing_stop = context->hit_test(context->get_pointer_position());
+if(routing_stop.index != GUICore::INVALID_ELEMENT)
 {
-    // Inspect hit.id or use it for debug highlighting.
+    // Inspect routing_stop.id or use it for debug highlighting.
 }
 ```
 
-Hit testing checks upper layers before lower layers. Pass a callback to observe every visited element before routing stops:
+`hit_test` returns the final routing stop: a `target` or `block` element. A position that hits only pass-through elements returns an invalid handle even though those elements are reported through the callback and receive pointer events. Hit testing checks upper layers before lower layers. Pass a callback to observe every visited element before routing stops:
 
 ```cpp
 context->hit_test(context->get_pointer_position(), [](const GUICore::HitTestVisit& visit) {
@@ -137,7 +150,7 @@ context->hit_test(context->get_pointer_position(), [](const GUICore::HitTestVisi
 ```
 
 ### Use pass-through hit boxes
-Set `pointer_hit_behavior` to `pass_through` when an element should be visible to hit-test callbacks and debug tools but should not stop pointer routing.
+Set `pointer_hit_behavior` to `pass_through` when an element should receive pointer events without preventing lower elements from receiving them. Add or omit `hoverable`, `activatable`, and `focusable` flags to choose which interaction states it should produce.
 
 ```cpp
 GUICore::Interactable overlay;
@@ -146,14 +159,25 @@ set_flags(overlay.flags, GUICore::InteractableFlag::hoverable);
 context->set_interactable(overlay_element, overlay);
 ```
 
-### Focus and capture
+### Custom hit test
+Rectangle hit testing is the default. Install `ElementHitTestConfig` with `ElementHitTestMode::callback` when an element needs an arbitrary hit shape such as a circle or pie-menu sector. GUI Core first checks the layout rectangle and clip rectangle, then calls the callback with element-local and screen-space coordinates.
+
+```cpp
+GUICore::ElementHitTestConfig hit_test;
+hit_test.mode = GUICore::ElementHitTestMode::callback;
+hit_test.callback = hit_test_circle;
+hit_test.userdata = &circle_data;
+context->set_hit_test_config(round_button, hit_test);
+```
+
+### Focus and pointer capture
 ```cpp
 context->focus_element(text_field.id);
 context->capture_pointer(slider_thumb.id);
 context->release_pointer_capture(slider_thumb.id);
 ```
 
-The target element must exist and be compatible with the requested operation.
+The focus target must exist, be focusable, and not disabled. A capture target must exist, be activatable, and be neither disabled nor read-only. Capture applies to the shared pointer stream. Explicit `capture_pointer` resets the active target set to the captured element; automatic primary-pointer capture may leave multiple active pass-through targets, so subsequent pointer moves and primary-button releases are delivered to every active target until release, blur, or a new primary interaction.
 
 ### Request text input
 ```cpp
@@ -174,27 +198,6 @@ clipboard.userdata = host;
 clipboard.get_text = get_clipboard_text;
 clipboard.set_text = set_clipboard_text;
 context->set_clipboard_io(clipboard);
-```
-
-### Start drag-drop
-```cpp
-Name payload_type("asset.guid");
-context->set_drag_drop_source_types(source, Span<const Name>(&payload_type, 1));
-
-Guid asset_guid = selected_asset;
-luexp(context->start_drag_drop(source, payload_type, &asset_guid, sizeof(asset_guid)));
-```
-
-### Accept drag-drop
-```cpp
-context->set_drag_drop_target_types(target, Span<const Name>(&payload_type, 1));
-
-const GUICore::DragDropPayload* payload =
-    context->get_drag_drop_delivery(target, payload_type);
-if(payload)
-{
-    const Guid* guid = payload->data_as<Guid>();
-}
 ```
 
 ## Examples

@@ -24,25 +24,6 @@ namespace Luna
             u32 last_touched_generation = 0;
         };
 
-        struct DragDropPayloadStorage
-        {
-            Name type;
-            Vector<byte_t> data;
-            ElementHandle source;
-            ElementHandle target;
-            bool delivery = false;
-        };
-
-        struct DragDropState
-        {
-            bool active = false;
-            id_t source_id = 0;
-            Name type;
-            Vector<byte_t> data;
-            HashMap<id_t, DragDropPayloadStorage, IdHash> deliveries;
-            DragDropPayload payload_view;
-        };
-
         struct FontResource
         {
             Ref<Font::IFontFile> font;
@@ -87,7 +68,6 @@ namespace Luna
             HashMap<id_t, InteractionState, IdHash> m_interactions;
             HashMap<id_t, Vector<InputEvent>, IdHash> m_input_deliveries;
             HashMap<id_t, Vector<RoutedInputEvent>, IdHash> m_routed_input_deliveries;
-            DragDropState m_drag_drop;
             Ref<VG::IFontAtlas> m_font_atlas;
             Vector<id_t> m_hovered_elements;
             id_t m_pointer_capture_element = 0;
@@ -135,8 +115,6 @@ namespace Luna
             virtual NavigationConfig get_navigation_config(const ElementHandle& element) const override;
             virtual void set_hit_test_config(const ElementHandle& element, const ElementHitTestConfig& hit_test) override;
             virtual ElementHitTestConfig get_hit_test_config(const ElementHandle& element) const override;
-            virtual void set_drag_drop_source_types(const ElementHandle& element, Span<const Name> types) override;
-            virtual void set_drag_drop_target_types(const ElementHandle& element, Span<const Name> types) override;
             virtual void bind_style(const ElementHandle& element, const Name& style) override;
             virtual const Element* get_element(u32 index) const override;
             virtual const Element* find_element(id_t id) const override;
@@ -163,12 +141,6 @@ namespace Luna
             virtual void capture_pointer(id_t id) override;
             virtual void release_pointer_capture(id_t id = 0) override;
             virtual id_t captured_element() const override;
-            virtual RV start_drag_drop(const ElementHandle& source, const Name& payload_type, const void* data, usize data_size) override;
-            virtual void clear_drag_drop() override;
-            virtual bool is_drag_drop_active() const override;
-            virtual const DragDropPayload* get_drag_drop_payload() override;
-            virtual ElementHandle hit_test_drag_drop_target(const Name& payload_type, const Float2U& screen_position) const override;
-            virtual const DragDropPayload* get_drag_drop_delivery(const ElementHandle& target, const Name& payload_type) override;
             virtual object_t get_state(id_t id) override;
             virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) override;
             virtual void clear_state(id_t id) override;
@@ -202,8 +174,6 @@ namespace Luna
             void record_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command);
             bool point_hits_element(const Element& element, const Float2U& screen_position) const;
             bool element_can_focus(const Element& element) const;
-            bool element_has_drag_source_type(const Element& element, const Name& payload_type) const;
-            bool element_has_drag_target_type(const Element& element, const Name& payload_type) const;
             id_t focus_scope_of(id_t element_id) const;
             id_t scroll_target_of(id_t element_id) const;
             bool move_focus(bool reverse);
@@ -212,8 +182,6 @@ namespace Luna
             FontDesc resolve_font(const Name& id) const;
             RectF to_screen_rect(u32 layer_index, const RectF& rect) const;
             RectF to_vg_rect(const RectF& screen_rect) const;
-            const DragDropPayload* make_drag_drop_payload_view(const DragDropPayloadStorage& storage);
-            void deliver_drag_drop_payload(const ElementHandle& target);
         };
     }
 }

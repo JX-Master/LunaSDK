@@ -71,7 +71,7 @@ namespace Luna
             custom
         };
 
-        //! Serializable debug pass record for diagnostics and external tooling.
+        //! In-memory debug pass record for diagnostics and same-process tooling.
         struct DebugPassInfo
         {
             //! Subsystem that produced this pass.
@@ -101,7 +101,7 @@ namespace Luna
             error = 2
         };
 
-        //! Serializable debug issue record for one GUI Core frame.
+        //! In-memory debug issue record for one GUI Core frame.
         struct DebugIssueInfo
         {
             //! Issue severity.
@@ -183,6 +183,7 @@ namespace Luna
             //! Debug name.
             Name debug_name;
             //! Layout configuration attached to this element.
+            //! @remark Callback and userdata members are live runtime pointers and are not portable serialized data.
             LayoutConfig layout;
             //! Layout rectangle.
             RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
@@ -210,10 +211,6 @@ namespace Luna
             bool read_only = false;
             //! Focus scope attached to this element.
             id_t focus_scope = 0;
-            //! Payload types this element can provide as a drag-drop source.
-            Vector<Name> drag_source_types;
-            //! Payload types this element can accept as a drag-drop target.
-            Vector<Name> drag_target_types;
             //! Style entries resolved for this element from registered style schemas.
             Vector<DebugResolvedStyleEntryInfo> resolved_style;
             //! Whether this element was hovered after the latest input routing pass.
@@ -250,7 +247,9 @@ namespace Luna
             bool subtree_clicked = false;
             //! Whether this element or any descendant was double-clicked during the latest input routing pass.
             bool subtree_double_clicked = false;
-            //! First draw command emitted by this element.
+            //! First draw command emission index for this element.
+            //! @remark This is not a contiguous command range when commands were appended through
+            //! @ref IContext::draw_for_element.
             u32 first_draw_command = U32_MAX;
             //! Number of draw commands emitted by this element.
             u32 draw_command_count = 0;
@@ -280,7 +279,10 @@ namespace Luna
             Vector<RoutedInputEvent> routed_events;
         };
 
-        //! Serializable debug snapshot produced by a GUI Core context.
+        //! In-memory debug snapshot produced by a GUI Core context.
+        //! @remark This snapshot may contain runtime callback, userdata, texture, and shape-buffer pointers through
+        //! layout and draw command data. Convert it to a dedicated transport representation before crossing a
+        //! process or persistence boundary. Per-element navigation configuration is not currently captured.
         struct DebugInfo
         {
             //! Frame counters.
@@ -313,12 +315,6 @@ namespace Luna
             id_t focused_element = 0;
             //! Current focus scope ID, or zero when the focus is in the root scope.
             id_t focused_scope = 0;
-            //! Whether a drag-drop operation is active.
-            bool drag_drop_active = false;
-            //! Active drag-drop source element ID, or zero when no drag-drop operation is active.
-            id_t drag_drop_source = 0;
-            //! Active drag-drop payload type.
-            Name drag_drop_type;
             //! Draw commands recorded for the frame.
             Vector<DrawCommand> draw_commands;
         };

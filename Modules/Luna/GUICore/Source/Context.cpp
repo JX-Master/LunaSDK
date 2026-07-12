@@ -67,18 +67,6 @@ namespace Luna
                 return has_clip(a) ? a : b;
             }
 
-            bool contains_name(Span<const Name> names, const Name& name)
-            {
-                for(const Name& candidate : names)
-                {
-                    if(candidate == name)
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            }
-
             bool contains_id(Span<const id_t> ids, id_t id)
             {
                 for(id_t candidate : ids)
@@ -131,7 +119,6 @@ namespace Luna
             m_data_scope_stack.clear();
             m_data_scope_stack.push_back(DEFAULT_DATA_SCOPE);
             m_element_indices.clear();
-            m_drag_drop.deliveries.clear();
             m_text_input_request = TextInputRequest();
             m_hovered_elements.clear();
             m_counters = PerformanceCounters();
@@ -537,24 +524,6 @@ namespace Luna
             }
             const Element& e = m_elements[element.index];
             return e.id == element.id ? e.hit_test : ElementHitTestConfig();
-        }
-
-        void Context::set_drag_drop_source_types(const ElementHandle& element, Span<const Name> types)
-        {
-            lutsassert();
-            if(Element* e = mutable_element(element))
-            {
-                e->interactable.drag_source_types.assign(types.begin(), types.end());
-            }
-        }
-
-        void Context::set_drag_drop_target_types(const ElementHandle& element, Span<const Name> types)
-        {
-            lutsassert();
-            if(Element* e = mutable_element(element))
-            {
-                e->interactable.drag_target_types.assign(types.begin(), types.end());
-            }
         }
 
         void Context::bind_style(const ElementHandle& element, const Name& style)
@@ -1258,16 +1227,6 @@ namespace Luna
             return has_flags(element.interactable, InteractableFlag::focusable) && !has_flags(element.interactable, InteractableFlag::disabled);
         }
 
-        bool Context::element_has_drag_source_type(const Element& element, const Name& payload_type) const
-        {
-            return !payload_type.empty() && contains_name(element.interactable.drag_source_types.cspan(), payload_type);
-        }
-
-        bool Context::element_has_drag_target_type(const Element& element, const Name& payload_type) const
-        {
-            return !payload_type.empty() && contains_name(element.interactable.drag_target_types.cspan(), payload_type);
-        }
-
         id_t Context::focus_scope_of(id_t element_id) const
         {
             const Element* element = find_element(element_id);
@@ -1358,138 +1317,6 @@ namespace Luna
         {
             lutsassert();
             return m_pointer_capture_element;
-        }
-
-        RV Context::start_drag_drop(const ElementHandle& source, const Name& payload_type, const void* data, usize data_size)
-        {
-            lutsassert();
-            const Element* element = get_element(source.index);
-            if(!element || element->id != source.id || source.generation != m_generation ||
-                !element_has_drag_source_type(*element, payload_type) || (data_size && !data))
-            {
-                return BasicError::bad_arguments();
-            }
-            m_drag_drop.active = true;
-            m_drag_drop.source_id = source.id;
-            m_drag_drop.type = payload_type;
-            m_drag_drop.data.resize(data_size);
-            if(data_size)
-            {
-                memcpy(m_drag_drop.data.data(), data, data_size);
-            }
-            return ok;
-        }
-
-        void Context::clear_drag_drop()
-        {
-            lutsassert();
-            m_drag_drop.active = false;
-            m_drag_drop.source_id = 0;
-            m_drag_drop.type.reset();
-            m_drag_drop.data.clear();
-        }
-
-        bool Context::is_drag_drop_active() const
-        {
-            lutsassert();
-            return m_drag_drop.active;
-        }
-
-        const DragDropPayload* Context::get_drag_drop_payload()
-        {
-            lutsassert();
-            if(!m_drag_drop.active)
-            {
-                return nullptr;
-            }
-            m_drag_drop.payload_view.type = m_drag_drop.type;
-            m_drag_drop.payload_view.data = m_drag_drop.data.empty() ? nullptr : m_drag_drop.data.data();
-            m_drag_drop.payload_view.data_size = m_drag_drop.data.size();
-            auto iter = m_element_indices.find(m_drag_drop.source_id);
-            m_drag_drop.payload_view.source = iter == m_element_indices.end() ?
-                ElementHandle() : ElementHandle { m_drag_drop.source_id, iter->second, m_generation };
-            m_drag_drop.payload_view.target = ElementHandle();
-            m_drag_drop.payload_view.delivery = false;
-            return &m_drag_drop.payload_view;
-        }
-
-        ElementHandle Context::hit_test_drag_drop_target(const Name& payload_type, const Float2U& screen_position) const
-        {
-            lutsassert();
-            if(payload_type.empty())
-            {
-                return ElementHandle();
-            }
-            for(usize layer_reverse_index = m_layers.size(); layer_reverse_index > 0; --layer_reverse_index)
-            {
-                u32 layer_index = (u32)(layer_reverse_index - 1);
-                for(usize element_reverse_index = m_elements.size(); element_reverse_index > 0; --element_reverse_index)
-                {
-                    u32 element_index = (u32)(element_reverse_index - 1);
-                    const Element& element = m_elements[element_index];
-                    if(element.layer != layer_index || element.id == m_drag_drop.source_id)
-                    {
-                        continue;
-                    }
-                    if(point_hits_element(element, screen_position))
-                    {
-                        if(element_has_drag_target_type(element, payload_type))
-                        {
-                            return ElementHandle { element.id, element_index, m_generation };
-                        }
-                        if(element.interactable.pointer_hit_behavior == PointerHitBehavior::target ||
-                            element.interactable.pointer_hit_behavior == PointerHitBehavior::block)
-                        {
-                            return ElementHandle();
-                        }
-                    }
-                }
-            }
-            return ElementHandle();
-        }
-
-        const DragDropPayload* Context::make_drag_drop_payload_view(const DragDropPayloadStorage& storage)
-        {
-            m_drag_drop.payload_view.type = storage.type;
-            m_drag_drop.payload_view.data = storage.data.empty() ? nullptr : storage.data.data();
-            m_drag_drop.payload_view.data_size = storage.data.size();
-            m_drag_drop.payload_view.source = storage.source;
-            m_drag_drop.payload_view.target = storage.target;
-            m_drag_drop.payload_view.delivery = storage.delivery;
-            return &m_drag_drop.payload_view;
-        }
-
-        void Context::deliver_drag_drop_payload(const ElementHandle& target)
-        {
-            if(!m_drag_drop.active || !target.id)
-            {
-                return;
-            }
-            DragDropPayloadStorage storage;
-            storage.type = m_drag_drop.type;
-            storage.data = m_drag_drop.data;
-            auto source_iter = m_element_indices.find(m_drag_drop.source_id);
-            storage.source = source_iter == m_element_indices.end() ?
-                ElementHandle() : ElementHandle { m_drag_drop.source_id, source_iter->second, m_generation };
-            storage.target = target;
-            storage.delivery = true;
-            m_drag_drop.deliveries.insert_or_assign(target.id, move(storage));
-        }
-
-        const DragDropPayload* Context::get_drag_drop_delivery(const ElementHandle& target, const Name& payload_type)
-        {
-            lutsassert();
-            const Element* element = get_element(target.index);
-            if(!element || element->id != target.id || target.generation != m_generation || payload_type.empty())
-            {
-                return nullptr;
-            }
-            auto iter = m_drag_drop.deliveries.find(target.id);
-            if(iter == m_drag_drop.deliveries.end() || iter->second.type != payload_type)
-            {
-                return nullptr;
-            }
-            return make_drag_drop_payload_view(iter->second);
         }
 
         bool Context::move_focus(bool reverse)
@@ -1901,16 +1728,6 @@ namespace Luna
                     {
                         m_pointer_down[(u32)event.button] = false;
                     }
-                    if(event.button == PointerButton::left && m_drag_drop.active)
-                    {
-                        ElementHandle target = hit_test_drag_drop_target(m_drag_drop.type, m_pointer_position);
-                        deliver_input_event(target.id, event);
-                        deliver_drag_drop_payload(target);
-                        clear_drag_drop();
-                        m_pointer_capture_element = 0;
-                        m_active_elements.clear();
-                        break;
-                    }
                     if(event.button == PointerButton::left && !m_active_elements.empty())
                     {
                         collect_pointer_targets(pointer_targets);
@@ -2084,7 +1901,6 @@ namespace Luna
                     {
                         button = false;
                     }
-                    clear_drag_drop();
                     break;
                 default:
                     break;
@@ -2420,8 +2236,6 @@ namespace Luna
                 element_info.disabled = has_flags(element.interactable, InteractableFlag::disabled);
                 element_info.read_only = has_flags(element.interactable, InteractableFlag::read_only);
                 element_info.focus_scope = element.interactable.focus_scope;
-                element_info.drag_source_types = element.interactable.drag_source_types;
-                element_info.drag_target_types = element.interactable.drag_target_types;
                 for(const StyleEntrySchema& schema : m_style_schemas)
                 {
                     DebugResolvedStyleEntryInfo resolved_style;
@@ -2486,9 +2300,6 @@ namespace Luna
             info.pointer_capture_element = m_pointer_capture_element;
             info.focused_element = m_focused_element;
             info.focused_scope = focus_scope_of(m_focused_element);
-            info.drag_drop_active = m_drag_drop.active;
-            info.drag_drop_source = m_drag_drop.source_id;
-            info.drag_drop_type = m_drag_drop.type;
             m_counters.debug_dump_ms = perf_elapsed_ms(debug_begin, get_ticks());
             info.counters = m_counters;
             return info;

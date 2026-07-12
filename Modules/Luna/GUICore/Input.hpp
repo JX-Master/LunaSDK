@@ -111,9 +111,13 @@ namespace Luna
         {
             //! The kind of this input event.
             InputEventType type = InputEventType::pointer_move;
-            //! The host-defined input device identifier.
+            //! The host-defined input device identifier preserved with this event.
+            //! @remark Current GUI Core routing uses one shared pointer and keyboard state. It does not distinguish
+            //! simultaneous devices.
             u64 device_id = 0;
-            //! The host-defined pointer identifier, used for multi-pointer input sources.
+            //! The host-defined pointer identifier preserved with this event.
+            //! @remark Current GUI Core routing supports one pointer stream. This field does not yet create
+            //! independent hover, capture or button state for multiple pointers.
             u64 pointer_id = 0;
             //! The pointer position in screen logical coordinates.
             Float2U position = Float2U(0.0f);

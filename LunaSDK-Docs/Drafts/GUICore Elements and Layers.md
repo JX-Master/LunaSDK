@@ -31,9 +31,11 @@ context->pop_data_scope();
 4. Debug name.
 5. Layout config and result.
 6. Interactable data.
-7. Draw command range.
+7. Draw-command ownership summary.
 
 It does not store a widget kind. A text label, hit-test box, layout container or image region is still the same `Element` type.
+
+`first_draw_command` and `draw_command_count` are diagnostic summary values, not a guaranteed contiguous range. `draw_for_element` may append commands after commands for other elements. Filter `IContext::get_draw_commands()` by `DrawCommand::element` when the actual command set is needed.
 
 ### Element handle
 `GUICore::ElementHandle` is returned by `begin_element`. It stores stable ID, dense index and generation. Handles are frame-local. Do not keep a handle for use after the next `begin_frame`; keep the stable ID instead. The stable ID is intentionally kept in the handle so APIs can validate that the dense index still points at the same element and so callers can use the returned handle as a stable interaction/state key without another lookup.
@@ -47,12 +49,12 @@ A data scope participates in ID generation but does not affect topology. It is u
 1. Stable layer ID.
 2. Screen-space layer origin.
 3. Root element index.
-4. Draw command range.
+4. Ordered draw command indexes.
 5. Debug name.
 
 The first element created after `push_layer` becomes the root of that layer. Every element must belong to one layer.
 
-Layer-local positions use the layer origin as `(0, 0)`. Screen positions are converted by adding the layer origin.
+Layer-local positions use the layer origin as `(0, 0)`. Screen positions are converted by adding the layer origin. `Layer::draw_command_indices` is the authoritative command order for a layer; its first-command and count fields are diagnostic summaries.
 
 ## Programming guide
 ### Begin a layer
@@ -121,7 +123,7 @@ context->set_interactable(button_element, interactable);
 See [[GUICore Input and Interaction]] for routing behavior.
 
 ### Bind style
-Use `bind_style` to attach a named style to an existing element. Most immediate API packages bind `current_style()` automatically when they create elements.
+`begin_element` automatically binds the current top style-stack entry to the new element. Use `bind_style` only to override that inherited binding or clear it with an empty name.
 
 ```cpp
 context->bind_style(element, Name("editor.button"));

@@ -40,13 +40,13 @@ The element tree is typeless. Every node is a `GUICore::Element` record with the
 2. `LayoutResult`
 3. `Interactable`
 4. Style binding
-5. Draw command ranges
+5. Draw-command ownership metadata
 6. Debug metadata
 
 Elements do not inherit from widget classes and do not have virtual behavior. Algorithms operate on this data.
 
 ### Layer
-A layer owns one root element tree and a draw command range. Layers are stored from bottom to top. Rendering uses painter's algorithm, while input routing checks top layers first.
+A layer owns one root element tree and an ordered set of draw command indexes. Layers are stored from bottom to top. Rendering uses painter's algorithm, while input routing checks top layers first.
 
 Normal content, popups, tooltips, modal panels, drag previews and debug overlays should be represented as layers instead of special widget branches.
 
@@ -109,12 +109,12 @@ GUICore::ElementHandle root = context->begin_element(1, Name("Root"));
 context->end_element();
 context->pop_layer();
 
-luexp(layout_package_tree(context, root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+luexp(context->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
 context->route_input();
 luexp(context->compile_draw_commands(vg_draw_list));
 ```
 
-`layout_package_tree` is not a GUI Core function. It represents the layout pass provided by the higher-level package or by application code. GUI Core exposes primitive layout helpers described in [[GUICore Layout]].
+High-level packages attach `LayoutConfig` callbacks and callback userdata while they build elements. `IContext::apply_layout` owns the top-down tree traversal and invokes those callbacks. GUI Core exposes the primitive helpers used by those callbacks in [[GUICore Layout]].
 
 ### Render
 GUI Core records GUI-level draw commands. `IContext::compile_draw_commands` translates those commands into a `VG::IShapeDrawList`.

@@ -354,24 +354,8 @@ namespace Luna
         bool edited = false;
         context->push_data_scope(context->make_id((GUICore::id_t)(usize)&asset));
 
-        CoreGUIPropertyRow row = begin_core_gui_property_row(context, name, 82.0f);
+        CoreGUIPropertyRow row = begin_core_gui_property_row(context, name, 44.0f);
         GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"), "Asset Reference", fill());
-        GUICore::ElementHandle target = GUI::text_button(context, context->make_id("target"), asset ? "" : "(None)",
-            fixed_height(32.0f));
-
-        Name asset_ref_payload_type("Asset Ref");
-        if(GUI::begin_drag_drop_target(context, target, asset_ref_payload_type))
-        {
-            GUI::end_drag_drop_target(context);
-        }
-        if(const GUICore::DragDropPayload* payload = GUI::accept_drag_drop_payload(context, target, asset_ref_payload_type))
-        {
-            if(const Asset::asset_t* data = payload->data_as<Asset::asset_t>())
-            {
-                asset = *data;
-                edited = true;
-            }
-        }
 
         GUICore::ElementHandle path_row = GUI::begin_h_layout(context, context->make_id("asset_path_row"), "Asset Path Row",
             fixed_height(32.0f));
@@ -389,7 +373,7 @@ namespace Luna
         }
         else
         {
-            GUI::text(context, context->make_id("path"), "(drop asset here)", fixed_height(32.0f));
+            GUI::text(context, context->make_id("path"), "(None)", fixed_height(32.0f));
         }
         GUICore::FlexLayoutDesc path_desc;
         path_desc.axis = GUICore::LayoutAxis::x;
@@ -422,22 +406,7 @@ namespace Luna
         }
 
         CoreGUIPropertyRow row = begin_core_gui_property_row(context, name, 30.0f);
-        GUICore::ElementHandle target = GUI::text_button(context, context->make_id("target"), actor_name,
-            fixed_size(160.0f, 30.0f));
-
-        Name actor_ref_payload_type("Actor Ref");
-        if(GUI::begin_drag_drop_target(context, target, actor_ref_payload_type))
-        {
-            GUI::end_drag_drop_target(context);
-        }
-        if(const GUICore::DragDropPayload* payload = GUI::accept_drag_drop_payload(context, target, actor_ref_payload_type))
-        {
-            if(const Guid* data = payload->data_as<Guid>())
-            {
-                ref.guid = *data;
-                edited = true;
-            }
-        }
+        GUI::text(context, context->make_id("actor"), actor_name, fixed_size(160.0f, 30.0f));
 
         end_core_gui_property_row(context, row);
         context->pop_data_scope();

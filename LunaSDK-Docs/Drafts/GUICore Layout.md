@@ -55,7 +55,7 @@ Use `IContext::measure_element` inside layout algorithms when a child element's 
 2. `clip_rect`: element clip rectangle in layer coordinates.
 3. `content_size`: measured content size written by the layout algorithm. For scroll and table containers, this may be larger than the visible rectangle.
 
-`clip_rect` participates in hit testing. Drawing is clipped only by explicit draw commands such as `push_clip` and `pop_clip`.
+`clip_rect` participates in hit testing and is also applied automatically while GUI Core compiles each element-owned draw command. Explicit `push_clip` and `pop_clip` commands add a stricter nested clip; they do not replace layout clipping.
 
 ### Parent-owned placement
 Some layout data belongs to the parent algorithm instead of the child:

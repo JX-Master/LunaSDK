@@ -333,13 +333,6 @@ namespace Luna
                 editor->m_editing_actor_guid = guid;
                 open_popup = true;
             }
-            Name actor_ref_payload_type("Actor Ref");
-            if(GUI::begin_drag_drop_source(context, tree_node, actor_ref_payload_type))
-            {
-                GUI::set_drag_drop_payload(context, &guid, sizeof(guid));
-                GUI::text(context, context->make_id("drag_preview"), name.c_str(), core_fixed_height(24.0f));
-                GUI::end_drag_drop_source(context);
-            }
             if(opened)
             {
                 for(Actor* child : children)

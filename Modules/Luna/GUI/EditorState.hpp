@@ -461,23 +461,6 @@ namespace Luna
             Float2U viewport_size = Float2U(0.0f);
         };
 
-        //! Per-frame build state used by editor-style direct-core drag-drop scopes.
-        struct [[Luna::struct("{9FB8D044-6509-4AEA-A273-8DD19267C095}")]] CoreDragDropBuildState
-        {
-            //! Whether a drag-drop source scope is currently open.
-            bool source_scope_open = false;
-            //! Source element captured by the current source scope.
-            GUICore::ElementHandle source;
-            //! Payload type captured by the current source scope.
-            Name source_payload_type;
-            //! Whether a drag-drop target scope is currently open.
-            bool target_scope_open = false;
-            //! Target element captured by the current target scope.
-            GUICore::ElementHandle target;
-            //! Payload type accepted by the current target scope.
-            Name target_payload_type;
-        };
-
         //! Returns whether @p state already contains @p id in its stable tab order.
         inline bool tab_order_contains(const TabBarState& state, id_t id)
         {

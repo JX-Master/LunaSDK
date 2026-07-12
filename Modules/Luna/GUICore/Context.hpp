@@ -9,7 +9,6 @@
 */
 #pragma once
 #include "Debug.hpp"
-#include "DragDrop.hpp"
 #include "Input.hpp"
 #include "Context.generated.hpp"
 
@@ -55,7 +54,7 @@ namespace Luna
             //! @return Returns the current frame description.
             virtual FrameDesc get_frame_desc() const = 0;
 
-            //! Gets the latest pointer position seen by the GUI Core input router.
+            //! Gets the latest pointer position seen by the shared GUI Core pointer routing stream.
             //! @return Returns the pointer position in screen logical coordinates.
             virtual Float2U get_pointer_position() const = 0;
 
@@ -67,17 +66,17 @@ namespace Luna
             //! @return Returns `true` if the pointer is inside @ref FrameDesc::screen_size.
             virtual bool is_pointer_inside() const = 0;
 
-            //! Checks whether one pointer button is currently held down.
+            //! Checks whether one pointer button is currently held down on the shared GUI Core pointer routing stream.
             //! @param[in] button The pointer button to query.
             //! @return Returns `true` if the button has received a pointer-down event without a matching pointer-up or blur event.
             virtual bool is_pointer_button_down(PointerButton button) const = 0;
 
-            //! Checks whether one key is currently held down.
+            //! Checks whether one key is currently held down in the shared GUI Core keyboard state.
             //! @param[in] key The key to query.
             //! @return Returns `true` if the key has received a key-down event without a matching key-up or blur event.
             virtual bool is_key_down(KeyCode key) const = 0;
 
-            //! Gets the latest keyboard modifier state reported by input events.
+            //! Gets the latest keyboard modifier state reported by the shared input stream.
             //! @return Returns the current modifier flags.
             virtual KeyModifierFlag get_key_modifiers() const = 0;
 
@@ -185,16 +184,6 @@ namespace Luna
             //! @return Returns the element hit-test behavior. Invalid handles return default rectangle behavior.
             virtual ElementHitTestConfig get_hit_test_config(const ElementHandle& element) const = 0;
 
-            //! Sets drag-drop source payload types for an element.
-            //! @param[in] element The element handle returned by @ref begin_element.
-            //! @param[in] types Payload types this source explicitly provides.
-            virtual void set_drag_drop_source_types(const ElementHandle& element, Span<const Name> types) = 0;
-
-            //! Sets drag-drop target payload types for an element.
-            //! @param[in] element The element handle returned by @ref begin_element.
-            //! @param[in] types Payload types this target explicitly accepts.
-            virtual void set_drag_drop_target_types(const ElementHandle& element, Span<const Name> types) = 0;
-
             //! Binds one named style to an element.
             //! @param[in] element The element handle returned by @ref begin_element.
             //! @param[in] style The style name to bind. Passing an empty name clears the binding.
@@ -217,8 +206,9 @@ namespace Luna
 
             //! Gets all recorded draw commands in frame submission order.
             //! @return Returns a read-only span of draw commands recorded in the current frame.
-            //! @remark Layout algorithms can inspect commands owned by one element to derive content-driven
-            //! sizes. Callers should filter by @ref DrawCommand::element when they need element-local commands.
+            //! @remark This is useful for diagnostics, tooling, and custom rendering inspection. Content-driven
+            //! measurement should use @ref LayoutConfig::measure_callback rather than scanning draw commands.
+            //! Callers can filter by @ref DrawCommand::element when they need element-local commands.
             virtual Span<const DrawCommand> get_draw_commands() const = 0;
 
             //! Records one primitive draw command.
@@ -338,7 +328,7 @@ namespace Luna
             //! @remark Navigation callbacks can call this to explicitly fall back to GUI Core automatic behavior.
             virtual bool navigate_default(const NavigationRequest& request) = 0;
 
-            //! Captures subsequent pointer movement and release events to one element.
+            //! Captures subsequent pointer movement and primary pointer release events to one element.
             //! @param[in] id The element ID that should capture pointer input. Passing zero clears pointer capture.
             //! @remark The target element must exist, be activatable, not disabled, and not read-only. Pointer capture
             //! is reported as the element's active interaction state during input routing.
@@ -351,38 +341,6 @@ namespace Luna
             //! Gets the current pointer capture owner.
             //! @return Returns the captured element ID, or zero when no element captures pointer input.
             virtual id_t captured_element() const = 0;
-
-            //! Starts one drag-drop operation from a source element.
-            //! @param[in] source The drag-drop source element.
-            //! @param[in] payload_type The payload type to provide.
-            //! @param[in] data Payload data to copy into the context. May be `nullptr` when @p data_size is zero.
-            //! @param[in] data_size Payload data size in bytes.
-            //! @return Returns success or failure code.
-            //! @remark The source element must explicitly provide @p payload_type through @ref set_drag_drop_source_types.
-            virtual RV start_drag_drop(const ElementHandle& source, const Name& payload_type, const void* data, usize data_size) = 0;
-
-            //! Clears the active drag-drop operation.
-            virtual void clear_drag_drop() = 0;
-
-            //! Checks whether a drag-drop operation is active.
-            //! @return Returns `true` if a payload is currently being dragged.
-            virtual bool is_drag_drop_active() const = 0;
-
-            //! Gets the active drag-drop payload.
-            //! @return Returns the active payload, or `nullptr` if no drag-drop operation is active.
-            virtual const DragDropPayload* get_drag_drop_payload() = 0;
-
-            //! Hit-tests one drag-drop target compatible with a payload type.
-            //! @param[in] payload_type The payload type to accept.
-            //! @param[in] screen_position The position in screen logical coordinates.
-            //! @return Returns the topmost compatible target element, or an invalid handle if no compatible target is hit.
-            virtual ElementHandle hit_test_drag_drop_target(const Name& payload_type, const Float2U& screen_position) const = 0;
-
-            //! Gets one delivered drag-drop payload for a target.
-            //! @param[in] target The target element.
-            //! @param[in] payload_type The expected payload type.
-            //! @return Returns the delivered payload, or `nullptr` if no compatible delivery exists.
-            virtual const DragDropPayload* get_drag_drop_delivery(const ElementHandle& target, const Name& payload_type) = 0;
 
             //! Gets a state object by ID.
             //! @param[in] id The state identifier.
@@ -458,8 +416,10 @@ namespace Luna
             //! @return Returns a copy of the current performance counters.
             virtual PerformanceCounters get_performance_counters() = 0;
 
-            //! Dumps a serializable debug snapshot for the current GUI Core frame.
+            //! Dumps an in-memory debug snapshot for the current GUI Core frame.
             //! @return Returns the debug information snapshot.
+            //! @remark The snapshot may contain runtime callback, userdata, texture, and shape-buffer pointers. It is
+            //! suitable for same-process panels, inspection, and tests, but is not a cross-process wire format.
             virtual DebugInfo dump_debug_info() = 0;
 
             //! Logs one debug issue for the current frame.
@@ -467,7 +427,7 @@ namespace Luna
             //! @param[in] category Subsystem or feature that reports the issue.
             //! @param[in] message Human-readable diagnostic message.
             //! @param[in] element Related element ID, or zero if the issue is not tied to one element.
-            //! @remark Issues are frame-local and are serialized by @ref dump_debug_info.
+            //! @remark Issues are frame-local and are included by @ref dump_debug_info.
             virtual void log_debug_issue(DebugIssueSeverity severity, const Name& category, const c8* message,
                 id_t element = 0) = 0;
 
@@ -478,7 +438,7 @@ namespace Luna
             //! @param[in] element Related element ID, or zero when the pass is not tied to one element.
             //! @param[in] detail Optional human-readable detail text.
             //! @param[in] duration_ms Optional elapsed time in milliseconds.
-            //! @remark Pass records are frame-local and are serialized by @ref dump_debug_info. They are intended
+            //! @remark Pass records are frame-local and are included by @ref dump_debug_info. They are intended
             //! for debug tooling and do not affect layout, input or rendering behavior.
             virtual void log_debug_pass(DebugPassKind kind, const Name& name, const Name& reason, id_t element = 0,
                 const c8* detail = nullptr, f64 duration_ms = 0.0) = 0;

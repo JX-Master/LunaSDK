@@ -406,60 +406,6 @@ namespace Luna
         LUNA_GUI_API GUICore::ElementHandle menu_separator(GUICore::IContext* context, GUICore::id_t id,
             const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
 
-        //! Sets the payload types that a direct GUI Core element can provide as a drag-drop source.
-        LUNA_GUI_API void set_drag_drop_source_types(GUICore::IContext* context, const GUICore::ElementHandle& source,
-            Span<const Name> types);
-        //! Sets the payload types that a direct GUI Core element can accept as a drag-drop target.
-        LUNA_GUI_API void set_drag_drop_target_types(GUICore::IContext* context, const GUICore::ElementHandle& target,
-            Span<const Name> types);
-        //! Begins an editor-style direct GUI Core drag-drop source scope.
-        //! @param[in] context The GUI Core context.
-        //! @param[in] source The source element.
-        //! @param[in] payload_type Payload type this source can provide.
-        //! @return Returns `true` when the caller should provide payload data through @ref set_drag_drop_payload.
-        //! @remark This is a high-level immediate helper. It declares @p source as a source for @p payload_type and
-        //! starts the core drag operation when the source is active.
-        LUNA_GUI_API bool begin_drag_drop_source(GUICore::IContext* context, const GUICore::ElementHandle& source,
-            const Name& payload_type);
-        //! Sets payload data for the current editor-style direct GUI Core drag-drop source scope.
-        //! @param[in] context The GUI Core context.
-        //! @param[in] data Payload bytes to copy. May be `nullptr` when @p data_size is zero.
-        //! @param[in] data_size Payload byte size.
-        LUNA_GUI_API void set_drag_drop_payload(GUICore::IContext* context, const void* data, usize data_size);
-        //! Ends the current editor-style direct GUI Core drag-drop source scope.
-        LUNA_GUI_API void end_drag_drop_source(GUICore::IContext* context);
-        //! Begins an editor-style direct GUI Core drag-drop target scope.
-        //! @param[in] context The GUI Core context.
-        //! @param[in] target The target element.
-        //! @param[in] payload_type Payload type accepted by this target.
-        //! @return Returns `true` if a compatible payload is currently active.
-        //! @remark The return value is suitable for drawing target previews or highlights. Delivery is queried with
-        //! @ref accept_drag_drop_payload after input routing.
-        LUNA_GUI_API bool begin_drag_drop_target(GUICore::IContext* context, const GUICore::ElementHandle& target,
-            const Name& payload_type);
-        //! Accepts a delivered payload for the current editor-style direct GUI Core drag-drop target scope.
-        //! @param[in] context The GUI Core context.
-        //! @param[in] payload_type Expected payload type.
-        //! @return Returns the delivered payload, or `nullptr` when no compatible payload was delivered.
-        LUNA_GUI_API const GUICore::DragDropPayload* accept_drag_drop_payload(GUICore::IContext* context,
-            const Name& payload_type);
-        //! Ends the current editor-style direct GUI Core drag-drop target scope.
-        LUNA_GUI_API void end_drag_drop_target(GUICore::IContext* context);
-        //! Starts a direct GUI Core drag-drop operation.
-        LUNA_GUI_API RV start_drag_drop(GUICore::IContext* context, const GUICore::ElementHandle& source,
-            const Name& payload_type, const void* data, usize data_size);
-        //! Clears the active direct GUI Core drag-drop operation.
-        LUNA_GUI_API void clear_drag_drop(GUICore::IContext* context);
-        //! Checks whether a direct GUI Core drag-drop operation is active.
-        LUNA_GUI_API bool is_drag_drop_active(GUICore::IContext* context);
-        //! Gets the active direct GUI Core drag-drop payload.
-        LUNA_GUI_API const GUICore::DragDropPayload* get_drag_drop_payload(GUICore::IContext* context);
-        //! Hit-tests the topmost direct GUI Core drag-drop target compatible with a payload type.
-        LUNA_GUI_API GUICore::ElementHandle hit_test_drag_drop_target(GUICore::IContext* context,
-            const Name& payload_type, const Float2U& screen_position);
-        //! Gets a delivered direct GUI Core drag-drop payload for a target.
-        LUNA_GUI_API const GUICore::DragDropPayload* accept_drag_drop_payload(GUICore::IContext* context,
-            const GUICore::ElementHandle& target, const Name& payload_type);
         //! @}
 
         //! @}

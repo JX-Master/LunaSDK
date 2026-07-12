@@ -548,15 +548,6 @@ namespace Luna
                         auto asset = Asset::get_asset_by_path(meta_path);
                         if(succeeded(asset))
                         {
-                            Name asset_ref_payload_type("Asset Ref");
-                            if(GUI::begin_drag_drop_source(context, tile, asset_ref_payload_type))
-                            {
-                                Asset::asset_t payload = asset.get();
-                                GUI::set_drag_drop_payload(context, &payload, sizeof(payload));
-                                GUI::text(context, context->make_id("drag_preview"), meta_path.encode().c_str(), fixed_height(24.0f));
-                                GUI::end_drag_drop_source(context);
-                            }
-
                             auto asset_type = Asset::get_asset_type(asset.get());
                             draw_asset_tile_preview(context, asset.get(), RectF(padding, padding, m_tile_size, m_tile_size));
 

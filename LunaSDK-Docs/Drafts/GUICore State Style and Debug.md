@@ -5,7 +5,7 @@ These systems solve cross-frame and tooling problems without introducing widget 
 
 1. The state store keeps typed boxed state objects by stable IDs.
 2. The style system stores named style records with inheritance and schema metadata.
-3. Debug output serializes the current frame for panels, tests and external tools.
+3. Debug output captures the current frame for in-process panels, tests and inspection tools.
 4. Performance counters expose the cost of routing, state cleanup and draw command compilation.
 
 GUI Core does not define widget-specific state or widget-specific style keys. Higher-level packages define those objects and keys.
@@ -52,7 +52,7 @@ Convenience helpers include `style_f32`, `style_f32x2`, `style_f32x3`, `style_f3
 `StyleEntrySchema` describes a style entry consumed by a package. GUI Core stores schemas for tools and debug views. It does not interpret the entry as behavior.
 
 ### Debug info
-`GUICore::DebugInfo` is a serializable frame snapshot. It contains:
+`GUICore::DebugInfo` is an in-memory frame snapshot. It contains:
 
 1. Performance counters.
 2. Layers.
@@ -60,21 +60,25 @@ Convenience helpers include `style_f32`, `style_f32x2`, `style_f32x3`, `style_f3
 4. Styles and style schemas.
 5. Input events and deliveries.
 6. Debug issues and pass records.
-7. Current focus, active, capture and drag-drop summary.
+7. Current focus, active and capture summary.
 8. Draw commands.
 
+The snapshot is not a cross-process wire format. `LayoutConfig` can contain callback and userdata pointers, while draw commands can contain texture and shape-buffer pointers. Use the snapshot directly for same-process debug panels or tests. An external debugger must first convert it to an application-defined transport DTO that replaces or omits those runtime pointers.
+
+The current snapshot does not include per-element `NavigationConfig` modes or navigation callback presence. Tools that need that information must inspect the live element data in-process until a portable navigation-debug record is added.
+
 ### Debug timeline
-`DebugFrameTimeline` stores multiple `DebugInfo` frames so a debug panel or external tool can step through captured frames.
+`DebugFrameTimeline` stores multiple `DebugInfo` frames so an in-process debug panel or test can step through captured frames. Pointer-valued fields are observational data only and can become stale after their backing runtime data is released.
 
 ## Programming guide
 ### Set and get state
 State objects are boxed Runtime objects.
 
 ```cpp
-struct MyControlState : Object
+struct [[Luna::struct("{EA3F570E-C41A-4B23-A70C-97656C0AB92E}")]] MyControlState
 {
-    // Use lustruct with a generated unique GUID in real code.
     f32 animation = 0.0f;
+    f32 hover = 0.0f;
 };
 
 GUICore::id_t state_id = GUICore::make_state_id<MyControlState>(element.id);
@@ -85,7 +89,7 @@ luexp(context->set_state(state_id, state.object(), GUICore::StateLifetime::next_
 object_t boxed = context->get_state(state_id);
 ```
 
-Refresh `next_frame` state every frame while the owner remains alive.
+This state type must be declared in module code processed by LunaMetaTool so its boxed Runtime type is registered before `new_object` is called. Refresh `next_frame` state every frame while the owner remains alive.
 
 ### Clear state
 ```cpp
@@ -119,12 +123,11 @@ context->unset_style_entry(Name("editor.disabled"), Name("gui.editor.button.acce
 ```cpp
 context->push_style(Name("editor.dark.button"));
 GUICore::ElementHandle button = context->begin_element(button_id, Name("Button"));
-context->bind_style(button, context->current_style());
 context->end_element();
 context->pop_style();
 ```
 
-High-level packages usually bind `current_style()` automatically when creating elements.
+`begin_element` itself binds the current style-stack top to each newly created element. Call `bind_style` only when a package needs to replace that binding or clear it with an empty style name.
 
 ### Resolve style values
 ```cpp
@@ -168,7 +171,7 @@ Counters reflect the most recent operations that updated them.
 GUICore::DebugInfo info = context->dump_debug_info();
 ```
 
-Use the snapshot directly in a debug panel, serialize it for external tooling or compare it in tests.
+Use the snapshot directly in a debug panel or compare it in tests. For external tooling, convert it to a transport-safe representation that removes callback, userdata, texture, and shape-buffer pointers.
 
 ### Log issues and passes
 ```cpp
@@ -195,11 +198,11 @@ GUICore::clear_debug_frames(timeline);
 ## Examples
 ### Animate state owned by an element
 ```cpp
-GUICore::id_t state_id = GUICore::make_state_id<MyHoverState>(element.id);
-Ref<MyHoverState> state = cast_object<MyHoverState>(context->get_state(state_id));
+GUICore::id_t state_id = GUICore::make_state_id<MyControlState>(element.id);
+Ref<MyControlState> state = cast_object<MyControlState>(context->get_state(state_id));
 if(!state)
 {
-    state = new_object<MyHoverState>();
+    state = new_object<MyControlState>();
 }
 
 GUICore::InteractionState interaction = context->get_interaction_state(element.id);

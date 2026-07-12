@@ -347,10 +347,6 @@ namespace Luna
             PointerHitBehavior pointer_hit_behavior = PointerHitBehavior::none;
             //! Optional focus scope ID.
             id_t focus_scope = 0;
-            //! Payload types this element can provide as a drag-drop source.
-            Vector<Name> drag_source_types;
-            //! Payload types this element can accept as a drag-drop target.
-            Vector<Name> drag_target_types;
         };
 
         inline bool has_flags(const Interactable& interactable, InteractableFlag flags)
@@ -469,7 +465,9 @@ namespace Luna
         {
             //! Whether the element is currently hovered.
             bool hovered = false;
-            //! Whether the element is currently active through pointer capture.
+            //! Whether the element is active for the current primary pointer interaction.
+            //! @remark Multiple pass-through event targets can be active at once. Use @ref IContext::captured_element
+            //! to identify the one representative pointer capture owner.
             bool active = false;
             //! Whether the element is currently focused.
             bool focused = false;
@@ -492,7 +490,7 @@ namespace Luna
             RectF clicked_element_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             //! Whether this element or any of its descendants is currently hovered.
             bool subtree_hovered = false;
-            //! Whether this element or any of its descendants is currently active through pointer capture.
+            //! Whether this element or any of its descendants is active for the current primary pointer interaction.
             bool subtree_active = false;
             //! Whether this element or any of its descendants is currently focused.
             bool subtree_focused = false;
@@ -536,9 +534,13 @@ namespace Luna
             NavigationConfig navigation;
             //! Optional custom pointer hit-test behavior.
             ElementHitTestConfig hit_test;
-            //! First draw command emitted by this element.
+            //! First draw command emission index for this element.
+            //! @remark This is diagnostic summary data, not a contiguous command range. Commands can be interleaved
+            //! when @ref IContext::draw_for_element is used after normal element construction.
             u32 first_draw_command = U32_MAX;
             //! Number of draw commands emitted by this element.
+            //! @remark Filter @ref IContext::get_draw_commands by @ref DrawCommand::element to enumerate this
+            //! element's actual commands.
             u32 draw_command_count = 0;
         };
 
@@ -551,7 +553,8 @@ namespace Luna
             Float2U screen_position = Float2U(0.0f);
             //! Root element index, or @ref INVALID_ELEMENT.
             u32 root = INVALID_ELEMENT;
-            //! First draw command emitted by this layer.
+            //! First draw command emission index for this layer.
+            //! @remark This is diagnostic summary data. Use @ref draw_command_indices for the authoritative order.
             u32 first_draw_command = U32_MAX;
             //! Number of draw commands emitted by this layer.
             u32 draw_command_count = 0;

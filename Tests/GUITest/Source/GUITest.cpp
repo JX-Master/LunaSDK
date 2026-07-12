@@ -62,18 +62,11 @@ namespace
         bool menu_show_grid = true;
         bool menu_snap = false;
         bool popup_toggle = false;
-        i32 dropped_value = 0;
-        char dropped_text[32] = "none";
         bool dock_left_open = true;
         bool dock_right_open = true;
         bool dock_bottom_open = true;
         bool dock_layout_initialized = false;
         bool show_debug_panel = false;
-    };
-
-    struct TextPayload
-    {
-        c8 text[32];
     };
 
     GUICore::LayoutConfig row_layout()
@@ -415,7 +408,7 @@ namespace
     {
         GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("gui.overlay.scroll"), "Overlay page", Test::fill_layout());
         GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("gui.overlay.body"), "Overlay body", Test::fill_layout());
-        text_line(context, Test::demo_id("gui.overlay.title"), "Menus, popups, tooltips, nested tabs and drag-drop");
+        text_line(context, Test::demo_id("gui.overlay.title"), "Menus, popups, tooltips and nested tabs");
         GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, Test::demo_id("gui.overlay.menu.bar"), "Menu Bar", row_layout());
         if(GUI::begin_menu(context, Test::demo_id("gui.overlay.menu.file"), "File"))
         {
@@ -504,53 +497,6 @@ namespace
         GUI::begin_tab_item(context, Test::demo_id("gui.overlay.tab.button"), "+", nullptr, GUI::TabItemFlag::button);
         lupanic_if_failed(GUI::end_tab_bar(context, nested_tabs));
 
-        GUICore::ElementHandle source = GUI::text_button(context, Test::demo_id("gui.overlay.drag.source"), "Drag value 42", row_layout());
-        if(GUI::begin_drag_drop_source(context, source, Name("gui_demo.number")))
-        {
-            i32 value = 42;
-            GUI::set_drag_drop_payload(context, &value, sizeof(value));
-            GUI::end_drag_drop_source(context);
-        }
-        GUICore::ElementHandle target = GUI::text_button(context, Test::demo_id("gui.overlay.drag.target"), "Drop number here", row_layout());
-        if(GUI::begin_drag_drop_target(context, target, Name("gui_demo.number")))
-        {
-            const GUICore::DragDropPayload* payload = GUI::accept_drag_drop_payload(context, Name("gui_demo.number"));
-            if(payload)
-            {
-                if(const i32* value = payload->data_as<i32>())
-                {
-                    state.dropped_value = *value;
-                }
-            }
-            GUI::end_drag_drop_target(context);
-        }
-        GUICore::ElementHandle text_source = GUI::text_button(context, Test::demo_id("gui.overlay.drag.text.source"), "Drag text payload", row_layout());
-        if(GUI::begin_drag_drop_source(context, text_source, Name("gui_demo.text")))
-        {
-            TextPayload payload;
-            strncpy(payload.text, "Hello payload", sizeof(payload.text));
-            payload.text[sizeof(payload.text) - 1] = 0;
-            GUI::set_drag_drop_payload(context, &payload, sizeof(payload));
-            GUI::end_drag_drop_source(context);
-        }
-        GUICore::ElementHandle text_target = GUI::text_button(context, Test::demo_id("gui.overlay.drag.text.target"), "Drop text here", row_layout());
-        if(GUI::begin_drag_drop_target(context, text_target, Name("gui_demo.text")))
-        {
-            const GUICore::DragDropPayload* payload = GUI::accept_drag_drop_payload(context, Name("gui_demo.text"));
-            if(payload)
-            {
-                if(const TextPayload* value = payload->data_as<TextPayload>())
-                {
-                    strncpy(state.dropped_text, value->text, sizeof(state.dropped_text));
-                    state.dropped_text[sizeof(state.dropped_text) - 1] = 0;
-                }
-            }
-            GUI::end_drag_drop_target(context);
-        }
-        char dropped[64];
-        snprintf(dropped, sizeof(dropped), "%d", state.dropped_value);
-        labeled_text(context, Test::demo_id("gui.overlay.drag.status"), "Dropped value", dropped);
-        labeled_text(context, Test::demo_id("gui.overlay.drag.text.status"), "Dropped text", state.dropped_text);
         end_page(context, body, scroll);
     }
 

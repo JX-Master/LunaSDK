@@ -32,6 +32,8 @@ Supported command types are:
 
 `DrawCommandRectReference::element` means the rectangle is resolved from the owning element's layout rectangle. This is the common mode for widget chrome.
 
+Every non-clip command is automatically intersected with its owning element's `LayoutResult::clip_rect` when compiled. Explicit clip commands can further restrict that region for a command sequence.
+
 ### Element-relative trailing inset
 When `rect_reference` is `element`, `rect_layout_scale` can scale from the element size.
 
@@ -135,7 +137,7 @@ pop.type = GUICore::DrawCommandType::pop_clip;
 context->draw(pop);
 ```
 
-High-level scroll views and table views typically emit clip commands around content.
+Use explicit clips only when a command sequence needs a region stricter than the element layout clip. Scroll viewports and layout containers normally receive their base clipping from `LayoutResult::clip_rect` automatically.
 
 ### Compile to VG
 ```cpp
