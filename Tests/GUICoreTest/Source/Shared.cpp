@@ -154,4 +154,22 @@ namespace Luna::GUICoreTest
         interactable.flags = flags;
         context->set_interactable(element, interactable);
     }
+
+    RV draw_sheet_callback(GUICore::IContext* context, const GUICore::ElementHandle& element,
+        GUICore::DrawPhase phase, void* userdata)
+    {
+        (void)element;
+        (void)userdata;
+        if(phase == GUICore::DrawPhase::before_children)
+        {
+            draw_rect(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT),
+                Float4U(1.0f, 1.0f, 1.0f, 1.0f));
+        }
+        else
+        {
+            draw_outline(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT),
+                Float4U(0.74f, 0.74f, 0.74f, 1.0f), 1.0f);
+        }
+        return ok;
+    }
 }

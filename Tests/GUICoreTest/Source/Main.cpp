@@ -67,8 +67,11 @@ namespace
 
         GUICore::ElementHandle sheet = context->begin_element(ID_SHEET, Name("Fixed Cheat Sheet"));
         context->set_layout_config(sheet, fixed_layout(SHEET_WIDTH, SHEET_HEIGHT));
-        draw_rect(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT), Float4U(1.0f, 1.0f, 1.0f, 1.0f), 0.0f);
-        draw_outline(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT), Float4U(0.74f, 0.74f, 0.74f, 1.0f), 1.0f);
+        GUICore::DrawConfig sheet_draw;
+        sheet_draw.name = Name("guicore.test.sheet");
+        sheet_draw.callback = draw_sheet_callback;
+        sheet_draw.phases = GUICore::DrawPhaseFlag::before_children | GUICore::DrawPhaseFlag::after_children;
+        context->set_draw_config(sheet, sheet_draw);
 
         build_slide_header(context, state);
         if(state.slice_index == 0)
@@ -255,6 +258,18 @@ namespace
                     luexp(app.gui->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
                 }
                 luexp(GUIWindow::update_text_input(&input_adapter));
+                luexp(app.gui->generate_draw_commands());
+                Span<const GUICore::DrawCommand> generated_commands = app.gui->get_draw_commands();
+                GUICore::ElementHandle sheet = app.gui->find_element_handle(GUICoreTest::ID_SHEET);
+                luassert(generated_commands.size() >= 5);
+                luassert(generated_commands.front().element == sheet.index &&
+                    generated_commands.front().type == GUICore::DrawCommandType::rect);
+                for(usize i = generated_commands.size() - 4; i < generated_commands.size(); ++i)
+                {
+                    luassert(generated_commands[i].element == sheet.index &&
+                        generated_commands[i].type == GUICore::DrawCommandType::line);
+                }
+                luassert(app.gui->get_performance_counters().draw_callback_count >= 2);
 
                 lulet(back_buffer, app.swap_chain->get_current_back_buffer());
                 RHI::RenderPassDesc render_pass;

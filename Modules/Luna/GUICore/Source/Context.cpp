@@ -108,6 +108,9 @@ namespace Luna
             u64 gc_end = get_ticks();
             m_layers.clear();
             m_elements.clear();
+            m_draw_configs.clear();
+            m_recorded_draw_commands.clear();
+            m_layer_draw_operations.clear();
             m_draw_commands.clear();
             m_input_events.clear();
             m_debug_issues.clear();
@@ -121,6 +124,10 @@ namespace Luna
             m_element_indices.clear();
             m_text_input_request = TextInputRequest();
             m_hovered_elements.clear();
+            m_draw_generation_layer = INVALID_LAYER;
+            m_draw_generation_element = INVALID_ELEMENT;
+            m_generating_draw_commands = false;
+            m_draw_commands_generated = false;
             m_counters = PerformanceCounters();
             m_counters.frame_generation = m_generation;
             m_counters.state_gc_ms = perf_elapsed_ms(gc_begin, gc_end);
@@ -193,6 +200,7 @@ namespace Luna
         void Context::push_layer(id_t id, const Float2U& screen_position, const Name& debug_name)
         {
             lutsassert();
+            luassert_msg(!m_generating_draw_commands, "Layers cannot be built while GUI Core draw callbacks are running.");
             for(const Layer& layer : m_layers)
             {
                 luassert_msg(layer.id != id, "Duplicate GUI Core layer ID in one frame.");
@@ -202,7 +210,9 @@ namespace Luna
             layer.screen_position = screen_position;
             layer.debug_name = debug_name;
             m_layers.push_back(move(layer));
+            m_layer_draw_operations.push_back(Vector<DrawOperation>());
             m_layer_stack.push_back((u32)m_layers.size() - 1);
+            m_draw_commands_generated = false;
         }
 
         void Context::pop_layer()
@@ -248,6 +258,7 @@ namespace Luna
         ElementHandle Context::begin_element(id_t id, const Name& debug_name)
         {
             lutsassert();
+            luassert_msg(!m_generating_draw_commands, "Elements cannot be built while GUI Core draw callbacks are running.");
             luassert(!m_layer_stack.empty());
             luassert_msg(m_element_indices.find(id) == m_element_indices.end(), "Duplicate GUI Core element ID in one frame.");
             u32 layer_index = m_layer_stack.back();
@@ -286,6 +297,8 @@ namespace Luna
             m_elements.push_back(move(element));
             m_element_indices.insert(make_pair(id, index));
             m_element_stack.push_back(index);
+            m_layer_draw_operations[layer_index].push_back(DrawOperation { DrawOperationType::begin_element, index });
+            m_draw_commands_generated = false;
             return ElementHandle { id, index, m_generation };
         }
 
@@ -293,7 +306,12 @@ namespace Luna
         {
             lutsassert();
             luassert(!m_element_stack.empty());
+            luassert_msg(!m_generating_draw_commands, "Elements cannot be built while GUI Core draw callbacks are running.");
+            u32 element_index = m_element_stack.back();
+            u32 layer_index = m_elements[element_index].layer;
+            m_layer_draw_operations[layer_index].push_back(DrawOperation { DrawOperationType::end_element, element_index });
             m_element_stack.pop_back();
+            m_draw_commands_generated = false;
         }
 
         Element* Context::mutable_element(const ElementHandle& element)
@@ -312,6 +330,7 @@ namespace Luna
             if(Element* e = mutable_element(element))
             {
                 e->layout = config;
+                m_draw_commands_generated = false;
             }
         }
 
@@ -321,6 +340,7 @@ namespace Luna
             if(Element* e = mutable_element(element))
             {
                 e->layout_result = result;
+                m_draw_commands_generated = false;
             }
         }
 
@@ -483,6 +503,7 @@ namespace Luna
             if(Element* e = mutable_element(element))
             {
                 e->interactable = interactable;
+                m_draw_commands_generated = false;
             }
         }
 
@@ -492,6 +513,7 @@ namespace Luna
             if(Element* e = mutable_element(element))
             {
                 e->navigation = navigation;
+                m_draw_commands_generated = false;
             }
         }
 
@@ -512,6 +534,7 @@ namespace Luna
             if(Element* e = mutable_element(element))
             {
                 e->hit_test = hit_test;
+                m_draw_commands_generated = false;
             }
         }
 
@@ -532,6 +555,7 @@ namespace Luna
             if(Element* e = mutable_element(element))
             {
                 e->style = style;
+                m_draw_commands_generated = false;
             }
         }
 
@@ -559,13 +583,49 @@ namespace Luna
             return ElementHandle { id, iter->second, m_generation };
         }
 
+        void Context::set_draw_config(const ElementHandle& element, const DrawConfig& config)
+        {
+            lutsassert();
+            luassert_msg(!m_generating_draw_commands, "Draw configuration cannot change while callbacks are running.");
+            Element* e = mutable_element(element);
+            if(!e)
+            {
+                return;
+            }
+            if(e->draw_config == U32_MAX)
+            {
+                e->draw_config = (u32)m_draw_configs.size();
+                m_draw_configs.push_back(config);
+            }
+            else
+            {
+                m_draw_configs[e->draw_config] = config;
+            }
+            m_draw_commands_generated = false;
+        }
+
+        DrawConfig Context::get_draw_config(const ElementHandle& element) const
+        {
+            lutsassert();
+            if(!element.id || element.generation != m_generation || element.index >= m_elements.size())
+            {
+                return DrawConfig();
+            }
+            const Element& e = m_elements[element.index];
+            if(e.id != element.id || e.draw_config >= m_draw_configs.size())
+            {
+                return DrawConfig();
+            }
+            return m_draw_configs[e.draw_config];
+        }
+
         Span<const DrawCommand> Context::get_draw_commands() const
         {
             lutsassert();
             return m_draw_commands.cspan();
         }
 
-        void Context::record_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command)
+        void Context::append_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command)
         {
             DrawCommand cmd = command;
             cmd.layer = layer_index;
@@ -590,13 +650,125 @@ namespace Luna
             m_draw_commands.push_back(move(cmd));
         }
 
+        void Context::record_static_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command)
+        {
+            DrawCommand recorded = command;
+            recorded.layer = layer_index;
+            recorded.element = element_index;
+            u32 command_index = (u32)m_recorded_draw_commands.size();
+            m_recorded_draw_commands.push_back(move(recorded));
+            m_layer_draw_operations[layer_index].push_back(DrawOperation { DrawOperationType::static_command, command_index });
+            m_draw_commands_generated = false;
+        }
+
+        void Context::reset_generated_draw_commands()
+        {
+            m_draw_commands.clear();
+            for(Element& element : m_elements)
+            {
+                element.first_draw_command = U32_MAX;
+                element.draw_command_count = 0;
+            }
+            for(Layer& layer : m_layers)
+            {
+                layer.first_draw_command = U32_MAX;
+                layer.draw_command_count = 0;
+                layer.draw_command_indices.clear();
+            }
+        }
+
+        RV Context::invoke_draw_callback(u32 layer_index, u32 element_index, DrawPhase phase)
+        {
+            if(element_index >= m_elements.size())
+            {
+                return ok;
+            }
+            const Element& element = m_elements[element_index];
+            if(element.draw_config >= m_draw_configs.size())
+            {
+                return ok;
+            }
+            const DrawConfig& config = m_draw_configs[element.draw_config];
+            DrawPhaseFlag required_phase = phase == DrawPhase::before_children ?
+                DrawPhaseFlag::before_children : DrawPhaseFlag::after_children;
+            if(!config.callback || !test_flags(config.phases, required_phase))
+            {
+                return ok;
+            }
+            m_draw_generation_layer = layer_index;
+            m_draw_generation_element = element_index;
+            ++m_counters.draw_callback_count;
+            return config.callback(this, ElementHandle { element.id, element_index, m_generation }, phase, config.userdata);
+        }
+
+        RV Context::generate_draw_commands()
+        {
+            lutsassert();
+            luassert_msg(!m_generating_draw_commands, "GUI Core draw command generation is not reentrant.");
+            luassert_msg(m_element_stack.empty() && m_layer_stack.empty(),
+                "GUI Core draw commands can only be generated after all element and layer scopes are closed.");
+            u64 generate_begin = get_ticks();
+            reset_generated_draw_commands();
+            m_counters.draw_callback_count = 0;
+            m_generating_draw_commands = true;
+            m_draw_commands_generated = false;
+            for(u32 layer_index = 0; layer_index < m_layer_draw_operations.size(); ++layer_index)
+            {
+                for(const DrawOperation& operation : m_layer_draw_operations[layer_index])
+                {
+                    RV result = ok;
+                    switch(operation.type)
+                    {
+                    case DrawOperationType::begin_element:
+                        result = invoke_draw_callback(layer_index, operation.index, DrawPhase::before_children);
+                        break;
+                    case DrawOperationType::static_command:
+                        if(operation.index < m_recorded_draw_commands.size())
+                        {
+                            const DrawCommand& command = m_recorded_draw_commands[operation.index];
+                            append_draw_command(command.layer, command.element, command);
+                        }
+                        break;
+                    case DrawOperationType::end_element:
+                        result = invoke_draw_callback(layer_index, operation.index, DrawPhase::after_children);
+                        break;
+                    }
+                    if(failed(result))
+                    {
+                        m_generating_draw_commands = false;
+                        m_draw_generation_layer = INVALID_LAYER;
+                        m_draw_generation_element = INVALID_ELEMENT;
+                        m_counters.draw_generate_ms = perf_elapsed_ms(generate_begin, get_ticks());
+                        log_debug_pass(DebugPassKind::render, Name("generate_draw_commands"), Name("callback_failed"),
+                            operation.index < m_elements.size() ? m_elements[operation.index].id : 0, nullptr,
+                            m_counters.draw_generate_ms);
+                        return result;
+                    }
+                }
+            }
+            m_generating_draw_commands = false;
+            m_draw_generation_layer = INVALID_LAYER;
+            m_draw_generation_element = INVALID_ELEMENT;
+            m_draw_commands_generated = true;
+            m_counters.draw_generate_ms = perf_elapsed_ms(generate_begin, get_ticks());
+            log_debug_pass(DebugPassKind::render, Name("generate_draw_commands"), Name("explicit_generate"), 0, nullptr,
+                m_counters.draw_generate_ms);
+            return ok;
+        }
+
         void Context::draw(const DrawCommand& command)
         {
             lutsassert();
+            if(m_generating_draw_commands)
+            {
+                luassert(m_draw_generation_layer < m_layers.size());
+                append_draw_command(m_draw_generation_layer, m_draw_generation_element, command);
+                return;
+            }
             luassert(!m_layer_stack.empty());
             u32 layer_index = m_layer_stack.back();
             u32 element_index = m_element_stack.empty() ? INVALID_ELEMENT : m_element_stack.back();
-            record_draw_command(layer_index, element_index, command);
+            record_static_draw_command(layer_index, element_index, command);
         }
 
         void Context::draw_for_element(const ElementHandle& element, const DrawCommand& command)
@@ -607,7 +779,14 @@ namespace Luna
             {
                 return;
             }
-            record_draw_command(e->layer, element.index, command);
+            if(m_generating_draw_commands)
+            {
+                luassert_msg(e->layer == m_draw_generation_layer,
+                    "A draw callback cannot emit commands into a different layer.");
+                append_draw_command(e->layer, element.index, command);
+                return;
+            }
+            record_static_draw_command(e->layer, element.index, command);
         }
 
         RectF Context::to_screen_rect(u32 layer_index, const RectF& rect) const
@@ -683,6 +862,14 @@ namespace Luna
             if(!draw_list)
             {
                 return BasicError::bad_arguments();
+            }
+            if(!m_draw_commands_generated)
+            {
+                RV result = generate_draw_commands();
+                if(failed(result))
+                {
+                    return result;
+                }
             }
             u64 compile_begin = get_ticks();
             draw_list->reset();
@@ -1266,6 +1453,7 @@ namespace Luna
         void Context::focus_element(id_t id)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             if(!id)
             {
                 m_focused_element = 0;
@@ -1287,6 +1475,7 @@ namespace Luna
         void Context::capture_pointer(id_t id)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             if(!id)
             {
                 m_pointer_capture_element = 0;
@@ -1305,6 +1494,7 @@ namespace Luna
         void Context::release_pointer_capture(id_t id)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             if(!id || m_pointer_capture_element == id)
             {
                 m_pointer_capture_element = 0;
@@ -1455,6 +1645,7 @@ namespace Luna
         bool Context::navigate_default(const NavigationRequest& request)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             switch(request.event_type)
             {
             case InputEventType::navigation_dpad:
@@ -1516,6 +1707,7 @@ namespace Luna
         void Context::route_input()
         {
             lutsassert();
+            m_draw_commands_generated = false;
             u64 route_begin = get_ticks();
             m_input_deliveries.clear();
             m_routed_input_deliveries.clear();
@@ -1985,6 +2177,7 @@ namespace Luna
         RV Context::set_state(id_t id, object_t data, StateLifetime lifetime)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             StateRecord record;
             record.data = data;
             record.lifetime = lifetime;
@@ -2004,6 +2197,7 @@ namespace Luna
         void Context::clear_state(id_t id)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             m_states.erase(id);
         }
 
@@ -2021,6 +2215,7 @@ namespace Luna
         void Context::define_style(const Name& name, const Name& parent)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             Style& style = get_or_create_style(name);
             if(!parent.empty())
             {
@@ -2031,12 +2226,14 @@ namespace Luna
         void Context::set_style_parent(const Name& name, const Name& parent)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             get_or_create_style(name).parent = parent;
         }
 
         void Context::set_style_value(const Name& style_name, const Name& entry, const StyleValue& value)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             StyleEntry style_entry;
             style_entry.mode = StyleEntryMode::set;
             style_entry.value = value;
@@ -2055,6 +2252,7 @@ namespace Luna
         void Context::inherit_style_entry(const Name& style_name, const Name& entry)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             Style& style = get_or_create_style(style_name);
             style.entries.erase(entry);
         }
@@ -2062,6 +2260,7 @@ namespace Luna
         void Context::unset_style_entry(const Name& style_name, const Name& entry)
         {
             lutsassert();
+            m_draw_commands_generated = false;
             StyleEntry style_entry;
             style_entry.mode = StyleEntryMode::unset;
             Style& style = get_or_create_style(style_name);
@@ -2229,6 +2428,13 @@ namespace Luna
                 element_info.pointer_hit_behavior = element.interactable.pointer_hit_behavior;
                 element_info.hit_test_mode = element.hit_test.mode;
                 element_info.has_hit_test_callback = element.hit_test.callback != nullptr;
+                if(element.draw_config < m_draw_configs.size())
+                {
+                    const DrawConfig& draw_config = m_draw_configs[element.draw_config];
+                    element_info.draw_callback_name = draw_config.name;
+                    element_info.draw_callback_phases = draw_config.phases;
+                    element_info.has_draw_callback = draw_config.callback != nullptr;
+                }
                 element_info.hoverable = has_flags(element.interactable, InteractableFlag::hoverable);
                 element_info.activatable = has_flags(element.interactable, InteractableFlag::activatable);
                 element_info.focusable = has_flags(element.interactable, InteractableFlag::focusable);

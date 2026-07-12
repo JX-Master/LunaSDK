@@ -35,7 +35,7 @@ context->pop_data_scope();
 
 It does not store a widget kind. A text label, hit-test box, layout container or image region is still the same `Element` type.
 
-`first_draw_command` and `draw_command_count` are diagnostic summary values, not a guaranteed contiguous range. `draw_for_element` may append commands after commands for other elements. Filter `IContext::get_draw_commands()` by `DrawCommand::element` when the actual command set is needed.
+`first_draw_command` and `draw_command_count` summarize the latest generated command stream and are not a guaranteed contiguous range. Delayed callbacks and `draw_for_element` can interleave commands owned by different elements. Call `IContext::generate_draw_commands()` first, then filter `IContext::get_draw_commands()` by `DrawCommand::element` when the actual command set is needed.
 
 ### Element handle
 `GUICore::ElementHandle` is returned by `begin_element`. It stores stable ID, dense index and generation. Handles are frame-local. Do not keep a handle for use after the next `begin_frame`; keep the stable ID instead. The stable ID is intentionally kept in the handle so APIs can validate that the dense index still points at the same element and so callers can use the returned handle as a stable interaction/state key without another lookup.

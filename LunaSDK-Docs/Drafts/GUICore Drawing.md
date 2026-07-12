@@ -3,10 +3,10 @@ GUI Core drawing records primitive GUI-level commands and compiles them to VG. H
 ## Designed functionality
 The drawing system provides a narrow bridge between GUI data and VG rendering:
 
-1. Store draw commands on elements and layers.
+1. Record static draw commands and attach optional delayed draw callbacks to elements.
 2. Support element-relative and layer-coordinate rectangles.
 3. Draw rectangles, gradients, rounded rectangles, lines, text, images and VG shape ranges.
-4. Preserve layer Z order during compilation.
+4. Generate commands after layout and input routing while preserving element painter order and layer Z order.
 5. Keep rendering policy outside GUI Core widgets, because GUI Core has no widgets.
 
 GUI Core does not begin RHI render passes or present swapchains. The application owns RHI command buffers and render targets.
@@ -26,6 +26,28 @@ Supported command types are:
 7. `shape`
 8. `push_clip`
 9. `pop_clip`
+
+### Draw callback
+`DrawConfig` attaches an optional callback to one element. Generation can invoke the callback in
+`DrawPhase::before_children`, `DrawPhase::after_children`, or both phases.
+
+The callback runs after layout and input routing, so it can read final layout rectangles, interaction state,
+state objects and style values. It emits commands by calling `IContext::draw`. It must not mutate the element
+tree, layout, interaction state, or application data.
+
+`DrawConfig::userdata` is owned by the caller and must remain valid until command generation finishes. GUI Core
+stores draw configurations sparsely, so elements without callbacks do not carry callback pointers.
+
+### Painter order
+For each layer, GUI Core replays element construction as a painter-order operation stream:
+
+1. Invoke the element's `before_children` callback.
+2. Replay static commands recorded at that position.
+3. Generate child elements in construction order.
+4. Invoke the element's `after_children` callback.
+
+This lets a container draw its background below children and its border or feedback above children without
+requiring the final layout rectangle during element construction.
 
 ### Rectangle reference
 `DrawCommandRectReference::layer` means `DrawCommand::rect` is already in layer coordinates.
@@ -59,8 +81,8 @@ luexp(context->register_font(Name("default"), Font::get_default_font()));
 ```
 
 ## Programming guide
-### Record a command during element build
-`draw` appends to the current layer and current element.
+### Record a static command during element build
+Outside draw generation, `draw` records a command at the current layer, element, and painter-order position.
 
 ```cpp
 GUICore::DrawCommand bg;
@@ -80,6 +102,42 @@ context->draw_for_element(element, bg);
 ```
 
 Invalid handles are ignored.
+
+### Attach delayed drawing
+Use a draw callback when rendering depends on final layout, input, state, or style data.
+
+```cpp
+RV draw_button(GUICore::IContext* context, const GUICore::ElementHandle& element,
+    GUICore::DrawPhase phase, void* userdata)
+{
+    if(phase == GUICore::DrawPhase::before_children)
+    {
+        GUICore::InteractionState interaction = context->get_interaction_state(element.id);
+        GUICore::DrawCommand background;
+        background.type = GUICore::DrawCommandType::rounded_rect;
+        background.rect_reference = GUICore::DrawCommandRectReference::element;
+        background.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+        background.color = interaction.hovered ? Float4U(0.20f, 0.40f, 0.70f, 1.0f) :
+            Float4U(0.12f, 0.16f, 0.22f, 1.0f);
+        background.radius = 6.0f;
+        context->draw(background);
+    }
+    return ok;
+}
+
+GUICore::DrawConfig draw_config;
+draw_config.name = Name("editor.button");
+draw_config.callback = draw_button;
+draw_config.phases = GUICore::DrawPhaseFlag::before_children;
+context->set_draw_config(button, draw_config);
+```
+
+Use both phases when one element needs a background below its children and feedback above them:
+
+```cpp
+draw_config.phases = GUICore::DrawPhaseFlag::before_children |
+    GUICore::DrawPhaseFlag::after_children;
+```
 
 ### Draw text
 ```cpp
@@ -141,11 +199,14 @@ Use explicit clips only when a command sequence needs a region stricter than the
 
 ### Compile to VG
 ```cpp
+luexp(context->generate_draw_commands());
 luexp(context->compile_draw_commands(shape_draw_list));
 luexp(shape_draw_list->compile());
 ```
 
-The destination draw list is reset before GUI Core emits commands. Commands are emitted in layer Z order.
+Explicit generation is useful when tooling needs to inspect the final command stream. Compilation automatically
+generates commands when the caller has not done so. The destination draw list is reset before GUI Core emits
+commands, and commands are emitted in layer Z order.
 
 ### Render the VG draw list
 The host renders the compiled VG draw calls with its RHI target.
@@ -168,27 +229,14 @@ if(!draw_calls.empty())
 ```
 
 ## Examples
-### Button chrome from primitive commands
+### Button chrome from delayed primitive commands
 ```cpp
-GUICore::InteractionState state = context->get_interaction_state(button.id);
-
-GUICore::DrawCommand bg;
-bg.type = GUICore::DrawCommandType::rounded_rect;
-bg.rect_reference = GUICore::DrawCommandRectReference::element;
-bg.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
-bg.radius = 5.0f;
-bg.color = state.hovered ? hovered_color : normal_color;
-context->draw_for_element(button, bg);
-
-GUICore::DrawCommand label;
-label.type = GUICore::DrawCommandType::text;
-label.rect_reference = GUICore::DrawCommandRectReference::element;
-label.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
-label.font = Name("default");
-label.font_size = 16.0f;
-label.color = text_color;
-label.text = "Apply";
-context->draw_for_element(button, label);
+GUICore::DrawConfig button_draw;
+button_draw.name = Name("editor.button");
+button_draw.callback = draw_button;
+button_draw.userdata = &button_visuals;
+context->set_draw_config(button, button_draw);
 ```
 
-This is the kind of rendering logic a higher-level immediate API package owns.
+This is the kind of rendering logic a higher-level immediate API package owns. The callback is a core traversal
+hook rather than a replaceable widget renderer object.

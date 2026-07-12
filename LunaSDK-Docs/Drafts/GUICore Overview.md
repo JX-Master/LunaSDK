@@ -15,16 +15,16 @@ GUI Core solves the part of GUI work that is common to multiple GUI packages:
 2. Route host-independent input through layers and interactable elements.
 3. Store reusable state objects and named styles.
 4. Run primitive layout algorithms on element data.
-5. Record GUI-level draw commands and compile them to VG draw lists.
+5. Generate GUI-level draw commands after layout and input, then compile them to VG draw lists.
 6. Produce debug snapshots and performance counters.
 
-GUI Core does not provide high-level widgets. Controls such as buttons, checkboxes, menus, sliders, color editors, dock panels and inspectors belong to a higher-level package such as `Luna::GUI`. Those packages build GUI Core elements, attach input data, run layout helpers and emit draw commands.
+GUI Core does not provide high-level widgets. Controls such as buttons, checkboxes, menus, sliders, color editors, dock panels and inspectors belong to a higher-level package such as `Luna::GUI`. Those packages build GUI Core elements, attach input data, run layout helpers and install package-owned draw callbacks or static draw commands.
 
 This split keeps GUI Core small and orthogonal. Applications can use only the systems they need, and different immediate API packages can coexist because they submit into the same `GUICore::IContext`.
 
 ## Concepts
 ### Context
-`GUICore::IContext` owns the per-frame element tree, layer list, queued input events, routed interaction state, state store, style records, draw commands and debug data.
+`GUICore::IContext` owns the per-frame element tree, layer list, queued input events, routed interaction state, state store, style records, draw callback records, generated draw commands and debug data.
 
 A context is explicit. There is no global current GUI context. Pass the `IContext*` to the higher-level API or directly to GUI Core functions.
 
@@ -40,13 +40,13 @@ The element tree is typeless. Every node is a `GUICore::Element` record with the
 2. `LayoutResult`
 3. `Interactable`
 4. Style binding
-5. Draw-command ownership metadata
+5. Optional draw callback binding and draw-command ownership metadata
 6. Debug metadata
 
 Elements do not inherit from widget classes and do not have virtual behavior. Algorithms operate on this data.
 
 ### Layer
-A layer owns one root element tree and an ordered set of draw command indexes. Layers are stored from bottom to top. Rendering uses painter's algorithm, while input routing checks top layers first.
+A layer owns one root element tree and an ordered set of generated draw command indexes. Layers are stored from bottom to top. Rendering uses painter's algorithm, while input routing checks top layers first.
 
 Normal content, popups, tooltips, modal panels, drag previews and debug overlays should be represented as layers instead of special widget branches.
 
@@ -85,11 +85,12 @@ The usual frame order is:
 1. Begin the frame.
 2. Feed input events.
 3. Push one or more layers.
-4. Build elements and draw commands.
+4. Build elements and attach layout, interaction and draw data.
 5. Run layout.
 6. Route input.
-7. Compile draw commands to VG.
-8. Render the VG draw list.
+7. Resolve higher-level package state and generate draw commands.
+8. Compile draw commands to VG.
+9. Render the VG draw list.
 
 ```cpp
 GUICore::FrameDesc frame;
@@ -111,13 +112,14 @@ context->pop_layer();
 
 luexp(context->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
 context->route_input();
+luexp(context->generate_draw_commands());
 luexp(context->compile_draw_commands(vg_draw_list));
 ```
 
 High-level packages attach `LayoutConfig` callbacks and callback userdata while they build elements. `IContext::apply_layout` owns the top-down tree traversal and invokes those callbacks. GUI Core exposes the primitive helpers used by those callbacks in [[GUICore Layout]].
 
 ### Render
-GUI Core records GUI-level draw commands. `IContext::compile_draw_commands` translates those commands into a `VG::IShapeDrawList`.
+GUI Core records static commands and delayed element draw callbacks. `IContext::generate_draw_commands` evaluates callbacks against final layout and interaction data, and `IContext::compile_draw_commands` translates the resulting command stream into a `VG::IShapeDrawList`.
 
 The application still owns the RHI render pass, command buffer, swapchain or render target. See [[GUICore Drawing]] for details.
 

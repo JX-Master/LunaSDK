@@ -47,7 +47,7 @@ This decision removes the following concepts from the long-term high-level `GUI`
    - High-level immediate APIs submit data into this tree directly.
 
 2. `GUI::RenderProxy`
-   - High-level immediate APIs submit draw commands directly to `GUICore`.
+   - High-level immediate APIs attach package-owned GUICore draw callbacks or submit static commands directly.
    - Rendering policy is part of the immediate API package implementation, not a fully replaceable per-widget runtime callback.
 
 3. `GUI::IContext`
@@ -59,15 +59,15 @@ This decision removes the following concepts from the long-term high-level `GUI`
 
 1. **Element tree**
    - Stores per-frame GUI elements in dense arrays.
-   - Each element has a stable ID, layer ID, parent/child/sibling topology, layout input, layout result, style binding, interaction binding, draw-command ownership metadata, and debug metadata.
+   - Each element has a stable ID, layer ID, parent/child/sibling topology, layout input, layout result, style binding, interaction binding, optional draw callback binding, draw-command ownership metadata, and debug metadata.
    - The element tree is the core-level ground truth for the submitted frame.
    - The tree is typeless. Every element has the same concrete storage type.
    - Elements do not use inheritance, virtual methods, or per-widget subclasses to define behavior.
-   - Element behavior is defined only by the data attached to the element, such as layout records, interactable records, draw command ownership metadata, clip records, and debug tags. State IDs are derived by callers from stable owner IDs and boxed state types rather than stored by elements.
+   - Element behavior is defined only by the data attached to the element, such as layout records, interactable records, draw callback records, draw command ownership metadata, clip records, and debug tags. State IDs are derived by callers from stable owner IDs and boxed state types rather than stored by elements.
    - An element may represent a text label, a button chrome, a shape, a layout container, a hit-test region, or any other primitive submitted by higher-level code, but the core element itself does not know that semantic widget type.
 
 2. **Layer system**
-   - A layer owns one root element tree and an ordered draw-command index list. GUI Core compiles all layers into one destination VG draw list in painter order.
+   - A layer owns one root element tree and an ordered generated draw-command index list. GUI Core generates and compiles all layers into one destination VG draw list in painter order.
    - Layers are stored in bottom-to-top Z order and are rendered with painter's algorithm.
    - Input is routed from top layers to bottom layers.
    - Popups, tooltips, drag previews, modal panels, debug overlays, and normal content are represented as layers instead of special widget cases.
@@ -103,10 +103,12 @@ This decision removes the following concepts from the long-term high-level `GUI`
    - Supports scroll routing and future scroll-to-rect propagation.
 
 8. **Draw command generation**
-   - Records GUI-level draw commands that are later translated to VG draw lists.
+   - Records static GUI-level draw commands during tree construction and supports an optional delayed draw callback on each element.
+   - Generates the final command stream after layout, input routing, and higher-level package state resolution.
+   - Invokes callbacks before children, after children, or at both traversal phases so parent backgrounds and overlays have deterministic painter order.
    - Provides primitive commands for rectangles, rounded rectangles, gradients, text, images, shapes, lines, and clipping.
    - Does not know widget rendering policies.
-   - High-level immediate API packages submit these commands directly.
+   - High-level immediate API packages install package-owned callbacks or submit static commands directly.
 
 9. **Debug and instrumentation**
    - Provides an in-memory debug snapshot for element trees, layers, layout inputs/results, interactables, input routing, style resolution, draw commands, and performance counters. A portable external-tool representation is a separate projection because runtime callbacks, userdata, and resources are pointer-valued.
@@ -119,7 +121,7 @@ Core features should be implemented as independent functions or systems:
 
 1. Layout functions operate on layout data and write layout results.
 2. Input routing functions operate on layers, elements, and interactable records.
-3. Rendering functions operate on draw commands and emit VG draw lists.
+3. Draw generation functions traverse element data and produce draw commands; rendering functions compile those commands into VG draw lists.
 4. Style functions operate on style records and requested style keys.
 5. Debug functions capture the data needed to inspect the frame in-process.
 
@@ -133,7 +135,7 @@ The existing `GUI` module becomes one high-level immediate API package built on 
 An immediate API package owns:
 
 1. User-facing APIs such as `text_button`, `checkbox`, `input_text`, `slider`, `combo`, `menu`, `tab_bar`, `color_edit`, and higher-level views.
-2. The algorithms that translate those APIs into `GUICore` element data.
+2. The algorithms that translate those APIs into `GUICore` element data and package-owned draw callbacks.
 3. The visual style and interaction behavior of those controls.
 4. The small set of user-facing customization points intentionally supported by that package.
 5. GUIAsset runtime generation helpers for widgets provided by that package.
@@ -146,7 +148,9 @@ Different immediate API packages can coexist and nest because they all submit el
 ### Rendering policy and style schema
 `GUI::RenderProxy` is removed from the target architecture.
 
-In the new model, a high-level immediate API directly emits the draw commands for each element it creates. This simplifies the widget package implementation and avoids preserving a fully generic per-widget rendering replacement mechanism in the default editor-style GUI package.
+In the new model, a high-level immediate API installs a package-owned draw callback or emits static commands for each element it creates. The callback runs only during GUICore's fixed painter-order traversal and can read final layout, interaction state, state objects, and style values before emitting primitive commands. It has no object identity, registration, inheritance, RTTI type, or lifecycle of its own.
+
+This callback is not a revival of `GUI::RenderProxy`. It is a low-level, typeless GUICore command-generation hook. The default editor-style GUI package still owns its rendering policy and does not promise that users can replace every widget renderer.
 
 Style usage schema remains useful, but it is no longer attached to `GUI::RenderProxy`. Instead:
 
@@ -235,7 +239,7 @@ Migrate the simplest APIs in the default editor-style `GUI` package:
 7. Radio button.
 8. Selectable.
 
-These APIs should submit GUICore element data, interactable data, layout data, and draw commands directly. They should not create `GUI::Node` objects or assign `GUI::RenderProxy` callbacks.
+These APIs should submit GUICore element data, interactable data, and layout data, then attach package-owned GUICore draw callbacks or static commands. They should not create `GUI::Node` objects or assign `GUI::RenderProxy` objects.
 
 #### Phase 5: Layout primitives
 Migrate layout containers:
@@ -379,7 +383,7 @@ This ADR does not require an immediate full rewrite. It defines the target archi
 The name `GUICore` is intentionally explicit. It should be understood as a lower-level primitive layer, not as a widget API. Normal application code should usually use one of the immediate API packages built on top of `GUICore`.
 
 ## Version history
-* **2026/7/12** Reconciled the approved architecture with the implementation: layers keep ordered command indexes and compile into one VG draw list; Stack Layout is removed; element state IDs are derived externally; and DebugInfo is an in-memory snapshot rather than a wire format.
+* **2026/7/12** Reconciled the approved architecture with the implementation: layers keep ordered generated-command indexes and compile into one VG draw list; elements may attach sparse before/after-children draw callbacks; Stack Layout is removed; element state IDs are derived externally; and DebugInfo is an in-memory snapshot rather than a wire format.
 * **2026/7/4** Clarified the layout model: flex replaces the old linear-layout wording, element sizing is fixed/percent/fit with min/max constraints, and content-driven measurement is supplied by package-owned measure callbacks.
 * **2026/6/17** Revised the decision to remove `GUI::Node`, `GUI::RenderProxy`, and `GUI::IContext` from the long-term architecture, define the element tree as typeless data, and narrow the default `GUI` module into one editor-style immediate API package.
 * **2026/6/16** Proposed.

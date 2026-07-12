@@ -95,6 +95,8 @@ namespace Luna::GUICoreTest
     bool circle_hit_test(const GUICore::IContext*, const GUICore::ElementHitTestRequest& request, void*);
     void set_interactable(GUICore::IContext* context, const GUICore::ElementHandle& element,
         GUICore::PointerHitBehavior hit_behavior, GUICore::InteractableFlag flags);
+    RV draw_sheet_callback(GUICore::IContext* context, const GUICore::ElementHandle& element,
+        GUICore::DrawPhase phase, void* userdata);
 
     void build_slide_header(GUICore::IContext* context, const CoreSheetState& state);
     void build_pointer_input_slice(GUICore::IContext* context, CoreSheetState& state);

@@ -31,8 +31,10 @@ namespace Luna
             u32 delivered_input_event_count = 0;
             //! Number of elements that participate in hit testing.
             u32 interactable_count = 0;
-            //! Number of draw commands recorded for the frame.
+            //! Number of commands in the latest generated draw command stream.
             u32 draw_command_count = 0;
+            //! Number of draw callback invocations during the latest draw command generation pass.
+            u32 draw_callback_count = 0;
             //! Number of states stored in the context after cleanup.
             u32 state_count = 0;
             //! Number of styles stored in the context.
@@ -47,6 +49,9 @@ namespace Luna
             f64 state_gc_ms = 0.0;
             //! Time spent routing input events during the latest @ref IContext::route_input call, in milliseconds.
             f64 input_route_ms = 0.0;
+            //! Time spent generating the latest draw command stream through
+            //! @ref IContext::generate_draw_commands, in milliseconds.
+            f64 draw_generate_ms = 0.0;
             //! Time spent compiling GUI Core draw commands to a VG draw list during the latest
             //! @ref IContext::compile_draw_commands call, in milliseconds.
             f64 draw_compile_ms = 0.0;
@@ -197,6 +202,12 @@ namespace Luna
             ElementHitTestMode hit_test_mode = ElementHitTestMode::rect;
             //! Whether this element has a custom hit-test callback installed.
             bool has_hit_test_callback = false;
+            //! Name of the delayed draw callback attached to this element.
+            Name draw_callback_name;
+            //! Traversal phases that invoke the delayed draw callback.
+            DrawPhaseFlag draw_callback_phases = DrawPhaseFlag::none;
+            //! Whether this element has a delayed draw callback installed.
+            bool has_draw_callback = false;
             //! Whether this element can become hovered.
             bool hoverable = false;
             //! Whether this element can become active through pointer interaction.

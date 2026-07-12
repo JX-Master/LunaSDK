@@ -534,6 +534,8 @@ namespace Luna
             NavigationConfig navigation;
             //! Optional custom pointer hit-test behavior.
             ElementHitTestConfig hit_test;
+            //! Sparse draw configuration index owned by the context, or `U32_MAX` when no callback is attached.
+            u32 draw_config = U32_MAX;
             //! First draw command emission index for this element.
             //! @remark This is diagnostic summary data, not a contiguous command range. Commands can be interleaved
             //! when @ref IContext::draw_for_element is used after normal element construction.

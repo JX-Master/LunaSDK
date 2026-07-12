@@ -36,6 +36,19 @@ namespace Luna
             i32 cursor = 0;
         };
 
+        enum class DrawOperationType : u8
+        {
+            begin_element,
+            static_command,
+            end_element
+        };
+
+        struct DrawOperation
+        {
+            DrawOperationType type = DrawOperationType::static_command;
+            u32 index = U32_MAX;
+        };
+
         struct [[Luna::struct("{5D63E090-946C-4941-8452-F11277682199}")]] ScrollViewportHistoryState
         {
             RectF visible_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
@@ -50,6 +63,9 @@ namespace Luna
             FrameDesc m_frame_desc;
             Vector<Layer> m_layers;
             Vector<Element> m_elements;
+            Vector<DrawConfig> m_draw_configs;
+            Vector<DrawCommand> m_recorded_draw_commands;
+            Vector<Vector<DrawOperation>> m_layer_draw_operations;
             Vector<DrawCommand> m_draw_commands;
             Vector<InputEvent> m_input_events;
             Vector<DebugIssueInfo> m_debug_issues;
@@ -84,6 +100,10 @@ namespace Luna
             bool m_key_down[256] = {};
             KeyModifierFlag m_key_modifiers = KeyModifierFlag::none;
             u32 m_generation = 0;
+            u32 m_draw_generation_layer = INVALID_LAYER;
+            u32 m_draw_generation_element = INVALID_ELEMENT;
+            bool m_generating_draw_commands = false;
+            bool m_draw_commands_generated = false;
             PerformanceCounters m_counters;
 
             virtual void begin_frame(const FrameDesc& desc) override;
@@ -119,6 +139,9 @@ namespace Luna
             virtual const Element* get_element(u32 index) const override;
             virtual const Element* find_element(id_t id) const override;
             virtual ElementHandle find_element_handle(id_t id) const override;
+            virtual void set_draw_config(const ElementHandle& element, const DrawConfig& config) override;
+            virtual DrawConfig get_draw_config(const ElementHandle& element) const override;
+            virtual RV generate_draw_commands() override;
             virtual Span<const DrawCommand> get_draw_commands() const override;
             virtual void draw(const DrawCommand& command) override;
             virtual void draw_for_element(const ElementHandle& element, const DrawCommand& command) override;
@@ -171,7 +194,10 @@ namespace Luna
             InteractionState& get_or_create_interaction(id_t id);
             void mark_subtree_interaction(id_t id, bool hovered, bool active, bool focused, bool clicked, bool double_clicked);
             void deliver_input_event(id_t id, const InputEvent& event);
-            void record_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command);
+            void append_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command);
+            void record_static_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command);
+            void reset_generated_draw_commands();
+            RV invoke_draw_callback(u32 layer_index, u32 element_index, DrawPhase phase);
             bool point_hits_element(const Element& element, const Float2U& screen_position) const;
             bool element_can_focus(const Element& element) const;
             id_t focus_scope_of(id_t element_id) const;

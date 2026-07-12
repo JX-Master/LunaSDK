@@ -53,6 +53,51 @@ namespace Luna
             element
         };
 
+        //! Identifies one point in an element's painter-order traversal.
+        enum class DrawPhase : u8
+        {
+            //! Runs before the element's statically recorded commands and child elements.
+            before_children,
+            //! Runs after the element's statically recorded commands and child elements.
+            after_children
+        };
+
+        //! Selects the traversal phases that invoke an element draw callback.
+        enum class DrawPhaseFlag : u8
+        {
+            //! Disables the draw callback.
+            none = 0x00,
+            //! Invokes the callback before child elements are generated.
+            before_children = 0x01,
+            //! Invokes the callback after child elements are generated.
+            after_children = 0x02
+        };
+
+        //! Called while GUI Core generates draw commands for one element.
+        //! @param[in] context The context that owns @p element. The callback may call @ref IContext::draw to emit
+        //! commands for the element currently being generated.
+        //! @param[in] element The element being generated.
+        //! @param[in] phase The painter-order traversal phase being generated.
+        //! @param[in] userdata User data stored in @ref DrawConfig.
+        //! @return Returns success or failure code.
+        //! @remark Draw callbacks run after layout and input routing. They must not mutate the element tree, layout,
+        //! interaction state, or application data. The callback and userdata must remain valid until draw command
+        //! generation finishes.
+        using DrawCallback = RV(*)(IContext* context, const ElementHandle& element, DrawPhase phase, void* userdata);
+
+        //! Describes delayed draw behavior attached to one typeless element.
+        struct DrawConfig
+        {
+            //! Optional human-readable callback name used by diagnostics.
+            Name name;
+            //! Draw callback. A null callback disables delayed drawing.
+            DrawCallback callback = nullptr;
+            //! User data passed to @ref callback. The caller owns this memory.
+            void* userdata = nullptr;
+            //! Traversal phases that invoke @ref callback.
+            DrawPhaseFlag phases = DrawPhaseFlag::before_children;
+        };
+
         //! Describes one vector shape stored in a VG shape buffer.
         struct ShapeDesc
         {

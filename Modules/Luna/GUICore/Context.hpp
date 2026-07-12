@@ -204,15 +204,39 @@ namespace Luna
             //! @return Returns the current-frame element handle, or an invalid handle if no element with this ID exists.
             virtual ElementHandle find_element_handle(id_t id) const = 0;
 
-            //! Gets all recorded draw commands in frame submission order.
-            //! @return Returns a read-only span of draw commands recorded in the current frame.
+            //! Sets delayed draw behavior for an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @param[in] config The draw callback configuration to attach.
+            //! @remark The callback and userdata must remain valid until @ref generate_draw_commands or
+            //! @ref compile_draw_commands finishes for this frame. Invalid handles are ignored.
+            virtual void set_draw_config(const ElementHandle& element, const DrawConfig& config) = 0;
+
+            //! Gets delayed draw behavior attached to an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @return Returns the attached configuration, or a default configuration for invalid handles and
+            //! elements without delayed draw behavior.
+            virtual DrawConfig get_draw_config(const ElementHandle& element) const = 0;
+
+            //! Generates the final draw command stream for the current element trees.
+            //! @return Returns success or failure code.
+            //! @remark Generation traverses layers from bottom to top and elements in painter order. Element draw
+            //! callbacks run at their configured phases, while commands recorded through @ref draw and
+            //! @ref draw_for_element retain their build-time positions. Call this after layout, input routing, and
+            //! higher-level package state resolution when complete commands must be inspected before compilation.
+            virtual RV generate_draw_commands() = 0;
+
+            //! Gets the latest generated draw commands in frame submission order.
+            //! @return Returns a read-only span of the latest draw command stream.
             //! @remark This is useful for diagnostics, tooling, and custom rendering inspection. Content-driven
             //! measurement should use @ref LayoutConfig::measure_callback rather than scanning draw commands.
-            //! Callers can filter by @ref DrawCommand::element when they need element-local commands.
+            //! Call @ref generate_draw_commands first when the frame uses draw callbacks. Callers can filter by
+            //! @ref DrawCommand::element when they need element-local commands.
             virtual Span<const DrawCommand> get_draw_commands() const = 0;
 
-            //! Records one primitive draw command.
+            //! Records or emits one primitive draw command.
             //! @param[in] command The command to append to the current layer and current element.
+            //! @remark During element construction this records a static command at the current painter-order
+            //! position. During a draw callback this emits a generated command for the callback's element.
             virtual void draw(const DrawCommand& command) = 0;
 
             //! Records one primitive draw command for a specific element.
@@ -222,10 +246,11 @@ namespace Luna
             //! has ended. Invalid handles are ignored.
             virtual void draw_for_element(const ElementHandle& element, const DrawCommand& command) = 0;
 
-            //! Compiles recorded draw commands into one VG shape draw list.
+            //! Compiles generated draw commands into one VG shape draw list.
             //! @param[in] draw_list The destination VG draw list.
             //! @return Returns success or failure code.
-            //! @remark The destination draw list is reset before commands are emitted. Commands are emitted in layer Z order.
+            //! @remark The destination draw list is reset before commands are emitted. If draw commands have not
+            //! been generated explicitly, this call generates them first. Commands are emitted in layer Z order.
             virtual RV compile_draw_commands(VG::IShapeDrawList* draw_list) = 0;
 
             //! Registers one font that can be referenced by text draw commands.
