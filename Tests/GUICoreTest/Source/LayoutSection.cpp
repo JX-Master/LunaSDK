@@ -21,6 +21,14 @@ namespace Luna::GUICoreTest
         constexpr f32 CASE_LEFT = 82.0f;
         constexpr f32 CASE_GAP_X = 418.0f;
         constexpr f32 CASE_GAP_Y = 176.0f;
+        constexpr f32 SCROLL_VIEWPORT_WIDTH = 920.0f;
+        constexpr f32 SCROLL_VIEWPORT_HEIGHT = 340.0f;
+        constexpr f32 SCROLL_VIEWPORT_PADDING = 12.0f;
+        constexpr f32 SCROLL_ROW_WIDTH = 860.0f;
+        constexpr f32 SCROLL_ROW_HEIGHT = 46.0f;
+        constexpr f32 SCROLL_ROW_PITCH = 58.0f;
+        constexpr f32 SCROLL_WHEEL_SCALE = 32.0f;
+        constexpr u32 SCROLL_ROW_COUNT = 12;
 
         enum LayoutSlice : u32
         {
@@ -62,6 +70,22 @@ namespace Luna::GUICoreTest
         GUICore::id_t child_id(GUICore::id_t parent, u32 index)
         {
             return parent * 100 + index + 1;
+        }
+
+        Float2U scroll_viewport_max_offset()
+        {
+            f32 viewport_width = SCROLL_VIEWPORT_WIDTH - SCROLL_VIEWPORT_PADDING * 2.0f;
+            f32 viewport_height = SCROLL_VIEWPORT_HEIGHT - SCROLL_VIEWPORT_PADDING * 2.0f;
+            f32 content_width = 20.0f + SCROLL_ROW_WIDTH;
+            f32 content_height = (f32)(SCROLL_ROW_COUNT - 1) * SCROLL_ROW_PITCH + SCROLL_ROW_HEIGHT;
+            return Float2U(max(content_width - viewport_width, 0.0f),
+                max(content_height - viewport_height, 0.0f));
+        }
+
+        Float2U clamp_scroll_viewport_offset(const Float2U& offset)
+        {
+            Float2U maximum = scroll_viewport_max_offset();
+            return Float2U(clamp(offset.x, 0.0f, maximum.x), clamp(offset.y, 0.0f, maximum.y));
         }
 
         GUICore::LayoutConfig flex_container_layout(f32 width, f32 height, GUICore::FlexLayoutDesc* desc)
@@ -646,29 +670,49 @@ namespace Luna::GUICoreTest
                 Float2U(0.10f, 0.16f), Float2U(0.92f, 0.78f), Float4U(24.0f, 18.0f, -28.0f, -22.0f));
         }
 
-        void build_scroll_viewport_layout(GUICore::IContext* context)
+        void build_scroll_viewport_layout(GUICore::IContext* context, CoreSheetState& state)
         {
-            text_block(context, "ScrollViewport translates children by scroll_offset and writes a clipped layout result.");
-            static GUICore::ScrollViewportLayoutDesc desc;
-            desc.scroll_offset = Float2U(0.0f, 72.0f);
+            text_block(context, "ScrollViewport receives routed wheel input, updates scroll_offset and clips translated content.");
+            GUICore::ScrollViewportLayoutDesc& desc = state.scroll_viewport_layout;
+            desc.scroll_offset = clamp_scroll_viewport_offset(desc.scroll_offset);
+            desc.max_scroll_delta = Float2U(96.0f, 96.0f);
             desc.clip_children = true;
-            GUICore::LayoutConfig layout = fixed_layout(430.0f, 170.0f);
-            layout.padding = Float4U(10.0f);
+            GUICore::LayoutConfig layout = fixed_layout(SCROLL_VIEWPORT_WIDTH, SCROLL_VIEWPORT_HEIGHT);
+            layout.padding = Float4U(SCROLL_VIEWPORT_PADDING);
             layout.callback = GUICore::layout_scroll_viewport;
             layout.userdata = &desc;
             GUICore::ElementHandle viewport = context->begin_element(demo_id(0), Name("Scroll Viewport Demo"));
             context->set_layout_config(viewport, layout);
-            draw_text(context, RectF(0.0f, -32.0f, 420.0f, 26.0f), "scroll_offset.y = 72",
-                20.0f, Float4U(0.0f, 0.0f, 0.0f, 1.0f));
+            set_interactable(context, viewport, GUICore::PointerHitBehavior::target,
+                GUICore::InteractableFlag::hoverable | GUICore::InteractableFlag::scrollable);
+            RectF visible_rect = GUICore::get_scroll_viewport_visible_rect(context, viewport);
+            char visibility_label[192];
+            snprintf(visibility_label, sizeof(visibility_label),
+                "offset = (%.0f, %.0f) | previous visible rect = (%.0f, %.0f, %.0f, %.0f) | max delta = (%.0f, %.0f)",
+                desc.scroll_offset.x, desc.scroll_offset.y,
+                visible_rect.offset_x, visible_rect.offset_y, visible_rect.width, visible_rect.height,
+                desc.max_scroll_delta.x, desc.max_scroll_delta.y);
+            draw_text(context, RectF(0.0f, -58.0f, 1100.0f, 24.0f),
+                "Move the pointer over the viewport and use the mouse wheel or trackpad to scroll.",
+                18.0f, Float4U(0.18f, 0.18f, 0.18f, 1.0f));
+            draw_text(context, RectF(0.0f, -30.0f, 1100.0f, 24.0f), visibility_label,
+                16.0f, Float4U(0.28f, 0.28f, 0.28f, 1.0f));
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.97f, 0.97f, 0.97f, 1.0f));
-            draw_outline(context, RectF(0.0f, 0.0f, 430.0f, 170.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f));
-            for(u32 i = 0; i < 5; ++i)
+            GUICore::InteractionState interaction = context->get_interaction_state(viewport.id);
+            Float4U outline_color = interaction.hovered ?
+                Float4U(0.0f, 0.48f, 0.86f, 1.0f) : Float4U(0.0f, 0.0f, 0.0f, 1.0f);
+            draw_outline(context, RectF(0.0f, 0.0f, SCROLL_VIEWPORT_WIDTH, SCROLL_VIEWPORT_HEIGHT),
+                outline_color, interaction.hovered ? 2.0f : 1.0f);
+            for(u32 i = 0; i < SCROLL_ROW_COUNT; ++i)
             {
-                GUICore::LayoutConfig item = fixed_layout(390.0f, 42.0f);
-                item.margin = Float4U(20.0f, (f32)i * 50.0f, 0.0f, 0.0f);
+                GUICore::LayoutConfig item = fixed_layout(SCROLL_ROW_WIDTH, SCROLL_ROW_HEIGHT);
+                item.margin = Float4U(20.0f, (f32)i * SCROLL_ROW_PITCH, 0.0f, 0.0f);
                 char label[32];
-                snprintf(label, sizeof(label), "content row %u", i);
-                plain_box(context, child_id(demo_id(0), i), label, 390.0f, 42.0f);
+                snprintf(label, sizeof(label), "content row %02u", i);
+                Float4U row_color = (i & 1) ?
+                    Float4U(0.90f, 0.93f, 0.96f, 1.0f) : Float4U(0.94f, 0.94f, 0.94f, 1.0f);
+                plain_box(context, child_id(demo_id(0), i), label,
+                    SCROLL_ROW_WIDTH, SCROLL_ROW_HEIGHT, row_color);
                 context->set_layout_config(context->find_element_handle(child_id(demo_id(0), i)), item);
             }
             context->end_element();
@@ -803,6 +847,8 @@ namespace Luna::GUICoreTest
             add_case_grid(state, 7);
             break;
         case scroll_viewport_layout:
+            add_canvas_item(state.sheet_items, demo_id(0), 112.0f, 318.0f);
+            break;
         case table_layout:
             add_canvas_item(state.sheet_items, demo_id(0), 112.0f, 282.0f);
             break;
@@ -812,7 +858,7 @@ namespace Luna::GUICoreTest
         }
     }
 
-    void build_layout_slice(GUICore::IContext* context, u32 layout_slice)
+    void build_layout_slice(GUICore::IContext* context, CoreSheetState& state, u32 layout_slice)
     {
         switch(layout_slice)
         {
@@ -856,7 +902,7 @@ namespace Luna::GUICoreTest
             build_canvas_stretch(context);
             break;
         case scroll_viewport_layout:
-            build_scroll_viewport_layout(context);
+            build_scroll_viewport_layout(context, state);
             break;
         case table_layout:
             build_table_layout(context);
@@ -865,5 +911,37 @@ namespace Luna::GUICoreTest
             build_overview(context);
             break;
         }
+    }
+
+    bool process_layout_slice_input(GUICore::IContext* context, CoreSheetState& state, u32 layout_slice)
+    {
+        if(!context || layout_slice != scroll_viewport_layout)
+        {
+            return false;
+        }
+
+        Float2U scroll_delta(0.0f);
+        Span<const GUICore::RoutedInputEvent> events = context->get_routed_input_events(demo_id(0));
+        for(const GUICore::RoutedInputEvent& routed : events)
+        {
+            if(routed.event.type == GUICore::InputEventType::pointer_wheel)
+            {
+                scroll_delta.x -= routed.event.wheel_delta.x * SCROLL_WHEEL_SCALE;
+                scroll_delta.y -= routed.event.wheel_delta.y * SCROLL_WHEEL_SCALE;
+            }
+        }
+
+        const Float2U& max_delta = state.scroll_viewport_layout.max_scroll_delta;
+        scroll_delta.x = clamp(scroll_delta.x, -max_delta.x, max_delta.x);
+        scroll_delta.y = clamp(scroll_delta.y, -max_delta.y, max_delta.y);
+        Float2U old_offset = state.scroll_viewport_layout.scroll_offset;
+        Float2U new_offset = clamp_scroll_viewport_offset(Float2U(
+            old_offset.x + scroll_delta.x, old_offset.y + scroll_delta.y));
+        if(new_offset.x == old_offset.x && new_offset.y == old_offset.y)
+        {
+            return false;
+        }
+        state.scroll_viewport_layout.scroll_offset = new_offset;
+        return true;
     }
 }

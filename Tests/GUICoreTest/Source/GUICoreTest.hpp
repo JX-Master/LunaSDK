@@ -70,6 +70,7 @@ namespace Luna::GUICoreTest
         GUICore::id_t navigation_pending_focus = 0;
         Vector<GUICore::CanvasLayoutItem> navigation_items;
         GUICore::CanvasLayoutDesc navigation_canvas;
+        GUICore::ScrollViewportLayoutDesc scroll_viewport_layout;
     };
 
     GUICore::LayoutConfig fixed_layout(f32 width, f32 height);
@@ -102,5 +103,6 @@ namespace Luna::GUICoreTest
     const c8* layout_slice_title(u32 layout_slice);
     const c8* layout_slice_subtitle(u32 layout_slice);
     void add_layout_slice_items(CoreSheetState& state, u32 layout_slice);
-    void build_layout_slice(GUICore::IContext* context, u32 layout_slice);
+    void build_layout_slice(GUICore::IContext* context, CoreSheetState& state, u32 layout_slice);
+    bool process_layout_slice_input(GUICore::IContext* context, CoreSheetState& state, u32 layout_slice);
 }

@@ -219,6 +219,11 @@ namespace Luna
         {
             //! Current content scroll offset in layer logical coordinates.
             Float2U scroll_offset = Float2U(0.0f);
+            //! Maximum absolute scroll displacement expected between two consecutive frames.
+            //! @remark Higher-level code can expand the previous-frame visible rectangle by this amount before
+            //! deciding which children to submit. GUI Core does not apply overscan or implement virtualization
+            //! itself. Values should be non-negative.
+            Float2U max_scroll_delta = Float2U(0.0f);
             //! Whether child clip rectangles should be intersected with the viewport content rectangle.
             bool clip_children = true;
         };

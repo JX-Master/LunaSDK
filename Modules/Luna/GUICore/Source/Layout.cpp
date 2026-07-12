@@ -131,6 +131,17 @@ namespace Luna
                 return has_previous_layout ? parent.layout_result.clip_rect : rect;
             }
 
+            Ref<ScrollViewportHistoryState> find_scroll_viewport_history(IContext* context, id_t element_id)
+            {
+                Ref<ScrollViewportHistoryState> state;
+                if(object_t state_object = context->get_state(make_state_id<ScrollViewportHistoryState>(element_id)))
+                {
+                    object_retain(state_object);
+                    state.attach(state_object);
+                }
+                return state;
+            }
+
             Vector<u32> collect_children(IContext* context, const Element& parent)
             {
                 Vector<u32> children;
@@ -1103,7 +1114,45 @@ namespace Luna
             parent_result.clip_rect = parent_clip;
             parent_result.content_size = Float2U(measured_width, measured_height);
             context->set_layout_result(element, parent_result);
+
+            Ref<ScrollViewportHistoryState> history = find_scroll_viewport_history(context, parent->id);
+            if(!history)
+            {
+                history = new_object<ScrollViewportHistoryState>();
+            }
+            history->visible_rect = RectF(desc.scroll_offset.x, desc.scroll_offset.y,
+                content_rect.width, content_rect.height);
+            history->layout_generation = context->generation();
+            RV state_result = context->set_state(make_state_id<ScrollViewportHistoryState>(parent->id),
+                history.object(), StateLifetime::next_frame);
+            if(failed(state_result))
+            {
+                return state_result;
+            }
             return ok;
+        }
+
+        LUNA_GUICORE_API RectF get_scroll_viewport_visible_rect(IContext* context, const ElementHandle& element)
+        {
+            if(!context || element.generation != context->generation())
+            {
+                return RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            }
+            const Element* viewport = context->get_element(element.index);
+            if(!viewport || viewport->id != element.id)
+            {
+                return RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            }
+
+            Ref<ScrollViewportHistoryState> history = find_scroll_viewport_history(context, viewport->id);
+            if(history && context->generation() - history->layout_generation == 1)
+            {
+                return history->visible_rect;
+            }
+
+            FrameDesc frame_desc = context->get_frame_desc();
+            return RectF(0.0f, 0.0f, max(frame_desc.screen_size.x, 0.0f),
+                max(frame_desc.screen_size.y, 0.0f));
         }
 
         LUNA_GUICORE_API RV layout_table(IContext* context, const ElementHandle& element, const RectF& rect,

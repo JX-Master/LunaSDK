@@ -68,6 +68,18 @@ namespace Luna
         LUNA_GUICORE_API RV layout_scroll_viewport(IContext* context, const ElementHandle& element, const RectF& rect,
             void* userdata);
 
+        //! Gets the visible content rectangle recorded for one scroll viewport in the previous frame.
+        //! @param[in] context The GUI Core context that owns @p element.
+        //! @param[in] element The scroll viewport element created in the current frame.
+        //! @return Returns the previous-frame visible rectangle in unscrolled content coordinates. If the viewport
+        //! has no immediately preceding layout history, returns an unscrolled rectangle covering the current screen.
+        //! Invalid arguments return an empty rectangle.
+        //! @remark This function can be called after the viewport element is begun and before its children are
+        //! submitted. Higher-level code can expand the returned rectangle by
+        //! @ref ScrollViewportLayoutDesc::max_scroll_delta and submit only the intersecting content. GUI Core does
+        //! not interpret the resulting child subset as virtualized content.
+        LUNA_GUICORE_API RectF get_scroll_viewport_visible_rect(IContext* context, const ElementHandle& element);
+
         //! Applies one table track layout algorithm to the direct children of one element.
         //! @param[in] context The GUI Core context that owns @p element.
         //! @param[in] element The table element whose direct children will be arranged by cell attachments.

@@ -55,6 +55,12 @@ namespace Luna
             i32 cursor = 0;
         };
 
+        struct [[Luna::struct("{5D63E090-946C-4941-8452-F11277682199}")]] ScrollViewportHistoryState
+        {
+            RectF visible_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            u32 layout_generation = 0;
+        };
+
         struct [[Luna::struct("{FA7AB346-9939-47ED-8506-6B4D5F9C5F4C}")]] Context : IContext
         {
             luiimpl();

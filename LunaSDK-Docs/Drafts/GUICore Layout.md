@@ -199,14 +199,30 @@ If `anchor_min` and `anchor_max` differ on an axis, the child stretches between 
 ```cpp
 GUICore::ScrollViewportLayoutDesc desc;
 desc.scroll_offset = current_scroll_offset;
+desc.max_scroll_delta = Float2U(48.0f, 96.0f);
 
 GUICore::LayoutConfig viewport_layout;
 viewport_layout.callback = GUICore::layout_scroll_viewport;
 viewport_layout.userdata = &desc;
 context->set_layout_config(viewport, viewport_layout);
+
+RectF previous_visible_rect = GUICore::get_scroll_viewport_visible_rect(context, viewport);
+RectF submission_rect(
+    max(previous_visible_rect.offset_x - desc.max_scroll_delta.x, 0.0f),
+    max(previous_visible_rect.offset_y - desc.max_scroll_delta.y, 0.0f),
+    previous_visible_rect.width + desc.max_scroll_delta.x * 2.0f,
+    previous_visible_rect.height + desc.max_scroll_delta.y * 2.0f);
+
+// Submit only application data intersecting submission_rect, then add those elements as viewport children.
 ```
 
-Higher-level packages should implement scroll state, scrollbars, clamping and virtualized child submission on top of this primitive.
+`get_scroll_viewport_visible_rect` is valid immediately after the viewport is begun, before any child elements are submitted. It returns the rectangle recorded by the previous frame's completed layout in unscrolled content coordinates. A new viewport has no history, so the function returns an unscrolled rectangle covering the current screen. This conservative first-frame result may submit extra content, but does not omit initially visible content.
+
+`max_scroll_delta` should be at least as large as the maximum absolute scroll displacement that the higher-level input code can apply in one frame. Expanding the previous visible rectangle by this value provides one frame of overscan and prevents newly exposed space from appearing empty before the next layout result becomes available.
+
+Higher-level packages should implement scroll state, scrollbars, clamping and data slicing on top of this primitive. GUI Core receives only the submitted element subset and does not track item counts, indexes or virtualization state.
+
+When scroll clamping or a scrollbar needs the complete content extent, submit one content element whose layout size represents the complete data set, then slice only that element's descendants. Place the submitted descendants at their absolute content offsets. This keeps the complete scroll range visible to ordinary layout code without introducing item or virtualization semantics into GUI Core.
 
 ### Run a table layout
 `layout_table` uses explicit column tracks, row tracks and cell attachments.

@@ -85,7 +85,7 @@ namespace
         }
         else
         {
-            build_layout_slice(context, state.slice_index - NUM_INPUT_SLICES);
+            build_layout_slice(context, state, state.slice_index - NUM_INPUT_SLICES);
         }
 
         state.sheet_canvas.items = Span<const GUICore::CanvasLayoutItem>(state.sheet_items.data(), state.sheet_items.size());
@@ -236,12 +236,22 @@ namespace
                 GUICore::ElementHandle root = build_frame(app.gui, app.sheet);
                 luexp(app.gui->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
                 app.gui->route_input();
+                bool layout_dirty = false;
+                if(app.sheet.slice_index >= GUICoreTest::NUM_INPUT_SLICES)
+                {
+                    layout_dirty = GUICoreTest::process_layout_slice_input(app.gui, app.sheet,
+                        app.sheet.slice_index - GUICoreTest::NUM_INPUT_SLICES);
+                }
                 if(app.gui->is_pointer_button_down(GUICore::PointerButton::middle))
                 {
                     Float2U delta = app.gui->get_pointer_delta();
                     app.sheet.sheet_position.x += delta.x;
                     app.sheet.sheet_position.y += delta.y;
                     app.sheet.screen_item.offset = Float4U(app.sheet.sheet_position.x, app.sheet.sheet_position.y, 0.0f, 0.0f);
+                    layout_dirty = true;
+                }
+                if(layout_dirty)
+                {
                     luexp(app.gui->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
                 }
                 luexp(GUIWindow::update_text_input(&input_adapter));
