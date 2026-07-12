@@ -63,6 +63,9 @@ namespace Luna
             FrameDesc m_frame_desc;
             Vector<Layer> m_layers;
             Vector<Element> m_elements;
+            Vector<LayoutCallbackConfig> m_layout_callback_configs;
+            Vector<NavigationConfig> m_navigation_configs;
+            Vector<ElementHitTestConfig> m_hit_test_configs;
             Vector<DrawConfig> m_draw_configs;
             Vector<DrawCommand> m_recorded_draw_commands;
             Vector<Vector<DrawOperation>> m_layer_draw_operations;
@@ -127,6 +130,9 @@ namespace Luna
             virtual ElementHandle begin_element(id_t id, const Name& debug_name = Name()) override;
             virtual void end_element() override;
             virtual void set_layout_config(const ElementHandle& element, const LayoutConfig& config) override;
+            virtual void set_layout_callback_config(const ElementHandle& element,
+                const LayoutCallbackConfig& config) override;
+            virtual LayoutCallbackConfig get_layout_callback_config(const ElementHandle& element) const override;
             virtual void set_layout_result(const ElementHandle& element, const LayoutResult& result) override;
             virtual RV apply_layout(const ElementHandle& root, const RectF& rect) override;
             virtual MeasureResult measure_element(const ElementHandle& element, const Float2U& available_size) override;

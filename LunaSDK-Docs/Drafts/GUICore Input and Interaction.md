@@ -54,7 +54,7 @@ Navigation is represented by intent-level input events instead of hard-wired key
 
 GUI Core does not translate `KeyCode` values into these events. The host adapter decides the mapping. The default `GUIWindow` adapter maps arrow keys to D-pad, Tab and Shift+Tab to sequential movement, Enter to confirm, and Escape to back; it also forwards the original key event.
 
-Each element has a `NavigationConfig`. Every direction and action can use `automatic`, `none`, or `callback` behavior. Callback mode receives a `NavigationRequest` and can call `focus_element` for custom navigation or `navigate_default` to explicitly request the automatic fallback.
+Elements use automatic navigation without storing extra data. Calling `set_navigation_config` adds a sparse `NavigationConfig` record for that element. Every direction and action can use `automatic`, `none`, or `callback` behavior. Callback mode receives a `NavigationRequest` and can call `focus_element` for custom navigation or `navigate_default` to explicitly request the automatic fallback.
 
 ### Delivered events
 `get_delivered_input_events` returns input events delivered to one element. `get_routed_input_events` additionally includes element-local pointer positions.
@@ -160,7 +160,7 @@ context->set_interactable(overlay_element, overlay);
 ```
 
 ### Custom hit test
-Rectangle hit testing is the default. Install `ElementHitTestConfig` with `ElementHitTestMode::callback` when an element needs an arbitrary hit shape such as a circle or pie-menu sector. GUI Core first checks the layout rectangle and clip rectangle, then calls the callback with element-local and screen-space coordinates.
+Rectangle hit testing is the default and requires no per-element callback record. Install sparse `ElementHitTestConfig` with `ElementHitTestMode::callback` when an element needs an arbitrary hit shape such as a circle or pie-menu sector. GUI Core first checks the layout rectangle and clip rectangle, then calls the callback with element-local and screen-space coordinates.
 
 ```cpp
 GUICore::ElementHitTestConfig hit_test;

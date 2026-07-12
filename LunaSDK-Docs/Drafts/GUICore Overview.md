@@ -24,7 +24,7 @@ This split keeps GUI Core small and orthogonal. Applications can use only the sy
 
 ## Concepts
 ### Context
-`GUICore::IContext` owns the per-frame element tree, layer list, queued input events, routed interaction state, state store, style records, draw callback records, generated draw commands and debug data.
+`GUICore::IContext` owns the per-frame element tree, layer list, sparse callback records, queued input events, routed interaction state, state store, style records, generated draw commands and debug data.
 
 A context is explicit. There is no global current GUI context. Pass the `IContext*` to the higher-level API or directly to GUI Core functions.
 
@@ -40,8 +40,9 @@ The element tree is typeless. Every node is a `GUICore::Element` record with the
 2. `LayoutResult`
 3. `Interactable`
 4. Style binding
-5. Optional draw callback binding and draw-command ownership metadata
-6. Debug metadata
+5. Sparse optional layout, navigation, custom hit-test and draw callback bindings
+6. Draw-command ownership metadata
+7. Debug metadata
 
 Elements do not inherit from widget classes and do not have virtual behavior. Algorithms operate on this data.
 
@@ -116,7 +117,7 @@ luexp(context->generate_draw_commands());
 luexp(context->compile_draw_commands(vg_draw_list));
 ```
 
-High-level packages attach `LayoutConfig` callbacks and callback userdata while they build elements. `IContext::apply_layout` owns the top-down tree traversal and invokes those callbacks. GUI Core exposes the primitive helpers used by those callbacks in [[GUICore Layout]].
+High-level packages attach dense `LayoutConfig` input and optional sparse `LayoutCallbackConfig` records while they build elements. `IContext::apply_layout` owns the top-down tree traversal and invokes those callbacks. GUI Core exposes the primitive helpers used by those callbacks in [[GUICore Layout]].
 
 ### Render
 GUI Core records static commands and delayed element draw callbacks. `IContext::generate_draw_commands` evaluates callbacks against final layout and interaction data, and `IContext::compile_draw_commands` translates the resulting command stream into a `VG::IShapeDrawList`.

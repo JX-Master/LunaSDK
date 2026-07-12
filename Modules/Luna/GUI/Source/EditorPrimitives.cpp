@@ -171,7 +171,6 @@ namespace Luna
         {
             luassert(context && id);
             GUICore::ElementHandle element = context->begin_element(id, text ? Name(text) : Name("text"));
-            GUICore::LayoutConfig text_layout = layout;
             GUICore::DrawCommand command;
             command.type = GUICore::DrawCommandType::text;
             command.rect_reference = GUICore::DrawCommandRectReference::element;
@@ -179,9 +178,12 @@ namespace Luna
             command.color = style_value(context, Name("gui.editor.text.color"),
                 GUICore::style_f32x4(Float4U(0.86f, 0.88f, 0.92f, 1.0f))).number;
             command.font_size = style_value(context, Name("gui.editor.text.font_size"), GUICore::style_f32(16.0f)).number.x;
-            text_layout.measure_callback = measure_text_content;
-            text_layout.userdata = allocate_text_measure_desc(context, text, command.font_size);
-            context->set_layout_config(element, text_layout);
+            context->set_layout_config(element, layout);
+            GUICore::LayoutCallbackConfig layout_callbacks;
+            layout_callbacks.algorithm = Name("gui.editor.text");
+            layout_callbacks.measure_callback = measure_text_content;
+            layout_callbacks.userdata = allocate_text_measure_desc(context, text, command.font_size);
+            context->set_layout_callback_config(element, layout_callbacks);
             command.horizontal_alignment = VG::TextAlignment::begin;
             command.vertical_alignment = VG::TextAlignment::center;
             command.text = text ? text : "";

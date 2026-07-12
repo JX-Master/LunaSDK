@@ -24,13 +24,12 @@ namespace Luna::GUICoreTest
     void set_canvas_layout(GUICore::IContext* context, const GUICore::ElementHandle& element,
         GUICore::CanvasLayoutDesc* desc)
     {
-        const GUICore::Element* core_element = context->get_element(element.index);
-        GUICore::LayoutConfig config = core_element ? core_element->layout : GUICore::LayoutConfig();
-        config.name = Name("guicore.test.canvas");
+        GUICore::LayoutCallbackConfig config;
+        config.algorithm = Name("guicore.test.canvas");
         config.callback = GUICore::layout_canvas;
         config.finalize_callback = nullptr;
         config.userdata = desc;
-        context->set_layout_config(element, config);
+        context->set_layout_callback_config(element, config);
     }
 
     void add_canvas_item(Vector<GUICore::CanvasLayoutItem>& items, GUICore::id_t id, f32 x, f32 y)

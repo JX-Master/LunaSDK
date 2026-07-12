@@ -244,13 +244,18 @@ namespace Luna
             MeasureResult measure_content(IContext* context, u32 element_index, const Element& element,
                 const Float2U& available)
             {
-                if(!element.layout.measure_callback)
+                if(element.layout_callback_config == U32_MAX)
                 {
                     return MeasureResult();
                 }
                 ElementHandle handle { element.id, element_index, context->generation() };
-                return element.layout.measure_callback(context, handle, content_available_size(element, available),
-                    element.layout.userdata);
+                LayoutCallbackConfig callbacks = context->get_layout_callback_config(handle);
+                if(!callbacks.measure_callback)
+                {
+                    return MeasureResult();
+                }
+                return callbacks.measure_callback(context, handle, content_available_size(element, available),
+                    callbacks.userdata);
             }
 
             MeasureResult measure_leaf_element(IContext* context, u32 element_index, const Element& element,

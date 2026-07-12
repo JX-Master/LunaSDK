@@ -58,7 +58,7 @@ namespace Luna
         //! @param[in] context The context that owns @p element.
         //! @param[in] element The element being measured.
         //! @param[in] available_content_size Available content-box size after margin and padding are removed.
-        //! @param[in] userdata User data stored in @ref LayoutConfig.
+        //! @param[in] userdata User data stored in @ref LayoutCallbackConfig.
         //! @return Returns content-box minimum, desired and maximum sizes.
         using MeasureCallback = MeasureResult(*)(IContext* context, const ElementHandle& element,
             const Float2U& available_content_size, void* userdata);
@@ -67,11 +67,11 @@ namespace Luna
         //! @param[in] context The context that owns @p element.
         //! @param[in] element The element being arranged.
         //! @param[in] rect The element rectangle in layer coordinates.
-        //! @param[in] userdata User data stored in @ref LayoutConfig.
+        //! @param[in] userdata User data stored in @ref LayoutCallbackConfig.
         //! @return Returns success or failure code.
         using LayoutCallback = RV(*)(IContext* context, const ElementHandle& element, const RectF& rect, void* userdata);
 
-        //! Describes layout data attached to one typeless element.
+        //! Describes frequently accessed layout input attached directly to one typeless element.
         struct LayoutConfig
         {
             //! Width request.
@@ -86,8 +86,15 @@ namespace Luna
             f32 flex_grow = 0.0f;
             //! Flex shrink factor used by flex layout on the main axis. Zero disables shrinking.
             f32 flex_shrink = 1.0f;
-            //! Optional identifier for package-defined or core-provided layout algorithms.
-            Name name;
+        };
+
+        //! Describes optional layout callbacks stored in the context sparse callback array.
+        struct LayoutCallbackConfig
+        {
+            //! Optional semantic identifier for the package-defined or core-provided layout algorithm.
+            //! @remark GUI Core does not dispatch callbacks by this value. It is intended for diagnostics and
+            //! higher-level capability recognition.
+            Name algorithm;
             //! Optional content measure callback. If this is `nullptr`, content minimum and desired sizes are zero.
             MeasureCallback measure_callback = nullptr;
             //! Arrange callback. If this is `nullptr`, the element does not arrange its children.
@@ -526,14 +533,16 @@ namespace Luna
             Name debug_name;
             //! Layout configuration for this element.
             LayoutConfig layout;
+            //! Sparse layout callback configuration index owned by the context, or `U32_MAX` when no callbacks are attached.
+            u32 layout_callback_config = U32_MAX;
             //! Layout result for this element.
             LayoutResult layout_result;
             //! Optional interaction behavior.
             Interactable interactable;
-            //! Optional navigation behavior.
-            NavigationConfig navigation;
-            //! Optional custom pointer hit-test behavior.
-            ElementHitTestConfig hit_test;
+            //! Sparse navigation configuration index owned by the context, or `U32_MAX` for automatic navigation.
+            u32 navigation_config = U32_MAX;
+            //! Sparse custom hit-test configuration index owned by the context, or `U32_MAX` for rectangle hit testing.
+            u32 hit_test_config = U32_MAX;
             //! Sparse draw configuration index owned by the context, or `U32_MAX` when no callback is attached.
             u32 draw_config = U32_MAX;
             //! First draw command emission index for this element.

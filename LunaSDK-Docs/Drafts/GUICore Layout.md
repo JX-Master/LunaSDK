@@ -1,4 +1,4 @@
-GUI Core layout algorithms operate on typeless element data. They read `LayoutConfig` from parent and child elements, measure child size requirements when needed, then write `LayoutResult` back to the context.
+GUI Core layout algorithms operate on typeless element data. They read dense `LayoutConfig` input and optional sparse `LayoutCallbackConfig` records, measure child size requirements when needed, then write `LayoutResult` back to the context.
 
 ## Designed functionality
 The layout system provides reusable layout primitives for higher-level GUI packages and applications:
@@ -13,25 +13,31 @@ GUI Core layout helpers are intentionally primitive. A high-level package may co
 
 ## Concepts
 ### Layout config
-`GUICore::LayoutConfig` is attached to each element. It contains:
+`GUICore::LayoutConfig` is attached directly to each element. It contains only frequently accessed input:
 
 1. Width and height `SizeValue`.
 2. Margin.
 3. Padding.
 4. Flex grow and shrink factors.
-5. Optional measure, arrange and finalize callbacks.
-6. Callback userdata owned by the caller that installs the callback.
+
+Optional callbacks use `GUICore::LayoutCallbackConfig`, stored in a per-context sparse array. It contains:
+
+1. `algorithm`, an optional semantic identifier used by diagnostics and higher-level capability recognition.
+2. Optional measure, arrange and finalize callbacks.
+3. Callback userdata owned by the caller that installs the callback.
+
+GUI Core invokes callback pointers directly. `algorithm` is not a registration or dispatch key. An element without callbacks stores no sparse record.
 
 `SizeValue::kind` controls how the axis is resolved:
 
-1. `fit`: use the content size returned by `LayoutConfig::measure_callback`. If no measure callback is installed, content minimum and desired size are zero, so the resolved desired size is only padding plus explicit constraints.
+1. `fit`: use the content size returned by `LayoutCallbackConfig::measure_callback`. If no measure callback is installed, content minimum and desired size are zero, so the resolved desired size is only padding plus explicit constraints.
 2. `fixed`: use an absolute logical-coordinate size.
 3. `percent`: use a percentage of the available parent content size.
 
 `min` and `max` constrain the final element box size on the axis. A negative `max` means no maximum.
 
 ### Measure callback
-`LayoutConfig::measure_callback` computes content-box size for one element. It returns a `GUICore::MeasureResult`:
+`LayoutCallbackConfig::measure_callback` computes content-box size for one element. It returns a `GUICore::MeasureResult`:
 
 1. `minimum`: minimum content size.
 2. `desired`: preferred content size.
@@ -44,9 +50,9 @@ This keeps drawing and measurement separate. Text may live only in `DrawCommand`
 Use `IContext::measure_element` inside layout algorithms when a child element's resolved minimum, desired and maximum sizes are needed. The returned sizes are element-box sizes excluding margin.
 
 ### Layout callbacks
-`LayoutConfig::callback` arranges one element's direct children. `IContext::apply_layout` writes the root layout result, then walks the element tree from parent to child and calls these callbacks.
+`LayoutCallbackConfig::callback` arranges one element's direct children. `IContext::apply_layout` writes the root layout result, then walks the element tree from parent to child and calls these callbacks.
 
-`LayoutConfig::finalize_callback` is called after child subtrees have been arranged. Use it when a parent needs to derive final data from arranged children.
+`LayoutCallbackConfig::finalize_callback` is called after child subtrees have been arranged. Use it when a parent needs to derive final data from arranged children.
 
 ### Layout result
 `GUICore::LayoutResult` stores:
@@ -118,9 +124,13 @@ GUICore::LayoutConfig label_layout;
 label_layout.width.kind = GUICore::SizeKind::fit;
 label_layout.height.kind = GUICore::SizeKind::fit;
 label_layout.padding = Float4U(8.0f, 4.0f, 8.0f, 4.0f);
-label_layout.measure_callback = measure_text;
-label_layout.userdata = text_measure_data;
 context->set_layout_config(label, label_layout);
+
+GUICore::LayoutCallbackConfig label_callbacks;
+label_callbacks.algorithm = Name("example.text");
+label_callbacks.measure_callback = measure_text;
+label_callbacks.userdata = text_measure_data;
+context->set_layout_callback_config(label, label_callbacks);
 ```
 
 The callback userdata must remain valid until layout has finished. Immediate API packages commonly store this data in a per-frame arena and reset the arena after the frame.
@@ -140,10 +150,14 @@ GUICore::LayoutConfig row_layout;
 row_layout.width.kind = GUICore::SizeKind::percent;
 row_layout.width.value = 1.0f;
 row_layout.height.kind = GUICore::SizeKind::fit;
-row_layout.measure_callback = GUICore::measure_flex;
-row_layout.callback = GUICore::layout_flex;
-row_layout.userdata = &desc;
 context->set_layout_config(row, row_layout);
+
+GUICore::LayoutCallbackConfig row_callbacks;
+row_callbacks.algorithm = Name("gui.core.flex");
+row_callbacks.measure_callback = GUICore::measure_flex;
+row_callbacks.callback = GUICore::layout_flex;
+row_callbacks.userdata = &desc;
+context->set_layout_callback_config(row, row_callbacks);
 ```
 
 Flex layout measures children first, groups them into lines, distributes free or missing main-axis space with `flex_grow` and `flex_shrink`, then arranges child subtrees.
@@ -157,10 +171,11 @@ desc.mode = GUICore::GridLayoutMode::fixed_cell_size;
 desc.cell_size = Float2U(96.0f, 80.0f);
 desc.gap = Float2U(8.0f, 8.0f);
 
-GUICore::LayoutConfig grid_layout;
-grid_layout.callback = GUICore::layout_grid;
-grid_layout.userdata = &desc;
-context->set_layout_config(grid, grid_layout);
+GUICore::LayoutCallbackConfig grid_callbacks;
+grid_callbacks.algorithm = Name("gui.core.grid");
+grid_callbacks.callback = GUICore::layout_grid;
+grid_callbacks.userdata = &desc;
+context->set_layout_callback_config(grid, grid_callbacks);
 ```
 
 Use `fixed_column_count` when the caller wants a stable number of columns and a derived cell width.
@@ -185,10 +200,11 @@ item.pivot = Float2U(0.5f, 0.0f);
 GUICore::CanvasLayoutDesc desc;
 desc.items = Span<const GUICore::CanvasLayoutItem>(&item, 1);
 
-GUICore::LayoutConfig canvas_layout;
-canvas_layout.callback = GUICore::layout_canvas;
-canvas_layout.userdata = &desc;
-context->set_layout_config(canvas, canvas_layout);
+GUICore::LayoutCallbackConfig canvas_callbacks;
+canvas_callbacks.algorithm = Name("gui.core.canvas");
+canvas_callbacks.callback = GUICore::layout_canvas;
+canvas_callbacks.userdata = &desc;
+context->set_layout_callback_config(canvas, canvas_callbacks);
 ```
 
 If `anchor_min` and `anchor_max` differ on an axis, the child stretches between those anchored edges. If they are equal, the child uses its layout size and pivot on that axis.
@@ -201,10 +217,11 @@ GUICore::ScrollViewportLayoutDesc desc;
 desc.scroll_offset = current_scroll_offset;
 desc.max_scroll_delta = Float2U(48.0f, 96.0f);
 
-GUICore::LayoutConfig viewport_layout;
-viewport_layout.callback = GUICore::layout_scroll_viewport;
-viewport_layout.userdata = &desc;
-context->set_layout_config(viewport, viewport_layout);
+GUICore::LayoutCallbackConfig viewport_callbacks;
+viewport_callbacks.algorithm = Name("gui.core.scroll_viewport");
+viewport_callbacks.callback = GUICore::layout_scroll_viewport;
+viewport_callbacks.userdata = &desc;
+context->set_layout_callback_config(viewport, viewport_callbacks);
 
 RectF previous_visible_rect = GUICore::get_scroll_viewport_visible_rect(context, viewport);
 RectF submission_rect(
@@ -250,10 +267,11 @@ desc.rows = Span<const GUICore::TableTrackDesc>(rows, row_count);
 desc.cells = Span<const GUICore::TableLayoutCell>(cells, cell_count);
 desc.gap = Float2U(4.0f, 2.0f);
 
-GUICore::LayoutConfig table_layout;
-table_layout.callback = GUICore::layout_table;
-table_layout.userdata = &desc;
-context->set_layout_config(table, table_layout);
+GUICore::LayoutCallbackConfig table_callbacks;
+table_callbacks.algorithm = Name("gui.core.table");
+table_callbacks.callback = GUICore::layout_table;
+table_callbacks.userdata = &desc;
+context->set_layout_callback_config(table, table_callbacks);
 ```
 
 Explicit cell attachments make the primitive compatible with virtualized rows and editor-authored table descriptions.
@@ -276,12 +294,16 @@ panel_layout.width.kind = GUICore::SizeKind::fixed;
 panel_layout.width.value = 280.0f;
 panel_layout.height.kind = GUICore::SizeKind::percent;
 panel_layout.height.value = 1.0f;
-panel_layout.measure_callback = GUICore::measure_flex;
-panel_layout.callback = GUICore::layout_flex;
-panel_layout.userdata = &desc;
 
 GUICore::ElementHandle panel = context->begin_element(context->make_id("inspector"), Name("Inspector"));
 context->set_layout_config(panel, panel_layout);
+
+GUICore::LayoutCallbackConfig panel_callbacks;
+panel_callbacks.algorithm = Name("gui.core.flex");
+panel_callbacks.measure_callback = GUICore::measure_flex;
+panel_callbacks.callback = GUICore::layout_flex;
+panel_callbacks.userdata = &desc;
+context->set_layout_callback_config(panel, panel_callbacks);
 
 // Build direct children here.
 

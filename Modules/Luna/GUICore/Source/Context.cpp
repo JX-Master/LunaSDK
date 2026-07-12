@@ -108,6 +108,9 @@ namespace Luna
             u64 gc_end = get_ticks();
             m_layers.clear();
             m_elements.clear();
+            m_layout_callback_configs.clear();
+            m_navigation_configs.clear();
+            m_hit_test_configs.clear();
             m_draw_configs.clear();
             m_recorded_draw_commands.clear();
             m_layer_draw_operations.clear();
@@ -334,6 +337,41 @@ namespace Luna
             }
         }
 
+        void Context::set_layout_callback_config(const ElementHandle& element, const LayoutCallbackConfig& config)
+        {
+            lutsassert();
+            Element* e = mutable_element(element);
+            if(!e)
+            {
+                return;
+            }
+            if(e->layout_callback_config == U32_MAX)
+            {
+                e->layout_callback_config = (u32)m_layout_callback_configs.size();
+                m_layout_callback_configs.push_back(config);
+            }
+            else
+            {
+                m_layout_callback_configs[e->layout_callback_config] = config;
+            }
+            m_draw_commands_generated = false;
+        }
+
+        LayoutCallbackConfig Context::get_layout_callback_config(const ElementHandle& element) const
+        {
+            lutsassert();
+            if(!element.id || element.generation != m_generation || element.index >= m_elements.size())
+            {
+                return LayoutCallbackConfig();
+            }
+            const Element& e = m_elements[element.index];
+            if(e.id != element.id || e.layout_callback_config >= m_layout_callback_configs.size())
+            {
+                return LayoutCallbackConfig();
+            }
+            return m_layout_callback_configs[e.layout_callback_config];
+        }
+
         void Context::set_layout_result(const ElementHandle& element, const LayoutResult& result)
         {
             lutsassert();
@@ -369,13 +407,18 @@ namespace Luna
                 return MeasureResult();
             }
             const Element& e = m_elements[element.index];
+            LayoutCallbackConfig callbacks;
+            if(e.layout_callback_config < m_layout_callback_configs.size())
+            {
+                callbacks = m_layout_callback_configs[e.layout_callback_config];
+            }
             MeasureResult content;
-            if(e.layout.measure_callback)
+            if(callbacks.measure_callback)
             {
                 Float2U available_content(
                     max(available_size.x - e.layout.margin.x - e.layout.margin.z - e.layout.padding.x - e.layout.padding.z, 0.0f),
                     max(available_size.y - e.layout.margin.y - e.layout.margin.w - e.layout.padding.y - e.layout.padding.w, 0.0f));
-                content = e.layout.measure_callback(this, element, available_content, e.layout.userdata);
+                content = callbacks.measure_callback(this, element, available_content, callbacks.userdata);
             }
             MeasureResult result;
             for(LayoutAxis axis : { LayoutAxis::x, LayoutAxis::y })
@@ -439,7 +482,7 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            const LayoutConfig& config = e->layout;
+            LayoutCallbackConfig config = get_layout_callback_config(element);
             RectF rect = e->layout_result.rect;
             if(config.callback)
             {
@@ -489,7 +532,7 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            const LayoutConfig& config = e->layout;
+            LayoutCallbackConfig config = get_layout_callback_config(element);
             if(config.finalize_callback)
             {
                 return config.finalize_callback(this, element, e->layout_result.rect, config.userdata);
@@ -510,11 +553,21 @@ namespace Luna
         void Context::set_navigation_config(const ElementHandle& element, const NavigationConfig& navigation)
         {
             lutsassert();
-            if(Element* e = mutable_element(element))
+            Element* e = mutable_element(element);
+            if(!e)
             {
-                e->navigation = navigation;
-                m_draw_commands_generated = false;
+                return;
             }
+            if(e->navigation_config == U32_MAX)
+            {
+                e->navigation_config = (u32)m_navigation_configs.size();
+                m_navigation_configs.push_back(navigation);
+            }
+            else
+            {
+                m_navigation_configs[e->navigation_config] = navigation;
+            }
+            m_draw_commands_generated = false;
         }
 
         NavigationConfig Context::get_navigation_config(const ElementHandle& element) const
@@ -525,17 +578,31 @@ namespace Luna
                 return NavigationConfig();
             }
             const Element& e = m_elements[element.index];
-            return e.id == element.id ? e.navigation : NavigationConfig();
+            if(e.id != element.id || e.navigation_config >= m_navigation_configs.size())
+            {
+                return NavigationConfig();
+            }
+            return m_navigation_configs[e.navigation_config];
         }
 
         void Context::set_hit_test_config(const ElementHandle& element, const ElementHitTestConfig& hit_test)
         {
             lutsassert();
-            if(Element* e = mutable_element(element))
+            Element* e = mutable_element(element);
+            if(!e)
             {
-                e->hit_test = hit_test;
-                m_draw_commands_generated = false;
+                return;
             }
+            if(e->hit_test_config == U32_MAX)
+            {
+                e->hit_test_config = (u32)m_hit_test_configs.size();
+                m_hit_test_configs.push_back(hit_test);
+            }
+            else
+            {
+                m_hit_test_configs[e->hit_test_config] = hit_test;
+            }
+            m_draw_commands_generated = false;
         }
 
         ElementHitTestConfig Context::get_hit_test_config(const ElementHandle& element) const
@@ -546,7 +613,11 @@ namespace Luna
                 return ElementHitTestConfig();
             }
             const Element& e = m_elements[element.index];
-            return e.id == element.id ? e.hit_test : ElementHitTestConfig();
+            if(e.id != element.id || e.hit_test_config >= m_hit_test_configs.size())
+            {
+                return ElementHitTestConfig();
+            }
+            return m_hit_test_configs[e.hit_test_config];
         }
 
         void Context::bind_style(const ElementHandle& element, const Name& style)
@@ -1276,9 +1347,11 @@ namespace Luna
                     return false;
                 }
             }
-            if(element.hit_test.mode == ElementHitTestMode::callback)
+            const ElementHitTestConfig* hit_test = element.hit_test_config < m_hit_test_configs.size() ?
+                &m_hit_test_configs[element.hit_test_config] : nullptr;
+            if(hit_test && hit_test->mode == ElementHitTestMode::callback)
             {
-                if(!element.hit_test.callback)
+                if(!hit_test->callback)
                 {
                     return false;
                 }
@@ -1298,7 +1371,7 @@ namespace Luna
                     layer.screen_position.y + clip.offset_y,
                     clip.width,
                     clip.height);
-                return element.hit_test.callback(this, request, element.hit_test.userdata);
+                return hit_test->callback(this, request, hit_test->userdata);
             }
             return true;
         }
@@ -1689,7 +1762,12 @@ namespace Luna
         {
             lutsassert();
             const Element* element = find_element(request.source);
-            NavigationMode mode = element ? get_navigation_mode(element->navigation, request) : NavigationMode::automatic;
+            NavigationConfig navigation;
+            if(element && element->navigation_config < m_navigation_configs.size())
+            {
+                navigation = m_navigation_configs[element->navigation_config];
+            }
+            NavigationMode mode = get_navigation_mode(navigation, request);
             switch(mode)
             {
             case NavigationMode::automatic:
@@ -1697,8 +1775,8 @@ namespace Luna
             case NavigationMode::none:
                 return true;
             case NavigationMode::callback:
-                return element && element->navigation.callback ?
-                    element->navigation.callback(this, request, element->navigation.userdata) : false;
+                return element && navigation.callback ?
+                    navigation.callback(this, request, navigation.userdata) : false;
             default:
                 return false;
             }
@@ -2422,12 +2500,24 @@ namespace Luna
                 element_info.style = element.style;
                 element_info.debug_name = element.debug_name;
                 element_info.layout = element.layout;
+                if(element.layout_callback_config < m_layout_callback_configs.size())
+                {
+                    element_info.layout_callbacks = m_layout_callback_configs[element.layout_callback_config];
+                }
+                if(element.navigation_config < m_navigation_configs.size())
+                {
+                    element_info.navigation = m_navigation_configs[element.navigation_config];
+                }
+                if(element.hit_test_config < m_hit_test_configs.size())
+                {
+                    element_info.hit_test = m_hit_test_configs[element.hit_test_config];
+                }
                 element_info.rect = element.layout_result.rect;
                 element_info.clip_rect = element.layout_result.clip_rect;
                 element_info.content_size = element.layout_result.content_size;
                 element_info.pointer_hit_behavior = element.interactable.pointer_hit_behavior;
-                element_info.hit_test_mode = element.hit_test.mode;
-                element_info.has_hit_test_callback = element.hit_test.callback != nullptr;
+                element_info.hit_test_mode = element_info.hit_test.mode;
+                element_info.has_hit_test_callback = element_info.hit_test.callback != nullptr;
                 if(element.draw_config < m_draw_configs.size())
                 {
                     const DrawConfig& draw_config = m_draw_configs[element.draw_config];

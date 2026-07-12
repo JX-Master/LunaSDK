@@ -188,8 +188,16 @@ namespace Luna
             //! Debug name.
             Name debug_name;
             //! Layout configuration attached to this element.
-            //! @remark Callback and userdata members are live runtime pointers and are not portable serialized data.
             LayoutConfig layout;
+            //! Sparse layout callback configuration resolved for this element.
+            //! @remark Callback and userdata members are live runtime pointers and are not portable serialized data.
+            LayoutCallbackConfig layout_callbacks;
+            //! Sparse navigation configuration resolved for this element.
+            //! @remark Callback and userdata members are live runtime pointers and are not portable serialized data.
+            NavigationConfig navigation;
+            //! Sparse custom hit-test configuration resolved for this element.
+            //! @remark Callback and userdata members are live runtime pointers and are not portable serialized data.
+            ElementHitTestConfig hit_test;
             //! Layout rectangle.
             RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             //! Clip rectangle.
@@ -293,7 +301,7 @@ namespace Luna
         //! In-memory debug snapshot produced by a GUI Core context.
         //! @remark This snapshot may contain runtime callback, userdata, texture, and shape-buffer pointers through
         //! layout and draw command data. Convert it to a dedicated transport representation before crossing a
-        //! process or persistence boundary. Per-element navigation configuration is not currently captured.
+        //! process or persistence boundary.
         struct DebugInfo
         {
             //! Frame counters.

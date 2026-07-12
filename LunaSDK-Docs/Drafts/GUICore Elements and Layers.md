@@ -96,7 +96,7 @@ panel
 ```
 
 ### Attach layout data
-Each element can receive a `LayoutConfig`. Layout algorithms later write `LayoutResult`.
+Each element can receive a dense `LayoutConfig`. Elements that measure content or arrange children additionally receive a sparse `LayoutCallbackConfig`. Layout algorithms later write `LayoutResult`.
 
 ```cpp
 GUICore::LayoutConfig layout;
@@ -107,6 +107,21 @@ layout.height.value = 32.0f;
 layout.padding = Float4U(8.0f, 4.0f, 8.0f, 4.0f);
 context->set_layout_config(element, layout);
 ```
+
+Attach callbacks separately only when the element needs content measurement or child arrangement:
+
+```cpp
+GUICore::LayoutCallbackConfig callbacks;
+callbacks.algorithm = Name("example.layout");
+callbacks.measure_callback = measure_example;
+callbacks.callback = layout_example;
+callbacks.userdata = frame_arena_data;
+context->set_layout_callback_config(element, callbacks);
+```
+
+The context stores callback-bearing records in per-frame sparse arrays. `begin_frame` clears the logical records but
+retains reusable vector capacity. Do not use callback userdata as cross-frame state; use the context state store for
+that purpose.
 
 ### Attach interaction data
 Use `set_interactable` when an element should participate in input routing.

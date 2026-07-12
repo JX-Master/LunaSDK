@@ -130,13 +130,12 @@ namespace Luna
             {
                 return BasicError::bad_arguments();
             }
-            const GUICore::Element* element = context->get_element(tab_bar.index);
-            GUICore::LayoutConfig config = element->layout;
-            config.name = Name("gui.editor.tab_bar");
+            GUICore::LayoutCallbackConfig config;
+            config.algorithm = Name("gui.editor.tab_bar");
             config.callback = tab_bar_layout_callback;
             config.finalize_callback = nullptr;
             config.userdata = nullptr;
-            context->set_layout_config(tab_bar, config);
+            context->set_layout_callback_config(tab_bar, config);
             return ok;
         }
 

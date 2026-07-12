@@ -135,6 +135,19 @@ namespace Luna
             //! @param[in] config The layout configuration copied into the element.
             virtual void set_layout_config(const ElementHandle& element, const LayoutConfig& config) = 0;
 
+            //! Sets optional layout callbacks for an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @param[in] config The callback configuration copied into context-owned sparse storage.
+            //! @remark Callback and userdata values must remain valid until layout finishes for this frame.
+            virtual void set_layout_callback_config(const ElementHandle& element,
+                const LayoutCallbackConfig& config) = 0;
+
+            //! Gets optional layout callbacks attached to an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @return Returns the attached callback configuration, or a default configuration for invalid handles and
+            //! elements without layout callbacks.
+            virtual LayoutCallbackConfig get_layout_callback_config(const ElementHandle& element) const = 0;
+
             //! Sets layout result for an element.
             //! @param[in] element The element handle returned by @ref begin_element.
             //! @param[in] result The layout result to attach.
@@ -146,7 +159,7 @@ namespace Luna
             //! @param[in] rect The root rectangle in layer coordinates.
             //! @return Returns success or failure code.
             //! @remark Layout is a context-owned pass. The root rectangle is written first, then each element's
-            //! attached @ref LayoutConfig callback is applied top-down with optional finalize callbacks.
+            //! attached @ref LayoutCallbackConfig callback is applied top-down with optional finalize callbacks.
             virtual RV apply_layout(const ElementHandle& root, const RectF& rect) = 0;
 
             //! Measures one element using its layout configuration and optional measure callback.
@@ -228,7 +241,7 @@ namespace Luna
             //! Gets the latest generated draw commands in frame submission order.
             //! @return Returns a read-only span of the latest draw command stream.
             //! @remark This is useful for diagnostics, tooling, and custom rendering inspection. Content-driven
-            //! measurement should use @ref LayoutConfig::measure_callback rather than scanning draw commands.
+            //! measurement should use @ref LayoutCallbackConfig::measure_callback rather than scanning draw commands.
             //! Call @ref generate_draw_commands first when the frame uses draw callbacks. Callers can filter by
             //! @ref DrawCommand::element when they need element-local commands.
             virtual Span<const DrawCommand> get_draw_commands() const = 0;

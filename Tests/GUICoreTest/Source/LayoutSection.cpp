@@ -88,11 +88,17 @@ namespace Luna::GUICoreTest
             return Float2U(clamp(offset.x, 0.0f, maximum.x), clamp(offset.y, 0.0f, maximum.y));
         }
 
-        GUICore::LayoutConfig flex_container_layout(f32 width, f32 height, GUICore::FlexLayoutDesc* desc)
+        GUICore::LayoutConfig flex_container_layout(f32 width, f32 height)
         {
             GUICore::LayoutConfig config = fixed_layout(width, height);
-            config.name = Name("guicore.test.flex");
             config.padding = Float4U(10.0f);
+            return config;
+        }
+
+        GUICore::LayoutCallbackConfig flex_container_callbacks(GUICore::FlexLayoutDesc* desc)
+        {
+            GUICore::LayoutCallbackConfig config;
+            config.algorithm = Name("guicore.test.flex");
             config.measure_callback = GUICore::measure_flex;
             config.callback = GUICore::layout_flex;
             config.userdata = desc;
@@ -125,11 +131,6 @@ namespace Luna::GUICoreTest
             config.padding = Float4U(6.0f, 4.0f, 6.0f, 4.0f);
             config.flex_grow = child.grow;
             config.flex_shrink = child.shrink;
-            if(child.main_kind == GUICore::SizeKind::fit)
-            {
-                config.measure_callback = measure_label;
-                config.userdata = (void*)child.label;
-            }
             return config;
         }
 
@@ -163,6 +164,14 @@ namespace Luna::GUICoreTest
         {
             GUICore::ElementHandle child = context->begin_element(id, Name(desc.label));
             context->set_layout_config(child, flex_child_layout(axis, desc));
+            if(desc.main_kind == GUICore::SizeKind::fit)
+            {
+                GUICore::LayoutCallbackConfig callbacks;
+                callbacks.algorithm = Name("guicore.test.label");
+                callbacks.measure_callback = measure_label;
+                callbacks.userdata = (void*)desc.label;
+                context->set_layout_callback_config(child, callbacks);
+            }
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), desc.color, 0.0f);
             draw_element_text(context, desc.label, 15.0f);
             context->end_element();
@@ -172,7 +181,8 @@ namespace Luna::GUICoreTest
             GUICore::FlexLayoutDesc* desc, Span<const DemoChild> children)
         {
             GUICore::ElementHandle container = context->begin_element(id, Name(title));
-            context->set_layout_config(container, flex_container_layout(width, height, desc));
+            context->set_layout_config(container, flex_container_layout(width, height));
+            context->set_layout_callback_config(container, flex_container_callbacks(desc));
             draw_text(context, RectF(0.0f, -32.0f, width, 26.0f), title, 20.0f,
                 Float4U(0.0f, 0.0f, 0.0f, 1.0f));
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.97f, 0.97f, 0.97f, 1.0f), 0.0f);
@@ -519,9 +529,12 @@ namespace Luna::GUICoreTest
                 context->set_layout_config(grid, fixed_layout(430.0f, 170.0f));
                 GUICore::LayoutConfig layout = fixed_layout(430.0f, 170.0f);
                 layout.padding = Float4U(10.0f);
-                layout.callback = GUICore::layout_grid;
-                layout.userdata = c ? &columns : &fixed_cell;
                 context->set_layout_config(grid, layout);
+                GUICore::LayoutCallbackConfig callbacks;
+                callbacks.algorithm = Name("guicore.test.grid");
+                callbacks.callback = GUICore::layout_grid;
+                callbacks.userdata = c ? (void*)&columns : (void*)&fixed_cell;
+                context->set_layout_callback_config(grid, callbacks);
                 draw_text(context, RectF(0.0f, -32.0f, 360.0f, 26.0f), c ? "fixed_column_count = 4" : "fixed_cell_size = 92 x 54",
                     20.0f, Float4U(0.0f, 0.0f, 0.0f, 1.0f));
                 draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.97f, 0.97f, 0.97f, 1.0f));
@@ -679,10 +692,13 @@ namespace Luna::GUICoreTest
             desc.clip_children = true;
             GUICore::LayoutConfig layout = fixed_layout(SCROLL_VIEWPORT_WIDTH, SCROLL_VIEWPORT_HEIGHT);
             layout.padding = Float4U(SCROLL_VIEWPORT_PADDING);
-            layout.callback = GUICore::layout_scroll_viewport;
-            layout.userdata = &desc;
             GUICore::ElementHandle viewport = context->begin_element(demo_id(0), Name("Scroll Viewport Demo"));
             context->set_layout_config(viewport, layout);
+            GUICore::LayoutCallbackConfig callbacks;
+            callbacks.algorithm = Name("guicore.test.scroll_viewport");
+            callbacks.callback = GUICore::layout_scroll_viewport;
+            callbacks.userdata = &desc;
+            context->set_layout_callback_config(viewport, callbacks);
             set_interactable(context, viewport, GUICore::PointerHitBehavior::target,
                 GUICore::InteractableFlag::hoverable | GUICore::InteractableFlag::scrollable);
             RectF visible_rect = GUICore::get_scroll_viewport_visible_rect(context, viewport);
@@ -753,10 +769,13 @@ namespace Luna::GUICoreTest
             desc.gap = Float2U(6.0f, 6.0f);
             GUICore::LayoutConfig layout = fixed_layout(560.0f, 170.0f);
             layout.padding = Float4U(10.0f);
-            layout.callback = GUICore::layout_table;
-            layout.userdata = &desc;
             GUICore::ElementHandle table = context->begin_element(demo_id(0), Name("Table Demo"));
             context->set_layout_config(table, layout);
+            GUICore::LayoutCallbackConfig callbacks;
+            callbacks.algorithm = Name("guicore.test.table");
+            callbacks.callback = GUICore::layout_table;
+            callbacks.userdata = &desc;
+            context->set_layout_callback_config(table, callbacks);
             draw_text(context, RectF(0.0f, -32.0f, 480.0f, 26.0f), "pixels | ratio | pixels",
                 20.0f, Float4U(0.0f, 0.0f, 0.0f, 1.0f));
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.97f, 0.97f, 0.97f, 1.0f));

@@ -63,9 +63,9 @@ Convenience helpers include `style_f32`, `style_f32x2`, `style_f32x3`, `style_f3
 7. Current focus, active and capture summary.
 8. Draw commands.
 
-The snapshot is not a cross-process wire format. `LayoutConfig` can contain callback and userdata pointers, while draw commands can contain texture and shape-buffer pointers. Use the snapshot directly for same-process debug panels or tests. An external debugger must first convert it to an application-defined transport DTO that replaces or omits those runtime pointers.
+The snapshot is not a cross-process wire format. Resolved `LayoutCallbackConfig`, `NavigationConfig`, `ElementHitTestConfig` and draw records can contain callback or userdata pointers, while draw commands can contain texture and shape-buffer pointers. Use the snapshot directly for same-process debug panels or tests. An external debugger must first convert it to an application-defined transport DTO that replaces or omits those runtime pointers.
 
-The current snapshot does not include per-element `NavigationConfig` modes or navigation callback presence. Tools that need that information must inspect the live element data in-process until a portable navigation-debug record is added.
+The snapshot resolves sparse callback records into each `DebugElementInfo`, so same-process tools can inspect layout algorithm metadata, navigation modes, custom hit-test configuration and callback presence without accessing Context-private sparse arrays.
 
 ### Debug timeline
 `DebugFrameTimeline` stores multiple `DebugInfo` frames so an in-process debug panel or test can step through captured frames. Pointer-valued fields are observational data only and can become stale after their backing runtime data is released.

@@ -251,6 +251,14 @@ namespace Luna
                 debug_text(context, row, "Clip", format_rect(element->clip_rect));
                 debug_text(context, row, "Width", format_size_value(element->layout.width));
                 debug_text(context, row, "Height", format_size_value(element->layout.height));
+                debug_text(context, row, "Algorithm", element->layout_callbacks.algorithm.empty() ?
+                    String("none") : String(element->layout_callbacks.algorithm.c_str()));
+                debug_text_bool(context, row, "Measure Callback",
+                    element->layout_callbacks.measure_callback != nullptr);
+                debug_text_bool(context, row, "Arrange Callback",
+                    element->layout_callbacks.callback != nullptr);
+                debug_text_bool(context, row, "Finalize Callback",
+                    element->layout_callbacks.finalize_callback != nullptr);
 
                 debug_section(context, row, "Input");
                 const c8* hit_behavior = "none";

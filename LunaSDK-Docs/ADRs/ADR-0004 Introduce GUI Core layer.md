@@ -59,11 +59,11 @@ This decision removes the following concepts from the long-term high-level `GUI`
 
 1. **Element tree**
    - Stores per-frame GUI elements in dense arrays.
-   - Each element has a stable ID, layer ID, parent/child/sibling topology, layout input, layout result, style binding, interaction binding, optional draw callback binding, draw-command ownership metadata, and debug metadata.
+   - Each element has a stable ID, layer ID, parent/child/sibling topology, hot layout input, layout result, style binding, interaction binding, sparse optional callback bindings, draw-command ownership metadata, and debug metadata.
    - The element tree is the core-level ground truth for the submitted frame.
    - The tree is typeless. Every element has the same concrete storage type.
    - Elements do not use inheritance, virtual methods, or per-widget subclasses to define behavior.
-   - Element behavior is defined only by the data attached to the element, such as layout records, interactable records, draw callback records, draw command ownership metadata, clip records, and debug tags. State IDs are derived by callers from stable owner IDs and boxed state types rather than stored by elements.
+   - Element behavior is defined only by the data attached to the element, such as layout records, interactable records, sparse callback records, draw command ownership metadata, clip records, and debug tags. State IDs are derived by callers from stable owner IDs and boxed state types rather than stored by elements.
    - An element may represent a text label, a button chrome, a shape, a layout container, a hit-test region, or any other primitive submitted by higher-level code, but the core element itself does not know that semantic widget type.
 
 2. **Layer system**
@@ -126,6 +126,20 @@ Core features should be implemented as independent functions or systems:
 5. Debug functions capture the data needed to inspect the frame in-process.
 
 These features must remain orthogonal where possible. A caller should be able to use layout without using input routing, use draw commands without using high-level widgets, or use interactables without using a particular widget package.
+
+### Hot element data and sparse callback bindings
+Frequently accessed data stays directly in the dense element array. This includes element topology, `LayoutConfig`, `LayoutResult`, `Interactable`, style binding and draw-command summary fields.
+
+Optional callback-bearing records are stored in separate per-context sparse arrays:
+
+1. `LayoutCallbackConfig` for measure, arrange and finalize callbacks.
+2. `NavigationConfig` for per-action navigation policy and callbacks.
+3. `ElementHitTestConfig` for custom shape hit testing.
+4. `DrawConfig` for delayed command generation.
+
+An element stores only a `u32` index for each optional record, with `U32_MAX` meaning the default behavior. The sparse arrays are logically cleared and rebuilt by `begin_frame`, while their allocated capacity can be reused. Callback userdata is frame-scoped unless the installing package deliberately provides longer-lived storage. Cross-frame widget data belongs in the state store, not callback configuration.
+
+`LayoutCallbackConfig::algorithm` is semantic metadata for diagnostics and higher-level capability recognition. GUI Core dispatches through callback pointers and never uses the name as a callback registry key.
 
 Drag-drop is a composite interaction protocol rather than a GUICore primitive. GUICore does not store payloads, source or target type lists, deliveries, or drag-drop state, and its input router does not special-case pointer release for dropping. A high-level package may implement drag-drop by composing generic hit testing, pointer capture, routed input events, context state, layers, and draw commands. Different packages may choose different payload protocols, activation thresholds, previews, target feedback, and delivery lifetimes.
 
@@ -383,7 +397,7 @@ This ADR does not require an immediate full rewrite. It defines the target archi
 The name `GUICore` is intentionally explicit. It should be understood as a lower-level primitive layer, not as a widget API. Normal application code should usually use one of the immediate API packages built on top of `GUICore`.
 
 ## Version history
-* **2026/7/12** Reconciled the approved architecture with the implementation: layers keep ordered generated-command indexes and compile into one VG draw list; elements may attach sparse before/after-children draw callbacks; Stack Layout is removed; element state IDs are derived externally; and DebugInfo is an in-memory snapshot rather than a wire format.
+* **2026/7/12** Reconciled the approved architecture with the implementation: layers keep ordered generated-command indexes and compile into one VG draw list; optional layout, navigation, hit-test and draw callback bindings use per-frame sparse arrays; Stack Layout is removed; element state IDs are derived externally; and DebugInfo is an in-memory snapshot rather than a wire format.
 * **2026/7/4** Clarified the layout model: flex replaces the old linear-layout wording, element sizing is fixed/percent/fit with min/max constraints, and content-driven measurement is supplied by package-owned measure callbacks.
 * **2026/6/17** Revised the decision to remove `GUI::Node`, `GUI::RenderProxy`, and `GUI::IContext` from the long-term architecture, define the element tree as typeless data, and narrow the default `GUI` module into one editor-style immediate API package.
 * **2026/6/16** Proposed.

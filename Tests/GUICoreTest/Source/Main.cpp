@@ -237,6 +237,15 @@ namespace
                 app.sheet.z_down = z_down;
                 app.sheet.x_down = x_down;
                 GUICore::ElementHandle root = build_frame(app.gui, app.sheet);
+                const GUICore::Element* root_element = app.gui->get_element(root.index);
+                GUICore::ElementHandle sheet = app.gui->find_element_handle(GUICoreTest::ID_SHEET);
+                const GUICore::Element* sheet_element = app.gui->get_element(sheet.index);
+                luassert(root_element && root_element->layout_callback_config != U32_MAX &&
+                    root_element->navigation_config == U32_MAX && root_element->hit_test_config == U32_MAX &&
+                    root_element->draw_config == U32_MAX);
+                luassert(sheet_element && sheet_element->layout_callback_config != U32_MAX &&
+                    sheet_element->draw_config != U32_MAX);
+                luassert(app.gui->get_layout_callback_config(root).algorithm == Name("guicore.test.canvas"));
                 luexp(app.gui->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
                 app.gui->route_input();
                 bool layout_dirty = false;
@@ -260,7 +269,6 @@ namespace
                 luexp(GUIWindow::update_text_input(&input_adapter));
                 luexp(app.gui->generate_draw_commands());
                 Span<const GUICore::DrawCommand> generated_commands = app.gui->get_draw_commands();
-                GUICore::ElementHandle sheet = app.gui->find_element_handle(GUICoreTest::ID_SHEET);
                 luassert(generated_commands.size() >= 5);
                 luassert(generated_commands.front().element == sheet.index &&
                     generated_commands.front().type == GUICore::DrawCommandType::rect);
