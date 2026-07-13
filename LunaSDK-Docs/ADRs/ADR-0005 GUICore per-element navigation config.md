@@ -57,7 +57,7 @@ This decision keeps GUICore small and orthogonal:
 4. Automatic navigation remains available for simple controls and as a fallback path for callbacks.
 5. `NavigationMode::none` provides a cheap way to block accidental focus movement in a specific direction or action.
 
-The trade-off is that GUICore cannot inspect or visualize a complete navigation graph by itself, because that graph may exist only inside user callback code. The current `DebugInfo` snapshot does not yet capture per-element navigation modes or callback presence. When that diagnostic data is added, tools will still be unable to know every possible runtime target chosen by application logic.
+The trade-off is that GUICore cannot inspect or visualize a complete navigation graph by itself, because that graph may exist only inside user callback code. Inspection tools can scan the current element array and query each element's `NavigationConfig` to identify automatic, disabled, and callback navigation modes. They still cannot know every possible runtime target chosen by application callback logic.
 
 Another consequence is that serialized GUI assets should not store raw callback pointers. If GUIAsset needs to expose this feature, it should serialize higher-level navigation properties or handler IDs, then bind runtime callbacks during view generation.
 
@@ -78,5 +78,5 @@ This would preserve the smallest API surface.
 This option was rejected because automatic tree-order and geometry-based navigation cannot handle all editor, in-game, and custom view navigation requirements reliably.
 
 ## Version history
-* **2026/7/12** Clarified that the current DebugInfo snapshot does not yet include per-element navigation configuration or callback presence.
+* **2026/7/12** Clarified that direct element inspection exposes navigation mode and callback presence, but not the business-specific targets selected inside callback code.
 * **2026/6/28** Proposed and approved.

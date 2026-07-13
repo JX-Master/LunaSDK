@@ -1,12 +1,10 @@
-GUI Core provides three support systems that are shared across GUI packages: state storage, named styles and debug instrumentation.
+GUI Core provides state storage and named styles shared across GUI packages.
 
 ## Designed functionality
-These systems solve cross-frame and tooling problems without introducing widget classes:
+These systems solve cross-frame data and visual configuration problems without introducing widget classes:
 
 1. The state store keeps typed boxed state objects by stable IDs.
 2. The style system stores named style records with inheritance and schema metadata.
-3. Debug output captures the current frame for in-process panels, tests and inspection tools.
-4. Performance counters expose the cost of routing, state cleanup and draw command compilation.
 
 GUI Core does not define widget-specific state or widget-specific style keys. Higher-level packages define those objects and keys.
 
@@ -49,26 +47,7 @@ Only the top style in the context style stack is bound to newly created elements
 Convenience helpers include `style_f32`, `style_f32x2`, `style_f32x3`, `style_f32x4` and `style_name`.
 
 ### Style schema
-`StyleEntrySchema` describes a style entry consumed by a package. GUI Core stores schemas for tools and debug views. It does not interpret the entry as behavior.
-
-### Debug info
-`GUICore::DebugInfo` is an in-memory frame snapshot. It contains:
-
-1. Performance counters.
-2. Layers.
-3. Elements.
-4. Styles and style schemas.
-5. Input events and deliveries.
-6. Debug issues and pass records.
-7. Current focus, active and capture summary.
-8. Draw commands.
-
-The snapshot is not a cross-process wire format. Resolved `LayoutCallbackConfig`, `NavigationConfig`, `ElementHitTestConfig` and draw records can contain callback or userdata pointers, while draw commands can contain texture and shape-buffer pointers. Use the snapshot directly for same-process debug panels or tests. An external debugger must first convert it to an application-defined transport DTO that replaces or omits those runtime pointers.
-
-The snapshot resolves sparse callback records into each `DebugElementInfo`, so same-process tools can inspect layout algorithm metadata, navigation modes, custom hit-test configuration and callback presence without accessing Context-private sparse arrays.
-
-### Debug timeline
-`DebugFrameTimeline` stores multiple `DebugInfo` frames so an in-process debug panel or test can step through captured frames. Pointer-valued fields are observational data only and can become stale after their backing runtime data is released.
+`StyleEntrySchema` describes a style entry consumed by a package. GUI Core stores schemas for tools and inspectors. It does not interpret the entry as behavior.
 
 ## Programming guide
 ### Set and get state
@@ -122,7 +101,7 @@ context->unset_style_entry(Name("editor.disabled"), Name("gui.editor.button.acce
 ### Use the style stack
 ```cpp
 context->push_style(Name("editor.dark.button"));
-GUICore::ElementHandle button = context->begin_element(button_id, Name("Button"));
+GUICore::ElementHandle button = context->begin_element(button_id);
 context->end_element();
 context->pop_style();
 ```
@@ -152,50 +131,7 @@ schema.description = "Button background color.";
 context->register_style_entry_schema(schema);
 ```
 
-GUI Editor and debug panels use schemas to show meaningful editable style values.
-
-### Read performance counters
-```cpp
-GUICore::PerformanceCounters counters = context->get_performance_counters();
-log_info("GUICore: elements=%u draw=%u callbacks=%u route=%.3f ms generate=%.3f ms compile=%.3f ms",
-    counters.element_count,
-    counters.draw_command_count,
-    counters.draw_callback_count,
-    counters.input_route_ms,
-    counters.draw_generate_ms,
-    counters.draw_compile_ms);
-```
-
-Counters reflect the most recent operations that updated them.
-
-### Dump debug info
-```cpp
-GUICore::DebugInfo info = context->dump_debug_info();
-```
-
-Use the snapshot directly in a debug panel or compare it in tests. For external tooling, convert it to a transport-safe representation that removes callback, userdata, texture, and shape-buffer pointers.
-
-### Log issues and passes
-```cpp
-context->log_debug_issue(GUICore::DebugIssueSeverity::warning,
-    Name("layout"), "Child has no matching table cell.", child_id);
-
-context->log_debug_pass(GUICore::DebugPassKind::layout,
-    Name("layout_table"), Name("table_rows_changed"), table_id,
-    "Table row count changed.", duration_ms);
-```
-
-These records are frame-local and appear in `dump_debug_info`.
-
-### Capture a debug timeline
-```cpp
-GUICore::DebugFrameTimeline timeline;
-GUICore::push_debug_frame(timeline, context->dump_debug_info(), 120);
-
-const GUICore::DebugInfo* frame = GUICore::current_debug_frame(timeline);
-GUICore::step_debug_frame(timeline, -1);
-GUICore::clear_debug_frames(timeline);
-```
+GUI Editor and inspection tools use schemas to show meaningful editable style values.
 
 ## Examples
 ### Animate state owned by an element
@@ -214,19 +150,20 @@ state->hover = lerp(state->hover, target, min(frame.delta_time * 12.0f, 1.0f));
 luexp(context->set_state(state_id, state.object(), GUICore::StateLifetime::next_frame));
 ```
 
-### Debug element style resolution
+### Inspect element style resolution
 ```cpp
-GUICore::DebugInfo info = context->dump_debug_info();
-for(const GUICore::DebugElementInfo& element : info.elements)
+for(const GUICore::Element& element : context->get_elements())
 {
     if(element.id == selected_element_id)
     {
-        for(const GUICore::DebugResolvedStyleEntryInfo& entry : element.resolved_style)
+        for(const GUICore::StyleEntrySchema& schema : context->get_style_entry_schemas())
         {
-            // Show entry.owner, entry.entry, entry.value and entry.defaulted.
+            GUICore::StyleValue value = context->get_style_value(
+                element.style, schema.entry, schema.default_value);
+            // Show schema.owner, schema.entry and value.
         }
     }
 }
 ```
 
-This is the preferred way for GUI tooling to inspect which style entries a package declared and which values resolved for a specific element.
+This is the preferred way for GUI tooling to inspect which style entries a package declared and which values resolve for a specific element.

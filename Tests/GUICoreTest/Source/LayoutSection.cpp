@@ -153,7 +153,7 @@ namespace Luna::GUICoreTest
 
         void text_block(GUICore::IContext* context, const c8* text)
         {
-            GUICore::ElementHandle body = context->begin_element(ID_LAYOUT, Name("Layout Slide Body"));
+            GUICore::ElementHandle body = context->begin_element(ID_LAYOUT);
             context->set_layout_config(body, fixed_layout(SHEET_WIDTH - 128.0f, 66.0f));
             draw_text(context, RectF(0.0f, 0.0f, 1180.0f, 34.0f), text, 23.0f,
                 Float4U(0.10f, 0.10f, 0.10f, 1.0f));
@@ -162,7 +162,7 @@ namespace Luna::GUICoreTest
 
         void demo_child(GUICore::IContext* context, GUICore::id_t id, const DemoChild& desc, GUICore::LayoutAxis axis)
         {
-            GUICore::ElementHandle child = context->begin_element(id, Name(desc.label));
+            GUICore::ElementHandle child = context->begin_element(id);
             context->set_layout_config(child, flex_child_layout(axis, desc));
             if(desc.main_kind == GUICore::SizeKind::fit)
             {
@@ -180,7 +180,7 @@ namespace Luna::GUICoreTest
         void flex_case(GUICore::IContext* context, GUICore::id_t id, const c8* title, f32 width, f32 height,
             GUICore::FlexLayoutDesc* desc, Span<const DemoChild> children)
         {
-            GUICore::ElementHandle container = context->begin_element(id, Name(title));
+            GUICore::ElementHandle container = context->begin_element(id);
             context->set_layout_config(container, flex_container_layout(width, height));
             context->set_layout_callback_config(container, flex_container_callbacks(desc));
             draw_text(context, RectF(0.0f, -32.0f, width, 26.0f), title, 20.0f,
@@ -197,7 +197,7 @@ namespace Luna::GUICoreTest
         void plain_box(GUICore::IContext* context, GUICore::id_t id, const c8* label, f32 width, f32 height,
             const Float4U& color = Float4U(0.93f, 0.93f, 0.93f, 1.0f))
         {
-            GUICore::ElementHandle child = context->begin_element(id, Name(label));
+            GUICore::ElementHandle child = context->begin_element(id);
             context->set_layout_config(child, fixed_layout(width, height));
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), color, 0.0f);
             draw_element_text(context, label, 17.0f);
@@ -207,7 +207,7 @@ namespace Luna::GUICoreTest
         void marker_box(GUICore::IContext* context, GUICore::id_t id, const c8* label, f32 width, f32 height,
             const Float4U& color, bool outline)
         {
-            GUICore::ElementHandle marker = context->begin_element(id, Name(label));
+            GUICore::ElementHandle marker = context->begin_element(id);
             context->set_layout_config(marker, fixed_layout(width, height));
             if(outline)
             {
@@ -224,7 +224,7 @@ namespace Luna::GUICoreTest
 
         void concept_case(GUICore::IContext* context, GUICore::id_t id, const c8* title, const c8* detail)
         {
-            GUICore::ElementHandle box = context->begin_element(id, Name(title));
+            GUICore::ElementHandle box = context->begin_element(id);
             context->set_layout_config(box, fixed_layout(360.0f, 126.0f));
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.97f, 0.97f, 0.97f, 1.0f), 0.0f);
             draw_outline(context, RectF(0.0f, 0.0f, 360.0f, 126.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f), 1.0f);
@@ -525,7 +525,7 @@ namespace Luna::GUICoreTest
             columns.column_count = 4;
             for(u32 c = 0; c < 2; ++c)
             {
-                GUICore::ElementHandle grid = context->begin_element(demo_id(c), Name(c ? "Fixed Column Count" : "Fixed Cell Size"));
+                GUICore::ElementHandle grid = context->begin_element(demo_id(c));
                 context->set_layout_config(grid, fixed_layout(430.0f, 170.0f));
                 GUICore::LayoutConfig layout = fixed_layout(430.0f, 170.0f);
                 layout.padding = Float4U(10.0f);
@@ -586,7 +586,7 @@ namespace Luna::GUICoreTest
             descs[case_index].items = Span<const GUICore::CanvasLayoutItem>(items[case_index], 3);
             descs[case_index].clip_children = true;
 
-            GUICore::ElementHandle canvas = context->begin_element(id, Name(title));
+            GUICore::ElementHandle canvas = context->begin_element(id);
             GUICore::LayoutConfig layout = fixed_layout(WIDTH, HEIGHT);
             layout.padding = Float4U(PADDING);
             context->set_layout_config(canvas, layout);
@@ -649,7 +649,7 @@ namespace Luna::GUICoreTest
             f32 anchor_width = content_width * (anchor_max.x - anchor_min.x);
             f32 anchor_height = content_height * (anchor_max.y - anchor_min.y);
 
-            GUICore::ElementHandle canvas = context->begin_element(id, Name(title));
+            GUICore::ElementHandle canvas = context->begin_element(id);
             GUICore::LayoutConfig layout = fixed_layout(width, height);
             layout.padding = Float4U(PADDING);
             context->set_layout_config(canvas, layout);
@@ -663,7 +663,7 @@ namespace Luna::GUICoreTest
                 Float4U(0.22f, 0.22f, 0.22f, 1.0f), VG::TextAlignment::center);
 
             plain_box(context, child, "stretched child", 80.0f, 40.0f, Float4U(0.90f, 0.92f, 0.96f, 0.92f));
-            GUICore::ElementHandle marker = context->begin_element(anchor_rect, Name("anchor rect"));
+            GUICore::ElementHandle marker = context->begin_element(anchor_rect);
             context->set_layout_config(marker, fixed_layout(anchor_width, anchor_height));
             draw_outline(context, RectF(0.0f, 0.0f, anchor_width, anchor_height), Float4U(0.95f, 0.55f, 0.0f, 1.0f), 2.0f);
             context->end_element();
@@ -692,7 +692,7 @@ namespace Luna::GUICoreTest
             desc.clip_children = true;
             GUICore::LayoutConfig layout = fixed_layout(SCROLL_VIEWPORT_WIDTH, SCROLL_VIEWPORT_HEIGHT);
             layout.padding = Float4U(SCROLL_VIEWPORT_PADDING);
-            GUICore::ElementHandle viewport = context->begin_element(demo_id(0), Name("Scroll Viewport Demo"));
+            GUICore::ElementHandle viewport = context->begin_element(demo_id(0));
             context->set_layout_config(viewport, layout);
             GUICore::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("guicore.test.scroll_viewport");
@@ -769,7 +769,7 @@ namespace Luna::GUICoreTest
             desc.gap = Float2U(6.0f, 6.0f);
             GUICore::LayoutConfig layout = fixed_layout(560.0f, 170.0f);
             layout.padding = Float4U(10.0f);
-            GUICore::ElementHandle table = context->begin_element(demo_id(0), Name("Table Demo"));
+            GUICore::ElementHandle table = context->begin_element(demo_id(0));
             context->set_layout_config(table, layout);
             GUICore::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("guicore.test.table");

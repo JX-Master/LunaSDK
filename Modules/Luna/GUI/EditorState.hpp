@@ -260,6 +260,8 @@ namespace Luna
             f32 tab_scroll_x = 0.0f;
             //! Stable tab order captured from submitted tab items.
             Vector<id_t> tab_order;
+            //! Display labels corresponding to @ref tab_order.
+            Vector<String> tab_labels;
         };
 
         //! Per-frame direct-core tab bar build scope.
@@ -275,6 +277,8 @@ namespace Luna
             bool visible_tab_chosen = false;
             //! Header element IDs generated for this tab bar.
             Vector<id_t> header_ids;
+            //! Header display labels corresponding to @ref header_ids.
+            Vector<String> header_labels;
         };
 
         //! Per-frame direct-core tab bar build stack.

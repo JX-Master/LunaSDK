@@ -733,7 +733,6 @@ namespace Luna
                 return MeasureResult();
             }
             const FlexLayoutDesc& desc = *reinterpret_cast<const FlexLayoutDesc*>(userdata);
-            context->log_debug_pass(DebugPassKind::layout, Name("measure_flex"), Name("measure_callback"), parent->id);
             return measure_flex_content(context, *parent, available_content_size, desc);
         }
 
@@ -754,8 +753,6 @@ namespace Luna
                 return BasicError::bad_arguments();
             }
             const FlexLayoutDesc& desc = *reinterpret_cast<const FlexLayoutDesc*>(userdata);
-            context->log_debug_pass(DebugPassKind::layout, Name("layout_flex"), Name("explicit_layout_call"), parent->id);
-
             LayoutAxis main_axis = desc.axis;
             LayoutAxis cross_axis = main_axis == LayoutAxis::x ? LayoutAxis::y : LayoutAxis::x;
             RectF content_rect = inset_rect(rect, parent->layout.padding);
@@ -914,8 +911,6 @@ namespace Luna
                 return BasicError::bad_arguments();
             }
             const GridLayoutDesc& desc = *reinterpret_cast<const GridLayoutDesc*>(userdata);
-            context->log_debug_pass(DebugPassKind::layout, Name("layout_grid"), Name("explicit_layout_call"), parent->id);
-
             RectF content_rect = inset_rect(rect, parent->layout.padding);
             Vector<u32> children = collect_children(context, *parent);
 
@@ -991,8 +986,6 @@ namespace Luna
                 return BasicError::bad_arguments();
             }
             const CanvasLayoutDesc& desc = *reinterpret_cast<const CanvasLayoutDesc*>(userdata);
-            context->log_debug_pass(DebugPassKind::layout, Name("layout_canvas"), Name("explicit_layout_call"), parent->id);
-
             RectF content_rect = inset_rect(rect, parent->layout.padding);
             Vector<u32> children = collect_children(context, *parent);
             RectF parent_clip = inherited_layout_clip(*parent, rect);
@@ -1075,9 +1068,6 @@ namespace Luna
                 return BasicError::bad_arguments();
             }
             const ScrollViewportLayoutDesc& desc = *reinterpret_cast<const ScrollViewportLayoutDesc*>(userdata);
-            context->log_debug_pass(DebugPassKind::layout, Name("layout_scroll_viewport"), Name("explicit_layout_call"),
-                parent->id);
-
             RectF content_rect = inset_rect(rect, parent->layout.padding);
             Vector<u32> children = collect_children(context, *parent);
             RectF parent_clip = inherited_layout_clip(*parent, rect);
@@ -1177,8 +1167,6 @@ namespace Luna
                 return BasicError::bad_arguments();
             }
             const TableLayoutDesc& desc = *reinterpret_cast<const TableLayoutDesc*>(userdata);
-            context->log_debug_pass(DebugPassKind::layout, Name("layout_table"), Name("explicit_layout_call"), parent->id);
-
             RectF content_rect = inset_rect(rect, parent->layout.padding);
             Vector<u32> children = collect_children(context, *parent);
             Vector<f32> column_sizes;

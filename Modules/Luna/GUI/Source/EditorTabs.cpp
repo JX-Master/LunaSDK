@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
 
@@ -158,7 +159,7 @@ namespace Luna
         {
             luassert(context && id);
             (void)flags;
-            GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("tab_bar"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, label ? label : "tab_bar");
             context->set_layout_config(element, layout);
 
             Float4U background = style_value(context, Name("gui.editor.tab_bar.background"),
@@ -218,8 +219,9 @@ namespace Luna
                 scope.visible_tab_chosen = true;
             }
             scope.header_ids.push_back(id);
+            scope.header_labels.push_back(String(label ? label : ""));
 
-            GUICore::ElementHandle header = context->begin_element(id, label ? Name(label) : Name("tab_item"));
+            GUICore::ElementHandle header = Internal::begin_element(context, id, label ? label : "tab_item");
             if(out_handle)
             {
                 *out_handle = header;
@@ -271,6 +273,7 @@ namespace Luna
                 state->tab_selected_id = scope.selected_id;
             }
             state->tab_order = scope.header_ids;
+            state->tab_labels = scope.header_labels;
             lupanic_if_failed(context->set_state(GUICore::make_state_id<TabBarState>(tab_bar.id), state.object(),
                 GUICore::StateLifetime::next_frame));
             return ok;
@@ -299,7 +302,19 @@ namespace Luna
                     GUICore::LayoutResult child_layout;
                     if(tab_header_contains(*state.get(), child_element->id))
                     {
-                        f32 width = tab_header_width(context, child_element->debug_name.c_str(), false);
+                        const c8* label = "";
+                        for(usize i = 0; i < state->tab_order.size(); ++i)
+                        {
+                            if(state->tab_order[i] == child_element->id)
+                            {
+                                if(i < state->tab_labels.size())
+                                {
+                                    label = state->tab_labels[i].c_str();
+                                }
+                                break;
+                            }
+                        }
+                        f32 width = tab_header_width(context, label, false);
                         child_layout.rect = RectF(header_x, rect.offset_y, min(width, max(rect.offset_x + rect.width - header_x, 1.0f)), header_height);
                         child_layout.clip_rect = intersect_rect(child_layout.rect, rect);
                         header_x += width;

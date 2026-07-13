@@ -566,8 +566,7 @@ namespace
 
         if(state.show_debug_panel)
         {
-            GUICore::DebugInfo info = context->dump_debug_info();
-            GUI::show_debug_info(context, Test::demo_id("gui.debug.panel"), info, Test::fixed_layout(720.0f, 480.0f));
+            GUI::show_debug_panel(context, Test::demo_id("gui.debug.panel"), Test::fixed_layout(720.0f, 480.0f));
         }
     }
 

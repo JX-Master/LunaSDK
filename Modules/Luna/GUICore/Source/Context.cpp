@@ -116,8 +116,6 @@ namespace Luna
             m_layer_draw_operations.clear();
             m_draw_commands.clear();
             m_input_events.clear();
-            m_debug_issues.clear();
-            m_debug_passes.clear();
             m_pointer_delta = Float2U(0.0f);
             m_layer_stack.clear();
             m_element_stack.clear();
@@ -134,8 +132,6 @@ namespace Luna
             m_counters = PerformanceCounters();
             m_counters.frame_generation = m_generation;
             m_counters.state_gc_ms = perf_elapsed_ms(gc_begin, gc_end);
-            log_debug_pass(DebugPassKind::frame, Name("begin_frame"), Name("host_frame"), 0, nullptr, 0.0);
-            log_debug_pass(DebugPassKind::state, Name("gc_states"), Name("begin_frame"), 0, nullptr, m_counters.state_gc_ms);
         }
 
         u32 Context::generation() const
@@ -200,7 +196,13 @@ namespace Luna
             m_input_events.insert(m_input_events.end(), events.begin(), events.end());
         }
 
-        void Context::push_layer(id_t id, const Float2U& screen_position, const Name& debug_name)
+        Span<const InputEvent> Context::get_input_events() const
+        {
+            lutsassert();
+            return m_input_events.cspan();
+        }
+
+        void Context::push_layer(id_t id, const Float2U& screen_position)
         {
             lutsassert();
             luassert_msg(!m_generating_draw_commands, "Layers cannot be built while GUI Core draw callbacks are running.");
@@ -211,7 +213,6 @@ namespace Luna
             Layer layer;
             layer.id = id;
             layer.screen_position = screen_position;
-            layer.debug_name = debug_name;
             m_layers.push_back(move(layer));
             m_layer_draw_operations.push_back(Vector<DrawOperation>());
             m_layer_stack.push_back((u32)m_layers.size() - 1);
@@ -224,6 +225,25 @@ namespace Luna
             luassert(!m_layer_stack.empty());
             luassert(m_element_stack.empty() || m_elements[m_element_stack.back()].layer != m_layer_stack.back());
             m_layer_stack.pop_back();
+        }
+
+        Span<const Layer> Context::get_layers() const
+        {
+            lutsassert();
+            return m_layers.cspan();
+        }
+
+        void Context::set_layer_debug_name(id_t id, const Name& name)
+        {
+            lutsassert();
+            for(Layer& layer : m_layers)
+            {
+                if(layer.id == id)
+                {
+                    layer.debug_name = name;
+                    return;
+                }
+            }
         }
 
         void Context::push_data_scope(id_t id)
@@ -246,6 +266,12 @@ namespace Luna
             return m_data_scope_stack.empty() ? DEFAULT_DATA_SCOPE : m_data_scope_stack.back();
         }
 
+        Span<const id_t> Context::get_data_scope_stack() const
+        {
+            lutsassert();
+            return m_data_scope_stack.cspan();
+        }
+
         id_t Context::make_id(id_t local_id) const
         {
             lutsassert();
@@ -258,7 +284,7 @@ namespace Luna
             return make_scoped_id(current_data_scope(), local_name);
         }
 
-        ElementHandle Context::begin_element(id_t id, const Name& debug_name)
+        ElementHandle Context::begin_element(id_t id)
         {
             lutsassert();
             luassert_msg(!m_generating_draw_commands, "Elements cannot be built while GUI Core draw callbacks are running.");
@@ -269,7 +295,6 @@ namespace Luna
             Element element;
             element.id = id;
             element.layer = layer_index;
-            element.debug_name = debug_name;
             element.style = current_style();
             if(!m_element_stack.empty() && m_elements[m_element_stack.back()].layer == layer_index)
             {
@@ -636,6 +661,12 @@ namespace Luna
             return index < m_elements.size() ? &m_elements[index] : nullptr;
         }
 
+        Span<const Element> Context::get_elements() const
+        {
+            lutsassert();
+            return m_elements.cspan();
+        }
+
         const Element* Context::find_element(id_t id) const
         {
             lutsassert();
@@ -652,6 +683,15 @@ namespace Luna
                 return ElementHandle();
             }
             return ElementHandle { id, iter->second, m_generation };
+        }
+
+        void Context::set_element_debug_name(const ElementHandle& element, const Name& name)
+        {
+            lutsassert();
+            if(Element* e = mutable_element(element))
+            {
+                e->debug_name = name;
+            }
         }
 
         void Context::set_draw_config(const ElementHandle& element, const DrawConfig& config)
@@ -702,21 +742,7 @@ namespace Luna
             cmd.layer = layer_index;
             cmd.element = element_index;
             u32 command_index = (u32)m_draw_commands.size();
-            if(element_index != INVALID_ELEMENT)
-            {
-                Element& e = m_elements[element_index];
-                if(e.first_draw_command == U32_MAX)
-                {
-                    e.first_draw_command = command_index;
-                }
-                ++e.draw_command_count;
-            }
             Layer& layer = m_layers[layer_index];
-            if(layer.first_draw_command == U32_MAX)
-            {
-                layer.first_draw_command = command_index;
-            }
-            ++layer.draw_command_count;
             layer.draw_command_indices.push_back(command_index);
             m_draw_commands.push_back(move(cmd));
         }
@@ -735,15 +761,8 @@ namespace Luna
         void Context::reset_generated_draw_commands()
         {
             m_draw_commands.clear();
-            for(Element& element : m_elements)
-            {
-                element.first_draw_command = U32_MAX;
-                element.draw_command_count = 0;
-            }
             for(Layer& layer : m_layers)
             {
-                layer.first_draw_command = U32_MAX;
-                layer.draw_command_count = 0;
                 layer.draw_command_indices.clear();
             }
         }
@@ -810,9 +829,6 @@ namespace Luna
                         m_draw_generation_layer = INVALID_LAYER;
                         m_draw_generation_element = INVALID_ELEMENT;
                         m_counters.draw_generate_ms = perf_elapsed_ms(generate_begin, get_ticks());
-                        log_debug_pass(DebugPassKind::render, Name("generate_draw_commands"), Name("callback_failed"),
-                            operation.index < m_elements.size() ? m_elements[operation.index].id : 0, nullptr,
-                            m_counters.draw_generate_ms);
                         return result;
                     }
                 }
@@ -822,8 +838,6 @@ namespace Luna
             m_draw_generation_element = INVALID_ELEMENT;
             m_draw_commands_generated = true;
             m_counters.draw_generate_ms = perf_elapsed_ms(generate_begin, get_ticks());
-            log_debug_pass(DebugPassKind::render, Name("generate_draw_commands"), Name("explicit_generate"), 0, nullptr,
-                m_counters.draw_generate_ms);
             return ok;
         }
 
@@ -955,7 +969,7 @@ namespace Luna
             for(u32 layer_index = 0; layer_index < m_layers.size(); ++layer_index)
             {
                 const Layer& layer = m_layers[layer_index];
-                if(layer.first_draw_command == U32_MAX || layer.draw_command_count == 0)
+                if(layer.draw_command_indices.empty())
                 {
                     continue;
                 }
@@ -1180,8 +1194,6 @@ namespace Luna
             draw_list->set_clip_rect(RectF(0.0f, 0.0f, 0.0f, 0.0f));
             RV r = draw_list->compile();
             m_counters.draw_compile_ms = perf_elapsed_ms(compile_begin, get_ticks());
-            log_debug_pass(DebugPassKind::render, Name("compile_draw_commands"), Name("explicit_compile"), 0, nullptr,
-                m_counters.draw_compile_ms);
             return r;
         }
 
@@ -2240,9 +2252,6 @@ namespace Luna
                 mark_subtree_interaction(id, false, false, false, false, true);
             }
             m_counters.input_route_ms = perf_elapsed_ms(route_begin, get_ticks());
-            log_debug_pass(DebugPassKind::input, Name("route_input"),
-                m_input_events.empty() ? Name("no_queued_input") : Name("queued_input_events"), 0, nullptr,
-                m_counters.input_route_ms);
         }
 
         object_t Context::get_state(id_t id)
@@ -2402,6 +2411,19 @@ namespace Luna
             return default_value;
         }
 
+        const Style* Context::get_style(const Name& name) const
+        {
+            lutsassert();
+            auto iter = m_styles.find(name);
+            return iter == m_styles.end() ? nullptr : &iter->second;
+        }
+
+        const HashMap<Name, Style>& Context::get_styles() const
+        {
+            lutsassert();
+            return m_styles;
+        }
+
         void Context::register_style_entry_schema(const StyleEntrySchema& schema)
         {
             lutsassert();
@@ -2428,205 +2450,6 @@ namespace Luna
             lutsassert();
             refresh_counters();
             return m_counters;
-        }
-
-        DebugInfo Context::dump_debug_info()
-        {
-            lutsassert();
-            u64 debug_begin = get_ticks();
-            refresh_counters();
-            DebugInfo info;
-            info.counters = m_counters;
-            info.input_events = m_input_events;
-            info.issues = m_debug_issues;
-            info.passes = m_debug_passes;
-            info.draw_commands = m_draw_commands;
-            info.data_scope_stack = m_data_scope_stack;
-            auto resolve_debug_style_value = [this](const Name& style_name, const Name& entry, const StyleValue& default_value, bool& defaulted) -> StyleValue
-            {
-                Name current = style_name;
-                u32 depth = 0;
-                while(!current.empty() && depth < 64)
-                {
-                    auto style_iter = m_styles.find(current);
-                    if(style_iter == m_styles.end())
-                    {
-                        break;
-                    }
-                    auto entry_iter = style_iter->second.entries.find(entry);
-                    if(entry_iter != style_iter->second.entries.end())
-                    {
-                        if(entry_iter->second.mode == StyleEntryMode::set)
-                        {
-                            defaulted = false;
-                            return entry_iter->second.value;
-                        }
-                        if(entry_iter->second.mode == StyleEntryMode::unset)
-                        {
-                            break;
-                        }
-                    }
-                    current = style_iter->second.parent;
-                    ++depth;
-                }
-                defaulted = true;
-                return default_value;
-            };
-            for(const Layer& layer : m_layers)
-            {
-                DebugLayerInfo layer_info;
-                layer_info.id = layer.id;
-                layer_info.root = layer.root;
-                layer_info.first_draw_command = layer.first_draw_command;
-                layer_info.draw_command_count = layer.draw_command_count;
-                layer_info.draw_command_indices = layer.draw_command_indices;
-                layer_info.screen_position = layer.screen_position;
-                layer_info.debug_name = layer.debug_name;
-                info.layers.push_back(move(layer_info));
-            }
-            for(u32 i = 0; i < m_elements.size(); ++i)
-            {
-                const Element& element = m_elements[i];
-                DebugElementInfo element_info;
-                element_info.id = element.id;
-                element_info.index = i;
-                element_info.layer = element.layer;
-                element_info.parent = element.parent;
-                element_info.first_child = element.first_child;
-                element_info.last_child = element.last_child;
-                element_info.next_sibling = element.next_sibling;
-                element_info.prev_sibling = element.prev_sibling;
-                element_info.depth = element.depth;
-                element_info.style = element.style;
-                element_info.debug_name = element.debug_name;
-                element_info.layout = element.layout;
-                if(element.layout_callback_config < m_layout_callback_configs.size())
-                {
-                    element_info.layout_callbacks = m_layout_callback_configs[element.layout_callback_config];
-                }
-                if(element.navigation_config < m_navigation_configs.size())
-                {
-                    element_info.navigation = m_navigation_configs[element.navigation_config];
-                }
-                if(element.hit_test_config < m_hit_test_configs.size())
-                {
-                    element_info.hit_test = m_hit_test_configs[element.hit_test_config];
-                }
-                element_info.rect = element.layout_result.rect;
-                element_info.clip_rect = element.layout_result.clip_rect;
-                element_info.content_size = element.layout_result.content_size;
-                element_info.pointer_hit_behavior = element.interactable.pointer_hit_behavior;
-                element_info.hit_test_mode = element_info.hit_test.mode;
-                element_info.has_hit_test_callback = element_info.hit_test.callback != nullptr;
-                if(element.draw_config < m_draw_configs.size())
-                {
-                    const DrawConfig& draw_config = m_draw_configs[element.draw_config];
-                    element_info.draw_callback_name = draw_config.name;
-                    element_info.draw_callback_phases = draw_config.phases;
-                    element_info.has_draw_callback = draw_config.callback != nullptr;
-                }
-                element_info.hoverable = has_flags(element.interactable, InteractableFlag::hoverable);
-                element_info.activatable = has_flags(element.interactable, InteractableFlag::activatable);
-                element_info.focusable = has_flags(element.interactable, InteractableFlag::focusable);
-                element_info.scrollable = has_flags(element.interactable, InteractableFlag::scrollable);
-                element_info.disabled = has_flags(element.interactable, InteractableFlag::disabled);
-                element_info.read_only = has_flags(element.interactable, InteractableFlag::read_only);
-                element_info.focus_scope = element.interactable.focus_scope;
-                for(const StyleEntrySchema& schema : m_style_schemas)
-                {
-                    DebugResolvedStyleEntryInfo resolved_style;
-                    resolved_style.owner = schema.owner;
-                    resolved_style.entry = schema.entry;
-                    resolved_style.value = resolve_debug_style_value(element.style, schema.entry, schema.default_value, resolved_style.defaulted);
-                    element_info.resolved_style.push_back(move(resolved_style));
-                }
-                InteractionState interaction = get_interaction_state(element.id);
-                element_info.hovered = interaction.hovered;
-                element_info.active = interaction.active;
-                element_info.pointer_captured = element.id == m_pointer_capture_element;
-                element_info.focused = interaction.focused;
-                element_info.clicked = interaction.clicked;
-                element_info.double_clicked = interaction.double_clicked;
-                element_info.pointer_screen_position = interaction.pointer_screen_position;
-                element_info.pointer_element_position = interaction.pointer_element_position;
-                element_info.pointer_element_rect = interaction.pointer_element_rect;
-                element_info.clicked_screen_position = interaction.clicked_screen_position;
-                element_info.clicked_element_position = interaction.clicked_element_position;
-                element_info.clicked_element_rect = interaction.clicked_element_rect;
-                element_info.subtree_hovered = interaction.subtree_hovered;
-                element_info.subtree_active = interaction.subtree_active;
-                element_info.subtree_focused = interaction.subtree_focused;
-                element_info.subtree_clicked = interaction.subtree_clicked;
-                element_info.subtree_double_clicked = interaction.subtree_double_clicked;
-                element_info.first_draw_command = element.first_draw_command;
-                element_info.draw_command_count = element.draw_command_count;
-                info.elements.push_back(move(element_info));
-            }
-            for(auto& pair : m_styles)
-            {
-                DebugStyleInfo style_info;
-                style_info.name = pair.first;
-                style_info.parent = pair.second.parent;
-                style_info.entry_count = (u32)pair.second.entries.size();
-                for(auto& entry_pair : pair.second.entries)
-                {
-                    DebugStyleEntryInfo entry_info;
-                    entry_info.entry = entry_pair.first;
-                    entry_info.mode = entry_pair.second.mode;
-                    entry_info.value = entry_pair.second.value;
-                    style_info.entries.push_back(move(entry_info));
-                }
-                info.styles.push_back(move(style_info));
-            }
-            info.style_schemas = m_style_schemas;
-            for(auto& pair : m_input_deliveries)
-            {
-                DebugInputDeliveryInfo delivery_info;
-                delivery_info.element_id = pair.first;
-                delivery_info.events = pair.second;
-                auto routed_iter = m_routed_input_deliveries.find(pair.first);
-                if(routed_iter != m_routed_input_deliveries.end())
-                {
-                    delivery_info.routed_events = routed_iter->second;
-                }
-                info.input_deliveries.push_back(move(delivery_info));
-            }
-            info.hovered_elements = m_hovered_elements;
-            info.active_elements = m_active_elements;
-            info.pointer_capture_element = m_pointer_capture_element;
-            info.focused_element = m_focused_element;
-            info.focused_scope = focus_scope_of(m_focused_element);
-            m_counters.debug_dump_ms = perf_elapsed_ms(debug_begin, get_ticks());
-            info.counters = m_counters;
-            return info;
-        }
-
-        void Context::log_debug_issue(DebugIssueSeverity severity, const Name& category, const c8* message, id_t element)
-        {
-            lutsassert();
-            DebugIssueInfo issue;
-            issue.severity = severity;
-            issue.category = category;
-            issue.element = element;
-            issue.message = message ? message : "";
-            m_debug_issues.push_back(move(issue));
-            m_counters.debug_issue_count = (u32)m_debug_issues.size();
-        }
-
-        void Context::log_debug_pass(DebugPassKind kind, const Name& name, const Name& reason, id_t element,
-            const c8* detail, f64 duration_ms)
-        {
-            lutsassert();
-            DebugPassInfo pass;
-            pass.kind = kind;
-            pass.name = name;
-            pass.reason = reason;
-            pass.element = element;
-            pass.frame_generation = m_generation;
-            pass.duration_ms = duration_ms;
-            pass.detail = detail ? detail : "";
-            m_debug_passes.push_back(move(pass));
-            m_counters.debug_pass_count = (u32)m_debug_passes.size();
         }
 
         void Context::gc_states()
@@ -2677,8 +2500,6 @@ namespace Luna
             m_counters.state_count = (u32)m_states.size();
             m_counters.style_count = (u32)m_styles.size();
             m_counters.style_schema_count = (u32)m_style_schemas.size();
-            m_counters.debug_issue_count = (u32)m_debug_issues.size();
-            m_counters.debug_pass_count = (u32)m_debug_passes.size();
         }
     }
 }

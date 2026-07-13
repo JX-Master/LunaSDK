@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorWidgets.hpp>
 
 namespace Luna
@@ -40,7 +41,7 @@ namespace Luna
             const RectF& rect, const Float4U& color, f32 radius)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, Name("draw_rect"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "draw_rect");
             GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = max(rect.width, 1.0f);
@@ -66,7 +67,7 @@ namespace Luna
             luassert(context && id);
             f32 r = max(radius, 0.5f);
             RectF rect(center.x - r, center.y - r, r * 2.0f, r * 2.0f);
-            GUICore::ElementHandle element = context->begin_element(id, Name("draw_circle"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "draw_circle");
             GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = rect.width;
@@ -96,7 +97,7 @@ namespace Luna
             f32 max_x = max(begin.x, end.x) + half_width;
             f32 max_y = max(begin.y, end.y) + half_width;
             RectF bounds(min_x, min_y, max(max_x - min_x, 1.0f), max(max_y - min_y, 1.0f));
-            GUICore::ElementHandle element = context->begin_element(id, Name("draw_line"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "draw_line");
             GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = bounds.width;
@@ -121,7 +122,7 @@ namespace Luna
             TextAlignment horizontal_alignment, TextAlignment vertical_alignment)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, text ? Name(text) : Name("draw_text"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, text ? text : "draw_text");
             GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = max(rect.width, 1.0f);
@@ -148,7 +149,7 @@ namespace Luna
             RHI::ITexture* texture, const RectF& rect, const Float4U& color, ImageFlag flags)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, Name("draw_image"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "draw_image");
             GUICore::LayoutConfig layout;
             layout.width.kind = GUICore::SizeKind::fixed;
             layout.width.value = max(rect.width, 1.0f);

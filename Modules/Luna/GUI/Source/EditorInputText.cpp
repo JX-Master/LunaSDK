@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
 #include <Luna/Runtime/Unicode.hpp>
@@ -159,7 +160,7 @@ namespace Luna
             const GUICore::LayoutConfig& layout, bool enabled, bool readonly)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, Name("input_text"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "input_text");
             context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled, readonly);
 

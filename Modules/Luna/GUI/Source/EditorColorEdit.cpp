@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorViews.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
@@ -265,7 +266,7 @@ namespace Luna
             RectF current_rect = color_picker_current_rect(local);
             RectF original_rect = color_picker_original_rect(local);
 
-            GUICore::ElementHandle picker = context->begin_element(id, Name("color_picker"));
+            GUICore::ElementHandle picker = Internal::begin_element(context, id, "color_picker");
             core_set_layout_result(context, picker, RectF(10.0f, 10.0f, local.width, local.height));
             core_set_basic_interactable(context, picker);
             Ref<ColorPickerInteractionState> interaction_state = core_state<ColorPickerInteractionState>(context, id, GUICore::StateLifetime::next_frame);
@@ -392,7 +393,7 @@ namespace Luna
             assign_color_binding(binding, f32_value, u8_value, u32_value, type, count);
             write_color_value(binding, read_color_value(binding));
 
-            GUICore::ElementHandle preview = context->begin_element(id, label ? Name(label) : Name("color_edit"));
+            GUICore::ElementHandle preview = Internal::begin_element(context, id, label ? label : "color_edit");
             context->set_layout_config(preview, layout);
             core_set_basic_interactable(context, preview);
             GUICore::InteractionState preview_interaction = context->get_interaction_state(id);

@@ -291,7 +291,7 @@ namespace Luna
             RectF menu_rect(0.0f, 0.0f, (f32)sz.x, min(menu_height, (f32)sz.y));
             RectF dock_rect(0.0f, menu_rect.height, (f32)sz.x, max((f32)sz.y - menu_rect.height, 0.0f));
 
-            m_gui->push_layer(m_gui->make_id("studio_root_layer"), Float2U(0.0f), Name("Studio Root"));
+            m_gui->push_layer(m_gui->make_id("studio_root_layer"), Float2U(0.0f));
             GUICore::ElementHandle root = GUI::begin_v_layout(m_gui, m_gui->make_id("studio_root"), "Studio Root");
             draw_main_menu_bar(m_gui, menu_rect);
 

@@ -28,14 +28,14 @@ context->pop_data_scope();
 1. Stable ID.
 2. Layer and topology indexes.
 3. Bound style name.
-4. Debug name.
-5. Layout config and result.
-6. Interactable data.
-7. Draw-command ownership summary.
+4. Layout config and result.
+5. Interactable data.
+6. Sparse layout, navigation, hit-test and draw callback indexes.
+7. Human-readable debug name.
 
 It does not store a widget kind. A text label, hit-test box, layout container or image region is still the same `Element` type.
 
-`first_draw_command` and `draw_command_count` summarize the latest generated command stream and are not a guaranteed contiguous range. Delayed callbacks and `draw_for_element` can interleave commands owned by different elements. Call `IContext::generate_draw_commands()` first, then filter `IContext::get_draw_commands()` by `DrawCommand::element` when the actual command set is needed.
+Draw commands store their owning dense element index. Delayed callbacks and `draw_for_element` can interleave commands owned by different elements. Call `IContext::generate_draw_commands()` first, then filter `IContext::get_draw_commands()` by `DrawCommand::element` when the actual command set is needed.
 
 ### Element handle
 `GUICore::ElementHandle` is returned by `begin_element`. It stores stable ID, dense index and generation. Handles are frame-local. Do not keep a handle for use after the next `begin_frame`; keep the stable ID instead. The stable ID is intentionally kept in the handle so APIs can validate that the dense index still points at the same element and so callers can use the returned handle as a stable interaction/state key without another lookup.
@@ -50,19 +50,23 @@ A data scope participates in ID generation but does not affect topology. It is u
 2. Screen-space layer origin.
 3. Root element index.
 4. Ordered draw command indexes.
-5. Debug name.
+5. Human-readable debug name.
 
 The first element created after `push_layer` becomes the root of that layer. Every element must belong to one layer.
 
-Layer-local positions use the layer origin as `(0, 0)`. Screen positions are converted by adding the layer origin. `Layer::draw_command_indices` is the authoritative command order for a layer; its first-command and count fields are diagnostic summaries.
+Layer-local positions use the layer origin as `(0, 0)`. Screen positions are converted by adding the layer origin. `Layer::draw_command_indices` is the authoritative command order for a layer.
 
 ## Programming guide
 ### Begin a layer
 Call `push_layer` before creating elements.
 
 ```cpp
-context->push_layer(context->make_id("popup-layer"), popup_screen_pos, Name("Popup"));
-GUICore::ElementHandle popup_root = context->begin_element(context->make_id("popup-root"), Name("Popup Root"));
+GUICore::id_t popup_layer_id = context->make_id("popup-layer");
+context->push_layer(popup_layer_id, popup_screen_pos);
+GUICore::ElementHandle popup_root = context->begin_element(context->make_id("popup-root"));
+
+context->set_layer_debug_name(popup_layer_id, Name("Popup"));
+context->set_element_debug_name(popup_root, Name("Popup Root"));
 ```
 
 Call `pop_layer` after the root subtree is complete.
@@ -78,10 +82,10 @@ Layers are appended in bottom-to-top order. Later layers render above earlier la
 `begin_element` creates a child of the current element, or the layer root if the layer has no root yet. `end_element` returns to the parent.
 
 ```cpp
-GUICore::ElementHandle panel = context->begin_element(context->make_id("panel"), Name("Panel"));
+GUICore::ElementHandle panel = context->begin_element(context->make_id("panel"));
 context->set_layout_config(panel, panel_layout);
 
-GUICore::ElementHandle label = context->begin_element(context->make_id("title"), Name("Title"));
+GUICore::ElementHandle label = context->begin_element(context->make_id("title"));
 context->set_layout_config(label, label_layout);
 context->end_element();
 
@@ -159,9 +163,9 @@ GUICore::ElementHandle handle = context->find_element_handle(id);
 ```cpp
 if(open_popup)
 {
-    context->push_layer(context->make_id("file-popup"), popup_screen_pos, Name("File Popup"));
+    context->push_layer(context->make_id("file-popup"), popup_screen_pos);
 
-    GUICore::ElementHandle root = context->begin_element(context->make_id("file-popup-root"), Name("Popup Root"));
+    GUICore::ElementHandle root = context->begin_element(context->make_id("file-popup-root"));
     context->set_layout_config(root, popup_layout);
 
     // Add menu item elements here.
@@ -175,13 +179,13 @@ This keeps popup input and rendering naturally above the default layer.
 
 ### Repeated list with data scopes
 ```cpp
-GUICore::ElementHandle list = context->begin_element(context->make_id("tracks"), Name("Track List"));
+GUICore::ElementHandle list = context->begin_element(context->make_id("tracks"));
 context->push_data_scope(list.id);
 
 for(usize i = first_visible; i < last_visible; ++i)
 {
     context->push_data_scope(GUICore::make_scoped_id(list.id, track_ids[i]));
-    GUICore::ElementHandle row = context->begin_element(context->make_id("row"), Name("Track Row"));
+    GUICore::ElementHandle row = context->begin_element(context->make_id("row"));
     context->set_layout_config(row, row_layout);
     context->end_element();
     context->pop_data_scope();

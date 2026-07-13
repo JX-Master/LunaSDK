@@ -6,4 +6,5 @@ Documents in this directory describes features that are currently NOT implemente
 - [[GUICore Layout]]
 - [[GUICore Input and Interaction]]
 - [[GUICore Drawing]]
-- [[GUICore State Style and Debug]]
+- [[GUICore State and Style]]
+- [[GUICore Performance and Inspection]]

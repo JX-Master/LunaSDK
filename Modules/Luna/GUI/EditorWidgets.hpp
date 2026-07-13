@@ -73,16 +73,14 @@ namespace Luna
 
         //! @name Direct GUI Core debug views
         //! @{
-        //! Adds an editor-style debug panel for one GUI Core debug snapshot.
-        //! @param[in] context The GUI Core context receiving the debug panel elements.
+        //! Adds an editor-style debug panel by inspecting the current GUI Core element tree.
+        //! @param[in] context The GUI Core context to inspect and receive the debug panel elements.
         //! @param[in] id Stable debug panel element ID.
-        //! @param[in] info The debug snapshot to visualize.
         //! @param[in] layout Layout input for the debug panel root.
         //! @return Returns the debug panel root element.
-        //! @remark The debug panel is a high-level editor-style view. It consumes @ref GUICore::DebugInfo but does not
-        //! inspect or mutate GUI Core private runtime storage.
-        LUNA_GUI_API GUICore::ElementHandle show_debug_info(GUICore::IContext* context, GUICore::id_t id,
-            const GUICore::DebugInfo& info, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
+        //! @remark The panel captures the source tree before adding its own elements, so the panel does not inspect itself.
+        LUNA_GUI_API GUICore::ElementHandle show_debug_panel(GUICore::IContext* context, GUICore::id_t id,
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! @}
 
         //! @name Direct GUI Core editor widgets

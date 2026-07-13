@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
 
@@ -497,7 +498,7 @@ namespace Luna
             const c8* label, const c8* default_label, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name(default_label));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, label ? label : default_label);
             context->set_layout_config(element, layout);
             return element;
         }

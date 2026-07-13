@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
 
@@ -106,9 +107,9 @@ namespace Luna
         }
 
         static GUICore::ElementHandle slider(GUICore::IContext* context, GUICore::id_t id, Span<const f32> fractions,
-            const GUICore::LayoutConfig& layout, const Name& debug_name)
+            const GUICore::LayoutConfig& layout, const c8* debug_name)
         {
-            GUICore::ElementHandle element = context->begin_element(id, debug_name);
+            GUICore::ElementHandle element = Internal::begin_element(context, id, debug_name);
             context->set_layout_config(element, layout);
             set_basic_interactable(context, element);
 
@@ -157,7 +158,7 @@ namespace Luna
                 value[component_index] = min_value + (max_value - min_value) * interaction_fraction;
                 fractions[component_index] = interaction_fraction;
             }
-            return slider(context, id, fractions.cspan(), layout, count == 1 ? Name("slider_float") : Name("slider_float_n"));
+            return slider(context, id, fractions.cspan(), layout, count == 1 ? "slider_float" : "slider_float_n");
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_float(GUICore::IContext* context, GUICore::id_t id, f32* value,
@@ -203,7 +204,7 @@ namespace Luna
                 value[component_index] = clamp((i32)(real_value + (real_value >= 0.0f ? 0.5f : -0.5f)), min_value, max_value);
                 fractions[component_index] = slider_fraction((f32)value[component_index], (f32)min_value, (f32)max_value);
             }
-            return slider(context, id, fractions.cspan(), layout, count == 1 ? Name("slider_int") : Name("slider_int_n"));
+            return slider(context, id, fractions.cspan(), layout, count == 1 ? "slider_int" : "slider_int_n");
         }
 
         LUNA_GUI_API GUICore::ElementHandle slider_int(GUICore::IContext* context, GUICore::id_t id, i32* value,
@@ -259,9 +260,9 @@ namespace Luna
         }
 
         static GUICore::ElementHandle drag_draw(GUICore::IContext* context, GUICore::id_t id, Span<const String> labels,
-            const GUICore::LayoutConfig& layout, const Name& debug_name)
+            const GUICore::LayoutConfig& layout, const c8* debug_name)
         {
-            GUICore::ElementHandle element = context->begin_element(id, debug_name);
+            GUICore::ElementHandle element = Internal::begin_element(context, id, debug_name);
             context->set_layout_config(element, layout);
             set_basic_interactable(context, element);
 
@@ -340,7 +341,7 @@ namespace Luna
             {
                 strprintf(labels[i], "%.3f", value ? value[i] : 0.0f);
             }
-            return drag_draw(context, id, labels.cspan(), layout, count == 1 ? Name("drag_float") : Name("drag_float_n"));
+            return drag_draw(context, id, labels.cspan(), layout, count == 1 ? "drag_float" : "drag_float_n");
         }
 
         LUNA_GUI_API GUICore::ElementHandle drag_float(GUICore::IContext* context, GUICore::id_t id, f32* value,
@@ -412,7 +413,7 @@ namespace Luna
             {
                 strprintf(labels[i], "%d", value ? value[i] : 0);
             }
-            return drag_draw(context, id, labels.cspan(), layout, count == 1 ? Name("drag_int") : Name("drag_int_n"));
+            return drag_draw(context, id, labels.cspan(), layout, count == 1 ? "drag_int" : "drag_int_n");
         }
 
         LUNA_GUI_API GUICore::ElementHandle drag_int(GUICore::IContext* context, GUICore::id_t id, i32* value,

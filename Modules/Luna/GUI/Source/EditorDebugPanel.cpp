@@ -11,7 +11,6 @@
 #define LUNA_GUI_API LUNA_EXPORT
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
-#include <cstring>
 
 namespace Luna
 {
@@ -19,11 +18,38 @@ namespace Luna
     {
         namespace
         {
+            struct InspectedLayer
+            {
+                GUICore::id_t id = 0;
+                u32 root = GUICore::INVALID_ELEMENT;
+                Float2U screen_position = Float2U(0.0f);
+                Name debug_name;
+            };
+
+            struct InspectedElement
+            {
+                GUICore::Element element;
+                u32 index = GUICore::INVALID_ELEMENT;
+                GUICore::LayoutCallbackConfig layout_callbacks;
+                GUICore::NavigationConfig navigation;
+                GUICore::ElementHitTestConfig hit_test;
+                GUICore::DrawConfig draw;
+                GUICore::InteractionState interaction;
+                u32 draw_command_count = 0;
+            };
+
+            struct InspectionData
+            {
+                Vector<InspectedLayer> layers;
+                Vector<InspectedElement> elements;
+                u32 draw_command_count = 0;
+            };
+
             GUICore::LayoutConfig fixed_height(f32 height)
             {
                 GUICore::LayoutConfig layout;
                 layout.width.kind = GUICore::SizeKind::percent;
-            layout.width.value = 1.0f;
+                layout.width.value = 1.0f;
                 layout.height.kind = GUICore::SizeKind::fixed;
                 layout.height.value = height;
                 return layout;
@@ -35,7 +61,7 @@ namespace Luna
                 layout.width.kind = GUICore::SizeKind::fixed;
                 layout.width.value = width;
                 layout.height.kind = GUICore::SizeKind::percent;
-            layout.height.value = 1.0f;
+                layout.height.value = 1.0f;
                 return layout;
             }
 
@@ -54,7 +80,7 @@ namespace Luna
             {
                 GUICore::LayoutConfig layout;
                 layout.width.kind = GUICore::SizeKind::percent;
-            layout.width.value = 1.0f;
+                layout.width.value = 1.0f;
                 layout.height.kind = GUICore::SizeKind::fixed;
                 layout.height.value = max(height, 1.0f);
                 return layout;
@@ -67,18 +93,6 @@ namespace Luna
                 return ret;
             }
 
-            bool contains_id(Span<const GUICore::id_t> ids, GUICore::id_t id)
-            {
-                for(GUICore::id_t candidate : ids)
-                {
-                    if(candidate == id)
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            }
-
             String format_rect(const RectF& rect)
             {
                 String ret;
@@ -89,33 +103,16 @@ namespace Luna
             String format_size_value(const GUICore::SizeValue& value)
             {
                 const c8* kind = "fit";
-                switch(value.kind)
+                if(value.kind == GUICore::SizeKind::fixed)
                 {
-                case GUICore::SizeKind::fixed:
                     kind = "fixed";
-                    break;
-                case GUICore::SizeKind::percent:
+                }
+                else if(value.kind == GUICore::SizeKind::percent)
+                {
                     kind = "percent";
-                    break;
-                default:
-                    break;
                 }
                 String ret;
                 strprintf(ret, "%s %.3f min %.1f max %.1f", kind, value.value, value.min, value.max);
-                return ret;
-            }
-
-            String format_layer(const GUICore::DebugInfo& info, const GUICore::DebugElementInfo& element)
-            {
-                String ret;
-                if(element.layer < info.layers.size())
-                {
-                    strprintf(ret, "%u / %s", element.layer, format_id(info.layers[element.layer].id).c_str());
-                }
-                else
-                {
-                    strprintf(ret, "%u / invalid", element.layer);
-                }
                 return ret;
             }
 
@@ -134,7 +131,8 @@ namespace Luna
                     strprintf(ret, "(%.3f, %.3f, %.3f)", value.number.x, value.number.y, value.number.z);
                     break;
                 case GUICore::StyleValueType::f32x4:
-                    strprintf(ret, "(%.3f, %.3f, %.3f, %.3f)", value.number.x, value.number.y, value.number.z, value.number.w);
+                    strprintf(ret, "(%.3f, %.3f, %.3f, %.3f)", value.number.x, value.number.y, value.number.z,
+                        value.number.w);
                     break;
                 case GUICore::StyleValueType::name:
                     ret = value.name.c_str();
@@ -146,43 +144,68 @@ namespace Luna
                 return ret;
             }
 
-            const c8* format_issue_severity(GUICore::DebugIssueSeverity severity)
+            const c8* format_pointer_hit_behavior(GUICore::PointerHitBehavior behavior)
             {
-                switch(severity)
+                switch(behavior)
                 {
-                case GUICore::DebugIssueSeverity::warning:
-                    return "warning";
-                case GUICore::DebugIssueSeverity::error:
-                    return "error";
+                case GUICore::PointerHitBehavior::pass_through:
+                    return "pass_through";
+                case GUICore::PointerHitBehavior::target:
+                    return "target";
+                case GUICore::PointerHitBehavior::block:
+                    return "block";
                 default:
-                    return "info";
+                    return "none";
                 }
             }
 
-            const c8* format_pass_kind(GUICore::DebugPassKind kind)
+            InspectionData inspect_context(GUICore::IContext* context)
             {
-                switch(kind)
+                InspectionData ret;
+                for(const GUICore::Layer& layer : context->get_layers())
                 {
-                case GUICore::DebugPassKind::frame:
-                    return "frame";
-                case GUICore::DebugPassKind::layout:
-                    return "layout";
-                case GUICore::DebugPassKind::input:
-                    return "input";
-                case GUICore::DebugPassKind::render:
-                    return "render";
-                case GUICore::DebugPassKind::state:
-                    return "state";
-                default:
-                    return "custom";
+                    InspectedLayer inspected;
+                    inspected.id = layer.id;
+                    inspected.root = layer.root;
+                    inspected.screen_position = layer.screen_position;
+                    inspected.debug_name = layer.debug_name;
+                    ret.layers.push_back(move(inspected));
                 }
+
+                Span<const GUICore::Element> elements = context->get_elements();
+                ret.elements.reserve(elements.size());
+                for(u32 i = 0; i < elements.size(); ++i)
+                {
+                    const GUICore::Element& element = elements[i];
+                    GUICore::ElementHandle handle { element.id, i, context->generation() };
+                    InspectedElement inspected;
+                    inspected.element = element;
+                    inspected.index = i;
+                    inspected.layout_callbacks = context->get_layout_callback_config(handle);
+                    inspected.navigation = context->get_navigation_config(handle);
+                    inspected.hit_test = context->get_hit_test_config(handle);
+                    inspected.draw = context->get_draw_config(handle);
+                    inspected.interaction = context->get_interaction_state(element.id);
+                    ret.elements.push_back(move(inspected));
+                }
+
+                Span<const GUICore::DrawCommand> commands = context->get_draw_commands();
+                ret.draw_command_count = (u32)commands.size();
+                for(const GUICore::DrawCommand& command : commands)
+                {
+                    if(command.element < ret.elements.size())
+                    {
+                        ++ret.elements[command.element].draw_command_count;
+                    }
+                }
+                return ret;
             }
 
-            const GUICore::DebugElementInfo* find_debug_element(const GUICore::DebugInfo& info, GUICore::id_t id)
+            const InspectedElement* find_element(const InspectionData& info, GUICore::id_t id)
             {
-                for(const GUICore::DebugElementInfo& element : info.elements)
+                for(const InspectedElement& element : info.elements)
                 {
-                    if(element.id == id)
+                    if(element.element.id == id)
                     {
                         return &element;
                     }
@@ -194,10 +217,10 @@ namespace Luna
             {
                 GUICore::id_t state_id = GUICore::make_state_id<CoreDebugPanelState>(id);
                 Ref<CoreDebugPanelState> state;
-                if(object_t state_obj = context->get_state(state_id))
+                if(object_t state_object = context->get_state(state_id))
                 {
-                    object_retain(state_obj);
-                    state.attach(state_obj);
+                    object_retain(state_object);
+                    state.attach(state_object);
                 }
                 else
                 {
@@ -209,15 +232,14 @@ namespace Luna
 
             void debug_text(GUICore::IContext* context, u32& row, const c8* label, const String& value)
             {
-                String text;
-                text.reserve(strlen(label) + value.size() + 4);
-                text.append(label);
-                text.append(": ");
-                text.append(value);
-                GUI::text(context, context->make_id((GUICore::id_t)row++), text.c_str(), fixed_height(22.0f));
+                String text_value;
+                text_value.append(label);
+                text_value.append(": ");
+                text_value.append(value);
+                GUI::text(context, context->make_id((GUICore::id_t)row++), text_value.c_str(), fixed_height(22.0f));
             }
 
-            void debug_text_bool(GUICore::IContext* context, u32& row, const c8* label, bool value)
+            void debug_bool(GUICore::IContext* context, u32& row, const c8* label, bool value)
             {
                 debug_text(context, row, label, String(value ? "true" : "false"));
             }
@@ -227,182 +249,120 @@ namespace Luna
                 GUI::text(context, context->make_id((GUICore::id_t)row++), title, fixed_height(28.0f));
             }
 
-            void draw_element_details(GUICore::IContext* context, const GUICore::DebugInfo& info,
-                const GUICore::DebugElementInfo* element)
+            void draw_element_details(GUICore::IContext* context, const InspectionData& info,
+                const InspectedElement* inspected)
             {
                 u32 row = 400000;
-                if(!element)
+                if(!inspected)
                 {
                     GUI::text(context, context->make_id((GUICore::id_t)row++), "Select an element to inspect.",
                         fixed_height(24.0f));
                     return;
                 }
 
+                const GUICore::Element& element = inspected->element;
                 debug_section(context, row, "Identity");
-                debug_text(context, row, "ID", format_id(element->id));
-                debug_text(context, row, "Layer", format_layer(info, *element));
-                debug_text(context, row, "Index", [&]() { String s; strprintf(s, "%u", element->index); return s; }());
-                debug_text(context, row, "Parent", element->parent == GUICore::INVALID_ELEMENT ?
-                    String("none") : [&]() { String s; strprintf(s, "%u", element->parent); return s; }());
-                debug_text(context, row, "Name", element->debug_name.c_str());
+                debug_text(context, row, "ID", format_id(element.id));
+                debug_text(context, row, "Name", element.debug_name.c_str());
+                String index;
+                strprintf(index, "%u", inspected->index);
+                debug_text(context, row, "Index", index);
+                String layer;
+                if(element.layer < info.layers.size())
+                {
+                    strprintf(layer, "%u / %s", element.layer, format_id(info.layers[element.layer].id).c_str());
+                }
+                else
+                {
+                    strprintf(layer, "%u / invalid", element.layer);
+                }
+                debug_text(context, row, "Layer", layer);
 
                 debug_section(context, row, "Layout");
-                debug_text(context, row, "Rect", format_rect(element->rect));
-                debug_text(context, row, "Clip", format_rect(element->clip_rect));
-                debug_text(context, row, "Width", format_size_value(element->layout.width));
-                debug_text(context, row, "Height", format_size_value(element->layout.height));
-                debug_text(context, row, "Algorithm", element->layout_callbacks.algorithm.empty() ?
-                    String("none") : String(element->layout_callbacks.algorithm.c_str()));
-                debug_text_bool(context, row, "Measure Callback",
-                    element->layout_callbacks.measure_callback != nullptr);
-                debug_text_bool(context, row, "Arrange Callback",
-                    element->layout_callbacks.callback != nullptr);
-                debug_text_bool(context, row, "Finalize Callback",
-                    element->layout_callbacks.finalize_callback != nullptr);
+                debug_text(context, row, "Rect", format_rect(element.layout_result.rect));
+                debug_text(context, row, "Clip", format_rect(element.layout_result.clip_rect));
+                debug_text(context, row, "Width", format_size_value(element.layout.width));
+                debug_text(context, row, "Height", format_size_value(element.layout.height));
+                debug_text(context, row, "Algorithm", inspected->layout_callbacks.algorithm.empty() ? String("none") :
+                    String(inspected->layout_callbacks.algorithm.c_str()));
+                debug_bool(context, row, "Measure Callback", inspected->layout_callbacks.measure_callback != nullptr);
+                debug_bool(context, row, "Arrange Callback", inspected->layout_callbacks.callback != nullptr);
+                debug_bool(context, row, "Finalize Callback", inspected->layout_callbacks.finalize_callback != nullptr);
 
                 debug_section(context, row, "Input");
-                const c8* hit_behavior = "none";
-                switch(element->pointer_hit_behavior)
-                {
-                case GUICore::PointerHitBehavior::pass_through: hit_behavior = "pass_through"; break;
-                case GUICore::PointerHitBehavior::target: hit_behavior = "target"; break;
-                case GUICore::PointerHitBehavior::block: hit_behavior = "block"; break;
-                default: break;
-                }
-                debug_text(context, row, "Pointer Hit", hit_behavior);
-                const c8* hit_test_mode = "rect";
-                switch(element->hit_test_mode)
-                {
-                case GUICore::ElementHitTestMode::callback: hit_test_mode = "callback"; break;
-                default: break;
-                }
-                debug_text(context, row, "Hit Test", hit_test_mode);
-                debug_text_bool(context, row, "Hit Test Callback", element->has_hit_test_callback);
-                debug_text_bool(context, row, "Hoverable", element->hoverable);
-                debug_text_bool(context, row, "Activatable", element->activatable);
-                debug_text_bool(context, row, "Focusable", element->focusable);
-                debug_text_bool(context, row, "Disabled", element->disabled);
-                debug_text_bool(context, row, "Hovered", element->hovered);
-                debug_text_bool(context, row, "Active", element->active);
-                debug_text_bool(context, row, "Pointer Captured", element->pointer_captured);
-                debug_text_bool(context, row, "Focused", element->focused);
-                debug_text_bool(context, row, "Clicked", element->clicked);
-                debug_text_bool(context, row, "Double Clicked", element->double_clicked);
-                debug_text_bool(context, row, "Subtree Hovered", element->subtree_hovered);
-                debug_text_bool(context, row, "Subtree Clicked", element->subtree_clicked);
-                debug_text_bool(context, row, "Subtree Double Clicked", element->subtree_double_clicked);
+                debug_text(context, row, "Pointer Hit", format_pointer_hit_behavior(element.interactable.pointer_hit_behavior));
+                debug_bool(context, row, "Hit Test Callback", inspected->hit_test.callback != nullptr);
+                debug_bool(context, row, "Hoverable", GUICore::has_flags(element.interactable, GUICore::InteractableFlag::hoverable));
+                debug_bool(context, row, "Activatable", GUICore::has_flags(element.interactable, GUICore::InteractableFlag::activatable));
+                debug_bool(context, row, "Focusable", GUICore::has_flags(element.interactable, GUICore::InteractableFlag::focusable));
+                debug_bool(context, row, "Disabled", GUICore::has_flags(element.interactable, GUICore::InteractableFlag::disabled));
+                debug_bool(context, row, "Hovered", inspected->interaction.hovered);
+                debug_bool(context, row, "Active", inspected->interaction.active);
+                debug_bool(context, row, "Focused", inspected->interaction.focused);
+                debug_bool(context, row, "Clicked", inspected->interaction.clicked);
+                debug_bool(context, row, "Double Clicked", inspected->interaction.double_clicked);
 
                 debug_section(context, row, "Draw");
-                debug_text(context, row, "First Command", element->first_draw_command == U32_MAX ?
-                    String("none") : [&]() { String s; strprintf(s, "%u", element->first_draw_command); return s; }());
-                debug_text(context, row, "Command Count", [&]() { String s; strprintf(s, "%u", element->draw_command_count); return s; }());
-                debug_text(context, row, "Total Elements", [&]() { String s; strprintf(s, "%u", (u32)info.elements.size()); return s; }());
-                debug_text(context, row, "Total Commands", [&]() { String s; strprintf(s, "%u", (u32)info.draw_commands.size()); return s; }());
+                String draw_count;
+                strprintf(draw_count, "%u", inspected->draw_command_count);
+                debug_text(context, row, "Command Count", draw_count);
+                debug_text(context, row, "Callback", inspected->draw.name.empty() ? String("none") :
+                    String(inspected->draw.name.c_str()));
+                String total_commands;
+                strprintf(total_commands, "%u", info.draw_command_count);
+                debug_text(context, row, "Total Commands", total_commands);
 
                 debug_section(context, row, "Resolved Style");
-                debug_text(context, row, "Bound Style", element->style.empty() ? String("none") : String(element->style.c_str()));
-                for(const GUICore::DebugResolvedStyleEntryInfo& style : element->resolved_style)
+                debug_text(context, row, "Bound Style", element.style.empty() ? String("none") : String(element.style.c_str()));
+                for(const GUICore::StyleEntrySchema& schema : context->get_style_entry_schemas())
                 {
                     String label;
-                    label.append(style.owner.empty() ? "style" : style.owner.c_str());
+                    label.append(schema.owner.empty() ? "style" : schema.owner.c_str());
                     label.append(".");
-                    label.append(style.entry.empty() ? "entry" : style.entry.c_str());
-                    if(style.defaulted)
-                    {
-                        label.append(" (default)");
-                    }
-                    debug_text(context, row, label.c_str(), format_style_value(style.value));
+                    label.append(schema.entry.c_str());
+                    debug_text(context, row, label.c_str(), format_style_value(
+                        context->get_style_value(element.style, schema.entry, schema.default_value)));
                 }
             }
         }
 
-        LUNA_GUI_API GUICore::ElementHandle show_debug_info(GUICore::IContext* context, GUICore::id_t id,
-            const GUICore::DebugInfo& info, const GUICore::LayoutConfig& layout)
+        LUNA_GUI_API GUICore::ElementHandle show_debug_panel(GUICore::IContext* context, GUICore::id_t id,
+            const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
+            InspectionData info = inspect_context(context);
             Ref<CoreDebugPanelState> state = debug_panel_state(context, id);
             if(!state->selected_element && !info.elements.empty())
             {
-                state->selected_element = info.elements.front().id;
+                state->selected_element = info.elements.front().element.id;
             }
-            if(state->selected_element && !find_debug_element(info, state->selected_element))
+            if(state->selected_element && !find_element(info, state->selected_element))
             {
-                state->selected_element = info.elements.empty() ? 0 : info.elements.front().id;
+                state->selected_element = info.elements.empty() ? 0 : info.elements.front().element.id;
             }
 
             GUICore::ElementHandle root = begin_v_layout(context, id, "GUI Core Debug Panel", layout);
             context->push_data_scope(id);
             text(context, context->make_id("title"), "GUI Core Debug", fixed_height(28.0f));
-            if(!info.issues.empty())
-            {
-                text(context, context->make_id("issues_title"), "Issues", fixed_height(24.0f));
-                for(usize i = 0; i < info.issues.size(); ++i)
-                {
-                    const GUICore::DebugIssueInfo& issue = info.issues[i];
-                    String issue_text;
-                    if(issue.element)
-                    {
-                        strprintf(issue_text, "[%s] %s element %s: %s",
-                            format_issue_severity(issue.severity),
-                            issue.category.empty() ? "core" : issue.category.c_str(),
-                            format_id(issue.element).c_str(),
-                            issue.message.c_str());
-                    }
-                    else
-                    {
-                        strprintf(issue_text, "[%s] %s: %s",
-                            format_issue_severity(issue.severity),
-                            issue.category.empty() ? "core" : issue.category.c_str(),
-                            issue.message.c_str());
-                    }
-                    text(context, context->make_id((GUICore::id_t)(900000 + i)), issue_text.c_str(), fixed_height(22.0f));
-                }
-            }
-            if(!info.passes.empty())
-            {
-                text(context, context->make_id("passes_title"), "Passes", fixed_height(24.0f));
-                for(usize i = 0; i < info.passes.size(); ++i)
-                {
-                    const GUICore::DebugPassInfo& pass = info.passes[i];
-                    String pass_text;
-                    if(pass.element)
-                    {
-                        strprintf(pass_text, "[%s] %s reason %s element %s %.3f ms",
-                            format_pass_kind(pass.kind),
-                            pass.name.empty() ? "pass" : pass.name.c_str(),
-                            pass.reason.empty() ? "unknown" : pass.reason.c_str(),
-                            format_id(pass.element).c_str(),
-                            pass.duration_ms);
-                    }
-                    else
-                    {
-                        strprintf(pass_text, "[%s] %s reason %s %.3f ms",
-                            format_pass_kind(pass.kind),
-                            pass.name.empty() ? "pass" : pass.name.c_str(),
-                            pass.reason.empty() ? "unknown" : pass.reason.c_str(),
-                            pass.duration_ms);
-                    }
-                    text(context, context->make_id((GUICore::id_t)(910000 + i)), pass_text.c_str(), fixed_height(22.0f));
-                }
-            }
 
             GUICore::id_t tree_viewport_id = context->make_id("tree_viewport");
             GUICore::id_t tree_content_id = context->make_id("tree_content");
             GUICore::id_t details_viewport_id = context->make_id("details_viewport");
             GUICore::id_t details_content_id = context->make_id("details_content");
             f32 tree_content_height = max((f32)info.elements.size() * 24.0f, 24.0f);
-            const GUICore::DebugElementInfo* selected_element = find_debug_element(info, state->selected_element);
-            f32 details_content_height = selected_element ?
-                560.0f + (f32)selected_element->resolved_style.size() * 22.0f :
-                48.0f;
+            const InspectedElement* selected = find_element(info, state->selected_element);
+            f32 details_content_height = selected ?
+                540.0f + (f32)context->get_style_entry_schemas().size() * 22.0f : 48.0f;
 
             GUICore::ElementHandle body = begin_h_layout(context, context->make_id("body"), "Debug Body", fill_layout());
             GUICore::ElementHandle tree_viewport = begin_scroll_view(context, tree_viewport_id, "Element Tree Viewport",
                 fixed_width(420.0f));
-            GUICore::ElementHandle tree = begin_v_layout(context, tree_content_id, "Element Tree", content_height(tree_content_height));
+            GUICore::ElementHandle tree = begin_v_layout(context, tree_content_id, "Element Tree",
+                content_height(tree_content_height));
             u32 row_index = 0;
-            for(const GUICore::DebugElementInfo& element : info.elements)
+            for(const InspectedElement& inspected : info.elements)
             {
+                const GUICore::Element& element = inspected.element;
                 String label;
                 for(u32 i = 0; i < element.depth; ++i)
                 {
@@ -411,13 +371,13 @@ namespace Luna
                 label.append(element.debug_name.empty() ? "element" : element.debug_name.c_str());
                 label.append("  #");
                 label.append(format_id(element.id));
-                bool hovered = contains_id(info.hovered_elements.cspan(), element.id);
-                if(hovered)
+                if(inspected.interaction.hovered)
                 {
                     label.append("  <hover>");
                 }
-                GUICore::ElementHandle row = selectable(context, context->make_id((GUICore::id_t)(100000 + row_index)),
-                    label.c_str(), state->selected_element == element.id || hovered, fixed_height(24.0f));
+                GUICore::ElementHandle row = selectable(context,
+                    context->make_id((GUICore::id_t)(100000 + row_index)), label.c_str(),
+                    state->selected_element == element.id || inspected.interaction.hovered, fixed_height(24.0f));
                 if(is_item_clicked(context, row))
                 {
                     state->selected_element = element.id;
@@ -427,11 +387,11 @@ namespace Luna
             lupanic_if_failed(end_v_layout(context, tree, GUICore::FlexLayoutDesc()));
             lupanic_if_failed(end_scroll_view(context, tree_viewport));
 
-            GUICore::ElementHandle details_viewport = begin_scroll_view(context, details_viewport_id, "Element Details Viewport",
-                fill_layout());
+            GUICore::ElementHandle details_viewport = begin_scroll_view(context, details_viewport_id,
+                "Element Details Viewport", fill_layout());
             GUICore::ElementHandle details = begin_v_layout(context, details_content_id, "Element Details",
                 content_height(details_content_height));
-            draw_element_details(context, info, selected_element);
+            draw_element_details(context, info, selected);
             lupanic_if_failed(end_v_layout(context, details, GUICore::FlexLayoutDesc()));
             lupanic_if_failed(end_scroll_view(context, details_viewport));
 

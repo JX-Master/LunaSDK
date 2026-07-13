@@ -203,7 +203,7 @@ context->set_clipboard_io(clipboard);
 ## Examples
 ### A clickable raw element
 ```cpp
-GUICore::ElementHandle item = context->begin_element(context->make_id("raw-button"), Name("Raw Button"));
+GUICore::ElementHandle item = context->begin_element(context->make_id("raw-button"));
 context->set_layout_config(item, button_layout);
 
 GUICore::Interactable interactable;

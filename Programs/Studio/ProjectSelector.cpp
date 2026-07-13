@@ -199,7 +199,7 @@ namespace Luna
 
     static GUICore::ElementHandle begin_scroll_region(GUICore::IContext* context, GUICore::id_t id, const RectF& rect)
     {
-        GUICore::ElementHandle element = context->begin_element(id, Name("recent_projects_scroll"));
+        GUICore::ElementHandle element = context->begin_element(id);
         context->set_layout_config(element, fixed_layout(rect.width, rect.height));
         GUICore::Interactable interactable;
         interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
@@ -213,7 +213,7 @@ namespace Luna
     static void build_project_selector_gui(GUICore::IContext* context, const Float2U& surface_size, String& project_name,
         bool& create_dir, const Vector<RecentFileRecord>& recents, f32 recent_scroll)
     {
-        GUICore::ElementHandle root = context->begin_element(PROJECT_SELECTOR_ROOT_ID, Name("Project Selector Root"));
+        GUICore::ElementHandle root = context->begin_element(PROJECT_SELECTOR_ROOT_ID);
         set_element_rect(context, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
         GUI::draw_rect(context, PROJECT_SELECTOR_BACKGROUND_ID, RectF(0.0f, 0.0f, surface_size.x, surface_size.y),
             Float4U(0.055f, 0.07f, 0.085f, 1.0f), 0.0f);
@@ -381,7 +381,7 @@ namespace Luna
                 gui->begin_frame(frame);
                 GUIWindow::update_input(&input_adapter);
 
-                gui->push_layer(PROJECT_SELECTOR_LAYER_ID, Float2U(0.0f), Name("default"));
+                gui->push_layer(PROJECT_SELECTOR_LAYER_ID, Float2U(0.0f));
                 build_project_selector_gui(gui, frame.screen_size, new_solution_name, create_dir, recents, recent_scroll);
                 gui->pop_layer();
                 gui->route_input();

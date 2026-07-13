@@ -21,13 +21,4 @@ public sealed class GUITargetRules : TargetRules
             "Source/Editor*.cpp");
         DependsOn("Runtime", "RHI", "VG", "Font", "GUICore");
     }
-
-    protected override void Configure(BuildWorkspace workspace, BuildOptions options)
-    {
-        if(options.Mode == BuildMode.Debug || ProjectBoolOption("gui_debug"))
-        {
-            Defines("LUNA_GUI_ENABLE_DEBUG");
-            PublicDefines("LUNA_GUI_ENABLE_DEBUG");
-        }
-    }
 }

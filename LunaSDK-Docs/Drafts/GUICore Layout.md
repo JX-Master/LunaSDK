@@ -295,7 +295,7 @@ panel_layout.width.value = 280.0f;
 panel_layout.height.kind = GUICore::SizeKind::percent;
 panel_layout.height.value = 1.0f;
 
-GUICore::ElementHandle panel = context->begin_element(context->make_id("inspector"), Name("Inspector"));
+GUICore::ElementHandle panel = context->begin_element(context->make_id("inspector"));
 context->set_layout_config(panel, panel_layout);
 
 GUICore::LayoutCallbackConfig panel_callbacks;

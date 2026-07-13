@@ -36,7 +36,7 @@ namespace Luna::GUICoreTest
             break;
         }
 
-        GUICore::ElementHandle header = context->begin_element(ID_HEADER, Name("Slide Header"));
+        GUICore::ElementHandle header = context->begin_element(ID_HEADER);
         context->set_layout_config(header, fixed_layout(SHEET_WIDTH - 96.0f, 108.0f));
         draw_text(context, RectF(0.0f, 0.0f, 760.0f, 56.0f), title, 46.0f, Float4U(0.0f, 0.0f, 0.0f, 1.0f));
         draw_text(context, RectF(2.0f, 60.0f, 980.0f, 34.0f), subtitle, 22.0f, Float4U(0.20f, 0.20f, 0.20f, 1.0f));

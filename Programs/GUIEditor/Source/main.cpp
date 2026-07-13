@@ -1231,7 +1231,7 @@ namespace Luna
             bool can_redo = document && !document->redo_stack.empty();
             bool can_delete = can_remove_selected(document);
             GUICore::IContext* context = app.editor_core.get();
-            context->push_layer(core_id("gui_editor.layer.main", 0), Float2U(0.0f), Name("GUIEditor Main"));
+            context->push_layer(core_id("gui_editor.layer.main", 0), Float2U(0.0f));
 
             GUICore::LayoutConfig root_layout;
             root_layout.width.kind = GUICore::SizeKind::fixed;
@@ -1355,7 +1355,7 @@ namespace Luna
             {
                 GUIWindow::update_input(input_adapter);
             }
-            app.preview_core->push_layer(1, Float2U(rect.offset_x, rect.offset_y), "GUIEditor Preview");
+            app.preview_core->push_layer(1, Float2U(rect.offset_x, rect.offset_y));
             GA::GenerateContext generate_context;
             generate_context.core_root_rect = RectF(0.0f, 0.0f, rect.width, rect.height);
             RV r = GA::generate(app.preview_core.get(), document->asset.get(), generate_context);

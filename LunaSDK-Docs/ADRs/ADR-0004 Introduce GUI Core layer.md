@@ -1,8 +1,8 @@
 ## Status
-Proposed.
+Approved.
 
 ## Last updated
-2026/7/12
+2026/7/13
 
 ## Background
 LunaSDK currently has a `GUI` module that has already moved away from the old ImGui backend. The current implementation uses explicit GUI contexts, per-frame descriptions, layers, state objects, style entries, render proxies, VG-backed drawing, and GUI debugging support. This direction has proven useful for Studio, GUIEditor, in-game GUI rendering, and custom vector rendering.
@@ -59,11 +59,12 @@ This decision removes the following concepts from the long-term high-level `GUI`
 
 1. **Element tree**
    - Stores per-frame GUI elements in dense arrays.
-   - Each element has a stable ID, layer ID, parent/child/sibling topology, hot layout input, layout result, style binding, interaction binding, sparse optional callback bindings, draw-command ownership metadata, and debug metadata.
+   - Each element has a stable ID, layer ID, parent/child/sibling topology, hot layout input, layout result, style binding, interaction binding, sparse optional callback bindings, and draw-command ownership metadata.
    - The element tree is the core-level ground truth for the submitted frame.
    - The tree is typeless. Every element has the same concrete storage type.
    - Elements do not use inheritance, virtual methods, or per-widget subclasses to define behavior.
-   - Element behavior is defined only by the data attached to the element, such as layout records, interactable records, sparse callback records, draw command ownership metadata, clip records, and debug tags. State IDs are derived by callers from stable owner IDs and boxed state types rather than stored by elements.
+   - Element behavior is defined only by the data attached to the element, such as layout records, interactable records, sparse callback records, draw command ownership metadata, and clip records. State IDs are derived by callers from stable owner IDs and boxed state types rather than stored by elements.
+   - Human-readable element and layer debug names are resident observational metadata. Debug names must never affect layout, input, rendering, identity, or other GUI behavior.
    - An element may represent a text label, a button chrome, a shape, a layout container, a hit-test region, or any other primitive submitted by higher-level code, but the core element itself does not know that semantic widget type.
 
 2. **Layer system**
@@ -80,7 +81,7 @@ This decision removes the following concepts from the long-term high-level `GUI`
 4. **Style system**
    - Keeps named styles, parent inheritance, local overrides, inherited entries, and explicit unsets.
    - Keeps scalar, vector, color, and name-valued entries.
-   - Provides style schema metadata for tools and debug output.
+   - Provides style schema metadata for tools and inspectors.
    - Does not hard-code widget style keys.
 
 5. **Layout engine**
@@ -110,9 +111,11 @@ This decision removes the following concepts from the long-term high-level `GUI`
    - Does not know widget rendering policies.
    - High-level immediate API packages install package-owned callbacks or submit static commands directly.
 
-9. **Debug and instrumentation**
-   - Provides an in-memory debug snapshot for element trees, layers, layout inputs/results, interactables, input routing, style resolution, draw commands, and performance counters. A portable external-tool representation is a separate projection because runtime callbacks, userdata, and resources are pointer-valued.
-   - Should eventually support input recording, input replay, frame stepping, issue logging, and layout/input pass reason logging.
+9. **Inspection and performance instrumentation**
+   - Exposes read-only spans for the current frame's dense element and layer arrays. Tools inspect element topology, layout input and results, interactables, sparse callback bindings, routed interaction state, styles, and draw commands through ordinary public APIs instead of requesting a duplicated debug snapshot.
+   - Keeps `PerformanceCounters`, human-readable debug names, and high-level debug views available in all builds.
+   - Does not use a dedicated debug compilation option. The remaining inspection features have small runtime cost, while one stable API and ABI avoids conditional build complexity.
+   - Does not own issue/pass trace logs, input recording, input replay, frame timelines, or a cross-process debug transport. Such tools may be implemented outside GUICore when a concrete use case requires them.
 
 ### Data and algorithm separation
 `GUICore` follows a data-oriented model. The element tree is a data container. Core features are algorithms that operate on this data.
@@ -123,7 +126,7 @@ Core features should be implemented as independent functions or systems:
 2. Input routing functions operate on layers, elements, and interactable records.
 3. Draw generation functions traverse element data and produce draw commands; rendering functions compile those commands into VG draw lists.
 4. Style functions operate on style records and requested style keys.
-5. Debug functions capture the data needed to inspect the frame in-process.
+5. Inspection tools read the current frame through read-only element, layer, style, interaction, callback configuration, and draw-command APIs.
 
 These features must remain orthogonal where possible. A caller should be able to use layout without using input routing, use draw commands without using high-level widgets, or use interactables without using a particular widget package.
 
@@ -168,7 +171,7 @@ This callback is not a revival of `GUI::RenderProxy`. It is a low-level, typeles
 
 Style usage schema remains useful, but it is no longer attached to `GUI::RenderProxy`. Instead:
 
-1. `GUICore` provides style records, style resolution, and in-memory debug snapshots.
+1. `GUICore` provides style records, style resolution, and read-only access to style records referenced by elements.
 2. Immediate API packages declare the style keys that their APIs read.
 3. GUIEditor and debug tools consume these declarations to display editable style properties.
 4. Core draw primitives remain widget-independent.
@@ -213,7 +216,7 @@ Create the `GUICore` module and add:
 6. State store.
 7. Style store.
 8. Draw command list.
-9. Basic debug dump.
+9. Performance counters and read-only element/layer inspection.
 
 The current `GUI` module should still build and run while this layer is introduced.
 
@@ -225,7 +228,7 @@ This phase should:
 1. Add APIs for creating elements, setting parent-child topology, and attaching layout/interactable/draw data.
 2. Keep all element storage typeless.
 3. Avoid virtual methods and per-widget element subclasses.
-4. Add element debug output and ID lookup.
+4. Add element ID lookup, dense element/layer scanning, and human-readable debug names.
 5. Add adapter code so old GUI widgets can submit core elements during migration.
 
 The goal of this phase is to make `GUICore` element data the only long-term runtime tree representation.
@@ -299,7 +302,7 @@ Expected benefits:
 
 1. **Cleaner extension model**: users can build custom widgets by composing core primitives instead of modifying the GUI module.
 2. **Less context coupling**: widget-specific input and rendering branches can be removed from the context over time.
-3. **Better tooling**: GUIEditor, debug panels, replay tools, and external MCP/debug clients can inspect a smaller and more regular runtime model.
+3. **Better tooling**: GUIEditor, debug panels, and external inspection tools can read a smaller and more regular runtime model without duplicating it into a second snapshot representation.
 4. **Better performance potential**: dense data arrays and data-oriented traversal are easier to optimize than many concrete widget node types.
 5. **Better in-game GUI support**: layers, draw primitives, interactables, and input routing are host-independent and can be used for window GUI and in-game surfaces.
 6. **Specialized UI packages**: different domains can provide different immediate API packages without duplicating core layout, input, state, and draw infrastructure.
@@ -316,7 +319,7 @@ Risks:
 
 Mitigations:
 
-1. Add benchmarks and debug counters before migrating heavy systems.
+1. Add benchmarks and performance counters before migrating heavy systems.
 2. Keep GUICore primitive-only.
 3. Migrate one widget group at a time.
 4. Preserve existing GUI tests and add new stress tests for each migrated subsystem.
@@ -397,7 +400,9 @@ This ADR does not require an immediate full rewrite. It defines the target archi
 The name `GUICore` is intentionally explicit. It should be understood as a lower-level primitive layer, not as a widget API. Normal application code should usually use one of the immediate API packages built on top of `GUICore`.
 
 ## Version history
-* **2026/7/12** Reconciled the approved architecture with the implementation: layers keep ordered generated-command indexes and compile into one VG draw list; optional layout, navigation, hit-test and draw callback bindings use per-frame sparse arrays; Stack Layout is removed; element state IDs are derived externally; and DebugInfo is an in-memory snapshot rather than a wire format.
+* **2026/7/13** Made human-readable debug names and high-level debug views resident in all builds, and removed the dedicated GUI Core debug compilation option. The remaining memory and update cost is small compared with the API, ABI, build, and tooling complexity caused by conditional availability.
+* **2026/7/12** Replaced the duplicated `DebugInfo` snapshot, issue/pass logs, input replay, and frame timeline with direct read-only inspection of the current element and layer data. Performance counters remain available in all builds, and debug names cannot affect GUI behavior.
+* **2026/7/12** Reconciled the approved architecture with the implementation: layers keep ordered generated-command indexes and compile into one VG draw list; optional layout, navigation, hit-test and draw callback bindings use per-frame sparse arrays; Stack Layout is removed; and element state IDs are derived externally.
 * **2026/7/4** Clarified the layout model: flex replaces the old linear-layout wording, element sizing is fixed/percent/fit with min/max constraints, and content-driven measurement is supplied by package-owned measure callbacks.
 * **2026/6/17** Revised the decision to remove `GUI::Node`, `GUI::RenderProxy`, and `GUI::IContext` from the long-term architecture, define the element tree as typeless data, and narrow the default `GUI` module into one editor-style immediate API package.
 * **2026/6/16** Proposed.

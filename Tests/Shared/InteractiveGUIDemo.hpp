@@ -251,8 +251,8 @@ namespace Luna
                     frame.delta_time = 1.0f / 60.0f;
                     app.gui->begin_frame(frame);
                     GUIWindow::update_input(&input_adapter);
-                    app.gui->push_layer(1, Float2U(0.0f), Name("default"));
-                    GUICore::ElementHandle root = app.gui->begin_element(1, Name("Demo Root"));
+                    app.gui->push_layer(1, Float2U(0.0f));
+                    GUICore::ElementHandle root = app.gui->begin_element(1);
                     desc.build(app.gui, root, frame.screen_size, desc.userdata);
                     app.gui->end_element();
                     app.gui->pop_layer();

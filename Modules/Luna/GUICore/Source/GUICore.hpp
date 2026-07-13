@@ -71,8 +71,6 @@ namespace Luna
             Vector<Vector<DrawOperation>> m_layer_draw_operations;
             Vector<DrawCommand> m_draw_commands;
             Vector<InputEvent> m_input_events;
-            Vector<DebugIssueInfo> m_debug_issues;
-            Vector<DebugPassInfo> m_debug_passes;
             Vector<u32> m_layer_stack;
             Vector<u32> m_element_stack;
             Vector<Name> m_style_stack;
@@ -120,14 +118,18 @@ namespace Luna
             virtual KeyModifierFlag get_key_modifiers() const override;
             virtual void add_input_event(const InputEvent& event) override;
             virtual void add_input_events(Span<const InputEvent> events) override;
-            virtual void push_layer(id_t id, const Float2U& screen_position = Float2U(0.0f), const Name& debug_name = Name()) override;
+            virtual Span<const InputEvent> get_input_events() const override;
+            virtual void push_layer(id_t id, const Float2U& screen_position = Float2U(0.0f)) override;
             virtual void pop_layer() override;
+            virtual Span<const Layer> get_layers() const override;
+            virtual void set_layer_debug_name(id_t id, const Name& name) override;
             virtual void push_data_scope(id_t id) override;
             virtual void pop_data_scope() override;
             virtual id_t current_data_scope() const override;
+            virtual Span<const id_t> get_data_scope_stack() const override;
             virtual id_t make_id(id_t local_id) const override;
             virtual id_t make_id(const c8* local_name) const override;
-            virtual ElementHandle begin_element(id_t id, const Name& debug_name = Name()) override;
+            virtual ElementHandle begin_element(id_t id) override;
             virtual void end_element() override;
             virtual void set_layout_config(const ElementHandle& element, const LayoutConfig& config) override;
             virtual void set_layout_callback_config(const ElementHandle& element,
@@ -143,8 +145,10 @@ namespace Luna
             virtual ElementHitTestConfig get_hit_test_config(const ElementHandle& element) const override;
             virtual void bind_style(const ElementHandle& element, const Name& style) override;
             virtual const Element* get_element(u32 index) const override;
+            virtual Span<const Element> get_elements() const override;
             virtual const Element* find_element(id_t id) const override;
             virtual ElementHandle find_element_handle(id_t id) const override;
+            virtual void set_element_debug_name(const ElementHandle& element, const Name& name) override;
             virtual void set_draw_config(const ElementHandle& element, const DrawConfig& config) override;
             virtual DrawConfig get_draw_config(const ElementHandle& element) const override;
             virtual RV generate_draw_commands() override;
@@ -182,14 +186,11 @@ namespace Luna
             virtual void pop_style() override;
             virtual Name current_style() const override;
             virtual StyleValue get_style_value(const Name& style, const Name& entry, const StyleValue& default_value) override;
+            virtual const Style* get_style(const Name& name) const override;
+            virtual const HashMap<Name, Style>& get_styles() const override;
             virtual void register_style_entry_schema(const StyleEntrySchema& schema) override;
             virtual Span<const StyleEntrySchema> get_style_entry_schemas() override;
             virtual PerformanceCounters get_performance_counters() override;
-            virtual DebugInfo dump_debug_info() override;
-            virtual void log_debug_issue(DebugIssueSeverity severity, const Name& category, const c8* message,
-                id_t element = 0) override;
-            virtual void log_debug_pass(DebugPassKind kind, const Name& name, const Name& reason, id_t element = 0,
-                const c8* detail = nullptr, f64 duration_ms = 0.0) override;
 
             void gc_states();
             void refresh_counters();

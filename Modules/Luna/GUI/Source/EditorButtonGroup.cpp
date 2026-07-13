@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
 
@@ -133,7 +134,7 @@ namespace Luna
             u32 count = (u32)items.size();
             button_group_apply_click(context, id, current_item, selected, count, enabled);
 
-            GUICore::ElementHandle element = context->begin_element(id, Name("button_group"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "button_group");
             context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled);
             if(!count)

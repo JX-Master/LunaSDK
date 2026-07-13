@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
 #include <cstring>
@@ -185,8 +186,8 @@ namespace Luna
                 }
                 return false;
             }
-            context->push_layer(id, desc.position, Name("popup"));
-            GUICore::ElementHandle popup = context->begin_element(derived_id(id, "popup_root"), Name("popup"));
+            Internal::push_layer(context, id, desc.position, "popup");
+            GUICore::ElementHandle popup = Internal::begin_element(context, derived_id(id, "popup_root"), "popup");
             context->set_layout_config(popup, layer_panel_layout(context, "popup", desc.layout));
             GUICore::Interactable interactable;
             interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
@@ -241,8 +242,8 @@ namespace Luna
             }
             Float2U position(owner_state.pointer_screen_position.x + desc.offset.x,
                 owner_state.pointer_screen_position.y + desc.offset.y);
-            context->push_layer(id, position, Name("tooltip"));
-            GUICore::ElementHandle tooltip = context->begin_element(derived_id(id, "tooltip_root"), Name("tooltip"));
+            Internal::push_layer(context, id, position, "tooltip");
+            GUICore::ElementHandle tooltip = Internal::begin_element(context, derived_id(id, "tooltip_root"), "tooltip");
             context->set_layout_config(tooltip, layer_panel_layout(context, "tooltip", desc.layout));
             draw_layer_panel_chrome(context, "tooltip", Float4U(0.05f, 0.06f, 0.07f, 0.97f),
                 Float4U(0.28f, 0.33f, 0.40f, 1.0f), 4.0f);

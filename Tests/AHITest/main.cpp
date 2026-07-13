@@ -279,7 +279,7 @@ namespace Luna
     void build_gui(App& app, const Float2U& surface_size, i32& current_playback_adapter, i32& current_capture_adapter)
     {
         GUICore::IContext* context = app.gui;
-        GUICore::ElementHandle root = context->begin_element(ROOT_ID, Name("AHITest Root"));
+        GUICore::ElementHandle root = context->begin_element(ROOT_ID);
         set_element_rect(context, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
         draw_panel_background(context, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
 
@@ -496,7 +496,7 @@ namespace Luna
 
                 static i32 current_playback_adapter = 0;
                 static i32 current_capture_adapter = 0;
-                app.gui->push_layer(DEFAULT_LAYER_ID, Float2U(0.0f), Name("default"));
+                app.gui->push_layer(DEFAULT_LAYER_ID, Float2U(0.0f));
                 build_gui(app, frame.screen_size, current_playback_adapter, current_capture_adapter);
                 app.gui->pop_layer();
                 app.gui->route_input();

@@ -545,14 +545,6 @@ namespace Luna
             u32 hit_test_config = U32_MAX;
             //! Sparse draw configuration index owned by the context, or `U32_MAX` when no callback is attached.
             u32 draw_config = U32_MAX;
-            //! First draw command emission index for this element.
-            //! @remark This is diagnostic summary data, not a contiguous command range. Commands can be interleaved
-            //! when @ref IContext::draw_for_element is used after normal element construction.
-            u32 first_draw_command = U32_MAX;
-            //! Number of draw commands emitted by this element.
-            //! @remark Filter @ref IContext::get_draw_commands by @ref DrawCommand::element to enumerate this
-            //! element's actual commands.
-            u32 draw_command_count = 0;
         };
 
         //! One GUI layer record.
@@ -564,11 +556,6 @@ namespace Luna
             Float2U screen_position = Float2U(0.0f);
             //! Root element index, or @ref INVALID_ELEMENT.
             u32 root = INVALID_ELEMENT;
-            //! First draw command emission index for this layer.
-            //! @remark This is diagnostic summary data. Use @ref draw_command_indices for the authoritative order.
-            u32 first_draw_command = U32_MAX;
-            //! Number of draw commands emitted by this layer.
-            u32 draw_command_count = 0;
             //! Draw command indexes emitted by this layer.
             Vector<u32> draw_command_indices;
             //! Human-readable debug name.

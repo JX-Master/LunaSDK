@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorWidgets.hpp>
 #include <Luna/VG/TextArranger.hpp>
 
@@ -170,7 +171,7 @@ namespace Luna
             const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, text ? Name(text) : Name("text"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, text ? text : "text");
             GUICore::DrawCommand command;
             command.type = GUICore::DrawCommandType::text;
             command.rect_reference = GUICore::DrawCommandRectReference::element;
@@ -196,7 +197,7 @@ namespace Luna
             const GUICore::LayoutConfig& layout, ImageFlag flags)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, Name("image"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "image");
             context->set_layout_config(element, layout);
             GUICore::DrawCommand command = element_rect_command(GUICore::DrawCommandType::image, Float4U(1.0f));
             command.texture = texture;
@@ -212,7 +213,7 @@ namespace Luna
             const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, Name("shape"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "shape");
             context->set_layout_config(element, layout);
             GUICore::DrawCommand command = element_rect_command(GUICore::DrawCommandType::shape, Float4U(1.0f));
             command.shape = shape;
@@ -225,7 +226,7 @@ namespace Luna
             const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, Name("hit_box"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "hit_box");
             context->set_layout_config(element, layout);
             GUICore::Interactable interactable;
             interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;

@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
 
@@ -84,7 +85,7 @@ namespace Luna
             bool default_open, const GUICore::LayoutConfig& layout, GUICore::ElementHandle* out_handle)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("collapsing_header"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, label ? label : "collapsing_header");
             if(out_handle)
             {
                 *out_handle = element;
@@ -152,7 +153,7 @@ namespace Luna
             TreeNodeFlag flags, u32 indent_depth, const GUICore::LayoutConfig& layout, GUICore::ElementHandle* out_handle)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("tree_node"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, label ? label : "tree_node");
             if(out_handle)
             {
                 *out_handle = element;
@@ -242,7 +243,7 @@ namespace Luna
             const c8* overlay, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, Name("progress_bar"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "progress_bar");
             context->set_layout_config(element, layout);
             f32 progress = clamp(fraction, 0.0f, 1.0f);
             f32 border_size = style_value(context, Name("gui.editor.progress.border_size"), GUICore::style_f32(1.0f)).number.x;

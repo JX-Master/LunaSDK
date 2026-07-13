@@ -6,7 +6,8 @@ Related pages:
 2. [[GUICore Layout]]
 3. [[GUICore Input and Interaction]]
 4. [[GUICore Drawing]]
-5. [[GUICore State Style and Debug]]
+5. [[GUICore State and Style]]
+6. [[GUICore Performance and Inspection]]
 
 ## Designed functionality
 GUI Core solves the part of GUI work that is common to multiple GUI packages:
@@ -16,7 +17,7 @@ GUI Core solves the part of GUI work that is common to multiple GUI packages:
 3. Store reusable state objects and named styles.
 4. Run primitive layout algorithms on element data.
 5. Generate GUI-level draw commands after layout and input, then compile them to VG draw lists.
-6. Produce debug snapshots and performance counters.
+6. Expose performance counters and direct read-only frame inspection.
 
 GUI Core does not provide high-level widgets. Controls such as buttons, checkboxes, menus, sliders, color editors, dock panels and inspectors belong to a higher-level package such as `Luna::GUI`. Those packages build GUI Core elements, attach input data, run layout helpers and install package-owned draw callbacks or static draw commands.
 
@@ -24,7 +25,7 @@ This split keeps GUI Core small and orthogonal. Applications can use only the sy
 
 ## Concepts
 ### Context
-`GUICore::IContext` owns the per-frame element tree, layer list, sparse callback records, queued input events, routed interaction state, state store, style records, generated draw commands and debug data.
+`GUICore::IContext` owns the per-frame element tree, layer list, sparse callback records, queued input events, routed interaction state, state store, style records and generated draw commands.
 
 A context is explicit. There is no global current GUI context. Pass the `IContext*` to the higher-level API or directly to GUI Core functions.
 
@@ -42,7 +43,7 @@ The element tree is typeless. Every node is a `GUICore::Element` record with the
 4. Style binding
 5. Sparse optional layout, navigation, custom hit-test and draw callback bindings
 6. Draw-command ownership metadata
-7. Debug metadata
+7. Human-readable debug names
 
 Elements do not inherit from widget classes and do not have virtual behavior. Algorithms operate on this data.
 
@@ -54,7 +55,7 @@ Normal content, popups, tooltips, modal panels, drag previews and debug overlays
 ### Immediate API package
 An immediate API package is a higher-level library that implements concrete controls by calling GUI Core APIs. The default `Luna::GUI` package is the editor-style package used by tools and Studio.
 
-Such packages own visual policy and widget behavior. GUI Core owns shared storage, routing, layout, draw command compilation, style storage and debug output.
+Such packages own visual policy and widget behavior. GUI Core owns shared storage, routing, layout, draw command compilation, style storage and direct read-only inspection.
 
 ## Programming guide
 ### Initialize modules
@@ -103,8 +104,8 @@ frame.delta_time = delta_time;
 context->begin_frame(frame);
 context->add_input_events(input_events);
 
-context->push_layer(1, Float2U(0.0f), Name("default"));
-GUICore::ElementHandle root = context->begin_element(1, Name("Root"));
+context->push_layer(1, Float2U(0.0f));
+GUICore::ElementHandle root = context->begin_element(1);
 
 // Higher-level GUI package calls, or direct GUI Core element construction.
 
@@ -127,12 +128,12 @@ The application still owns the RHI render pass, command buffer, swapchain or ren
 ## Examples
 ### A minimal raw element
 ```cpp
-context->push_layer(1, Float2U(0.0f), Name("default"));
+context->push_layer(1, Float2U(0.0f));
 
-GUICore::ElementHandle root = context->begin_element(1, Name("Root"));
+GUICore::ElementHandle root = context->begin_element(1);
 context->set_layout_config(root, GUICore::LayoutConfig {});
 
-GUICore::ElementHandle item = context->begin_element(context->make_id("hello"), Name("Hello item"));
+GUICore::ElementHandle item = context->begin_element(context->make_id("hello"));
 GUICore::LayoutConfig layout;
 layout.width.kind = GUICore::SizeKind::fixed;
 layout.width.value = 220.0f;

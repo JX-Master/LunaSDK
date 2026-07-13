@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
 
@@ -271,7 +272,7 @@ namespace Luna
             const c8* label, const GUICore::LayoutConfig& layout)
         {
             luassert(context && id);
-            GUICore::ElementHandle menu_bar = context->begin_element(id, label ? Name(label) : Name("menu_bar"));
+            GUICore::ElementHandle menu_bar = Internal::begin_element(context, id, label ? label : "menu_bar");
             context->set_layout_config(menu_bar, layout);
             Float4U background = style_value(context, Name("gui.editor.menu_bar.background"),
                 GUICore::style_f32x4(Float4U(0.08f, 0.10f, 0.13f, 0.75f))).number;
@@ -370,7 +371,7 @@ namespace Luna
                 item_layout.height.value = top_level ? 24.0f : 26.0f;
             }
 
-            GUICore::ElementHandle item = context->begin_element(id, label ? Name(label) : Name("menu"));
+            GUICore::ElementHandle item = Internal::begin_element(context, id, label ? label : "menu");
             if(out_handle)
             {
                 *out_handle = item;
@@ -429,7 +430,7 @@ namespace Luna
                 item_layout.height.kind = GUICore::SizeKind::fixed;
                 item_layout.height.value = 26.0f;
             }
-            GUICore::ElementHandle item = context->begin_element(id, label ? Name(label) : Name("menu_item"));
+            GUICore::ElementHandle item = Internal::begin_element(context, id, label ? label : "menu_item");
             context->set_layout_config(item, item_layout);
             set_menu_interactable(context, item, enabled);
             draw_menu_item_chrome(context, label, shortcut, selected, enabled, false, false, false, interaction);
@@ -463,7 +464,7 @@ namespace Luna
                 separator_layout.height.kind = GUICore::SizeKind::fixed;
                 separator_layout.height.value = 7.0f;
             }
-            GUICore::ElementHandle separator = context->begin_element(id, Name("menu_separator"));
+            GUICore::ElementHandle separator = Internal::begin_element(context, id, "menu_separator");
             context->set_layout_config(separator, separator_layout);
             f32 padding = style_value(context, Name("gui.editor.menu_separator.padding"),
                 GUICore::style_f32(8.0f)).number.x;

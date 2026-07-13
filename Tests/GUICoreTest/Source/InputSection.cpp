@@ -17,7 +17,7 @@ namespace Luna::GUICoreTest
         void input_sample(GUICore::IContext* context, GUICore::id_t id, const c8* label,
             const Float4U& color, GUICore::PointerHitBehavior behavior, bool circle = false)
         {
-            GUICore::ElementHandle element = context->begin_element(id, Name(label));
+            GUICore::ElementHandle element = context->begin_element(id);
             context->set_layout_config(element, fixed_layout(circle ? 132.0f : 220.0f, circle ? 132.0f : 92.0f));
             set_interactable(context, element, behavior,
                 GUICore::InteractableFlag::hoverable | GUICore::InteractableFlag::activatable |
@@ -200,7 +200,7 @@ namespace Luna::GUICoreTest
 
         void ime_input_element(GUICore::IContext* context, CoreSheetState& state)
         {
-            GUICore::ElementHandle element = context->begin_element(ID_IME_INPUT, Name("IME Input Sample"));
+            GUICore::ElementHandle element = context->begin_element(ID_IME_INPUT);
             context->set_layout_config(element, fixed_layout(560.0f, 68.0f));
             set_interactable(context, element, GUICore::PointerHitBehavior::target,
                 GUICore::InteractableFlag::hoverable | GUICore::InteractableFlag::activatable |
@@ -271,7 +271,7 @@ namespace Luna::GUICoreTest
         void navigation_sample(GUICore::IContext* context, GUICore::id_t id, const c8* label, CoreSheetState& sheet_state,
             bool submenu_item = false)
         {
-            GUICore::ElementHandle element = context->begin_element(id, Name(label));
+            GUICore::ElementHandle element = context->begin_element(id);
             context->set_layout_config(element, fixed_layout(submenu_item ? 260.0f : 154.0f, submenu_item ? 74.0f : 82.0f));
             set_interactable(context, element, GUICore::PointerHitBehavior::target,
                 GUICore::InteractableFlag::hoverable | GUICore::InteractableFlag::activatable |
@@ -322,7 +322,7 @@ namespace Luna::GUICoreTest
         void pointer_demo_element(GUICore::IContext* context, GUICore::id_t id, f32 width, f32 height,
             const c8* name, const c8* behavior, GUICore::PointerHitBehavior hit_behavior, const c8* note = nullptr)
         {
-            GUICore::ElementHandle element = context->begin_element(id, Name(name));
+            GUICore::ElementHandle element = context->begin_element(id);
             context->set_layout_config(element, fixed_layout(width, height));
             if(hit_behavior != GUICore::PointerHitBehavior::none)
             {
@@ -344,7 +344,7 @@ namespace Luna::GUICoreTest
 
     void build_pointer_input_slice(GUICore::IContext* context, CoreSheetState& state)
     {
-        GUICore::ElementHandle panel = context->begin_element(ID_INPUT, Name("Pointer Input Slice Body"));
+        GUICore::ElementHandle panel = context->begin_element(ID_INPUT);
         context->set_layout_config(panel, fixed_layout(SHEET_WIDTH - 128.0f, 528.0f));
         state.pointer_items.clear();
         add_canvas_item(state.pointer_items, ID_POINTER_BASE_LAYER, 0.0f, 0.0f);
@@ -356,7 +356,7 @@ namespace Luna::GUICoreTest
         add_canvas_item(state.pointer_base_items, ID_POINTER_A, 62.0f, 104.0f);
         add_canvas_item(state.pointer_base_items, ID_POINTER_B, 320.0f, 104.0f);
 
-        GUICore::ElementHandle base = context->begin_element(ID_POINTER_BASE_LAYER, Name("Bottom Layer Element"));
+        GUICore::ElementHandle base = context->begin_element(ID_POINTER_BASE_LAYER);
         context->set_layout_config(base, fixed_layout(1160.0f, 290.0f));
         draw_rect(context, RectF(0.0f, 0.0f, 1160.0f, 290.0f), Float4U(0.05f, 0.92f, 0.48f, 1.0f), 0.0f);
         pointer_label(context, 28.0f, 26.0f, "Bottom Layer Element", "PHB: none");
@@ -370,7 +370,7 @@ namespace Luna::GUICoreTest
         set_canvas_layout(context, base, &state.pointer_base_canvas);
         context->end_element();
 
-        GUICore::ElementHandle top = context->begin_element(ID_POINTER_TOP_LAYER, Name("Top Layer Element"));
+        GUICore::ElementHandle top = context->begin_element(ID_POINTER_TOP_LAYER);
         context->set_layout_config(top, fixed_layout(608.0f, 264.0f));
         draw_rect(context, RectF(0.0f, 0.0f, 608.0f, 264.0f), Float4U(1.0f, 0.52f, 0.52f, 1.0f), 0.0f);
         pointer_label(context, 32.0f, 28.0f, "Top Layer Element", "PHB: none");
@@ -413,7 +413,7 @@ namespace Luna::GUICoreTest
 
     void build_keyboard_input_slice(GUICore::IContext* context, CoreSheetState& state)
     {
-        GUICore::ElementHandle panel = context->begin_element(ID_KEYBOARD, Name("Keyboard Input Slice Body"));
+        GUICore::ElementHandle panel = context->begin_element(ID_KEYBOARD);
         context->set_layout_config(panel, fixed_layout(SHEET_WIDTH - 128.0f, 500.0f));
         state.keyboard_items.clear();
         add_canvas_item(state.keyboard_items, ID_IME_INPUT, 704.0f, 286.0f);
@@ -472,7 +472,7 @@ namespace Luna::GUICoreTest
 
     void build_navigation_input_slice(GUICore::IContext* context, CoreSheetState& state)
     {
-        GUICore::ElementHandle panel = context->begin_element(ID_NAVIGATION, Name("Navigation Input Slice Body"));
+        GUICore::ElementHandle panel = context->begin_element(ID_NAVIGATION);
         context->set_layout_config(panel, fixed_layout(SHEET_WIDTH - 128.0f, 500.0f));
         draw_text(context, RectF(0.0f, 0.0f, 620.0f, 46.0f), "Navigation demo", 32.0f,
             Float4U(0.0f, 0.0f, 0.0f, 1.0f));

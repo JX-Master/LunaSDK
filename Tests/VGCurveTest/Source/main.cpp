@@ -256,7 +256,7 @@ namespace Luna
 
     void build_gui(App& app, const Float2U& surface_size)
     {
-        GUICore::ElementHandle root = app.gui->begin_element(ROOT_ID, Name("VG Curve Test Root"));
+        GUICore::ElementHandle root = app.gui->begin_element(ROOT_ID);
         set_element_rect(app.gui, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
 
         draw_label(app.gui, FIRST_TEXT_ID, 14.0f, 14.0f, 280.0f, "VG Cubic Curve Test");
@@ -432,7 +432,7 @@ namespace Luna
                 app.gui->begin_frame(frame);
                 GUIWindow::update_input(&input_adapter);
 
-                app.gui->push_layer(DEFAULT_LAYER_ID, Float2U(0.0f), Name("default"));
+                app.gui->push_layer(DEFAULT_LAYER_ID, Float2U(0.0f));
                 build_gui(app, frame.screen_size);
                 app.gui->pop_layer();
                 app.gui->route_input();

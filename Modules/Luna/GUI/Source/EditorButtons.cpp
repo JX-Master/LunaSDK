@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorWidgets.hpp>
 
 namespace Luna
@@ -40,7 +41,7 @@ namespace Luna
             const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("button"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, label ? label : "button");
             context->set_layout_config(element, layout);
             GUICore::Interactable interactable;
             interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;

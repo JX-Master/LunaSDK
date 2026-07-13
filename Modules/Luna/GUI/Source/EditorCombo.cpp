@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
 
@@ -186,7 +187,7 @@ namespace Luna
             }
 
             bool open = is_popup_open(context, popup_id);
-            GUICore::ElementHandle preview = context->begin_element(id, label ? Name(label) : Name("combo"));
+            GUICore::ElementHandle preview = Internal::begin_element(context, id, label ? label : "combo");
             context->set_layout_config(preview, layout);
             set_basic_interactable(context, preview);
             Float4U background = style_value(context, open ? Name("gui.editor.combo.background_open") :

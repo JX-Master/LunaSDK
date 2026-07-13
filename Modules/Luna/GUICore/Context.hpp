@@ -8,8 +8,9 @@
 * @date 2026/6/17
 */
 #pragma once
-#include "Debug.hpp"
-#include "Input.hpp"
+#include "DrawCommand.hpp"
+#include "Performance.hpp"
+#include "Style.hpp"
 #include "Context.generated.hpp"
 
 namespace Luna
@@ -88,15 +89,30 @@ namespace Luna
             //! @param[in] events The events in the order they should be processed.
             virtual void add_input_events(Span<const InputEvent> events) = 0;
 
+            //! Gets input events queued for the current frame.
+            //! @return Returns a read-only span in submission order.
+            //! @remark The returned span is invalidated by the next input event insertion or @ref begin_frame call.
+            virtual Span<const InputEvent> get_input_events() const = 0;
+
             //! Begins building one layer.
             //! @param[in] id The stable layer ID.
             //! @param[in] screen_position The layer top-left position in screen coordinates.
-            //! @param[in] debug_name Optional human-readable debug name.
             //! @remark The first element created after this call becomes this layer's root element.
-            virtual void push_layer(id_t id, const Float2U& screen_position = Float2U(0.0f), const Name& debug_name = Name()) = 0;
+            virtual void push_layer(id_t id, const Float2U& screen_position = Float2U(0.0f)) = 0;
 
             //! Ends the current layer.
             virtual void pop_layer() = 0;
+
+            //! Gets all layers submitted for the current frame in bottom-to-top order.
+            //! @return Returns a read-only span of the dense layer array.
+            //! @remark The returned span is invalidated by the next layer insertion or @ref begin_frame call.
+            virtual Span<const Layer> get_layers() const = 0;
+
+            //! Sets the human-readable debug name of one layer.
+            //! @param[in] id Stable layer ID.
+            //! @param[in] name Human-readable debug name.
+            //! @remark Debug names are observational metadata and must not affect GUI behavior.
+            virtual void set_layer_debug_name(id_t id, const Name& name) = 0;
 
             //! Pushes one data scope used by @ref make_id.
             //! @param[in] id Stable scope ID.
@@ -111,6 +127,11 @@ namespace Luna
             //! @return Returns the active data scope, or @ref DEFAULT_DATA_SCOPE when no explicit scope is active.
             virtual id_t current_data_scope() const = 0;
 
+            //! Gets the complete data scope stack from the default scope to the current scope.
+            //! @return Returns a read-only span of scoped IDs.
+            //! @remark The returned span is invalidated by the next data scope mutation or @ref begin_frame call.
+            virtual Span<const id_t> get_data_scope_stack() const = 0;
+
             //! Creates one scoped ID from a numeric local ID.
             //! @param[in] local_id Local ID inside the current data scope.
             //! @return Returns the generated stable ID.
@@ -123,9 +144,8 @@ namespace Luna
 
             //! Begins one typeless element.
             //! @param[in] id Stable element ID.
-            //! @param[in] debug_name Optional human-readable debug name.
             //! @return Returns the created element handle.
-            virtual ElementHandle begin_element(id_t id, const Name& debug_name = Name()) = 0;
+            virtual ElementHandle begin_element(id_t id) = 0;
 
             //! Ends the current element.
             virtual void end_element() = 0;
@@ -207,6 +227,11 @@ namespace Luna
             //! @return Returns the element, or `nullptr` if @p index is invalid.
             virtual const Element* get_element(u32 index) const = 0;
 
+            //! Gets all elements submitted for the current frame in dense storage order.
+            //! @return Returns a read-only span of the dense element array.
+            //! @remark The returned span is invalidated by the next element insertion or @ref begin_frame call.
+            virtual Span<const Element> get_elements() const = 0;
+
             //! Finds one element by stable ID.
             //! @param[in] id The stable element ID.
             //! @return Returns the element, or `nullptr` if no element with this ID exists.
@@ -216,6 +241,12 @@ namespace Luna
             //! @param[in] id The stable element ID.
             //! @return Returns the current-frame element handle, or an invalid handle if no element with this ID exists.
             virtual ElementHandle find_element_handle(id_t id) const = 0;
+
+            //! Sets the human-readable debug name of one element.
+            //! @param[in] element The element to name.
+            //! @param[in] name Human-readable debug name.
+            //! @remark Debug names are observational metadata and must not affect GUI behavior.
+            virtual void set_element_debug_name(const ElementHandle& element, const Name& name) = 0;
 
             //! Sets delayed draw behavior for an element.
             //! @param[in] element The element handle returned by @ref begin_element.
@@ -440,6 +471,17 @@ namespace Luna
             //! @return Returns the resolved style value.
             virtual StyleValue get_style_value(const Name& style, const Name& entry, const StyleValue& default_value) = 0;
 
+            //! Gets one style record by name.
+            //! @param[in] name The style name.
+            //! @return Returns the style record, or `nullptr` if the style is not defined.
+            //! @remark The returned pointer is invalidated when the style store is modified.
+            virtual const Style* get_style(const Name& name) const = 0;
+
+            //! Gets all styles defined in this context.
+            //! @return Returns a read-only reference to the named style store.
+            //! @remark References and iterators are invalidated when the style store is modified.
+            virtual const HashMap<Name, Style>& get_styles() const = 0;
+
             //! Registers or replaces one style entry schema.
             //! @param[in] schema Style entry metadata declared by a high-level immediate API package.
             //! @remark GUI Core stores this metadata for editors and debug tooling. It does not interpret the entry
@@ -453,76 +495,11 @@ namespace Luna
             //! Gets performance counters collected for the current GUI Core frame.
             //! @return Returns a copy of the current performance counters.
             virtual PerformanceCounters get_performance_counters() = 0;
-
-            //! Dumps an in-memory debug snapshot for the current GUI Core frame.
-            //! @return Returns the debug information snapshot.
-            //! @remark The snapshot may contain runtime callback, userdata, texture, and shape-buffer pointers. It is
-            //! suitable for same-process panels, inspection, and tests, but is not a cross-process wire format.
-            virtual DebugInfo dump_debug_info() = 0;
-
-            //! Logs one debug issue for the current frame.
-            //! @param[in] severity Issue severity.
-            //! @param[in] category Subsystem or feature that reports the issue.
-            //! @param[in] message Human-readable diagnostic message.
-            //! @param[in] element Related element ID, or zero if the issue is not tied to one element.
-            //! @remark Issues are frame-local and are included by @ref dump_debug_info.
-            virtual void log_debug_issue(DebugIssueSeverity severity, const Name& category, const c8* message,
-                id_t element = 0) = 0;
-
-            //! Logs one debug pass reason for the current frame.
-            //! @param[in] kind Subsystem that produced the pass.
-            //! @param[in] name Stable pass name.
-            //! @param[in] reason Stable reason identifier.
-            //! @param[in] element Related element ID, or zero when the pass is not tied to one element.
-            //! @param[in] detail Optional human-readable detail text.
-            //! @param[in] duration_ms Optional elapsed time in milliseconds.
-            //! @remark Pass records are frame-local and are included by @ref dump_debug_info. They are intended
-            //! for debug tooling and do not affect layout, input or rendering behavior.
-            virtual void log_debug_pass(DebugPassKind kind, const Name& name, const Name& reason, id_t element = 0,
-                const c8* detail = nullptr, f64 duration_ms = 0.0) = 0;
         };
 
         //! Creates a new GUI Core context.
         //! @return Returns the created context.
         LUNA_GUICORE_API Ref<IContext> new_context();
-
-        //! Queues the input events stored in one debug snapshot into a GUI Core context.
-        //! @param[in] context The context that will receive the recorded input events.
-        //! @param[in] info The debug snapshot whose input events should be replayed.
-        //! @return Returns success or failure code.
-        //! @remark This helper does not call @ref IContext::begin_frame or @ref IContext::route_input. Callers
-        //! should rebuild the desired element tree for the replay frame, call this function, then route input.
-        LUNA_GUICORE_API RV replay_input_events(IContext* context, const DebugInfo& info);
-
-        //! Appends one debug frame to a timeline and moves the cursor to the appended frame.
-        //! @param[in,out] timeline The timeline that receives the frame.
-        //! @param[in] info The debug snapshot to append.
-        //! @param[in] max_frames Optional maximum number of frames to keep. Passing zero keeps all frames.
-        //! @remark When @p max_frames is non-zero and the timeline grows past the limit, the oldest frames are removed.
-        LUNA_GUICORE_API void push_debug_frame(DebugFrameTimeline& timeline, const DebugInfo& info, usize max_frames = 0);
-
-        //! Gets the current debug frame from a timeline.
-        //! @param[in] timeline The timeline to read.
-        //! @return Returns the current frame, or `nullptr` when the timeline is empty.
-        LUNA_GUICORE_API const DebugInfo* current_debug_frame(const DebugFrameTimeline& timeline);
-
-        //! Seeks to a specific debug frame index.
-        //! @param[in,out] timeline The timeline to edit.
-        //! @param[in] index The desired frame index.
-        //! @return Returns the selected frame, or `nullptr` when the timeline is empty.
-        //! @remark Out-of-range indexes are clamped to the last captured frame.
-        LUNA_GUICORE_API const DebugInfo* seek_debug_frame(DebugFrameTimeline& timeline, usize index);
-
-        //! Moves the debug frame cursor by a signed delta.
-        //! @param[in,out] timeline The timeline to edit.
-        //! @param[in] delta The signed frame offset to apply.
-        //! @return Returns the selected frame, or `nullptr` when the timeline is empty.
-        //! @remark Stepping is clamped to the captured frame range.
-        LUNA_GUICORE_API const DebugInfo* step_debug_frame(DebugFrameTimeline& timeline, isize delta);
-
-        //! Clears all frames from a debug timeline.
-        //! @param[in,out] timeline The timeline to clear.
-        LUNA_GUICORE_API void clear_debug_frames(DebugFrameTimeline& timeline);
 
         //! Gets the GUI Core module object.
         //! @return Returns the GUI Core module object.

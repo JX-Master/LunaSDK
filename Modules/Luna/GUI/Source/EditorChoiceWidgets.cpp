@@ -9,6 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
+#include "EditorInternal.hpp"
 #include <Luna/GUI/EditorState.hpp>
 #include <Luna/GUI/EditorWidgets.hpp>
 
@@ -90,7 +91,7 @@ namespace Luna
             const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("selectable"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, label ? label : "selectable");
             context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled);
             if(selected)
@@ -113,7 +114,7 @@ namespace Luna
             const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("checkbox"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, label ? label : "checkbox");
             context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled);
             Float4U border = style_value(context, Name("gui.editor.check.border"),
@@ -164,7 +165,7 @@ namespace Luna
             const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("radio_button"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, label ? label : "radio_button");
             context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled);
             Float4U border = style_value(context, Name("gui.editor.check.border"),
@@ -221,7 +222,7 @@ namespace Luna
             const GUICore::LayoutConfig& layout, bool enabled)
         {
             luassert(context && id);
-            GUICore::ElementHandle element = context->begin_element(id, label ? Name(label) : Name("toggle_switch"));
+            GUICore::ElementHandle element = Internal::begin_element(context, id, label ? label : "toggle_switch");
             context->set_layout_config(element, layout);
             set_basic_interactable(context, element, enabled);
             f32 target = checked ? 1.0f : 0.0f;

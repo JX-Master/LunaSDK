@@ -65,7 +65,7 @@ namespace
             add_layout_slice_items(state, state.slice_index - NUM_INPUT_SLICES);
         }
 
-        GUICore::ElementHandle sheet = context->begin_element(ID_SHEET, Name("Fixed Cheat Sheet"));
+        GUICore::ElementHandle sheet = context->begin_element(ID_SHEET);
         context->set_layout_config(sheet, fixed_layout(SHEET_WIDTH, SHEET_HEIGHT));
         GUICore::DrawConfig sheet_draw;
         sheet_draw.name = Name("guicore.test.sheet");
@@ -108,8 +108,8 @@ namespace
         state.screen_canvas.items = Span<const GUICore::CanvasLayoutItem>(&state.screen_item, 1);
         state.screen_canvas.clip_children = false;
 
-        context->push_layer(1, Float2U(0.0f), Name("default"));
-        GUICore::ElementHandle root = context->begin_element(ID_SCREEN_ROOT, Name("Screen Root"));
+        context->push_layer(1, Float2U(0.0f));
+        GUICore::ElementHandle root = context->begin_element(ID_SCREEN_ROOT);
         context->set_layout_config(root, fixed_layout(SHEET_WIDTH, SHEET_HEIGHT));
         build_sheet(context, state);
         set_canvas_layout(context, root, &state.screen_canvas);

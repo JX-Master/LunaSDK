@@ -117,7 +117,7 @@ namespace Luna::GUICoreTest
     GUICore::ElementHandle begin_panel(GUICore::IContext* context, GUICore::id_t id, const c8* title,
         f32 width, f32 height)
     {
-        GUICore::ElementHandle panel = context->begin_element(id, Name(title));
+        GUICore::ElementHandle panel = context->begin_element(id);
         context->set_layout_config(panel, fixed_layout(width, height));
         draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(1.0f, 1.0f, 1.0f, 1.0f), 0.0f);
         draw_line(context, Float2U(0.0f, 44.0f), Float2U(width, 44.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f), 1.25f);
