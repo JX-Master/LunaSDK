@@ -5,12 +5,13 @@
 *
 * @file GUI.cpp
 * @author JXMaster
-* @date 2026/7/13
+* @date 2026/5/21
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
-#include "Internal.hpp"
-#include "GUI.meta.generated.hpp"
+#include "../Base.hpp"
+#include "GUILegacy.meta.generated.hpp"
+#include <Luna/GUICore/GUICore.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/VG/VG.hpp>
@@ -20,34 +21,28 @@ namespace Luna
 {
     namespace GUI
     {
-        struct GUIModule : Module
+        struct ModuleImpl : public Module
         {
-            virtual const c8* get_name() override
-            {
-                return "GUI";
-            }
-
+            virtual const c8* get_name() override { return "GUILegacy"; }
             virtual RV on_register() override
             {
-                return add_dependency_modules(this,
-                    { module_rhi(), module_vg(), module_font(), GUICore::module_gui_core() });
+                return add_dependency_modules(this, {module_rhi(), module_vg(), module_font(), GUICore::module_gui_core()});
             }
-
             virtual RV on_init() override
             {
-                Meta::register_GUI_types();
+                Meta::register_GUILegacy_types();
                 return ok;
             }
-
-            virtual void on_close() override
-            {
-            }
+            virtual void on_close() override {}
         };
+    }
 
+    namespace GUI
+    {
         LUNA_GUI_API Module* module_gui()
         {
-            static GUIModule module;
-            return &module;
+            static ModuleImpl m;
+            return &m;
         }
     }
 }

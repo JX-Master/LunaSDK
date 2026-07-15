@@ -46,6 +46,15 @@ namespace Luna
         //! provide scrolling by itself; callers can combine it with scroll viewport primitives.
         LUNA_GUICORE_API RV layout_grid(IContext* context, const ElementHandle& element, const RectF& rect, void* userdata);
 
+        //! Measures the content size required by a row-major grid layout element.
+        //! @param[in] context The GUI Core context that owns @p element.
+        //! @param[in] element The grid container element.
+        //! @param[in] available_content_size Available parent content-box size.
+        //! @param[in] userdata Pointer to @ref GridLayoutDesc owned by the caller.
+        //! @return Returns content-box minimum, desired and maximum sizes for the grid container.
+        LUNA_GUICORE_API MeasureResult measure_grid(IContext* context, const ElementHandle& element,
+            const Float2U& available_content_size, void* userdata);
+
         //! Applies one anchor-based canvas layout algorithm to the direct children of one element.
         //! @param[in] context The GUI Core context that owns @p element.
         //! @param[in] element The parent element whose direct children will be arranged.

@@ -43,7 +43,7 @@ GUI Core invokes callback pointers directly. `algorithm` is not a registration o
 2. `desired`: preferred content size.
 3. `maximum`: maximum content size, or `F32_MAX` for an unbounded axis.
 
-GUI Core adds padding, applies `SizeValue::min` and `SizeValue::max`, and resolves the final element-box measurement. Margin belongs to the parent layout algorithm and is not included in `MeasureResult`.
+GUI Core adds padding, applies `SizeValue::min` and `SizeValue::max`, and resolves the final element-box measurement. Margin belongs to the parent layout algorithm and is not included in `MeasureResult`. A parent layout algorithm reserves the child's margin before calling `IContext::measure_element`; the measure callback therefore receives the remaining content-box size after GUI Core removes padding.
 
 This keeps drawing and measurement separate. Text may live only in `DrawCommand` records; GUI Core will not scan draw commands to infer text size. A higher-level package that wants text hug sizing should install a text measure callback and pass the text, font and font size through its own callback userdata.
 

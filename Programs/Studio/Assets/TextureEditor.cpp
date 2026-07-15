@@ -9,7 +9,7 @@
 */
 #include "Texture.hpp"
 #include "TextureEditor.hpp"
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 
 namespace Luna
 {

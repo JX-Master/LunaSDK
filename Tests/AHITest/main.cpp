@@ -13,7 +13,7 @@
 #include <Luna/Window/Window.hpp>
 #include <Luna/RHI/SwapChain.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/Font/Font.hpp>
 #include <Luna/VG/ShapeDrawList.hpp>

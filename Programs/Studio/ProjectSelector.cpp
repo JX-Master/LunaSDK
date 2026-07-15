@@ -10,7 +10,7 @@
 #include "ProjectSelector.hpp"
 #include "StudioEnv.hpp"
 #include <Luna/Font/Font.hpp>
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/GUICore/GUICore.hpp>
 #include <Luna/Runtime/Time.hpp>

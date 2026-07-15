@@ -9,7 +9,7 @@
 */
 #include "EditObject.hpp"
 #include <Luna/Runtime/Reflection.hpp>
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/Runtime/HashMap.hpp>

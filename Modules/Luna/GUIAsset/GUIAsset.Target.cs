@@ -11,6 +11,6 @@ public sealed class GUIAssetTargetRules : TargetRules
         Headers("*.hpp", "Source/**.hpp");
         MetaHeaders("GUIAsset.hpp");
         Sources("Source/**.cpp");
-        DependsOn("Runtime", "Asset", "GUI", "GUICore", "VariantUtils", "VFS");
+        DependsOn("Runtime", "Asset", "GUILegacy", "GUICore", "VariantUtils", "VFS");
     }
 }

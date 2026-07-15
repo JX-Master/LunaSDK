@@ -5,18 +5,9 @@
 *
 * @file GUI.hpp
 * @author JXMaster
-* @date 2026/5/21
+* @date 2026/7/13
 */
 #pragma once
-#include "Editor.hpp"
-
-namespace Luna
-{
-    namespace GUI
-    {
-        //! @addtogroup GUI GUI
-        //! Editor-style immediate GUI package that builds directly into GUI Core.
-        //! @{
-        //! @}
-    }
-}
+#include "Style.hpp"
+#include "Widgets.hpp"
+#include "Layouts.hpp"

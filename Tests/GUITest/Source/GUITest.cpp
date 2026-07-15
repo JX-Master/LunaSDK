@@ -5,654 +5,609 @@
 *
 * @file GUITest.cpp
 * @author JXMaster
-* @date 2026/5/21
+* @date 2026/7/13
 */
-#include "../../Shared/InteractiveGUIDemo.hpp"
+#include <Luna/Font/Font.hpp>
+#include <Luna/GUI/GUI.hpp>
+#include <Luna/GUICore/GUICore.hpp>
+#include <Luna/GUIWindow/GUIWindow.hpp>
+#include <Luna/RHI/RHI.hpp>
+#include <Luna/RHI/SwapChain.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
+#include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/Runtime/MemoryUtils.hpp>
-#include <Luna/VG/Shapes.hpp>
+#include <Luna/Runtime/Module.hpp>
+#include <Luna/Runtime/Runtime.hpp>
+#include <Luna/Runtime/Thread.hpp>
+#include <Luna/VG/ShapeDrawList.hpp>
+#include <Luna/VG/ShapeRenderer.hpp>
+#include <Luna/VG/VG.hpp>
 #include <Luna/Window/AppMain.hpp>
+#include <Luna/Window/Event.hpp>
+#include <Luna/Window/Window.hpp>
 #include <cstdio>
-#include <cstring>
 
 using namespace Luna;
 
 namespace
 {
-    struct EditorDemoState
+    struct DemoState
     {
-        bool checkbox = true;
-        bool toggle = false;
-        bool radio_a = true;
-        bool radio_b = false;
-        bool multi[4] = { true, false, true, false };
-        i32 radio_value = 1;
-        i32 button_group_value = 0;
-        i32 combo_value = 0;
-        String input = "Editable text";
-        String readonly_input = "Readonly text";
-        f32 slider_float = 0.45f;
-        f32 slider_float2[2] = { 0.25f, 0.75f };
-        f32 slider_float3[3] = { 0.2f, 0.5f, 0.8f };
-        f32 slider_float4[4] = { 0.15f, 0.35f, 0.65f, 0.9f };
-        i32 slider_int = 42;
-        i32 slider_int2[2] = { 16, 84 };
-        i32 slider_int3[3] = { 8, 32, 64 };
-        i32 slider_int4[4] = { 12, 36, 68, 92 };
-        f32 drag_float = 12.5f;
-        f32 drag_float2[2] = { -5.0f, 5.0f };
-        f32 drag_float3[3] = { -1.0f, 0.0f, 1.0f };
-        f32 drag_float4[4] = { 0.0f, 1.0f, 2.0f, 3.0f };
-        i32 drag_int = 16;
-        i32 drag_int2[2] = { -16, 16 };
-        i32 drag_int3[3] = { -8, 0, 8 };
-        i32 drag_int4[4] = { -4, -2, 2, 4 };
-        f32 color3[3] = { 0.20f, 0.55f, 0.90f };
-        f32 color4[4] = { 0.84f, 0.32f, 0.18f, 0.80f };
-        u8 color3_u8[3] = { 48, 190, 126 };
-        u8 color4_u8[4] = { 210, 80, 172, 200 };
-        u32 color3_rgba8 = 0xCC6633FFu;
-        u32 color4_rgba8 = 0xFFC020CCu;
-        Ref<VG::IShapeBuffer> shape_buffer;
-        GUICore::ShapeDesc icon_shape;
+        i32 selected_tab = 0;
+        i32 selected_group = 1;
+        i32 button_clicks = 0;
+        String input_value = "Editable text";
+        String notes = "The new GUI package is built directly on GUI Core.";
+        String read_only_value = "Read-only value";
+        f32 slider_value = 0.42f;
+        i32 slider_integer = 64;
         Ref<RHI::ITexture> image_texture;
-        bool tab_a_open = true;
-        bool tab_b_open = true;
-        bool tab_c_open = true;
-        bool menu_show_grid = true;
-        bool menu_snap = false;
-        bool popup_toggle = false;
-        bool dock_left_open = true;
-        bool dock_right_open = true;
-        bool dock_bottom_open = true;
-        bool dock_layout_initialized = false;
-        bool show_debug_panel = false;
     };
 
-    GUICore::LayoutConfig row_layout()
+    struct FrameHandles
     {
-        return Test::fill_width_layout(32.0f);
+        GUICore::ElementHandle container_button;
+    };
+
+    struct DemoApp
+    {
+        Ref<Window::IWindow> window;
+        Ref<RHI::ISwapChain> swap_chain;
+        Ref<RHI::ICommandBuffer> cmdbuf;
+        Ref<GUICore::IContext> gui;
+        Ref<VG::IShapeDrawList> draw_list;
+        Ref<VG::IShapeRenderer> renderer;
+        u32 queue = U32_MAX;
+        u32 width = 0;
+        u32 height = 0;
+        DemoState state;
+    };
+
+    struct DemoOptions
+    {
+        i32 selected_tab = 0;
+        i32 max_frames = -1;
+    };
+
+    GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
+    {
+        GUICore::LayoutConfig layout;
+        layout.width.kind = GUICore::SizeKind::fixed;
+        layout.width.value = width;
+        layout.height.kind = GUICore::SizeKind::fixed;
+        layout.height.value = height;
+        return layout;
     }
 
-    GUICore::LayoutConfig tall_row_layout()
+    GUICore::LayoutConfig fill_layout()
     {
-        return Test::fill_width_layout(42.0f);
+        GUICore::LayoutConfig layout;
+        layout.width.kind = GUICore::SizeKind::percent;
+        layout.width.value = 1.0f;
+        layout.height.kind = GUICore::SizeKind::percent;
+        layout.height.value = 1.0f;
+        return layout;
     }
 
-    void text_line(GUICore::IContext* context, GUICore::id_t id, const c8* text)
+    GUICore::LayoutConfig fill_width_layout(f32 height, f32 margin = 4.0f)
     {
-        GUI::text(context, id, text, row_layout());
+        GUICore::LayoutConfig layout;
+        layout.width.kind = GUICore::SizeKind::percent;
+        layout.width.value = 1.0f;
+        layout.height.kind = GUICore::SizeKind::fixed;
+        layout.height.value = height;
+        layout.margin = Float4U(8.0f, margin, 8.0f, margin);
+        return layout;
     }
 
-    void ensure_shapes(EditorDemoState& state)
+    GUICore::LayoutConfig growing_layout()
     {
-        if(state.shape_buffer)
+        GUICore::LayoutConfig layout;
+        layout.width.kind = GUICore::SizeKind::fit;
+        layout.height.kind = GUICore::SizeKind::fit;
+        layout.flex_grow = 1.0f;
+        return layout;
+    }
+
+    GUI::id_t make_id(GUICore::IContext* context, const c8* name)
+    {
+        return context->make_id(name);
+    }
+
+    GUI::id_t make_child_id(GUI::id_t parent, u64 index)
+    {
+        return GUICore::make_scoped_id(parent, index + 1);
+    }
+
+    GUI::TextDesc heading_desc(f32 size)
+    {
+        GUI::TextDesc desc;
+        desc.font_size = size;
+        return desc;
+    }
+
+    void section_heading(GUICore::IContext* context, const c8* id, const c8* value)
+    {
+        GUI::text(context, make_id(context, id), value, fill_width_layout(30.0f, 8.0f), heading_desc(19.0f));
+    }
+
+    GUICore::ElementHandle begin_page(GUICore::IContext* context, const c8* id)
+    {
+        GUI::ScrollViewDesc desc;
+        desc.horizontal = false;
+        return GUI::begin_scroll_view(context, make_id(context, id), id, fill_layout(), desc);
+    }
+
+    void build_primitives_page(GUICore::IContext* context, DemoState& state)
+    {
+        begin_page(context, "demo.primitives.scroll");
+        section_heading(context, "demo.primitives.heading.text", "Text");
+        GUI::text(context, make_id(context, "demo.primitives.text.normal"),
+            "Text is measured by its VG font arrangement callback.", fill_width_layout(28.0f));
+        GUI::TextDesc centered;
+        centered.horizontal_alignment = GUI::TextAlignment::center;
+        centered.font_size = 22.0f;
+        GUI::text(context, make_id(context, "demo.primitives.text.centered"),
+            "Centered 22 pt text", fill_width_layout(42.0f), centered);
+
+        section_heading(context, "demo.primitives.heading.image", "Image");
+        GUICore::ElementHandle image_row = GUI::begin_h_layout(context,
+            make_id(context, "demo.primitives.image.row"), "Image row", fill_width_layout(120.0f));
+        GUICore::LayoutConfig image_layout = fixed_layout(104.0f, 104.0f);
+        image_layout.margin = Float4U(4.0f);
+        GUI::image(context, make_id(context, "demo.primitives.image"), state.image_texture, image_layout);
+        GUICore::LayoutConfig description_layout = growing_layout();
+        description_layout.height.kind = GUICore::SizeKind::percent;
+        description_layout.height.value = 1.0f;
+        GUICore::ElementHandle description = GUI::begin_v_layout(context,
+            make_id(context, "demo.primitives.image.description"), "Image description", description_layout);
+        GUI::text(context, make_id(context, "demo.primitives.image.title"), "RHI texture rendered by the Image widget",
+            fill_width_layout(30.0f, 2.0f), heading_desc(17.0f));
+        GUI::text(context, make_id(context, "demo.primitives.image.body"),
+            "The sample uses a generated checker texture and the default linear sampler.", fill_width_layout(46.0f, 2.0f));
+        GUICore::FlexLayoutDesc description_flex;
+        description_flex.axis = GUICore::LayoutAxis::y;
+        description_flex.main_alignment = GUICore::FlexAlignment::center;
+        GUI::end_v_layout(context, description, description_flex);
+        GUICore::FlexLayoutDesc image_row_flex;
+        image_row_flex.axis = GUICore::LayoutAxis::x;
+        image_row_flex.cross_alignment = GUICore::FlexAlignment::center;
+        image_row_flex.main_axis_gap = 12.0f;
+        GUI::end_h_layout(context, image_row, image_row_flex);
+
+        section_heading(context, "demo.primitives.heading.progress", "Progress Bar");
+        GUI::progress_bar(context, make_id(context, "demo.primitives.progress"), state.slider_value,
+            fill_width_layout(28.0f));
+        GUI::text(context, make_id(context, "demo.primitives.progress.note"),
+            "The progress value is shared with the floating-point slider on the Input tab.", fill_width_layout(28.0f));
+        GUI::end_scroll_view(context);
+    }
+
+    void build_buttons_page(GUICore::IContext* context, DemoState& state, FrameHandles& handles)
+    {
+        begin_page(context, "demo.buttons.scroll");
+        section_heading(context, "demo.buttons.heading", "Button Containers");
+        GUI::text_button(context, make_id(context, "demo.buttons.text"), "Text Button", fill_width_layout(38.0f));
+        GUI::ButtonDesc disabled;
+        disabled.enabled = false;
+        GUI::text_button(context, make_id(context, "demo.buttons.disabled"), "Disabled Button",
+            fill_width_layout(38.0f), disabled);
+
+        handles.container_button = GUI::begin_button(context, make_id(context, "demo.buttons.container"),
+            "Container Button", fill_width_layout(46.0f));
+        GUI::text(context, make_id(context, "demo.buttons.container.prefix"), "[+] ");
+        GUI::text(context, make_id(context, "demo.buttons.container.label"),
+            "Button is a container and does not render its debug label");
+        GUI::end_button(context);
+
+        c8 status[96];
+        snprintf(status, sizeof(status), "Container button clicks: %d", state.button_clicks);
+        GUI::text(context, make_id(context, "demo.buttons.clicks"), status, fill_width_layout(28.0f));
+
+        section_heading(context, "demo.buttons.group.heading", "Button Group");
+        const c8* items[] = { "Build", "Run", "Profile", "Ship" };
+        GUI::button_group(context, make_id(context, "demo.buttons.group"),
+            Span<const c8*>(items, 4), &state.selected_group, fill_width_layout(38.0f));
+        snprintf(status, sizeof(status), "Selected item: %s", items[clamp(state.selected_group, 0, 3)]);
+        GUI::text(context, make_id(context, "demo.buttons.group.status"), status, fill_width_layout(28.0f));
+        GUI::end_scroll_view(context);
+    }
+
+    void build_input_page(GUICore::IContext* context, DemoState& state)
+    {
+        begin_page(context, "demo.input.scroll");
+        section_heading(context, "demo.input.heading.text", "Text Input");
+        GUI::TextInputDesc input_desc;
+        input_desc.placeholder = "Enter text";
+        GUI::input_text(context, make_id(context, "demo.input.editable"), state.input_value,
+            fill_width_layout(38.0f), input_desc);
+        GUI::input_text(context, make_id(context, "demo.input.notes"), state.notes,
+            fill_width_layout(38.0f), input_desc);
+        GUI::TextInputDesc read_only;
+        read_only.read_only = true;
+        GUI::input_text(context, make_id(context, "demo.input.readonly"), state.read_only_value,
+            fill_width_layout(38.0f), read_only);
+        GUI::TextInputDesc disabled;
+        disabled.enabled = false;
+        GUI::input_text(context, make_id(context, "demo.input.disabled"), state.read_only_value,
+            fill_width_layout(38.0f), disabled);
+
+        section_heading(context, "demo.input.heading.slider", "Slider");
+        GUI::slider_float(context, make_id(context, "demo.input.slider.float"), &state.slider_value,
+            0.0f, 1.0f, fill_width_layout(30.0f));
+        GUI::slider_int(context, make_id(context, "demo.input.slider.int"), &state.slider_integer,
+            0, 100, fill_width_layout(30.0f));
+        c8 values[128];
+        snprintf(values, sizeof(values), "float = %.3f    integer = %d", state.slider_value, state.slider_integer);
+        GUI::text(context, make_id(context, "demo.input.slider.values"), values, fill_width_layout(28.0f));
+        GUI::end_scroll_view(context);
+    }
+
+    void build_layouts_page(GUICore::IContext* context)
+    {
+        begin_page(context, "demo.layouts.scroll");
+        section_heading(context, "demo.layouts.heading.flex", "HLayout and VLayout");
+        GUICore::ElementHandle horizontal = GUI::begin_h_layout(context,
+            make_id(context, "demo.layouts.horizontal"), "Horizontal flex", fill_width_layout(54.0f));
+        GUI::text_button(context, make_id(context, "demo.layouts.horizontal.fixed"), "Fixed",
+            fixed_layout(120.0f, 42.0f));
+        GUICore::LayoutConfig growing = fixed_layout(120.0f, 42.0f);
+        growing.flex_grow = 1.0f;
+        GUI::text_button(context, make_id(context, "demo.layouts.horizontal.grow"), "flex_grow = 1", growing);
+        GUI::text_button(context, make_id(context, "demo.layouts.horizontal.trailing"), "Fixed 140",
+            fixed_layout(140.0f, 42.0f));
+        GUICore::FlexLayoutDesc horizontal_desc;
+        horizontal_desc.axis = GUICore::LayoutAxis::x;
+        horizontal_desc.main_axis_gap = 8.0f;
+        horizontal_desc.cross_alignment = GUICore::FlexAlignment::center;
+        GUI::end_h_layout(context, horizontal, horizontal_desc);
+
+        GUICore::ElementHandle vertical = GUI::begin_v_layout(context,
+            make_id(context, "demo.layouts.vertical"), "Vertical flex", fill_width_layout(150.0f));
+        GUI::text_button(context, make_id(context, "demo.layouts.vertical.a"), "Vertical A", fill_width_layout(34.0f, 0.0f));
+        GUI::text_button(context, make_id(context, "demo.layouts.vertical.b"), "Vertical B", fill_width_layout(34.0f, 0.0f));
+        GUI::text_button(context, make_id(context, "demo.layouts.vertical.c"), "Vertical C", fill_width_layout(34.0f, 0.0f));
+        GUICore::FlexLayoutDesc vertical_desc;
+        vertical_desc.axis = GUICore::LayoutAxis::y;
+        vertical_desc.main_axis_gap = 6.0f;
+        GUI::end_v_layout(context, vertical, vertical_desc);
+
+        section_heading(context, "demo.layouts.heading.grid", "GridLayout");
+        GUICore::LayoutConfig grid_layout = fill_width_layout(148.0f);
+        GUICore::ElementHandle grid = GUI::begin_grid_layout(context,
+            make_id(context, "demo.layouts.grid"), "Grid", grid_layout);
+        GUI::id_t grid_id = make_id(context, "demo.layouts.grid.items");
+        for(u64 i = 0; i < 8; ++i)
         {
-            return;
+            c8 label[32];
+            snprintf(label, sizeof(label), "Cell %llu", (unsigned long long)(i + 1));
+            GUI::text_button(context, make_child_id(grid_id, i), label);
         }
-        state.shape_buffer = VG::new_shape_buffer();
-        Vector<f32>& points = state.shape_buffer->get_shape_points(true);
-        state.icon_shape.buffer = state.shape_buffer;
-        state.icon_shape.first_command = (u32)points.size();
-        VG::ShapeBuilder::move_to(points, 4.0f, 14.0f);
-        VG::ShapeBuilder::line_to(points, 10.0f, 8.0f);
-        VG::ShapeBuilder::line_to(points, 14.0f, 12.0f);
-        VG::ShapeBuilder::line_to(points, 20.0f, 6.0f);
-        VG::ShapeBuilder::line_to(points, 20.0f, 12.0f);
-        VG::ShapeBuilder::line_to(points, 14.0f, 18.0f);
-        VG::ShapeBuilder::line_to(points, 10.0f, 14.0f);
-        VG::ShapeBuilder::line_to(points, 6.0f, 18.0f);
-        state.icon_shape.num_commands = (u32)points.size() - state.icon_shape.first_command;
-        state.icon_shape.bounds = RectF(0.0f, 0.0f, 24.0f, 24.0f);
+        GUICore::GridLayoutDesc grid_desc;
+        grid_desc.mode = GUICore::GridLayoutMode::fixed_column_count;
+        grid_desc.column_count = 4;
+        grid_desc.cell_size.y = 58.0f;
+        grid_desc.gap = Float2U(8.0f);
+        GUI::end_grid_layout(context, grid, grid_desc);
+
+        section_heading(context, "demo.layouts.heading.canvas", "CanvasLayout");
+        GUICore::ElementHandle canvas = GUI::begin_canvas_layout(context,
+            make_id(context, "demo.layouts.canvas"), "Canvas", fill_width_layout(220.0f));
+        GUI::id_t top_left_id = make_id(context, "demo.layouts.canvas.top_left");
+        GUI::id_t center_id = make_id(context, "demo.layouts.canvas.center");
+        GUI::id_t bottom_right_id = make_id(context, "demo.layouts.canvas.bottom_right");
+        GUI::text_button(context, top_left_id, "Top Left", fixed_layout(120.0f, 42.0f));
+        GUI::text_button(context, center_id, "Centered", fixed_layout(140.0f, 48.0f));
+        GUI::text_button(context, bottom_right_id, "Bottom Right", fixed_layout(140.0f, 42.0f));
+        GUICore::CanvasLayoutItem items[3];
+        items[0].element_id = top_left_id;
+        items[0].offset = Float4U(12.0f, 12.0f, 0.0f, 0.0f);
+        items[1].element_id = center_id;
+        items[1].anchor_min = Float2U(0.5f, 0.5f);
+        items[1].anchor_max = items[1].anchor_min;
+        items[1].pivot = Float2U(0.5f, 0.5f);
+        items[2].element_id = bottom_right_id;
+        items[2].anchor_min = Float2U(1.0f, 1.0f);
+        items[2].anchor_max = items[2].anchor_min;
+        items[2].offset = Float4U(-12.0f, -12.0f, 0.0f, 0.0f);
+        items[2].pivot = Float2U(1.0f, 1.0f);
+        GUICore::CanvasLayoutDesc canvas_desc;
+        canvas_desc.items = Span<const GUICore::CanvasLayoutItem>(items, 3);
+        GUI::end_canvas_layout(context, canvas, canvas_desc);
+        GUI::end_scroll_view(context);
     }
 
-    RV init_demo_resources(Test::InteractiveGUIDemoApp& app, void* userdata)
+    void add_scroll_rows(GUICore::IContext* context, GUI::id_t base_id, const c8* prefix, u32 count)
+    {
+        for(u32 i = 0; i < count; ++i)
+        {
+            c8 label[96];
+            snprintf(label, sizeof(label), "%s row %02u", prefix, i + 1);
+            GUI::text_button(context, make_child_id(base_id, i), label, fill_width_layout(34.0f, 3.0f));
+        }
+    }
+
+    void build_scroll_page(GUICore::IContext* context)
+    {
+        GUICore::ElementHandle row = GUI::begin_h_layout(context, make_id(context, "demo.scroll.columns"),
+            "Scroll view columns", fill_layout());
+        GUI::ScrollViewDesc dynamic;
+        dynamic.horizontal = false;
+        GUICore::LayoutConfig column_layout = growing_layout();
+        column_layout.height.kind = GUICore::SizeKind::percent;
+        column_layout.height.value = 1.0f;
+        GUI::begin_scroll_view(context, make_id(context, "demo.scroll.dynamic"), "Dynamic overlay scroll view",
+            column_layout, dynamic);
+        section_heading(context, "demo.scroll.dynamic.heading", "Dynamic Overlay");
+        add_scroll_rows(context, make_id(context, "demo.scroll.dynamic.rows"), "Overlay", 40);
+        GUI::end_scroll_view(context);
+
+        GUI::ScrollViewDesc persistent;
+        persistent.scrollbar_mode = GUI::ScrollBarMode::always_visible;
+        persistent.horizontal = false;
+        GUI::begin_scroll_view(context, make_id(context, "demo.scroll.persistent"), "Persistent scroll view",
+            column_layout, persistent);
+        section_heading(context, "demo.scroll.persistent.heading", "Always Visible");
+        add_scroll_rows(context, make_id(context, "demo.scroll.persistent.rows"), "Persistent", 40);
+        GUI::end_scroll_view(context);
+        GUICore::FlexLayoutDesc row_desc;
+        row_desc.axis = GUICore::LayoutAxis::x;
+        row_desc.main_axis_gap = 12.0f;
+        row_desc.cross_alignment = GUICore::FlexAlignment::stretch;
+        GUI::end_h_layout(context, row, row_desc);
+    }
+
+    GUICore::ElementHandle build_frame(GUICore::IContext* context, DemoState& state, FrameHandles& handles)
+    {
+        context->push_layer(1, Float2U(0.0f));
+        GUICore::LayoutConfig root_layout = fill_layout();
+        root_layout.padding = Float4U(12.0f);
+        GUICore::ElementHandle root = GUI::begin_v_layout(context, make_id(context, "demo.root"),
+            "GUI Showcase Root", root_layout);
+        GUI::text(context, make_id(context, "demo.title"), "Luna Editor GUI Showcase",
+            fill_width_layout(34.0f, 0.0f), heading_desc(22.0f));
+
+        GUICore::LayoutConfig tabs_layout = growing_layout();
+        tabs_layout.width.kind = GUICore::SizeKind::percent;
+        tabs_layout.width.value = 1.0f;
+        GUICore::ElementHandle tabs = GUI::begin_tab_bar(context, make_id(context, "demo.tabs"),
+            &state.selected_tab, tabs_layout);
+        if(GUI::begin_tab_item(context, make_id(context, "demo.tab.primitives"), "Primitives"))
+        {
+            build_primitives_page(context, state);
+            GUI::end_tab_item(context);
+        }
+        if(GUI::begin_tab_item(context, make_id(context, "demo.tab.buttons"), "Buttons"))
+        {
+            build_buttons_page(context, state, handles);
+            GUI::end_tab_item(context);
+        }
+        if(GUI::begin_tab_item(context, make_id(context, "demo.tab.input"), "Input"))
+        {
+            build_input_page(context, state);
+            GUI::end_tab_item(context);
+        }
+        if(GUI::begin_tab_item(context, make_id(context, "demo.tab.layouts"), "Layouts"))
+        {
+            build_layouts_page(context);
+            GUI::end_tab_item(context);
+        }
+        if(GUI::begin_tab_item(context, make_id(context, "demo.tab.scroll"), "Scroll Views"))
+        {
+            build_scroll_page(context);
+            GUI::end_tab_item(context);
+        }
+        GUI::end_tab_bar(context);
+        (void)tabs;
+
+        GUICore::FlexLayoutDesc root_flex;
+        root_flex.axis = GUICore::LayoutAxis::y;
+        root_flex.main_axis_gap = 8.0f;
+        root_flex.cross_alignment = GUICore::FlexAlignment::stretch;
+        GUI::end_v_layout(context, root, root_flex);
+        context->pop_layer();
+        return root;
+    }
+
+    RV create_checker_texture(DemoApp& app)
     {
         lutry
         {
-            EditorDemoState& state = *(EditorDemoState*)userdata;
-            constexpr u32 TEX_SIZE = 64;
-            u32 pixels[TEX_SIZE * TEX_SIZE];
-            for(u32 y = 0; y < TEX_SIZE; ++y)
+            constexpr u32 texture_size = 64;
+            u32 pixels[texture_size * texture_size];
+            for(u32 y = 0; y < texture_size; ++y)
             {
-                for(u32 x = 0; x < TEX_SIZE; ++x)
+                for(u32 x = 0; x < texture_size; ++x)
                 {
                     bool checker = ((x / 8) + (y / 8)) % 2 == 0;
                     u8 r = checker ? 48 : 18;
                     u8 g = checker ? 145 : 65;
                     u8 b = checker ? 232 : 132;
-                    pixels[y * TEX_SIZE + x] = ((u32)255 << 24) | ((u32)b << 16) | ((u32)g << 8) | r;
+                    pixels[y * texture_size + x] = ((u32)255 << 24) | ((u32)b << 16) | ((u32)g << 8) | r;
                 }
             }
-            auto device = RHI::get_main_device();
-            luset(state.image_texture, device->new_texture(RHI::MemoryType::local,
+            RHI::IDevice* device = RHI::get_main_device();
+            luset(app.state.image_texture, device->new_texture(RHI::MemoryType::local,
                 RHI::TextureDesc::tex2d(RHI::Format::rgba8_unorm,
-                    RHI::TextureUsageFlag::copy_dest | RHI::TextureUsageFlag::read_texture, TEX_SIZE, TEX_SIZE, 1, 1)));
-            auto writer = RHIUtility::new_resource_write_context(device);
+                    RHI::TextureUsageFlag::copy_dest | RHI::TextureUsageFlag::read_texture,
+                    texture_size, texture_size, 1, 1)));
+            Ref<RHIUtility::IResourceWriteContext> writer = RHIUtility::new_resource_write_context(device);
             u32 row_pitch = 0;
             u32 slice_pitch = 0;
-            lulet(mapped, writer->write_texture(state.image_texture, RHI::SubresourceIndex(0, 0),
-                0, 0, 0, TEX_SIZE, TEX_SIZE, 1, row_pitch, slice_pitch));
-            memcpy_bitmap(mapped, pixels, TEX_SIZE * sizeof(u32), TEX_SIZE, row_pitch, TEX_SIZE * sizeof(u32));
+            lulet(mapped, writer->write_texture(app.state.image_texture, RHI::SubresourceIndex(0, 0),
+                0, 0, 0, texture_size, texture_size, 1, row_pitch, slice_pitch));
+            memcpy_bitmap(mapped, pixels, texture_size * sizeof(u32), texture_size,
+                row_pitch, texture_size * sizeof(u32));
             luexp(writer->commit(app.cmdbuf, true));
         }
         lucatchret;
         return ok;
     }
 
-    void labeled_text(GUICore::IContext* context, GUICore::id_t id, const c8* label, const c8* value)
+    RV init_demo(DemoApp& app)
     {
-        Test::label_value(context, id, label, value);
-    }
-
-    void end_page(GUICore::IContext* context, const GUICore::ElementHandle& body, const GUICore::ElementHandle& scroll)
-    {
-        GUICore::FlexLayoutDesc desc;
-        desc.axis = GUICore::LayoutAxis::y;
-        desc.main_axis_gap = 8.0f;
-        lupanic_if_failed(GUI::end_v_layout(context, body, desc));
-        lupanic_if_failed(GUI::end_scroll_view(context, scroll));
-    }
-
-    void build_buttons_page(GUICore::IContext* context, EditorDemoState& state)
-    {
-        ensure_shapes(state);
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("gui.buttons.scroll"), "Buttons page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("gui.buttons.body"), "Buttons body", Test::fill_layout());
-        text_line(context, Test::demo_id("gui.buttons.title"), "Buttons, containers and progress");
-
-        GUI::text_button(context, Test::demo_id("gui.buttons.text"), "Text Button", row_layout());
-        GUI::text_button(context, Test::demo_id("gui.buttons.disabled"), "Disabled Text Button", row_layout(), false);
-        GUICore::ElementHandle shape_row = GUI::begin_h_layout(context, Test::demo_id("gui.buttons.shape.row"), "Shape row", Test::fill_width_layout(42.0f));
-        GUI::shape(context, Test::demo_id("gui.buttons.shape"), state.icon_shape, Test::fixed_layout(40.0f, 36.0f));
-        GUI::shape_button(context, Test::demo_id("gui.buttons.shape.button"), "Shape Button", state.icon_shape, Test::fixed_layout(80.0f, 36.0f));
-        GUI::shape_button(context, Test::demo_id("gui.buttons.shape.button.disabled"), "Disabled Shape Button",
-            state.icon_shape, Test::fixed_layout(80.0f, 36.0f), 6.0f, false);
-        GUICore::FlexLayoutDesc shape_row_desc;
-        shape_row_desc.axis = GUICore::LayoutAxis::x;
-        shape_row_desc.main_axis_gap = 8.0f;
-        lupanic_if_failed(GUI::end_h_layout(context, shape_row, shape_row_desc));
-        GUICore::ElementHandle button = GUI::begin_button(context, Test::demo_id("gui.buttons.container"), "Container Button", tall_row_layout());
-        GUI::text(context, Test::demo_id("gui.buttons.container.text"), "Button container with custom child text", Test::fill_layout());
-        GUI::end_button(context);
-
-        f32 progress = state.slider_float;
-        char overlay[64];
-        snprintf(overlay, sizeof(overlay), "%.0f%%", progress * 100.0f);
-        GUI::progress_bar(context, Test::demo_id("gui.buttons.progress"), progress, overlay, row_layout());
-        GUI::slider_float_with_input(context, Test::demo_id("gui.buttons.progress.slider"), "Progress value",
-            &state.slider_float, 0.0f, 1.0f, RectF(0.0f, 0.0f, 420.0f, 30.0f), row_layout());
-
-        GUICore::InteractionState interaction = context->get_interaction_state(button.id);
-        char text[160];
-        snprintf(text, sizeof(text), "hovered=%s active=%s clicked=%s",
-            interaction.hovered ? "yes" : "no", interaction.active ? "yes" : "no", interaction.clicked ? "yes" : "no");
-        labeled_text(context, Test::demo_id("gui.buttons.state"), "Container state", text);
-
-        RectF button_rect = GUI::get_item_rect(context, button);
-        RectF button_clip = GUI::get_item_clip_rect(context, button);
-        snprintf(text, sizeof(text), "valid=%s clicked=%s right=%s double=%s hover=%s active=%s focused=%s",
-            GUI::is_item_valid(context, button) ? "yes" : "no",
-            GUI::is_item_clicked(context, button) ? "yes" : "no",
-            GUI::is_item_right_clicked(context, button) ? "yes" : "no",
-            GUI::is_item_double_clicked(context, button) ? "yes" : "no",
-            GUI::is_item_hovered(context, button) ? "yes" : "no",
-            GUI::is_item_active(context, button) ? "yes" : "no",
-            GUI::is_item_focused(context, button) ? "yes" : "no");
-        labeled_text(context, Test::demo_id("gui.buttons.query.state"), "Item queries", text);
-        snprintf(text, sizeof(text), "rect=(%.1f %.1f %.1f %.1f) clip=(%.1f %.1f %.1f %.1f)",
-            button_rect.offset_x, button_rect.offset_y, button_rect.width, button_rect.height,
-            button_clip.offset_x, button_clip.offset_y, button_clip.width, button_clip.height);
-        labeled_text(context, Test::demo_id("gui.buttons.query.rect"), "Last layout", text);
-
-        GUICore::ElementHandle hit = GUI::hit_box(context, Test::demo_id("gui.buttons.hitbox"), Test::fill_width_layout(42.0f));
-        GUICore::DrawCommand hit_bg;
-        hit_bg.type = GUICore::DrawCommandType::rounded_rect;
-        hit_bg.rect_reference = GUICore::DrawCommandRectReference::element;
-        hit_bg.rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-        hit_bg.color = GUI::is_item_hovered(context, hit) ? Float4U(0.16f, 0.34f, 0.48f, 1.0f) : Float4U(0.08f, 0.12f, 0.16f, 1.0f);
-        hit_bg.radius = 5.0f;
-        context->draw_for_element(hit, hit_bg);
-        GUICore::DrawCommand hit_text;
-        hit_text.type = GUICore::DrawCommandType::text;
-        hit_text.rect_reference = GUICore::DrawCommandRectReference::element;
-        hit_text.rect = RectF(12.0f, 0.0f, -24.0f, 0.0f);
-        hit_text.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
-        hit_text.color = Float4U(0.90f, 0.93f, 0.96f, 1.0f);
-        hit_text.font_size = 15.0f;
-        hit_text.text = "Invisible hit_box with custom element-relative drawing";
-        context->draw_for_element(hit, hit_text);
-        snprintf(text, sizeof(text), "hovered=%s clicked=%s focused=%s",
-            GUI::is_item_hovered(context, hit) ? "yes" : "no",
-            GUI::is_item_clicked(context, hit) ? "yes" : "no",
-            GUI::is_item_focused(context, hit) ? "yes" : "no");
-        labeled_text(context, Test::demo_id("gui.buttons.hitbox.state"), "HitBox state", text);
-        end_page(context, body, scroll);
-    }
-
-    void build_selection_page(GUICore::IContext* context, EditorDemoState& state)
-    {
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("gui.select.scroll"), "Selection page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("gui.select.body"), "Selection body", Test::fill_layout());
-        text_line(context, Test::demo_id("gui.select.title"), "Selection widgets");
-        GUI::checkbox(context, Test::demo_id("gui.select.checkbox"), "Checkbox", &state.checkbox, row_layout());
-        GUI::checkbox(context, Test::demo_id("gui.select.checkbox.disabled"), "Disabled Checkbox", true, row_layout(), false);
-        GUI::toggle_switch(context, Test::demo_id("gui.select.switch"), "Switch", &state.toggle, row_layout());
-        GUI::toggle_switch(context, Test::demo_id("gui.select.switch.disabled"), "Disabled Switch", true, row_layout(), false);
-        GUI::radio_button(context, Test::demo_id("gui.select.radio.a"), "Radio bool A", &state.radio_a, row_layout());
-        GUI::radio_button(context, Test::demo_id("gui.select.radio.b"), "Radio bool B", &state.radio_b, row_layout());
-        GUI::radio_button(context, Test::demo_id("gui.select.radio.disabled"), "Disabled Radio", true, row_layout(), false);
-        GUI::radio_button(context, Test::demo_id("gui.select.radio.0"), "Radio integer 0", &state.radio_value, 0, row_layout());
-        GUI::radio_button(context, Test::demo_id("gui.select.radio.1"), "Radio integer 1", &state.radio_value, 1, row_layout());
-        GUI::selectable(context, Test::demo_id("gui.select.selectable"), "Selectable row", state.checkbox, row_layout());
-        GUI::selectable(context, Test::demo_id("gui.select.selectable.disabled"), "Disabled selectable", true, row_layout(), false);
-        const c8* group_items[] = { "Title", "Settings", "Advanced", "Output" };
-        GUI::button_group(context, Test::demo_id("gui.select.group.single"), &state.button_group_value,
-            Span<const c8*>(group_items, 4), row_layout());
-        GUI::button_group(context, Test::demo_id("gui.select.group.multi"), Span<bool>(state.multi, 4),
-            Span<const c8*>(group_items, 4), row_layout());
-        if(GUI::collapsing_header(context, Test::demo_id("gui.select.header"), "Collapsing Header", true, row_layout()))
+        lutry
         {
-            text_line(context, Test::demo_id("gui.select.header.text"), "Header content is built only when open.");
-        }
-        if(GUI::tree_node(context, Test::demo_id("gui.select.tree"), "Tree Node", GUI::TreeNodeFlag::default_open, 0, row_layout()))
-        {
-            GUI::tree_node(context, Test::demo_id("gui.select.tree.leaf.a"), "Leaf A", GUI::TreeNodeFlag::leaf, 1, row_layout());
-            GUI::tree_node(context, Test::demo_id("gui.select.tree.leaf.b"), "Leaf B", GUI::TreeNodeFlag::leaf | GUI::TreeNodeFlag::selected, 1, row_layout());
-        }
-        end_page(context, body, scroll);
-    }
+            luexp(add_modules({
+                module_window(),
+                module_rhi(),
+                module_rhi_utility(),
+                module_font(),
+                module_vg(),
+                GUICore::module_gui_core(),
+                GUI::module_gui(),
+                GUIWindow::module_gui_window()
+            }));
+            luexp(init_modules());
 
-    void build_input_page(GUICore::IContext* context, EditorDemoState& state)
-    {
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("gui.input.scroll"), "Input page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("gui.input.body"), "Input body", Test::fill_layout());
-        text_line(context, Test::demo_id("gui.input.title"), "Text, numeric sliders and drags");
-        GUI::input_text(context, Test::demo_id("gui.input.text"), state.input, row_layout());
-        GUI::input_text(context, Test::demo_id("gui.input.readonly"), state.readonly_input, row_layout(), true, true);
-        GUI::slider_float(context, Test::demo_id("gui.input.slider.float"), &state.slider_float, 0.0f, 1.0f, row_layout());
-        GUI::slider_float2(context, Test::demo_id("gui.input.slider.float2"), state.slider_float2, 0.0f, 1.0f, row_layout());
-        GUI::slider_float3(context, Test::demo_id("gui.input.slider.float3"), state.slider_float3, 0.0f, 1.0f, row_layout());
-        GUI::slider_float4(context, Test::demo_id("gui.input.slider.float4"), state.slider_float4, 0.0f, 1.0f, row_layout());
-        GUI::slider_int(context, Test::demo_id("gui.input.slider.int"), &state.slider_int, 0, 100, row_layout());
-        GUI::slider_int2(context, Test::demo_id("gui.input.slider.int2"), state.slider_int2, 0, 100, row_layout());
-        GUI::slider_int3(context, Test::demo_id("gui.input.slider.int3"), state.slider_int3, 0, 100, row_layout());
-        GUI::slider_int4(context, Test::demo_id("gui.input.slider.int4"), state.slider_int4, 0, 100, row_layout());
-        GUI::slider_float_with_input(context, Test::demo_id("gui.input.slider.float.with.input"), "SliderFloatWithInput",
-            &state.slider_float, 0.0f, 1.0f, RectF(0.0f, 0.0f, 420.0f, 30.0f), row_layout());
-        GUI::slider_float2_with_input(context, Test::demo_id("gui.input.slider.float2.with.input"), "SliderFloat2WithInput",
-            state.slider_float2, 0.0f, 1.0f, RectF(0.0f, 0.0f, 420.0f, 30.0f), row_layout());
-        GUI::slider_float3_with_input(context, Test::demo_id("gui.input.slider.float3.with.input"), "SliderFloat3WithInput",
-            state.slider_float3, 0.0f, 1.0f, RectF(0.0f, 0.0f, 420.0f, 30.0f), row_layout());
-        GUI::slider_float4_with_input(context, Test::demo_id("gui.input.slider.float4.with.input"), "SliderFloat4WithInput",
-            state.slider_float4, 0.0f, 1.0f, RectF(0.0f, 0.0f, 420.0f, 30.0f), row_layout());
-        GUI::slider_int_with_input(context, Test::demo_id("gui.input.slider.int.with.input"), "SliderIntWithInput",
-            &state.slider_int, 0, 100, RectF(0.0f, 0.0f, 420.0f, 30.0f), row_layout());
-        GUI::slider_int2_with_input(context, Test::demo_id("gui.input.slider.int2.with.input"), "SliderInt2WithInput",
-            state.slider_int2, 0, 100, RectF(0.0f, 0.0f, 420.0f, 30.0f), row_layout());
-        GUI::slider_int3_with_input(context, Test::demo_id("gui.input.slider.int3.with.input"), "SliderInt3WithInput",
-            state.slider_int3, 0, 100, RectF(0.0f, 0.0f, 420.0f, 30.0f), row_layout());
-        GUI::slider_int4_with_input(context, Test::demo_id("gui.input.slider.int4.with.input"), "SliderInt4WithInput",
-            state.slider_int4, 0, 100, RectF(0.0f, 0.0f, 420.0f, 30.0f), row_layout());
-        GUI::drag_float(context, Test::demo_id("gui.input.drag.float"), &state.drag_float, 0.1f, -100.0f, 100.0f, row_layout());
-        GUI::drag_float2(context, Test::demo_id("gui.input.drag.float2"), state.drag_float2, 0.05f, -10.0f, 10.0f, row_layout());
-        GUI::drag_float3(context, Test::demo_id("gui.input.drag.float3"), state.drag_float3, 0.05f, -10.0f, 10.0f, row_layout());
-        GUI::drag_float4(context, Test::demo_id("gui.input.drag.float4"), state.drag_float4, 0.05f, -10.0f, 10.0f, row_layout());
-        GUI::drag_int(context, Test::demo_id("gui.input.drag.int"), &state.drag_int, 1.0f, -100, 100, row_layout());
-        GUI::drag_int2(context, Test::demo_id("gui.input.drag.int2"), state.drag_int2, 1.0f, -100, 100, row_layout());
-        GUI::drag_int3(context, Test::demo_id("gui.input.drag.int3"), state.drag_int3, 1.0f, -100, 100, row_layout());
-        GUI::drag_int4(context, Test::demo_id("gui.input.drag.int4"), state.drag_int4, 1.0f, -100, 100, row_layout());
-        end_page(context, body, scroll);
-    }
-
-    void build_image_page(GUICore::IContext* context, EditorDemoState& state)
-    {
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("gui.image.scroll"), "Image page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("gui.image.body"), "Image body", Test::fill_layout());
-        text_line(context, Test::demo_id("gui.image.title"), "Image widget and absolute draw_image command");
-        if(state.image_texture)
-        {
-            GUI::image(context, Test::demo_id("gui.image.widget"), state.image_texture, Test::fixed_layout(160.0f, 160.0f), GUI::ImageFlag::nearest);
-            GUICore::ElementHandle canvas = GUI::begin_canvas_layout(context, Test::demo_id("gui.image.canvas"), "Image canvas", Test::fill_width_layout(220.0f));
-            GUI::draw_rect(context, Test::demo_id("gui.image.canvas.bg"), RectF(0.0f, 0.0f, 360.0f, 200.0f),
-                Float4U(0.08f, 0.10f, 0.13f, 1.0f), 6.0f);
-            GUI::draw_image(context, Test::demo_id("gui.image.draw.normal"), state.image_texture,
-                RectF(24.0f, 24.0f, 96.0f, 96.0f), Float4U(1.0f), GUI::ImageFlag::nearest);
-            GUI::draw_image(context, Test::demo_id("gui.image.draw.flip"), state.image_texture,
-                RectF(150.0f, 24.0f, 96.0f, 96.0f), Float4U(1.0f), GUI::ImageFlag::nearest | GUI::ImageFlag::flip_y);
-            GUI::draw_text(context, Test::demo_id("gui.image.draw.label"), RectF(24.0f, 140.0f, 300.0f, 32.0f),
-                "left: normal, right: flip_y", Float4U(0.88f, 0.91f, 0.95f, 1.0f), 16.0f);
-            GUICore::CanvasLayoutDesc canvas_desc;
-            lupanic_if_failed(GUI::end_canvas_layout(context, canvas, canvas_desc));
-        }
-        else
-        {
-            text_line(context, Test::demo_id("gui.image.missing"), "Texture initialization failed.");
-        }
-        end_page(context, body, scroll);
-    }
-
-    void build_color_combo_page(GUICore::IContext* context, EditorDemoState& state)
-    {
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("gui.color.scroll"), "Color page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("gui.color.body"), "Color body", Test::fill_layout());
-        text_line(context, Test::demo_id("gui.color.title"), "Combo and color edit views");
-        const c8* items[] = { "Alpha", "Beta", "Gamma", "Delta" };
-        GUI::combo(context, Test::demo_id("gui.color.combo"), "Combo dropdown", &state.combo_value, Span<const c8*>(items, 4), row_layout());
-        GUI::color_edit3(context, Test::demo_id("gui.color.f32.3"), "ColorEdit3 f32", state.color3, row_layout());
-        GUI::color_edit4(context, Test::demo_id("gui.color.f32.4"), "ColorEdit4 f32", state.color4, row_layout());
-        GUI::color_edit3(context, Test::demo_id("gui.color.u8.3"), "ColorEdit3 u8", state.color3_u8, row_layout());
-        GUI::color_edit4(context, Test::demo_id("gui.color.u8.4"), "ColorEdit4 u8", state.color4_u8, row_layout());
-        GUI::color_edit3(context, Test::demo_id("gui.color.rgba8.3"), "ColorEdit3 RGBA8", &state.color3_rgba8, row_layout());
-        GUI::color_edit4(context, Test::demo_id("gui.color.rgba8.4"), "ColorEdit4 RGBA8", &state.color4_rgba8, row_layout());
-        end_page(context, body, scroll);
-    }
-
-    void build_layout_page(GUICore::IContext* context)
-    {
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("gui.layout.scroll"), "Layout page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("gui.layout.body"), "Layout body", Test::fill_layout());
-        text_line(context, Test::demo_id("gui.layout.title"), "Editor layout helpers");
-        GUICore::ElementHandle h = GUI::begin_h_layout(context, Test::demo_id("gui.layout.h"), "HLayout", row_layout());
-        GUI::text_button(context, Test::demo_id("gui.layout.h.0"), "Fixed", Test::fixed_layout(120.0f, 28.0f));
-        GUI::text_button(context, Test::demo_id("gui.layout.h.1"), "Fill", Test::fill_width_layout(28.0f));
-        GUI::text_button(context, Test::demo_id("gui.layout.h.2"), "Fixed", Test::fixed_layout(120.0f, 28.0f));
-        GUICore::FlexLayoutDesc h_desc;
-        h_desc.axis = GUICore::LayoutAxis::x;
-        h_desc.main_axis_gap = 8.0f;
-        lupanic_if_failed(GUI::end_h_layout(context, h, h_desc));
-
-        GUICore::ElementHandle grid = GUI::begin_grid_layout(context, Test::demo_id("gui.layout.grid"), "GridLayout", Test::fill_width_layout(180.0f));
-        for(u32 i = 0; i < 10; ++i)
-        {
-            char label[24];
-            snprintf(label, sizeof(label), "Tile %u", i);
-            GUI::text_button(context, Test::demo_id("gui.layout.grid.tile", i), label, Test::fill_layout());
-        }
-        GUICore::GridLayoutDesc grid_desc;
-        grid_desc.mode = GUICore::GridLayoutMode::fixed_column_count;
-        grid_desc.column_count = 5;
-        grid_desc.cell_size.y = 42.0f;
-        grid_desc.gap = Float2U(8.0f, 8.0f);
-        lupanic_if_failed(GUI::end_grid_layout(context, grid, grid_desc));
-
-        GUICore::ElementHandle table = GUI::begin_table_layout(context, Test::demo_id("gui.layout.table"), "TableLayout", Test::fill_width_layout(180.0f));
-        GUICore::TableTrackDesc cols[4];
-        cols[0].kind = GUICore::TableTrackSizeKind::pixels;
-        cols[0].value = 90.0f;
-        cols[1].kind = GUICore::TableTrackSizeKind::ratio;
-        cols[1].value = 1.0f;
-        cols[2].kind = GUICore::TableTrackSizeKind::pixels;
-        cols[2].value = 120.0f;
-        cols[3].kind = GUICore::TableTrackSizeKind::pixels;
-        cols[3].value = 90.0f;
-        GUI::set_table_columns(context, Span<const GUICore::TableTrackDesc>(cols, 4));
-        GUI::set_table_gap(context, Float2U(3.0f, 3.0f));
-        GUI::set_table_cell_padding(context, Float4U(4.0f, 2.0f, 4.0f, 2.0f));
-        for(u32 row = 0; row < 5; ++row)
-        {
-            GUI::begin_table_row(context, GUICore::TableTrackDesc { GUICore::TableTrackSizeKind::pixels, 30.0f, 0.0f, -1.0f });
-            for(u32 col = 0; col < 4; ++col)
+            luset(app.window, Window::new_window("Luna Editor GUI Showcase"));
+            RHI::IDevice* device = RHI::get_main_device();
+            for(u32 i = 0; i < device->get_num_command_queues(); ++i)
             {
-                char label[24];
-                snprintf(label, sizeof(label), "%u:%u", row, col);
-                GUI::text(context, Test::demo_id("gui.layout.table.cell", row * 8 + col), label, Test::fill_layout());
+                if(device->get_command_queue_desc(i).type == RHI::CommandQueueType::graphics)
+                {
+                    app.queue = i;
+                    break;
+                }
             }
-            GUI::end_table_row(context);
+            lucheck_msg(app.queue != U32_MAX, "No graphics queue available.");
+            UInt2U size = app.window->get_framebuffer_size();
+            luset(app.swap_chain, device->new_swap_chain(app.queue, app.window,
+                RHI::SwapChainDesc({ size.x, size.y, 2, RHI::Format::bgra8_unorm, true })));
+            luset(app.cmdbuf, device->new_command_buffer(app.queue));
+            app.draw_list = VG::new_shape_draw_list(device);
+            app.renderer = VG::new_fill_shape_renderer();
+            app.gui = GUICore::new_context();
+            luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
+            GUI::register_style_schemas(app.gui);
+            luexp(create_checker_texture(app));
         }
-        lupanic_if_failed(GUI::end_table_layout(context, table));
-        end_page(context, body, scroll);
+        lucatchret;
+        return ok;
     }
 
-    void build_overlay_page(GUICore::IContext* context, EditorDemoState& state)
+    RV render_demo(DemoApp& app, RHI::ITexture* back_buffer)
     {
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("gui.overlay.scroll"), "Overlay page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("gui.overlay.body"), "Overlay body", Test::fill_layout());
-        text_line(context, Test::demo_id("gui.overlay.title"), "Menus, popups, tooltips and nested tabs");
-        GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, Test::demo_id("gui.overlay.menu.bar"), "Menu Bar", row_layout());
-        if(GUI::begin_menu(context, Test::demo_id("gui.overlay.menu.file"), "File"))
+        lutry
         {
-            GUI::menu_item(context, Test::demo_id("gui.overlay.menu.file.new"), "New", "Ctrl+N");
-            GUI::menu_item(context, Test::demo_id("gui.overlay.menu.file.open"), "Open", "Ctrl+O");
-            GUI::menu_separator(context, Test::demo_id("gui.overlay.menu.file.sep"));
-            GUI::menu_item(context, Test::demo_id("gui.overlay.menu.file.enabled"), "Enabled Item");
-            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 220.0f, 160.0f)));
-        }
-        if(GUI::begin_menu(context, Test::demo_id("gui.overlay.menu.view"), "View"))
-        {
-            GUI::menu_item(context, Test::demo_id("gui.overlay.menu.view.grid"), "Show Grid", nullptr, &state.menu_show_grid);
-            GUI::menu_item(context, Test::demo_id("gui.overlay.menu.view.snap"), "Snap To Grid", nullptr, &state.menu_snap);
-            if(GUI::begin_menu(context, Test::demo_id("gui.overlay.menu.view.theme"), "Theme"))
+            luexp(app.gui->compile_draw_commands(app.draw_list));
+            luexp(app.draw_list->compile());
+            Span<const VG::ShapeDrawCall> draw_calls = app.draw_list->get_draw_calls();
+            if(!draw_calls.empty())
             {
-                GUI::menu_item(context, Test::demo_id("gui.overlay.menu.view.theme.dark"), "Dark");
-                GUI::menu_item(context, Test::demo_id("gui.overlay.menu.view.theme.light"), "Light", nullptr, false, false);
-                lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 180.0f, 100.0f)));
+                GUICore::FrameDesc frame = app.gui->get_frame_desc();
+                Float4x4U transform = ProjectionMatrix::make_orthographic_off_center(
+                    0.0f, max(frame.screen_size.x, 1.0f),
+                    0.0f, max(frame.screen_size.y, 1.0f),
+                    0.0f, 1.0f);
+                luexp(app.renderer->begin(back_buffer));
+                app.renderer->draw(app.draw_list->get_vertex_buffer(), app.draw_list->get_index_buffer(),
+                    draw_calls, &transform);
+                luexp(app.renderer->end());
+                app.renderer->submit(app.cmdbuf);
             }
-            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 240.0f, 130.0f)));
         }
-        lupanic_if_failed(GUI::end_menu_bar(context, menu_bar));
+        lucatchret;
+        return ok;
+    }
 
-        GUICore::ElementHandle popup_button = GUI::text_button(context, Test::demo_id("gui.overlay.popup.button"), "Open Popup", row_layout());
-        if(GUI::is_item_clicked(context, popup_button))
+    RV run_demo(const DemoOptions& options)
+    {
+        lutry
         {
-            GUI::open_popup(context, Test::demo_id("gui.overlay.popup"));
-        }
-        labeled_text(context, Test::demo_id("gui.overlay.popup.state"), "Popup open",
-            GUI::is_popup_open(context, Test::demo_id("gui.overlay.popup")) ? "yes" : "no");
-        GUI::PopupDesc popup_desc;
-        popup_desc.position = context->get_pointer_position();
-        popup_desc.layout = Test::fixed_layout(260.0f, 140.0f);
-        GUICore::ElementHandle popup;
-        if(GUI::begin_popup(context, Test::demo_id("gui.overlay.popup"), popup_desc, &popup))
-        {
-            GUI::text(context, Test::demo_id("gui.overlay.popup.text"), "Popup content", row_layout());
-            GUI::checkbox(context, Test::demo_id("gui.overlay.popup.check"), "Popup checkbox", &state.popup_toggle, row_layout());
-            GUICore::ElementHandle close_button = GUI::text_button(context, Test::demo_id("gui.overlay.popup.close"), "Close Popup", row_layout());
-            if(GUI::is_item_clicked(context, close_button))
+            DemoApp app;
+            luexp(init_demo(app));
+            app.state.selected_tab = clamp(options.selected_tab, 0, 4);
+            GUIWindow::GUICoreWindowInputAdapter input_adapter;
+            input_adapter.window = app.window;
+            input_adapter.gui = app.gui;
+            GUIWindow::install_window_event_handler(&input_adapter);
+
+            i32 frame_index = 0;
+            while(true)
             {
-                GUI::close_popup(context, Test::demo_id("gui.overlay.popup"));
+                Window::poll_events();
+                if(app.window->is_closed()) break;
+                if(app.window->is_minimized())
+                {
+                    sleep(100);
+                    continue;
+                }
+                UInt2U framebuffer_size = app.window->get_framebuffer_size();
+                if(framebuffer_size.x && framebuffer_size.y &&
+                    (framebuffer_size.x != app.width || framebuffer_size.y != app.height))
+                {
+                    luexp(app.swap_chain->reset({ framebuffer_size.x, framebuffer_size.y, 2,
+                        RHI::Format::unknown, true }));
+                    app.width = framebuffer_size.x;
+                    app.height = framebuffer_size.y;
+                }
+
+                UInt2U logical_size = app.window->get_size();
+                GUICore::FrameDesc frame;
+                frame.screen_size = Float2U((f32)logical_size.x, (f32)logical_size.y);
+                frame.framebuffer_size = framebuffer_size;
+                frame.dpi_scale = app.window->get_dpi_scale_factor();
+                frame.delta_time = 1.0f / 60.0f;
+                app.gui->begin_frame(frame);
+                GUIWindow::update_input(&input_adapter);
+
+                FrameHandles handles;
+                GUICore::ElementHandle root = build_frame(app.gui, app.state, handles);
+                luexp(GUI::layout_tree(app.gui, root,
+                    RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                app.gui->route_input();
+                GUI::ResolveResult resolved = GUI::resolve_interactions(app.gui);
+                if(GUI::is_item_valid(app.gui, handles.container_button) &&
+                    GUI::is_item_clicked(app.gui, handles.container_button))
+                {
+                    ++app.state.button_clicks;
+                }
+                if(resolved.relayout_requested)
+                {
+                    luexp(GUI::layout_tree(app.gui, root,
+                        RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                }
+                luexp(GUIWindow::update_text_input(&input_adapter));
+                luexp(app.gui->generate_draw_commands());
+
+                lulet(back_buffer, app.swap_chain->get_current_back_buffer());
+                RHI::RenderPassDesc render_pass;
+                render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer,
+                    RHI::LoadOp::clear, RHI::StoreOp::store, Float4U(0.035f, 0.045f, 0.060f, 1.0f));
+                app.cmdbuf->begin_render_pass(render_pass);
+                app.cmdbuf->end_render_pass();
+                luexp(render_demo(app, back_buffer));
+                app.cmdbuf->resource_barrier({}, {
+                    { back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic,
+                        RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none }
+                });
+                luexp(app.cmdbuf->submit({}, {}, true));
+                app.cmdbuf->wait();
+                luexp(app.cmdbuf->reset());
+                luexp(app.swap_chain->present());
+                ++frame_index;
+                if(options.max_frames >= 0 && frame_index >= options.max_frames) break;
             }
-            lupanic_if_failed(GUI::end_popup(context, popup, RectF(0.0f, 0.0f, 260.0f, 140.0f)));
+            GUIWindow::uninstall_window_event_handler(&input_adapter);
         }
-
-        GUICore::ElementHandle tooltip_owner = GUI::text_button(context, Test::demo_id("gui.overlay.tooltip.owner"), "Hover for tooltip", row_layout());
-        GUI::set_item_tooltip(context, Test::demo_id("gui.overlay.tooltip"), tooltip_owner,
-            "Tooltip content is rendered in its own layer.");
-        GUICore::ElementHandle custom_tooltip_owner = GUI::text_button(context, Test::demo_id("gui.overlay.tooltip.custom.owner"),
-            "Hover for custom tooltip", row_layout());
-        GUI::TooltipDesc custom_tooltip_desc;
-        custom_tooltip_desc.delay = 0.0f;
-        custom_tooltip_desc.layout = Test::fixed_layout(310.0f, 86.0f);
-        GUICore::ElementHandle custom_tooltip;
-        if(GUI::begin_tooltip(context, Test::demo_id("gui.overlay.tooltip.custom"), custom_tooltip_owner,
-            custom_tooltip_desc, &custom_tooltip))
-        {
-            GUI::text(context, Test::demo_id("gui.overlay.tooltip.custom.title"), "Custom tooltip layer", row_layout());
-            GUI::checkbox(context, Test::demo_id("gui.overlay.tooltip.custom.check"), "Interactive content can be built here",
-                &state.popup_toggle, row_layout());
-            lupanic_if_failed(GUI::end_tooltip(context, custom_tooltip, RectF(0.0f, 0.0f, 310.0f, 86.0f)));
-        }
-
-        GUICore::ElementHandle nested_tabs = GUI::begin_tab_bar(context, Test::demo_id("gui.overlay.tabs"), "Nested Tabs",
-            GUI::TabBarFlag::fitting_shrink | GUI::TabBarFlag::reorderable | GUI::TabBarFlag::auto_select_new_tabs,
-            Test::fill_width_layout(170.0f));
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.overlay.tab.a"), "Tab A", &state.tab_a_open,
-            GUI::TabItemFlag::selected))
-        {
-            text_line(context, Test::demo_id("gui.overlay.tab.a.text"), "Tab A content");
-            GUI::end_tab_item(context);
-        }
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.overlay.tab.b"), "Tab B", &state.tab_b_open,
-            GUI::TabItemFlag::unsaved_document))
-        {
-            text_line(context, Test::demo_id("gui.overlay.tab.b.text"), "Tab B content, marked as unsaved");
-            GUI::end_tab_item(context);
-        }
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.overlay.tab.c"), "Pinned", &state.tab_c_open,
-            GUI::TabItemFlag::no_close_button | GUI::TabItemFlag::no_reorder))
-        {
-            text_line(context, Test::demo_id("gui.overlay.tab.c.text"), "Pinned tab has no close button and cannot reorder.");
-            GUI::end_tab_item(context);
-        }
-        GUI::begin_tab_item(context, Test::demo_id("gui.overlay.tab.button"), "+", nullptr, GUI::TabItemFlag::button);
-        lupanic_if_failed(GUI::end_tab_bar(context, nested_tabs));
-
-        end_page(context, body, scroll);
-    }
-
-    void init_dock_layout(GUICore::IContext* context, EditorDemoState& state)
-    {
-        if(state.dock_layout_initialized)
-        {
-            return;
-        }
-        GUI::DockSpaceLayoutDesc layout;
-        layout.nodes.resize(3);
-        layout.root_node = 0;
-        layout.nodes[0].split = true;
-        layout.nodes[0].split_axis = GUI::DockSplitAxis::x;
-        layout.nodes[0].split_ratio = 0.62f;
-        layout.nodes[0].child0 = 1;
-        layout.nodes[0].child1 = 2;
-        layout.nodes[1].tabs.push_back(Test::demo_id("gui.dock.left"));
-        layout.nodes[1].tabs.push_back(Test::demo_id("gui.dock.bottom"));
-        layout.nodes[1].selected_tab = Test::demo_id("gui.dock.left");
-        layout.nodes[2].tabs.push_back(Test::demo_id("gui.dock.right"));
-        layout.nodes[2].selected_tab = Test::demo_id("gui.dock.right");
-        GUI::set_dockspace_layout(context, Test::demo_id("gui.dock.space"), layout);
-        state.dock_layout_initialized = true;
-    }
-
-    void build_dock_page(GUICore::IContext* context, EditorDemoState& state, const Float2U& surface_size)
-    {
-        init_dock_layout(context, state);
-        GUI::draw_text(context, Test::demo_id("gui.dock.title"), RectF(24.0f, 92.0f, 680.0f, 26.0f),
-            "DockSpace and DockPanel: drag title bars, resize floating panels and splitters.",
-            Float4U(0.90f, 0.92f, 0.95f, 1.0f), 16.0f);
-        RectF dock_rect(24.0f, 126.0f, max(surface_size.x - 48.0f, 320.0f), max(surface_size.y - 150.0f, 260.0f));
-        GUICore::ElementHandle dock = GUI::begin_dock_space(context, Test::demo_id("gui.dock.space"), "Dock demo", Test::fixed_layout(dock_rect.width, dock_rect.height));
-        if(GUI::begin_dock_panel(context, Test::demo_id("gui.dock.left"), "Hierarchy", &state.dock_left_open))
-        {
-            GUI::text(context, Test::demo_id("gui.dock.left.text"), "Docked panel content", Test::fill_width_layout(28.0f));
-            GUI::text_button(context, Test::demo_id("gui.dock.left.button"), "Panel Button", Test::fill_width_layout(30.0f));
-            GUI::end_dock_panel(context);
-        }
-        if(GUI::begin_dock_panel(context, Test::demo_id("gui.dock.bottom"), "Inspector", &state.dock_bottom_open))
-        {
-            GUI::checkbox(context, Test::demo_id("gui.dock.bottom.check"), "Panel checkbox", &state.checkbox, Test::fill_width_layout(30.0f));
-            GUI::end_dock_panel(context);
-        }
-        if(GUI::begin_dock_panel(context, Test::demo_id("gui.dock.right"), "Properties", &state.dock_right_open))
-        {
-            GUI::input_text(context, Test::demo_id("gui.dock.right.input"), state.input, Test::fill_width_layout(32.0f));
-            GUI::slider_float(context, Test::demo_id("gui.dock.right.slider"), &state.slider_float, 0.0f, 1.0f, Test::fill_width_layout(30.0f));
-            GUI::end_dock_panel(context);
-        }
-        lupanic_if_failed(GUI::end_dock_space(context, dock, dock_rect));
-    }
-
-    void build_debug_page(GUICore::IContext* context, EditorDemoState& state)
-    {
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, Test::demo_id("gui.debug.scroll"), "Debug page", Test::fill_layout());
-        GUICore::ElementHandle body = GUI::begin_v_layout(context, Test::demo_id("gui.debug.body"), "Debug body", Test::fill_layout());
-        text_line(context, Test::demo_id("gui.debug.title"), "Debug panel toggle");
-        GUI::checkbox(context, Test::demo_id("gui.debug.toggle"), "Show Debug Panel", &state.show_debug_panel, row_layout());
-        GUICore::PerformanceCounters counters = context->get_performance_counters();
-        char text[160];
-        snprintf(text, sizeof(text), "elements=%u draw_commands=%u route=%.3f ms render=%.3f ms",
-            counters.element_count, counters.draw_command_count, counters.input_route_ms, counters.draw_compile_ms);
-        labeled_text(context, Test::demo_id("gui.debug.counters"), "Previous frame", text);
-        end_page(context, body, scroll);
-
-        if(state.show_debug_panel)
-        {
-            GUI::show_debug_panel(context, Test::demo_id("gui.debug.panel"), Test::fixed_layout(720.0f, 480.0f));
-        }
-    }
-
-    void build_demo(GUICore::IContext* context, const GUICore::ElementHandle& root, const Float2U& surface_size, void* userdata)
-    {
-        EditorDemoState& state = *(EditorDemoState*)userdata;
-        (void)root;
-        GUI::draw_rect(context, Test::demo_id("gui.background"), RectF(0.0f, 0.0f, surface_size.x, surface_size.y),
-            Float4U(0.045f, 0.055f, 0.070f, 1.0f));
-        GUI::draw_text(context, Test::demo_id("gui.title"), RectF(14.0f, 8.0f, surface_size.x - 28.0f, 28.0f),
-            "Luna Editor GUI Interactive Test", Float4U(0.92f, 0.94f, 0.96f, 1.0f), 18.0f);
-
-        GUICore::ElementHandle tabs = GUI::begin_tab_bar(context, Test::demo_id("gui.tabs"), "Widget Tabs");
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.tab.buttons"), "Buttons"))
-        {
-            build_buttons_page(context, state);
-            GUI::end_tab_item(context);
-        }
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.tab.selection"), "Selection"))
-        {
-            build_selection_page(context, state);
-            GUI::end_tab_item(context);
-        }
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.tab.input"), "Input/Numeric"))
-        {
-            build_input_page(context, state);
-            GUI::end_tab_item(context);
-        }
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.tab.color"), "Combo/Color"))
-        {
-            build_color_combo_page(context, state);
-            GUI::end_tab_item(context);
-        }
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.tab.image"), "Image"))
-        {
-            build_image_page(context, state);
-            GUI::end_tab_item(context);
-        }
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.tab.layout"), "Layout/Table"))
-        {
-            build_layout_page(context);
-            GUI::end_tab_item(context);
-        }
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.tab.overlay"), "Overlay"))
-        {
-            build_overlay_page(context, state);
-            GUI::end_tab_item(context);
-        }
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.tab.dock"), "Dock"))
-        {
-            build_dock_page(context, state, surface_size);
-            GUI::end_tab_item(context);
-        }
-        if(GUI::begin_tab_item(context, Test::demo_id("gui.tab.debug"), "Debug"))
-        {
-            build_debug_page(context, state);
-            GUI::end_tab_item(context);
-        }
-        lupanic_if_failed(GUI::end_tab_bar(context, tabs, RectF(12.0f, 44.0f,
-            max(surface_size.x - 24.0f, 1.0f), max(surface_size.y - 56.0f, 1.0f))));
+        lucatchret;
+        return ok;
     }
 }
 
 int luna_main(int argc, const char* argv[])
 {
-    (void)argc;
-    (void)argv;
-    if(!Luna::init())
+    DemoOptions options;
+    for(int i = 1; i < argc; ++i)
     {
-        return -1;
+        i32 value = 0;
+        if(sscanf(argv[i], "--tab=%d", &value) == 1) options.selected_tab = value;
+        else if(sscanf(argv[i], "--frames=%d", &value) == 1) options.max_frames = value;
     }
-    i32 exit_code = 0;
-    {
-        EditorDemoState state;
-        Test::InteractiveGUIDemoDesc desc;
-        desc.title = "Luna Editor GUI Interactive Test";
-        desc.init = init_demo_resources;
-        desc.build = build_demo;
-        desc.userdata = &state;
-        RV r = Test::run_interactive_gui_demo(desc);
-        if(failed(r))
-        {
-            log_error("GUITest", "%s", explain(r.errcode()));
-            exit_code = -1;
-        }
-    }
+    Luna::init();
+    lupanic_if_failed(run_demo(options));
     Luna::close();
-    return exit_code;
+    return 0;
 }

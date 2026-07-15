@@ -9,7 +9,7 @@
 */
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/Font/Font.hpp>
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 #include <Luna/GUIAsset/GUIAsset.hpp>
 #include <Luna/GUICore/GUICore.hpp>
 #include <Luna/RHI/RHI.hpp>

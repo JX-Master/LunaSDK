@@ -8,7 +8,7 @@
 * @date 2023/11/3
 */
 #include "MemoryProfiler.hpp"
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 
 namespace Luna
 {

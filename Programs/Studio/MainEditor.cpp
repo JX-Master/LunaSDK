@@ -9,7 +9,7 @@
 */
 #include "MainEditor.hpp"
 
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 
 #include "Assets/Texture.hpp"
 #include "Assets/MeshAsset.hpp"

@@ -11,7 +11,7 @@
 #include "MaterialEditor.hpp"
 #include "../StudioHeader.hpp"
 #include "../StudioGUI.hpp"
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 #include <Luna/Window/MessageBox.hpp>
 namespace Luna
 {

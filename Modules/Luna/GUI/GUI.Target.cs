@@ -10,15 +10,13 @@ public sealed class GUITargetRules : TargetRules
     {
         Headers(
             "Base.hpp",
+            "Style.hpp",
+            "Widgets.hpp",
+            "Layouts.hpp",
             "GUI.hpp",
-            "Editor.hpp",
-            "EditorState.hpp",
-            "EditorWidgets.hpp",
-            "EditorViews.hpp");
-        MetaHeaders("EditorState.hpp");
-        Sources(
-            "Source/GUI.cpp",
-            "Source/Editor*.cpp");
+            "Source/**.hpp");
+        MetaHeaders("Source/State.hpp");
+        Sources("Source/**.cpp");
         DependsOn("Runtime", "RHI", "VG", "Font", "GUICore");
     }
 }

@@ -9,7 +9,7 @@
 */
 #include "Texture.hpp"
 #include "TextureImporter.hpp"
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/File.hpp>

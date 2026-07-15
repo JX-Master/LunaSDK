@@ -57,7 +57,8 @@ namespace Luna
         //! Called by layout measurement to compute package-defined content size for one element.
         //! @param[in] context The context that owns @p element.
         //! @param[in] element The element being measured.
-        //! @param[in] available_content_size Available content-box size after margin and padding are removed.
+        //! @param[in] available_content_size Available content-box size after padding is removed. The parent
+        //! layout algorithm is responsible for reserving margin before measuring the element.
         //! @param[in] userdata User data stored in @ref LayoutCallbackConfig.
         //! @return Returns content-box minimum, desired and maximum sizes.
         using MeasureCallback = MeasureResult(*)(IContext* context, const ElementHandle& element,

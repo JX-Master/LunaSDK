@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
-#include <Luna/GUI/EditorWidgets.hpp>
+#include <Luna/GUI/Legacy/EditorWidgets.hpp>
 
 namespace Luna
 {

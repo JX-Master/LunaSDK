@@ -8,7 +8,7 @@
 * @date 2026/5/22
 */
 #include "StudioGUI.hpp"
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 #include <Luna/Window/MessageBox.hpp>
 
 namespace Luna

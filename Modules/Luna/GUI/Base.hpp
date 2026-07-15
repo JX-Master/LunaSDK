@@ -5,25 +5,11 @@
 *
 * @file Base.hpp
 * @author JXMaster
-* @date 2026/5/22
+* @date 2026/7/13
 */
 #pragma once
-#include <Luna/Runtime/Interface.hpp>
-#include <Luna/Runtime/Module.hpp>
-#include <Luna/Runtime/Result.hpp>
-#include <Luna/Runtime/Ref.hpp>
-#include <Luna/Runtime/Any.hpp>
-#include <Luna/Runtime/Span.hpp>
-#include <Luna/Runtime/Vector.hpp>
-#include <Luna/Runtime/String.hpp>
-#include <Luna/Runtime/Name.hpp>
-#include <Luna/Runtime/HashMap.hpp>
-#include <Luna/Runtime/KeyCode.hpp>
-#include <Luna/Runtime/Math/Vector.hpp>
-#include <Luna/Runtime/Math/Math.hpp>
-#include <Luna/GUICore/Base.hpp>
+#include <Luna/GUICore/GUICore.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/Font/Font.hpp>
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -31,66 +17,177 @@
 
 namespace Luna
 {
-    namespace VG
-    {
-        struct IShapeBuffer;
-    }
-
     namespace GUI
     {
         //! @addtogroup GUI GUI
+        //! Editor-oriented immediate GUI package implemented on GUI Core.
         //! @{
 
-        //! The stable identifier type used by editor-style GUI APIs.
+        //! Stable identifier used by GUI package elements and package-owned state.
         using id_t = GUICore::id_t;
 
-        //! Aligns text inside the rectangle passed to text rendering helpers.
+        //! Horizontal or vertical text alignment inside an element.
         enum class TextAlignment : u8
         {
-            //! Align to the beginning edge of the axis.
+            //! Aligns content to the beginning edge.
             begin,
-            //! Align to the center of the axis.
+            //! Aligns content to the center.
             center,
-            //! Align to the ending edge of the axis.
+            //! Aligns content to the ending edge.
             end
         };
 
         //! Bit flags controlling image rendering.
-        enum class ImageFlag : u32
+        enum class ImageFlag : u8
         {
-            //! Default image rendering.
+            //! Uses default image sampling.
             none = 0x00,
-            //! Flip image sampling vertically.
+            //! Flips texture coordinates vertically.
             flip_y = 0x01,
-            //! Use nearest-neighbor texture sampling.
+            //! Uses nearest-neighbor texture sampling.
             nearest = 0x02
         };
 
-        //! Identifies the storage representation used by color edit views.
-        enum class ColorValueType : u8
+        //! Controls scrollbar presentation in a scroll view.
+        enum class ScrollBarMode : u8
         {
-            //! Floating point channels in the 0-1 range.
-            f32,
-            //! 8-bit integer channels in the 0-255 range.
-            u8,
-            //! Packed RGBA8 value.
-            rgba8
+            //! Scrollbars fade in while scrolling or interacting and overlay content.
+            dynamic_overlay,
+            //! Scrollbars remain visible and reserve space beside the content viewport.
+            always_visible
         };
 
-        //! Identifies a color channel group.
-        enum class ColorChannelPart : u8
+        //! Describes text presentation.
+        struct TextDesc
         {
-            //! No channel group.
-            none,
-            //! RGB color channels.
-            rgb,
-            //! HSV color channels.
-            hsv
+            //! Horizontal text alignment.
+            TextAlignment horizontal_alignment = TextAlignment::begin;
+            //! Vertical text alignment.
+            TextAlignment vertical_alignment = TextAlignment::center;
+            //! Optional text color override. A negative alpha uses the bound style value.
+            Float4U color = Float4U(0.0f, 0.0f, 0.0f, -1.0f);
+            //! Optional font size override. Non-positive values use the bound style value.
+            f32 font_size = 0.0f;
+            //! Optional registered GUI Core font ID. Empty names use the bound style value.
+            Name font;
         };
 
-        //! Gets the GUI editor-style immediate package module object.
-        //! @return Returns the GUI module object.
+        //! Describes a button container.
+        struct ButtonDesc
+        {
+            //! Whether the button accepts input.
+            bool enabled = true;
+        };
+
+        //! Describes a single-selection button group.
+        struct ButtonGroupDesc
+        {
+            //! Whether group items accept input.
+            bool enabled = true;
+            //! Minimum width assigned to every item.
+            f32 item_min_width = 64.0f;
+        };
+
+        //! Describes image rendering.
+        struct ImageDesc
+        {
+            //! Image sampling flags.
+            ImageFlag flags = ImageFlag::none;
+            //! Image tint color.
+            Float4U tint = Float4U(1.0f);
+            //! Minimum texture coordinate.
+            Float2U min_texcoord = Float2U(0.0f);
+            //! Maximum texture coordinate.
+            Float2U max_texcoord = Float2U(1.0f);
+        };
+
+        //! Describes a single-line text input.
+        struct TextInputDesc
+        {
+            //! Whether the input accepts interaction.
+            bool enabled = true;
+            //! Whether editing is disabled while focus and selection remain available.
+            bool read_only = false;
+            //! Optional placeholder displayed while the value is empty.
+            const c8* placeholder = nullptr;
+        };
+
+        //! Describes scalar slider interaction.
+        struct SliderDesc
+        {
+            //! Whether the slider accepts interaction.
+            bool enabled = true;
+            //! Smallest normalized change produced by keyboard navigation.
+            f32 navigation_step = 0.01f;
+        };
+
+        //! Describes progress bar presentation.
+        struct ProgressBarDesc
+        {
+            //! Optional overlay text. Passing `nullptr` formats the percentage automatically.
+            const c8* overlay = nullptr;
+            //! Whether overlay text is displayed.
+            bool show_overlay = true;
+        };
+
+        //! Describes package-level scroll view behavior.
+        struct ScrollViewDesc
+        {
+            //! Scrollbar display mode.
+            ScrollBarMode scrollbar_mode = ScrollBarMode::dynamic_overlay;
+            //! Maximum expected per-frame scroll displacement used by GUI Core visible-range queries.
+            Float2U max_scroll_delta = Float2U(80.0f);
+            //! Logical units moved for one unit of wheel input.
+            f32 wheel_scale = 40.0f;
+            //! Whether horizontal scrolling is enabled.
+            bool horizontal = true;
+            //! Whether vertical scrolling is enabled.
+            bool vertical = true;
+        };
+
+        //! Describes a tab bar.
+        struct TabBarDesc
+        {
+            //! Whether tab headers accept interaction.
+            bool enabled = true;
+        };
+
+        //! Reports package work performed after GUI Core input routing.
+        struct ResolveResult
+        {
+            //! Whether one or more bound application values changed.
+            bool value_changed = false;
+            //! Whether layout must be applied again before drawing.
+            bool relayout_requested = false;
+        };
+
+        //! Gets the GUI package module object.
         LUNA_GUI_API Module* module_gui();
+
+        //! Resolves current-frame widget actions after @ref GUICore::IContext::route_input.
+        //! @param[in] context The GUI Core context containing the current element tree and routed input.
+        //! @return Returns value and relayout changes produced by package controls.
+        //! @remark Call this after input routing and before final draw command generation. If relayout is requested,
+        //! apply layout to the layer root again before generating draw commands.
+        LUNA_GUI_API ResolveResult resolve_interactions(GUICore::IContext* context);
+
+        //! Applies layout to one GUI subtree.
+        //! @param[in] context The GUI Core context.
+        //! @param[in] root Root element to arrange.
+        //! @param[in] rect Root rectangle in layer coordinates.
+        //! @return Returns success or failure code.
+        LUNA_GUI_API RV layout_tree(GUICore::IContext* context, const GUICore::ElementHandle& root, const RectF& rect);
+
+        //! Checks whether an element handle is valid in the current frame.
+        LUNA_GUI_API bool is_item_valid(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element was clicked by the primary pointer.
+        LUNA_GUI_API bool is_item_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element is hovered.
+        LUNA_GUI_API bool is_item_hovered(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element is active.
+        LUNA_GUI_API bool is_item_active(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element has keyboard focus.
+        LUNA_GUI_API bool is_item_focused(GUICore::IContext* context, const GUICore::ElementHandle& item);
 
         //! @}
     }

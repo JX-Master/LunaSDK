@@ -197,10 +197,8 @@ namespace Luna
             Float2U content_available_size(const Element& element, const Float2U& available)
             {
                 return Float2U(
-                    max(available.x - element.layout.margin.x - element.layout.margin.z -
-                        element.layout.padding.x - element.layout.padding.z, 0.0f),
-                    max(available.y - element.layout.margin.y - element.layout.margin.w -
-                        element.layout.padding.y - element.layout.padding.w, 0.0f));
+                    max(available.x - element.layout.padding.x - element.layout.padding.z, 0.0f),
+                    max(available.y - element.layout.padding.y - element.layout.padding.w, 0.0f));
             }
 
             MeasureResult sanitize_content_measure(const MeasureResult& content)
@@ -293,7 +291,10 @@ namespace Luna
                     {
                         continue;
                     }
-                    MeasureResult measured = measure_element_by_index(context, child_index, available);
+                    Float2U child_available(
+                        max(available.x - child->layout.margin.x - child->layout.margin.z, 0.0f),
+                        max(available.y - child->layout.margin.y - child->layout.margin.w, 0.0f));
+                    MeasureResult measured = measure_element_by_index(context, child_index, child_available);
                     FlexItem item;
                     item.element_index = child_index;
                     item.measured = measured;
@@ -679,7 +680,10 @@ namespace Luna
                     {
                         continue;
                     }
-                    MeasureResult measured = measure_element_by_index(context, child_index, Float2U(available, available));
+                    Float2U child_available(
+                        max(available - child->layout.margin.x - child->layout.margin.z, 0.0f),
+                        max(available - child->layout.margin.y - child->layout.margin.w, 0.0f));
+                    MeasureResult measured = measure_element_by_index(context, child_index, child_available);
                     f32 desired = 0.0f;
                     if(columns)
                     {
@@ -892,6 +896,38 @@ namespace Luna
             }
             context->set_layout_result(element, parent_result);
             return ok;
+        }
+
+        LUNA_GUICORE_API MeasureResult measure_grid(IContext* context, const ElementHandle& element,
+            const Float2U& available_content_size, void* userdata)
+        {
+            MeasureResult result;
+            if(!context || !userdata) return result;
+            const Element* parent = context->get_element(element.index);
+            if(!parent || parent->id != element.id) return result;
+            const GridLayoutDesc& desc = *reinterpret_cast<const GridLayoutDesc*>(userdata);
+            Vector<u32> children = collect_children(context, *parent);
+            if(children.empty()) return result;
+            f32 cell_width = max(desc.cell_size.x, 0.0f);
+            f32 cell_height = max(desc.cell_size.y, 0.0f);
+            u32 columns = max(desc.column_count, 1U);
+            if(desc.mode == GridLayoutMode::fixed_cell_size)
+            {
+                f32 stride = cell_width + desc.gap.x;
+                columns = stride > 0.0f && available_content_size.x < F32_MAX * 0.5f ?
+                    max((u32)((available_content_size.x + desc.gap.x) / stride), 1U) : (u32)children.size();
+                columns = min(columns, (u32)children.size());
+            }
+            else
+            {
+                f32 total_gap = desc.gap.x * (f32)(columns - 1);
+                cell_width = max((available_content_size.x - total_gap) / (f32)columns, 0.0f);
+            }
+            u32 rows = ((u32)children.size() + columns - 1) / columns;
+            result.minimum = Float2U(cell_width, cell_height);
+            result.desired = Float2U(cell_width * (f32)columns + desc.gap.x * (f32)(columns - 1),
+                cell_height * (f32)rows + desc.gap.y * (f32)(rows - 1));
+            return result;
         }
 
         LUNA_GUICORE_API RV layout_grid(IContext* context, const ElementHandle& element, const RectF& rect,

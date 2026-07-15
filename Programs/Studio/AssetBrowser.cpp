@@ -9,7 +9,7 @@
 */
 #include "AssetBrowser.hpp"
 #include "MainEditor.hpp"
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Log.hpp>

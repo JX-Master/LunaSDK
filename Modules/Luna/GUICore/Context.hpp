@@ -184,7 +184,7 @@ namespace Luna
 
             //! Measures one element using its layout configuration and optional measure callback.
             //! @param[in] element The element to measure.
-            //! @param[in] available_size Available element-box size before margin is applied.
+            //! @param[in] available_size Available element-box size after the parent layout reserves margin.
             //! @return Returns resolved element-box minimum, desired and maximum sizes, excluding margin.
             //! @remark If the element does not provide a measure callback, `fit` axes use zero content size and
             //! resolve to padding plus explicit @ref SizeValue constraints.

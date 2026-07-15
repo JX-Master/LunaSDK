@@ -17,7 +17,7 @@
 #include <Luna/Image/RHIHelper.hpp>
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/Runtime/HashMap.hpp>
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 #include "SceneEditorTypes.generated.hpp"
 
 namespace Luna

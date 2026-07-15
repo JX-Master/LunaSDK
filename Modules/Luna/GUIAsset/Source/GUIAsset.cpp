@@ -11,7 +11,7 @@
 #define LUNA_GUI_ASSET_API LUNA_EXPORT
 #include "../GUIAsset.hpp"
 #include "GUIAsset.meta.generated.hpp"
-#include <Luna/GUI/Editor.hpp>
+#include <Luna/GUI/Legacy/Editor.hpp>
 #include <Luna/Runtime/Algorithm.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Serialization.hpp>
