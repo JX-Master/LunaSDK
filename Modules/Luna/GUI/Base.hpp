@@ -88,6 +88,67 @@ namespace Luna
             f32 item_min_width = 64.0f;
         };
 
+        //! Describes a shape element.
+        struct ShapeWidgetDesc
+        {
+            //! Shape tint color.
+            Float4U tint = Float4U(1.0f);
+        };
+
+        //! Describes a shape button.
+        struct ShapeButtonDesc
+        {
+            //! Whether the button accepts input.
+            bool enabled = true;
+            //! Empty space between the shape and the button bounds.
+            f32 padding = 6.0f;
+            //! Shape tint color. A negative alpha uses the button text color.
+            Float4U tint = Float4U(0.0f, 0.0f, 0.0f, -1.0f);
+        };
+
+        //! Describes an invisible hit-test element.
+        struct HitBoxDesc
+        {
+            //! Whether the element accepts input.
+            bool enabled = true;
+        };
+
+        //! Describes a selectable, checkbox, radio button, or toggle switch.
+        struct ChoiceDesc
+        {
+            //! Whether the control accepts input.
+            bool enabled = true;
+        };
+
+        //! Describes a disclosure control.
+        struct DisclosureDesc
+        {
+            //! Whether the control accepts input.
+            bool enabled = true;
+            //! Initial state used when no persistent state exists.
+            bool default_open = true;
+        };
+
+        //! Describes a draggable numeric editor.
+        struct DragDesc
+        {
+            //! Whether the editor accepts input.
+            bool enabled = true;
+            //! Value change produced by one logical unit of horizontal pointer movement.
+            f32 speed = 0.01f;
+        };
+
+        //! Flags controlling tree node presentation and behavior.
+        enum class TreeNodeFlag : u8
+        {
+            //! Uses the default collapsible tree node behavior.
+            none = 0x00,
+            //! Renders a leaf node that cannot be expanded.
+            leaf = 0x01,
+            //! Keeps the node open and omits disclosure interaction.
+            always_open = 0x02
+        };
+
         //! Describes image rendering.
         struct ImageDesc
         {

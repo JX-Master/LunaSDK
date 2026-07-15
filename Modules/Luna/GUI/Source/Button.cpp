@@ -125,5 +125,26 @@ namespace Luna
             end_button(context);
             return element;
         }
+
+        LUNA_GUI_API GUICore::ElementHandle shape_button(GUICore::IContext* context, id_t id, const c8* label,
+            const GUICore::ShapeDesc& value, const GUICore::LayoutConfig& layout, const ShapeButtonDesc& desc)
+        {
+            ButtonDesc button_desc;
+            button_desc.enabled = desc.enabled;
+            GUICore::ElementHandle element = begin_button(context, id, label, layout, button_desc);
+            GUICore::LayoutConfig shape_layout;
+            shape_layout.width.kind = GUICore::SizeKind::percent;
+            shape_layout.width.value = 1.0f;
+            shape_layout.height.kind = GUICore::SizeKind::percent;
+            shape_layout.height.value = 1.0f;
+            shape_layout.margin = Float4U(desc.padding);
+            ShapeWidgetDesc shape_desc;
+            shape_desc.tint = desc.tint.w >= 0.0f ? desc.tint :
+                Internal::style_color(context, element, desc.enabled ? "gui.button.text" : "gui.text.disabled",
+                    desc.enabled ? Float4U(1.0f) : Float4U(0.48f, 0.52f, 0.58f, 1.0f));
+            shape(context, GUICore::make_scoped_id(id, "shape"), value, shape_layout, shape_desc);
+            end_button(context);
+            return element;
+        }
     }
 }

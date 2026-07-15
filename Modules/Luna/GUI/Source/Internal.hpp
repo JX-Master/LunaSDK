@@ -89,6 +89,11 @@ namespace Luna
             bool resolve_input_text_action(GUICore::IContext* context, TextInputAction& action);
             bool resolve_slider_float_action(GUICore::IContext* context, SliderFloatAction& action);
             bool resolve_slider_int_action(GUICore::IContext* context, SliderIntAction& action);
+            bool resolve_choice_action(GUICore::IContext* context, ChoiceAction& action);
+            bool resolve_button_group_multi_action(GUICore::IContext* context, ButtonGroupMultiAction& action);
+            bool resolve_disclosure_action(GUICore::IContext* context, DisclosureAction& action);
+            bool resolve_drag_float_action(GUICore::IContext* context, DragFloatAction& action);
+            bool resolve_drag_int_action(GUICore::IContext* context, DragIntAction& action);
             bool resolve_scroll_action(GUICore::IContext* context, ScrollAction& action);
             bool resolve_tab_action(GUICore::IContext* context, TabAction& action);
         }

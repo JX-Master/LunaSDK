@@ -66,6 +66,32 @@ namespace Luna
             add("gui.group.radius", GUICore::StyleValueType::f32, GUICore::style_f32(5.0f),
                 "Button Group", "Group corner radius.");
 
+            add("gui.choice.background", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.08f, 0.10f, 0.13f, 1.0f)), "Choice", "Choice background.");
+            add("gui.choice.hovered", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.13f, 0.19f, 0.27f, 1.0f)), "Choice", "Hovered choice fill.");
+            add("gui.choice.selected", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.16f, 0.35f, 0.58f, 1.0f)), "Choice", "Selected choice fill.");
+            add("gui.choice.accent", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.18f, 0.42f, 0.72f, 1.0f)), "Choice", "Choice accent color.");
+            add("gui.choice.border", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.32f, 0.40f, 0.50f, 1.0f)), "Choice", "Choice outline.");
+            add("gui.choice.mark", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.92f, 0.96f, 1.0f, 1.0f)), "Choice", "Choice mark color.");
+            add("gui.choice.disabled", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.30f, 0.34f, 0.40f, 1.0f)), "Choice", "Disabled choice color.");
+            add("gui.switch.off", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.20f, 0.24f, 0.29f, 1.0f)), "Choice", "Switch off track.");
+            add("gui.switch.on", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.15f, 0.50f, 0.76f, 1.0f)), "Choice", "Switch on track.");
+
+            add("gui.disclosure.header", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.16f, 0.19f, 0.24f, 1.0f)), "Disclosure", "Header fill.");
+            add("gui.disclosure.header_hovered", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.20f, 0.25f, 0.32f, 1.0f)), "Disclosure", "Hovered header fill.");
+            add("gui.disclosure.icon", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.86f, 0.90f, 0.96f, 1.0f)), "Disclosure", "Disclosure icon color.");
+
             add("gui.input.background", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.08f, 0.10f, 0.13f, 1.0f)), "Text Input", "Input background.");
             add("gui.input.background_focused", GUICore::StyleValueType::f32x4,
@@ -93,6 +119,15 @@ namespace Luna
                 GUICore::style_f32x4(Float4U(0.32f, 0.36f, 0.42f, 1.0f)), "Slider", "Disabled slider color.");
             add("gui.slider.knob_size", GUICore::StyleValueType::f32, GUICore::style_f32(12.0f),
                 "Slider", "Slider knob diameter.");
+
+            add("gui.drag.background", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.11f, 0.15f, 0.21f, 1.0f)), "Drag", "Drag editor fill.");
+            add("gui.drag.hovered", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.14f, 0.21f, 0.30f, 1.0f)), "Drag", "Hovered drag editor fill.");
+            add("gui.drag.active", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.18f, 0.32f, 0.50f, 1.0f)), "Drag", "Active drag editor fill.");
+            add("gui.drag.disabled", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.09f, 0.11f, 0.14f, 1.0f)), "Drag", "Disabled drag editor fill.");
 
             add("gui.progress.background", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.07f, 0.08f, 0.10f, 1.0f)), "Progress Bar", "Progress background.");

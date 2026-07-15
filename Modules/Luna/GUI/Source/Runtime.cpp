@@ -67,6 +67,18 @@ namespace Luna
                     }
                     break;
                 }
+                case Internal::ActionType::button_group_multi:
+                    result.value_changed |= Internal::resolve_button_group_multi_action(context,
+                        *(Internal::ButtonGroupMultiAction*)record.data);
+                    break;
+                case Internal::ActionType::choice:
+                    result.value_changed |= Internal::resolve_choice_action(context,
+                        *(Internal::ChoiceAction*)record.data);
+                    break;
+                case Internal::ActionType::disclosure:
+                    result.value_changed |= Internal::resolve_disclosure_action(context,
+                        *(Internal::DisclosureAction*)record.data);
+                    break;
                 case Internal::ActionType::input_text:
                     result.value_changed |= Internal::resolve_input_text_action(context,
                         *(Internal::TextInputAction*)record.data);
@@ -78,6 +90,14 @@ namespace Luna
                 case Internal::ActionType::slider_int:
                     result.value_changed |= Internal::resolve_slider_int_action(context,
                         *(Internal::SliderIntAction*)record.data);
+                    break;
+                case Internal::ActionType::drag_float:
+                    result.value_changed |= Internal::resolve_drag_float_action(context,
+                        *(Internal::DragFloatAction*)record.data);
+                    break;
+                case Internal::ActionType::drag_int:
+                    result.value_changed |= Internal::resolve_drag_int_action(context,
+                        *(Internal::DragIntAction*)record.data);
                     break;
                 case Internal::ActionType::scroll_view:
                     result.relayout_requested |= Internal::resolve_scroll_action(context,

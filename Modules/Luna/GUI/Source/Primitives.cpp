@@ -141,6 +141,39 @@ namespace Luna
                 return ok;
             }
 
+            struct ShapeData
+            {
+                GUICore::ShapeDesc shape;
+                ShapeWidgetDesc desc;
+            };
+
+            static GUICore::MeasureResult measure_shape(GUICore::IContext*, const GUICore::ElementHandle&,
+                const Float2U&, void* userdata)
+            {
+                GUICore::MeasureResult result;
+                ShapeData* data = (ShapeData*)userdata;
+                if(data)
+                {
+                    result.desired = Float2U(max(data->shape.bounds.width, 0.0f),
+                        max(data->shape.bounds.height, 0.0f));
+                }
+                return result;
+            }
+
+            static RV draw_shape(GUICore::IContext* context, const GUICore::ElementHandle&,
+                GUICore::DrawPhase, void* userdata)
+            {
+                ShapeData* data = (ShapeData*)userdata;
+                if(!data || !data->shape.buffer || !data->shape.num_commands) return ok;
+                GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::shape;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.color = data->desc.tint;
+                command.shape = data->shape;
+                context->draw(command);
+                return ok;
+            }
+
             struct ProgressData
             {
                 f32 fraction = 0.0f;
@@ -238,6 +271,36 @@ namespace Luna
             draw.callback = Internal::draw_image;
             draw.userdata = data;
             context->set_draw_config(element, draw);
+            context->end_element();
+            return element;
+        }
+
+        LUNA_GUI_API GUICore::ElementHandle shape(GUICore::IContext* context, id_t id,
+            const GUICore::ShapeDesc& value, const GUICore::LayoutConfig& layout, const ShapeWidgetDesc& desc)
+        {
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "Shape", layout);
+            Internal::ShapeData* data = Internal::allocate_frame<Internal::ShapeData>(context);
+            data->shape = value;
+            data->desc = desc;
+            GUICore::LayoutCallbackConfig callbacks;
+            callbacks.algorithm = Name("gui.shape");
+            callbacks.measure_callback = Internal::measure_shape;
+            callbacks.userdata = data;
+            context->set_layout_callback_config(element, callbacks);
+            GUICore::DrawConfig draw;
+            draw.name = Name("gui.shape");
+            draw.callback = Internal::draw_shape;
+            draw.userdata = data;
+            context->set_draw_config(element, draw);
+            context->end_element();
+            return element;
+        }
+
+        LUNA_GUI_API GUICore::ElementHandle hit_box(GUICore::IContext* context, id_t id,
+            const GUICore::LayoutConfig& layout, const HitBoxDesc& desc)
+        {
+            GUICore::ElementHandle element = Internal::begin_element(context, id, "Hit Box", layout);
+            Internal::set_interactable(context, element, desc.enabled);
             context->end_element();
             return element;
         }

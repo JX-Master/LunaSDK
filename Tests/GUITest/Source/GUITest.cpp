@@ -21,7 +21,9 @@
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/VG/ShapeDrawList.hpp>
+#include <Luna/VG/ShapeBuffer.hpp>
 #include <Luna/VG/ShapeRenderer.hpp>
+#include <Luna/VG/Shapes.hpp>
 #include <Luna/VG/VG.hpp>
 #include <Luna/Window/AppMain.hpp>
 #include <Luna/Window/Event.hpp>
@@ -36,18 +38,33 @@ namespace
     {
         i32 selected_tab = 0;
         i32 selected_group = 1;
+        bool selected_group_multi[4] = { true, false, true, false };
+        bool selectable_selected = false;
+        bool checkbox_value = true;
+        bool switch_value = false;
+        i32 radio_value = 1;
         i32 button_clicks = 0;
         String input_value = "Editable text";
         String notes = "The new GUI package is built directly on GUI Core.";
         String read_only_value = "Read-only value";
         f32 slider_value = 0.42f;
         i32 slider_integer = 64;
+        f32 slider_float3[3] = { 0.2f, 0.5f, 0.8f };
+        i32 slider_int3[3] = { 20, 50, 80 };
+        f32 drag_float_value = 12.5f;
+        i32 drag_int_value = 24;
+        f32 drag_float3[3] = { 1.0f, 2.0f, 3.0f };
+        i32 drag_int3[3] = { 4, 8, 12 };
         Ref<RHI::ITexture> image_texture;
+        Ref<VG::IShapeBuffer> icon_shape_buffer;
+        GUICore::ShapeDesc icon_shape;
     };
 
     struct FrameHandles
     {
         GUICore::ElementHandle container_button;
+        GUICore::ElementHandle selectable;
+        GUICore::ElementHandle hit_box;
     };
 
     struct DemoApp
@@ -211,6 +228,51 @@ namespace
             Span<const c8*>(items, 4), &state.selected_group, fill_width_layout(38.0f));
         snprintf(status, sizeof(status), "Selected item: %s", items[clamp(state.selected_group, 0, 3)]);
         GUI::text(context, make_id(context, "demo.buttons.group.status"), status, fill_width_layout(28.0f));
+
+        section_heading(context, "demo.buttons.group.multi.heading", "Multiple Selection Button Group");
+        GUI::button_group(context, make_id(context, "demo.buttons.group.multi"),
+            Span<const c8*>(items, 4), Span<bool>(state.selected_group_multi, 4), fill_width_layout(38.0f));
+
+        section_heading(context, "demo.buttons.shape.heading", "Shape, Shape Button and Hit Box");
+        GUICore::ElementHandle shape_row = GUI::begin_h_layout(context,
+            make_id(context, "demo.buttons.shape.row"), "Shape controls", fill_width_layout(52.0f));
+        GUI::shape(context, make_id(context, "demo.buttons.shape"), state.icon_shape, fixed_layout(42.0f, 42.0f));
+        GUI::shape_button(context, make_id(context, "demo.buttons.shape_button"), "Shape Button",
+            state.icon_shape, fixed_layout(54.0f, 42.0f));
+        handles.hit_box = GUI::hit_box(context, make_id(context, "demo.buttons.hit_box"), fixed_layout(120.0f, 42.0f));
+        GUI::text(context, make_id(context, "demo.buttons.hit_box.label"), "Invisible hit box", fixed_layout(150.0f, 42.0f));
+        GUICore::FlexLayoutDesc shape_flex;
+        shape_flex.main_axis_gap = 10.0f;
+        shape_flex.cross_alignment = GUICore::FlexAlignment::center;
+        GUI::end_h_layout(context, shape_row, shape_flex);
+
+        section_heading(context, "demo.buttons.choice.heading", "Selection Controls");
+        handles.selectable = GUI::selectable(context, make_id(context, "demo.buttons.selectable"),
+            "Selectable item", state.selectable_selected, fill_width_layout(34.0f));
+        GUI::checkbox(context, make_id(context, "demo.buttons.checkbox"), "Checkbox", &state.checkbox_value,
+            fill_width_layout(34.0f));
+        GUI::radio_button(context, make_id(context, "demo.buttons.radio.0"), "Radio A", &state.radio_value, 0,
+            fill_width_layout(34.0f));
+        GUI::radio_button(context, make_id(context, "demo.buttons.radio.1"), "Radio B", &state.radio_value, 1,
+            fill_width_layout(34.0f));
+        GUI::toggle_switch(context, make_id(context, "demo.buttons.switch"), "Toggle Switch", &state.switch_value,
+            fill_width_layout(34.0f));
+
+        section_heading(context, "demo.buttons.disclosure.heading", "Disclosure and Tree");
+        if(GUI::collapsing_header(context, make_id(context, "demo.buttons.header"), "Collapsing Header",
+            fill_width_layout(34.0f)))
+        {
+            GUI::text(context, make_id(context, "demo.buttons.header.content"),
+                "Header content is conditionally submitted.", fill_width_layout(28.0f));
+        }
+        if(GUI::tree_node(context, make_id(context, "demo.buttons.tree.root"), "Root Node",
+            GUI::TreeNodeFlag::none, 0, fill_width_layout(32.0f)))
+        {
+            GUI::tree_node(context, make_id(context, "demo.buttons.tree.branch"), "Branch Node",
+                GUI::TreeNodeFlag::none, 1, fill_width_layout(32.0f));
+            GUI::tree_node(context, make_id(context, "demo.buttons.tree.leaf"), "Leaf Node",
+                GUI::TreeNodeFlag::leaf, 2, fill_width_layout(32.0f));
+        }
         GUI::end_scroll_view(context);
     }
 
@@ -238,9 +300,27 @@ namespace
             0.0f, 1.0f, fill_width_layout(30.0f));
         GUI::slider_int(context, make_id(context, "demo.input.slider.int"), &state.slider_integer,
             0, 100, fill_width_layout(30.0f));
+        GUI::slider_float3(context, make_id(context, "demo.input.slider.float3"), state.slider_float3,
+            0.0f, 1.0f, fill_width_layout(30.0f));
+        GUI::slider_int3(context, make_id(context, "demo.input.slider.int3"), state.slider_int3,
+            0, 100, fill_width_layout(30.0f));
         c8 values[128];
         snprintf(values, sizeof(values), "float = %.3f    integer = %d", state.slider_value, state.slider_integer);
         GUI::text(context, make_id(context, "demo.input.slider.values"), values, fill_width_layout(28.0f));
+
+        section_heading(context, "demo.input.heading.drag", "Drag Editors");
+        GUI::DragDesc float_drag;
+        float_drag.speed = 0.05f;
+        GUI::drag_float(context, make_id(context, "demo.input.drag.float"), &state.drag_float_value,
+            -100.0f, 100.0f, fill_width_layout(34.0f), float_drag);
+        GUI::DragDesc int_drag;
+        int_drag.speed = 1.0f;
+        GUI::drag_int(context, make_id(context, "demo.input.drag.int"), &state.drag_int_value,
+            -100, 100, fill_width_layout(34.0f), int_drag);
+        GUI::drag_float3(context, make_id(context, "demo.input.drag.float3"), state.drag_float3,
+            -100.0f, 100.0f, fill_width_layout(34.0f), float_drag);
+        GUI::drag_int3(context, make_id(context, "demo.input.drag.int3"), state.drag_int3,
+            -100, 100, fill_width_layout(34.0f), int_drag);
         GUI::end_scroll_view(context);
     }
 
@@ -445,6 +525,17 @@ namespace
         return ok;
     }
 
+    void create_test_shape(DemoApp& app)
+    {
+        app.state.icon_shape_buffer = VG::new_shape_buffer();
+        Vector<f32>& points = app.state.icon_shape_buffer->get_shape_points(true);
+        app.state.icon_shape.buffer = app.state.icon_shape_buffer;
+        app.state.icon_shape.first_command = (u32)points.size();
+        VG::ShapeBuilder::add_circle_filled(points, 12.0f, 12.0f, 9.0f);
+        app.state.icon_shape.num_commands = (u32)points.size() - app.state.icon_shape.first_command;
+        app.state.icon_shape.bounds = RectF(0.0f, 0.0f, 24.0f, 24.0f);
+    }
+
     RV init_demo(DemoApp& app)
     {
         lutry
@@ -482,6 +573,7 @@ namespace
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
             GUI::register_style_schemas(app.gui);
             luexp(create_checker_texture(app));
+            create_test_shape(app);
         }
         lucatchret;
         return ok;
@@ -563,6 +655,11 @@ namespace
                     GUI::is_item_clicked(app.gui, handles.container_button))
                 {
                     ++app.state.button_clicks;
+                }
+                if(GUI::is_item_valid(app.gui, handles.selectable) &&
+                    GUI::is_item_clicked(app.gui, handles.selectable))
+                {
+                    app.state.selectable_selected = !app.state.selectable_selected;
                 }
                 if(resolved.relayout_requested)
                 {

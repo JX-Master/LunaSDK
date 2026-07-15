@@ -208,5 +208,68 @@ namespace Luna
             Internal::add_action(context, Internal::ActionType::slider_int, id, action);
             return element;
         }
+
+        static GUICore::ElementHandle slider_float_n(GUICore::IContext* context, id_t id, f32* value,
+            u32 count, f32 minimum, f32 maximum, const GUICore::LayoutConfig& layout, const SliderDesc& desc)
+        {
+            luassert(context && id && value && count >= 2 && count <= 4);
+            GUICore::ElementHandle group = begin_h_layout(context, id, "Vector Float Slider", layout);
+            for(u32 i = 0; i < count; ++i)
+            {
+                GUICore::LayoutConfig child_layout;
+                child_layout.width.kind = GUICore::SizeKind::fit;
+                child_layout.width.min = 48.0f;
+                child_layout.height.kind = GUICore::SizeKind::percent;
+                child_layout.height.value = 1.0f;
+                child_layout.flex_grow = 1.0f;
+                slider_float(context, GUICore::make_scoped_id(id, (id_t)i + 1), value + i,
+                    minimum, maximum, child_layout, desc);
+            }
+            GUICore::FlexLayoutDesc flex;
+            flex.main_axis_gap = 6.0f;
+            end_h_layout(context, group, flex);
+            return group;
+        }
+
+        static GUICore::ElementHandle slider_int_n(GUICore::IContext* context, id_t id, i32* value,
+            u32 count, i32 minimum, i32 maximum, const GUICore::LayoutConfig& layout, const SliderDesc& desc)
+        {
+            luassert(context && id && value && count >= 2 && count <= 4);
+            GUICore::ElementHandle group = begin_h_layout(context, id, "Vector Integer Slider", layout);
+            for(u32 i = 0; i < count; ++i)
+            {
+                GUICore::LayoutConfig child_layout;
+                child_layout.width.kind = GUICore::SizeKind::fit;
+                child_layout.width.min = 48.0f;
+                child_layout.height.kind = GUICore::SizeKind::percent;
+                child_layout.height.value = 1.0f;
+                child_layout.flex_grow = 1.0f;
+                slider_int(context, GUICore::make_scoped_id(id, (id_t)i + 1), value + i,
+                    minimum, maximum, child_layout, desc);
+            }
+            GUICore::FlexLayoutDesc flex;
+            flex.main_axis_gap = 6.0f;
+            end_h_layout(context, group, flex);
+            return group;
+        }
+
+        LUNA_GUI_API GUICore::ElementHandle slider_float2(GUICore::IContext* context, id_t id, f32* value,
+            f32 minimum, f32 maximum, const GUICore::LayoutConfig& layout, const SliderDesc& desc)
+        { return slider_float_n(context, id, value, 2, minimum, maximum, layout, desc); }
+        LUNA_GUI_API GUICore::ElementHandle slider_float3(GUICore::IContext* context, id_t id, f32* value,
+            f32 minimum, f32 maximum, const GUICore::LayoutConfig& layout, const SliderDesc& desc)
+        { return slider_float_n(context, id, value, 3, minimum, maximum, layout, desc); }
+        LUNA_GUI_API GUICore::ElementHandle slider_float4(GUICore::IContext* context, id_t id, f32* value,
+            f32 minimum, f32 maximum, const GUICore::LayoutConfig& layout, const SliderDesc& desc)
+        { return slider_float_n(context, id, value, 4, minimum, maximum, layout, desc); }
+        LUNA_GUI_API GUICore::ElementHandle slider_int2(GUICore::IContext* context, id_t id, i32* value,
+            i32 minimum, i32 maximum, const GUICore::LayoutConfig& layout, const SliderDesc& desc)
+        { return slider_int_n(context, id, value, 2, minimum, maximum, layout, desc); }
+        LUNA_GUI_API GUICore::ElementHandle slider_int3(GUICore::IContext* context, id_t id, i32* value,
+            i32 minimum, i32 maximum, const GUICore::LayoutConfig& layout, const SliderDesc& desc)
+        { return slider_int_n(context, id, value, 3, minimum, maximum, layout, desc); }
+        LUNA_GUI_API GUICore::ElementHandle slider_int4(GUICore::IContext* context, id_t id, i32* value,
+            i32 minimum, i32 maximum, const GUICore::LayoutConfig& layout, const SliderDesc& desc)
+        { return slider_int_n(context, id, value, 4, minimum, maximum, layout, desc); }
     }
 }

@@ -22,11 +22,24 @@ namespace Luna
             {
                 button,
                 button_group,
+                button_group_multi,
+                choice,
+                disclosure,
                 input_text,
                 slider_float,
                 slider_int,
+                drag_float,
+                drag_int,
                 scroll_view,
                 tab_bar
+            };
+
+            enum class ChoiceOperation : u8
+            {
+                none,
+                toggle_bool,
+                set_bool,
+                set_int
             };
 
             struct ButtonAction
@@ -43,6 +56,34 @@ namespace Luna
                 usize item_count = 0;
                 bool enabled = true;
                 struct ButtonGroupState* state = nullptr;
+            };
+
+            struct ButtonGroupMultiAction
+            {
+                bool* selected = nullptr;
+                GUICore::id_t* item_ids = nullptr;
+                usize item_count = 0;
+                bool enabled = true;
+            };
+
+            struct ChoiceAction
+            {
+                GUICore::id_t id = 0;
+                ChoiceOperation operation = ChoiceOperation::none;
+                bool* bool_value = nullptr;
+                i32* int_value = nullptr;
+                i32 set_value = 0;
+                bool enabled = true;
+                bool selected = false;
+                struct ChoiceVisualState* state = nullptr;
+            };
+
+            struct DisclosureAction
+            {
+                GUICore::id_t id = 0;
+                bool enabled = true;
+                bool can_toggle = true;
+                struct DisclosureState* state = nullptr;
             };
 
             struct TextInputAction
@@ -75,6 +116,30 @@ namespace Luna
                 i32 maximum = 100;
                 f32 navigation_step = 0.01f;
                 bool enabled = true;
+            };
+
+            struct DragFloatAction
+            {
+                GUICore::id_t id = 0;
+                f32* value = nullptr;
+                u8 count = 1;
+                f32 minimum = 0.0f;
+                f32 maximum = 0.0f;
+                f32 speed = 0.01f;
+                bool enabled = true;
+                struct DragState* state = nullptr;
+            };
+
+            struct DragIntAction
+            {
+                GUICore::id_t id = 0;
+                i32* value = nullptr;
+                u8 count = 1;
+                i32 minimum = 0;
+                i32 maximum = 0;
+                f32 speed = 1.0f;
+                bool enabled = true;
+                struct DragState* state = nullptr;
             };
 
             struct ScrollAction
@@ -138,6 +203,29 @@ namespace Luna
             {
                 f32 hovered = 0.0f;
                 f32 active = 0.0f;
+            };
+
+            struct [[Luna::struct("{CC2C00CD-195D-47D6-9C2E-516A50C8C1B1}")]] ChoiceVisualState
+            {
+                f32 hovered = 0.0f;
+                f32 active = 0.0f;
+                f32 selected = 0.0f;
+                bool initialized = false;
+            };
+
+            struct [[Luna::struct("{656D0143-755B-4F46-A471-27B0049B2DCE}")]] DisclosureState
+            {
+                bool open = true;
+                bool initialized = false;
+                f32 animation = 1.0f;
+            };
+
+            struct [[Luna::struct("{29355D28-48C6-457F-A396-F0459D4CC029}")]] DragState
+            {
+                bool dragging = false;
+                f32 start_pointer_x = 0.0f;
+                f32 start_float = 0.0f;
+                i32 start_int = 0;
             };
 
             struct [[Luna::struct("{47C7A918-1B06-4351-B5DE-14469AF613B3}")]] TextInputState
