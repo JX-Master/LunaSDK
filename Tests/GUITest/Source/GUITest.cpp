@@ -55,6 +55,10 @@ namespace
         i32 drag_int_value = 24;
         f32 drag_float3[3] = { 1.0f, 2.0f, 3.0f };
         i32 drag_int3[3] = { 4, 8, 12 };
+        i32 combo_item = 0;
+        bool menu_grid = true;
+        Float2U popup_position = Float2U(120.0f, 180.0f);
+        Float2U child_popup_position = Float2U(380.0f, 220.0f);
         Ref<RHI::ITexture> image_texture;
         Ref<VG::IShapeBuffer> icon_shape_buffer;
         GUICore::ShapeDesc icon_shape;
@@ -438,6 +442,102 @@ namespace
         GUI::end_h_layout(context, row, row_desc);
     }
 
+    Float2U popup_position_below(const GUICore::InteractionState& interaction)
+    {
+        return Float2U(
+            interaction.clicked_screen_position.x - interaction.clicked_element_position.x,
+            interaction.clicked_screen_position.y - interaction.clicked_element_position.y +
+                interaction.clicked_element_rect.height);
+    }
+
+    void build_overlay_page(GUICore::IContext* context, DemoState& state)
+    {
+        begin_page(context, "demo.overlay.scroll");
+
+        section_heading(context, "demo.overlay.combo.heading", "Combo");
+        const c8* combo_items[] = { "Alpha", "Beta", "Gamma", "Delta" };
+        GUI::combo(context, make_id(context, "demo.overlay.combo"), "Example Combo", &state.combo_item,
+            Span<const c8*>(combo_items, 4), fill_width_layout(36.0f));
+
+        section_heading(context, "demo.overlay.tooltip.heading", "Tooltip");
+        GUICore::ElementHandle tooltip_owner = GUI::text_button(context,
+            make_id(context, "demo.overlay.tooltip.owner"), "Hover for a delayed tooltip",
+            fill_width_layout(38.0f));
+        GUI::TooltipDesc tooltip_desc;
+        tooltip_desc.delay = 0.35f;
+        GUI::set_item_tooltip(context, make_id(context, "demo.overlay.tooltip"), tooltip_owner,
+            "Tooltip content lives in its own layer and does not block the owner.", tooltip_desc);
+
+        section_heading(context, "demo.overlay.popup.heading", "Popup Stack");
+        GUI::id_t popup_id = make_id(context, "demo.overlay.popup");
+        GUICore::ElementHandle popup_button = GUI::text_button(context,
+            make_id(context, "demo.overlay.popup.open"), "Open Popup", fill_width_layout(38.0f));
+        if(GUI::is_item_clicked(context, popup_button))
+        {
+            state.popup_position = popup_position_below(context->get_interaction_state(popup_button.id));
+            GUI::open_popup(context, popup_id);
+        }
+        GUI::PopupDesc popup_desc;
+        popup_desc.position = state.popup_position;
+        popup_desc.layout = fixed_layout(300.0f, 142.0f);
+        GUICore::ElementHandle popup;
+        if(GUI::begin_popup(context, popup_id, popup_desc, &popup))
+        {
+            GUI::text(context, make_child_id(popup_id, 0), "This popup closes on outside click or Escape.",
+                fill_width_layout(28.0f, 2.0f));
+            GUI::id_t child_popup_id = make_child_id(popup_id, 1);
+            GUICore::ElementHandle child_button = GUI::text_button(context, make_child_id(popup_id, 2),
+                "Open Child Popup", fill_width_layout(34.0f, 2.0f));
+            if(GUI::is_item_clicked(context, child_button))
+            {
+                state.child_popup_position = popup_position_below(context->get_interaction_state(child_button.id));
+                GUI::open_popup(context, child_popup_id);
+            }
+            GUI::PopupDesc child_desc;
+            child_desc.position = state.child_popup_position;
+            child_desc.layout = fixed_layout(230.0f, 72.0f);
+            GUICore::ElementHandle child_popup;
+            if(GUI::begin_popup(context, child_popup_id, child_desc, &child_popup))
+            {
+                GUI::text(context, make_child_id(child_popup_id, 0), "Nested popup layer",
+                    fill_width_layout(30.0f, 2.0f));
+                lupanic_if_failed(GUI::end_popup(context, child_popup, RectF(0.0f, 0.0f, 230.0f, 72.0f)));
+            }
+            lupanic_if_failed(GUI::end_popup(context, popup, RectF(0.0f, 0.0f, 300.0f, 142.0f)));
+        }
+
+        section_heading(context, "demo.overlay.menu.heading", "Menu Bar and Menu Items");
+        GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context,
+            make_id(context, "demo.overlay.menu_bar"), "Showcase Menu Bar", fill_width_layout(34.0f));
+        if(GUI::begin_menu(context, make_id(context, "demo.overlay.menu.file"), "File"))
+        {
+            GUI::MenuItemDesc new_desc;
+            new_desc.shortcut = "Ctrl+N";
+            GUI::menu_item(context, make_id(context, "demo.overlay.menu.file.new"), "New", false, new_desc);
+            GUI::menu_separator(context, make_id(context, "demo.overlay.menu.file.separator"));
+            GUI::MenuItemDesc disabled_desc;
+            disabled_desc.enabled = false;
+            GUI::menu_item(context, make_id(context, "demo.overlay.menu.file.disabled"), "Unavailable", false,
+                disabled_desc);
+            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 220.0f, 88.0f)));
+        }
+        if(GUI::begin_menu(context, make_id(context, "demo.overlay.menu.view"), "View"))
+        {
+            GUI::menu_item(context, make_id(context, "demo.overlay.menu.view.grid"), "Show Grid",
+                &state.menu_grid);
+            if(GUI::begin_menu(context, make_id(context, "demo.overlay.menu.view.theme"), "Theme"))
+            {
+                GUI::menu_item(context, make_id(context, "demo.overlay.menu.view.theme.dark"), "Dark");
+                GUI::menu_item(context, make_id(context, "demo.overlay.menu.view.theme.light"), "Light");
+                lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 220.0f, 70.0f)));
+            }
+            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 220.0f, 76.0f)));
+        }
+        GUI::end_menu_bar(context, menu_bar);
+
+        GUI::end_scroll_view(context);
+    }
+
     GUICore::ElementHandle build_frame(GUICore::IContext* context, DemoState& state, FrameHandles& handles)
     {
         context->push_layer(1, Float2U(0.0f));
@@ -476,6 +576,11 @@ namespace
         if(GUI::begin_tab_item(context, make_id(context, "demo.tab.scroll"), "Scroll Views"))
         {
             build_scroll_page(context);
+            GUI::end_tab_item(context);
+        }
+        if(GUI::begin_tab_item(context, make_id(context, "demo.tab.overlay"), "Overlay"))
+        {
+            build_overlay_page(context, state);
             GUI::end_tab_item(context);
         }
         GUI::end_tab_bar(context);
@@ -610,7 +715,7 @@ namespace
         {
             DemoApp app;
             luexp(init_demo(app));
-            app.state.selected_tab = clamp(options.selected_tab, 0, 4);
+            app.state.selected_tab = clamp(options.selected_tab, 0, 5);
             GUIWindow::GUICoreWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;

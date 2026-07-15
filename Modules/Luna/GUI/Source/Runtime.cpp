@@ -15,12 +15,80 @@ namespace Luna
 {
     namespace GUI
     {
+        static i32 popup_layer_at_position(GUICore::IContext* context, const Internal::FrameState& frame,
+            const Float2U& position)
+        {
+            Span<const GUICore::Layer> layers = context->get_layers();
+            i32 result = -1;
+            for(const Internal::Action& record : frame.actions)
+            {
+                if(record.type != Internal::ActionType::popup) continue;
+                Internal::PopupAction* action = (Internal::PopupAction*)record.data;
+                const GUICore::Element* element = action ? context->get_element(action->root.index) : nullptr;
+                if(!element || element->layer >= layers.size()) continue;
+                const GUICore::Layer& layer = layers[element->layer];
+                const RectF& rect = element->layout_result.rect;
+                f32 x = layer.screen_position.x + rect.offset_x;
+                f32 y = layer.screen_position.y + rect.offset_y;
+                if(position.x >= x && position.y >= y &&
+                    position.x < x + rect.width && position.y < y + rect.height)
+                {
+                    result = max(result, (i32)element->layer);
+                }
+            }
+            return result;
+        }
+
+        static i32 popup_action_layer(GUICore::IContext* context, const Internal::PopupAction& action)
+        {
+            const GUICore::Element* element = context->get_element(action.root.index);
+            return element ? (i32)element->layer : -1;
+        }
+
         LUNA_GUI_API ResolveResult resolve_interactions(GUICore::IContext* context)
         {
             ResolveResult result;
             if(!context) return result;
             Ref<Internal::FrameState> frame = Internal::frame_state(context);
             f32 delta_time = max(context->get_frame_desc().delta_time, 0.0f);
+            for(const GUICore::InputEvent& event : context->get_input_events())
+            {
+                bool navigation_back = (event.type == GUICore::InputEventType::key_down &&
+                    event.key == KeyCode::esc) || event.type == GUICore::InputEventType::navigation_back;
+                if(navigation_back)
+                {
+                    Internal::PopupAction* topmost = nullptr;
+                    i32 topmost_layer = -1;
+                    for(Internal::Action& record : frame->actions)
+                    {
+                        if(record.type != Internal::ActionType::popup) continue;
+                        Internal::PopupAction* action = (Internal::PopupAction*)record.data;
+                        if(!action || !test_flags(action->flags, PopupFlag::close_on_escape)) continue;
+                        i32 layer = popup_action_layer(context, *action);
+                        if(layer > topmost_layer)
+                        {
+                            topmost = action;
+                            topmost_layer = layer;
+                        }
+                    }
+                    if(topmost) close_popup(context, topmost->id);
+                }
+                if(event.type == GUICore::InputEventType::pointer_down &&
+                    event.button == GUICore::PointerButton::left)
+                {
+                    i32 hit_layer = popup_layer_at_position(context, *frame, event.position);
+                    for(Internal::Action& record : frame->actions)
+                    {
+                        if(record.type != Internal::ActionType::popup) continue;
+                        Internal::PopupAction* action = (Internal::PopupAction*)record.data;
+                        if(action && test_flags(action->flags, PopupFlag::close_on_outside_click) &&
+                            popup_action_layer(context, *action) > hit_layer)
+                        {
+                            close_popup(context, action->id);
+                        }
+                    }
+                }
+            }
             for(Internal::Action& record : frame->actions)
             {
                 switch(record.type)
@@ -106,6 +174,8 @@ namespace Luna
                 case Internal::ActionType::tab_bar:
                     result.value_changed |= Internal::resolve_tab_action(context,
                         *(Internal::TabAction*)record.data);
+                    break;
+                case Internal::ActionType::popup:
                     break;
                 default:
                     break;

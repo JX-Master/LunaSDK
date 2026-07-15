@@ -40,6 +40,8 @@ namespace Luna
                     state->actions.clear();
                     state->scroll_stack.clear();
                     state->tab_stack.clear();
+                    state->popup_stack.clear();
+                    state->menu_bar_stack.clear();
                 }
                 lupanic_if_failed(context->set_state(state_id, state.object(), GUICore::StateLifetime::next_frame));
                 return state;
@@ -161,6 +163,23 @@ namespace Luna
                 f32 t = clamp(speed * delta_time, 0.0f, 1.0f);
                 t = t * t * (3.0f - 2.0f * t);
                 return current + (target - current) * t;
+            }
+
+            id_t derived_id(id_t id, const c8* salt)
+            {
+                u64 hash = 14695981039346656037ull;
+                const byte_t* bytes = (const byte_t*)&id;
+                for(usize i = 0; i < sizeof(id); ++i)
+                {
+                    hash ^= (u64)bytes[i];
+                    hash *= 1099511628211ull;
+                }
+                while(salt && *salt)
+                {
+                    hash ^= (u64)(byte_t)*salt++;
+                    hash *= 1099511628211ull;
+                }
+                return hash;
             }
         }
 

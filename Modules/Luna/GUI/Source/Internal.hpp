@@ -85,6 +85,7 @@ namespace Luna
             f32 smooth_step(f32 current, f32 target, f32 speed, f32 delta_time);
             void set_flex_layout(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 const GUICore::FlexLayoutDesc& source, GUICore::LayoutAxis axis);
+            id_t derived_id(id_t id, const c8* salt);
 
             bool resolve_input_text_action(GUICore::IContext* context, TextInputAction& action);
             bool resolve_slider_float_action(GUICore::IContext* context, SliderFloatAction& action);

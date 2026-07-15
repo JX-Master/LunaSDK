@@ -11,3 +11,4 @@
 #include "Style.hpp"
 #include "Widgets.hpp"
 #include "Layouts.hpp"
+#include "Overlay.hpp"

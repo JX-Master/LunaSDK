@@ -31,7 +31,8 @@ namespace Luna
                 drag_float,
                 drag_int,
                 scroll_view,
-                tab_bar
+                tab_bar,
+                popup
             };
 
             enum class ChoiceOperation : u8
@@ -160,6 +161,13 @@ namespace Luna
                 struct TabState* state = nullptr;
             };
 
+            struct PopupAction
+            {
+                id_t id = 0;
+                GUICore::ElementHandle root;
+                PopupFlag flags = PopupFlag::none;
+            };
+
             struct Action
             {
                 ActionType type = ActionType::button_group;
@@ -182,6 +190,19 @@ namespace Luna
                 GUICore::ElementHandle content;
             };
 
+            struct PopupBuildScope
+            {
+                id_t popup_id = 0;
+                GUICore::ElementHandle root;
+                id_t hovered_menu_item = 0;
+            };
+
+            struct MenuBarBuildScope
+            {
+                GUICore::ElementHandle root;
+                f32 gap = 4.0f;
+            };
+
             struct [[Luna::struct("{BF108424-36AE-4BA2-96F1-4533BD8A8FE9}")]] FrameState
             {
                 u32 generation = 0;
@@ -191,6 +212,8 @@ namespace Luna
                 Vector<Action> actions;
                 Vector<ScrollBuildScope> scroll_stack;
                 Vector<TabBuildScope> tab_stack;
+                Vector<PopupBuildScope> popup_stack;
+                Vector<MenuBarBuildScope> menu_bar_stack;
             };
 
             struct [[Luna::struct("{66221FD7-35D2-4A64-816B-A9838E47621E}")]] ButtonGroupState
@@ -252,6 +275,28 @@ namespace Luna
                 bool initialized = false;
                 Vector<GUICore::id_t> header_ids;
                 Vector<String> header_labels;
+            };
+
+            struct [[Luna::struct("{7A960E14-A855-4E01-97E1-A32ECC2518D9}")]] PopupState
+            {
+                bool open = false;
+                PopupFlag flags = PopupFlag::none;
+            };
+
+            struct [[Luna::struct("{A93C2B07-43B7-4627-88E1-FDD26DF88FFF}")]] TooltipState
+            {
+                id_t hovered_owner = 0;
+                f32 hover_time = 0.0f;
+            };
+
+            struct [[Luna::struct("{FF49D59C-89E8-4F2D-893F-93FB877335C3}")]] PopupPlacementState
+            {
+                Float2U position = Float2U(0.0f);
+            };
+
+            struct [[Luna::struct("{681AD6CF-46C0-442C-827F-B24E40571FD5}")]] MenuBarState
+            {
+                id_t active_popup = 0;
             };
         }
     }

@@ -153,6 +153,59 @@ namespace Luna
                 "Tab Bar", "Tab header height.");
             add("gui.tab.padding_x", GUICore::StyleValueType::f32, GUICore::style_f32(14.0f),
                 "Tab Bar", "Tab horizontal padding.");
+
+            add("gui.popup.background", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.08f, 0.10f, 0.13f, 0.98f)), "Overlay", "Popup background.");
+            add("gui.popup.border", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.24f, 0.30f, 0.38f, 1.0f)), "Overlay", "Popup border.");
+            add("gui.popup.radius", GUICore::StyleValueType::f32, GUICore::style_f32(5.0f),
+                "Overlay", "Popup corner radius.");
+            add("gui.popup.padding", GUICore::StyleValueType::f32, GUICore::style_f32(7.0f),
+                "Overlay", "Popup content padding.");
+            add("gui.popup.gap", GUICore::StyleValueType::f32, GUICore::style_f32(4.0f),
+                "Overlay", "Popup item gap.");
+            add("gui.tooltip.background", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.05f, 0.06f, 0.07f, 0.97f)), "Overlay", "Tooltip background.");
+            add("gui.tooltip.border", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.28f, 0.33f, 0.40f, 1.0f)), "Overlay", "Tooltip border.");
+            add("gui.tooltip.radius", GUICore::StyleValueType::f32, GUICore::style_f32(4.0f),
+                "Overlay", "Tooltip corner radius.");
+            add("gui.tooltip.padding", GUICore::StyleValueType::f32, GUICore::style_f32(7.0f),
+                "Overlay", "Tooltip content padding.");
+            add("gui.tooltip.gap", GUICore::StyleValueType::f32, GUICore::style_f32(4.0f),
+                "Overlay", "Tooltip item gap.");
+            add("gui.combo.background", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.10f, 0.13f, 0.18f, 1.0f)), "Combo", "Combo background.");
+            add("gui.combo.background_hovered", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.13f, 0.18f, 0.26f, 1.0f)), "Combo", "Hovered combo background.");
+            add("gui.combo.background_open", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.16f, 0.25f, 0.38f, 1.0f)), "Combo", "Open combo background.");
+            add("gui.combo.border", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.24f, 0.30f, 0.38f, 1.0f)), "Combo", "Combo outline.");
+            add("gui.combo.text", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.95f, 0.96f, 0.98f, 1.0f)), "Combo", "Combo text color.");
+            add("gui.combo.radius", GUICore::StyleValueType::f32, GUICore::style_f32(4.0f),
+                "Combo", "Combo corner radius.");
+            add("gui.combo.font_size", GUICore::StyleValueType::f32, GUICore::style_f32(15.0f),
+                "Combo", "Combo text size.");
+            add("gui.menu_bar.background", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.08f, 0.10f, 0.13f, 1.0f)), "Menu", "Menu bar background.");
+            add("gui.menu_bar.gap", GUICore::StyleValueType::f32, GUICore::style_f32(4.0f),
+                "Menu", "Gap between top-level menus.");
+            add("gui.menu_item.hovered", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.14f, 0.22f, 0.32f, 1.0f)), "Menu", "Hovered menu item fill.");
+            add("gui.menu_item.active", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.18f, 0.36f, 0.62f, 1.0f)), "Menu", "Active menu item fill.");
+            add("gui.menu_item.text", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.95f, 0.96f, 0.98f, 1.0f)), "Menu", "Menu item text.");
+            add("gui.menu_item.text_disabled", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.50f, 0.56f, 0.64f, 1.0f)), "Menu", "Disabled menu item text.");
+            add("gui.menu_item.radius", GUICore::StyleValueType::f32, GUICore::style_f32(3.0f),
+                "Menu", "Menu item corner radius.");
+            add("gui.menu_item.font_size", GUICore::StyleValueType::f32, GUICore::style_f32(15.0f),
+                "Menu", "Menu item text size.");
+            add("gui.menu_separator.color", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.24f, 0.30f, 0.38f, 1.0f)), "Menu", "Menu separator color.");
         }
     }
 }

@@ -213,6 +213,68 @@ namespace Luna
             bool enabled = true;
         };
 
+        //! Bit flags controlling popup lifetime and input behavior.
+        enum class PopupFlag : u8
+        {
+            //! Uses the default popup behavior.
+            none = 0x00,
+            //! Closes the popup when the primary pointer is pressed outside this popup and its descendants.
+            close_on_outside_click = 0x01,
+            //! Closes the popup when Escape is pressed.
+            close_on_escape = 0x02
+        };
+
+        //! Describes a popup layer.
+        struct PopupDesc
+        {
+            //! Popup top-left position in screen logical coordinates.
+            Float2U position = Float2U(0.0f);
+            //! Requested popup root layout.
+            GUICore::LayoutConfig layout;
+            //! Popup lifetime and input behavior.
+            PopupFlag flags = PopupFlag::close_on_outside_click | PopupFlag::close_on_escape;
+        };
+
+        //! Describes a tooltip layer.
+        struct TooltipDesc
+        {
+            //! Offset from the pointer position to the tooltip layer origin.
+            Float2U offset = Float2U(14.0f, 18.0f);
+            //! Requested tooltip root layout.
+            GUICore::LayoutConfig layout;
+            //! Continuous hover duration required before the tooltip appears.
+            f32 delay = 0.35f;
+            //! Maximum width used by simple text tooltips.
+            f32 max_width = 360.0f;
+        };
+
+        //! Describes a combo box.
+        struct ComboDesc
+        {
+            //! Whether the combo box accepts interaction.
+            bool enabled = true;
+            //! Popup width. Non-positive values use a package default.
+            f32 popup_width = 0.0f;
+            //! Maximum popup height.
+            f32 popup_max_height = 320.0f;
+        };
+
+        //! Describes a menu bar.
+        struct MenuBarDesc
+        {
+            //! Gap between top-level menu items.
+            f32 gap = 4.0f;
+        };
+
+        //! Describes a menu or menu item.
+        struct MenuItemDesc
+        {
+            //! Whether the item accepts interaction.
+            bool enabled = true;
+            //! Optional shortcut text displayed at the trailing edge.
+            const c8* shortcut = nullptr;
+        };
+
         //! Reports package work performed after GUI Core input routing.
         struct ResolveResult
         {
