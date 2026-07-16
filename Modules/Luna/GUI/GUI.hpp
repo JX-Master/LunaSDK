@@ -12,3 +12,4 @@
 #include "Widgets.hpp"
 #include "Layouts.hpp"
 #include "Overlay.hpp"
+#include "Workspace.hpp"

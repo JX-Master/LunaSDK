@@ -98,6 +98,7 @@ namespace Luna
             bool resolve_scroll_action(GUICore::IContext* context, ScrollAction& action);
             bool resolve_tab_action(GUICore::IContext* context, TabAction& action);
             bool resolve_table_action(GUICore::IContext* context, TableAction& action);
+            bool resolve_dock_space_action(GUICore::IContext* context, DockSpaceAction& action);
         }
     }
 }

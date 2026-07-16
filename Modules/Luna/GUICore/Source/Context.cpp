@@ -233,6 +233,71 @@ namespace Luna
             return m_layers.cspan();
         }
 
+        bool Context::set_layer_screen_position(id_t id, const Float2U& screen_position)
+        {
+            lutsassert();
+            luassert_msg(!m_generating_draw_commands, "Layer positions cannot change while GUI Core draw callbacks are running.");
+            for(Layer& layer : m_layers)
+            {
+                if(layer.id == id)
+                {
+                    layer.screen_position = screen_position;
+                    m_draw_commands_generated = false;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool Context::bring_layer_to_front(id_t id)
+        {
+            lutsassert();
+            luassert_msg(!m_generating_draw_commands, "Layers cannot be reordered while GUI Core draw callbacks are running.");
+            u32 source = U32_MAX;
+            for(u32 i = 0; i < m_layers.size(); ++i)
+            {
+                if(m_layers[i].id == id)
+                {
+                    source = i;
+                    break;
+                }
+            }
+            if(source == U32_MAX)
+            {
+                return false;
+            }
+            if(source + 1 == m_layers.size())
+            {
+                return true;
+            }
+
+            Layer layer = move(m_layers[source]);
+            Vector<DrawOperation> operations = move(m_layer_draw_operations[source]);
+            m_layers.erase(m_layers.begin() + source);
+            m_layer_draw_operations.erase(m_layer_draw_operations.begin() + source);
+            m_layers.push_back(move(layer));
+            m_layer_draw_operations.push_back(move(operations));
+            u32 destination = (u32)m_layers.size() - 1;
+
+            for(Element& element : m_elements)
+            {
+                if(element.layer == source) element.layer = destination;
+                else if(element.layer > source) --element.layer;
+            }
+            for(DrawCommand& command : m_recorded_draw_commands)
+            {
+                if(command.layer == source) command.layer = destination;
+                else if(command.layer > source) --command.layer;
+            }
+            for(u32& layer_index : m_layer_stack)
+            {
+                if(layer_index == source) layer_index = destination;
+                else if(layer_index > source) --layer_index;
+            }
+            m_draw_commands_generated = false;
+            return true;
+        }
+
         void Context::set_layer_debug_name(id_t id, const Name& name)
         {
             lutsassert();

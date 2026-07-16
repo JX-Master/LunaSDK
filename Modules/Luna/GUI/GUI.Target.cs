@@ -14,6 +14,7 @@ public sealed class GUITargetRules : TargetRules
             "Widgets.hpp",
             "Layouts.hpp",
             "Overlay.hpp",
+            "Workspace.hpp",
             "GUI.hpp",
             "Source/**.hpp");
         MetaHeaders("Source/State.hpp");

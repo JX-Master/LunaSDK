@@ -122,6 +122,8 @@ namespace Luna
             virtual void push_layer(id_t id, const Float2U& screen_position = Float2U(0.0f)) override;
             virtual void pop_layer() override;
             virtual Span<const Layer> get_layers() const override;
+            virtual bool set_layer_screen_position(id_t id, const Float2U& screen_position) override;
+            virtual bool bring_layer_to_front(id_t id) override;
             virtual void set_layer_debug_name(id_t id, const Name& name) override;
             virtual void push_data_scope(id_t id) override;
             virtual void pop_data_scope() override;

@@ -57,6 +57,12 @@ namespace
         i32 drag_int3[3] = { 4, 8, 12 };
         i32 combo_item = 0;
         bool menu_grid = true;
+        bool workspace_layout_initialized = false;
+        bool hierarchy_open = true;
+        bool viewport_open = true;
+        bool scene_open = true;
+        bool console_open = true;
+        bool inspector_open = true;
         u32 table_submitted_rows = 0;
         Float2U popup_position = Float2U(120.0f, 180.0f);
         Float2U child_popup_position = Float2U(380.0f, 220.0f);
@@ -637,6 +643,84 @@ namespace
         GUI::end_scroll_view(context);
     }
 
+    void build_workspace_page(GUICore::IContext* context, DemoState& state)
+    {
+        id_t dock_space_id = make_id(context, "demo.workspace.dock_space");
+        id_t hierarchy_id = make_id(context, "demo.workspace.hierarchy");
+        id_t viewport_id = make_id(context, "demo.workspace.viewport");
+        id_t scene_id = make_id(context, "demo.workspace.scene");
+        id_t console_id = make_id(context, "demo.workspace.console");
+        id_t inspector_id = make_id(context, "demo.workspace.inspector");
+        if(!state.workspace_layout_initialized)
+        {
+            GUI::DockSpaceLayoutDesc layout;
+            layout.nodes.resize(5);
+            layout.root_node = 0;
+            layout.nodes[0].split = true;
+            layout.nodes[0].split_axis = GUI::DockSplitAxis::x;
+            layout.nodes[0].split_ratio = 0.24f;
+            layout.nodes[0].child0 = 1;
+            layout.nodes[0].child1 = 2;
+            layout.nodes[1].tabs.push_back(hierarchy_id);
+            layout.nodes[1].selected_tab = hierarchy_id;
+            layout.nodes[2].split = true;
+            layout.nodes[2].split_axis = GUI::DockSplitAxis::y;
+            layout.nodes[2].split_ratio = 0.70f;
+            layout.nodes[2].child0 = 3;
+            layout.nodes[2].child1 = 4;
+            layout.nodes[3].tabs.push_back(viewport_id);
+            layout.nodes[3].tabs.push_back(scene_id);
+            layout.nodes[3].selected_tab = viewport_id;
+            layout.nodes[4].tabs.push_back(console_id);
+            layout.nodes[4].selected_tab = console_id;
+            GUI::DockSpaceFloatingPanelDesc floating;
+            floating.panel = inspector_id;
+            floating.rect = RectF(720.0f, 70.0f, 330.0f, 430.0f);
+            floating.z_order = 1;
+            layout.floating_panels.push_back(floating);
+            GUI::set_dockspace_layout(context, dock_space_id, layout);
+            state.workspace_layout_initialized = true;
+        }
+
+        GUI::begin_dock_space(context, dock_space_id, "Workspace", fill_layout());
+        if(GUI::begin_dock_panel(context, hierarchy_id, "Hierarchy", &state.hierarchy_open))
+        {
+            GUI::text(context, make_child_id(hierarchy_id, 0), "Sample Scene", fill_width_layout(28.0f));
+            GUI::text_button(context, make_child_id(hierarchy_id, 1), "Camera", fill_width_layout(34.0f));
+            GUI::text_button(context, make_child_id(hierarchy_id, 2), "Directional Light", fill_width_layout(34.0f));
+            GUI::text_button(context, make_child_id(hierarchy_id, 3), "Sponza", fill_width_layout(34.0f));
+            GUI::end_dock_panel(context);
+        }
+        if(GUI::begin_dock_panel(context, viewport_id, "Viewport", &state.viewport_open))
+        {
+            GUI::text(context, make_child_id(viewport_id, 0), "Scene render target", fill_width_layout(30.0f));
+            GUI::text_button(context, make_child_id(viewport_id, 1),
+                "Drag this title outside to float the panel", fill_width_layout(42.0f));
+            GUI::end_dock_panel(context);
+        }
+        if(GUI::begin_dock_panel(context, scene_id, "Scene", &state.scene_open))
+        {
+            GUI::text(context, make_child_id(scene_id, 0), "Scene tab shares the Viewport leaf.", fill_width_layout(34.0f));
+            GUI::end_dock_panel(context);
+        }
+        if(GUI::begin_dock_panel(context, console_id, "Console", &state.console_open))
+        {
+            GUI::text(context, make_child_id(console_id, 0), "[Info] Dock workspace initialized.", fill_width_layout(28.0f));
+            GUI::text(context, make_child_id(console_id, 1), "[Info] Splitters are draggable.", fill_width_layout(28.0f));
+            GUI::end_dock_panel(context);
+        }
+        if(GUI::begin_dock_panel(context, inspector_id, "Inspector", &state.inspector_open))
+        {
+            GUI::text(context, make_child_id(inspector_id, 0), "Transform", fill_width_layout(30.0f), heading_desc(18.0f));
+            GUI::drag_float3(context, make_child_id(inspector_id, 1), state.drag_float3,
+                -100.0f, 100.0f, fill_width_layout(34.0f));
+            GUI::checkbox(context, make_child_id(inspector_id, 2), "Visible", &state.checkbox_value,
+                fill_width_layout(34.0f));
+            GUI::end_dock_panel(context);
+        }
+        GUI::end_dock_space(context);
+    }
+
     GUICore::ElementHandle build_frame(GUICore::IContext* context, DemoState& state, FrameHandles& handles)
     {
         context->push_layer(1, Float2U(0.0f));
@@ -685,6 +769,11 @@ namespace
         if(GUI::begin_tab_item(context, make_id(context, "demo.tab.overlay"), "Overlay"))
         {
             build_overlay_page(context, state);
+            GUI::end_tab_item(context);
+        }
+        if(GUI::begin_tab_item(context, make_id(context, "demo.tab.workspace"), "Workspace"))
+        {
+            build_workspace_page(context, state);
             GUI::end_tab_item(context);
         }
         GUI::end_tab_bar(context);
@@ -819,7 +908,7 @@ namespace
         {
             DemoApp app;
             luexp(init_demo(app));
-            app.state.selected_tab = clamp(options.selected_tab, 0, 6);
+            app.state.selected_tab = clamp(options.selected_tab, 0, 7);
             GUIWindow::GUICoreWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;

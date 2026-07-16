@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "../Base.hpp"
+#include "../Workspace.hpp"
 #include <Luna/Runtime/Blob.hpp>
 #include "State.generated.hpp"
 
@@ -33,7 +34,8 @@ namespace Luna
                 scroll_view,
                 tab_bar,
                 table,
-                popup
+                popup,
+                dock_space
             };
 
             enum class ChoiceOperation : u8
@@ -180,6 +182,123 @@ namespace Luna
                 PopupFlag flags = PopupFlag::none;
             };
 
+            enum class DockDragMode : u8
+            {
+                none,
+                floating_move,
+                floating_resize,
+                docked_title,
+                splitter
+            };
+
+            enum class DockDropDirection : u8
+            {
+                none,
+                center,
+                left,
+                right,
+                up,
+                down
+            };
+
+            struct DockTreeNode
+            {
+                bool active = true;
+                bool split = false;
+                DockSplitAxis split_axis = DockSplitAxis::x;
+                f32 split_ratio = 0.5f;
+                u32 parent = U32_MAX;
+                u32 child0 = U32_MAX;
+                u32 child1 = U32_MAX;
+                Vector<id_t> tabs;
+                id_t selected_tab = 0;
+                RectF rect;
+                RectF splitter_rect;
+            };
+
+            struct DockPanelPersistentData
+            {
+                id_t id = 0;
+                DockPanelMode mode = DockPanelMode::docking;
+                RectF floating_rect = RectF(40.0f, 40.0f, 360.0f, 240.0f);
+                RectF restored_floating_rect = RectF(40.0f, 40.0f, 360.0f, 240.0f);
+                u32 z_order = 0;
+            };
+
+            struct [[Luna::struct("{91AB521B-6B03-447F-96F4-586811B4EDB3}")]] DockSpaceState
+            {
+                Vector<DockTreeNode> nodes;
+                u32 root_node = U32_MAX;
+                Vector<DockPanelPersistentData> panels;
+                u32 next_z_order = 1;
+                Float2U screen_origin = Float2U(0.0f);
+                RectF dock_rect;
+                DockDragMode drag_mode = DockDragMode::none;
+                id_t drag_panel = 0;
+                u32 drag_splitter = U32_MAX;
+                Float2U drag_start_pointer = Float2U(0.0f);
+                RectF drag_start_rect;
+                f32 drag_start_ratio = 0.5f;
+                u32 drop_target = U32_MAX;
+                bool drop_target_available = false;
+                DockDropDirection drop_direction = DockDropDirection::none;
+            };
+
+            struct DockPanelBuildInfo
+            {
+                id_t id = 0;
+                String label;
+                bool* open = nullptr;
+                DockPanelDesc desc;
+                bool submitted = false;
+                bool visible = false;
+                bool floating = false;
+                id_t layer_id = 0;
+                GUICore::ElementHandle root;
+                GUICore::ElementHandle title;
+                GUICore::ElementHandle close;
+                GUICore::ElementHandle resize;
+                GUICore::ElementHandle raise;
+                GUICore::ElementHandle content;
+            };
+
+            struct DockSpaceBuildScope
+            {
+                id_t id = 0;
+                GUICore::ElementHandle root;
+                DockSpaceDesc desc;
+                DockSpaceState* state = nullptr;
+                Vector<DockPanelBuildInfo> panels;
+                i32 open_panel = -1;
+            };
+
+            struct DockPanelActionInfo
+            {
+                id_t id = 0;
+                const c8* label = nullptr;
+                bool* open = nullptr;
+                DockPanelDesc desc;
+                bool visible = false;
+                bool floating = false;
+                id_t layer_id = 0;
+                GUICore::ElementHandle root;
+                GUICore::ElementHandle title;
+                GUICore::ElementHandle close;
+                GUICore::ElementHandle resize;
+                GUICore::ElementHandle raise;
+            };
+
+            struct DockSpaceAction
+            {
+                id_t id = 0;
+                GUICore::ElementHandle root;
+                DockSpaceDesc desc;
+                DockSpaceState* state = nullptr;
+                id_t indicator_layer_id = 0;
+                DockPanelActionInfo* panels = nullptr;
+                usize panel_count = 0;
+            };
+
             struct Action
             {
                 ActionType type = ActionType::button_group;
@@ -244,6 +363,7 @@ namespace Luna
                 Vector<TableBuildScope> table_stack;
                 Vector<PopupBuildScope> popup_stack;
                 Vector<MenuBarBuildScope> menu_bar_stack;
+                Vector<DockSpaceBuildScope> dock_space_stack;
             };
 
             struct [[Luna::struct("{66221FD7-35D2-4A64-816B-A9838E47621E}")]] ButtonGroupState

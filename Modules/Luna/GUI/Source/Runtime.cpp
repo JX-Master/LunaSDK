@@ -181,6 +181,10 @@ namespace Luna
                     break;
                 case Internal::ActionType::popup:
                     break;
+                case Internal::ActionType::dock_space:
+                    result.relayout_requested |= Internal::resolve_dock_space_action(context,
+                        *(Internal::DockSpaceAction*)record.data);
+                    break;
                 default:
                     break;
                 }

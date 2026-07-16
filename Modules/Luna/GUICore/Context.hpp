@@ -108,6 +108,19 @@ namespace Luna
             //! @remark The returned span is invalidated by the next layer insertion or @ref begin_frame call.
             virtual Span<const Layer> get_layers() const = 0;
 
+            //! Updates the screen position of one layer submitted in the current frame.
+            //! @param[in] id Stable layer ID.
+            //! @param[in] screen_position New layer top-left position in screen coordinates.
+            //! @return Returns `true` if the layer was found and updated.
+            virtual bool set_layer_screen_position(id_t id, const Float2U& screen_position) = 0;
+
+            //! Moves one layer submitted in the current frame above all other existing layers.
+            //! @param[in] id Stable layer ID.
+            //! @return Returns `true` if the layer was found. Moving the current top layer is a successful no-op.
+            //! @remark This operation preserves element and draw-command ownership while changing painter order and
+            //! input routing priority. It must not be called while draw callbacks are running.
+            virtual bool bring_layer_to_front(id_t id) = 0;
+
             //! Sets the human-readable debug name of one layer.
             //! @param[in] id Stable layer ID.
             //! @param[in] name Human-readable debug name.

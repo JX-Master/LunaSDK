@@ -43,6 +43,7 @@ namespace Luna
                     state->table_stack.clear();
                     state->popup_stack.clear();
                     state->menu_bar_stack.clear();
+                    state->dock_space_stack.clear();
                 }
                 lupanic_if_failed(context->set_state(state_id, state.object(), GUICore::StateLifetime::next_frame));
                 return state;
