@@ -42,6 +42,44 @@ namespace Luna
         LUNA_GUI_API void end_canvas_layout(GUICore::IContext* context, const GUICore::ElementHandle& element,
             const GUICore::CanvasLayoutDesc& desc);
 
+        //! Begins a focus navigation scope.
+        //! @param[in] context The GUI Core context.
+        //! @param[in] id Stable scope element and focus-scope ID.
+        //! @param[in] label Optional debug label.
+        //! @param[in] layout Layout configuration used by the scope container.
+        //! @return Returns the scope element.
+        //! @remark Automatic navigation remains inside the scope containing the currently focused descendant.
+        LUNA_GUI_API GUICore::ElementHandle begin_focus_scope(GUICore::IContext* context, id_t id, const c8* label,
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
+        //! Ends a focus scope and arranges its direct children vertically.
+        LUNA_GUI_API void end_focus_scope(GUICore::IContext* context, const GUICore::ElementHandle& element);
+
+        //! Begins a table track layout.
+        //! @param[in] context The GUI Core context.
+        //! @param[in] id Stable table element ID.
+        //! @param[in] label Optional debug label.
+        //! @param[in] layout Layout configuration used by the table element.
+        //! @param[in] desc Package-level table behavior.
+        //! @return Returns the table element.
+        LUNA_GUI_API GUICore::ElementHandle begin_table_layout(GUICore::IContext* context, id_t id, const c8* label,
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), const TableDesc& desc = TableDesc());
+        //! Sets the column tracks used by the current table layout.
+        //! @remark The descriptors are copied for the current frame. When omitted, fit columns are inferred from
+        //! the widest submitted row.
+        LUNA_GUI_API void set_table_columns(GUICore::IContext* context,
+            Span<const GUICore::TableTrackDesc> columns);
+        //! Begins one row in the current table.
+        //! @param[in] context The GUI Core context.
+        //! @param[in] row Row track used when fixed-row-height mode is disabled.
+        //! @return Returns `true` when row cells should be submitted. The caller must call @ref end_table_row
+        //! regardless of the returned value.
+        LUNA_GUI_API bool begin_table_row(GUICore::IContext* context,
+            const GUICore::TableTrackDesc& row = GUICore::TableTrackDesc());
+        //! Ends the current table row and attaches newly submitted direct children to consecutive cells.
+        LUNA_GUI_API void end_table_row(GUICore::IContext* context);
+        //! Ends the current table and installs its table layout, measurement and resizing callbacks.
+        LUNA_GUI_API void end_table_layout(GUICore::IContext* context, const GUICore::ElementHandle& element);
+
         //! Begins a scroll view and its package-owned content root.
         LUNA_GUI_API GUICore::ElementHandle begin_scroll_view(GUICore::IContext* context, id_t id, const c8* label,
             const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),

@@ -32,6 +32,7 @@ namespace Luna
                 drag_int,
                 scroll_view,
                 tab_bar,
+                table,
                 popup
             };
 
@@ -161,6 +162,17 @@ namespace Luna
                 struct TabState* state = nullptr;
             };
 
+            struct TableAction
+            {
+                GUICore::id_t id = 0;
+                TableDesc desc;
+                struct TableState* state = nullptr;
+                GUICore::TableLayoutDesc* layout_desc = nullptr;
+                GUICore::TableTrackDesc* mutable_columns = nullptr;
+                GUICore::id_t* splitter_ids = nullptr;
+                usize splitter_count = 0;
+            };
+
             struct PopupAction
             {
                 id_t id = 0;
@@ -190,6 +202,23 @@ namespace Luna
                 GUICore::ElementHandle content;
             };
 
+            struct TableBuildScope
+            {
+                GUICore::ElementHandle table;
+                TableDesc desc;
+                Vector<GUICore::TableTrackDesc> columns;
+                Vector<GUICore::TableTrackDesc> rows;
+                Vector<GUICore::TableLayoutCell> cells;
+                struct TableState* state = nullptr;
+                bool column_widths_applied = false;
+                bool row_open = false;
+                bool row_visible = true;
+                u32 current_row = 0;
+                u32 row_previous_last_child = GUICore::INVALID_ELEMENT;
+                u32 max_columns = 0;
+                f32 overscan_y = 0.0f;
+            };
+
             struct PopupBuildScope
             {
                 id_t popup_id = 0;
@@ -212,6 +241,7 @@ namespace Luna
                 Vector<Action> actions;
                 Vector<ScrollBuildScope> scroll_stack;
                 Vector<TabBuildScope> tab_stack;
+                Vector<TableBuildScope> table_stack;
                 Vector<PopupBuildScope> popup_stack;
                 Vector<MenuBarBuildScope> menu_bar_stack;
             };
@@ -275,6 +305,19 @@ namespace Luna
                 bool initialized = false;
                 Vector<GUICore::id_t> header_ids;
                 Vector<String> header_labels;
+            };
+
+            struct [[Luna::struct("{2F3F1D61-3E0D-4D1C-8B0A-C98CAC4C91B9}")]] TableState
+            {
+                Vector<f32> column_widths;
+                Vector<f32> column_source_widths;
+                u32 inferred_column_count = 0;
+                i32 resizing_column = -1;
+                f32 resize_start_pointer_x = 0.0f;
+                f32 resize_start_width = 0.0f;
+                f32 visible_min_y = 0.0f;
+                f32 visible_max_y = 0.0f;
+                u32 layout_generation = U32_MAX;
             };
 
             struct [[Luna::struct("{7A960E14-A855-4E01-97E1-A32ECC2518D9}")]] PopupState

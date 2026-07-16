@@ -774,6 +774,11 @@ namespace Luna
                 line.resolved_main = distribute_flex_line(items, line, available_main, desc.main_axis_gap);
             }
 
+            bool multiple_lines = desc.wrap != FlexWrap::none && lines.size() > 1;
+            if(!multiple_lines && !lines.empty())
+            {
+                lines[0].cross_size = max(lines[0].cross_size, available_cross);
+            }
             f32 total_cross = 0.0f;
             for(usize i = 0; i < lines.size(); ++i)
             {
@@ -783,7 +788,6 @@ namespace Luna
                 }
                 total_cross += lines[i].cross_size;
             }
-            bool multiple_lines = desc.wrap != FlexWrap::none && lines.size() > 1;
             f32 line_offset = 0.0f;
             f32 line_gap = desc.cross_axis_gap;
             if(multiple_lines && desc.line_alignment == FlexAlignment::stretch && !lines.empty())
@@ -1184,6 +1188,53 @@ namespace Luna
             FrameDesc frame_desc = context->get_frame_desc();
             return RectF(0.0f, 0.0f, max(frame_desc.screen_size.x, 0.0f),
                 max(frame_desc.screen_size.y, 0.0f));
+        }
+
+        LUNA_GUICORE_API MeasureResult measure_table(IContext* context, const ElementHandle& element,
+            const Float2U& available_content_size, void* userdata)
+        {
+            if(!context || !userdata)
+            {
+                return MeasureResult();
+            }
+            const Element* parent = context->get_element(element.index);
+            if(!parent || parent->id != element.id)
+            {
+                return MeasureResult();
+            }
+            const TableLayoutDesc& desc = *reinterpret_cast<const TableLayoutDesc*>(userdata);
+            Vector<u32> children = collect_children(context, *parent);
+            Vector<f32> column_sizes;
+            Vector<f32> row_sizes;
+            resolve_table_tracks(context, children, desc.cells, desc.columns, true, available_content_size.x,
+                desc.gap.x, column_sizes);
+            resolve_table_tracks(context, children, desc.cells, desc.rows, false, available_content_size.y,
+                desc.gap.y, row_sizes);
+
+            auto minimum_track_sum = [](Span<const TableTrackDesc> tracks, f32 gap)
+            {
+                if(tracks.empty())
+                {
+                    return 0.0f;
+                }
+                f32 result = gap * (f32)(tracks.size() - 1);
+                for(const TableTrackDesc& track : tracks)
+                {
+                    result += max(track.min, 0.0f);
+                }
+                return result;
+            };
+
+            MeasureResult result;
+            result.minimum = Float2U(minimum_track_sum(desc.columns, desc.gap.x),
+                minimum_track_sum(desc.rows, desc.gap.y));
+            result.desired = Float2U(
+                sum_tracks(Span<const f32>(column_sizes.data(), column_sizes.size()), 0,
+                    (u32)column_sizes.size(), desc.gap.x),
+                sum_tracks(Span<const f32>(row_sizes.data(), row_sizes.size()), 0,
+                    (u32)row_sizes.size(), desc.gap.y));
+            result.maximum = Float2U(F32_MAX);
+            return result;
         }
 
         LUNA_GUICORE_API RV layout_table(IContext* context, const ElementHandle& element, const RectF& rect,

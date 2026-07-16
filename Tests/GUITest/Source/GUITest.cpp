@@ -57,6 +57,7 @@ namespace
         i32 drag_int3[3] = { 4, 8, 12 };
         i32 combo_item = 0;
         bool menu_grid = true;
+        u32 table_submitted_rows = 0;
         Float2U popup_position = Float2U(120.0f, 180.0f);
         Float2U child_popup_position = Float2U(380.0f, 220.0f);
         Ref<RHI::ITexture> image_texture;
@@ -442,6 +443,104 @@ namespace
         GUI::end_h_layout(context, row, row_desc);
     }
 
+    void build_tables_page(GUICore::IContext* context, DemoState& state)
+    {
+        begin_page(context, "demo.tables.scroll");
+
+        section_heading(context, "demo.tables.focus.heading", "Focus Scope");
+        GUI::text(context, make_id(context, "demo.tables.focus.note"),
+            "Click a button, then use Tab or directional navigation. Automatic navigation stays in its scope.",
+            fill_width_layout(30.0f));
+        GUICore::ElementHandle scopes = GUI::begin_h_layout(context,
+            make_id(context, "demo.tables.focus.scopes"), "Focus scopes", fill_width_layout(142.0f));
+        for(u64 scope_index = 0; scope_index < 2; ++scope_index)
+        {
+            GUI::id_t scope_id = make_child_id(make_id(context, "demo.tables.focus.scope"), scope_index);
+            GUICore::LayoutConfig scope_layout = fixed_layout(240.0f, 134.0f);
+            scope_layout.flex_grow = 1.0f;
+            GUICore::ElementHandle scope = GUI::begin_focus_scope(context, scope_id,
+                scope_index == 0 ? "Focus Scope A" : "Focus Scope B", scope_layout);
+            for(u64 item_index = 0; item_index < 3; ++item_index)
+            {
+                c8 label[48];
+                snprintf(label, sizeof(label), "Scope %c / Item %llu", (c8)('A' + scope_index),
+                    (unsigned long long)(item_index + 1));
+                GUI::text_button(context, make_child_id(scope_id, item_index), label,
+                    fill_width_layout(34.0f, 2.0f));
+            }
+            GUI::end_focus_scope(context, scope);
+        }
+        GUICore::FlexLayoutDesc scopes_desc;
+        scopes_desc.axis = GUICore::LayoutAxis::x;
+        scopes_desc.main_axis_gap = 12.0f;
+        scopes_desc.cross_alignment = GUICore::FlexAlignment::stretch;
+        GUI::end_h_layout(context, scopes, scopes_desc);
+
+        section_heading(context, "demo.tables.table.heading", "TableLayout");
+        c8 table_status[160];
+        snprintf(table_status, sizeof(table_status),
+            "1000 fixed-height logical rows; previous frame submitted %u rows. Drag a column separator to resize.",
+            state.table_submitted_rows);
+        GUI::text(context, make_id(context, "demo.tables.table.status"), table_status,
+            fill_width_layout(30.0f));
+
+        GUI::TableDesc table_desc;
+        table_desc.gap = Float2U(1.0f);
+        table_desc.cell_padding = Float4U(8.0f, 4.0f, 8.0f, 4.0f);
+        table_desc.fixed_row_height_mode = true;
+        table_desc.fixed_row_height = 30.0f;
+        table_desc.virtualize_fixed_rows = true;
+        table_desc.resizable_columns = true;
+        table_desc.resize_handle_width = 8.0f;
+        GUICore::LayoutConfig table_layout;
+        table_layout.width.kind = GUICore::SizeKind::percent;
+        table_layout.width.value = 1.0f;
+        table_layout.height.kind = GUICore::SizeKind::fit;
+        table_layout.margin = Float4U(8.0f, 4.0f, 8.0f, 8.0f);
+        GUI::id_t table_id = make_id(context, "demo.tables.table");
+        GUICore::ElementHandle table = GUI::begin_table_layout(context, table_id,
+            "Virtualized resizable table", table_layout, table_desc);
+
+        GUICore::TableTrackDesc columns[4];
+        const f32 column_widths[4] = { 100.0f, 560.0f, 180.0f, 160.0f };
+        const f32 column_minimums[4] = { 64.0f, 180.0f, 100.0f, 100.0f };
+        for(usize i = 0; i < 4; ++i)
+        {
+            columns[i].kind = GUICore::TableTrackSizeKind::pixels;
+            columns[i].value = column_widths[i];
+            columns[i].min = column_minimums[i];
+        }
+        GUI::set_table_columns(context, Span<const GUICore::TableTrackDesc>(columns, 4));
+
+        GUI::id_t cell_scope = make_id(context, "demo.tables.table.cells");
+        u32 submitted_rows = 0;
+        for(u32 row = 0; row < 1000; ++row)
+        {
+            bool submit_row = GUI::begin_table_row(context);
+            if(submit_row)
+            {
+                ++submitted_rows;
+                c8 index[16];
+                c8 name[80];
+                c8 category[32];
+                c8 value[32];
+                snprintf(index, sizeof(index), "%04u", row);
+                snprintf(name, sizeof(name), "Generated sample row %04u", row);
+                snprintf(category, sizeof(category), "Group %u", row % 12);
+                snprintf(value, sizeof(value), "%u.%02u", row * 3, row % 100);
+                GUI::text(context, make_child_id(cell_scope, (u64)row * 4), index);
+                GUI::text(context, make_child_id(cell_scope, (u64)row * 4 + 1), name);
+                GUI::text(context, make_child_id(cell_scope, (u64)row * 4 + 2), category);
+                GUI::text(context, make_child_id(cell_scope, (u64)row * 4 + 3), value);
+            }
+            GUI::end_table_row(context);
+        }
+        GUI::end_table_layout(context, table);
+        state.table_submitted_rows = submitted_rows;
+
+        GUI::end_scroll_view(context);
+    }
+
     Float2U popup_position_below(const GUICore::InteractionState& interaction)
     {
         return Float2U(
@@ -576,6 +675,11 @@ namespace
         if(GUI::begin_tab_item(context, make_id(context, "demo.tab.scroll"), "Scroll Views"))
         {
             build_scroll_page(context);
+            GUI::end_tab_item(context);
+        }
+        if(GUI::begin_tab_item(context, make_id(context, "demo.tab.tables"), "Tables"))
+        {
+            build_tables_page(context, state);
             GUI::end_tab_item(context);
         }
         if(GUI::begin_tab_item(context, make_id(context, "demo.tab.overlay"), "Overlay"))
@@ -715,7 +819,7 @@ namespace
         {
             DemoApp app;
             luexp(init_demo(app));
-            app.state.selected_tab = clamp(options.selected_tab, 0, 5);
+            app.state.selected_tab = clamp(options.selected_tab, 0, 6);
             GUIWindow::GUICoreWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;

@@ -175,6 +175,10 @@ namespace Luna
                     result.value_changed |= Internal::resolve_tab_action(context,
                         *(Internal::TabAction*)record.data);
                     break;
+                case Internal::ActionType::table:
+                    result.relayout_requested |= Internal::resolve_table_action(context,
+                        *(Internal::TableAction*)record.data);
+                    break;
                 case Internal::ActionType::popup:
                     break;
                 default:

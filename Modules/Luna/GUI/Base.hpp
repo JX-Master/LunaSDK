@@ -213,6 +213,29 @@ namespace Luna
             bool enabled = true;
         };
 
+        //! Describes package-level table layout behavior.
+        struct TableDesc
+        {
+            //! Gap between adjacent columns and rows.
+            Float2U gap = Float2U(0.0f);
+            //! Padding applied inside every submitted cell.
+            Float4U cell_padding = Float4U(0.0f);
+            //! Whether table children are clipped to the table content rectangle.
+            bool clip_children = true;
+            //! Whether all rows use @ref fixed_row_height instead of their submitted row track descriptors.
+            bool fixed_row_height_mode = false;
+            //! Row height used when @ref fixed_row_height_mode is enabled.
+            f32 fixed_row_height = 24.0f;
+            //! Whether fixed-height rows outside the previous-frame visible range may skip child submission.
+            //! @remark This option is ignored unless @ref fixed_row_height_mode is enabled. The table must be
+            //! rebuilt inside a clipped viewport for the optimization to reject off-screen rows.
+            bool virtualize_fixed_rows = false;
+            //! Whether separators between absolute-size columns can be dragged to resize the preceding column.
+            bool resizable_columns = false;
+            //! Interactive width of each resizable column separator.
+            f32 resize_handle_width = 8.0f;
+        };
+
         //! Bit flags controlling popup lifetime and input behavior.
         enum class PopupFlag : u8
         {

@@ -98,5 +98,16 @@ namespace Luna
         //! @remark Table layout uses explicit cell attachments instead of child order. This keeps the core primitive
         //! compatible with virtualized row submission and editor-authored table descriptions.
         LUNA_GUICORE_API RV layout_table(IContext* context, const ElementHandle& element, const RectF& rect, void* userdata);
+
+        //! Measures the content size required by a table track layout element.
+        //! @param[in] context The GUI Core context that owns @p element.
+        //! @param[in] element The table container element.
+        //! @param[in] available_content_size Available parent content-box size.
+        //! @param[in] userdata Pointer to @ref TableLayoutDesc owned by the caller.
+        //! @return Returns content-box minimum, desired and maximum sizes for the table container.
+        //! @remark Install this function into @ref LayoutCallbackConfig::measure_callback together with
+        //! @ref layout_table when a table should hug its resolved row and column tracks.
+        LUNA_GUICORE_API MeasureResult measure_table(IContext* context, const ElementHandle& element,
+            const Float2U& available_content_size, void* userdata);
     }
 }

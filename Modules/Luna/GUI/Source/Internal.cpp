@@ -40,6 +40,7 @@ namespace Luna
                     state->actions.clear();
                     state->scroll_stack.clear();
                     state->tab_stack.clear();
+                    state->table_stack.clear();
                     state->popup_stack.clear();
                     state->menu_bar_stack.clear();
                 }
