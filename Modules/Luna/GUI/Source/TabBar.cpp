@@ -33,6 +33,16 @@ namespace Luna
                 return max((f32)strlen(label ? label : "") * font_size * 0.58f + padding * 2.0f, 56.0f);
             }
 
+            static f32 tab_width_scale(GUICore::IContext* context, const GUICore::ElementHandle& element,
+                const TabAction& action, f32 available_width)
+            {
+                if(action.fitting_mode != TabBarFittingMode::shrink || available_width <= 0.0f) return 1.0f;
+                f32 natural_width = 0.0f;
+                for(const String& label : action.state->header_labels)
+                    natural_width += tab_width(context, element, label.c_str());
+                return natural_width > available_width ? available_width / natural_width : 1.0f;
+            }
+
             static GUICore::MeasureResult measure_tab_bar(GUICore::IContext*, const GUICore::ElementHandle&,
                 const Float2U&, void*)
             {
@@ -73,6 +83,7 @@ namespace Luna
                 if(!bar) return BasicError::bad_arguments();
                 f32 header_height = style_scalar(context, element, "gui.tab.height", 32.0f);
                 f32 x = rect.offset_x;
+                f32 scale = tab_width_scale(context, element, *action, rect.width);
                 RectF clip = bar->layout_result.clip_rect;
                 for(u32 child_index = bar->first_child; child_index != GUICore::INVALID_ELEMENT;)
                 {
@@ -83,7 +94,7 @@ namespace Luna
                     if(is_header(*action->state, child->id, &header_index))
                     {
                         f32 width = tab_width(context, GUICore::ElementHandle { child->id, child_index,
-                            element.generation }, action->state->header_labels[header_index].c_str());
+                            element.generation }, action->state->header_labels[header_index].c_str()) * scale;
                         result.rect = RectF(x, rect.offset_y, min(width, max(rect.offset_x + rect.width - x, 0.0f)),
                             header_height);
                         x += width;
@@ -110,6 +121,8 @@ namespace Luna
                 TabAction* action = (TabAction*)userdata;
                 if(!action || !action->state || action->state->header_ids.empty()) return ok;
                 f32 header_height = style_scalar(context, element, "gui.tab.height", 32.0f);
+                const GUICore::Element* tab_bar = context->get_element(element.index);
+                f32 scale = tab_bar ? tab_width_scale(context, element, *action, tab_bar->layout_result.rect.width) : 1.0f;
                 GUICore::DrawCommand command;
                 command.type = GUICore::DrawCommandType::rect;
                 command.rect_reference = GUICore::DrawCommandRectReference::element;
@@ -127,8 +140,8 @@ namespace Luna
                 {
                     x = 0.0f;
                     for(i32 i = 0; i < index; ++i)
-                        x += tab_width(context, element, action->state->header_labels[(usize)i].c_str());
-                    width = tab_width(context, element, action->state->header_labels[(usize)index].c_str());
+                        x += tab_width(context, element, action->state->header_labels[(usize)i].c_str()) * scale;
+                    width = tab_width(context, element, action->state->header_labels[(usize)index].c_str()) * scale;
                 };
                 f32 left_x = 0.0f, left_width = 0.0f, right_x = 0.0f, right_width = 0.0f;
                 position(left_index, left_x, left_width);
@@ -219,6 +232,7 @@ namespace Luna
             action->id = id;
             action->selected_index = selected_index;
             action->enabled = desc.enabled;
+            action->fitting_mode = desc.fitting_mode;
             action->state = state.get();
             GUICore::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.tab_bar");
@@ -238,7 +252,7 @@ namespace Luna
             return bar;
         }
 
-        LUNA_GUI_API bool begin_tab_item(GUICore::IContext* context, id_t id, const c8* label)
+        LUNA_GUI_API bool begin_tab_item(GUICore::IContext* context, id_t id, const c8* label, const TabItemDesc& desc)
         {
             luassert(context && id);
             Ref<Internal::FrameState> frame = Internal::frame_state(context);
@@ -246,6 +260,10 @@ namespace Luna
             Internal::TabBuildScope& scope = frame->tab_stack.back();
             luassert(!scope.content_open);
             i32 index = (i32)scope.data->state->header_ids.size();
+            if(desc.selected)
+            {
+                *scope.data->selected_index = index;
+            }
             scope.data->state->header_ids.push_back(id);
             scope.data->state->header_labels.push_back(String(label ? label : ""));
             GUICore::LayoutConfig header_layout;

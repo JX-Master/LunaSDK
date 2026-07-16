@@ -24,6 +24,7 @@ namespace Luna
                 bool header = false;
                 bool leaf = false;
                 bool enabled = true;
+                bool selected = false;
                 DisclosureState* state = nullptr;
             };
 
@@ -56,12 +57,13 @@ namespace Luna
                 DisclosureData* data = (DisclosureData*)userdata;
                 if(!data || !data->state) return ok;
                 GUICore::InteractionState interaction = context->get_interaction_state(element.id);
-                if(data->header || (data->enabled && interaction.hovered))
+                if(data->header || data->selected || (data->enabled && interaction.hovered))
                 {
                     GUICore::DrawCommand background;
                     background.type = GUICore::DrawCommandType::rounded_rect;
                     background.rect_reference = GUICore::DrawCommandRectReference::element;
-                    background.color = data->header ? style_color(context, element,
+                    background.color = data->selected ? style_color(context, element, "gui.tree.selected",
+                        Float4U(0.16f, 0.35f, 0.58f, 1.0f)) : data->header ? style_color(context, element,
                         interaction.hovered ? "gui.disclosure.header_hovered" : "gui.disclosure.header",
                         interaction.hovered ? Float4U(0.20f, 0.25f, 0.32f, 1.0f) :
                         Float4U(0.16f, 0.19f, 0.24f, 1.0f)) : style_color(context, element,
@@ -113,8 +115,10 @@ namespace Luna
             bool resolve_disclosure_action(GUICore::IContext* context, DisclosureAction& action)
             {
                 bool changed = false;
-                if(action.enabled && action.can_toggle && action.state &&
-                    context->get_interaction_state(action.id).clicked)
+                GUICore::InteractionState interaction = context->get_interaction_state(action.id);
+                bool clicked_arrow = !action.open_on_arrow || (interaction.clicked_element_position.x >= action.arrow_min_x &&
+                    interaction.clicked_element_position.x <= action.arrow_max_x);
+                if(action.enabled && action.can_toggle && action.state && interaction.clicked && clicked_arrow)
                 {
                     action.state->open = !action.state->open;
                     changed = true;
@@ -130,7 +134,8 @@ namespace Luna
 
             static bool disclosure(GUICore::IContext* context, id_t id, const c8* label,
                 const GUICore::LayoutConfig& layout, const DisclosureDesc& desc, bool header,
-                bool leaf, bool always_open, u32 indent_depth, GUICore::ElementHandle* out_handle)
+                bool leaf, bool always_open, bool selected, bool open_on_arrow, u32 indent_depth,
+                GUICore::ElementHandle* out_handle)
             {
                 Ref<DisclosureState> state = widget_state<DisclosureState>(context, id);
                 if(!state->initialized)
@@ -153,6 +158,7 @@ namespace Luna
                 data->header = header;
                 data->leaf = leaf;
                 data->enabled = desc.enabled;
+                data->selected = selected;
                 data->state = state.get();
                 GUICore::DrawConfig draw;
                 draw.name = Name("gui.disclosure");
@@ -164,6 +170,9 @@ namespace Luna
                 action->id = id;
                 action->enabled = desc.enabled;
                 action->can_toggle = !leaf && !always_open;
+                action->open_on_arrow = open_on_arrow;
+                action->arrow_min_x = data->header ? 8.0f : 4.0f + 18.0f * (f32)indent_depth;
+                action->arrow_max_x = action->arrow_min_x + 16.0f;
                 action->state = state.get();
                 add_action(context, ActionType::disclosure, id, action);
                 return leaf ? false : state->open;
@@ -173,7 +182,7 @@ namespace Luna
         LUNA_GUI_API bool collapsing_header(GUICore::IContext* context, id_t id, const c8* label,
             const GUICore::LayoutConfig& layout, const DisclosureDesc& desc, GUICore::ElementHandle* out_handle)
         {
-            return Internal::disclosure(context, id, label, layout, desc, true, false, false, 0, out_handle);
+            return Internal::disclosure(context, id, label, layout, desc, true, false, false, false, false, 0, out_handle);
         }
 
         LUNA_GUI_API bool tree_node(GUICore::IContext* context, id_t id, const c8* label,
@@ -182,6 +191,7 @@ namespace Luna
         {
             return Internal::disclosure(context, id, label, layout, desc, false,
                 test_flags(flags, TreeNodeFlag::leaf), test_flags(flags, TreeNodeFlag::always_open),
+                test_flags(flags, TreeNodeFlag::selected), test_flags(flags, TreeNodeFlag::open_on_arrow),
                 indent_depth, out_handle);
         }
     }

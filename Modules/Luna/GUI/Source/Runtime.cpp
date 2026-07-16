@@ -181,6 +181,10 @@ namespace Luna
                     break;
                 case Internal::ActionType::popup:
                     break;
+                case Internal::ActionType::color_edit:
+                    result.value_changed |= Internal::resolve_color_edit_action(context,
+                        *(Internal::ColorEditAction*)record.data);
+                    break;
                 case Internal::ActionType::dock_space:
                     result.relayout_requested |= Internal::resolve_dock_space_action(context,
                         *(Internal::DockSpaceAction*)record.data);

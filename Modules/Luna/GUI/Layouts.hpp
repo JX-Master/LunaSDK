@@ -94,7 +94,8 @@ namespace Luna
         LUNA_GUI_API GUICore::ElementHandle begin_tab_bar(GUICore::IContext* context, id_t id, i32* selected_index,
             const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), const TabBarDesc& desc = TabBarDesc());
         //! Begins one tab item and returns whether its content should be submitted this frame.
-        LUNA_GUI_API bool begin_tab_item(GUICore::IContext* context, id_t id, const c8* label);
+        LUNA_GUI_API bool begin_tab_item(GUICore::IContext* context, id_t id, const c8* label,
+            const TabItemDesc& desc = TabItemDesc());
         //! Ends the current selected tab item content scope.
         LUNA_GUI_API void end_tab_item(GUICore::IContext* context);
         //! Ends the current tab bar.

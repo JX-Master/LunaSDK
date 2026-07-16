@@ -73,6 +73,32 @@ namespace Luna
         LUNA_GUI_API GUICore::ElementHandle input_text(GUICore::IContext* context, id_t id, String& value,
             const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), const TextInputDesc& desc = TextInputDesc());
 
+        //! Adds an RGB color editor bound to normalized floating-point channels.
+        LUNA_GUI_API GUICore::ElementHandle color_edit3(GUICore::IContext* context, id_t id, const c8* label,
+            f32* value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),
+            const ColorEditDesc& desc = ColorEditDesc());
+        //! Adds an RGBA color editor bound to normalized floating-point channels.
+        LUNA_GUI_API GUICore::ElementHandle color_edit4(GUICore::IContext* context, id_t id, const c8* label,
+            f32* value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),
+            const ColorEditDesc& desc = ColorEditDesc());
+        //! Adds an RGB color editor bound to 8-bit channels.
+        LUNA_GUI_API GUICore::ElementHandle color_edit3(GUICore::IContext* context, id_t id, const c8* label,
+            u8* value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),
+            const ColorEditDesc& desc = ColorEditDesc());
+        //! Adds an RGBA color editor bound to 8-bit channels.
+        LUNA_GUI_API GUICore::ElementHandle color_edit4(GUICore::IContext* context, id_t id, const c8* label,
+            u8* value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),
+            const ColorEditDesc& desc = ColorEditDesc());
+        //! Adds an RGB color editor bound to an `0xAABBGGRR` packed color.
+        //! @remark The alpha byte is always written as 255.
+        LUNA_GUI_API GUICore::ElementHandle color_edit3(GUICore::IContext* context, id_t id, const c8* label,
+            u32* value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),
+            const ColorEditDesc& desc = ColorEditDesc());
+        //! Adds an RGBA color editor bound to an `0xAABBGGRR` packed color.
+        LUNA_GUI_API GUICore::ElementHandle color_edit4(GUICore::IContext* context, id_t id, const c8* label,
+            u32* value, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),
+            const ColorEditDesc& desc = ColorEditDesc());
+
         //! Adds one floating-point slider.
         LUNA_GUI_API GUICore::ElementHandle slider_float(GUICore::IContext* context, id_t id, f32* value,
             f32 minimum, f32 maximum, const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(),

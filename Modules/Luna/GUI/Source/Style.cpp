@@ -91,6 +91,8 @@ namespace Luna
                 GUICore::style_f32x4(Float4U(0.20f, 0.25f, 0.32f, 1.0f)), "Disclosure", "Hovered header fill.");
             add("gui.disclosure.icon", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.86f, 0.90f, 0.96f, 1.0f)), "Disclosure", "Disclosure icon color.");
+            add("gui.tree.selected", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.16f, 0.35f, 0.58f, 1.0f)), "Disclosure", "Selected tree node fill.");
 
             add("gui.input.background", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.08f, 0.10f, 0.13f, 1.0f)), "Text Input", "Input background.");
@@ -108,6 +110,19 @@ namespace Luna
                 "Text Input", "Input corner radius.");
             add("gui.input.padding_x", GUICore::StyleValueType::f32, GUICore::style_f32(8.0f),
                 "Text Input", "Input horizontal padding.");
+
+            add("gui.color_edit.background", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.10f, 0.13f, 0.18f, 1.0f)), "Color Edit", "Color preview fill.");
+            add("gui.color_edit.background_hovered", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.13f, 0.19f, 0.27f, 1.0f)), "Color Edit", "Hovered color preview fill.");
+            add("gui.color_edit.border", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.24f, 0.30f, 0.38f, 1.0f)), "Color Edit", "Color preview outline.");
+            add("gui.color_edit.radius", GUICore::StyleValueType::f32, GUICore::style_f32(4.0f),
+                "Color Edit", "Color preview corner radius.");
+            add("gui.color_picker.border", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.24f, 0.30f, 0.38f, 1.0f)), "Color Edit", "Color picker outline.");
+            add("gui.color_picker.cursor", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(1.0f, 1.0f, 1.0f, 1.0f)), "Color Edit", "Color picker cursor outline.");
 
             add("gui.slider.track", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.07f, 0.09f, 0.12f, 1.0f)), "Slider", "Slider track.");

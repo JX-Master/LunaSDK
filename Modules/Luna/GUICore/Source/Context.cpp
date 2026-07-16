@@ -1113,31 +1113,15 @@ namespace Luna
                         if(command.type == DrawCommandType::gradient_rect)
                         {
                             VG::Vertex vertices[4];
-                            vertices[0].position = Float2U(vg_rect.offset_x, vg_rect.offset_y);
-                            vertices[0].shapecoord = Float2U(0.0f, 0.0f);
-                            vertices[0].texcoord = command.min_texcoord;
-                            vertices[0].begin_command = begin;
-                            vertices[0].num_commands = end - begin;
+                            u32 indices[6];
+                            VG::get_rect_shape_draw_vertices(vertices, indices, begin, end - begin,
+                                Float2U(vg_rect.offset_x, vg_rect.offset_y), Float2U(vg_rect.offset_x + vg_rect.width, vg_rect.offset_y + vg_rect.height),
+                                Float2U(0.0f, 0.0f), Float2U(vg_rect.width, vg_rect.height),
+                                command.color, command.min_texcoord, command.max_texcoord);
                             vertices[0].color = command.color_bottom_left;
-                            vertices[1].position = Float2U(vg_rect.offset_x + vg_rect.width, vg_rect.offset_y);
-                            vertices[1].shapecoord = Float2U(vg_rect.width, 0.0f);
-                            vertices[1].texcoord = Float2U(command.max_texcoord.x, command.min_texcoord.y);
-                            vertices[1].begin_command = begin;
-                            vertices[1].num_commands = end - begin;
-                            vertices[1].color = command.color_bottom_right;
-                            vertices[2].position = Float2U(vg_rect.offset_x + vg_rect.width, vg_rect.offset_y + vg_rect.height);
-                            vertices[2].shapecoord = Float2U(vg_rect.width, vg_rect.height);
-                            vertices[2].texcoord = command.max_texcoord;
-                            vertices[2].begin_command = begin;
-                            vertices[2].num_commands = end - begin;
+                            vertices[1].color = command.color;
                             vertices[2].color = command.color_top_right;
-                            vertices[3].position = Float2U(vg_rect.offset_x, vg_rect.offset_y + vg_rect.height);
-                            vertices[3].shapecoord = Float2U(0.0f, vg_rect.height);
-                            vertices[3].texcoord = Float2U(command.min_texcoord.x, command.max_texcoord.y);
-                            vertices[3].begin_command = begin;
-                            vertices[3].num_commands = end - begin;
-                            vertices[3].color = command.color;
-                            u32 indices[] = {0, 1, 2, 0, 2, 3};
+                            vertices[3].color = command.color_bottom_right;
                             draw_list->draw_shape_raw(Span<const VG::Vertex>(vertices, 4), Span<const u32>(indices, 6));
                         }
                         else

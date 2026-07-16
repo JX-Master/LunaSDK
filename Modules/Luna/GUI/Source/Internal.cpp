@@ -210,6 +210,25 @@ namespace Luna
             return is_item_valid(context, item) && context->get_interaction_state(item.id).clicked;
         }
 
+        LUNA_GUI_API bool is_item_right_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item)
+        {
+            if(!is_item_valid(context, item)) return false;
+            for(const GUICore::RoutedInputEvent& routed : context->get_routed_input_events(item.id))
+            {
+                if(routed.event.type == GUICore::InputEventType::pointer_up &&
+                    routed.event.button == GUICore::PointerButton::right)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        LUNA_GUI_API bool is_item_double_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item)
+        {
+            return is_item_valid(context, item) && context->get_interaction_state(item.id).double_clicked;
+        }
+
         LUNA_GUI_API bool is_item_hovered(GUICore::IContext* context, const GUICore::ElementHandle& item)
         {
             return is_item_valid(context, item) && context->get_interaction_state(item.id).hovered;
@@ -223,6 +242,20 @@ namespace Luna
         LUNA_GUI_API bool is_item_focused(GUICore::IContext* context, const GUICore::ElementHandle& item)
         {
             return is_item_valid(context, item) && context->get_interaction_state(item.id).focused;
+        }
+
+        LUNA_GUI_API RectF get_item_rect(GUICore::IContext* context, const GUICore::ElementHandle& item)
+        {
+            if(!is_item_valid(context, item)) return RectF();
+            const GUICore::Element* element = context->get_element(item.index);
+            return element ? element->layout_result.rect : RectF();
+        }
+
+        LUNA_GUI_API RectF get_item_clip_rect(GUICore::IContext* context, const GUICore::ElementHandle& item)
+        {
+            if(!is_item_valid(context, item)) return RectF();
+            const GUICore::Element* element = context->get_element(item.index);
+            return element ? element->layout_result.clip_rect : RectF();
         }
     }
 }

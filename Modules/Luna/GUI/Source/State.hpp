@@ -35,7 +35,15 @@ namespace Luna
                 tab_bar,
                 table,
                 popup,
+                color_edit,
                 dock_space
+            };
+
+            enum class ColorStorage : u8
+            {
+                f32,
+                u8,
+                rgba8
             };
 
             enum class ChoiceOperation : u8
@@ -87,6 +95,9 @@ namespace Luna
                 GUICore::id_t id = 0;
                 bool enabled = true;
                 bool can_toggle = true;
+                bool open_on_arrow = false;
+                f32 arrow_min_x = 0.0f;
+                f32 arrow_max_x = 0.0f;
                 struct DisclosureState* state = nullptr;
             };
 
@@ -161,6 +172,7 @@ namespace Luna
                 GUICore::id_t id = 0;
                 i32* selected_index = nullptr;
                 bool enabled = true;
+                TabBarFittingMode fitting_mode = TabBarFittingMode::none;
                 struct TabState* state = nullptr;
             };
 
@@ -180,6 +192,22 @@ namespace Luna
                 id_t id = 0;
                 GUICore::ElementHandle root;
                 PopupFlag flags = PopupFlag::none;
+            };
+
+            struct ColorEditAction
+            {
+                id_t id = 0;
+                id_t popup_id = 0;
+                id_t picker_id = 0;
+                f32* f32_value = nullptr;
+                u8* u8_value = nullptr;
+                u32* rgba8_value = nullptr;
+                ColorStorage storage = ColorStorage::f32;
+                u8 value_count = 3;
+                bool enabled = true;
+                i32 rgb_before[4] = { 0, 0, 0, 255 };
+                i32 hsv_before[3] = { 0, 0, 0 };
+                struct ColorEditState* state = nullptr;
             };
 
             enum class DockDragMode : u8
@@ -408,6 +436,18 @@ namespace Luna
                 bool selecting = false;
                 f32 blink_time = 0.0f;
                 f32 scroll_x = 0.0f;
+            };
+
+            struct [[Luna::struct("{D562461E-6F3E-4640-A9A6-BBD24A69B562}")]] ColorEditState
+            {
+                Vector<i32> rgb;
+                Vector<i32> hsv;
+                i32 axis = 0;
+                Float4U original = Float4U(0.0f, 0.0f, 0.0f, 1.0f);
+                Float2U popup_position = Float2U(0.0f);
+                u32 active_part = 0;
+                bool original_valid = false;
+                bool initialized = false;
             };
 
             struct [[Luna::struct("{650D6CB0-0784-4012-9035-31D71C2A70D4}")]] ScrollState

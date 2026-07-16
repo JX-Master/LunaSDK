@@ -146,7 +146,28 @@ namespace Luna
             //! Renders a leaf node that cannot be expanded.
             leaf = 0x01,
             //! Keeps the node open and omits disclosure interaction.
-            always_open = 0x02
+            always_open = 0x02,
+            //! Renders the node using the selected tree-item presentation.
+            selected = 0x04,
+            //! Toggles the open state only when the disclosure arrow is clicked.
+            open_on_arrow = 0x08
+        };
+
+        //! Controls how a tab bar handles headers that exceed its available width.
+        enum class TabBarFittingMode : u8
+        {
+            //! Keeps every header at its natural width. Overflow is clipped by the tab bar.
+            none,
+            //! Proportionally shrinks headers so the full strip fits the tab bar width.
+            shrink
+        };
+
+        //! Describes one tab item.
+        struct TabItemDesc
+        {
+            //! Requests this item as the selected tab during the current build.
+            //! @remark When multiple items request selection, the last submitted item wins.
+            bool selected = false;
         };
 
         //! Describes image rendering.
@@ -191,6 +212,15 @@ namespace Luna
             bool show_overlay = true;
         };
 
+        //! Describes a color-edit preview and its picker popup.
+        struct ColorEditDesc
+        {
+            //! Whether the preview and picker controls accept interaction.
+            bool enabled = true;
+            //! Popup width in logical units. Non-positive values use the editor default.
+            f32 popup_width = 0.0f;
+        };
+
         //! Describes package-level scroll view behavior.
         struct ScrollViewDesc
         {
@@ -211,6 +241,8 @@ namespace Luna
         {
             //! Whether tab headers accept interaction.
             bool enabled = true;
+            //! Header fitting behavior when the natural tab strip is wider than the bar.
+            TabBarFittingMode fitting_mode = TabBarFittingMode::none;
         };
 
         //! Describes package-level table layout behavior.
@@ -328,12 +360,22 @@ namespace Luna
         LUNA_GUI_API bool is_item_valid(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Checks whether an element was clicked by the primary pointer.
         LUNA_GUI_API bool is_item_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element received a secondary-pointer click during the current frame.
+        LUNA_GUI_API bool is_item_right_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element was double-clicked by the primary pointer during the current frame.
+        LUNA_GUI_API bool is_item_double_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Checks whether an element is hovered.
         LUNA_GUI_API bool is_item_hovered(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Checks whether an element is active.
         LUNA_GUI_API bool is_item_active(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Checks whether an element has keyboard focus.
         LUNA_GUI_API bool is_item_focused(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Gets the arranged rectangle of an element in layer coordinates.
+        //! @return Returns an empty rectangle when @p item is invalid.
+        LUNA_GUI_API RectF get_item_rect(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Gets the effective clip rectangle of an element in layer coordinates.
+        //! @return Returns an empty rectangle when @p item is invalid.
+        LUNA_GUI_API RectF get_item_clip_rect(GUICore::IContext* context, const GUICore::ElementHandle& item);
 
         //! @}
     }

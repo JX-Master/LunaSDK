@@ -44,6 +44,7 @@ namespace
         bool switch_value = false;
         i32 radio_value = 1;
         i32 button_clicks = 0;
+        String item_query_status;
         String input_value = "Editable text";
         String notes = "The new GUI package is built directly on GUI Core.";
         String read_only_value = "Read-only value";
@@ -55,6 +56,12 @@ namespace
         i32 drag_int_value = 24;
         f32 drag_float3[3] = { 1.0f, 2.0f, 3.0f };
         i32 drag_int3[3] = { 4, 8, 12 };
+        f32 color3_f32[3] = { 0.18f, 0.52f, 0.88f };
+        f32 color4_f32[4] = { 0.92f, 0.32f, 0.20f, 0.75f };
+        u8 color3_u8[3] = { 48, 184, 126 };
+        u8 color4_u8[4] = { 214, 80, 176, 180 };
+        u32 color3_rgba8 = 0xff3366ccu;
+        u32 color4_rgba8 = 0xbf66c2f0u;
         i32 combo_item = 0;
         bool menu_grid = true;
         bool workspace_layout_initialized = false;
@@ -76,6 +83,7 @@ namespace
         GUICore::ElementHandle container_button;
         GUICore::ElementHandle selectable;
         GUICore::ElementHandle hit_box;
+        GUICore::ElementHandle item_query;
     };
 
     struct DemoApp
@@ -233,6 +241,12 @@ namespace
         snprintf(status, sizeof(status), "Container button clicks: %d", state.button_clicks);
         GUI::text(context, make_id(context, "demo.buttons.clicks"), status, fill_width_layout(28.0f));
 
+        section_heading(context, "demo.buttons.query.heading", "Item Queries");
+        handles.item_query = GUI::text_button(context, make_id(context, "demo.buttons.query.button"),
+            "Right-click or double-click this button", fill_width_layout(36.0f));
+        GUI::text(context, make_id(context, "demo.buttons.query.status"), state.item_query_status.c_str(),
+            fill_width_layout(28.0f));
+
         section_heading(context, "demo.buttons.group.heading", "Button Group");
         const c8* items[] = { "Build", "Run", "Profile", "Ship" };
         GUI::button_group(context, make_id(context, "demo.buttons.group"),
@@ -281,6 +295,9 @@ namespace
         {
             GUI::tree_node(context, make_id(context, "demo.buttons.tree.branch"), "Branch Node",
                 GUI::TreeNodeFlag::none, 1, fill_width_layout(32.0f));
+            GUI::tree_node(context, make_id(context, "demo.buttons.tree.selected"),
+                "Selected, arrow-only node", GUI::TreeNodeFlag::selected | GUI::TreeNodeFlag::open_on_arrow,
+                1, fill_width_layout(32.0f));
             GUI::tree_node(context, make_id(context, "demo.buttons.tree.leaf"), "Leaf Node",
                 GUI::TreeNodeFlag::leaf, 2, fill_width_layout(32.0f));
         }
@@ -332,6 +349,20 @@ namespace
             -100.0f, 100.0f, fill_width_layout(34.0f), float_drag);
         GUI::drag_int3(context, make_id(context, "demo.input.drag.int3"), state.drag_int3,
             -100, 100, fill_width_layout(34.0f), int_drag);
+
+        section_heading(context, "demo.input.heading.color", "Color Edit");
+        GUI::color_edit3(context, make_id(context, "demo.input.color.f32.3"), "Float RGB", state.color3_f32,
+            fill_width_layout(32.0f));
+        GUI::color_edit4(context, make_id(context, "demo.input.color.f32.4"), "Float RGBA", state.color4_f32,
+            fill_width_layout(32.0f));
+        GUI::color_edit3(context, make_id(context, "demo.input.color.u8.3"), "Byte RGB", state.color3_u8,
+            fill_width_layout(32.0f));
+        GUI::color_edit4(context, make_id(context, "demo.input.color.u8.4"), "Byte RGBA", state.color4_u8,
+            fill_width_layout(32.0f));
+        GUI::color_edit3(context, make_id(context, "demo.input.color.rgba8.3"), "Packed RGB", &state.color3_rgba8,
+            fill_width_layout(32.0f));
+        GUI::color_edit4(context, make_id(context, "demo.input.color.rgba8.4"), "Packed RGBA", &state.color4_rgba8,
+            fill_width_layout(32.0f));
         GUI::end_scroll_view(context);
     }
 
@@ -734,8 +765,10 @@ namespace
         GUICore::LayoutConfig tabs_layout = growing_layout();
         tabs_layout.width.kind = GUICore::SizeKind::percent;
         tabs_layout.width.value = 1.0f;
+        GUI::TabBarDesc tabs_desc;
+        tabs_desc.fitting_mode = GUI::TabBarFittingMode::shrink;
         GUICore::ElementHandle tabs = GUI::begin_tab_bar(context, make_id(context, "demo.tabs"),
-            &state.selected_tab, tabs_layout);
+            &state.selected_tab, tabs_layout, tabs_desc);
         if(GUI::begin_tab_item(context, make_id(context, "demo.tab.primitives"), "Primitives"))
         {
             build_primitives_page(context, state);
@@ -958,6 +991,15 @@ namespace
                     GUI::is_item_clicked(app.gui, handles.selectable))
                 {
                     app.state.selectable_selected = !app.state.selectable_selected;
+                }
+                if(GUI::is_item_valid(app.gui, handles.item_query))
+                {
+                    RectF rect = GUI::get_item_rect(app.gui, handles.item_query);
+                    strprintf(app.state.item_query_status,
+                        "right_clicked=%s  double_clicked=%s  rect=(%.0f, %.0f, %.0f, %.0f)",
+                        GUI::is_item_right_clicked(app.gui, handles.item_query) ? "yes" : "no",
+                        GUI::is_item_double_clicked(app.gui, handles.item_query) ? "yes" : "no",
+                        rect.offset_x, rect.offset_y, rect.width, rect.height);
                 }
                 if(resolved.relayout_requested)
                 {
