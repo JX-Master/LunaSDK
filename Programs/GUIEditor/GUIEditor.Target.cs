@@ -21,7 +21,7 @@ public sealed class GUIEditorTargetRules : TargetRules
             "Font",
             "VG",
             "GUICore",
-            "GUILegacy",
+            "GUI",
             "GUIWindow",
             "Asset",
             "GUIAsset",

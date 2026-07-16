@@ -11,7 +11,7 @@
 #include "PaletteIcons.hpp"
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/Font/Font.hpp>
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/GUICore/GUICore.hpp>
 #include <Luna/HID/HID.hpp>
@@ -587,7 +587,7 @@ namespace Luna
             }
             c8 label[256];
             snprintf(label, sizeof(label), "%s  [%s]", node->label.empty() ? "(unnamed)" : node->label.c_str(), node->type.c_str());
-            GUI::TreeNodeFlag flags = GUI::TreeNodeFlag::default_open;
+            GUI::TreeNodeFlag flags = GUI::TreeNodeFlag::none;
             if(GA::get_child_count(node.get()) == 0)
             {
                 flags |= GUI::TreeNodeFlag::leaf;
@@ -597,8 +597,10 @@ namespace Luna
                 flags |= GUI::TreeNodeFlag::selected;
             }
             GUICore::ElementHandle handle;
+            GUI::DisclosureDesc disclosure_desc;
+            disclosure_desc.default_open = true;
             bool open = GUI::tree_node(app.editor_core.get(), core_id("gui_editor.tree_node", id), label, flags,
-                indent_depth, core_layout_pixels(0.0f, 26.0f), &handle);
+                indent_depth, core_layout_pixels(0.0f, 26.0f), disclosure_desc, &handle);
             handles.core_tree_nodes.push_back({id, handle});
             if(open && GA::get_child_count(node.get()) > 0)
             {
@@ -681,7 +683,7 @@ namespace Luna
                 core_inspector_field_layout());
             GUICore::FlexLayoutDesc desc;
             desc.main_axis_gap = 8.0f;
-            lupanic_if_failed(GUI::end_h_layout(context, row, desc));
+            GUI::end_h_layout(context, row, desc);
             return input;
         }
 
@@ -694,7 +696,7 @@ namespace Luna
                 core_inspector_field_layout());
             GUICore::FlexLayoutDesc desc;
             desc.main_axis_gap = 8.0f;
-            lupanic_if_failed(GUI::end_h_layout(context, row, desc));
+            GUI::end_h_layout(context, row, desc);
             return checkbox;
         }
 
@@ -703,11 +705,13 @@ namespace Luna
         {
             GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label, core_inspector_row_layout());
             GUI::text(context, core_derived_id(id, "label"), label, core_inspector_label_layout());
+            GUI::DragDesc drag_desc;
+            drag_desc.speed = speed;
             GUICore::ElementHandle drag = GUI::drag_int(context, core_derived_id(id, "drag"), value,
-                speed, min_value, max_value, core_inspector_field_layout());
+                min_value, max_value, core_inspector_field_layout(), drag_desc);
             GUICore::FlexLayoutDesc desc;
             desc.main_axis_gap = 8.0f;
-            lupanic_if_failed(GUI::end_h_layout(context, row, desc));
+            GUI::end_h_layout(context, row, desc);
             return drag;
         }
 
@@ -716,11 +720,13 @@ namespace Luna
         {
             GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label, core_inspector_row_layout());
             GUI::text(context, core_derived_id(id, "label"), label, core_inspector_label_layout());
+            GUI::DragDesc drag_desc;
+            drag_desc.speed = speed;
             GUICore::ElementHandle drag = GUI::drag_float(context, core_derived_id(id, "drag"), value,
-                speed, min_value, max_value, core_inspector_field_layout());
+                min_value, max_value, core_inspector_field_layout(), drag_desc);
             GUICore::FlexLayoutDesc desc;
             desc.main_axis_gap = 8.0f;
-            lupanic_if_failed(GUI::end_h_layout(context, row, desc));
+            GUI::end_h_layout(context, row, desc);
             return drag;
         }
 
@@ -731,24 +737,26 @@ namespace Luna
             GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label, core_inspector_row_layout(height + 2.0f));
             GUI::text(context, core_derived_id(id, "label"), label, core_layout_pixels(112.0f, height));
             GUICore::ElementHandle drag;
+            GUI::DragDesc drag_desc;
+            drag_desc.speed = speed;
             if(count == 2)
             {
-                drag = GUI::drag_float2(context, core_derived_id(id, "drag"), value, speed, min_value, max_value,
-                    core_inspector_field_layout(height));
+                drag = GUI::drag_float2(context, core_derived_id(id, "drag"), value, min_value, max_value,
+                    core_inspector_field_layout(height), drag_desc);
             }
             else if(count == 3)
             {
-                drag = GUI::drag_float3(context, core_derived_id(id, "drag"), value, speed, min_value, max_value,
-                    core_inspector_field_layout(height));
+                drag = GUI::drag_float3(context, core_derived_id(id, "drag"), value, min_value, max_value,
+                    core_inspector_field_layout(height), drag_desc);
             }
             else
             {
-                drag = GUI::drag_float4(context, core_derived_id(id, "drag"), value, speed, min_value, max_value,
-                    core_inspector_field_layout(height));
+                drag = GUI::drag_float4(context, core_derived_id(id, "drag"), value, min_value, max_value,
+                    core_inspector_field_layout(height), drag_desc);
             }
             GUICore::FlexLayoutDesc desc;
             desc.main_axis_gap = 8.0f;
-            lupanic_if_failed(GUI::end_h_layout(context, row, desc));
+            GUI::end_h_layout(context, row, desc);
             return drag;
         }
 
@@ -761,7 +769,7 @@ namespace Luna
                 core_inspector_field_layout());
             GUICore::FlexLayoutDesc desc;
             desc.main_axis_gap = 8.0f;
-            lupanic_if_failed(GUI::end_h_layout(context, row, desc));
+            GUI::end_h_layout(context, row, desc);
             return combo;
         }
 
@@ -908,7 +916,7 @@ namespace Luna
                 GUI::text(app.editor_core.get(), core_derived_id(id, "value"), value_text.c_str(), core_inspector_field_layout());
                 GUICore::FlexLayoutDesc desc;
                 desc.main_axis_gap = 8.0f;
-                lupanic_if_failed(GUI::end_h_layout(app.editor_core.get(), row, desc));
+                GUI::end_h_layout(app.editor_core.get(), row, desc);
             }
         }
 
@@ -965,10 +973,10 @@ namespace Luna
                     GUI::text(app.editor_core.get(), core_id("gui_editor.inspector.manual.type_label", 0),
                         "Property Type", core_inspector_label_layout());
                     GUI::button_group(app.editor_core.get(), core_id("gui_editor.inspector.manual.type", 0),
-                        &app.property_type, Span<const c8*>(type_items, 4), core_inspector_field_layout());
+                        Span<const c8*>(type_items, 4), &app.property_type, core_inspector_field_layout());
                     GUICore::FlexLayoutDesc type_desc;
                     type_desc.main_axis_gap = 8.0f;
-                    lupanic_if_failed(GUI::end_h_layout(app.editor_core.get(), type_row, type_desc));
+                    GUI::end_h_layout(app.editor_core.get(), type_row, type_desc);
                     core_labeled_input_text(app.editor_core.get(), core_id("gui_editor.inspector.manual.value", 0),
                         "Property Value", app.property_value);
                     GUICore::ElementHandle actions = GUI::begin_h_layout(app.editor_core.get(),
@@ -979,7 +987,7 @@ namespace Luna
                         core_id("gui_editor.inspector.manual.erase", 0), "Erase Property", core_layout_pixels(120.0f, 28.0f));
                     GUICore::FlexLayoutDesc action_desc;
                     action_desc.main_axis_gap = 8.0f;
-                    lupanic_if_failed(GUI::end_h_layout(app.editor_core.get(), actions, action_desc));
+                    GUI::end_h_layout(app.editor_core.get(), actions, action_desc);
                 }
             }
         }
@@ -1041,16 +1049,18 @@ namespace Luna
                     continue;
                 }
                 GUICore::ShapeDesc& icon = palette_icon(app.palette_icons, app.node_types[i]);
+                GUI::ShapeButtonDesc button_desc;
+                button_desc.padding = 8.0f;
                 GUI::shape_button(app.editor_core.get(),
                     core_id("gui_editor.palette.item", (u64)i), app.node_types[i].c_str(), icon,
-                    core_layout_pixels(42.0f, 38.0f), 8.0f);
+                    core_layout_pixels(42.0f, 38.0f), button_desc);
             }
             GUICore::GridLayoutDesc grid_desc;
             grid_desc.mode = GUICore::GridLayoutMode::fixed_column_count;
             grid_desc.column_count = 2;
             grid_desc.cell_size = Float2U(42.0f, 38.0f);
             grid_desc.gap = Float2U(6.0f, 6.0f);
-            lupanic_if_failed(GUI::end_grid_layout(app.editor_core.get(), grid, grid_desc));
+            GUI::end_grid_layout(app.editor_core.get(), grid, grid_desc);
 
         }
 
@@ -1068,11 +1078,13 @@ namespace Luna
                 GUI::text(app.editor_core.get(), core_id("gui_editor.tree.info", 0), info, core_text_layout());
                 GUICore::ElementHandle actions = GUI::begin_h_layout(app.editor_core.get(),
                     core_id("gui_editor.tree.actions", 0), "Tree Actions", core_layout_pixels(0.0f, 30.0f));
+                GUI::ButtonDesc button_desc;
+                button_desc.enabled = !app.node_types.empty();
                 handles.core_new_node = GUI::text_button(app.editor_core.get(), core_id("gui_editor.tree.new", 0),
-                    "New", core_layout_pixels(78.0f, 28.0f), !app.node_types.empty());
+                    "New", core_layout_pixels(78.0f, 28.0f), button_desc);
                 GUICore::FlexLayoutDesc action_desc;
                 action_desc.main_axis_gap = 4.0f;
-                lupanic_if_failed(GUI::end_h_layout(app.editor_core.get(), actions, action_desc));
+                GUI::end_h_layout(app.editor_core.get(), actions, action_desc);
                 build_core_node_tree(app, handles, *document, GA::get_root(document->asset.get()), 0);
             }
         }
@@ -1108,16 +1120,19 @@ namespace Luna
             context_desc.layout = core_layout_pixels(180.0f, 0.0f);
             if(GUI::begin_popup(app.editor_core.get(), context_popup_id, context_desc, &handles.core_node_context_popup))
             {
+                GUI::MenuItemDesc move_up_desc;
+                move_up_desc.enabled = can_move_node(document, app.tree_context_node, false);
                 handles.core_node_context_move_up = GUI::menu_item(app.editor_core.get(),
-                    core_id("gui_editor.tree.context.up", 0), "Move Up", nullptr, false,
-                    can_move_node(document, app.tree_context_node, false));
+                    core_id("gui_editor.tree.context.up", 0), "Move Up", false, move_up_desc);
+                GUI::MenuItemDesc move_down_desc;
+                move_down_desc.enabled = can_move_node(document, app.tree_context_node, true);
                 handles.core_node_context_move_down = GUI::menu_item(app.editor_core.get(),
-                    core_id("gui_editor.tree.context.down", 0), "Move Down", nullptr, false,
-                    can_move_node(document, app.tree_context_node, true));
+                    core_id("gui_editor.tree.context.down", 0), "Move Down", false, move_down_desc);
                 GUI::menu_separator(app.editor_core.get(), core_id("gui_editor.tree.context.sep", 0));
+                GUI::MenuItemDesc delete_desc;
+                delete_desc.enabled = can_remove_node(document, app.tree_context_node);
                 handles.core_node_context_delete = GUI::menu_item(app.editor_core.get(),
-                    core_id("gui_editor.tree.context.delete", 0), "Delete", nullptr, false,
-                    can_remove_node(document, app.tree_context_node));
+                    core_id("gui_editor.tree.context.delete", 0), "Delete", false, delete_desc);
                 lupanic_if_failed(GUI::end_popup(app.editor_core.get(), handles.core_node_context_popup,
                     RectF(0.0f, 0.0f, 180.0f, 96.0f)));
             }
@@ -1132,6 +1147,7 @@ namespace Luna
             }
             lutry
             {
+                luexp(context->generate_draw_commands());
                 luexp(context->compile_draw_commands(draw_list));
                 luexp(draw_list->compile());
                 Span<const VG::ShapeDrawCall> draw_calls = draw_list->get_draw_calls();
@@ -1222,7 +1238,7 @@ namespace Luna
             app.dockspace_layout_initialized = true;
         }
 
-        static void draw_editor(App& app, FrameHandles& handles, const Float2U& surface_size)
+        static GUICore::ElementHandle draw_editor(App& app, FrameHandles& handles, const Float2U& surface_size)
         {
             sync_inspector(app);
             EditorDocument* document = app.service.active_document();
@@ -1240,42 +1256,53 @@ namespace Luna
             root_layout.height.value = surface_size.y;
             GUICore::ElementHandle root = GUI::begin_v_layout(context, core_id("gui_editor.root", 0),
                 "GUIEditor Root", root_layout);
-            GUICore::LayoutResult root_result;
-            root_result.rect = RectF(0.0f, 0.0f, surface_size.x, surface_size.y);
-            root_result.clip_rect = root_result.rect;
-            root_result.content_size = surface_size;
-            context->set_layout_result(root, root_result);
-
             f32 menu_height = 34.0f;
             GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, core_id("gui_editor.menu_bar", 0),
                 "Main Menu", core_layout_pixels(0.0f, menu_height));
             if(GUI::begin_menu(context, core_id("gui_editor.menu.file", 0), "File"))
             {
-                handles.new_document = GUI::menu_item(context, core_id("gui_editor.menu.file.new", 0), "New", "Ctrl+N");
+                GUI::MenuItemDesc new_desc;
+                new_desc.shortcut = "Ctrl+N";
+                handles.new_document = GUI::menu_item(context, core_id("gui_editor.menu.file.new", 0),
+                    "New", false, new_desc);
                 GUI::menu_separator(context, core_id("gui_editor.menu.file.sep0", 0));
                 GUI::input_text(context, core_id("gui_editor.menu.file.open_path", 0), app.open_path);
-                handles.open_document = GUI::menu_item(context, core_id("gui_editor.menu.file.open", 0), "Open", nullptr);
+                handles.open_document = GUI::menu_item(context, core_id("gui_editor.menu.file.open", 0), "Open");
                 GUI::input_text(context, core_id("gui_editor.menu.file.save_path", 0), app.save_path);
+                GUI::MenuItemDesc save_desc;
+                save_desc.shortcut = "Ctrl+S";
+                save_desc.enabled = can_save;
                 handles.save_document = GUI::menu_item(context, core_id("gui_editor.menu.file.save", 0),
-                    "Save", "Ctrl+S", false, can_save);
+                    "Save", false, save_desc);
                 lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 260.0f, 150.0f)));
             }
             if(GUI::begin_menu(context, core_id("gui_editor.menu.edit", 0), "Edit"))
             {
-                handles.undo = GUI::menu_item(context, core_id("gui_editor.menu.edit.undo", 0), "Undo", "Ctrl+Z", false, can_undo);
-                handles.redo = GUI::menu_item(context, core_id("gui_editor.menu.edit.redo", 0), "Redo", "Ctrl+Y", false, can_redo);
+                GUI::MenuItemDesc undo_desc;
+                undo_desc.shortcut = "Ctrl+Z";
+                undo_desc.enabled = can_undo;
+                handles.undo = GUI::menu_item(context, core_id("gui_editor.menu.edit.undo", 0),
+                    "Undo", false, undo_desc);
+                GUI::MenuItemDesc redo_desc;
+                redo_desc.shortcut = "Ctrl+Y";
+                redo_desc.enabled = can_redo;
+                handles.redo = GUI::menu_item(context, core_id("gui_editor.menu.edit.redo", 0),
+                    "Redo", false, redo_desc);
                 GUI::menu_separator(context, core_id("gui_editor.menu.edit.sep0", 0));
+                GUI::MenuItemDesc delete_desc;
+                delete_desc.shortcut = "Del";
+                delete_desc.enabled = can_delete;
                 handles.remove_node_menu = GUI::menu_item(context, core_id("gui_editor.menu.edit.delete", 0),
-                    "Delete Node", "Del", false, can_delete);
+                    "Delete Node", false, delete_desc);
                 lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 105.0f)));
             }
             if(GUI::begin_menu(context, core_id("gui_editor.menu.view", 0), "View"))
             {
-                GUI::menu_item(context, core_id("gui_editor.menu.view.preview", 0), "Preview", nullptr, &app.show_preview);
-                GUI::menu_item(context, core_id("gui_editor.menu.view.properties", 0), "Properties", nullptr, &app.show_properties);
+                GUI::menu_item(context, core_id("gui_editor.menu.view.preview", 0), "Preview", &app.show_preview);
+                GUI::menu_item(context, core_id("gui_editor.menu.view.properties", 0), "Properties", &app.show_properties);
                 lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 78.0f)));
             }
-            lupanic_if_failed(GUI::end_menu_bar(context, menu_bar, RectF(0.0f, 0.0f, surface_size.x, menu_height)));
+            GUI::end_menu_bar(context, menu_bar);
 
             GUICore::id_t dock_space_id = core_id("gui_editor.dockspace", 0);
             GUICore::id_t palette_id = core_id("gui_editor.panel.palette", 0);
@@ -1283,11 +1310,12 @@ namespace Luna
             GUICore::id_t inspector_id = core_id("gui_editor.panel.inspector", 0);
             GUICore::id_t tree_id = core_id("gui_editor.panel.tree", 0);
             GUICore::id_t history_id = core_id("gui_editor.panel.history", 0);
-            RectF dock_rect(0.0f, menu_height, surface_size.x, max(surface_size.y - menu_height, 0.0f));
             set_default_dockspace_layout(app, dock_space_id, palette_id, preview_id, inspector_id, tree_id, history_id);
 
+            GUICore::LayoutConfig dock_layout = core_layout_pixels(0.0f, 0.0f);
+            dock_layout.flex_grow = 1.0f;
             GUICore::ElementHandle dock_space = GUI::begin_dock_space(context, dock_space_id, "GUIEditor DockSpace",
-                core_layout_pixels(0.0f, 0.0f));
+                dock_layout);
 
             if(GUI::begin_dock_panel(context, palette_id, "Node Palette"))
             {
@@ -1320,11 +1348,14 @@ namespace Luna
                 build_core_history_panel(app);
                 GUI::end_dock_panel(context);
             }
-            lupanic_if_failed(GUI::end_dock_space(context, dock_space, dock_rect));
-            lupanic_if_failed(GUI::layout_editor_tree(context, dock_space, dock_rect));
+            GUI::end_dock_space(context);
             build_core_tree_popups(app, handles);
-            context->end_element();
+            GUICore::FlexLayoutDesc root_desc;
+            root_desc.axis = GUICore::LayoutAxis::y;
+            root_desc.cross_alignment = GUICore::FlexAlignment::stretch;
+            GUI::end_v_layout(context, root, root_desc);
             context->pop_layer();
+            return root;
         }
 
         static void build_core_preview(App& app, const FrameHandles& handles, const GUICore::FrameDesc& frame,
@@ -1361,6 +1392,7 @@ namespace Luna
             RV r = GA::generate(app.preview_core.get(), document->asset.get(), generate_context);
             app.preview_core->pop_layer();
             app.preview_core->route_input();
+            GUI::resolve_interactions(app.preview_core.get());
             if(input_adapter && app.preview_core->get_text_input_state().active)
             {
                 RV text_input_result = GUIWindow::update_text_input(input_adapter);
@@ -1722,12 +1754,12 @@ namespace Luna
                 luset(app.cmdbuf, dev->new_command_buffer(app.queue));
                 app.editor_core = GUICore::new_context();
                 luexp(app.editor_core->register_font(Name("default"), Font::get_default_font()));
-                GUI::register_editor_style_schemas(app.editor_core.get());
+                GUI::register_style_schemas(app.editor_core.get());
                 app.editor_draw_list = VG::new_shape_draw_list(dev);
                 app.editor_renderer = VG::new_fill_shape_renderer();
                 app.preview_core = GUICore::new_context();
                 luexp(app.preview_core->register_font(Name("default"), Font::get_default_font()));
-                GUI::register_editor_style_schemas(app.preview_core.get());
+                GUI::register_style_schemas(app.preview_core.get());
                 app.preview_draw_list = VG::new_shape_draw_list(dev);
                 app.preview_renderer = VG::new_fill_shape_renderer();
 
@@ -1769,8 +1801,16 @@ namespace Luna
                     GUIWindow::update_input(&editor_input_adapter);
 
                     FrameHandles handles;
-                    draw_editor(app, handles, frame.screen_size);
+                    GUICore::ElementHandle root = draw_editor(app, handles, frame.screen_size);
+                    luexp(GUI::layout_tree(app.editor_core.get(), root,
+                        RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
                     app.editor_core->route_input();
+                    GUI::ResolveResult resolved = GUI::resolve_interactions(app.editor_core.get());
+                    if(resolved.relayout_requested)
+                    {
+                        luexp(GUI::layout_tree(app.editor_core.get(), root,
+                            RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                    }
                     luexp(GUIWindow::update_text_input(&editor_input_adapter));
                     process_actions(app, handles);
                     build_core_preview(app, handles, frame, &preview_input_adapter);

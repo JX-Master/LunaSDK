@@ -8,7 +8,7 @@
 * @date 2023/11/3
 */
 #include "MemoryProfiler.hpp"
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 
 namespace Luna
 {
@@ -152,15 +152,17 @@ namespace Luna
                 table_layout.width.value = 484.0f;
                 table_layout.height.kind = GUICore::SizeKind::fit;
                 table_layout.margin = Float4U(0.0f, 4.0f, 0.0f, 8.0f);
-                GUICore::ElementHandle table = GUI::begin_table_layout(context, context->make_id("table"), h.first.c_str(), table_layout);
+                GUI::TableDesc table_desc;
+                table_desc.gap = Float2U(1.0f, 1.0f);
+                table_desc.cell_padding = Float4U(8.0f, 4.0f, 8.0f, 4.0f);
+                GUICore::ElementHandle table = GUI::begin_table_layout(context, context->make_id("table"),
+                    h.first.c_str(), table_layout, table_desc);
                 GUICore::TableTrackDesc columns[3] = {
                     table_column(240.0f),
                     table_column(110.0f),
                     table_column(120.0f)
                 };
                 GUI::set_table_columns(context, Span<const GUICore::TableTrackDesc>(columns, 3));
-                GUI::set_table_gap(context, Float2U(1.0f, 1.0f));
-                GUI::set_table_cell_padding(context, Float4U(8.0f, 4.0f, 8.0f, 4.0f));
                 GUICore::TableTrackDesc row = table_row(28.0f);
                 if(GUI::begin_table_row(context, row))
                 {
@@ -183,13 +185,13 @@ namespace Luna
                     }
                     context->pop_data_scope();
                 }
-                lupanic_if_failed(GUI::end_table_layout(context, table));
+                GUI::end_table_layout(context, table);
             }
             context->pop_data_scope();
         }
-        lupanic_if_failed(GUI::end_v_layout(context, content, GUICore::FlexLayoutDesc()));
-        lupanic_if_failed(GUI::end_scroll_view(context, scroll));
-        lupanic_if_failed(GUI::end_v_layout(context, root, GUICore::FlexLayoutDesc()));
+        GUI::end_v_layout(context, content, GUICore::FlexLayoutDesc());
+        GUI::end_scroll_view(context);
+        GUI::end_v_layout(context, root, GUICore::FlexLayoutDesc());
         context->pop_data_scope();
     }
 

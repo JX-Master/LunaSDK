@@ -11,7 +11,7 @@
 #include "MaterialEditor.hpp"
 #include "../StudioHeader.hpp"
 #include "../StudioGUI.hpp"
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Window/MessageBox.hpp>
 namespace Luna
 {
@@ -81,10 +81,12 @@ namespace Luna
             {
                 gui_edit_asset_path(context, "Emissive", mat->emissive, m_emissive_name);
             }
+            GUI::DragDesc drag_desc;
+            drag_desc.speed = 0.01f;
             GUI::drag_float(context, context->make_id("emissive_intensity"), &mat->emissive_intensity,
-                0.01f, 0.0f, 20.0f, fixed_height(30.0f));
+                0.0f, 20.0f, fixed_height(30.0f), drag_desc);
         }
-        lupanic_if_failed(GUI::end_v_layout(context, root, vertical_editor_layout()));
+        GUI::end_v_layout(context, root, vertical_editor_layout());
         context->pop_data_scope();
     }
 

@@ -72,7 +72,7 @@ public sealed class StudioTargetRules : TargetRules
             "Font",
             "VG",
             "GUICore",
-            "GUILegacy",
+            "GUI",
             "GUIWindow",
             "Asset",
             "ObjLoader",

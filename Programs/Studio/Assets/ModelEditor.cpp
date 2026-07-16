@@ -11,7 +11,7 @@
 #include "ModelEditor.hpp"
 #include "../StudioHeader.hpp"
 #include "../StudioGUI.hpp"
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include "../Mesh.hpp"
 namespace Luna
@@ -111,7 +111,7 @@ namespace Luna
                     fixed_size(152.0f, 30.0f));
                 GUICore::ElementHandle add_button = GUI::text_button(context, context->make_id("add"), "Add before this",
                     fixed_size(128.0f, 30.0f));
-                lupanic_if_failed(GUI::end_h_layout(context, row, material_slot_row_layout()));
+                GUI::end_h_layout(context, row, material_slot_row_layout());
                 if(GUI::is_item_clicked(context, remove_button))
                 {
                     remove_index = i;
@@ -137,7 +137,7 @@ namespace Luna
             }
         }
 
-        lupanic_if_failed(GUI::end_v_layout(context, root, vertical_editor_layout()));
+        GUI::end_v_layout(context, root, vertical_editor_layout());
         context->pop_data_scope();
     }
 

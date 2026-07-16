@@ -9,7 +9,7 @@
 */
 #include "Texture.hpp"
 #include "TextureImporter.hpp"
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/File.hpp>
@@ -564,11 +564,10 @@ namespace Luna
             return;
         }
         context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
-        GUI::DockPanelStyle panel_style;
-        panel_style.min_floating_size = Float2U(520.0f, 420.0f);
-        GUICore::ElementHandle panel;
+        GUI::DockPanelDesc panel_desc;
+        panel_desc.minimum_floating_size = Float2U(520.0f, 420.0f);
         if(!GUI::begin_dock_panel(context, context->make_id("texture_importer"), "Texture Importer", &m_open,
-            panel_style, layout, &panel))
+            panel_desc))
         {
             context->pop_data_scope();
             return;
@@ -685,8 +684,8 @@ namespace Luna
                 }
                 context->pop_data_scope();
             }
-            lupanic_if_failed(GUI::end_v_layout(context, content, vertical_layout(6.0f)));
-            lupanic_if_failed(GUI::end_scroll_view(context, scroll));
+            GUI::end_v_layout(context, content, vertical_layout(6.0f));
+            GUI::end_scroll_view(context);
         }
 
         GUI::end_dock_panel(context);

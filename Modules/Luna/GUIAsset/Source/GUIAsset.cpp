@@ -11,7 +11,7 @@
 #define LUNA_GUI_ASSET_API LUNA_EXPORT
 #include "../GUIAsset.hpp"
 #include "GUIAsset.meta.generated.hpp"
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Runtime/Algorithm.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Serialization.hpp>
@@ -619,7 +619,8 @@ namespace Luna
             }
             GUICore::FlexLayoutDesc desc;
             desc.main_axis_gap = read_layout_desc(node.properties).gap;
-            return GUI::end_h_layout(context, layout, desc);
+            GUI::end_h_layout(context, layout, desc);
+            return ok;
         }
 
         static RV generate_core_v_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
@@ -633,7 +634,8 @@ namespace Luna
             }
             GUICore::FlexLayoutDesc desc;
             desc.main_axis_gap = read_layout_desc(node.properties).gap;
-            return GUI::end_v_layout(context, layout, desc);
+            GUI::end_v_layout(context, layout, desc);
+            return ok;
         }
 
         static RV generate_core_scroll_view(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
@@ -646,7 +648,8 @@ namespace Luna
                 context->end_element();
                 return r;
             }
-            return GUI::end_scroll_view(context, layout);
+            GUI::end_scroll_view(context);
+            return ok;
         }
 
         static RV generate_core_grid_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
@@ -658,7 +661,8 @@ namespace Luna
                 context->end_element();
                 return r;
             }
-            return GUI::end_grid_layout(context, layout, read_core_grid_layout_desc(node));
+            GUI::end_grid_layout(context, layout, read_core_grid_layout_desc(node));
+            return ok;
         }
 
         static RV generate_core_canvas_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
@@ -692,28 +696,21 @@ namespace Luna
             GUICore::CanvasLayoutDesc desc;
             desc.items = Span<const GUICore::CanvasLayoutItem>(items.data(), items.size());
             desc.clip_children = property_bool(node, "clip_children", desc.clip_children);
-            return GUI::end_canvas_layout(context, layout, desc);
+            GUI::end_canvas_layout(context, layout, desc);
+            return ok;
         }
 
         static RV generate_core_table_layout(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUICore::ElementHandle layout = GUI::begin_table_layout(context, node_core_id(node), node.label.c_str(), read_core_layout_config(node));
-            Vector<GUICore::TableLayoutCell> cells;
-            u32 row_index = 0;
-
-            auto append_cell = [&](Node& cell_node, u32 column_index) -> RV {
-                RV r = generate_node(context, cell_node, generate_context);
-                if(failed(r))
-                {
-                    return r;
-                }
-                GUICore::TableLayoutCell cell;
-                cell.element_id = node_core_id(cell_node);
-                cell.row = row_index;
-                cell.column = column_index;
-                cells.push_back(cell);
-                return ok;
-            };
+            GUI::TableDesc table_desc;
+            table_desc.fixed_row_height_mode = property_bool(node, "fixed_row_height_mode", false);
+            table_desc.fixed_row_height = property_f32(node, "fixed_row_height", 28.0f);
+            table_desc.virtualize_fixed_rows = property_bool(node, "virtualize_fixed_rows", false);
+            GUICore::ElementHandle layout = GUI::begin_table_layout(context, node_core_id(node),
+                node.label.c_str(), read_core_layout_config(node), table_desc);
+            Vector<GUICore::TableTrackDesc> columns;
+            read_core_table_columns(node, columns);
+            GUI::set_table_columns(context, Span<const GUICore::TableTrackDesc>(columns.data(), columns.size()));
 
             for(const Guid& child_id : AssetTopologyAccess::children(&node))
             {
@@ -725,51 +722,48 @@ namespace Luna
                 if(child->type == Name("table_row"))
                 {
                     apply_core_common_modifiers(context, *child.get());
-                    u32 column_index = 0;
-                    for(const Guid& cell_id : AssetTopologyAccess::children(child.get()))
+                    GUICore::TableTrackDesc row = table_desc.fixed_row_height_mode ?
+                        core_table_track_pixels(table_desc.fixed_row_height) : core_table_track_fit();
+                    bool visible = GUI::begin_table_row(context, row);
+                    if(visible)
                     {
-                        auto cell_node = find_node(generate_context.asset, cell_id);
-                        if(!cell_node)
+                        for(const Guid& cell_id : AssetTopologyAccess::children(child.get()))
                         {
-                            continue;
+                            auto cell_node = find_node(generate_context.asset, cell_id);
+                            if(!cell_node)
+                            {
+                                continue;
+                            }
+                            RV r = generate_node(context, *cell_node.get(), generate_context);
+                            if(failed(r))
+                            {
+                                GUI::end_table_row(context);
+                                finish_core_common_modifiers(context, *child.get());
+                                context->end_element();
+                                return r;
+                            }
                         }
-                        RV r = append_cell(*cell_node.get(), column_index++);
+                    }
+                    GUI::end_table_row(context);
+                    finish_core_common_modifiers(context, *child.get());
+                }
+                else
+                {
+                    bool visible = GUI::begin_table_row(context);
+                    if(visible)
+                    {
+                        RV r = generate_node(context, *child.get(), generate_context);
                         if(failed(r))
                         {
-                            finish_core_common_modifiers(context, *child.get());
+                            GUI::end_table_row(context);
                             context->end_element();
                             return r;
                         }
                     }
-                    finish_core_common_modifiers(context, *child.get());
-                    ++row_index;
-                }
-                else
-                {
-                    RV r = append_cell(*child.get(), 0);
-                    if(failed(r))
-                    {
-                        context->end_element();
-                        return r;
-                    }
-                    ++row_index;
+                    GUI::end_table_row(context);
                 }
             }
-
-            Vector<GUICore::TableTrackDesc> columns;
-            Vector<GUICore::TableTrackDesc> rows;
-            read_core_table_columns(node, columns);
-            read_core_table_rows(node, row_index, rows);
-
-            GUICore::TableLayoutDesc desc;
-            desc.columns = Span<const GUICore::TableTrackDesc>(columns.data(), columns.size());
-            desc.rows = Span<const GUICore::TableTrackDesc>(rows.data(), rows.size());
-            desc.cells = Span<const GUICore::TableLayoutCell>(cells.data(), cells.size());
-            RV r = GUI::end_table_layout(context, layout, desc);
-            if(failed(r))
-            {
-                return r;
-            }
+            GUI::end_table_layout(context, layout);
             return ok;
         }
 
@@ -784,7 +778,8 @@ namespace Luna
             }
             GUICore::FlexLayoutDesc desc;
             desc.main_axis_gap = 0.0f;
-            return GUI::end_h_layout(context, layout, desc);
+            GUI::end_h_layout(context, layout, desc);
+            return ok;
         }
 
         static RV generate_core_text(GUICore::IContext* context, Node& node, const GenerateContext&)
@@ -805,8 +800,10 @@ namespace Luna
         {
             const Variant& overlay_value = property(node, "overlay");
             const c8* overlay = overlay_value.valid() ? overlay_value.c_str("") : nullptr;
+            GUI::ProgressBarDesc desc;
+            desc.overlay = overlay;
             GUICore::ElementHandle element = GUI::progress_bar(context, node_core_id(node), property_f32(node, "fraction", 0.0f),
-                overlay, read_core_layout_config(node, read_size(node.properties[Name("size")])));
+                read_core_layout_config(node, read_size(node.properties[Name("size")])), desc);
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -829,8 +826,9 @@ namespace Luna
 
         static RV generate_core_radio_button(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
+            i32& value = runtime_value(node, Name("selected"), property_bool(node, "selected", false) ? 1 : 0);
             GUICore::ElementHandle element = GUI::radio_button(context, node_core_id(node), node.label.c_str(),
-                property_bool(node, "selected", false), read_core_layout_config(node));
+                &value, 1, read_core_layout_config(node));
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -862,7 +860,10 @@ namespace Luna
 
         static RV generate_core_collapsing_header(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            if(GUI::collapsing_header(context, node_core_id(node), node.label.c_str(), true, read_core_layout_config(node)))
+            GUI::DisclosureDesc desc;
+            desc.default_open = true;
+            if(GUI::collapsing_header(context, node_core_id(node), node.label.c_str(),
+                read_core_layout_config(node), desc))
             {
                 return generate_children(context, node, generate_context);
             }
@@ -874,8 +875,10 @@ namespace Luna
             GUI::TreeNodeFlag flags = GUI::TreeNodeFlag::none;
             if(property_bool(node, "selected", false)) flags |= GUI::TreeNodeFlag::selected;
             if(property_bool(node, "leaf", false)) flags |= GUI::TreeNodeFlag::leaf;
-            if(property_bool(node, "default_open", false)) flags |= GUI::TreeNodeFlag::default_open;
-            if(GUI::tree_node(context, node_core_id(node), node.label.c_str(), flags, 0, read_core_layout_config(node)))
+            GUI::DisclosureDesc desc;
+            desc.default_open = property_bool(node, "default_open", false);
+            if(GUI::tree_node(context, node_core_id(node), node.label.c_str(), flags, 0,
+                read_core_layout_config(node), desc))
             {
                 return generate_children(context, node, generate_context);
             }
@@ -884,26 +887,26 @@ namespace Luna
 
         static RV generate_core_tab_bar(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUICore::ElementHandle tab_bar = GUI::begin_tab_bar(context, node_core_id(node), node.label.c_str(),
-                GUI::TabBarFlag::fitting_shrink, read_core_layout_config(node, read_size(node.properties[Name("size")])));
+            i32& selected_index = runtime_value(node, Name("selected_index"), 0);
+            GUI::TabBarDesc desc;
+            desc.fitting_mode = GUI::TabBarFittingMode::shrink;
+            GUICore::ElementHandle tab_bar = GUI::begin_tab_bar(context, node_core_id(node), &selected_index,
+                read_core_layout_config(node, read_size(node.properties[Name("size")])), desc);
             RV r = generate_children(context, node, generate_context);
             if(failed(r))
             {
                 context->end_element();
                 return r;
             }
-            return GUI::end_tab_bar(context, tab_bar);
+            GUI::end_tab_bar(context);
+            return ok;
         }
 
         static RV generate_core_tab_item(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
-            GUI::TabItemFlag flags = GUI::TabItemFlag::none;
-            if(property_bool(node, "selected", false))
-            {
-                flags |= GUI::TabItemFlag::selected;
-            }
-            bool open = property_bool(node, "open", true);
-            if(GUI::begin_tab_item(context, node_core_id(node), node.label.c_str(), &open, flags))
+            GUI::TabItemDesc desc;
+            desc.selected = property_bool(node, "selected", false);
+            if(GUI::begin_tab_item(context, node_core_id(node), node.label.c_str(), desc))
             {
                 RV r = generate_children(context, node, generate_context);
                 GUI::end_tab_item(context);
@@ -922,13 +925,16 @@ namespace Luna
                 context->end_element();
                 return r;
             }
-            return GUI::end_menu_bar(context, menu_bar);
+            GUI::end_menu_bar(context, menu_bar);
+            return ok;
         }
 
         static RV generate_core_menu(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             GUICore::ElementHandle menu;
-            if(GUI::begin_menu(context, node_core_id(node), node.label.c_str(), node.enabled,
+            GUI::MenuItemDesc desc;
+            desc.enabled = node.enabled;
+            if(GUI::begin_menu(context, node_core_id(node), node.label.c_str(), desc,
                 &menu, read_core_layout_config(node)))
             {
                 RV r = generate_children(context, node, generate_context);
@@ -947,17 +953,20 @@ namespace Luna
         {
             bool checkable = property_bool(node, "checkable", false);
             const c8* shortcut = property_c_str(node, "shortcut", "");
+            GUI::MenuItemDesc desc;
+            desc.enabled = node.enabled;
+            desc.shortcut = shortcut;
             GUICore::ElementHandle element;
             if(checkable)
             {
                 bool& checked = runtime_value(node, Name("checked"), property_bool(node, "checked", false));
-                element = GUI::menu_item(context, node_core_id(node), node.label.c_str(), shortcut, &checked,
-                    node.enabled, read_core_layout_config(node));
+                element = GUI::menu_item(context, node_core_id(node), node.label.c_str(), &checked,
+                    desc, read_core_layout_config(node));
             }
             else
             {
-                element = GUI::menu_item(context, node_core_id(node), node.label.c_str(), shortcut,
-                    property_bool(node, "checked", false), node.enabled, read_core_layout_config(node));
+                element = GUI::menu_item(context, node_core_id(node), node.label.c_str(),
+                    property_bool(node, "checked", false), desc, read_core_layout_config(node));
             }
             apply_core_enabled(context, node, element);
             return ok;
@@ -972,7 +981,7 @@ namespace Luna
         static RV generate_core_popup(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             GUICore::ElementHandle owner = GUI::text_button(context, node_core_id(node), node.label.c_str(),
-                read_core_layout_config(node, read_size(node.properties[Name("size")])), node.enabled);
+                read_core_layout_config(node, read_size(node.properties[Name("size")])), GUI::ButtonDesc{node.enabled});
             apply_core_enabled(context, node, owner);
 
             GUICore::id_t popup_id = derived_core_id(node, "popup");
@@ -1014,7 +1023,7 @@ namespace Luna
         static RV generate_core_tooltip(GUICore::IContext* context, Node& node, const GenerateContext& generate_context)
         {
             GUICore::ElementHandle owner = GUI::text_button(context, node_core_id(node), node.label.c_str(),
-                read_core_layout_config(node, read_size(node.properties[Name("size")])), node.enabled);
+                read_core_layout_config(node, read_size(node.properties[Name("size")])), GUI::ButtonDesc{node.enabled});
             apply_core_enabled(context, node, owner);
 
             GUI::TooltipDesc desc;
@@ -1057,14 +1066,15 @@ namespace Luna
                 default_values.resize(items.size(), false);
                 Vector<bool>& selected_values = runtime_value(node, Name("selected"), default_values);
                 selected_values.resize(items.size(), false);
-                element = GUI::button_group(context, node_core_id(node), Span<bool>(selected_values.data(), selected_values.size()),
-                    Span<const c8*>(items.data(), items.size()), read_core_layout_config(node));
+                element = GUI::button_group(context, node_core_id(node),
+                    Span<const c8*>(items.data(), items.size()),
+                    Span<bool>(selected_values.data(), selected_values.size()), read_core_layout_config(node));
             }
             else
             {
                 i32& current_item = runtime_value(node, Name("current_item"), property_i32(node, "current_item", 0));
-                element = GUI::button_group(context, node_core_id(node), &current_item, Span<const c8*>(items.data(), items.size()),
-                    read_core_layout_config(node));
+                element = GUI::button_group(context, node_core_id(node),
+                    Span<const c8*>(items.data(), items.size()), &current_item, read_core_layout_config(node));
             }
             apply_core_enabled(context, node, element);
             return ok;
@@ -1107,9 +1117,11 @@ namespace Luna
         static RV generate_core_drag_float(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             f32& value = runtime_value(node, Name("value"), property_f32(node, "value", 0.0f));
+            GUI::DragDesc desc;
+            desc.speed = property_f32(node, "speed", 1.0f);
             GUICore::ElementHandle element = GUI::drag_float(context, node_core_id(node), &value,
-                property_f32(node, "speed", 1.0f), property_f32(node, "min", 0.0f), property_f32(node, "max", 1.0f),
-                read_core_layout_config(node));
+                property_f32(node, "min", 0.0f), property_f32(node, "max", 1.0f),
+                read_core_layout_config(node), desc);
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -1117,9 +1129,11 @@ namespace Luna
         static RV generate_core_drag_int(GUICore::IContext* context, Node& node, const GenerateContext&)
         {
             i32& value = runtime_value(node, Name("value"), property_i32(node, "value", 0));
+            GUI::DragDesc desc;
+            desc.speed = property_f32(node, "speed", 1.0f);
             GUICore::ElementHandle element = GUI::drag_int(context, node_core_id(node), &value,
-                property_f32(node, "speed", 1.0f), property_i32(node, "min", 0), property_i32(node, "max", 100),
-                read_core_layout_config(node));
+                property_i32(node, "min", 0), property_i32(node, "max", 100),
+                read_core_layout_config(node), desc);
             apply_core_enabled(context, node, element);
             return ok;
         }
@@ -1831,7 +1845,7 @@ namespace Luna
             {
                 return r;
             }
-            return GUI::layout_editor_tree(context, context->find_element_handle(node_core_id(*root.get())),
+            return GUI::layout_tree(context, context->find_element_handle(node_core_id(*root.get())),
                 core_generation_rect(context, effective_context));
         }
 

@@ -9,7 +9,7 @@
 */
 #include "AssetBrowser.hpp"
 #include "MainEditor.hpp"
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Log.hpp>
@@ -300,17 +300,14 @@ namespace Luna
         }
 
         context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
-        GUI::DockPanelStyle panel_style;
-        panel_style.min_floating_size = Float2U(320.0f, 220.0f);
-        GUICore::ElementHandle panel;
-        if(!GUI::begin_dock_panel(context, context->make_id("asset_browser_panel"), "Asset Browser", open, panel_style,
-            fill_layout(), &panel))
+        GUI::DockPanelDesc panel_desc;
+        panel_desc.minimum_floating_size = Float2U(320.0f, 220.0f);
+        if(!GUI::begin_dock_panel(context, context->make_id("asset_browser_panel"), "Asset Browser", open, panel_desc))
         {
             context->pop_data_scope();
             return;
         }
-        m_host_focused = GUI::is_item_focused(context, panel) || GUI::is_item_hovered(context, panel) ||
-            GUI::is_item_active(context, panel);
+        m_host_focused = true;
 
         GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, context->make_id("menu_bar"),
             "Asset Browser Menu Bar", fixed_height(30.0f));
@@ -336,7 +333,7 @@ namespace Luna
             }
             lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 220.0f)));
         }
-        lupanic_if_failed(GUI::end_menu_bar(context, menu_bar));
+        GUI::end_menu_bar(context, menu_bar);
 
         if(GUI::is_item_clicked(context, folder_item))
         {
@@ -384,8 +381,10 @@ namespace Luna
             fixed_height(row_height));
 
         bool back_disabled = (m_current_location_in_histroy_path == 0);
+        GUI::ButtonDesc back_desc;
+        back_desc.enabled = !back_disabled;
         GUICore::ElementHandle back_button = GUI::text_button(context, context->make_id("back"), "<",
-            fixed_size(button_size, button_size), !back_disabled);
+            fixed_size(button_size, button_size), back_desc);
         if(GUI::is_item_clicked(context, back_button))
         {
             --m_current_location_in_histroy_path;
@@ -393,8 +392,10 @@ namespace Luna
         }
 
         bool forward_disabled = (m_current_location_in_histroy_path == m_histroy_paths.size() - 1);
+        GUI::ButtonDesc forward_desc;
+        forward_desc.enabled = !forward_disabled;
         GUICore::ElementHandle forward_button = GUI::text_button(context, context->make_id("forward"), ">",
-            fixed_size(button_size, button_size), !forward_disabled);
+            fixed_size(button_size, button_size), forward_desc);
         if(GUI::is_item_clicked(context, forward_button))
         {
             ++m_current_location_in_histroy_path;
@@ -402,8 +403,10 @@ namespace Luna
         }
 
         bool pop_disabled = m_path.empty();
+        GUI::ButtonDesc pop_desc;
+        pop_desc.enabled = !pop_disabled;
         GUICore::ElementHandle pop_button = GUI::text_button(context, context->make_id("up"), "^",
-            fixed_size(button_size, button_size), !pop_disabled);
+            fixed_size(button_size, button_size), pop_desc);
         if(GUI::is_item_clicked(context, pop_button))
         {
             auto path = m_path;
@@ -439,7 +442,7 @@ namespace Luna
             }
         }
 
-        lupanic_if_failed(GUI::end_h_layout(context, row, linear_desc(GUICore::LayoutAxis::x, 6.0f)));
+        GUI::end_h_layout(context, row, linear_desc(GUICore::LayoutAxis::x, 6.0f));
         context->pop_data_scope();
     }
 
@@ -616,7 +619,7 @@ namespace Luna
                 grid_desc.mode = GUICore::GridLayoutMode::fixed_cell_size;
                 grid_desc.cell_size = Float2U(tile_width, tile_height);
                 grid_desc.gap = Float2U(8.0f, 8.0f);
-                lupanic_if_failed(GUI::end_grid_layout(context, grid, grid_desc));
+                GUI::end_grid_layout(context, grid, grid_desc);
             }
         }
         else
@@ -624,7 +627,7 @@ namespace Luna
             GUI::text(context, context->make_id("failed"), "Failed to display assets in this directory.", fixed_height(24.0f));
             GUI::text(context, context->make_id("reason"), explain(assets.errcode()), fixed_height(24.0f));
         }
-        lupanic_if_failed(GUI::end_scroll_view(context, scroll));
+        GUI::end_scroll_view(context);
 
         GUICore::id_t popup_id = context->make_id("asset_popup");
         bool rename_mode = m_editing_asset_name == m_popup_asset && !m_popup_asset.empty();
@@ -644,7 +647,7 @@ namespace Luna
                     fixed_size(64.0f, 30.0f));
                 GUICore::ElementHandle cancel_button = GUI::text_button(context, context->make_id("rename_cancel"),
                     "Cancel", fixed_size(78.0f, 30.0f));
-                lupanic_if_failed(GUI::end_h_layout(context, buttons, linear_desc(GUICore::LayoutAxis::x, 6.0f)));
+                GUI::end_h_layout(context, buttons, linear_desc(GUICore::LayoutAxis::x, 6.0f));
                 if(GUI::is_item_clicked(context, ok_button))
                 {
                     commit_asset_rename(m_path, m_popup_asset, m_asset_name_editing_buf, m_editing_asset_name);

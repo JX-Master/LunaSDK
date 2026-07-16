@@ -9,7 +9,7 @@
 */
 #include "MainEditor.hpp"
 
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 
 #include "Assets/Texture.hpp"
 #include "Assets/MeshAsset.hpp"
@@ -91,8 +91,14 @@ namespace Luna
         GUICore::ElementHandle redo_item;
         if(GUI::begin_menu(context, context->make_id("edit"), "Edit"))
         {
-            undo_item = GUI::menu_item(context, context->make_id("undo"), "Undo", "Ctrl+Z", false, can_undo());
-            redo_item = GUI::menu_item(context, context->make_id("redo"), "Redo", "Ctrl+Shift+Z", false, can_redo());
+            GUI::MenuItemDesc undo_desc;
+            undo_desc.shortcut = "Ctrl+Z";
+            undo_desc.enabled = can_undo();
+            undo_item = GUI::menu_item(context, context->make_id("undo"), "Undo", false, undo_desc);
+            GUI::MenuItemDesc redo_desc;
+            redo_desc.shortcut = "Ctrl+Shift+Z";
+            redo_desc.enabled = can_redo();
+            redo_item = GUI::menu_item(context, context->make_id("redo"), "Redo", false, redo_desc);
             lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 230.0f, 70.0f)));
         }
 
@@ -102,13 +108,14 @@ namespace Luna
             {
                 c8 buf[32];
                 snprintf(buf, 32, "Asset Browser %u", (u32)i);
-                GUI::menu_item(context, context->make_id((GUICore::id_t)(100 + i)), buf, nullptr, &m_asset_browsers_enabled[i]);
+                GUI::menu_item(context, context->make_id((GUICore::id_t)(100 + i)), buf,
+                    &m_asset_browsers_enabled[i]);
             }
-            GUI::menu_item(context, context->make_id("memory_profiler"), "Memory Profiler", nullptr, &m_memory_profiler_window_enabled);
+            GUI::menu_item(context, context->make_id("memory_profiler"), "Memory Profiler",
+                &m_memory_profiler_window_enabled);
             lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 230.0f, 160.0f)));
         }
-        lupanic_if_failed(GUI::end_menu_bar(context, menu_bar, rect));
-
+        GUI::end_menu_bar(context, menu_bar);
         if(GUI::is_item_clicked(context, save_all_item))
         {
             auto _ = save_all();
@@ -195,7 +202,7 @@ namespace Luna
             luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             luset(m_cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
             m_gui = GUICore::new_context();
-            GUI::register_editor_style_schemas(m_gui);
+            GUI::register_style_schemas(m_gui);
             luexp(m_gui->register_font(Name("default"), Font::get_default_font()));
             m_gui_draw_list = VG::new_shape_draw_list(g_env->device);
             m_gui_renderer = VG::new_fill_shape_renderer();
@@ -324,11 +331,18 @@ namespace Luna
                     ++iter;
                 }
             }
-            luexp(GUI::end_dock_space(m_gui, dock_space, dock_rect));
-            luexp(GUI::end_v_layout(m_gui, root, screen_rect, GUICore::FlexLayoutDesc()));
+            GUI::end_dock_space(m_gui);
+            GUI::end_v_layout(m_gui, root, GUICore::FlexLayoutDesc());
             m_gui->pop_layer();
+            luexp(GUI::layout_tree(m_gui, root, screen_rect));
             m_gui->route_input();
+            GUI::ResolveResult resolved = GUI::resolve_interactions(m_gui);
+            if(resolved.relayout_requested)
+            {
+                luexp(GUI::layout_tree(m_gui, root, screen_rect));
+            }
             luexp(GUIWindow::update_text_input(m_window, m_gui));
+            luexp(m_gui->generate_draw_commands());
             RHI::RenderPassDesc render_pass;
             lulet(back_buffer, m_swap_chain->get_current_back_buffer());
             render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store,
@@ -512,13 +526,27 @@ namespace Luna
                 }
                 else
                 {
-                    GUI::draw_text(context, context->make_id((GUICore::id_t)(usize)asset.handle), draw_rect,
-                        asset_type.c_str(), Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
+                    GUICore::DrawCommand command;
+                    command.type = GUICore::DrawCommandType::text;
+                    command.rect = draw_rect;
+                    command.color = Float4U(1.0f);
+                    command.font_size = 16.0f;
+                    command.horizontal_alignment = VG::TextAlignment::center;
+                    command.vertical_alignment = VG::TextAlignment::center;
+                    command.text = asset_type.c_str();
+                    context->draw(command);
                 }
                 return;
             }
-            GUI::draw_text(context, context->make_id((GUICore::id_t)(usize)asset.handle), draw_rect,
-                asset_type.c_str(), Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
+            GUICore::DrawCommand command;
+            command.type = GUICore::DrawCommandType::text;
+            command.rect = draw_rect;
+            command.color = Float4U(1.0f);
+            command.font_size = 16.0f;
+            command.horizontal_alignment = VG::TextAlignment::center;
+            command.vertical_alignment = VG::TextAlignment::center;
+            command.text = asset_type.c_str();
+            context->draw(command);
         }
     }
 

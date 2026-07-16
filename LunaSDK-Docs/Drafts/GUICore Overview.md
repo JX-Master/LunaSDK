@@ -78,7 +78,7 @@ Create a context with `GUICore::new_context`. Register fonts and any style schem
 ```cpp
 Ref<GUICore::IContext> context = GUICore::new_context();
 luexp(context->register_font(Name("default"), Font::get_default_font()));
-GUI::register_editor_style_schemas(context);
+GUI::register_style_schemas(context);
 ```
 
 ### Build one frame

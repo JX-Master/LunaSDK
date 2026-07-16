@@ -10,7 +10,7 @@
 #include "ProjectSelector.hpp"
 #include "StudioEnv.hpp"
 #include <Luna/Font/Font.hpp>
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/GUICore/GUICore.hpp>
 #include <Luna/Runtime/Time.hpp>
@@ -178,7 +178,26 @@ namespace Luna
     static void draw_label(GUICore::IContext* context, GUICore::id_t id, const RectF& rect, const c8* text,
         f32 font_size = 16.0f, const Float4U& color = Float4U(0.88f, 0.90f, 0.94f, 1.0f))
     {
-        GUI::draw_text(context, id, rect, text ? text : "", color, font_size);
+        (void)id;
+        GUICore::DrawCommand command;
+        command.type = GUICore::DrawCommandType::text;
+        command.rect = rect;
+        command.color = color;
+        command.font_size = font_size;
+        command.text = text ? text : "";
+        context->draw(command);
+    }
+
+    static void draw_rect(GUICore::IContext* context, GUICore::id_t id, const RectF& rect,
+        const Float4U& color, f32 radius = 0.0f)
+    {
+        (void)id;
+        GUICore::DrawCommand command;
+        command.type = radius > 0.0f ? GUICore::DrawCommandType::rounded_rect : GUICore::DrawCommandType::rect;
+        command.rect = rect;
+        command.color = color;
+        command.radius = radius;
+        context->draw(command);
     }
 
     static void push_clip(GUICore::IContext* context, const RectF& rect)
@@ -210,12 +229,12 @@ namespace Luna
         return element;
     }
 
-    static void build_project_selector_gui(GUICore::IContext* context, const Float2U& surface_size, String& project_name,
+    static GUICore::ElementHandle build_project_selector_gui(GUICore::IContext* context, const Float2U& surface_size, String& project_name,
         bool& create_dir, const Vector<RecentFileRecord>& recents, f32 recent_scroll)
     {
         GUICore::ElementHandle root = context->begin_element(PROJECT_SELECTOR_ROOT_ID);
         set_element_rect(context, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
-        GUI::draw_rect(context, PROJECT_SELECTOR_BACKGROUND_ID, RectF(0.0f, 0.0f, surface_size.x, surface_size.y),
+        draw_rect(context, PROJECT_SELECTOR_BACKGROUND_ID, RectF(0.0f, 0.0f, surface_size.x, surface_size.y),
             Float4U(0.055f, 0.07f, 0.085f, 1.0f), 0.0f);
 
         f32 content_w = max(surface_size.x - 32.0f, 320.0f);
@@ -224,8 +243,10 @@ namespace Luna
         y += 46.0f;
 
         GUICore::ElementHandle new_header;
-        bool show_new_project = GUI::collapsing_header(context, PROJECT_SELECTOR_NEW_HEADER_ID, "New Project", true,
-            fixed_layout(content_w, 30.0f), &new_header);
+        GUI::DisclosureDesc header_desc;
+        header_desc.default_open = true;
+        bool show_new_project = GUI::collapsing_header(context, PROJECT_SELECTOR_NEW_HEADER_ID, "New Project",
+            fixed_layout(content_w, 30.0f), header_desc, &new_header);
         set_element_rect(context, new_header, RectF(16.0f, y, content_w, 30.0f));
         y += 40.0f;
         if(show_new_project)
@@ -248,8 +269,8 @@ namespace Luna
         }
 
         GUICore::ElementHandle open_header;
-        bool show_open_project = GUI::collapsing_header(context, PROJECT_SELECTOR_OPEN_HEADER_ID, "Open Existing Project", true,
-            fixed_layout(content_w, 30.0f), &open_header);
+        bool show_open_project = GUI::collapsing_header(context, PROJECT_SELECTOR_OPEN_HEADER_ID, "Open Existing Project",
+            fixed_layout(content_w, 30.0f), header_desc, &open_header);
         set_element_rect(context, open_header, RectF(16.0f, y, content_w, 30.0f));
         y += 40.0f;
         if(show_open_project)
@@ -271,7 +292,7 @@ namespace Luna
                 f32 recent_h = max(surface_size.y - y - 24.0f, 120.0f);
                 RectF view_rect(32.0f, y, max(content_w - 32.0f, 260.0f), recent_h);
                 GUICore::ElementHandle scroll = begin_scroll_region(context, PROJECT_SELECTOR_RECENT_VIEW_ID, view_rect);
-                GUI::draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 3, view_rect, Float4U(0.035f, 0.045f, 0.055f, 1.0f), 4.0f);
+                draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 3, view_rect, Float4U(0.035f, 0.045f, 0.055f, 1.0f), 4.0f);
                 push_clip(context, view_rect);
 
                 f32 row_h = 34.0f;
@@ -282,7 +303,7 @@ namespace Luna
                 f32 remove_w = 88.0f;
                 f32 x = view_rect.offset_x;
                 f32 header_y = view_rect.offset_y - recent_scroll;
-                GUI::draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 4, RectF(x, header_y, view_rect.width, header_h),
+                draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 4, RectF(x, header_y, view_rect.width, header_h),
                     Float4U(0.08f, 0.10f, 0.12f, 1.0f), 0.0f);
                 draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 5, RectF(x + 8.0f, header_y + 2.0f, path_w - 16.0f, 26.0f), "Project");
                 draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 6, RectF(x + path_w + 8.0f, header_y + 2.0f, time_w - 16.0f, 26.0f), "Last Used");
@@ -299,7 +320,7 @@ namespace Luna
                     GUICore::id_t row_base = PROJECT_SELECTOR_FIRST_RECENT_ID + (GUICore::id_t)i * PROJECT_SELECTOR_RECENT_STRIDE;
                     Float4U row_color = (i % 2) ? Float4U(0.09f, 0.11f, 0.14f, 0.96f) :
                         Float4U(0.065f, 0.08f, 0.10f, 0.96f);
-                    GUI::draw_rect(context, row_base, RectF(x, row_y, view_rect.width, row_h), row_color, 0.0f);
+                    draw_rect(context, row_base, RectF(x, row_y, view_rect.width, row_h), row_color, 0.0f);
                     DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(recents[i].m_last_use_time));
                     String time_text;
                     strprintf(time_text, "%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
@@ -316,6 +337,7 @@ namespace Luna
         }
 
         context->end_element();
+        return root;
     }
 
     R<Path> select_project()
@@ -329,7 +351,7 @@ namespace Luna
             Ref<GUICore::IContext> gui = GUICore::new_context();
             Ref<VG::IShapeDrawList> gui_draw_list = VG::new_shape_draw_list(g_env->device);
             Ref<VG::IShapeRenderer> gui_renderer = VG::new_fill_shape_renderer();
-            GUI::register_editor_style_schemas(gui);
+            GUI::register_style_schemas(gui);
             luexp(gui->register_font(Name("default"), Font::get_default_font()));
 
             // Create back buffer.
@@ -382,10 +404,20 @@ namespace Luna
                 GUIWindow::update_input(&input_adapter);
 
                 gui->push_layer(PROJECT_SELECTOR_LAYER_ID, Float2U(0.0f));
-                build_project_selector_gui(gui, frame.screen_size, new_solution_name, create_dir, recents, recent_scroll);
+                GUICore::ElementHandle root = build_project_selector_gui(gui, frame.screen_size, new_solution_name, create_dir,
+                    recents, recent_scroll);
                 gui->pop_layer();
+                luexp(GUI::layout_tree(gui, root,
+                    RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
                 gui->route_input();
+                GUI::ResolveResult resolved = GUI::resolve_interactions(gui);
+                if(resolved.relayout_requested)
+                {
+                    luexp(GUI::layout_tree(gui, root,
+                        RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                }
                 luexp(GUIWindow::update_text_input(&input_adapter));
+                luexp(gui->generate_draw_commands());
 
                 if (clicked(gui, PROJECT_SELECTOR_CREATE_BUTTON_ID))
                 {

@@ -9,7 +9,7 @@
 */
 #include "Texture.hpp"
 #include "TextureEditor.hpp"
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 
 namespace Luna
 {
@@ -58,7 +58,7 @@ namespace Luna
         {
             GUI::image(context, context->make_id("texture"), tex.get(), texture_size_layout(tex.get()));
         }
-        lupanic_if_failed(GUI::end_v_layout(context, root, GUICore::FlexLayoutDesc()));
+        GUI::end_v_layout(context, root, GUICore::FlexLayoutDesc());
         context->pop_data_scope();
     }
 
@@ -69,14 +69,23 @@ namespace Luna
             Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
             if(tex)
             {
-                GUI::draw_image(context, context->make_id((GUICore::id_t)(usize)asset.handle), tex.get(), draw_rect);
+                GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::image;
+                command.rect = draw_rect;
+                command.texture = tex.get();
+                context->draw(command);
+                return;
             }
         }
-        else
-        {
-            GUI::draw_text(context, context->make_id((GUICore::id_t)(usize)asset.handle), draw_rect,
-                "Texture", Float4U(1.0f), 16.0f, GUI::TextAlignment::center, GUI::TextAlignment::center);
-        }
+        GUICore::DrawCommand command;
+        command.type = GUICore::DrawCommandType::text;
+        command.rect = draw_rect;
+        command.color = Float4U(1.0f);
+        command.font_size = 16.0f;
+        command.horizontal_alignment = VG::TextAlignment::center;
+        command.vertical_alignment = VG::TextAlignment::center;
+        command.text = "Texture";
+        context->draw(command);
     }
     static void on_draw_tex_tile_preview_core(GUICore::IContext* context, object_t userdata, Asset::asset_t asset,
         const RectF& relative_rect)

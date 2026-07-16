@@ -12,6 +12,6 @@ public sealed class VGCurveTestTargetRules : TargetRules
         Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("Source/**.cpp");
-        DependsOn("Runtime", "Window", "RHI", "Font", "VG", "GUILegacy", "GUIWindow");
+        DependsOn("Runtime", "Window", "RHI", "Font", "VG", "GUI", "GUIWindow");
     }
 }

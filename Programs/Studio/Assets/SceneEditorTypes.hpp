@@ -17,11 +17,24 @@
 #include <Luna/Image/RHIHelper.hpp>
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/Runtime/HashMap.hpp>
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include "SceneEditorTypes.generated.hpp"
 
 namespace Luna
 {
+    enum class SceneGizmoMode : u8
+    {
+        local,
+        world
+    };
+
+    enum class SceneGizmoOperation : u8
+    {
+        translate,
+        rotate,
+        scale
+    };
+
     struct [[luna::struct("{5b4aea33-e61a-4042-ba91-1f4ec84f8194}")]] SceneEditorUserData
     {
         // Resources for rendering grids.
@@ -59,8 +72,8 @@ namespace Luna
 
         // States for scene viewport.
 
-        GUI::GizmoMode m_gizmo_mode = GUI::GizmoMode::local;
-        GUI::GizmoOperation m_gizmo_op = GUI::GizmoOperation::translate;
+        SceneGizmoMode m_gizmo_mode = SceneGizmoMode::local;
+        SceneGizmoOperation m_gizmo_op = SceneGizmoOperation::translate;
 
         f32 m_camera_speed = 1.0f;
 

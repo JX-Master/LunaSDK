@@ -9,7 +9,7 @@
 */
 #pragma once
 #include <Luna/Font/Font.hpp>
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/RHI/SwapChain.hpp>
@@ -135,7 +135,7 @@ namespace Luna
             GUICore::FlexLayoutDesc desc;
             desc.axis = GUICore::LayoutAxis::x;
             desc.main_axis_gap = 8.0f;
-            lupanic_if_failed(GUI::end_h_layout(context, row, desc));
+            GUI::end_h_layout(context, row, desc);
             return row;
         }
 
@@ -174,7 +174,7 @@ namespace Luna
                 app.draw_list = VG::new_shape_draw_list(dev);
                 app.renderer = VG::new_fill_shape_renderer();
                 app.gui = GUICore::new_context();
-                GUI::register_editor_style_schemas(app.gui);
+                GUI::register_style_schemas(app.gui);
                 luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
             }
             lucatchret;
@@ -256,8 +256,14 @@ namespace Luna
                     desc.build(app.gui, root, frame.screen_size, desc.userdata);
                     app.gui->end_element();
                     app.gui->pop_layer();
-                    luexp(GUI::layout_editor_tree(app.gui, root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                    luexp(GUI::layout_tree(app.gui, root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
                     app.gui->route_input();
+                    GUI::ResolveResult resolved = GUI::resolve_interactions(app.gui);
+                    if(resolved.relayout_requested)
+                    {
+                        luexp(GUI::layout_tree(app.gui, root,
+                            RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                    }
                     luexp(GUIWindow::update_text_input(&input_adapter));
 
                     lulet(back_buffer, app.swap_chain->get_current_back_buffer());

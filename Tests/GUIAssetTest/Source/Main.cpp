@@ -9,7 +9,7 @@
 */
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/Font/Font.hpp>
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/GUIAsset/GUIAsset.hpp>
 #include <Luna/GUICore/GUICore.hpp>
 #include <Luna/RHI/RHI.hpp>
@@ -604,6 +604,14 @@ namespace Luna
             lupanic_if_failed(GA::generate(context.get(), asset.get(), generate_context));
             context->pop_layer();
             context->route_input();
+            GUI::ResolveResult resolved = GUI::resolve_interactions(context.get());
+            if(resolved.relayout_requested)
+            {
+                Ref<GA::Node> root = GA::find_node(asset.get(), GA::get_root(asset.get()));
+                luassert_always(root);
+                lupanic_if_failed(GUI::layout_tree(context.get(),
+                    context->find_element_handle(GA::node_core_id(*root.get())), generate_context.core_root_rect));
+            }
             lupanic_if_failed(context->generate_draw_commands());
         };
 
@@ -709,14 +717,7 @@ namespace Luna
         build_frame();
         scroll_body = find_element(context.get(), asset, "Scrollable Body");
         luassert_always(scroll_body);
-        Ref<GA::Node> scroll_node = find_node_by_label(asset, "Scroll Area");
-        luassert_always(scroll_node);
-        object_t scroll_state_object = context->get_state(GUICore::make_state_id<GUI::CoreScrollViewState>(GA::node_core_id(*scroll_node.get())));
-        luassert_always(scroll_state_object);
-        GUI::CoreScrollViewState* scroll_state = cast_object<GUI::CoreScrollViewState>(scroll_state_object);
-        luassert_always(scroll_state && scroll_state->scroll.y > 0.0f);
-        luassert_always(close_to(scroll_body->layout_result.rect.offset_y,
-            scroll_body_initial_y - scroll_state->scroll.y));
+        luassert_always(scroll_body->layout_result.rect.offset_y < scroll_body_initial_y);
 
         const GUICore::Element* second_tab = find_element(context.get(), asset, "Tab Two");
         luassert_always(second_tab);

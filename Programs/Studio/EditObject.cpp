@@ -9,7 +9,7 @@
 */
 #include "EditObject.hpp"
 #include <Luna/Runtime/Reflection.hpp>
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/Runtime/HashMap.hpp>
@@ -67,7 +67,7 @@ namespace Luna
             GUICore::FlexLayoutDesc desc;
             desc.axis = GUICore::LayoutAxis::x;
             desc.main_axis_gap = 8.0f;
-            lupanic_if_failed(GUI::end_h_layout(context, row.row, desc));
+            GUI::end_h_layout(context, row.row, desc);
         }
 
         template <typename _Ty>
@@ -79,6 +79,13 @@ namespace Luna
                 iter = buffers.insert_or_assign(key, default_value).first;
             }
             return iter->second;
+        }
+
+        GUI::DragDesc edit_drag_desc(f32 speed)
+        {
+            GUI::DragDesc desc;
+            desc.speed = speed;
+            return desc;
         }
 
         Float3 quaternion_to_euler_degrees(const Float4& quaternion)
@@ -185,7 +192,7 @@ namespace Luna
                     f32 speed = (v_max_deg <= v_min_deg) ? 1.0f : (v_max_deg - v_min_deg) / 100.0f;
                     CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
                     GUICore::ElementHandle item = GUI::drag_float(context, context->make_id("value"), &v_edit,
-                        speed, v_min_deg, v_max_deg, fixed_height(30.0f));
+                        v_min_deg, v_max_deg, fixed_height(30.0f), edit_drag_desc(speed));
                     end_core_gui_property_row(context, row);
                     edited = (v_edit != old_edit);
                     if(edited)
@@ -205,7 +212,8 @@ namespace Luna
                         speed = (v_max - v_min) / 100.0f;
                     }
                     CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-                    GUI::drag_float(context, context->make_id("value"), data, speed, v_min, v_max, fixed_height(30.0f));
+                    GUI::drag_float(context, context->make_id("value"), data, v_min, v_max, fixed_height(30.0f),
+                        edit_drag_desc(speed));
                     end_core_gui_property_row(context, row);
                     edited = (*data != old_value);
                 }
@@ -229,7 +237,8 @@ namespace Luna
             Float2* data = (Float2*)obj;
             Float2 old_value = *data;
             CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-            GUI::drag_float2(context, context->make_id("value"), data->m, 0.01f, 0.0f, 0.0f, fixed_height(30.0f));
+            GUI::drag_float2(context, context->make_id("value"), data->m, 0.0f, 0.0f, fixed_height(30.0f),
+                edit_drag_desc(0.01f));
             end_core_gui_property_row(context, row);
             edited = !float2_equal(*data, old_value);
         }
@@ -244,7 +253,8 @@ namespace Luna
             }
             else
             {
-                GUI::drag_float3(context, context->make_id("value"), data->m, 0.01f, 0.0f, 0.0f, fixed_height(30.0f));
+                GUI::drag_float3(context, context->make_id("value"), data->m, 0.0f, 0.0f, fixed_height(30.0f),
+                    edit_drag_desc(0.01f));
             }
             end_core_gui_property_row(context, row);
             edited = !float3_equal(*data, old_value);
@@ -257,8 +267,8 @@ namespace Luna
                 Float3& euler = get_edit_buffer(g_quaternion_edit_buffers, (usize)obj, quaternion_to_euler_degrees(*data));
                 Float3 old_euler = euler;
                 CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-                GUICore::ElementHandle item = GUI::drag_float3(context, context->make_id("value"), euler.m, 0.1f, 0.0f,
-                    0.0f, fixed_height(30.0f));
+                GUICore::ElementHandle item = GUI::drag_float3(context, context->make_id("value"), euler.m,
+                    0.0f, 0.0f, fixed_height(30.0f), edit_drag_desc(0.1f));
                 end_core_gui_property_row(context, row);
                 edited = !float3_equal(euler, old_euler);
                 if(edited)
@@ -275,7 +285,8 @@ namespace Luna
             {
                 Float4 old_value = *data;
                 CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-                GUI::drag_float4(context, context->make_id("value"), data->m, 0.01f, 0.0f, 0.0f, fixed_height(30.0f));
+                GUI::drag_float4(context, context->make_id("value"), data->m, 0.0f, 0.0f, fixed_height(30.0f),
+                    edit_drag_desc(0.01f));
                 end_core_gui_property_row(context, row);
                 edited = !float4_equal(*data, old_value);
             }
@@ -378,12 +389,11 @@ namespace Luna
         GUICore::FlexLayoutDesc path_desc;
         path_desc.axis = GUICore::LayoutAxis::x;
         path_desc.main_axis_gap = 8.0f;
-        lupanic_if_failed(GUI::end_h_layout(context, path_row, path_desc));
-
+        GUI::end_h_layout(context, path_row, path_desc);
         GUICore::FlexLayoutDesc content_desc;
         content_desc.axis = GUICore::LayoutAxis::y;
         content_desc.main_axis_gap = 6.0f;
-        lupanic_if_failed(GUI::end_v_layout(context, content, content_desc));
+        GUI::end_v_layout(context, content, content_desc);
         end_core_gui_property_row(context, row);
 
         context->pop_data_scope();

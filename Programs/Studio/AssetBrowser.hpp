@@ -9,7 +9,7 @@
 */
 #pragma once
 #include "StudioHeader.hpp"
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Runtime/HashSet.hpp>
 #include "AssetBrowser.generated.hpp"
 namespace Luna

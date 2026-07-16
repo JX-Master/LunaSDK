@@ -8,7 +8,7 @@
 * @date 2026/5/22
 */
 #include "StudioGUI.hpp"
-#include <Luna/GUI/Legacy/Editor.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Window/MessageBox.hpp>
 
 namespace Luna
@@ -92,8 +92,7 @@ namespace Luna
         GUICore::FlexLayoutDesc row_desc;
         row_desc.axis = GUICore::LayoutAxis::x;
         row_desc.main_axis_gap = 8.0f;
-        lupanic_if_failed(GUI::end_h_layout(context, row, row_desc));
-
+        GUI::end_h_layout(context, row, row_desc);
         bool edited = apply_asset_path_edit(label, asset, path_text, failure_title,
             GUI::is_item_clicked(context, set_button), GUI::is_item_clicked(context, clear_button));
         context->pop_data_scope();
