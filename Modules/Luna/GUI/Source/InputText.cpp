@@ -150,12 +150,14 @@ namespace Luna
                 return result;
             }
 
-            static GUICore::MeasureResult measure_input_text(GUICore::IContext*, const GUICore::ElementHandle&,
+            static GUICore::MeasureResult measure_input_text(GUICore::IContext* context,
+                const GUICore::ElementHandle& element,
                 const Float2U&, void*)
             {
+                f32 height = style_scalar(context, element, "gui.control.height", 30.0f);
                 GUICore::MeasureResult result;
-                result.minimum = Float2U(48.0f, 28.0f);
-                result.desired = Float2U(160.0f, 30.0f);
+                result.minimum = Float2U(48.0f, height);
+                result.desired = Float2U(160.0f, height);
                 return result;
             }
 
@@ -181,6 +183,17 @@ namespace Luna
                     "gui.input.background", focused ? Float4U(0.11f, 0.15f, 0.21f, 1.0f) :
                     Float4U(0.08f, 0.10f, 0.13f, 1.0f));
                 command.radius = max(radius - 1.0f, 0.0f);
+                context->draw(command);
+                command = GUICore::DrawCommand();
+                command.type = GUICore::DrawCommandType::shadow;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
+                command.color = style_color(context, element, "gui.shadow.inset",
+                    Float4U(0.0f, 0.0f, 0.0f, 0.18f));
+                command.radius = max(radius - 1.0f, 0.0f);
+                command.shadow.offset = Float2U(1.5f, 1.5f);
+                command.shadow.softness = 2.5f;
+                command.shadow.mode = GUICore::ShadowMode::inner;
                 context->draw(command);
 
                 usize selection_begin = 0;

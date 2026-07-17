@@ -346,7 +346,8 @@ namespace Luna
         lutry
         {
             lulet(window, Window::new_window("Luna Studio - Open Project", Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500));
-            lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
+            lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window,
+                RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true, RHI::ColorSpace::srgb})));
             lulet(cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
             Ref<GUICore::IContext> gui = GUICore::new_context();
             lulet(gui_renderer, GUICore::new_renderer(g_env->device));

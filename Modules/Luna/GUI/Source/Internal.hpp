@@ -76,6 +76,8 @@ namespace Luna
                 const c8* entry, const GUICore::StyleValue& fallback);
             Float4U style_color(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 const c8* entry, const Float4U& fallback);
+            Float2U style_vector2(GUICore::IContext* context, const GUICore::ElementHandle& element,
+                const c8* entry, const Float2U& fallback);
             f32 style_scalar(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 const c8* entry, f32 fallback);
             Name style_name(GUICore::IContext* context, const GUICore::ElementHandle& element,

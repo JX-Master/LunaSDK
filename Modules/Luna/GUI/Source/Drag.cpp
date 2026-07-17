@@ -26,12 +26,14 @@ namespace Luna
                 bool enabled = true;
             };
 
-            static GUICore::MeasureResult measure_drag(GUICore::IContext*, const GUICore::ElementHandle&,
+            static GUICore::MeasureResult measure_drag(GUICore::IContext* context,
+                const GUICore::ElementHandle& element,
                 const Float2U&, void*)
             {
+                f32 height = style_scalar(context, element, "gui.control.height", 28.0f);
                 GUICore::MeasureResult result;
-                result.minimum = Float2U(48.0f, 24.0f);
-                result.desired = Float2U(120.0f, 28.0f);
+                result.minimum = Float2U(48.0f, height);
+                result.desired = Float2U(120.0f, height);
                 return result;
             }
 

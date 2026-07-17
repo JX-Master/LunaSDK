@@ -35,6 +35,25 @@ This combines the owner ID with the boxed state type GUID.
 
 Only the top style in the context style stack is bound to newly created elements.
 
+### GUI package default style
+The `GUI` package registers and initializes `gui.editor.default` when
+`GUI::register_style_schemas` is called. GUI elements without an explicit style binding resolve their values from
+this package-owned style. It provides light and dark palettes, a configurable accent and separate pointer and touch
+density metrics.
+
+Use `GUI::set_default_style` to switch the shared defaults:
+
+```cpp
+GUI::DefaultStyleDesc desc;
+desc.color_theme = GUI::ColorTheme::dark;
+desc.input_mode = GUI::InputMode::pointer;
+desc.accent = Float4U(0.89f, 0.31f, 0.35f, 1.0f);
+GUI::set_default_style(context, desc);
+```
+
+The color values are resolved while draw commands are generated. Rebuild the GUI tree and apply layout again when
+the input mode changes so control padding, hit targets and fit measurements use the new density.
+
 ### Style value
 `GUICore::StyleValue` supports:
 

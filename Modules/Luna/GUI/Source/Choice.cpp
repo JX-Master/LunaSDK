@@ -40,12 +40,14 @@ namespace Luna
                 return from + (to - from) * amount;
             }
 
-            static GUICore::MeasureResult measure_choice(GUICore::IContext*, const GUICore::ElementHandle&,
+            static GUICore::MeasureResult measure_choice(GUICore::IContext* context,
+                const GUICore::ElementHandle& element,
                 const Float2U&, void*)
             {
+                f32 height = style_scalar(context, element, "gui.control.height", 28.0f);
                 GUICore::MeasureResult result;
-                result.minimum = Float2U(28.0f, 24.0f);
-                result.desired = Float2U(140.0f, 28.0f);
+                result.minimum = Float2U(28.0f, height);
+                result.desired = Float2U(140.0f, height);
                 return result;
             }
 
@@ -85,7 +87,8 @@ namespace Luna
                 Float4U text_color = data->enabled ? style_color(context, element, "gui.text.color",
                     Float4U(0.86f, 0.88f, 0.92f, 1.0f)) : style_color(context, element, "gui.text.disabled",
                     Float4U(0.48f, 0.52f, 0.58f, 1.0f));
-                f32 label_offset = 24.0f;
+                const f32 indicator_size = style_scalar(context, element, "gui.choice.indicator_size", 18.0f);
+                f32 label_offset = indicator_size + 8.0f;
                 if(data->kind == ChoiceKind::selectable)
                 {
                     Float4U background = style_color(context, element, "gui.choice.selected",
@@ -105,9 +108,12 @@ namespace Luna
                         Float4U(0.18f, 0.42f, 0.72f, 1.0f));
                     if(!data->enabled) border = fill = style_color(context, element, "gui.choice.disabled",
                         Float4U(0.30f, 0.34f, 0.40f, 1.0f));
-                    draw_rect(context, RectF(0.0f, -8.0f, 16.0f, 16.0f),
+                    const f32 half = indicator_size * 0.5f;
+                    const f32 inset = indicator_size >= 20.0f ? 3.0f : 2.0f;
+                    draw_rect(context, RectF(0.0f, -half, indicator_size, indicator_size),
                         Float4U(0.0f, 0.5f, 0.0f, 0.0f), border, 3.0f);
-                    draw_rect(context, RectF(2.0f, -6.0f, 12.0f, 12.0f),
+                    draw_rect(context, RectF(inset, -half + inset, indicator_size - inset * 2.0f,
+                        indicator_size - inset * 2.0f),
                         Float4U(0.0f, 0.5f, 0.0f, 0.0f),
                         mix_color(style_color(context, element, "gui.choice.background",
                             Float4U(0.08f, 0.10f, 0.13f, 1.0f)), fill, selected), 2.0f);
@@ -115,9 +121,12 @@ namespace Luna
                     {
                         Float4U mark = style_color(context, element, "gui.choice.mark", Float4U(1.0f));
                         mark.w *= selected;
-                        draw_line(context, Float2U(4.0f, -1.0f), Float2U(7.0f, 3.0f),
+                        const f32 scale = indicator_size / 16.0f;
+                        draw_line(context, Float2U(4.0f * scale, -1.0f * scale),
+                            Float2U(7.0f * scale, 3.0f * scale),
                             Float4U(0.0f, 0.5f, 0.0f, 0.5f), mark, 2.0f);
-                        draw_line(context, Float2U(7.0f, 3.0f), Float2U(13.0f, -4.0f),
+                        draw_line(context, Float2U(7.0f * scale, 3.0f * scale),
+                            Float2U(13.0f * scale, -4.0f * scale),
                             Float4U(0.0f, 0.5f, 0.0f, 0.5f), mark, 2.0f);
                     }
                 }
@@ -126,23 +135,29 @@ namespace Luna
                     Float4U border = data->enabled ? style_color(context, element, "gui.choice.border",
                         Float4U(0.55f, 0.64f, 0.76f, 1.0f)) : style_color(context, element,
                         "gui.choice.disabled", Float4U(0.30f, 0.34f, 0.40f, 1.0f));
-                    draw_rect(context, RectF(0.0f, -8.0f, 16.0f, 16.0f),
-                        Float4U(0.0f, 0.5f, 0.0f, 0.0f), border, 8.0f);
-                    draw_rect(context, RectF(2.0f, -6.0f, 12.0f, 12.0f),
+                    const f32 half = indicator_size * 0.5f;
+                    const f32 inset = indicator_size >= 20.0f ? 3.0f : 2.0f;
+                    draw_rect(context, RectF(0.0f, -half, indicator_size, indicator_size),
+                        Float4U(0.0f, 0.5f, 0.0f, 0.0f), border, half);
+                    draw_rect(context, RectF(inset, -half + inset, indicator_size - inset * 2.0f,
+                        indicator_size - inset * 2.0f),
                         Float4U(0.0f, 0.5f, 0.0f, 0.0f), style_color(context, element,
-                        "gui.choice.background", Float4U(0.08f, 0.10f, 0.13f, 1.0f)), 6.0f);
+                        "gui.choice.background", Float4U(0.08f, 0.10f, 0.13f, 1.0f)), half - inset);
                     if(selected > 0.02f)
                     {
                         Float4U fill = style_color(context, element, "gui.choice.accent",
                             Float4U(0.18f, 0.42f, 0.72f, 1.0f));
                         fill.w *= selected;
-                        draw_rect(context, RectF(5.0f, -3.0f, 6.0f, 6.0f),
-                            Float4U(0.0f, 0.5f, 0.0f, 0.0f), fill, 3.0f);
+                        const f32 dot = indicator_size * 0.38f;
+                        draw_rect(context, RectF((indicator_size - dot) * 0.5f, -dot * 0.5f, dot, dot),
+                            Float4U(0.0f, 0.5f, 0.0f, 0.0f), fill, dot * 0.5f);
                     }
                 }
                 else
                 {
-                    label_offset = 54.0f;
+                    const Float2U switch_size = style_vector2(context, element, "gui.switch.size",
+                        Float2U(46.0f, 24.0f));
+                    label_offset = switch_size.x + 10.0f;
                     Float4U off = style_color(context, element, "gui.switch.off",
                         Float4U(0.14f, 0.16f, 0.19f, 1.0f));
                     Float4U on = style_color(context, element, "gui.switch.on",
@@ -151,10 +166,12 @@ namespace Luna
                         style_color(context, element, "gui.choice.disabled", Float4U(0.4f, 0.44f, 0.5f, 1.0f));
                     if(!data->enabled) off = on = style_color(context, element, "gui.choice.background",
                         Float4U(0.10f, 0.11f, 0.13f, 1.0f));
-                    draw_rect(context, RectF(0.0f, -10.0f, 44.0f, 20.0f),
-                        Float4U(0.0f, 0.5f, 0.0f, 0.0f), mix_color(off, on, selected), 10.0f);
-                    draw_rect(context, RectF(2.0f + 24.0f * selected, -8.0f, 16.0f, 16.0f),
-                        Float4U(0.0f, 0.5f, 0.0f, 0.0f), knob, 8.0f);
+                    const f32 knob_size = switch_size.y - 8.0f;
+                    const f32 knob_travel = switch_size.x - knob_size - 8.0f;
+                    draw_rect(context, RectF(0.0f, switch_size.y * -0.5f, switch_size.x, switch_size.y),
+                        Float4U(0.0f, 0.5f, 0.0f, 0.0f), mix_color(off, on, selected), switch_size.y * 0.5f);
+                    draw_rect(context, RectF(4.0f + knob_travel * selected, knob_size * -0.5f,
+                        knob_size, knob_size), Float4U(0.0f, 0.5f, 0.0f, 0.0f), knob, knob_size * 0.5f);
                 }
                 GUICore::DrawCommand text;
                 text.type = GUICore::DrawCommandType::text;

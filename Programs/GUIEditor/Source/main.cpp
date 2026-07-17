@@ -1742,7 +1742,8 @@ namespace Luna
                         break;
                     }
                 }
-                luset(app.swap_chain, dev->new_swap_chain(app.queue, app.window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
+                luset(app.swap_chain, dev->new_swap_chain(app.queue, app.window,
+                    RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true, RHI::ColorSpace::srgb})));
                 luset(app.cmdbuf, dev->new_command_buffer(app.queue));
                 app.editor_core = GUICore::new_context();
                 luexp(app.editor_core->register_font(Name("default"), Font::get_default_font()));

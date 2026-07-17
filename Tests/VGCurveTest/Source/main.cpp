@@ -404,7 +404,9 @@ namespace Luna
             }
             lucheck_msg(app.queue != U32_MAX, "No graphics queue available.");
             auto sz = app.window->get_framebuffer_size();
-            luset(app.swap_chain, dev->new_swap_chain(app.queue, app.window, RHI::SwapChainDesc({ sz.x, sz.y, 2, RHI::Format::bgra8_unorm, true })));
+            luset(app.swap_chain, dev->new_swap_chain(app.queue, app.window,
+                RHI::SwapChainDesc({ sz.x, sz.y, 2, RHI::Format::bgra8_unorm, true,
+                    RHI::ColorSpace::srgb })));
             luset(app.cmdbuf, dev->new_command_buffer(app.queue));
             app.shape_draw_list = VG::new_shape_draw_list(dev);
             app.shape_renderer = VG::new_fill_shape_renderer();

@@ -129,13 +129,22 @@ namespace Luna
                 const c8* entry, const GUICore::StyleValue& fallback)
             {
                 const GUICore::Element* data = context ? context->get_element(element.index) : nullptr;
-                return data ? context->get_style_value(data->style, Name(entry), fallback) : fallback;
+                if(!context) return fallback;
+                Name style = data && !data->style.empty() ? data->style : Name(DEFAULT_STYLE_NAME);
+                return context->get_style_value(style, Name(entry), fallback);
             }
 
             Float4U style_color(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 const c8* entry, const Float4U& fallback)
             {
                 return style_value(context, element, entry, GUICore::style_f32x4(fallback)).number;
+            }
+
+            Float2U style_vector2(GUICore::IContext* context, const GUICore::ElementHandle& element,
+                const c8* entry, const Float2U& fallback)
+            {
+                Float4U value = style_value(context, element, entry, GUICore::style_f32x2(fallback)).number;
+                return Float2U(value.x, value.y);
             }
 
             f32 style_scalar(GUICore::IContext* context, const GUICore::ElementHandle& element,

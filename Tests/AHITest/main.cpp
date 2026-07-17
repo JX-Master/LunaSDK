@@ -461,7 +461,8 @@ namespace Luna
                     }
                 }
             }
-            luset(app.swap_chain, dev->new_swap_chain(graphics_queue, app.window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
+            luset(app.swap_chain, dev->new_swap_chain(graphics_queue, app.window,
+                RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true, RHI::ColorSpace::srgb})));
             luset(app.cmdbuf, dev->new_command_buffer(graphics_queue));
             luset(app.gui_renderer, GUICore::new_renderer(dev));
             app.gui = GUICore::new_context();

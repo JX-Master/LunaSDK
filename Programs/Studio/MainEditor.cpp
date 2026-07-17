@@ -199,7 +199,8 @@ namespace Luna
                 }
             }, this);
 
-            luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
+            luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window,
+                RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true, RHI::ColorSpace::srgb})));
             luset(m_cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
             m_gui = GUICore::new_context();
             GUI::register_style_schemas(m_gui);

@@ -45,8 +45,18 @@ namespace Luna
                 strprintf(name, "gui.%s.radius", prefix);
                 f32 radius = style_scalar(context, element, name.c_str(), 5.0f);
                 GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::shadow;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.color = style_color(context, element, "gui.shadow.dark",
+                    Float4U(0.0f, 0.0f, 0.0f, 0.28f));
+                command.color.w = min(command.color.w * 1.35f, 0.64f);
+                command.radius = radius;
+                command.shadow.offset = style_vector2(context, element, "gui.shadow.offset", Float2U(4.0f));
+                command.shadow.softness = style_scalar(context, element, "gui.shadow.softness", 6.0f) * 1.8f;
+                context->draw(command);
                 command.type = GUICore::DrawCommandType::rounded_rect;
                 command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = RectF();
                 command.color = border;
                 command.radius = radius;
                 context->draw(command);

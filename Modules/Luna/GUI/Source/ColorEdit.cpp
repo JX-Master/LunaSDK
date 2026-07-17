@@ -306,12 +306,14 @@ namespace Luna
                     point.x <= rect.offset_x + rect.width && point.y <= rect.offset_y + rect.height;
             }
 
-            static GUICore::MeasureResult measure_color_preview(GUICore::IContext*, const GUICore::ElementHandle&,
+            static GUICore::MeasureResult measure_color_preview(GUICore::IContext* context,
+                const GUICore::ElementHandle& element,
                 const Float2U&, void*)
             {
+                f32 height = style_scalar(context, element, "gui.control.height", 30.0f);
                 GUICore::MeasureResult result;
-                result.minimum = Float2U(86.0f, 30.0f);
-                result.desired = Float2U(150.0f, 30.0f);
+                result.minimum = Float2U(86.0f, height);
+                result.desired = Float2U(150.0f, height);
                 return result;
             }
 

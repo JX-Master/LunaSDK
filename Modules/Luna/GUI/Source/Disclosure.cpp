@@ -28,12 +28,14 @@ namespace Luna
                 DisclosureState* state = nullptr;
             };
 
-            static GUICore::MeasureResult measure_disclosure(GUICore::IContext*, const GUICore::ElementHandle&,
+            static GUICore::MeasureResult measure_disclosure(GUICore::IContext* context,
+                const GUICore::ElementHandle& element,
                 const Float2U&, void*)
             {
+                f32 height = style_scalar(context, element, "gui.control.height", 30.0f);
                 GUICore::MeasureResult result;
-                result.minimum = Float2U(32.0f, 26.0f);
-                result.desired = Float2U(180.0f, 30.0f);
+                result.minimum = Float2U(32.0f, height);
+                result.desired = Float2U(180.0f, height);
                 return result;
             }
 

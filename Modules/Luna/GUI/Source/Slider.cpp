@@ -27,12 +27,14 @@ namespace Luna
                 bool enabled = true;
             };
 
-            static GUICore::MeasureResult measure_slider(GUICore::IContext*, const GUICore::ElementHandle&,
+            static GUICore::MeasureResult measure_slider(GUICore::IContext* context,
+                const GUICore::ElementHandle& element,
                 const Float2U&, void*)
             {
+                f32 height = style_scalar(context, element, "gui.control.height", 22.0f);
                 GUICore::MeasureResult result;
-                result.minimum = Float2U(48.0f, 18.0f);
-                result.desired = Float2U(160.0f, 22.0f);
+                result.minimum = Float2U(48.0f, height);
+                result.desired = Float2U(160.0f, height);
                 return result;
             }
 

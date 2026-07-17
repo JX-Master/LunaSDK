@@ -24,6 +24,7 @@ namespace Luna
                 usize item_count = 0;
                 bool enabled = true;
                 ButtonGroupState* state = nullptr;
+                bool* selected_items = nullptr;
             };
 
             struct ButtonGroupItemData
@@ -31,7 +32,54 @@ namespace Luna
                 c8* text = nullptr;
                 bool enabled = true;
                 bool* selected = nullptr;
+                i32* selected_index = nullptr;
+                usize item_index = 0;
             };
+
+            static void draw_button_group_item_surface(GUICore::IContext* context,
+                const GUICore::ElementHandle& element, const RectF& rect, const Float4U& rect_layout_scale,
+                f32 radius, const Float4U& color, bool selected)
+            {
+                GUICore::DrawCommand command;
+                if(selected)
+                {
+                    command.type = GUICore::DrawCommandType::shadow;
+                    command.rect_reference = GUICore::DrawCommandRectReference::element;
+                    command.rect = rect;
+                    command.rect_layout_scale = rect_layout_scale;
+                    command.color = color;
+                    command.color.w *= 0.24f;
+                    command.radius = radius;
+                    command.shadow.offset = Float2U(0.0f,
+                        style_vector2(context, element, "gui.shadow.offset", Float2U(3.0f)).y);
+                    command.shadow.softness =
+                        style_scalar(context, element, "gui.shadow.softness", 5.0f) * 0.8f;
+                    context->draw(command);
+                }
+
+                command = GUICore::DrawCommand();
+                command.type = GUICore::DrawCommandType::rounded_rect;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = rect;
+                command.rect_layout_scale = rect_layout_scale;
+                command.color = color;
+                command.radius = radius;
+                context->draw(command);
+
+                if(selected)
+                {
+                    command = GUICore::DrawCommand();
+                    command.type = GUICore::DrawCommandType::shadow;
+                    command.rect_reference = GUICore::DrawCommandRectReference::element;
+                    command.rect = rect;
+                    command.rect_layout_scale = rect_layout_scale;
+                    command.color = Float4U(1.0f, 1.0f, 1.0f, 0.34f);
+                    command.radius = radius;
+                    command.shadow.offset = Float2U(0.0f, 1.0f);
+                    command.shadow.mode = GUICore::ShadowMode::inner;
+                    context->draw(command);
+                }
+            }
 
             static RV draw_button_group(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 GUICore::DrawPhase, void* userdata)
@@ -39,6 +87,10 @@ namespace Luna
                 ButtonGroupData* data = (ButtonGroupData*)userdata;
                 if(!data || !data->item_count) return ok;
                 f32 radius = style_scalar(context, element, "gui.group.radius", 5.0f);
+                f32 item_inset = style_scalar(context, element, "gui.group.padding", 2.0f) + 1.0f;
+                f32 item_radius = style_scalar(context, element, "gui.group.selected_radius",
+                    max(radius - item_inset - 1.0f, 0.0f));
+                f32 shadow_softness = style_scalar(context, element, "gui.shadow.softness", 5.0f);
                 GUICore::DrawCommand command;
                 command.type = GUICore::DrawCommandType::rounded_rect;
                 command.rect_reference = GUICore::DrawCommandRectReference::element;
@@ -49,20 +101,44 @@ namespace Luna
                 command.color = style_color(context, element, "gui.group.background", Float4U(0.08f, 0.10f, 0.13f, 1.0f));
                 command.radius = max(radius - 1.0f, 0.0f);
                 context->draw(command);
-                if(data->state)
+
+                command = GUICore::DrawCommand();
+                command.type = GUICore::DrawCommandType::shadow;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
+                command.color = style_color(context, element, "gui.shadow.inset_light",
+                    Float4U(1.0f, 1.0f, 1.0f, 0.90f));
+                command.radius = max(radius - 1.0f, 0.0f);
+                command.shadow.offset = Float2U(-2.0f, -2.0f);
+                command.shadow.softness = shadow_softness * 0.4f;
+                command.shadow.mode = GUICore::ShadowMode::inner;
+                context->draw(command);
+
+                command = GUICore::DrawCommand();
+                command.type = GUICore::DrawCommandType::shadow;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
+                command.color = style_color(context, element, "gui.shadow.inset",
+                    Float4U(0.0f, 0.0f, 0.0f, 0.18f));
+                command.radius = max(radius - 1.0f, 0.0f);
+                command.shadow.offset = Float2U(2.0f, 2.0f);
+                command.shadow.softness = shadow_softness * 0.5f;
+                command.shadow.mode = GUICore::ShadowMode::inner;
+                context->draw(command);
+
+                auto draw_item_surface = [&](f32 position, const Float4U& color, bool selected)
                 {
                     f32 item_width = 1.0f / (f32)data->item_count;
-                    command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
-                    command.rect_layout_scale = Float4U(data->state->animated_index * item_width, 0.0f,
-                        item_width, 0.0f);
-                    command.color = style_color(context, element, "gui.group.selected",
-                        Float4U(0.16f, 0.35f, 0.58f, 1.0f));
-                    command.radius = max(radius - 1.0f, 0.0f);
-                    context->draw(command);
-                }
+                    RectF item_rect(item_inset - position * item_width * item_inset * 2.0f, item_inset,
+                        -item_inset * item_width * 2.0f, -item_inset * 2.0f);
+                    Float4U item_scale(position * item_width, 0.0f, item_width, 0.0f);
+                    draw_button_group_item_surface(context, element, item_rect, item_scale,
+                        item_radius, color, selected);
+                };
+
+                i32 hovered_item = -1;
                 if(data->enabled && data->item_ids)
                 {
-                    i32 hovered_item = -1;
                     for(usize i = 0; i < data->item_count; ++i)
                     {
                         if(context->get_interaction_state(data->item_ids[i]).hovered)
@@ -71,17 +147,28 @@ namespace Luna
                             break;
                         }
                     }
-                    if(hovered_item >= 0 && (!data->selected_index || *data->selected_index != hovered_item))
+                }
+                bool hovered_selected = hovered_item >= 0 &&
+                    ((data->selected_index && *data->selected_index == hovered_item) ||
+                        (data->selected_items && data->selected_items[hovered_item]));
+                if(hovered_item >= 0 && !hovered_selected)
+                {
+                    draw_item_surface((f32)hovered_item,
+                        style_color(context, element, "gui.group.hovered",
+                            Float4U(0.13f, 0.19f, 0.27f, 1.0f)), false);
+                }
+
+                Float4U selected_color = style_color(context, element, "gui.group.selected",
+                    Float4U(0.16f, 0.35f, 0.58f, 1.0f));
+                if(data->state)
+                {
+                    draw_item_surface(data->state->animated_index, selected_color, true);
+                }
+                else if(data->selected_items)
+                {
+                    for(usize i = 0; i < data->item_count; ++i)
                     {
-                        f32 item_width = 1.0f / (f32)data->item_count;
-                        command.type = GUICore::DrawCommandType::rounded_rect;
-                        command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
-                        command.rect_layout_scale = Float4U((f32)hovered_item * item_width, 0.0f,
-                            item_width, 0.0f);
-                        command.color = style_color(context, element, "gui.group.hovered",
-                            Float4U(0.13f, 0.19f, 0.27f, 1.0f));
-                        command.radius = max(radius - 1.0f, 0.0f);
-                        context->draw(command);
+                        if(data->selected_items[i]) draw_item_surface((f32)i, selected_color, true);
                     }
                 }
                 return ok;
@@ -92,19 +179,8 @@ namespace Luna
             {
                 ButtonGroupItemData* data = (ButtonGroupItemData*)userdata;
                 if(!data) return ok;
-                if(data->selected)
-                {
-                    GUICore::DrawCommand background;
-                    background.type = GUICore::DrawCommandType::rounded_rect;
-                    background.rect_reference = GUICore::DrawCommandRectReference::element;
-                    background.color = *data->selected ? style_color(context, element, "gui.group.selected",
-                        Float4U(0.16f, 0.35f, 0.58f, 1.0f)) :
-                        (data->enabled && context->get_interaction_state(element.id).hovered ?
-                        style_color(context, element, "gui.group.hovered", Float4U(0.13f, 0.19f, 0.27f, 1.0f)) :
-                        Float4U(0.0f));
-                    background.radius = max(style_scalar(context, element, "gui.group.radius", 5.0f) - 1.0f, 0.0f);
-                    if(background.color.w > 0.0f) context->draw(background);
-                }
+                bool selected = data->selected ? *data->selected :
+                    (data->selected_index && *data->selected_index == (i32)data->item_index);
                 GUICore::DrawCommand text;
                 text.type = GUICore::DrawCommandType::text;
                 text.rect_reference = GUICore::DrawCommandRectReference::element;
@@ -112,8 +188,10 @@ namespace Luna
                 text.text = data->text ? data->text : "";
                 text.font = style_name(context, element, "gui.font");
                 text.font_size = style_scalar(context, element, "gui.text.font_size", 16.0f);
-                text.color = data->enabled ? style_color(context, element, "gui.button.text", Float4U(1.0f)) :
-                    style_color(context, element, "gui.text.disabled", Float4U(0.48f, 0.52f, 0.58f, 1.0f));
+                text.color = !data->enabled ?
+                    style_color(context, element, "gui.text.disabled", Float4U(0.48f, 0.52f, 0.58f, 1.0f)) :
+                    (selected ? style_color(context, element, "gui.accent.ink", Float4U(0.08f, 0.09f, 0.09f, 1.0f)) :
+                        style_color(context, element, "gui.button.text", Float4U(1.0f)));
                 text.horizontal_alignment = VG::TextAlignment::center;
                 text.vertical_alignment = VG::TextAlignment::center;
                 context->draw(text);
@@ -189,6 +267,8 @@ namespace Luna
                 Internal::ButtonGroupItemData* item_data = Internal::allocate_frame<Internal::ButtonGroupItemData>(context);
                 item_data->text = Internal::copy_frame_string(context, items[i]);
                 item_data->enabled = desc.enabled;
+                item_data->selected_index = selected_index;
+                item_data->item_index = i;
                 GUICore::DrawConfig item_draw;
                 item_draw.name = Name("gui.button_group.item");
                 item_draw.callback = Internal::draw_button_group_item;
@@ -234,6 +314,8 @@ namespace Luna
             context->set_draw_config(group, group_draw);
 
             id_t* item_ids = Internal::allocate_frame_array<id_t>(context, items.size());
+            group_data->item_ids = item_ids;
+            group_data->selected_items = selected.data();
             for(usize i = 0; i < items.size(); ++i)
             {
                 id_t item_id = GUICore::make_scoped_id(id, (id_t)i + 1);
@@ -251,6 +333,7 @@ namespace Luna
                 item_data->text = Internal::copy_frame_string(context, items[i]);
                 item_data->enabled = desc.enabled;
                 item_data->selected = selected.data() + i;
+                item_data->item_index = i;
                 GUICore::DrawConfig item_draw;
                 item_draw.name = Name("gui.button_group.multi.item");
                 item_draw.callback = Internal::draw_button_group_item;
