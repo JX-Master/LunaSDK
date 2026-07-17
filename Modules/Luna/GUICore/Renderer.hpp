@@ -23,16 +23,30 @@ namespace Luna
             f64 prepare_ms = 0.0;
             //! Number of VG draw calls produced by the latest compilation.
             u32 vg_draw_call_count = 0;
-            //! Number of analytic shadow draw calls produced by the latest compilation.
-            u32 shadow_draw_call_count = 0;
+            //! Number of instanced SDF draw calls produced by the latest compilation.
+            u32 sdf_draw_call_count = 0;
+            //! Number of SDF shape instances produced by the latest compilation.
+            u32 sdf_instance_count = 0;
+            //! Number of scalar floats uploaded for SDF shape programs.
+            u32 sdf_shape_float_count = 0;
+            //! Number of scalar floats uploaded for SDF color programs.
+            u32 sdf_color_float_count = 0;
+            //! Number of shape and color structured-buffer pages referenced by the latest compilation.
+            u32 sdf_program_page_count = 0;
+            //! Number of distinct shape-page and color-page descriptor pairs referenced by SDF batches.
+            u32 sdf_page_pair_count = 0;
+            //! Number of transitions between VG and SDF batches required by painter order.
+            u32 backend_switch_count = 0;
+            //! Number of bytes uploaded for SDF instances, shape programs and color programs.
+            usize sdf_upload_bytes = 0;
             //! Number of contiguous renderer batches needed to preserve painter order.
             u32 render_batch_count = 0;
         };
 
         //! @interface IRenderer
         //! Compiles GUI Core primitive draw commands and records their RHI rendering work.
-        //! @remark The renderer is the rendering layer of GUI Core. It primarily uses VG for vector primitives and
-        //! may use internal RHI pipelines for effects that are not VG shape operations, such as analytic shadows.
+        //! @remark The renderer uses its SDF interpreter for analytic GUI geometry, gradients and shadows. VG remains
+        //! the backend for text, images, lines and complex monochrome paths.
         struct [[Luna::interface("{780B8352-8D7E-4401-8C12-77D06818B841}")]] IRenderer : virtual Interface
         {
             //! Compiles one context's generated draw command stream and prepares referenced resources.

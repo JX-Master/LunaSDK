@@ -29,8 +29,39 @@ var constexprEvaluationShader = Path.Combine(fixturesRoot, "valid", "constexpr_e
 var functionTemplateShader = Path.Combine(fixturesRoot, "valid", "function_template", "FunctionTemplate.cxx");
 var templateMemberFunctionShader = Path.Combine(fixturesRoot, "valid", "template_member_function", "TemplateMemberFunction.cxx");
 var templateStructShader = Path.Combine(fixturesRoot, "valid", "template_struct", "TemplateStruct.cxx");
+var localArrayShader = Path.Combine(fixturesRoot, "valid", "local_array", "LocalArray.cxx");
 
 if (!ExpectSchemaV3Facts(schemaV3Shader, stdRoot))
+{
+    return 1;
+}
+
+var localArrayResult = compiler.Compile(new CppslCompileOptions(
+    localArrayShader,
+    Path.Combine(outputDir, "local-array"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!localArrayResult.Succeeded || localArrayResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected local_array fixture to compile.");
+    foreach (var diagnostic in localArrayResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+var localArrayHlslText = File.ReadAllText(localArrayResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var localArrayGlslText = File.ReadAllText(localArrayResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var localArrayMslText = File.ReadAllText(localArrayResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertContainsAll(localArrayHlslText, new[] { "float values[4];" },
+        "expected HLSL local arrays to place dimensions after the variable name.") ||
+    !AssertContainsAll(localArrayGlslText, new[] { "float values[4];" },
+        "expected GLSL local arrays to place dimensions after the variable name.") ||
+    !AssertContainsAll(localArrayMslText, new[] { "float values[4];" },
+        "expected MSL local arrays to place dimensions after the variable name.") ||
+    !AssertNotContainsAny(localArrayHlslText + localArrayGlslText + localArrayMslText,
+        new[] { "float[4] values" }, "target sources must not use C++ array declarator order."))
 {
     return 1;
 }

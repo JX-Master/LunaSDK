@@ -70,6 +70,9 @@ namespace Luna
             const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), const ImageDesc& desc = ImageDesc());
 
         //! Adds one editable single-line text input.
+        //! @param[in,out] value Text storage read during interaction resolution and delayed drawing.
+        //! @remark @p value must remain valid until @ref resolve_interactions and GUI Core draw-command generation
+        //! have both completed for the current frame.
         LUNA_GUI_API GUICore::ElementHandle input_text(GUICore::IContext* context, id_t id, String& value,
             const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), const TextInputDesc& desc = TextInputDesc());
 

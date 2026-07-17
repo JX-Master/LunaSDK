@@ -70,6 +70,10 @@ namespace Luna
             Vector<DrawCommand> m_recorded_draw_commands;
             Vector<Vector<DrawOperation>> m_layer_draw_operations;
             Vector<DrawCommand> m_draw_commands;
+            Vector<f32> m_recorded_sdf_shape_floats;
+            Vector<f32> m_recorded_sdf_color_floats;
+            Vector<f32> m_sdf_shape_floats;
+            Vector<f32> m_sdf_color_floats;
             Vector<InputEvent> m_input_events;
             Vector<u32> m_layer_stack;
             Vector<u32> m_element_stack;
@@ -154,6 +158,10 @@ namespace Luna
             virtual DrawConfig get_draw_config(const ElementHandle& element) const override;
             virtual RV generate_draw_commands() override;
             virtual Span<const DrawCommand> get_draw_commands() const override;
+            virtual R<SDFShapeProgram> append_sdf_shape_program(Span<const f32> floats) override;
+            virtual R<SDFColorProgram> append_sdf_color_program(Span<const f32> floats) override;
+            virtual Span<const f32> get_sdf_shape_floats() const override;
+            virtual Span<const f32> get_sdf_color_floats() const override;
             virtual void draw(const DrawCommand& command) override;
             virtual void draw_for_element(const ElementHandle& element, const DrawCommand& command) override;
             virtual RV register_font(const Name& id, Font::IFontFile* font, u32 font_index = 0) override;

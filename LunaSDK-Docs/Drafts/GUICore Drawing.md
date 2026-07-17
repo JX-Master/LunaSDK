@@ -1,11 +1,13 @@
-GUI Core drawing records primitive GUI-level commands and compiles them to VG. Higher-level packages decide which commands represent a widget.
+GUI Core drawing records primitive GUI-level commands and preserves their painter order across two rendering
+backends. Analytic geometry, gradients and shadows use the GUICore SDF renderer; text, images and arbitrary vector
+paths use VG. Higher-level packages decide which commands represent a widget.
 
 ## Designed functionality
-The drawing system provides a narrow bridge between GUI data and VG rendering:
+The drawing system provides a narrow bridge between GUI data and rendering:
 
 1. Record static draw commands and attach optional delayed draw callbacks to elements.
 2. Support element-relative and layer-coordinate rectangles.
-3. Draw rectangles, gradients, rounded rectangles, lines, text, images and VG shape ranges.
+3. Draw analytic SDF shapes, CSS-like gradients, strokes and shadows alongside text, images and VG shape ranges.
 4. Generate commands after layout and input routing while preserving element painter order and layer Z order.
 5. Keep rendering policy outside GUI Core widgets, because GUI Core has no widgets.
 
@@ -24,8 +26,14 @@ Supported command types are:
 5. `text`
 6. `image`
 7. `shape`
-8. `push_clip`
-9. `pop_clip`
+8. `shadow`
+9. `sdf`
+10. `push_clip`
+11. `pop_clip`
+
+`rect`, `gradient_rect`, `rounded_rect` and `shadow` are convenient commands for common GUI chrome. The renderer
+translates them to SDF shape and color programs before submission. Use `sdf` directly for circles, ellipses,
+capsules, four-corner rounded rectangles, strokes, composed shapes, and multi-stop gradients.
 
 ### Draw callback
 `DrawConfig` attaches an optional callback to one element. Generation can invoke the callback in
@@ -68,6 +76,37 @@ This describes an inset rectangle: left/top offset by 4 pixels, width/height equ
 
 ### Shape command
 `ShapeDesc` references a command range inside a `VG::IShapeBuffer`. Shape coordinates are interpreted as GUI shape coordinates where Y increases downward. If `ShapeDesc::texture` is not null, the shape acts as a texture mask.
+
+### SDF shape and color programs
+An SDF draw references two context-owned scalar `float32` program ranges:
+
+1. A shape program contains rectangle, four-corner rounded rectangle, circle, ellipse, capsule, union,
+   intersection, difference, and XOR instructions. Boolean operations use prefix order.
+2. A color program contains one solid, linear, radial, conic, four-corner bilinear, or unified shadow instruction.
+   Gradients support up to 16 ordered stops, optional interpolation midpoints, and pad or repeat spreading.
+
+Programs use local GUI coordinates. Build the complete scalar sequence, append it through
+`append_sdf_shape_program` or `append_sdf_color_program`, and store the returned validated metadata in
+`DrawCommand::sdf`. Programs appended during element construction are copied into generated frame storage.
+Programs appended by a draw callback are regenerated with that callback. Do not retain their ranges across
+frames.
+
+The low eight bits of the first color float select the base algorithm. Bit 8 enables an inner-distance limit and
+bit 9 enables an outer-distance limit. Enabled distances immediately follow the encoded opcode. This yields four
+generic clip modes:
+
+1. `SDFClipDesc::no_clip()` lets the finite command rectangle provide the raster domain.
+2. `SDFClipDesc::inner(distance)` removes samples deeper than `distance` inside the shape.
+3. `SDFClipDesc::outer(distance)` removes samples farther than `distance` outside the shape.
+4. `SDFClipDesc::inner_outer(inner, outer)` keeps an asymmetric band around the contour.
+
+`SDFClipDesc::fill()` is outer clip at distance zero. `SDFClipDesc::stroke(width)` is a centered band. The same
+clip descriptor can be applied to any color opcode. An outer shadow uses inner clip at zero, while an inner shadow
+uses outer clip at zero.
+
+Build one color program per ordered effect pass. The same validated shape program can be reused by shadow, fill,
+border, and highlight commands. Consecutive commands that reference the same buffer pages remain separate logical
+passes but are submitted as one instanced draw call.
 
 ### Font
 Text draw commands reference fonts by `Name`. Register fonts on the context before using them.
@@ -181,6 +220,48 @@ shape.shape.bounds = icon_bounds;
 context->draw(shape);
 ```
 
+### Draw a composed SDF gradient
+The following command subtracts a smaller circle from a larger one, then paints the ring with a radial gradient.
+
+```cpp
+Vector<f32> shape_floats;
+GUICore::sdf_shape_add_operation(shape_floats, GUICore::SDFShapeInstruction::difference_op);
+GUICore::sdf_shape_add_circle(shape_floats, Float2U(32.0f), 30.0f);
+GUICore::sdf_shape_add_circle(shape_floats, Float2U(32.0f), 18.0f);
+lulet(shape_program, context->append_sdf_shape_program(shape_floats.cspan()));
+
+GUICore::SDFGradientStop stops[] = {
+    {0.0f, Float4U(1.0f, 0.25f, 0.30f, 1.0f), 0.5f},
+    {1.0f, Float4U(0.35f, 0.02f, 0.06f, 1.0f), 0.5f}
+};
+Vector<f32> color_floats;
+GUICore::sdf_color_add_radial_gradient(color_floats, Float2U(32.0f), Float2U(30.0f),
+    Span<const GUICore::SDFGradientStop>(stops, 2));
+lulet(color_program, context->append_sdf_color_program(color_floats.cspan()));
+
+GUICore::DrawCommand ring;
+ring.type = GUICore::DrawCommandType::sdf;
+ring.rect = RectF(40.0f, 20.0f, 0.0f, 0.0f); // Places the local origin.
+ring.sdf.shape = shape_program;
+ring.sdf.color = color_program;
+context->draw(ring);
+```
+
+### Reuse one shape for a shadow and fill
+The shadow and fill are two color programs and two ordered commands. Both commands reference the same shape range.
+
+```cpp
+Vector<f32> shadow_floats;
+GUICore::sdf_color_add_shadow(shadow_floats, Float4U(0.0f, 0.0f, 0.0f, 0.25f),
+    Float2U(0.0f, 4.0f), 6.0f, 0.0f, GUICore::SDFClipDesc::inner(0.0f));
+lulet(shadow_program, context->append_sdf_color_program(shadow_floats.cspan()));
+
+GUICore::DrawCommand shadow = ring;
+shadow.sdf.color = shadow_program;
+context->draw(shadow);
+context->draw(ring);
+```
+
 ### Use clips
 ```cpp
 GUICore::DrawCommand push;
@@ -197,36 +278,26 @@ context->draw(pop);
 
 Use explicit clips only when a command sequence needs a region stricter than the element layout clip. Scroll viewports and layout containers normally receive their base clipping from `LayoutResult::clip_rect` automatically.
 
-### Compile to VG
-```cpp
-luexp(context->generate_draw_commands());
-luexp(context->compile_draw_commands(shape_draw_list));
-luexp(shape_draw_list->compile());
-```
-
-Explicit generation is useful when tooling needs to inspect the final command stream. Compilation automatically
-generates commands when the caller has not done so. The destination draw list is reset before GUI Core emits
-commands, and commands are emitted in layer Z order.
-
-### Render the VG draw list
-The host renders the compiled VG draw calls with its RHI target.
+### Prepare and render
+Create one GUICore renderer for the RHI device and reuse it. `prepare` generates commands if necessary, validates
+and uploads SDF programs, and prepares both SDF and VG batches. Call it outside a render pass. The application
+retains ownership of target transitions and render-pass boundaries.
 
 ```cpp
-Span<const VG::ShapeDrawCall> draw_calls = shape_draw_list->get_draw_calls();
-if(!draw_calls.empty())
-{
-    Float4x4U transform = ProjectionMatrix::make_orthographic_off_center(
-        0.0f, frame.screen_size.x,
-        0.0f, frame.screen_size.y,
-        0.0f, 1.0f);
+Ref<GUICore::IRenderer> renderer;
+luset(renderer, GUICore::new_renderer(device));
 
-    luexp(renderer->begin(render_target));
-    renderer->draw(shape_draw_list->get_vertex_buffer(),
-        shape_draw_list->get_index_buffer(), draw_calls, &transform);
-    luexp(renderer->end());
-    renderer->submit(command_buffer);
-}
+luexp(renderer->prepare(context, command_buffer, render_target));
+RHI::RenderPassDesc render_pass;
+render_pass.color_attachments[0] = RHI::ColorAttachment(
+    render_target, RHI::LoadOp::load, RHI::StoreOp::store);
+command_buffer->begin_render_pass(render_pass);
+renderer->render(command_buffer);
+command_buffer->end_render_pass();
 ```
+
+`generate_draw_commands` remains useful when tooling needs to inspect the final ordered stream. It is idempotent
+until a tree, layout, layer, draw configuration, or stored program mutation invalidates the stream.
 
 ## Examples
 ### Button chrome from delayed primitive commands

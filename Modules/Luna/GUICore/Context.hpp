@@ -290,6 +290,32 @@ namespace Luna
             //! @ref DrawCommand::element when they need element-local commands.
             virtual Span<const DrawCommand> get_draw_commands() const = 0;
 
+            //! Validates and appends one standalone shape program to context-owned frame storage.
+            //! @param[in] floats Complete prefix shape expression.
+            //! @return Returns the stored program with its context-relative float range, or a format error.
+            //! @remark Programs appended during element construction remain available to recorded commands. Programs
+            //! appended from draw callbacks are regenerated with the final draw command stream.
+            virtual R<SDFShapeProgram> append_sdf_shape_program(Span<const f32> floats) = 0;
+
+            //! Validates and appends one standalone color program to context-owned frame storage.
+            //! @param[in] floats Complete color program.
+            //! @return Returns the stored program with its context-relative float range, or a format error.
+            //! @remark Programs appended during element construction remain available to recorded commands. Programs
+            //! appended from draw callbacks are regenerated with the final draw command stream.
+            virtual R<SDFColorProgram> append_sdf_color_program(Span<const f32> floats) = 0;
+
+            //! Gets the shape program floats associated with the latest generated command stream.
+            //! @return Returns context-owned scalar floats.
+            //! @remark Call @ref generate_draw_commands first. The returned span is invalidated by the next draw
+            //! command generation or @ref begin_frame call.
+            virtual Span<const f32> get_sdf_shape_floats() const = 0;
+
+            //! Gets the color program floats associated with the latest generated command stream.
+            //! @return Returns context-owned scalar floats.
+            //! @remark Call @ref generate_draw_commands first. The returned span is invalidated by the next draw
+            //! command generation or @ref begin_frame call.
+            virtual Span<const f32> get_sdf_color_floats() const = 0;
+
             //! Records or emits one primitive draw command.
             //! @param[in] command The command to append to the current layer and current element.
             //! @remark During element construction this records a static command at the current painter-order

@@ -347,6 +347,8 @@ namespace Luna
         //! @return Returns value and relayout changes produced by package controls.
         //! @remark Call this after input routing and before final draw command generation. If relayout is requested,
         //! apply layout to the layer root again before generating draw commands.
+        //! Values bound to widgets by pointer or reference must remain valid through this call and the subsequent
+        //! GUI Core draw-command generation for the current frame.
         LUNA_GUI_API ResolveResult resolve_interactions(GUICore::IContext* context);
 
         //! Applies layout to one GUI subtree.

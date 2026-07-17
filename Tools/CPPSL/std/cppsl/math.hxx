@@ -21,6 +21,7 @@ namespace cppsl
     float pow(float value, float exponent);
     float log2(float value);
     float exp2(float value);
+    float floor(float value);
     float abs(float value);
     float2 abs(float2 value);
     float3 abs(float3 value);
@@ -45,6 +46,7 @@ namespace cppsl
     float2 saturate(float2 value);
     float3 saturate(float3 value);
     float4 saturate(float4 value);
+    float fwidth(float value);
     float2 fwidth(float2 value);
     float4 fwidth(float4 value);
     bool any(bool2 value);

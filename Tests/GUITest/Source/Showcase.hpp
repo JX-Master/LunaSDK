@@ -41,6 +41,7 @@ namespace Luna
             f32 position[3] = { 1.0f, 2.0f, 3.0f };
             f32 preview_color[4] = { 0.851f, 0.325f, 0.365f, 1.0f };
             String asset_name = "M_Rusted_Metal";
+            String readonly_value = "Read-only value";
             String search_query;
             Ref<RHI::ITexture> material_preview;
             Ref<RHI::ITexture> material_sand;

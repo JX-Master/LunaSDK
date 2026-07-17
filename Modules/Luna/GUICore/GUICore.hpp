@@ -8,6 +8,7 @@
 * @date 2026/6/17
 */
 #pragma once
+#include "SDF.hpp"
 #include "Context.hpp"
 #include "Input.hpp"
 #include "Layout.hpp"

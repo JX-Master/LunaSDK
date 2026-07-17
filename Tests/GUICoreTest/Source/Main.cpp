@@ -57,9 +57,14 @@ namespace
         {
             add_canvas_item(state.sheet_items, ID_NAVIGATION, 64.0f, 174.0f);
         }
-        else
+        else if(state.slice_index < NUM_INPUT_SLICES + NUM_LAYOUT_SLICES)
         {
             add_layout_slice_items(state, state.slice_index - NUM_INPUT_SLICES);
+        }
+        else
+        {
+            add_canvas_item(state.sheet_items, ID_SDF, 64.0f, 174.0f);
+            add_sdf_slice_items(state);
         }
 
         GUICore::ElementHandle sheet = context->begin_element(ID_SHEET);
@@ -83,9 +88,13 @@ namespace
         {
             build_navigation_input_slice(context, state);
         }
-        else
+        else if(state.slice_index < NUM_INPUT_SLICES + NUM_LAYOUT_SLICES)
         {
             build_layout_slice(context, state, state.slice_index - NUM_INPUT_SLICES);
+        }
+        else
+        {
+            build_sdf_slice(context, state);
         }
 
         state.sheet_canvas.items = Span<const GUICore::CanvasLayoutItem>(state.sheet_items.data(), state.sheet_items.size());
@@ -237,7 +246,8 @@ namespace
                 luexp(app.gui->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
                 app.gui->route_input();
                 bool layout_dirty = false;
-                if(app.sheet.slice_index >= GUICoreTest::NUM_INPUT_SLICES)
+                if(app.sheet.slice_index >= GUICoreTest::NUM_INPUT_SLICES &&
+                    app.sheet.slice_index < GUICoreTest::NUM_INPUT_SLICES + GUICoreTest::NUM_LAYOUT_SLICES)
                 {
                     layout_dirty = GUICoreTest::process_layout_slice_input(app.gui, app.sheet,
                         app.sheet.slice_index - GUICoreTest::NUM_INPUT_SLICES);

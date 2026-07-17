@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Element.hpp"
+#include "SDF.hpp"
 #include <Luna/VG/TextArranger.hpp>
 
 namespace Luna
@@ -40,6 +41,8 @@ namespace Luna
             shape,
             //! Draws an analytic rounded-rectangle shadow.
             shadow,
+            //! Draws one analytic SDF shape and color program pair.
+            sdf,
             //! Pushes a clip rectangle.
             push_clip,
             //! Pops the current clip rectangle.
@@ -195,6 +198,10 @@ namespace Luna
             //! Shadow payload used by shadow commands. @ref rect, @ref radius and @ref color describe the source
             //! rounded rectangle and shadow color.
             ShadowDesc shadow;
+            //! SDF payload used by SDF commands. @ref rect places the payload's local coordinate origin in the
+            //! element or layer coordinate space selected by @ref rect_reference. Its resolved extent is also the
+            //! finite raster domain when the color program does not enable outer clipping.
+            SDFDrawDesc sdf;
         };
     }
 }

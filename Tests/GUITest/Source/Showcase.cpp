@@ -116,6 +116,100 @@ namespace Luna
                 context->draw(command);
             }
 
+            RV draw_sdf_swatch(GUICore::IContext* context, const GUICore::ElementHandle& element,
+                GUICore::DrawPhase, void* userdata)
+            {
+                const GUICore::Element* element_data = context->get_element(element.index);
+                if(!element_data) return ok;
+                const RectF& element_rect = element_data->layout_result.rect;
+                f32 width = max(element_rect.width, 1.0f);
+                f32 height = max(element_rect.height, 1.0f);
+                u32 kind = (u32)(usize)userdata;
+                Vector<f32> shape_floats;
+                if(kind == 0)
+                {
+                    GUICore::sdf_shape_add_rounded_rectangle(shape_floats,
+                        RectF(5.0f, 5.0f, width - 10.0f, height - 10.0f),
+                        Float4U(18.0f, 8.0f, 18.0f, 8.0f));
+                }
+                else if(kind == 1)
+                {
+                    GUICore::sdf_shape_add_operation(shape_floats,
+                        GUICore::SDFShapeInstruction::difference_op);
+                    GUICore::sdf_shape_add_circle(shape_floats, Float2U(width * 0.5f, height * 0.5f),
+                        min(width, height) * 0.42f);
+                    GUICore::sdf_shape_add_circle(shape_floats, Float2U(width * 0.5f, height * 0.5f),
+                        min(width, height) * 0.21f);
+                }
+                else
+                {
+                    GUICore::sdf_shape_add_capsule(shape_floats, Float2U(18.0f, height * 0.5f),
+                        Float2U(width - 18.0f, height * 0.5f), min(height * 0.32f, 28.0f));
+                }
+                auto shape = context->append_sdf_shape_program(shape_floats.cspan());
+                if(failed(shape)) return shape.errcode();
+
+                Float4U accent = style_color(context, "gui.accent");
+                Float4U highlight = style_color(context, "gui.shadow.light",
+                    Float4U(1.0f, 1.0f, 1.0f, 0.8f));
+                Float4U active = style_color(context, "gui.accent.active", accent);
+                GUICore::SDFGradientStop stops[] = {
+                    {0.0f, highlight, 0.42f}, {0.48f, accent, 0.58f}, {1.0f, active, 0.5f}
+                };
+
+                auto submit_color = [&](Vector<f32>& color_floats) -> RV
+                {
+                    auto color = context->append_sdf_color_program(color_floats.cspan());
+                    if(failed(color)) return color.errcode();
+                    GUICore::DrawCommand command;
+                    command.type = GUICore::DrawCommandType::sdf;
+                    command.rect_reference = GUICore::DrawCommandRectReference::element;
+                    command.sdf.shape = shape.get();
+                    command.sdf.color = color.get();
+                    context->draw(command);
+                    return ok;
+                };
+
+                Vector<f32> color_floats;
+                if(kind == 0)
+                {
+                    Vector<f32> shadow_floats;
+                    GUICore::sdf_color_add_shadow(shadow_floats,
+                        style_color(context, "gui.shadow.dark", Float4U(0.0f, 0.0f, 0.0f, 0.2f)),
+                        Float2U(3.0f, 4.0f), 6.0f, 0.0f, GUICore::SDFClipDesc::inner(0.0f));
+                    RV result = submit_color(shadow_floats);
+                    if(failed(result)) return result;
+                    GUICore::sdf_color_add_linear_gradient(color_floats, Float2U(0.0f, 0.0f),
+                        Float2U(width, height), Span<const GUICore::SDFGradientStop>(stops, 3));
+                }
+                else if(kind == 1)
+                {
+                    GUICore::sdf_color_add_radial_gradient(color_floats,
+                        Float2U(width * 0.42f, height * 0.38f), Float2U(width * 0.55f, height * 0.55f),
+                        Span<const GUICore::SDFGradientStop>(stops, 3));
+                }
+                else
+                {
+                    GUICore::sdf_color_add_conic_gradient(color_floats,
+                        Float2U(width * 0.5f, height * 0.5f), -PI_DIV_TWO,
+                        Span<const GUICore::SDFGradientStop>(stops, 3));
+                }
+                return submit_color(color_floats);
+            }
+
+            GUICore::ElementHandle sdf_swatch(GUICore::IContext* context, GUI::id_t element_id,
+                const c8* name, u32 kind)
+            {
+                GUICore::ElementHandle swatch = GUI::begin_v_layout(context, element_id, name, grow_x(112.0f));
+                GUICore::DrawConfig draw;
+                draw.name = Name(name);
+                draw.callback = draw_sdf_swatch;
+                draw.userdata = (void*)(usize)(u32)kind;
+                context->set_draw_config(swatch, draw);
+                GUI::end_v_layout(context, swatch);
+                return swatch;
+            }
+
             void surface(GUICore::IContext* context, const c8* background, f32 radius, bool raised = false)
             {
                 if(raised)
@@ -154,7 +248,7 @@ namespace Luna
 
             GUICore::ElementHandle begin_panel(GUICore::IContext* context, GUI::id_t element_id,
                 const c8* name, const GUICore::LayoutConfig& input, const c8* background = "gui.surface.1",
-                f32 radius = 12.0f, bool raised = true)
+                f32 radius = 12.0f, bool raised = false)
             {
                 GUICore::ElementHandle panel = GUI::begin_v_layout(context, element_id, name, input);
                 surface(context, background, radius, raised);
@@ -231,7 +325,7 @@ namespace Luna
                 GUICore::LayoutConfig layout = input;
                 layout.padding = Float4U(16.0f);
                 GUICore::ElementHandle card = begin_panel(context, id(context, name), title, layout,
-                    "gui.surface.1", style_scalar(context, "gui.radius.large", 14.0f));
+                    "gui.surface.1", style_scalar(context, "gui.radius.large", 14.0f), false);
                 card_title(context, card.id, title, note);
                 return card;
             }
@@ -491,7 +585,7 @@ namespace Luna
             {
                 GUICore::ElementHandle editor = GUI::begin_h_layout(context, id(context, "overview.editor"),
                     "DCC editor composition", grow_y());
-                surface(context, "gui.surface.0", style_scalar(context, "gui.radius.large", 16.0f), true);
+                surface(context, "gui.surface.0", style_scalar(context, "gui.radius.large", 16.0f), false);
 
                 GUICore::LayoutConfig library_layout = fixed(176.0f, 0.0f);
                 library_layout.height.kind = GUICore::SizeKind::percent;
@@ -602,7 +696,7 @@ namespace Luna
                 banner_layout.padding = Float4U(28.0f);
                 GUICore::ElementHandle banner = GUI::begin_h_layout(context, id(context, "overview.banner"),
                     "Style summary", banner_layout);
-                surface(context, "gui.surface.1", style_scalar(context, "gui.radius.large", 16.0f), true);
+                surface(context, "gui.surface.1", style_scalar(context, "gui.radius.large", 16.0f), false);
                 GUICore::ElementHandle summary = GUI::begin_v_layout(context, id(context, "overview.banner.summary"),
                     "Summary", grow_x(130.0f));
                 label(context, id(context, "overview.banner.active"), "READY  STYLE ACTIVE", fill_width(22.0f),
@@ -651,6 +745,19 @@ namespace Luna
                 led_label(context, state, id(context, "primitives.led.working"), "Working", "gui.status.busy", 100.0f);
                 end_panel(context, progress);
                 end_two_columns(context, row);
+                GUICore::ElementHandle sdf_card = begin_card(context, "primitives.sdf", fill_width(220.0f),
+                    "SDF shape and paint programs", "Linear, radial, conic, CSG, capsule, and analytic shadow");
+                GUICore::ElementHandle sdf_row = GUI::begin_h_layout(context, id(context, "primitives.sdf.row"),
+                    "SDF swatches", grow_y());
+                sdf_swatch(context, id(context, "primitives.sdf.linear"), "Linear rounded rectangle", 0);
+                sdf_swatch(context, id(context, "primitives.sdf.radial"), "Radial CSG ring", 1);
+                sdf_swatch(context, id(context, "primitives.sdf.conic"), "Conic capsule", 2);
+                GUICore::FlexLayoutDesc sdf_flex;
+                sdf_flex.axis = GUICore::LayoutAxis::x;
+                sdf_flex.cross_alignment = GUICore::FlexAlignment::stretch;
+                sdf_flex.main_axis_gap = 14.0f;
+                GUI::end_h_layout(context, sdf_row, sdf_flex);
+                end_panel(context, sdf_card);
                 GUICore::ElementHandle image_card = begin_card(context, "primitives.image", fill_width(420.0f),
                     "Image and shape", "Raster material assets and vector primitives");
                 GUI::image(context, id(context, "primitives.image.preview"), state.material_preview,
@@ -726,11 +833,12 @@ namespace Luna
                 GUI::input_text(context, id(context, "input.asset"), state.asset_name, fill_width(48.0f));
                 GUI::TextInputDesc read_only;
                 read_only.read_only = true;
-                String readonly_value = "Read-only value";
-                GUI::input_text(context, id(context, "input.readonly"), readonly_value, fill_width(48.0f), read_only);
+                GUI::input_text(context, id(context, "input.readonly"), state.readonly_value,
+                    fill_width(48.0f), read_only);
                 GUI::TextInputDesc disabled;
                 disabled.enabled = false;
-                GUI::input_text(context, id(context, "input.disabled"), readonly_value, fill_width(48.0f), disabled);
+                GUI::input_text(context, id(context, "input.disabled"), state.readonly_value,
+                    fill_width(48.0f), disabled);
                 end_panel(context, fields);
                 GUICore::ElementHandle sliders = begin_card(context, "input.sliders", grow_x(),
                     "Slider and drag editors", "Scalar, integer, and vector values");
@@ -932,7 +1040,7 @@ namespace Luna
                     "Tabs, splitters, viewport tools, console, and status feedback in one functional software surface.");
                 GUICore::ElementHandle workspace = GUI::begin_v_layout(context, id(context, "workspace.demo"),
                     "Workspace", grow_y());
-                surface(context, "gui.surface.0", style_scalar(context, "gui.radius.large", 16.0f), true);
+                surface(context, "gui.surface.0", style_scalar(context, "gui.radius.large", 16.0f), false);
                 GUICore::ElementHandle menu = GUI::begin_h_layout(context, id(context, "workspace.menu"),
                     "Menu", fill_width(44.0f));
                 label(context, id(context, "workspace.menu.items"),
@@ -1127,7 +1235,7 @@ namespace Luna
         void resolve_showcase(GUICore::IContext* context, ShowcaseState& state,
             const ShowcaseHandles& handles)
         {
-            for(i32 i = 0; i < 9; ++i)
+                for(i32 i = 0; i < 9; ++i)
             {
                 if(GUI::is_item_valid(context, handles.navigation[i]) &&
                     GUI::is_item_clicked(context, handles.navigation[i])) state.section = i;

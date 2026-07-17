@@ -15,8 +15,8 @@
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/VG/Shapes.hpp>
 #include <Luna/VG/TextArranger.hpp>
-#include <ShadowVS.hpp>
-#include <ShadowPS.hpp>
+#include <SDFVS.hpp>
+#include <SDFPS.hpp>
 
 namespace Luna
 {
@@ -24,31 +24,14 @@ namespace Luna
     {
         namespace
         {
-            struct ShadowConstantBuffer
+            struct SDFFrameBuffer
             {
-                Float4U draw_rect;
-                Float4U source_rect;
-                Float4U clip_rect;
-                Float4U color;
-                Float4U shadow_params;
                 Float4U screen_params;
             };
 
             bool color_visible(const Float4U& color)
             {
                 return color.w > 0.0f;
-            }
-
-            bool command_color_visible(const DrawCommand& command)
-            {
-                if(command.type == DrawCommandType::gradient_rect)
-                {
-                    return color_visible(command.color) ||
-                        color_visible(command.color_top_right) ||
-                        color_visible(command.color_bottom_right) ||
-                        color_visible(command.color_bottom_left);
-                }
-                return color_visible(command.color);
             }
 
             bool rect_visible(const RectF& rect)
@@ -63,6 +46,23 @@ namespace Luna
                 f32 max_x = min(a.offset_x + a.width, b.offset_x + b.width);
                 f32 max_y = min(a.offset_y + a.height, b.offset_y + b.height);
                 return RectF(min_x, min_y, max(max_x - min_x, 0.0f), max(max_y - min_y, 0.0f));
+            }
+
+            RectF union_rect(const RectF& a, const RectF& b)
+            {
+                if(!rect_visible(a)) return b;
+                if(!rect_visible(b)) return a;
+                f32 min_x = min(a.offset_x, b.offset_x);
+                f32 min_y = min(a.offset_y, b.offset_y);
+                f32 max_x = max(a.offset_x + a.width, b.offset_x + b.width);
+                f32 max_y = max(a.offset_y + a.height, b.offset_y + b.height);
+                return RectF(min_x, min_y, max_x - min_x, max_y - min_y);
+            }
+
+            RectF expand_rect(const RectF& rect, f32 amount)
+            {
+                return RectF(rect.offset_x - amount, rect.offset_y - amount,
+                    rect.width + amount * 2.0f, rect.height + amount * 2.0f);
             }
 
             bool has_clip(const RectF& clip_rect)
@@ -145,6 +145,54 @@ namespace Luna
                     element_rect.offset_y + command.point1.y + element_rect.height * command.rect_layout_scale.w);
             }
 
+            u32 append_program_floats(Vector<f32>& destination, Span<const f32> floats)
+            {
+                u32 page_offset = (u32)(destination.size() % SDF_PROGRAM_PAGE_FLOATS);
+                if(page_offset && page_offset + floats.size() > SDF_PROGRAM_PAGE_FLOATS)
+                {
+                    destination.resize(destination.size() + SDF_PROGRAM_PAGE_FLOATS - page_offset, 0.0f);
+                }
+                u32 first_float = (u32)destination.size();
+                destination.insert(destination.end(), floats.begin(), floats.end());
+                return first_float;
+            }
+
+            bool append_shape_program(Vector<f32>& destination, Span<const f32> floats,
+                SDFShapeProgram& program)
+            {
+                RV validation = validate_sdf_shape_program(floats, &program);
+                if(failed(validation)) return false;
+                program.floats.first_float = append_program_floats(destination, floats);
+                return true;
+            }
+
+            bool append_color_program(Vector<f32>& destination, Span<const f32> floats,
+                SDFColorProgram& program)
+            {
+                RV validation = validate_sdf_color_program(floats, &program);
+                if(failed(validation)) return false;
+                program.floats.first_float = append_program_floats(destination, floats);
+                return true;
+            }
+
+            template <typename _Program>
+            bool resolve_context_program(Span<const f32> all_floats, const SDFBufferRange& range,
+                _Program& output, RV(*validator)(Span<const f32>, _Program*))
+            {
+                if(!range.num_floats || range.first_float > all_floats.size() ||
+                    range.num_floats > all_floats.size() - range.first_float ||
+                    range.first_float / SDF_PROGRAM_PAGE_FLOATS !=
+                    (range.first_float + range.num_floats - 1) / SDF_PROGRAM_PAGE_FLOATS)
+                {
+                    return false;
+                }
+                Span<const f32> program_floats(all_floats.data() + range.first_float, range.num_floats);
+                RV validation = validator(program_floats, &output);
+                if(failed(validation)) return false;
+                output.floats = range;
+                return true;
+            }
+
             f64 perf_elapsed_ms(u64 begin, u64 end)
             {
                 return (f64)(end - begin) * 1000.0 / get_ticks_per_second();
@@ -163,12 +211,14 @@ namespace Luna
                 m_font_atlas = VG::new_font_atlas();
 
                 DescriptorSetLayoutBinding bindings[] = {
-                    DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::all)
+                    DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::all),
+                    DescriptorSetLayoutBinding::read_buffer_view(1, 1, ShaderVisibilityFlag::pixel),
+                    DescriptorSetLayoutBinding::read_buffer_view(2, 1, ShaderVisibilityFlag::pixel)
                 };
-                luset(m_shadow_descriptor_set_layout,
-                    m_device->new_descriptor_set_layout(DescriptorSetLayoutDesc({bindings, 1})));
-                IDescriptorSetLayout* descriptor_set_layout = m_shadow_descriptor_set_layout;
-                luset(m_shadow_pipeline_layout, m_device->new_pipeline_layout(PipelineLayoutDesc(
+                luset(m_sdf_descriptor_set_layout,
+                    m_device->new_descriptor_set_layout(DescriptorSetLayoutDesc({bindings, 3})));
+                IDescriptorSetLayout* descriptor_set_layout = m_sdf_descriptor_set_layout;
+                luset(m_sdf_pipeline_layout, m_device->new_pipeline_layout(PipelineLayoutDesc(
                     {&descriptor_set_layout, 1}, PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
                 Float2U vertices[] = {
@@ -176,49 +226,55 @@ namespace Luna
                     Float2U(1.0f, 1.0f), Float2U(1.0f, 0.0f)
                 };
                 u16 indices[] = {0, 1, 2, 0, 2, 3};
-                luset(m_shadow_vertex_buffer, m_device->new_buffer(MemoryType::upload,
+                luset(m_sdf_vertex_buffer, m_device->new_buffer(MemoryType::upload,
                     BufferDesc(BufferUsageFlag::vertex_buffer, sizeof(vertices))));
-                luset(m_shadow_index_buffer, m_device->new_buffer(MemoryType::upload,
+                luset(m_sdf_index_buffer, m_device->new_buffer(MemoryType::upload,
                     BufferDesc(BufferUsageFlag::index_buffer, sizeof(indices))));
+                luset(m_sdf_frame_buffer, m_device->new_buffer(MemoryType::upload,
+                    BufferDesc(BufferUsageFlag::uniform_buffer, sizeof(SDFFrameBuffer))));
                 void* mapped_data = nullptr;
-                luexp(m_shadow_vertex_buffer->map(0, 0, &mapped_data));
+                luexp(m_sdf_vertex_buffer->map(0, 0, &mapped_data));
                 memcpy(mapped_data, vertices, sizeof(vertices));
-                m_shadow_vertex_buffer->unmap(0, sizeof(vertices));
-                luexp(m_shadow_index_buffer->map(0, 0, &mapped_data));
+                m_sdf_vertex_buffer->unmap(0, sizeof(vertices));
+                luexp(m_sdf_index_buffer->map(0, 0, &mapped_data));
                 memcpy(mapped_data, indices, sizeof(indices));
-                m_shadow_index_buffer->unmap(0, sizeof(indices));
-                m_shadow_constant_buffer_stride = (u32)align_upper(sizeof(ShadowConstantBuffer),
-                    m_device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment);
+                m_sdf_index_buffer->unmap(0, sizeof(indices));
             }
             lucatchret;
             return ok;
         }
 
-        RV Renderer::create_shadow_pipeline(RHI::Format render_target_format)
+        RV Renderer::create_sdf_pipeline(RHI::Format render_target_format)
         {
             using namespace RHI;
             lutry
             {
                 GraphicsPipelineStateDesc desc;
                 InputBindingDesc input_bindings[] = {
-                    InputBindingDesc(0, sizeof(Float2U), InputRate::per_vertex)
+                    InputBindingDesc(0, sizeof(Float2U), InputRate::per_vertex),
+                    InputBindingDesc(1, sizeof(SDFInstance), InputRate::per_instance)
                 };
                 InputAttributeDesc input_attributes[] = {
-                    InputAttributeDesc(0, 0, 0, Format::rg32_float)
+                    InputAttributeDesc(0, 0, 0, Format::rg32_float),
+                    InputAttributeDesc(1, 1, offsetof(SDFInstance, draw_rect), Format::rgba32_float),
+                    InputAttributeDesc(2, 1, offsetof(SDFInstance, evaluation_origin), Format::rg32_float),
+                    InputAttributeDesc(3, 1, offsetof(SDFInstance, clip_rect), Format::rgba32_float),
+                    InputAttributeDesc(4, 1, offsetof(SDFInstance, program_data), Format::rgba32_uint)
                 };
-                desc.input_layout = InputLayoutDesc({input_bindings, 1}, {input_attributes, 1});
-                desc.pipeline_layout = m_shadow_pipeline_layout;
-                desc.vs = LUNA_CPPSL_GET_SHADER_DATA(ShadowVS);
-                desc.ps = LUNA_CPPSL_GET_SHADER_DATA(ShadowPS);
+                desc.input_layout = InputLayoutDesc({input_bindings, 2}, {input_attributes, 5});
+                desc.pipeline_layout = m_sdf_pipeline_layout;
+                desc.vs = LUNA_CPPSL_GET_SHADER_DATA(SDFVS);
+                desc.ps = LUNA_CPPSL_GET_SHADER_DATA(SDFPS);
                 desc.blend_state = BlendDesc({AttachmentBlendDesc(true,
-                    BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add,
-                    BlendFactor::zero, BlendFactor::one, BlendOp::add, ColorWriteMask::all)});
+                    BlendFactor::one, BlendFactor::one_minus_src_alpha, BlendOp::add,
+                    BlendFactor::one, BlendFactor::one_minus_src_alpha, BlendOp::add,
+                    ColorWriteMask::all)});
                 desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::none,
                     false, false, false, false, false);
                 desc.depth_stencil_state = DepthStencilDesc(false, false);
                 desc.num_color_attachments = 1;
                 desc.color_formats[0] = render_target_format;
-                luset(m_shadow_pipeline_state, m_device->new_graphics_pipeline_state(desc));
+                luset(m_sdf_pipeline_state, m_device->new_graphics_pipeline_state(desc));
                 m_render_target_format = render_target_format;
             }
             lucatchret;
@@ -234,9 +290,18 @@ namespace Luna
                 Span<const Layer> layers = context->get_layers();
                 Span<const Element> elements = context->get_elements();
                 Span<const DrawCommand> commands = context->get_draw_commands();
+                Span<const f32> context_shape_floats = context->get_sdf_shape_floats();
+                Span<const f32> context_color_floats = context->get_sdf_color_floats();
                 m_draw_list->reset();
                 m_render_batches.clear();
-                m_shadow_calls.clear();
+                m_sdf_instances.clear();
+                m_sdf_page_pairs.clear();
+                m_compiled_sdf_shape_floats.clear();
+                m_compiled_sdf_color_floats.clear();
+                m_compiled_sdf_shape_floats.insert(m_compiled_sdf_shape_floats.end(),
+                    context_shape_floats.begin(), context_shape_floats.end());
+                m_compiled_sdf_color_floats.insert(m_compiled_sdf_color_floats.end(),
+                    context_color_floats.begin(), context_color_floats.end());
                 Vector<RectF> clip_stack;
                 RHI::SamplerDesc nearest_sampler_desc;
                 nearest_sampler_desc.min_filter = RHI::Filter::nearest;
@@ -247,16 +312,107 @@ namespace Luna
                 nearest_sampler_desc.address_w = RHI::TextureAddressMode::clamp;
                 u32 first_pending_vg_call = 0;
 
+                auto flush_pending_vg = [&]()
+                {
+                    u32 vg_call_count = (u32)m_draw_list->get_draw_calls().size();
+                    if(vg_call_count > first_pending_vg_call)
+                    {
+                        m_render_batches.push_back({RenderBatchType::vg, first_pending_vg_call,
+                            vg_call_count - first_pending_vg_call, 0});
+                    }
+                    first_pending_vg_call = vg_call_count;
+                };
+
+                auto get_page_pair = [&](u32 shape_page, u32 color_page)
+                {
+                    for(u32 i = 0; i < m_sdf_page_pairs.size(); ++i)
+                    {
+                        if(m_sdf_page_pairs[i].shape_page == shape_page &&
+                            m_sdf_page_pairs[i].color_page == color_page)
+                        {
+                            return i;
+                        }
+                    }
+                    u32 index = (u32)m_sdf_page_pairs.size();
+                    SDFPagePair pair;
+                    pair.shape_page = shape_page;
+                    pair.color_page = color_page;
+                    m_sdf_page_pairs.push_back(move(pair));
+                    return index;
+                };
+
+                auto emit_sdf = [&](const SDFDrawDesc& desc, const Float2U& evaluation_origin,
+                    const RectF& raster_domain, const RectF& clip_rect)
+                {
+                    if(!desc.shape.floats.valid() || !desc.color.floats.valid()) return;
+                    u32 shape_page = desc.shape.floats.first_float / SDF_PROGRAM_PAGE_FLOATS;
+                    u32 color_page = desc.color.floats.first_float / SDF_PROGRAM_PAGE_FLOATS;
+                    u32 local_shape_first = desc.shape.floats.first_float % SDF_PROGRAM_PAGE_FLOATS;
+                    u32 local_color_first = desc.color.floats.first_float % SDF_PROGRAM_PAGE_FLOATS;
+                    if(local_shape_first + desc.shape.floats.num_floats > SDF_PROGRAM_PAGE_FLOATS ||
+                        local_color_first + desc.color.floats.num_floats > SDF_PROGRAM_PAGE_FLOATS)
+                    {
+                        return;
+                    }
+                    RectF shape_rect(evaluation_origin.x + desc.shape.bounds.offset_x,
+                        evaluation_origin.y + desc.shape.bounds.offset_y,
+                        desc.shape.bounds.width, desc.shape.bounds.height);
+                    RectF draw_rect;
+                    if(desc.color.instruction == SDFColorInstruction::shadow)
+                    {
+                        RectF shadow_rect = shape_rect;
+                        shadow_rect.offset_x += desc.color.shadow_offset.x;
+                        shadow_rect.offset_y += desc.color.shadow_offset.y;
+                        f32 shadow_margin = max(desc.color.shadow_spread, 0.0f) +
+                            desc.color.shadow_softness * 3.0f + 1.0f;
+                        draw_rect = union_rect(expand_rect(shape_rect, 1.0f),
+                            expand_rect(shadow_rect, shadow_margin));
+                    }
+                    else if((u32)desc.color.clip_mode & SDF_COLOR_OUTER_CLIP_BIT)
+                    {
+                        draw_rect = expand_rect(shape_rect, desc.color.outer_distance + 1.0f);
+                    }
+                    else
+                    {
+                        draw_rect = rect_visible(raster_domain) ? raster_domain : expand_rect(shape_rect, 1.0f);
+                    }
+                    if(!rect_visible(draw_rect) ||
+                        (has_clip(clip_rect) && !rect_visible(intersect_rect(draw_rect, clip_rect))))
+                    {
+                        return;
+                    }
+                    SDFInstance instance;
+                    instance.draw_rect = Float4U(draw_rect.offset_x, draw_rect.offset_y,
+                        draw_rect.width, draw_rect.height);
+                    instance.evaluation_origin = evaluation_origin;
+                    instance.clip_rect = Float4U(clip_rect.offset_x, clip_rect.offset_y,
+                        clip_rect.width, clip_rect.height);
+                    instance.program_data = UInt4U(local_shape_first, local_color_first,
+                        has_clip(clip_rect) ? 1u : 0u, 0u);
+                    flush_pending_vg();
+                    m_draw_list->draw_call_barrier();
+                    u32 pair_index = get_page_pair(shape_page, color_page);
+                    u32 instance_index = (u32)m_sdf_instances.size();
+                    m_sdf_instances.push_back(instance);
+                    if(!m_render_batches.empty() && m_render_batches.back().type == RenderBatchType::sdf &&
+                        m_render_batches.back().resource_index == pair_index &&
+                        m_render_batches.back().first + m_render_batches.back().count == instance_index)
+                    {
+                        ++m_render_batches.back().count;
+                    }
+                    else
+                    {
+                        m_render_batches.push_back({RenderBatchType::sdf, instance_index, 1, pair_index});
+                    }
+                };
+
                 for(u32 layer_index = 0; layer_index < layers.size(); ++layer_index)
                 {
                     const Layer& layer = layers[layer_index];
                     clip_stack.clear();
                     for(u32 command_index : layer.draw_command_indices)
                     {
-                        if(command_index >= commands.size())
-                        {
-                            continue;
-                        }
+                        if(command_index >= commands.size()) continue;
                         const DrawCommand& command = commands[command_index];
                         RectF resolved_rect = resolve_draw_rect(command, elements);
                         RectF element_clip;
@@ -275,10 +431,7 @@ namespace Luna
                         }
                         if(command.type == DrawCommandType::pop_clip)
                         {
-                            if(!clip_stack.empty())
-                            {
-                                clip_stack.pop_back();
-                            }
+                            if(!clip_stack.empty()) clip_stack.pop_back();
                             continue;
                         }
 
@@ -290,117 +443,100 @@ namespace Luna
                         m_draw_list->set_shape_buffer(nullptr);
                         m_draw_list->set_sampler(nullptr);
 
-                        if(command.type == DrawCommandType::shadow)
+                        if(command.type == DrawCommandType::rect ||
+                            command.type == DrawCommandType::gradient_rect ||
+                            command.type == DrawCommandType::rounded_rect ||
+                            command.type == DrawCommandType::shadow)
                         {
                             RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
-                            if(!rect_visible(screen_rect) || !color_visible(command.color))
+                            if(!rect_visible(screen_rect)) continue;
+                            Vector<f32> shape_floats;
+                            if(command.type == DrawCommandType::rounded_rect || command.type == DrawCommandType::shadow)
+                            {
+                                sdf_shape_add_rounded_rectangle(shape_floats,
+                                    RectF(0.0f, 0.0f, screen_rect.width, screen_rect.height),
+                                    Float4U(max(command.radius, 0.0f)));
+                            }
+                            else
+                            {
+                                sdf_shape_add_rectangle(shape_floats,
+                                    RectF(0.0f, 0.0f, screen_rect.width, screen_rect.height));
+                            }
+                            SDFDrawDesc desc;
+                            if(!append_shape_program(m_compiled_sdf_shape_floats,
+                                shape_floats.cspan(), desc.shape))
+                                continue;
+                            Vector<f32> color_floats;
+                            if(command.type == DrawCommandType::gradient_rect)
+                            {
+                                sdf_color_add_bilinear_gradient(color_floats,
+                                    RectF(0.0f, 0.0f, screen_rect.width, screen_rect.height), command.color,
+                                    command.color_top_right, command.color_bottom_right,
+                                    command.color_bottom_left);
+                            }
+                            else if(command.type == DrawCommandType::shadow)
+                            {
+                                SDFClipDesc shadow_clip = command.shadow.mode == ShadowMode::inner ?
+                                    SDFClipDesc::outer(0.0f) : SDFClipDesc::inner(0.0f);
+                                sdf_color_add_shadow(color_floats, command.color, command.shadow.offset,
+                                    command.shadow.softness, command.shadow.spread, shadow_clip);
+                            }
+                            else
+                            {
+                                sdf_color_add_solid(color_floats, command.color);
+                            }
+                            if(!append_color_program(m_compiled_sdf_color_floats,
+                                color_floats.cspan(), desc.color))
+                                continue;
+                            emit_sdf(desc, Float2U(screen_rect.offset_x, screen_rect.offset_y),
+                                screen_rect, clip_rect);
+                            continue;
+                        }
+
+                        if(command.type == DrawCommandType::sdf)
+                        {
+                            SDFDrawDesc desc = command.sdf;
+                            if(!resolve_context_program(context_shape_floats, command.sdf.shape.floats,
+                                desc.shape, validate_sdf_shape_program) ||
+                                !resolve_context_program(context_color_floats, command.sdf.color.floats,
+                                    desc.color, validate_sdf_color_program))
                             {
                                 continue;
                             }
-                            f32 spread = command.shadow.spread;
-                            RectF source_rect(screen_rect.offset_x + command.shadow.offset.x - spread,
-                                screen_rect.offset_y + command.shadow.offset.y - spread,
-                                max(screen_rect.width + spread * 2.0f, 1.0f),
-                                max(screen_rect.height + spread * 2.0f, 1.0f));
-                            f32 radius = max(command.radius + spread, 0.0f);
-                            f32 softness = max(command.shadow.softness, 0.0f);
-                            f32 margin = max(softness * 3.0f + 1.0f, 1.0f);
-                            RectF draw_rect = command.shadow.mode == ShadowMode::outer ?
-                                RectF(source_rect.offset_x - margin, source_rect.offset_y - margin,
-                                    source_rect.width + margin * 2.0f, source_rect.height + margin * 2.0f) :
-                                screen_rect;
-                            if(has_clip(clip_rect) && !rect_visible(intersect_rect(draw_rect, clip_rect)))
-                            {
-                                continue;
-                            }
-                            u32 vg_call_count = (u32)m_draw_list->get_draw_calls().size();
-                            if(vg_call_count > first_pending_vg_call)
-                            {
-                                m_render_batches.push_back({RenderBatchType::vg, first_pending_vg_call,
-                                    vg_call_count - first_pending_vg_call});
-                            }
-                            ShadowCall shadow_call;
-                            shadow_call.draw_rect = draw_rect;
-                            shadow_call.source_rect = source_rect;
-                            shadow_call.clip_rect = clip_rect;
-                            shadow_call.color = command.color;
-                            shadow_call.radius = radius;
-                            shadow_call.source_radius = max(command.radius, 0.0f);
-                            shadow_call.softness = softness;
-                            shadow_call.mode = command.shadow.mode;
-                            u32 shadow_index = (u32)m_shadow_calls.size();
-                            m_shadow_calls.push_back(shadow_call);
-                            m_render_batches.push_back({RenderBatchType::shadow, shadow_index, 1});
-                            m_draw_list->draw_call_barrier();
-                            first_pending_vg_call = vg_call_count;
+                            RectF screen_anchor = to_screen_rect(layers, layer_index, resolved_rect);
+                            emit_sdf(desc, Float2U(screen_anchor.offset_x, screen_anchor.offset_y),
+                                screen_anchor, clip_rect);
                             continue;
                         }
 
                         switch(command.type)
                         {
-                        case DrawCommandType::rect:
-                        case DrawCommandType::gradient_rect:
-                        case DrawCommandType::rounded_rect:
                         case DrawCommandType::image:
                         {
                             RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
                             if((has_clip(clip_rect) && !rect_visible(intersect_rect(screen_rect, clip_rect))) ||
-                                !rect_visible(screen_rect) || !command_color_visible(command))
+                                !rect_visible(screen_rect) || !color_visible(command.color))
                             {
                                 break;
                             }
                             RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
-                            m_draw_list->set_texture(command.type == DrawCommandType::image ? command.texture : nullptr);
-                            if(command.type == DrawCommandType::image && command.nearest_sampler)
-                            {
-                                m_draw_list->set_sampler(&nearest_sampler_desc);
-                            }
+                            m_draw_list->set_texture(command.texture);
+                            if(command.nearest_sampler) m_draw_list->set_sampler(&nearest_sampler_desc);
                             auto& points = m_draw_list->get_shape_buffer()->get_shape_points(true);
                             u32 begin = (u32)points.size();
-                            if(command.type == DrawCommandType::rounded_rect && command.radius > 0.0f)
-                            {
-                                VG::ShapeBuilder::add_rounded_rectangle_filled(points, 0.0f, 0.0f,
-                                    vg_rect.width, vg_rect.height,
-                                    min(command.radius, min(vg_rect.width, vg_rect.height) * 0.5f));
-                            }
-                            else
-                            {
-                                VG::ShapeBuilder::add_rectangle_filled(points, 0.0f, 0.0f,
-                                    vg_rect.width, vg_rect.height);
-                            }
+                            VG::ShapeBuilder::add_rectangle_filled(points, 0.0f, 0.0f,
+                                vg_rect.width, vg_rect.height);
                             u32 end = (u32)points.size();
-                            if(command.type == DrawCommandType::gradient_rect)
-                            {
-                                VG::Vertex vertices[4];
-                                u32 indices[6];
-                                VG::get_rect_shape_draw_vertices(vertices, indices, begin, end - begin,
-                                    Float2U(vg_rect.offset_x, vg_rect.offset_y),
-                                    Float2U(vg_rect.offset_x + vg_rect.width, vg_rect.offset_y + vg_rect.height),
-                                    Float2U(0.0f), Float2U(vg_rect.width, vg_rect.height),
-                                    command.color, command.min_texcoord, command.max_texcoord);
-                                vertices[0].color = command.color_bottom_left;
-                                vertices[1].color = command.color;
-                                vertices[2].color = command.color_top_right;
-                                vertices[3].color = command.color_bottom_right;
-                                m_draw_list->draw_shape_raw(Span<const VG::Vertex>(vertices, 4),
-                                    Span<const u32>(indices, 6));
-                            }
-                            else
-                            {
-                                m_draw_list->draw_shape(begin, end - begin,
-                                    Float2U(vg_rect.offset_x, vg_rect.offset_y),
-                                    Float2U(vg_rect.offset_x + vg_rect.width, vg_rect.offset_y + vg_rect.height),
-                                    Float2U(0.0f), Float2U(vg_rect.width, vg_rect.height), command.color,
-                                    command.min_texcoord, command.max_texcoord);
-                            }
+                            m_draw_list->draw_shape(begin, end - begin,
+                                Float2U(vg_rect.offset_x, vg_rect.offset_y),
+                                Float2U(vg_rect.offset_x + vg_rect.width, vg_rect.offset_y + vg_rect.height),
+                                Float2U(0.0f), Float2U(vg_rect.width, vg_rect.height), command.color,
+                                command.min_texcoord, command.max_texcoord);
                             break;
                         }
                         case DrawCommandType::line:
                         {
-                            if(!color_visible(command.color) || command.line_width <= 0.0f)
-                            {
-                                break;
-                            }
+                            if(!color_visible(command.color) || command.line_width <= 0.0f) break;
                             Float2U resolved_p0 = resolve_draw_point0(command, elements);
                             Float2U resolved_p1 = resolve_draw_point1(command, elements);
                             Float2U p0(layer.screen_position.x + resolved_p0.x,
@@ -412,10 +548,7 @@ namespace Luna
                             f32 dy = abs(p1.y - p0.y);
                             RectF bounds(min(p0.x, p1.x) - margin, min(p0.y, p1.y) - margin,
                                 max(dx + margin * 2.0f, 1.0f), max(dy + margin * 2.0f, 1.0f));
-                            if(has_clip(clip_rect) && !rect_visible(intersect_rect(bounds, clip_rect)))
-                            {
-                                break;
-                            }
+                            if(has_clip(clip_rect) && !rect_visible(intersect_rect(bounds, clip_rect))) break;
                             RectF vg_rect = to_vg_rect(frame_desc, bounds);
                             auto& points = m_draw_list->get_shape_buffer()->get_shape_points(true);
                             u32 begin = (u32)points.size();
@@ -434,15 +567,10 @@ namespace Luna
                         case DrawCommandType::text:
                         {
                             if(command.text.empty() || command.font_size <= 0.0f || !color_visible(command.color))
-                            {
                                 break;
-                            }
                             RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
                             if((has_clip(clip_rect) && !rect_visible(intersect_rect(screen_rect, clip_rect))) ||
-                                !rect_visible(screen_rect))
-                            {
-                                break;
-                            }
+                                !rect_visible(screen_rect)) break;
                             FontDesc font = context->get_font(command.font);
                             if(!font.font)
                             {
@@ -473,22 +601,14 @@ namespace Luna
                         {
                             if(!command.shape.buffer || command.shape.num_commands == 0 ||
                                 !rect_visible(command.shape.bounds) || !rect_visible(resolved_rect) ||
-                                !color_visible(command.color))
-                            {
-                                break;
-                            }
+                                !color_visible(command.color)) break;
                             RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
-                            if(has_clip(clip_rect) && !rect_visible(intersect_rect(screen_rect, clip_rect)))
-                            {
-                                break;
-                            }
+                            if(has_clip(clip_rect) && !rect_visible(intersect_rect(screen_rect, clip_rect))) break;
                             RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
                             m_draw_list->set_shape_buffer(command.shape.buffer);
                             m_draw_list->set_texture(command.shape.texture);
                             if(command.shape.texture && command.nearest_sampler)
-                            {
                                 m_draw_list->set_sampler(&nearest_sampler_desc);
-                            }
                             Float2U shape_min(command.shape.bounds.offset_x,
                                 command.shape.bounds.offset_y + command.shape.bounds.height);
                             Float2U shape_max(command.shape.bounds.offset_x + command.shape.bounds.width,
@@ -509,109 +629,153 @@ namespace Luna
                 m_draw_list->set_shape_buffer(nullptr);
                 m_draw_list->set_sampler(nullptr);
                 m_draw_list->set_clip_rect(RectF());
-                u32 vg_call_count = (u32)m_draw_list->get_draw_calls().size();
-                if(vg_call_count > first_pending_vg_call)
-                {
-                    m_render_batches.push_back({RenderBatchType::vg, first_pending_vg_call,
-                        vg_call_count - first_pending_vg_call});
-                }
+                flush_pending_vg();
                 luexp(m_draw_list->compile());
                 m_counters.vg_draw_call_count = (u32)m_draw_list->get_draw_calls().size();
-                m_counters.shadow_draw_call_count = (u32)m_shadow_calls.size();
+                m_counters.sdf_instance_count = (u32)m_sdf_instances.size();
+                m_counters.sdf_shape_float_count = (u32)m_compiled_sdf_shape_floats.size();
+                m_counters.sdf_color_float_count = (u32)m_compiled_sdf_color_floats.size();
+                m_counters.sdf_program_page_count =
+                    (u32)((m_compiled_sdf_shape_floats.size() + SDF_PROGRAM_PAGE_FLOATS - 1) /
+                        SDF_PROGRAM_PAGE_FLOATS) +
+                    (u32)((m_compiled_sdf_color_floats.size() + SDF_PROGRAM_PAGE_FLOATS - 1) /
+                        SDF_PROGRAM_PAGE_FLOATS);
+                m_counters.sdf_page_pair_count = (u32)m_sdf_page_pairs.size();
+                m_counters.sdf_upload_bytes = m_sdf_instances.size() * sizeof(SDFInstance) +
+                    (m_compiled_sdf_shape_floats.size() + m_compiled_sdf_color_floats.size()) * sizeof(f32);
+                m_counters.sdf_draw_call_count = 0;
+                for(const RenderBatch& batch : m_render_batches)
+                {
+                    if(batch.type == RenderBatchType::sdf) ++m_counters.sdf_draw_call_count;
+                }
+                m_counters.backend_switch_count = 0;
+                for(usize i = 1; i < m_render_batches.size(); ++i)
+                {
+                    if(m_render_batches[i - 1].type != m_render_batches[i].type)
+                        ++m_counters.backend_switch_count;
+                }
                 m_counters.render_batch_count = (u32)m_render_batches.size();
             }
             lucatchret;
             return ok;
         }
 
-        RV Renderer::prepare_shadow_resources()
+        RV Renderer::prepare_sdf_resources()
         {
             using namespace RHI;
-            if(m_shadow_calls.empty())
-            {
-                return ok;
-            }
-            usize required_size = (usize)m_shadow_constant_buffer_stride * m_shadow_calls.size();
+            if(m_sdf_instances.empty()) return ok;
             lutry
             {
-                if(m_shadow_constant_buffer_capacity < m_shadow_calls.size())
-                {
-                    luset(m_shadow_constant_buffer, m_device->new_buffer(MemoryType::upload,
-                        BufferDesc(BufferUsageFlag::uniform_buffer, required_size)));
-                    m_shadow_constant_buffer_capacity = m_shadow_calls.size();
-                }
-                while(m_shadow_descriptor_sets.size() < m_shadow_calls.size())
-                {
-                    lulet(descriptor_set, m_device->new_descriptor_set(
-                        DescriptorSetDesc(m_shadow_descriptor_set_layout)));
-                    m_shadow_descriptor_sets.push_back(descriptor_set);
-                }
+                SDFFrameBuffer frame_data;
+                frame_data.screen_params = Float4U(m_screen_width, m_screen_height,
+                    1.0f / m_screen_width, 1.0f / m_screen_height);
                 void* mapped_data = nullptr;
-                luexp(m_shadow_constant_buffer->map(0, 0, &mapped_data));
-                for(usize i = 0; i < m_shadow_calls.size(); ++i)
+                luexp(m_sdf_frame_buffer->map(0, 0, &mapped_data));
+                memcpy(mapped_data, &frame_data, sizeof(frame_data));
+                m_sdf_frame_buffer->unmap(0, sizeof(frame_data));
+
+                if(m_sdf_instance_capacity < m_sdf_instances.size())
                 {
-                    const ShadowCall& call = m_shadow_calls[i];
-                    ShadowConstantBuffer* data = (ShadowConstantBuffer*)((usize)mapped_data +
-                        i * m_shadow_constant_buffer_stride);
-                    data->draw_rect = Float4U(call.draw_rect.offset_x, call.draw_rect.offset_y,
-                        call.draw_rect.width, call.draw_rect.height);
-                    data->source_rect = Float4U(call.source_rect.offset_x, call.source_rect.offset_y,
-                        call.source_rect.width, call.source_rect.height);
-                    data->clip_rect = Float4U(call.clip_rect.offset_x, call.clip_rect.offset_y,
-                        call.clip_rect.width, call.clip_rect.height);
-                    data->color = call.color;
-                    data->shadow_params = Float4U(call.radius, call.softness,
-                        call.mode == ShadowMode::inner ? 1.0f : 0.0f,
-                        has_clip(call.clip_rect) ? 1.0f : 0.0f);
-                    data->screen_params = Float4U(m_screen_width, m_screen_height,
-                        call.source_radius, 0.0f);
-                    luexp(m_shadow_descriptor_sets[i]->update_descriptors({
+                    luset(m_sdf_instance_buffer, m_device->new_buffer(MemoryType::upload,
+                        BufferDesc(BufferUsageFlag::vertex_buffer,
+                            sizeof(SDFInstance) * m_sdf_instances.size())));
+                    m_sdf_instance_capacity = m_sdf_instances.size();
+                }
+                usize instance_bytes = sizeof(SDFInstance) * m_sdf_instances.size();
+                luexp(m_sdf_instance_buffer->map(0, 0, &mapped_data));
+                memcpy(mapped_data, m_sdf_instances.data(), instance_bytes);
+                m_sdf_instance_buffer->unmap(0, instance_bytes);
+
+                auto upload_pages = [&](const Vector<f32>& floats, Vector<SDFProgramPage>& pages) -> RV
+                {
+                    usize num_pages = (floats.size() + SDF_PROGRAM_PAGE_FLOATS - 1) /
+                        SDF_PROGRAM_PAGE_FLOATS;
+                    pages.resize(num_pages);
+                    for(usize page_index = 0; page_index < num_pages; ++page_index)
+                    {
+                        usize first_float = page_index * SDF_PROGRAM_PAGE_FLOATS;
+                        u32 num_floats = (u32)min<usize>(SDF_PROGRAM_PAGE_FLOATS,
+                            floats.size() - first_float);
+                        usize num_bytes = (usize)num_floats * sizeof(f32);
+                        SDFProgramPage& page = pages[page_index];
+                        if(!page.buffer || page.buffer->get_desc().size < num_bytes)
+                        {
+                            auto buffer_result = m_device->new_buffer(MemoryType::upload,
+                                BufferDesc(BufferUsageFlag::read_buffer, num_bytes));
+                            if(failed(buffer_result)) return buffer_result.errcode();
+                            page.buffer = buffer_result.get();
+                        }
+                        page.num_floats = num_floats;
+                        void* page_data = nullptr;
+                        RV map_result = page.buffer->map(0, 0, &page_data);
+                        if(failed(map_result)) return map_result;
+                        memcpy(page_data, floats.data() + first_float, num_bytes);
+                        page.buffer->unmap(0, num_bytes);
+                    }
+                    return ok;
+                };
+                luexp(upload_pages(m_compiled_sdf_shape_floats, m_sdf_shape_pages));
+                luexp(upload_pages(m_compiled_sdf_color_floats, m_sdf_color_pages));
+
+                for(SDFPagePair& pair : m_sdf_page_pairs)
+                {
+                    if(pair.shape_page >= m_sdf_shape_pages.size() ||
+                        pair.color_page >= m_sdf_color_pages.size())
+                    {
+                        return set_error(BasicError::bad_data(), "SDF draw references an unavailable program page.");
+                    }
+                    lulet(descriptor_set, m_device->new_descriptor_set(
+                        RHI::DescriptorSetDesc(m_sdf_descriptor_set_layout)));
+                    pair.descriptor_set = descriptor_set;
+                    SDFProgramPage& shape_page = m_sdf_shape_pages[pair.shape_page];
+                    SDFProgramPage& color_page = m_sdf_color_pages[pair.color_page];
+                    luexp(pair.descriptor_set->update_descriptors({
                         WriteDescriptorSet::uniform_buffer_view(0,
-                            BufferViewDesc::uniform_buffer(m_shadow_constant_buffer,
-                                i * m_shadow_constant_buffer_stride, sizeof(ShadowConstantBuffer)))
+                            BufferViewDesc::uniform_buffer(m_sdf_frame_buffer, 0, sizeof(SDFFrameBuffer))),
+                        WriteDescriptorSet::read_buffer_view(1,
+                            BufferViewDesc::structured_buffer(shape_page.buffer, 0,
+                                shape_page.num_floats, sizeof(f32))),
+                        WriteDescriptorSet::read_buffer_view(2,
+                            BufferViewDesc::structured_buffer(color_page.buffer, 0,
+                                color_page.num_floats, sizeof(f32)))
                     }));
                 }
-                m_shadow_constant_buffer->unmap(0, required_size);
             }
             lucatchret;
             return ok;
         }
 
-        void Renderer::render_shadow(RHI::ICommandBuffer* cmdbuf, u32 shadow_index)
+        void Renderer::render_sdf(RHI::ICommandBuffer* cmdbuf, const RenderBatch& batch)
         {
             using namespace RHI;
-            if(shadow_index >= m_shadow_calls.size())
-            {
-                return;
-            }
-            cmdbuf->set_graphics_pipeline_state(m_shadow_pipeline_state);
-            cmdbuf->set_graphics_pipeline_layout(m_shadow_pipeline_layout);
+            if(batch.resource_index >= m_sdf_page_pairs.size() || !batch.count) return;
+            cmdbuf->set_graphics_pipeline_state(m_sdf_pipeline_state);
+            cmdbuf->set_graphics_pipeline_layout(m_sdf_pipeline_layout);
             cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_render_target_width,
                 (f32)m_render_target_height, 0.0f, 1.0f));
             cmdbuf->set_scissor_rect(RectI(0, 0, m_render_target_width, m_render_target_height));
-            cmdbuf->set_graphics_descriptor_set(0, m_shadow_descriptor_sets[shadow_index]);
-            cmdbuf->set_vertex_buffers(0, {VertexBufferView(m_shadow_vertex_buffer, 0,
-                sizeof(Float2U) * 4, sizeof(Float2U))});
-            cmdbuf->set_index_buffer(IndexBufferView(m_shadow_index_buffer, 0,
+            cmdbuf->set_graphics_descriptor_set(0,
+                m_sdf_page_pairs[batch.resource_index].descriptor_set);
+            VertexBufferView vertex_views[] = {
+                VertexBufferView(m_sdf_vertex_buffer, 0, sizeof(Float2U) * 4, sizeof(Float2U)),
+                VertexBufferView(m_sdf_instance_buffer, 0,
+                    sizeof(SDFInstance) * m_sdf_instances.size(), sizeof(SDFInstance))
+            };
+            cmdbuf->set_vertex_buffers(0, {vertex_views, 2});
+            cmdbuf->set_index_buffer(IndexBufferView(m_sdf_index_buffer, 0,
                 sizeof(u16) * 6, Format::r16_uint));
-            cmdbuf->draw_indexed(6, 0, 0);
+            cmdbuf->draw_indexed_instanced(6, batch.count, 0, 0, batch.first);
         }
 
         RV Renderer::prepare(IContext* context, RHI::ICommandBuffer* cmdbuf,
             RHI::ITexture* render_target)
         {
-            if(!context || !cmdbuf || !render_target)
-            {
-                return BasicError::bad_arguments();
-            }
+            if(!context || !cmdbuf || !render_target) return BasicError::bad_arguments();
             auto render_target_desc = render_target->get_desc();
             if(render_target_desc.format != m_render_target_format)
             {
-                RV result = create_shadow_pipeline(render_target_desc.format);
-                if(failed(result))
-                {
-                    return result;
-                }
+                RV result = create_sdf_pipeline(render_target_desc.format);
+                if(failed(result)) return result;
             }
             m_render_target_width = render_target_desc.width;
             m_render_target_height = render_target_desc.height;
@@ -629,15 +793,27 @@ namespace Luna
                 m_shape_renderer->draw(m_draw_list->get_vertex_buffer(), m_draw_list->get_index_buffer(),
                     m_draw_list->get_draw_calls(), &transform);
                 luexp(m_shape_renderer->end());
-                luexp(prepare_shadow_resources());
-                if(!m_shadow_calls.empty())
+                luexp(prepare_sdf_resources());
+                if(!m_sdf_instances.empty())
                 {
-                    cmdbuf->resource_barrier({
-                        RHI::BufferBarrier(m_shadow_vertex_buffer, RHI::BufferStateFlag::automatic,
-                            RHI::BufferStateFlag::vertex_buffer),
-                        RHI::BufferBarrier(m_shadow_index_buffer, RHI::BufferStateFlag::automatic,
-                            RHI::BufferStateFlag::index_buffer)
-                    }, {});
+                    Vector<RHI::BufferBarrier> barriers;
+                    barriers.push_back(RHI::BufferBarrier(m_sdf_vertex_buffer,
+                        RHI::BufferStateFlag::automatic, RHI::BufferStateFlag::vertex_buffer));
+                    barriers.push_back(RHI::BufferBarrier(m_sdf_index_buffer,
+                        RHI::BufferStateFlag::automatic, RHI::BufferStateFlag::index_buffer));
+                    barriers.push_back(RHI::BufferBarrier(m_sdf_instance_buffer,
+                        RHI::BufferStateFlag::automatic, RHI::BufferStateFlag::vertex_buffer));
+                    for(const SDFProgramPage& page : m_sdf_shape_pages)
+                    {
+                        barriers.push_back(RHI::BufferBarrier(page.buffer,
+                            RHI::BufferStateFlag::automatic, RHI::BufferStateFlag::shader_read_ps));
+                    }
+                    for(const SDFProgramPage& page : m_sdf_color_pages)
+                    {
+                        barriers.push_back(RHI::BufferBarrier(page.buffer,
+                            RHI::BufferStateFlag::automatic, RHI::BufferStateFlag::shader_read_ps));
+                    }
+                    cmdbuf->resource_barrier(barriers.cspan(), {});
                 }
                 m_shape_renderer->prepare(cmdbuf);
             }
@@ -648,10 +824,7 @@ namespace Luna
 
         void Renderer::render(RHI::ICommandBuffer* cmdbuf)
         {
-            if(!cmdbuf)
-            {
-                return;
-            }
+            if(!cmdbuf) return;
             for(const RenderBatch& batch : m_render_batches)
             {
                 if(batch.type == RenderBatchType::vg)
@@ -660,10 +833,7 @@ namespace Luna
                 }
                 else
                 {
-                    for(u32 i = 0; i < batch.count; ++i)
-                    {
-                        render_shadow(cmdbuf, batch.first + i);
-                    }
+                    render_sdf(cmdbuf, batch);
                 }
             }
         }
@@ -677,10 +847,7 @@ namespace Luna
         {
             Ref<Renderer> renderer = new_object<Renderer>();
             RV result = renderer->init(device);
-            if(failed(result))
-            {
-                return result.errcode();
-            }
+            if(failed(result)) return result.errcode();
             Ref<IRenderer> ret = renderer;
             return ret;
         }

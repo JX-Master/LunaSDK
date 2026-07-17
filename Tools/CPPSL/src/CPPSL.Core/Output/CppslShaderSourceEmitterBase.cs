@@ -470,7 +470,7 @@ internal abstract class CppslShaderSourceEmitterBase
                     var initializer = !hasExplicitInitializer
                         ? string.Empty
                         : $" = {LowerExpression(initializerNode!)}";
-                    builder.AppendLine($"{prefix}{MapValueType(child.Type ?? string.Empty)} {child.Spelling}{initializer};");
+                    builder.AppendLine($"{prefix}{FormatVariableDeclaration(MapValueType(child.Type ?? string.Empty), child.Spelling)}{initializer};");
                 }
                 break;
             case CppslShaderModelNodeKind.OperatorCallExpression when TryMapAssignmentOperator(node.DisplayName, out var op) && node.Children.Count >= 3:

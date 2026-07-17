@@ -46,6 +46,18 @@ namespace Luna
             {
                 return (f64)(end - begin) * 1000.0 / get_ticks_per_second();
             }
+
+            u32 append_sdf_program_floats(Vector<f32>& destination, Span<const f32> floats)
+            {
+                u32 page_offset = (u32)(destination.size() % SDF_PROGRAM_PAGE_FLOATS);
+                if(page_offset && page_offset + floats.size() > SDF_PROGRAM_PAGE_FLOATS)
+                {
+                    destination.resize(destination.size() + SDF_PROGRAM_PAGE_FLOATS - page_offset, 0.0f);
+                }
+                u32 first_float = (u32)destination.size();
+                destination.insert(destination.end(), floats.begin(), floats.end());
+                return first_float;
+            }
         }
 
         void Context::begin_frame(const FrameDesc& desc)
@@ -66,6 +78,10 @@ namespace Luna
             m_recorded_draw_commands.clear();
             m_layer_draw_operations.clear();
             m_draw_commands.clear();
+            m_recorded_sdf_shape_floats.clear();
+            m_recorded_sdf_color_floats.clear();
+            m_sdf_shape_floats.clear();
+            m_sdf_color_floats.clear();
             m_input_events.clear();
             m_pointer_delta = Float2U(0.0f);
             m_layer_stack.clear();
@@ -752,6 +768,50 @@ namespace Luna
             return m_draw_commands.cspan();
         }
 
+        R<SDFShapeProgram> Context::append_sdf_shape_program(Span<const f32> floats)
+        {
+            lutsassert();
+            SDFShapeProgram program;
+            RV validation = validate_sdf_shape_program(floats, &program);
+            if(failed(validation)) return validation.errcode();
+            Vector<f32>& destination = m_generating_draw_commands ?
+                m_sdf_shape_floats : m_recorded_sdf_shape_floats;
+            program.floats.first_float = append_sdf_program_floats(destination, floats);
+            if(!m_generating_draw_commands)
+            {
+                m_draw_commands_generated = false;
+            }
+            return program;
+        }
+
+        R<SDFColorProgram> Context::append_sdf_color_program(Span<const f32> floats)
+        {
+            lutsassert();
+            SDFColorProgram program;
+            RV validation = validate_sdf_color_program(floats, &program);
+            if(failed(validation)) return validation.errcode();
+            Vector<f32>& destination = m_generating_draw_commands ?
+                m_sdf_color_floats : m_recorded_sdf_color_floats;
+            program.floats.first_float = append_sdf_program_floats(destination, floats);
+            if(!m_generating_draw_commands)
+            {
+                m_draw_commands_generated = false;
+            }
+            return program;
+        }
+
+        Span<const f32> Context::get_sdf_shape_floats() const
+        {
+            lutsassert();
+            return m_sdf_shape_floats.cspan();
+        }
+
+        Span<const f32> Context::get_sdf_color_floats() const
+        {
+            lutsassert();
+            return m_sdf_color_floats.cspan();
+        }
+
         void Context::append_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command)
         {
             DrawCommand cmd = command;
@@ -777,6 +837,8 @@ namespace Luna
         void Context::reset_generated_draw_commands()
         {
             m_draw_commands.clear();
+            m_sdf_shape_floats = m_recorded_sdf_shape_floats;
+            m_sdf_color_floats = m_recorded_sdf_color_floats;
             for(Layer& layer : m_layers)
             {
                 layer.draw_command_indices.clear();
@@ -810,6 +872,10 @@ namespace Luna
         RV Context::generate_draw_commands()
         {
             lutsassert();
+            if(m_draw_commands_generated)
+            {
+                return ok;
+            }
             luassert_msg(!m_generating_draw_commands, "GUI Core draw command generation is not reentrant.");
             luassert_msg(m_element_stack.empty() && m_layer_stack.empty(),
                 "GUI Core draw commands can only be generated after all element and layer scopes are closed.");

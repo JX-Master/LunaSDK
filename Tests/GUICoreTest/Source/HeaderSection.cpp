@@ -31,6 +31,12 @@ namespace Luna::GUICoreTest
             subtitle = "Navigation events describe intent instead of binding behavior to one device.";
             break;
         default:
+            if(state.slice_index == NUM_INPUT_SLICES + NUM_LAYOUT_SLICES)
+            {
+                title = "SDF Shape and Color Programs";
+                subtitle = "Scalar-float programs combine analytic geometry, paint opcodes, clip bits, and shadows.";
+                break;
+            }
             title = layout_slice_title(state.slice_index - NUM_INPUT_SLICES);
             subtitle = layout_slice_subtitle(state.slice_index - NUM_INPUT_SLICES);
             break;

@@ -17,7 +17,8 @@ namespace Luna::GUICoreTest
     inline constexpr f32 SHEET_HEIGHT = 768.0f;
     inline constexpr u32 NUM_INPUT_SLICES = 3;
     inline constexpr u32 NUM_LAYOUT_SLICES = 15;
-    inline constexpr u32 NUM_SLICES = NUM_INPUT_SLICES + NUM_LAYOUT_SLICES;
+    inline constexpr u32 NUM_SDF_SLICES = 1;
+    inline constexpr u32 NUM_SLICES = NUM_INPUT_SLICES + NUM_LAYOUT_SLICES + NUM_SDF_SLICES;
 
     enum : GUICore::id_t
     {
@@ -26,6 +27,7 @@ namespace Luna::GUICoreTest
         ID_HEADER = 10,
         ID_INPUT = 20,
         ID_LAYOUT = 30,
+        ID_SDF = 31,
         ID_POINTER_BASE_LAYER = 40,
         ID_POINTER_TOP_LAYER = 41,
         ID_POINTER_A = 42,
@@ -46,6 +48,7 @@ namespace Luna::GUICoreTest
         ID_LAYOUT_FIT_CHILD = 64,
         ID_LAYOUT_CANVAS = 65,
         ID_LAYOUT_SCROLL = 66,
+        ID_SDF_SAMPLE_BASE = 200,
         ID_LAYOUT_DEMO_BASE = 1000
     };
 
@@ -71,6 +74,8 @@ namespace Luna::GUICoreTest
         Vector<GUICore::CanvasLayoutItem> navigation_items;
         GUICore::CanvasLayoutDesc navigation_canvas;
         GUICore::ScrollViewportLayoutDesc scroll_viewport_layout;
+        Vector<GUICore::CanvasLayoutItem> sdf_items;
+        GUICore::CanvasLayoutDesc sdf_canvas;
     };
 
     GUICore::LayoutConfig fixed_layout(f32 width, f32 height);
@@ -109,4 +114,6 @@ namespace Luna::GUICoreTest
     void add_layout_slice_items(CoreSheetState& state, u32 layout_slice);
     void build_layout_slice(GUICore::IContext* context, CoreSheetState& state, u32 layout_slice);
     bool process_layout_slice_input(GUICore::IContext* context, CoreSheetState& state, u32 layout_slice);
+    void add_sdf_slice_items(CoreSheetState& state);
+    void build_sdf_slice(GUICore::IContext* context, CoreSheetState& state);
 }

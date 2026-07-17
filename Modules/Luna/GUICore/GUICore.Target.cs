@@ -11,8 +11,8 @@ public sealed class GUICoreTargetRules : TargetRules
         Headers("*.hpp", "Source/**.hpp");
         MetaHeaders("Context.hpp", "Renderer.hpp", "Source/GUICore.hpp", "Source/RendererImpl.hpp");
         Sources("Source/**.cpp");
-        Shader("Source/ShadowVS.cxx", "vertex", "vs_main");
-        Shader("Source/ShadowPS.cxx", "pixel", "ps_main");
+        Shader("Source/SDFVS.cxx", "vertex", "vs_main");
+        Shader("Source/SDFPS.cxx", "pixel", "ps_main");
         DependsOn("Runtime", "RHI", "VG", "Font");
     }
 }
