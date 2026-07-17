@@ -99,11 +99,9 @@ namespace Luna
             Ref<RHI::ISwapChain> swap_chain;
             Ref<RHI::ICommandBuffer> cmdbuf;
             Ref<GUICore::IContext> editor_core;
-            Ref<VG::IShapeDrawList> editor_draw_list;
-            Ref<VG::IShapeRenderer> editor_renderer;
+            Ref<GUICore::IRenderer> editor_renderer;
             Ref<GUICore::IContext> preview_core;
-            Ref<VG::IShapeDrawList> preview_draw_list;
-            Ref<VG::IShapeRenderer> preview_renderer;
+            Ref<GUICore::IRenderer> preview_renderer;
             EditorService service;
             Vector<Name> node_types;
             PaletteIcons palette_icons;
@@ -1138,27 +1136,22 @@ namespace Luna
             }
         }
 
-        static RV render_core_context(GUICore::IContext* context, VG::IShapeDrawList* draw_list,
-            VG::IShapeRenderer* renderer, RHI::ICommandBuffer* cmdbuf, RHI::ITexture* back_buffer)
+        static RV render_core_context(GUICore::IContext* context, GUICore::IRenderer* renderer,
+            RHI::ICommandBuffer* cmdbuf, RHI::ITexture* back_buffer)
         {
-            if(!context || !draw_list || !renderer || !cmdbuf || !back_buffer)
+            if(!context || !renderer || !cmdbuf || !back_buffer)
             {
                 return ok;
             }
             lutry
             {
-                luexp(context->generate_draw_commands());
-                luexp(context->compile_draw_commands(draw_list));
-                luexp(draw_list->compile());
-                Span<const VG::ShapeDrawCall> draw_calls = draw_list->get_draw_calls();
-                if(draw_calls.empty())
-                {
-                    return ok;
-                }
-                luexp(renderer->begin(back_buffer));
-                renderer->draw(draw_list->get_vertex_buffer(), draw_list->get_index_buffer(), draw_calls, nullptr);
-                luexp(renderer->end());
-                renderer->submit(cmdbuf);
+                luexp(renderer->prepare(context, cmdbuf, back_buffer));
+                RHI::RenderPassDesc render_pass;
+                render_pass.color_attachments[0] = RHI::ColorAttachment(
+                    back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
+                cmdbuf->begin_render_pass(render_pass);
+                renderer->render(cmdbuf);
+                cmdbuf->end_render_pass();
             }
             lucatchret;
             return ok;
@@ -1410,12 +1403,11 @@ namespace Luna
 
         static RV render_core_preview(App& app, RHI::ITexture* back_buffer)
         {
-            if(!app.show_preview || !app.preview_core || !app.preview_draw_list || !app.preview_renderer || !back_buffer)
+            if(!app.show_preview || !app.preview_core || !app.preview_renderer || !back_buffer)
             {
                 return ok;
             }
-            return render_core_context(app.preview_core.get(), app.preview_draw_list.get(), app.preview_renderer.get(),
-                app.cmdbuf, back_buffer);
+            return render_core_context(app.preview_core.get(), app.preview_renderer.get(), app.cmdbuf, back_buffer);
         }
 
         static void select_node(App& app, const Guid& node)
@@ -1755,13 +1747,11 @@ namespace Luna
                 app.editor_core = GUICore::new_context();
                 luexp(app.editor_core->register_font(Name("default"), Font::get_default_font()));
                 GUI::register_style_schemas(app.editor_core.get());
-                app.editor_draw_list = VG::new_shape_draw_list(dev);
-                app.editor_renderer = VG::new_fill_shape_renderer();
+                luset(app.editor_renderer, GUICore::new_renderer(dev));
                 app.preview_core = GUICore::new_context();
                 luexp(app.preview_core->register_font(Name("default"), Font::get_default_font()));
                 GUI::register_style_schemas(app.preview_core.get());
-                app.preview_draw_list = VG::new_shape_draw_list(dev);
-                app.preview_renderer = VG::new_fill_shape_renderer();
+                luset(app.preview_renderer, GUICore::new_renderer(dev));
 
                 GUIWindow::GUICoreWindowInputAdapter editor_input_adapter;
                 editor_input_adapter.window = app.window;
@@ -1825,8 +1815,7 @@ namespace Luna
                     render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, Float4U(0.02f, 0.025f, 0.03f, 1.0f));
                     app.cmdbuf->begin_render_pass(render_pass);
                     app.cmdbuf->end_render_pass();
-                    luexp(render_core_context(app.editor_core.get(), app.editor_draw_list.get(), app.editor_renderer.get(),
-                        app.cmdbuf, back_buffer));
+                    luexp(render_core_context(app.editor_core.get(), app.editor_renderer.get(), app.cmdbuf, back_buffer));
                     luexp(render_core_preview(app, back_buffer));
                     app.cmdbuf->resource_barrier({}, {
                         {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}

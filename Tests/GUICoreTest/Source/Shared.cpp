@@ -53,6 +53,19 @@ namespace Luna::GUICoreTest
         context->draw(command);
     }
 
+    void draw_shadow(GUICore::IContext* context, const RectF& rect, const Float4U& color,
+        f32 radius, const GUICore::ShadowDesc& desc)
+    {
+        GUICore::DrawCommand command;
+        command.type = GUICore::DrawCommandType::shadow;
+        command.rect_reference = GUICore::DrawCommandRectReference::element;
+        command.rect = rect;
+        command.color = color;
+        command.radius = radius;
+        command.shadow = desc;
+        context->draw(command);
+    }
+
     void draw_gradient_rect(GUICore::IContext* context, const RectF& rect, const Float4U& top_left,
         const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left)
     {
@@ -161,6 +174,12 @@ namespace Luna::GUICoreTest
         (void)userdata;
         if(phase == GUICore::DrawPhase::before_children)
         {
+            GUICore::ShadowDesc shadow;
+            shadow.offset = Float2U(0.0f, 12.0f);
+            shadow.softness = 18.0f;
+            shadow.spread = 1.0f;
+            draw_shadow(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT),
+                Float4U(0.0f, 0.0f, 0.0f, 0.24f), 2.0f, shadow);
             draw_rect(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT),
                 Float4U(1.0f, 1.0f, 1.0f, 1.0f));
         }

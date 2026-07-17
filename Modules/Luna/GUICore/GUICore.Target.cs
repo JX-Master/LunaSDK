@@ -9,8 +9,10 @@ public sealed class GUICoreTargetRules : TargetRules
             rulesPath: "Modules/Luna/GUICore/GUICore.Target.cs")
     {
         Headers("*.hpp", "Source/**.hpp");
-        MetaHeaders("Context.hpp", "Source/GUICore.hpp");
+        MetaHeaders("Context.hpp", "Renderer.hpp", "Source/GUICore.hpp", "Source/RendererImpl.hpp");
         Sources("Source/**.cpp");
+        Shader("Source/ShadowVS.cxx", "vertex", "vs_main");
+        Shader("Source/ShadowPS.cxx", "pixel", "ps_main");
         DependsOn("Runtime", "RHI", "VG", "Font");
     }
 }

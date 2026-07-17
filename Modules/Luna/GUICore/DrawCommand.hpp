@@ -38,6 +38,8 @@ namespace Luna
             image,
             //! Draws a VG shape command range.
             shape,
+            //! Draws an analytic rounded-rectangle shadow.
+            shadow,
             //! Pushes a clip rectangle.
             push_clip,
             //! Pops the current clip rectangle.
@@ -114,6 +116,29 @@ namespace Luna
             RectF bounds = RectF(0.0f, 0.0f, 0.0f, 0.0f);
         };
 
+        //! Identifies how a shadow is applied to its source rectangle.
+        enum class ShadowMode : u8
+        {
+            //! Draws the shadow outside and underneath the source shape.
+            outer,
+            //! Draws the shadow inside the source shape.
+            inner
+        };
+
+        //! Describes one analytic rounded-rectangle shadow.
+        struct ShadowDesc
+        {
+            //! Offset from the source rectangle in screen logical coordinates.
+            Float2U offset = Float2U(0.0f);
+            //! Standard deviation of the analytic shadow falloff in screen logical coordinates.
+            //! A value of zero produces an anti-aliased hard shadow.
+            f32 softness = 0.0f;
+            //! Signed expansion applied to the source contour before evaluating the shadow.
+            f32 spread = 0.0f;
+            //! Selects an outer or inner shadow.
+            ShadowMode mode = ShadowMode::outer;
+        };
+
         //! One GUI-level draw command.
         //! @remark Commands are intentionally primitive and widget-free. High-level packages decide which commands to emit.
         struct DrawCommand
@@ -167,6 +192,9 @@ namespace Luna
             bool nearest_sampler = false;
             //! Shape payload used by shape commands.
             ShapeDesc shape;
+            //! Shadow payload used by shadow commands. @ref rect, @ref radius and @ref color describe the source
+            //! rounded rectangle and shadow color.
+            ShadowDesc shadow;
         };
     }
 }

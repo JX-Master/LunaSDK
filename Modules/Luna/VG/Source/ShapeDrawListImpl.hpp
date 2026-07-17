@@ -157,6 +157,11 @@ namespace Luna
             {
                 return m_clip_rect;
             }
+            virtual void draw_call_barrier() override
+            {
+                lutsassert();
+                m_state_dirty = true;
+            }
             virtual void draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices) override;
             virtual void draw_shape(u32 begin_command, u32 num_commands,
                 const Float2U& min_position, const Float2U& max_position,

@@ -85,7 +85,6 @@ namespace Luna
             HashMap<id_t, InteractionState, IdHash> m_interactions;
             HashMap<id_t, Vector<InputEvent>, IdHash> m_input_deliveries;
             HashMap<id_t, Vector<RoutedInputEvent>, IdHash> m_routed_input_deliveries;
-            Ref<VG::IFontAtlas> m_font_atlas;
             Vector<id_t> m_hovered_elements;
             id_t m_pointer_capture_element = 0;
             Vector<id_t> m_active_elements;
@@ -157,7 +156,6 @@ namespace Luna
             virtual Span<const DrawCommand> get_draw_commands() const override;
             virtual void draw(const DrawCommand& command) override;
             virtual void draw_for_element(const ElementHandle& element, const DrawCommand& command) override;
-            virtual RV compile_draw_commands(VG::IShapeDrawList* draw_list) override;
             virtual RV register_font(const Name& id, Font::IFontFile* font, u32 font_index = 0) override;
             virtual FontDesc get_font(const Name& id) override;
             virtual void set_clipboard_io(const ClipboardIO& io) override;
@@ -216,7 +214,6 @@ namespace Luna
             bool navigate(const NavigationRequest& request);
             FontDesc resolve_font(const Name& id) const;
             RectF to_screen_rect(u32 layer_index, const RectF& rect) const;
-            RectF to_vg_rect(const RectF& screen_rect) const;
         };
     }
 }

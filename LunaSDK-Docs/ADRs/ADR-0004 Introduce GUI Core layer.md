@@ -2,7 +2,7 @@
 Approved.
 
 ## Last updated
-2026/7/13
+2026/7/17
 
 ## Background
 LunaSDK currently has a `GUI` module that has already moved away from the old ImGui backend. The current implementation uses explicit GUI contexts, per-frame descriptions, layers, state objects, style entries, render proxies, VG-backed drawing, and GUI debugging support. This direction has proven useful for Studio, GUIEditor, in-game GUI rendering, and custom vector rendering.
@@ -21,6 +21,8 @@ At the same time, GUIEditor and GUIAsset need stable design-time and runtime met
 
 Since common GUI concepts will be moved into `GUICore`, the high-level immediate API does not need to remain a fully generic widget framework. Instead, LunaSDK should support multiple immediate API packages for different application domains. Each package can make stronger visual and interaction assumptions, keep its implementation smaller, and still interoperate with other packages because they all build the same `GUICore` element tree.
 
+The original GUICore rendering boundary assumed that every generated draw command would be compiled into one VG shape draw list and rasterized exclusively by VG. This is sufficient for ordinary vector shapes, text, and images, but it is too restrictive for procedural shadows, temporary render targets, offscreen composition, and future multi-pass effects. Some of these operations do not consume a VG shape buffer and are more naturally implemented by dedicated RHI pipelines. Requiring VG to own every such pipeline would make VG absorb GUI-specific render orchestration that is unrelated to vector path rasterization.
+
 ## Decision
 Introduce a new `GUICore` layer between `VG` and high-level immediate GUI packages.
 
@@ -35,7 +37,9 @@ Applications, Studio, GUIEditor, game code
         |
 Immediate API packages, GUIAsset generators, editor adapters
         |
-GUICore
+GUICore logical layer
+        |
+GUICore rendering layer
         |
 VG, Font, RHI, Runtime
 ```
@@ -54,6 +58,27 @@ This decision removes the following concepts from the long-term high-level `GUI`
    - Context ownership, frame state, input, layout, state, style, and rendering are `GUICore` responsibilities.
    - High-level GUI APIs take a `GUICore` context pointer or wrapper handle and operate on the core element tree.
 
+### Two-layer GUICore architecture
+`GUICore` is internally divided into a logical layer and a rendering layer. These are architectural subsystems of the same module rather than two competing GUI contexts or element trees.
+
+1. **Logical layer**
+   - Owns the context, typeless element tree, layers, state, style, layout, input routing, interaction state, and draw-command generation.
+   - Produces one ordered stream of renderer-facing primitive draw commands after layout and interaction resolution.
+   - Defines painter order, clipping intent, element ownership, and the resources referenced by each command.
+   - Does not create RHI pipelines, own render passes, or decide how a primitive is rasterized.
+
+2. **Rendering layer**
+   - Consumes the generated draw-command stream and compiles it into an ordered render plan and concrete RHI command-buffer operations.
+   - Owns pipeline selection, descriptor binding, temporary render resources, internal sampled-resource transitions, and preservation of painter order across different rasterization paths.
+   - Does not begin or end the host render pass and does not transition the host render target. The application selects and transitions the target, begins a compatible render pass, invokes the prepared rendering plan, and ends the pass.
+   - Uses VG as the primary backend for vector paths, rounded rectangles, text, images, and other suitable vector primitives.
+   - May use GUICore-owned RHI pipelines directly for primitives or effects that do not naturally use VG shape buffers, such as analytic shadows, offscreen composition, and future multi-pass effects.
+   - Does not interpret widget semantics or high-level style policy. Immediate API packages still decide which primitives and effects to emit.
+
+Direct RHI use is an internal rendering-layer capability, not a general escape hatch that lets immediate API packages inject arbitrary command-buffer callbacks. Public draw commands must remain inspectable data with deterministic ordering and declared resource usage. New RHI-backed primitives should be represented by explicit draw-command types and implemented by rendering-layer command compilers.
+
+The rendering layer owns command compilation and backend interleaving, but the application owns render-pass boundaries. Rendering uses a two-step contract: `IRenderer::prepare` runs outside a render pass to compile commands, upload temporary data, and transition internally sampled resources; `IRenderer::render` runs inside an application-owned compatible pass and submits the prepared VG and direct-RHI batches in painter order. A backend used by the rendering layer must therefore support pass-independent preparation and pass-local submission without claiming exclusive ownership of the target pass. The old `IContext::compile_draw_commands(VG::IShapeDrawList*)` path is removed from the long-term contract.
+
 ### GUICore responsibilities
 `GUICore` owns the following systems:
 
@@ -68,7 +93,7 @@ This decision removes the following concepts from the long-term high-level `GUI`
    - An element may represent a text label, a button chrome, a shape, a layout container, a hit-test region, or any other primitive submitted by higher-level code, but the core element itself does not know that semantic widget type.
 
 2. **Layer system**
-   - A layer owns one root element tree and an ordered generated draw-command index list. GUI Core generates and compiles all layers into one destination VG draw list in painter order.
+   - A layer owns one root element tree and an ordered generated draw-command index list. The logical layer generates all layer commands in painter order, and the rendering layer compiles them into one ordered render plan.
    - Layers are stored in bottom-to-top Z order and are rendered with painter's algorithm.
    - Input is routed from top layers to bottom layers.
    - Popups, tooltips, drag previews, modal panels, debug overlays, and normal content are represented as layers instead of special widget cases.
@@ -107,7 +132,7 @@ This decision removes the following concepts from the long-term high-level `GUI`
    - Records static GUI-level draw commands during tree construction and supports an optional delayed draw callback on each element.
    - Generates the final command stream after layout, input routing, and higher-level package state resolution.
    - Invokes callbacks before children, after children, or at both traversal phases so parent backgrounds and overlays have deterministic painter order.
-   - Provides primitive commands for rectangles, rounded rectangles, gradients, text, images, shapes, lines, and clipping.
+   - Provides primitive commands for rectangles, rounded rectangles, gradients, text, images, shapes, lines, clipping, and explicitly modeled rendering effects such as shadows.
    - Does not know widget rendering policies.
    - High-level immediate API packages install package-owned callbacks or submit static commands directly.
 
@@ -124,7 +149,7 @@ Core features should be implemented as independent functions or systems:
 
 1. Layout functions operate on layout data and write layout results.
 2. Input routing functions operate on layers, elements, and interactable records.
-3. Draw generation functions traverse element data and produce draw commands; rendering functions compile those commands into VG draw lists.
+3. Draw generation functions traverse element data and produce draw commands; rendering-layer functions compile those commands into an ordered render plan and concrete RHI operations, using VG where appropriate.
 4. Style functions operate on style records and requested style keys.
 5. Inspection tools read the current frame through read-only element, layer, style, interaction, callback configuration, and draw-command APIs.
 
@@ -169,6 +194,8 @@ In the new model, a high-level immediate API installs a package-owned draw callb
 
 This callback is not a revival of `GUI::RenderProxy`. It is a low-level, typeless GUICore command-generation hook. The default editor-style GUI package still owns its rendering policy and does not promise that users can replace every widget renderer.
 
+The GUICore rendering layer rasterizes the primitive commands produced by these callbacks, but it does not choose a widget's colors, spacing, shadow recipe, animation, or visual composition. For example, a GUI package may emit two shadow commands and one rounded-rectangle command for a neumorphic button; the rendering layer only executes those commands using its VG and RHI-backed primitive implementations.
+
 Style usage schema remains useful, but it is no longer attached to `GUI::RenderProxy`. Instead:
 
 1. `GUICore` provides style records, style resolution, and read-only access to style records referenced by elements.
@@ -197,6 +224,8 @@ Modules/Luna/GUIWindow
 ```
 
 `GUICore` may depend on `Runtime`, `RHI`, `VG`, and `Font` only when required for draw command and font resource integration. It must not depend on `Window`, `HID` platform event types, Studio, GUIEditor, or high-level GUI widgets.
+
+Within `GUICore`, logical data and algorithms should remain separable from rendering implementation code. RHI pipeline objects, descriptor sets, and temporary GPU resources belong to the rendering layer and must not be stored in elements or required by unrelated layout and input APIs. Host render targets, their attachment transitions, and render-pass begin/end operations remain application responsibilities.
 
 `GUI` depends on `GUICore` and provides the default editor-style immediate API package. It must not define its own runtime context, runtime node tree, or render proxy system.
 
@@ -307,6 +336,7 @@ Expected benefits:
 5. **Better in-game GUI support**: layers, draw primitives, interactables, and input routing are host-independent and can be used for window GUI and in-game surfaces.
 6. **Specialized UI packages**: different domains can provide different immediate API packages without duplicating core layout, input, state, and draw infrastructure.
 7. **Simpler default GUI package**: the default editor-style package can stop pretending to be fully generic and can optimize for DCC/editor workflows.
+8. **Extensible rendering orchestration**: GUICore can preserve one painter-ordered command stream while combining VG vector rasterization with dedicated RHI pipelines, offscreen targets, and future multi-pass effects.
 
 Risks:
 
@@ -316,6 +346,8 @@ Risks:
 4. **Boundary erosion risk**: high-level widget behavior may leak into GUICore if module boundaries are not enforced.
 5. **Performance regression risk**: a data-oriented design still needs benchmarks; new abstractions should not assume they are faster without measurement.
 6. **Customization regression risk**: removing render proxies reduces per-widget render customization in the default GUI package. This is intentional, but it must be documented and offset by supporting additional immediate API packages.
+7. **Rendering-layer scope risk**: the new rendering layer may duplicate VG or grow into a general-purpose render graph if its responsibilities are not kept to GUI command execution.
+8. **Backend interleaving risk**: VG-backed and direct-RHI commands must preserve exact painter order, clipping, internal resource states, and compatibility with the application-owned render pass.
 
 Mitigations:
 
@@ -326,8 +358,34 @@ Mitigations:
 5. Do not migrate DockSpace first.
 6. Keep GUIAsset as a design-time representation rather than serializing GUICore internals.
 7. Document each immediate API package's intended domain and supported customization surface.
+8. Keep vector path rasterization in VG and add direct RHI pipelines only for explicit GUICore primitives that do not naturally use VG shape buffers.
+9. Keep RHI execution internal to the rendering layer; do not expose arbitrary command-buffer callbacks as ordinary draw commands.
+10. Split renderer execution into pass-independent `prepare` and pass-local `render` operations. Applications own target transitions and render-pass begin/end; the rendering layer owns internal resources, sampled-resource transitions, PSO and descriptor binding, and ordered draw submission.
 
 ## Alternatives considered
+
+### Require VG to remain the exclusive GUICore rasterization backend
+* Status: rejected.
+* Pros:
+    1. Keeps one simple rendering dependency and one existing draw-list format.
+    2. Reuses the current VG shape renderer without introducing a new rendering subsystem.
+    3. Makes all GUI rendering appear uniform to hosts.
+* Cons:
+    1. Procedural shadows and other effects that do not consume shape buffers would still need to be forced into VG-specific APIs.
+    2. Offscreen and multi-pass composition require render-target and pass orchestration above individual VG shape draws.
+    3. VG would accumulate GUI-specific pipelines and scheduling responsibilities unrelated to vector rasterization.
+    4. A single VG draw-list contract cannot naturally describe arbitrary ordered RHI-backed primitives without becoming a general GUI renderer itself.
+
+### Give each immediate API package direct RHI rendering callbacks
+* Status: rejected.
+* Pros:
+    1. Maximum rendering freedom for custom packages.
+    2. Package authors can introduce effects without changing GUICore command types.
+* Cons:
+    1. Arbitrary callbacks are not inspectable or serializable command data.
+    2. Resource usage, barriers, clipping, and painter order become difficult for GUICore to validate and schedule.
+    3. It recreates an unrestricted render-proxy model at a lower layer.
+    4. Package-specific RHI code would leak backend and lifetime details into logical GUI construction.
 
 ### Continue evolving the current GUI module
 * Status: rejected.
@@ -400,6 +458,8 @@ This ADR does not require an immediate full rewrite. It defines the target archi
 The name `GUICore` is intentionally explicit. It should be understood as a lower-level primitive layer, not as a widget API. Normal application code should usually use one of the immediate API packages built on top of `GUICore`.
 
 ## Version history
+* **2026/7/17** Defined application-owned render-pass boundaries. `IRenderer::prepare` compiles commands and prepares internal resources outside a pass, while `IRenderer::render` submits ordered VG and direct-RHI batches inside a compatible application-owned pass. VG shape renderers follow the same preparation/submission split.
+* **2026/7/17** Split GUICore internally into a logical layer and a rendering layer. The logical layer generates ordered primitive draw commands, while the rendering layer owns command compilation and backend interleaving and may combine VG rasterization with explicit GUICore-owned RHI pipelines for shadows, offscreen composition, and future multi-pass effects.
 * **2026/7/13** Made human-readable debug names and high-level debug views resident in all builds, and removed the dedicated GUI Core debug compilation option. The remaining memory and update cost is small compared with the API, ABI, build, and tooling complexity caused by conditional availability.
 * **2026/7/12** Replaced the duplicated `DebugInfo` snapshot, issue/pass logs, input replay, and frame timeline with direct read-only inspection of the current element and layer data. Performance counters remain available in all builds, and debug names cannot affect GUI behavior.
 * **2026/7/12** Reconciled the approved architecture with the implementation: layers keep ordered generated-command indexes and compile into one VG draw list; optional layout, navigation, hit-test and draw callback bindings use per-frame sparse arrays; Stack Layout is removed; and element state IDs are derived externally.

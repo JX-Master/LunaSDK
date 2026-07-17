@@ -59,8 +59,7 @@ namespace Luna
         Ref<RHI::ITexture> curve_texture;
         Ref<VG::IShapeDrawList> shape_draw_list;
         Ref<VG::IShapeRenderer> shape_renderer;
-        Ref<VG::IShapeDrawList> gui_draw_list;
-        Ref<VG::IShapeRenderer> gui_renderer;
+        Ref<GUICore::IRenderer> gui_renderer;
         u32 queue = U32_MAX;
         u32 width = 0;
         u32 height = 0;
@@ -231,7 +230,12 @@ namespace Luna
                 app.shape_draw_list->get_draw_calls(),
                 nullptr);
             luexp(app.shape_renderer->end());
+            app.shape_renderer->prepare(app.cmdbuf);
+            RenderPassDesc render_pass;
+            render_pass.color_attachments[0] = ColorAttachment(app.curve_texture, LoadOp::load, StoreOp::store);
+            app.cmdbuf->begin_render_pass(render_pass);
             app.shape_renderer->submit(app.cmdbuf);
+            app.cmdbuf->end_render_pass();
         }
         lucatchret;
         return ok;
@@ -404,8 +408,7 @@ namespace Luna
             luset(app.cmdbuf, dev->new_command_buffer(app.queue));
             app.shape_draw_list = VG::new_shape_draw_list(dev);
             app.shape_renderer = VG::new_fill_shape_renderer();
-            app.gui_draw_list = VG::new_shape_draw_list(dev);
-            app.gui_renderer = VG::new_fill_shape_renderer();
+            luset(app.gui_renderer, GUICore::new_renderer(dev));
             app.gui = GUICore::new_context();
             GUI::register_style_schemas(app.gui);
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
@@ -480,19 +483,12 @@ namespace Luna
                 render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, Float4U(0.02f, 0.025f, 0.03f, 1.0f));
                 app.cmdbuf->begin_render_pass(render_pass);
                 app.cmdbuf->end_render_pass();
-                luexp(app.gui->compile_draw_commands(app.gui_draw_list));
-                luexp(app.gui_draw_list->compile());
-                Span<const VG::ShapeDrawCall> gui_draw_calls = app.gui_draw_list->get_draw_calls();
-                if(!gui_draw_calls.empty())
-                {
-                    luexp(app.gui_renderer->begin(back_buffer));
-                    app.gui_renderer->draw(app.gui_draw_list->get_vertex_buffer(),
-                        app.gui_draw_list->get_index_buffer(),
-                        gui_draw_calls,
-                        nullptr);
-                    luexp(app.gui_renderer->end());
-                    app.gui_renderer->submit(app.cmdbuf);
-                }
+                luexp(app.gui_renderer->prepare(app.gui, app.cmdbuf, back_buffer));
+                render_pass.color_attachments[0] = RHI::ColorAttachment(
+                    back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
+                app.cmdbuf->begin_render_pass(render_pass);
+                app.gui_renderer->render(app.cmdbuf);
+                app.cmdbuf->end_render_pass();
                 app.cmdbuf->resource_barrier({}, {
                     { back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none }
                     });

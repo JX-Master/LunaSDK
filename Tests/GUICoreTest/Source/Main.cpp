@@ -17,8 +17,6 @@
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Thread.hpp>
-#include <Luna/VG/ShapeDrawList.hpp>
-#include <Luna/VG/ShapeRenderer.hpp>
 #include <Luna/VG/VG.hpp>
 #include <Luna/Window/AppMain.hpp>
 #include <Luna/Window/Event.hpp>
@@ -34,8 +32,7 @@ namespace
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
         Ref<GUICore::IContext> gui;
-        Ref<VG::IShapeDrawList> draw_list;
-        Ref<VG::IShapeRenderer> renderer;
+        Ref<GUICore::IRenderer> renderer;
         u32 queue = U32_MAX;
         u32 width = 0;
         u32 height = 0;
@@ -149,8 +146,7 @@ namespace
             luset(app.swap_chain, dev->new_swap_chain(app.queue, app.window,
                 RHI::SwapChainDesc({ sz.x, sz.y, 2, RHI::Format::bgra8_unorm, true })));
             luset(app.cmdbuf, dev->new_command_buffer(app.queue));
-            app.draw_list = VG::new_shape_draw_list(dev);
-            app.renderer = VG::new_fill_shape_renderer();
+            luset(app.renderer, GUICore::new_renderer(dev));
             app.gui = GUICore::new_context();
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
         }
@@ -162,21 +158,13 @@ namespace
     {
         lutry
         {
-            luexp(app.gui->compile_draw_commands(app.draw_list));
-            luexp(app.draw_list->compile());
-            Span<const VG::ShapeDrawCall> draw_calls = app.draw_list->get_draw_calls();
-            if(!draw_calls.empty())
-            {
-                GUICore::FrameDesc frame = app.gui->get_frame_desc();
-                Float4x4U transform = ProjectionMatrix::make_orthographic_off_center(
-                    0.0f, max(frame.screen_size.x, 1.0f),
-                    0.0f, max(frame.screen_size.y, 1.0f),
-                    0.0f, 1.0f);
-                luexp(app.renderer->begin(back_buffer));
-                app.renderer->draw(app.draw_list->get_vertex_buffer(), app.draw_list->get_index_buffer(), draw_calls, &transform);
-                luexp(app.renderer->end());
-                app.renderer->submit(app.cmdbuf);
-            }
+            luexp(app.renderer->prepare(app.gui, app.cmdbuf, back_buffer));
+            RHI::RenderPassDesc render_pass;
+            render_pass.color_attachments[0] = RHI::ColorAttachment(
+                back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
+            app.cmdbuf->begin_render_pass(render_pass);
+            app.renderer->render(app.cmdbuf);
+            app.cmdbuf->end_render_pass();
         }
         lucatchret;
         return ok;
@@ -269,9 +257,11 @@ namespace
                 luexp(GUIWindow::update_text_input(&input_adapter));
                 luexp(app.gui->generate_draw_commands());
                 Span<const GUICore::DrawCommand> generated_commands = app.gui->get_draw_commands();
-                luassert(generated_commands.size() >= 5);
+                luassert(generated_commands.size() >= 6);
                 luassert(generated_commands.front().element == sheet.index &&
-                    generated_commands.front().type == GUICore::DrawCommandType::rect);
+                    generated_commands.front().type == GUICore::DrawCommandType::shadow);
+                luassert(generated_commands[1].element == sheet.index &&
+                    generated_commands[1].type == GUICore::DrawCommandType::rect);
                 for(usize i = generated_commands.size() - 4; i < generated_commands.size(); ++i)
                 {
                     luassert(generated_commands[i].element == sheet.index &&

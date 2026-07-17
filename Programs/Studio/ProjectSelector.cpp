@@ -349,8 +349,7 @@ namespace Luna
             lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             lulet(cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
             Ref<GUICore::IContext> gui = GUICore::new_context();
-            Ref<VG::IShapeDrawList> gui_draw_list = VG::new_shape_draw_list(g_env->device);
-            Ref<VG::IShapeRenderer> gui_renderer = VG::new_fill_shape_renderer();
+            lulet(gui_renderer, GUICore::new_renderer(g_env->device));
             GUI::register_style_schemas(gui);
             luexp(gui->register_font(Name("default"), Font::get_default_font()));
 
@@ -487,19 +486,12 @@ namespace Luna
                 render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
                 cmdbuf->begin_render_pass(render_pass);
                 cmdbuf->end_render_pass();
-                luexp(gui->compile_draw_commands(gui_draw_list));
-                luexp(gui_draw_list->compile());
-                Span<const VG::ShapeDrawCall> gui_draw_calls = gui_draw_list->get_draw_calls();
-                if(!gui_draw_calls.empty())
-                {
-                    luexp(gui_renderer->begin(back_buffer));
-                    gui_renderer->draw(gui_draw_list->get_vertex_buffer(),
-                        gui_draw_list->get_index_buffer(),
-                        gui_draw_calls,
-                        nullptr);
-                    luexp(gui_renderer->end());
-                    gui_renderer->submit(cmdbuf);
-                }
+                luexp(gui_renderer->prepare(gui, cmdbuf, back_buffer));
+                render_pass.color_attachments[0] = RHI::ColorAttachment(
+                    back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
+                cmdbuf->begin_render_pass(render_pass);
+                gui_renderer->render(cmdbuf);
+                cmdbuf->end_render_pass();
                 cmdbuf->resource_barrier({}, {
                     {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
                     });

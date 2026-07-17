@@ -137,6 +137,11 @@ namespace Luna
             //! @return Returns the set clip rectangle.
             virtual RectF get_clip_rect() = 0;
 
+            //! Forces geometry recorded after this call into a new draw call.
+            //! @remark This is useful when another renderer must insert commands between two ranges of VG geometry
+            //! without changing the current VG draw state. The call has no effect until more geometry is recorded.
+            virtual void draw_call_barrier() = 0;
+
             //! Draws one shape by submitting vertices and indices directly.
             //! @param[in] vertices The draw vertices.
             //! @param[in] indices The draw indices. Valid index range is [`0`, `vertices.size()`).

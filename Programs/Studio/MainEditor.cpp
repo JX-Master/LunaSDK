@@ -204,8 +204,7 @@ namespace Luna
             m_gui = GUICore::new_context();
             GUI::register_style_schemas(m_gui);
             luexp(m_gui->register_font(Name("default"), Font::get_default_font()));
-            m_gui_draw_list = VG::new_shape_draw_list(g_env->device);
-            m_gui_renderer = VG::new_fill_shape_renderer();
+            luset(m_gui_renderer, GUICore::new_renderer(g_env->device));
 
             // Create asset browser instance.
             for (usize i = 0; i < 4; ++i)
@@ -349,19 +348,12 @@ namespace Luna
                 { 0.0f, 0.0f, 0.0f, 1.0f });
             m_cmdbuf->begin_render_pass(render_pass);
             m_cmdbuf->end_render_pass();
-            luexp(m_gui->compile_draw_commands(m_gui_draw_list));
-            luexp(m_gui_draw_list->compile());
-            Span<const VG::ShapeDrawCall> gui_draw_calls = m_gui_draw_list->get_draw_calls();
-            if(!gui_draw_calls.empty())
-            {
-                luexp(m_gui_renderer->begin(back_buffer));
-                m_gui_renderer->draw(m_gui_draw_list->get_vertex_buffer(),
-                    m_gui_draw_list->get_index_buffer(),
-                    gui_draw_calls,
-                    nullptr);
-                luexp(m_gui_renderer->end());
-                m_gui_renderer->submit(m_cmdbuf);
-            }
+            luexp(m_gui_renderer->prepare(m_gui, m_cmdbuf, back_buffer));
+            render_pass.color_attachments[0] = RHI::ColorAttachment(
+                back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
+            m_cmdbuf->begin_render_pass(render_pass);
+            m_gui_renderer->render(m_cmdbuf);
+            m_cmdbuf->end_render_pass();
             m_cmdbuf->resource_barrier({}, {
                     {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
                 });

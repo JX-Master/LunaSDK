@@ -246,13 +246,11 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        void FillShapeRenderer::submit(RHI::ICommandBuffer* cmdbuf)
+        void FillShapeRenderer::prepare(RHI::ICommandBuffer* cmdbuf)
         {
-            // Build command buffer.
             using namespace RHI;
             usize num_draw_calls = m_draw_calls.size();
             Vector<TextureBarrier> barriers;
-            barriers.push_back({ m_render_target, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::none });
             barriers.push_back({ g_white_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
             for (usize i = 0; i < num_draw_calls; ++i)
             {
@@ -262,9 +260,18 @@ namespace Luna
                 }
             }
             cmdbuf->resource_barrier({}, { barriers.data(), (u32)barriers.size()});
-            RenderPassDesc desc;
-            desc.color_attachments[0] = ColorAttachment(m_render_target, LoadOp::load, StoreOp::store);
-            cmdbuf->begin_render_pass(desc);
+        }
+        void FillShapeRenderer::submit(RHI::ICommandBuffer* cmdbuf, u32 first_draw_call, u32 num_draw_calls)
+        {
+            using namespace RHI;
+            usize total_draw_calls = m_draw_calls.size();
+            usize range_begin = min<usize>(first_draw_call, total_draw_calls);
+            usize range_end = num_draw_calls == U32_MAX ? total_draw_calls :
+                min<usize>(range_begin + num_draw_calls, total_draw_calls);
+            if(range_begin == range_end)
+            {
+                return;
+            }
             cmdbuf->set_graphics_pipeline_state(m_fill_pso);
             cmdbuf->set_graphics_pipeline_layout(g_fill_playout);
             cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_screen_width, (f32)m_screen_height, 0.0f, 1.0f));
@@ -273,6 +280,13 @@ namespace Luna
             for(usize i = 0; i < m_draw_commands.size(); ++i)
             {
                 auto& cmd = m_draw_commands[i];
+                usize command_begin = dc_index;
+                usize command_end = command_begin + cmd.num_draw_calls;
+                if(command_end <= range_begin || command_begin >= range_end)
+                {
+                    dc_index = command_end;
+                    continue;
+                }
                 auto num_vertices = cmd.vertex_buffer->get_desc().size / sizeof(Vertex);
                 auto view = VertexBufferView(cmd.vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex));
                 cmdbuf->set_vertex_buffers(0, { &view, 1 });
@@ -280,13 +294,15 @@ namespace Luna
                 cmdbuf->set_index_buffer({cmd.index_buffer, 0, (u32)num_indices * (u32)sizeof(u32), Format::r32_uint});
                 for (usize j = 0; j < cmd.num_draw_calls; ++j)
                 {
-                    IDescriptorSet* ds = m_desc_sets[dc_index];
-                    cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
-                    cmdbuf->draw_indexed(m_draw_calls[dc_index].num_indices, m_draw_calls[dc_index].base_index, 0);
+                    if(dc_index >= range_begin && dc_index < range_end)
+                    {
+                        IDescriptorSet* ds = m_desc_sets[dc_index];
+                        cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
+                        cmdbuf->draw_indexed(m_draw_calls[dc_index].num_indices, m_draw_calls[dc_index].base_index, 0);
+                    }
                     ++dc_index;
                 }
             }
-            cmdbuf->end_render_pass();
         }
         LUNA_VG_API Ref<IShapeRenderer> new_fill_shape_renderer()
         {

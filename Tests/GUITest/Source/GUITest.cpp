@@ -92,8 +92,7 @@ namespace
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
         Ref<GUICore::IContext> gui;
-        Ref<VG::IShapeDrawList> draw_list;
-        Ref<VG::IShapeRenderer> renderer;
+        Ref<GUICore::IRenderer> renderer;
         u32 queue = U32_MAX;
         u32 width = 0;
         u32 height = 0;
@@ -898,8 +897,7 @@ namespace
             luset(app.swap_chain, device->new_swap_chain(app.queue, app.window,
                 RHI::SwapChainDesc({ size.x, size.y, 2, RHI::Format::bgra8_unorm, true })));
             luset(app.cmdbuf, device->new_command_buffer(app.queue));
-            app.draw_list = VG::new_shape_draw_list(device);
-            app.renderer = VG::new_fill_shape_renderer();
+            luset(app.renderer, GUICore::new_renderer(device));
             app.gui = GUICore::new_context();
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
             GUI::register_style_schemas(app.gui);
@@ -914,22 +912,13 @@ namespace
     {
         lutry
         {
-            luexp(app.gui->compile_draw_commands(app.draw_list));
-            luexp(app.draw_list->compile());
-            Span<const VG::ShapeDrawCall> draw_calls = app.draw_list->get_draw_calls();
-            if(!draw_calls.empty())
-            {
-                GUICore::FrameDesc frame = app.gui->get_frame_desc();
-                Float4x4U transform = ProjectionMatrix::make_orthographic_off_center(
-                    0.0f, max(frame.screen_size.x, 1.0f),
-                    0.0f, max(frame.screen_size.y, 1.0f),
-                    0.0f, 1.0f);
-                luexp(app.renderer->begin(back_buffer));
-                app.renderer->draw(app.draw_list->get_vertex_buffer(), app.draw_list->get_index_buffer(),
-                    draw_calls, &transform);
-                luexp(app.renderer->end());
-                app.renderer->submit(app.cmdbuf);
-            }
+            luexp(app.renderer->prepare(app.gui, app.cmdbuf, back_buffer));
+            RHI::RenderPassDesc render_pass;
+            render_pass.color_attachments[0] = RHI::ColorAttachment(
+                back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
+            app.cmdbuf->begin_render_pass(render_pass);
+            app.renderer->render(app.cmdbuf);
+            app.cmdbuf->end_render_pass();
         }
         lucatchret;
         return ok;

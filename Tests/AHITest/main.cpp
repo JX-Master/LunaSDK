@@ -219,8 +219,7 @@ namespace Luna
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
         Ref<GUICore::IContext> gui;
-        Ref<VG::IShapeDrawList> gui_draw_list;
-        Ref<VG::IShapeRenderer> gui_renderer;
+        Ref<GUICore::IRenderer> gui_renderer;
         Vector<Ref<AHI::IAdapter>> playback_adapters;
         Vector<Ref<AHI::IAdapter>> capture_adapters;
         Vector<AudioSource> audio_sources;
@@ -464,8 +463,7 @@ namespace Luna
             }
             luset(app.swap_chain, dev->new_swap_chain(graphics_queue, app.window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             luset(app.cmdbuf, dev->new_command_buffer(graphics_queue));
-            app.gui_draw_list = VG::new_shape_draw_list(dev);
-            app.gui_renderer = VG::new_fill_shape_renderer();
+            luset(app.gui_renderer, GUICore::new_renderer(dev));
             app.gui = GUICore::new_context();
             GUI::register_style_schemas(app.gui);
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
@@ -558,19 +556,12 @@ namespace Luna
                 render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
                 app.cmdbuf->begin_render_pass(render_pass);
                 app.cmdbuf->end_render_pass();
-                luexp(app.gui->compile_draw_commands(app.gui_draw_list));
-                luexp(app.gui_draw_list->compile());
-                Span<const VG::ShapeDrawCall> gui_draw_calls = app.gui_draw_list->get_draw_calls();
-                if(!gui_draw_calls.empty())
-                {
-                    luexp(app.gui_renderer->begin(back_buffer));
-                    app.gui_renderer->draw(app.gui_draw_list->get_vertex_buffer(),
-                        app.gui_draw_list->get_index_buffer(),
-                        gui_draw_calls,
-                        nullptr);
-                    luexp(app.gui_renderer->end());
-                    app.gui_renderer->submit(app.cmdbuf);
-                }
+                luexp(app.gui_renderer->prepare(app.gui, app.cmdbuf, back_buffer));
+                render_pass.color_attachments[0] = RHI::ColorAttachment(
+                    back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
+                app.cmdbuf->begin_render_pass(render_pass);
+                app.gui_renderer->render(app.cmdbuf);
+                app.cmdbuf->end_render_pass();
                 app.cmdbuf->resource_barrier({}, {
                     {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
                     });

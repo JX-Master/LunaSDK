@@ -264,8 +264,8 @@ namespace Luna
             //! Sets delayed draw behavior for an element.
             //! @param[in] element The element handle returned by @ref begin_element.
             //! @param[in] config The draw callback configuration to attach.
-            //! @remark The callback and userdata must remain valid until @ref generate_draw_commands or
-            //! @ref compile_draw_commands finishes for this frame. Invalid handles are ignored.
+            //! @remark The callback and userdata must remain valid until @ref generate_draw_commands finishes for
+            //! this frame. Invalid handles are ignored.
             virtual void set_draw_config(const ElementHandle& element, const DrawConfig& config) = 0;
 
             //! Gets delayed draw behavior attached to an element.
@@ -302,13 +302,6 @@ namespace Luna
             //! @remark This is useful for layout-dependent commands that are emitted after the element build scope
             //! has ended. Invalid handles are ignored.
             virtual void draw_for_element(const ElementHandle& element, const DrawCommand& command) = 0;
-
-            //! Compiles generated draw commands into one VG shape draw list.
-            //! @param[in] draw_list The destination VG draw list.
-            //! @return Returns success or failure code.
-            //! @remark The destination draw list is reset before commands are emitted. If draw commands have not
-            //! been generated explicitly, this call generates them first. Commands are emitted in layer Z order.
-            virtual RV compile_draw_commands(VG::IShapeDrawList* draw_list) = 0;
 
             //! Registers one font that can be referenced by text draw commands.
             //! @param[in] id The stable font ID used by @ref DrawCommand::font.

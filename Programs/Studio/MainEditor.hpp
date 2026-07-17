@@ -41,8 +41,7 @@ namespace Luna
         Ref<RHI::ISwapChain> m_swap_chain;
         Ref<RHI::ICommandBuffer> m_cmdbuf;
         Ref<GUICore::IContext> m_gui;
-        Ref<VG::IShapeDrawList> m_gui_draw_list;
-        Ref<VG::IShapeRenderer> m_gui_renderer;
+        Ref<GUICore::IRenderer> m_gui_renderer;
 
         Ref<AssetBrowser> m_asset_browsers[4];
         bool m_asset_browsers_enabled[4] = { true, false, false, false };

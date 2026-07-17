@@ -60,7 +60,8 @@ namespace Luna
                 Float4x4U* transform_matrix
             ) override;
             virtual RV end() override;
-            virtual void submit(RHI::ICommandBuffer* cmdbuf) override;
+            virtual void prepare(RHI::ICommandBuffer* cmdbuf) override;
+            virtual void submit(RHI::ICommandBuffer* cmdbuf, u32 first_draw_call = 0, u32 num_draw_calls = U32_MAX) override;
         };
     }
 }

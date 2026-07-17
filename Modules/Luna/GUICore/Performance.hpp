@@ -46,9 +46,6 @@ namespace Luna
             //! Time spent generating the latest draw command stream through
             //! @ref IContext::generate_draw_commands, in milliseconds.
             f64 draw_generate_ms = 0.0;
-            //! Time spent compiling GUI Core draw commands to a VG draw list during the latest
-            //! @ref IContext::compile_draw_commands call, in milliseconds.
-            f64 draw_compile_ms = 0.0;
         };
     }
 }

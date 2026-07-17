@@ -34,8 +34,8 @@ namespace Luna
             //! @param[in] vertex_buffer The vertex buffer fetched from @ref IShapeDrawList::get_vertex_buffer.
             //! @param[in] index_buffer The index buffer fetched from @ref IShapeDrawList::get_index_buffer.
             //! @param[in] draw_calls The shape draw calls fetched from @ref IShapeDrawList::get_draw_calls.
-            //! @param[in] transform_matrix The projection transfrom matrix applied to vertices. If this is `nullptr`, the 
-            //! default transfrom matrix will be used, which is @ref Float4x4::identity.
+            //! @param[in] transform_matrix The projection transform matrix applied to vertices. If this is `nullptr`,
+            //! an orthographic projection matching the render target dimensions is used.
             virtual void draw(
                 RHI::IBuffer* vertex_buffer,
                 RHI::IBuffer* index_buffer,
@@ -46,9 +46,20 @@ namespace Luna
             //! Finishes recording draw calls and refreshes RHI resources.
             virtual RV end() = 0;
 
-            //! Ganerates RHI draw commands to the specified command buffer.
+            //! Prepares resources referenced by the recorded draw calls for rendering.
+            //! @param[in] cmdbuf The command buffer used to record resource barriers.
+            //! @remark This function must be called outside a render pass after @ref end and before @ref submit.
+            //! The caller remains responsible for transitioning the render target itself.
+            virtual void prepare(RHI::ICommandBuffer* cmdbuf) = 0;
+
+            //! Generates RHI draw commands to the specified command buffer.
             //! @param[in] cmdbuf The command buffer used to record shape draw calls.
-            virtual void submit(RHI::ICommandBuffer* cmdbuf) = 0;
+            //! @param[in] first_draw_call The first recorded draw call to submit.
+            //! @param[in] num_draw_calls The maximum number of draw calls to submit. @ref U32_MAX submits all
+            //! remaining draw calls.
+            //! @remark The caller must begin a compatible render pass before calling this function and end the
+            //! render pass afterwards. Call @ref prepare outside that render pass before the first submission.
+            virtual void submit(RHI::ICommandBuffer* cmdbuf, u32 first_draw_call = 0, u32 num_draw_calls = U32_MAX) = 0;
         };
 
         //! Creates a new shape renderer that draws filled shape contours.

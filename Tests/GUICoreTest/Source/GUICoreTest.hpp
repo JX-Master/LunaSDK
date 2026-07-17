@@ -79,6 +79,8 @@ namespace Luna::GUICoreTest
     void add_canvas_item(Vector<GUICore::CanvasLayoutItem>& items, GUICore::id_t id, f32 x, f32 y);
 
     void draw_rect(GUICore::IContext* context, const RectF& rect, const Float4U& color, f32 radius = 0.0f);
+    void draw_shadow(GUICore::IContext* context, const RectF& rect, const Float4U& color,
+        f32 radius, const GUICore::ShadowDesc& desc);
     void draw_gradient_rect(GUICore::IContext* context, const RectF& rect, const Float4U& top_left,
         const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left);
     void draw_line(GUICore::IContext* context, const Float2U& begin, const Float2U& end,
