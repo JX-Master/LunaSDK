@@ -182,12 +182,31 @@ namespace Luna
             };
 
             static GUICore::MeasureResult measure_progress(GUICore::IContext*, const GUICore::ElementHandle&,
-                const Float2U&, void*)
+                const Float2U&, void* userdata)
             {
+                ProgressData* data = (ProgressData*)userdata;
+                const bool show_overlay = !data || data->show_overlay;
                 GUICore::MeasureResult result;
-                result.minimum = Float2U(48.0f, 18.0f);
-                result.desired = Float2U(160.0f, 22.0f);
+                result.minimum = Float2U(48.0f, show_overlay ? 18.0f : 8.0f);
+                result.desired = Float2U(160.0f, show_overlay ? 22.0f : 10.0f);
                 return result;
+            }
+
+            static void draw_progress_shadow(GUICore::IContext* context, const RectF& rect,
+                const Float4U& scale, const Float4U& color, f32 radius, const Float2U& offset,
+                f32 softness)
+            {
+                GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::shadow;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = rect;
+                command.rect_layout_scale = scale;
+                command.color = color;
+                command.radius = radius;
+                command.shadow.offset = offset;
+                command.shadow.softness = softness;
+                command.shadow.mode = GUICore::ShadowMode::inner;
+                context->draw(command);
             }
 
             static RV draw_progress(GUICore::IContext* context, const GUICore::ElementHandle& element,
@@ -209,12 +228,26 @@ namespace Luna
                 command.color = style_color(context, element, "gui.progress.background", Float4U(0.07f, 0.08f, 0.10f, 1.0f));
                 command.radius = max(radius - 1.0f, 0.0f);
                 context->draw(command);
+                const RectF inner_rect = command.rect;
+                const f32 inner_radius = command.radius;
+                const f32 softness = style_scalar(context, element, "gui.shadow.softness", 5.0f);
+                draw_progress_shadow(context, inner_rect, Float4U(),
+                    style_color(context, element, "gui.shadow.inset", Float4U(0.0f, 0.0f, 0.0f, 0.18f)),
+                    inner_radius, Float2U(2.0f, 2.0f), softness * 0.5f);
+                draw_progress_shadow(context, inner_rect, Float4U(),
+                    style_color(context, element, "gui.shadow.inset_light", Float4U(1.0f, 1.0f, 1.0f, 0.65f)),
+                    inner_radius, Float2U(-2.0f, -2.0f), softness * 0.4f);
                 if(data->fraction > 0.0f)
                 {
                     command.rect = RectF(1.0f, 1.0f, -2.0f * data->fraction, -2.0f);
                     command.rect_layout_scale = Float4U(0.0f, 0.0f, data->fraction, 0.0f);
                     command.color = style_color(context, element, "gui.progress.fill", Float4U(0.15f, 0.46f, 0.76f, 1.0f));
                     context->draw(command);
+                    Float4U highlight = style_color(context, element, "gui.shadow.inset_light",
+                        Float4U(1.0f, 1.0f, 1.0f, 0.65f));
+                    highlight.w *= 0.4f;
+                    draw_progress_shadow(context, command.rect, command.rect_layout_scale, highlight,
+                        command.radius, Float2U(0.0f, -1.0f), 1.0f);
                 }
                 if(data->show_overlay)
                 {

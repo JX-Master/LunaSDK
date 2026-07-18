@@ -113,9 +113,11 @@ namespace Luna
                 f32 scaled_width = command.rect.width + element_rect.width * command.rect_layout_scale.z;
                 f32 scaled_height = command.rect.height + element_rect.height * command.rect_layout_scale.w;
                 ret.width = scaled_width > 0.0f ? scaled_width :
-                    max(element_rect.width - command.rect.offset_x + command.rect.width, 1.0f);
+                    (command.rect.width < 0.0f ? max(element_rect.width + scaled_width, 1.0f) :
+                        max(element_rect.width - command.rect.offset_x, 1.0f));
                 ret.height = scaled_height > 0.0f ? scaled_height :
-                    max(element_rect.height - command.rect.offset_y + command.rect.height, 1.0f);
+                    (command.rect.height < 0.0f ? max(element_rect.height + scaled_height, 1.0f) :
+                        max(element_rect.height - command.rect.offset_y, 1.0f));
                 return ret;
             }
 
@@ -416,10 +418,17 @@ namespace Luna
                         const DrawCommand& command = commands[command_index];
                         RectF resolved_rect = resolve_draw_rect(command, elements);
                         RectF element_clip;
+                        RectF inherited_clip;
                         if(command.element != INVALID_ELEMENT && command.element < elements.size())
                         {
-                            element_clip = to_screen_rect(layers, layer_index,
-                                elements[command.element].layout_result.clip_rect);
+                            const Element& element = elements[command.element];
+                            element_clip = to_screen_rect(layers, layer_index, element.layout_result.clip_rect);
+                            inherited_clip = element_clip;
+                            if(element.parent != INVALID_ELEMENT && element.parent < elements.size())
+                            {
+                                inherited_clip = to_screen_rect(layers, layer_index,
+                                    elements[element.parent].layout_result.clip_rect);
+                            }
                         }
                         if(command.type == DrawCommandType::push_clip)
                         {
@@ -437,6 +446,11 @@ namespace Luna
 
                         RectF clip_rect = clip_stack.empty() ? element_clip :
                             merge_clip_rect(clip_stack.back(), element_clip);
+                        auto visual_overflow_clip = [&]()
+                        {
+                            return clip_stack.empty() ? inherited_clip :
+                                merge_clip_rect(clip_stack.back(), inherited_clip);
+                        };
                         RectF vg_clip = has_clip(clip_rect) ? to_vg_rect(frame_desc, clip_rect) : RectF();
                         m_draw_list->set_clip_rect(vg_clip);
                         m_draw_list->set_texture(nullptr);
@@ -488,8 +502,10 @@ namespace Luna
                             if(!append_color_program(m_compiled_sdf_color_floats,
                                 color_floats.cspan(), desc.color))
                                 continue;
+                            RectF sdf_clip = command.type == DrawCommandType::shadow &&
+                                command.shadow.mode == ShadowMode::outer ? visual_overflow_clip() : clip_rect;
                             emit_sdf(desc, Float2U(screen_rect.offset_x, screen_rect.offset_y),
-                                screen_rect, clip_rect);
+                                screen_rect, sdf_clip);
                             continue;
                         }
 
@@ -504,8 +520,12 @@ namespace Luna
                                 continue;
                             }
                             RectF screen_anchor = to_screen_rect(layers, layer_index, resolved_rect);
+                            u32 color_clip_mode = (u32)desc.color.clip_mode;
+                            bool may_paint_outside = !(color_clip_mode & SDF_COLOR_OUTER_CLIP_BIT) ||
+                                desc.color.outer_distance > 0.0f;
+                            RectF sdf_clip = may_paint_outside ? visual_overflow_clip() : clip_rect;
                             emit_sdf(desc, Float2U(screen_anchor.offset_x, screen_anchor.offset_y),
-                                screen_anchor, clip_rect);
+                                screen_anchor, sdf_clip);
                             continue;
                         }
 

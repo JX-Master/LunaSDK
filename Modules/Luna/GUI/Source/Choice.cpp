@@ -64,6 +64,23 @@ namespace Luna
                 context->draw(command);
             }
 
+            static void draw_shadow(GUICore::IContext* context, const RectF& rect, const Float4U& scale,
+                const Float4U& color, f32 radius, const Float2U& offset, f32 softness,
+                GUICore::ShadowMode mode = GUICore::ShadowMode::outer)
+            {
+                GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::shadow;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = rect;
+                command.rect_layout_scale = scale;
+                command.color = color;
+                command.radius = radius;
+                command.shadow.offset = offset;
+                command.shadow.softness = softness;
+                command.shadow.mode = mode;
+                context->draw(command);
+            }
+
             static void draw_line(GUICore::IContext* context, const Float2U& begin, const Float2U& end,
                 const Float4U& scale, const Float4U& color, f32 width)
             {
@@ -95,7 +112,9 @@ namespace Luna
                         Float4U(0.16f, 0.30f, 0.48f, 1.0f));
                     Float4U hovered = style_color(context, element, "gui.choice.hovered",
                         Float4U(0.13f, 0.19f, 0.27f, 1.0f));
-                    Float4U color = mix_color(Float4U(0.0f), hovered, data->state->hovered);
+                    Float4U transparent_hovered = hovered;
+                    transparent_hovered.w = 0.0f;
+                    Float4U color = mix_color(transparent_hovered, hovered, data->state->hovered);
                     color = mix_color(color, background, selected);
                     if(color.w > 0.001f) draw_rect(context, RectF(), Float4U(), color, 4.0f);
                     label_offset = 8.0f;
@@ -162,16 +181,48 @@ namespace Luna
                         Float4U(0.14f, 0.16f, 0.19f, 1.0f));
                     Float4U on = style_color(context, element, "gui.switch.on",
                         Float4U(0.18f, 0.52f, 0.34f, 1.0f));
-                    Float4U knob = data->enabled ? Float4U(0.96f, 0.97f, 0.99f, 1.0f) :
+                    Float4U knob_off = style_color(context, element, "gui.switch.knob.off",
+                        Float4U(0.96f, 0.97f, 0.99f, 1.0f));
+                    Float4U knob_on = style_color(context, element, "gui.switch.knob.on",
+                        Float4U(1.0f, 1.0f, 1.0f, 1.0f));
+                    Float4U knob = data->enabled ? mix_color(knob_off, knob_on, selected) :
                         style_color(context, element, "gui.choice.disabled", Float4U(0.4f, 0.44f, 0.5f, 1.0f));
                     if(!data->enabled) off = on = style_color(context, element, "gui.choice.background",
                         Float4U(0.10f, 0.11f, 0.13f, 1.0f));
                     const f32 knob_size = switch_size.y - 8.0f;
                     const f32 knob_travel = switch_size.x - knob_size - 8.0f;
-                    draw_rect(context, RectF(0.0f, switch_size.y * -0.5f, switch_size.x, switch_size.y),
-                        Float4U(0.0f, 0.5f, 0.0f, 0.0f), mix_color(off, on, selected), switch_size.y * 0.5f);
-                    draw_rect(context, RectF(4.0f + knob_travel * selected, knob_size * -0.5f,
-                        knob_size, knob_size), Float4U(0.0f, 0.5f, 0.0f, 0.0f), knob, knob_size * 0.5f);
+                    const RectF track_rect(0.0f, switch_size.y * -0.5f, switch_size.x, switch_size.y);
+                    const Float4U track_scale(0.0f, 0.5f, 0.0f, 0.0f);
+                    const RectF inner_track_rect(1.0f, switch_size.y * -0.5f + 1.0f,
+                        switch_size.x - 2.0f, switch_size.y - 2.0f);
+                    const f32 inner_track_radius = switch_size.y * 0.5f - 1.0f;
+                    draw_rect(context, track_rect, track_scale,
+                        style_color(context, element, "gui.choice.border", Float4U(0.55f, 0.64f, 0.76f, 1.0f)),
+                        switch_size.y * 0.5f);
+                    draw_rect(context, inner_track_rect, track_scale, mix_color(off, on, selected),
+                        inner_track_radius);
+                    if(data->enabled)
+                    {
+                        const f32 softness = style_scalar(context, element, "gui.shadow.softness", 5.0f);
+                        draw_shadow(context, inner_track_rect, track_scale,
+                            style_color(context, element, "gui.shadow.inset",
+                                Float4U(0.0f, 0.0f, 0.0f, 0.18f)), inner_track_radius,
+                            Float2U(2.0f, 2.0f), softness * 0.5f, GUICore::ShadowMode::inner);
+                    }
+                    const RectF knob_rect(4.0f + knob_travel * selected, knob_size * -0.5f,
+                        knob_size, knob_size);
+                    const Float4U knob_scale(0.0f, 0.5f, 0.0f, 0.0f);
+                    if(data->enabled)
+                    {
+                        const Float2U shadow_offset = style_vector2(context, element, "gui.shadow.offset",
+                            Float2U(2.0f));
+                        const f32 softness = style_scalar(context, element, "gui.shadow.softness", 5.0f) * 0.55f;
+                        draw_shadow(context, knob_rect, knob_scale,
+                            style_color(context, element, "gui.shadow.dark",
+                                Float4U(0.0f, 0.0f, 0.0f, 0.20f)), knob_size * 0.5f,
+                            shadow_offset, softness);
+                    }
+                    draw_rect(context, knob_rect, knob_scale, knob, knob_size * 0.5f);
                 }
                 GUICore::DrawCommand text;
                 text.type = GUICore::DrawCommandType::text;

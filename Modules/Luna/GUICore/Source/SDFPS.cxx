@@ -435,9 +435,27 @@ PSOutput ps_main(PSInput pixel)
         {
             return transparent_output();
         }
-        float source_coverage = distance_coverage(shape.distance, 0.0f);
         float blurred_coverage = distance_coverage(shifted_shape.distance - spread, softness);
-        float shadow_coverage = abs(blurred_coverage - source_coverage) * clip_coverage;
+        float shadow_field;
+        if(has_inner_clip && !has_outer_clip)
+        {
+            // Inner clipping selects the exterior side of the source shape.
+            shadow_field = blurred_coverage;
+        }
+        else if(has_outer_clip && !has_inner_clip)
+        {
+            // Outer clipping selects the interior side of the source shape.
+            shadow_field = 1.0f - blurred_coverage;
+        }
+        else
+        {
+            // Blend both sides through the anti-aliased source boundary. Using abs(blurred - source)
+            // would collapse to zero where both coverages are near 0.5 and create a hard one-pixel edge.
+            float source_coverage = distance_coverage(shape.distance, 0.0f);
+            shadow_field = blurred_coverage * (1.0f - source_coverage) +
+                (1.0f - blurred_coverage) * source_coverage;
+        }
+        float shadow_coverage = shadow_field * clip_coverage;
         output_color = premultiply(shadow_color, shadow_coverage);
     }
     else if(opcode >= 1 && opcode <= 5)

@@ -10,6 +10,7 @@
 #include "Showcase.hpp"
 #include <Luna/VG/ShapeBuffer.hpp>
 #include <cstdio>
+#include <cstring>
 
 namespace Luna
 {
@@ -116,6 +117,22 @@ namespace Luna
                 context->draw(command);
             }
 
+            void rounded_shadow(GUICore::IContext* context, const Float4U& color, f32 radius,
+                const Float2U& offset, f32 softness, GUICore::ShadowMode mode,
+                const RectF& rect = RectF())
+            {
+                GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::shadow;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = rect;
+                command.color = color;
+                command.radius = radius;
+                command.shadow.offset = offset;
+                command.shadow.softness = softness;
+                command.shadow.mode = mode;
+                context->draw(command);
+            }
+
             RV draw_sdf_swatch(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 GUICore::DrawPhase, void* userdata)
             {
@@ -210,7 +227,8 @@ namespace Luna
                 return swatch;
             }
 
-            void surface(GUICore::IContext* context, const c8* background, f32 radius, bool raised = false)
+            void surface(GUICore::IContext* context, const c8* background, f32 radius,
+                bool raised = false, bool strong_elevation = false)
             {
                 if(raised)
                 {
@@ -219,12 +237,14 @@ namespace Luna
                     shadow.rect_reference = GUICore::DrawCommandRectReference::element;
                     shadow.radius = radius;
                     shadow.color = style_color(context, "gui.shadow.dark", Float4U(0.0f, 0.0f, 0.0f, 0.20f));
-                    shadow.shadow.offset = Float2U(4.0f, 5.0f);
-                    shadow.shadow.softness = 8.0f;
+                    if(!strong_elevation) shadow.color.w *= 0.70f;
+                    shadow.shadow.offset = strong_elevation ? Float2U(7.0f, 7.0f) : Float2U(4.0f, 5.0f);
+                    shadow.shadow.softness = strong_elevation ? 9.0f : 6.0f;
                     context->draw(shadow);
                     shadow.color = style_color(context, "gui.shadow.light", Float4U(1.0f, 1.0f, 1.0f, 0.75f));
-                    shadow.shadow.offset = Float2U(-3.0f, -3.0f);
-                    shadow.shadow.softness = 7.0f;
+                    if(!strong_elevation) shadow.color.w *= 0.78f;
+                    shadow.shadow.offset = strong_elevation ? Float2U(-7.0f, -7.0f) : Float2U(-4.0f, -4.0f);
+                    shadow.shadow.softness = strong_elevation ? 9.0f : 5.0f;
                     context->draw(shadow);
                 }
                 rounded_rect(context, style_color(context, "gui.border"), radius);
@@ -235,7 +255,9 @@ namespace Luna
             GUI::TextDesc text_desc(GUICore::IContext* context, f32 size, const c8* color = "gui.text.color")
             {
                 GUI::TextDesc desc;
-                desc.font_size = size;
+                // The HTML reference uses Inter while GUITest deliberately uses the bundled Open Sans.
+                // Compensate for Open Sans's smaller apparent x-height in explicitly-sized showcase copy.
+                desc.font_size = size > 0.0f && size <= 13.0f ? size + 2.0f : size;
                 desc.color = style_color(context, color);
                 return desc;
             }
@@ -248,7 +270,7 @@ namespace Luna
 
             GUICore::ElementHandle begin_panel(GUICore::IContext* context, GUI::id_t element_id,
                 const c8* name, const GUICore::LayoutConfig& input, const c8* background = "gui.surface.1",
-                f32 radius = 12.0f, bool raised = false)
+                f32 radius = 12.0f, bool raised = true)
             {
                 GUICore::ElementHandle panel = GUI::begin_v_layout(context, element_id, name, input);
                 surface(context, background, radius, raised);
@@ -271,22 +293,36 @@ namespace Luna
                 GUI::end_v_layout(context, line);
             }
 
-            void led_label(GUICore::IContext* context, ShowcaseState& state, GUI::id_t element_id,
+            void led_label(GUICore::IContext* context, GUI::id_t element_id,
                 const c8* value, const c8* color_key, f32 width)
             {
                 GUICore::LayoutConfig layout = fixed(width, 32.0f);
                 layout.padding = Float4U(9.0f, 5.0f, 9.0f, 5.0f);
                 GUICore::ElementHandle pill = GUI::begin_h_layout(context, element_id, value, layout);
-                surface(context, "gui.surface.1", 16.0f, false);
-                GUI::ShapeWidgetDesc shape_desc;
-                shape_desc.tint = style_color(context, color_key);
-                GUI::shape(context, GUICore::make_scoped_id(element_id, 1), state.circle,
-                    fixed(10.0f, 10.0f), shape_desc);
+                surface(context, "gui.surface.1", 16.0f, true);
+                GUICore::ElementHandle indicator = GUI::begin_v_layout(context,
+                    GUICore::make_scoped_id(element_id, 1), "LED", fixed(10.0f, 10.0f));
+                Float4U led_color = style_color(context, color_key);
+                if(std::strcmp(color_key, "gui.status.off") != 0)
+                {
+                    Float4U glow_color = led_color;
+                    glow_color.w *= 0.56f;
+                    rounded_shadow(context, glow_color, 5.0f, Float2U(0.0f), 3.0f,
+                        GUICore::ShadowMode::outer);
+                }
+                rounded_rect(context, style_color(context, "gui.border"), 5.0f);
+                rounded_rect(context, led_color, 4.0f, RectF(1.0f, 1.0f, -2.0f, -2.0f));
+                Float4U highlight = style_color(context, "gui.shadow.inset_light",
+                    Float4U(1.0f, 1.0f, 1.0f, 0.7f));
+                highlight.w *= 0.55f;
+                rounded_shadow(context, highlight, 4.0f, Float2U(0.0f, -1.0f), 1.0f,
+                    GUICore::ShadowMode::inner, RectF(1.0f, 1.0f, -2.0f, -2.0f));
+                GUI::end_v_layout(context, indicator);
                 label(context, GUICore::make_scoped_id(element_id, 2), value, grow_x(), 11.0f, "gui.text.secondary");
                 GUICore::FlexLayoutDesc flex;
                 flex.axis = GUICore::LayoutAxis::x;
                 flex.cross_alignment = GUICore::FlexAlignment::center;
-                flex.main_axis_gap = 7.0f;
+                flex.main_axis_gap = 9.0f;
                 GUI::end_h_layout(context, pill, flex);
             }
 
@@ -325,7 +361,7 @@ namespace Luna
                 GUICore::LayoutConfig layout = input;
                 layout.padding = Float4U(16.0f);
                 GUICore::ElementHandle card = begin_panel(context, id(context, name), title, layout,
-                    "gui.surface.1", style_scalar(context, "gui.radius.large", 14.0f), false);
+                    "gui.surface.1", style_scalar(context, "gui.radius.large", 14.0f), true);
                 card_title(context, card.id, title, note);
                 return card;
             }
@@ -341,7 +377,8 @@ namespace Luna
                 GUICore::FlexLayoutDesc flex;
                 flex.axis = GUICore::LayoutAxis::x;
                 flex.cross_alignment = GUICore::FlexAlignment::stretch;
-                flex.main_axis_gap = 16.0f;
+                flex.main_axis_gap = style_scalar(context, "gui.section.gap", 16.0f);
+                flex.clip_children = false;
                 GUI::end_h_layout(context, row, flex);
             }
 
@@ -426,24 +463,24 @@ namespace Luna
                 GUICore::FlexLayoutDesc brand_flex;
                 brand_flex.axis = GUICore::LayoutAxis::x;
                 brand_flex.cross_alignment = GUICore::FlexAlignment::center;
-                brand_flex.main_axis_gap = 10.0f;
+                brand_flex.main_axis_gap = 11.0f;
                 GUI::end_h_layout(context, brand, brand_flex);
 
                 GUICore::ElementHandle status = GUI::begin_h_layout(context, id(context, "showcase.status"),
                     "System status", grow_x());
-                led_label(context, state, id(context, "showcase.status.renderer"), "Renderer Online",
+                led_label(context, id(context, "showcase.status.renderer"), "Renderer Online",
                     "gui.status.success", 128.0f);
-                led_label(context, state, id(context, "showcase.status.bake"), "Bake Queue  2",
+                led_label(context, id(context, "showcase.status.bake"), "Bake Queue  2",
                     "gui.status.busy", 112.0f);
-                led_label(context, state, id(context, "showcase.status.sync"), "Remote Sync",
+                led_label(context, id(context, "showcase.status.sync"), "Remote Sync",
                     "gui.status.off", 106.0f);
-                led_label(context, state, id(context, "showcase.status.error"), "Error  1",
+                led_label(context, id(context, "showcase.status.error"), "Error  1",
                     "gui.status.error", 86.0f);
                 GUICore::FlexLayoutDesc status_flex;
                 status_flex.axis = GUICore::LayoutAxis::x;
                 status_flex.cross_alignment = GUICore::FlexAlignment::center;
                 status_flex.main_alignment = GUICore::FlexAlignment::center;
-                status_flex.main_axis_gap = 7.0f;
+                status_flex.main_axis_gap = 9.0f;
                 GUI::end_h_layout(context, status, status_flex);
 
                 GUICore::ElementHandle controls = GUI::begin_h_layout(context, id(context, "showcase.controls"),
@@ -550,10 +587,10 @@ namespace Luna
                     GUICore::FlexLayoutDesc row_flex;
                     row_flex.axis = GUICore::LayoutAxis::x;
                     row_flex.cross_alignment = GUICore::FlexAlignment::stretch;
-                    row_flex.main_axis_gap = 8.0f;
+                    row_flex.main_axis_gap = 9.0f;
                     GUI::end_h_layout(context, row, row_flex);
                 }
-                end_panel(context, matrix, 8.0f);
+                end_panel(context, matrix, 9.0f);
             }
 
             void build_asset_row(GUICore::IContext* context, ShowcaseState& state, ShowcaseHandles& handles,
@@ -571,8 +608,10 @@ namespace Luna
                 }
                 GUI::image(context, GUICore::make_scoped_id(parent, (u64)index + 30), material_texture(state, index),
                     fixed(40.0f, 40.0f), flipped_image());
+                GUICore::LayoutConfig text_layout = grow_x();
+                text_layout.margin.x = 9.0f;
                 GUICore::ElementHandle text_column = GUI::begin_v_layout(context,
-                    GUICore::make_scoped_id(parent, (u64)index + 40), "Asset name", grow_x());
+                    GUICore::make_scoped_id(parent, (u64)index + 40), "Asset name", text_layout);
                 label(context, GUICore::make_scoped_id(parent, (u64)index + 50), name,
                     fill_width(20.0f), 10.0f);
                 label(context, GUICore::make_scoped_id(parent, (u64)index + 60), meta,
@@ -583,9 +622,11 @@ namespace Luna
 
             void build_mini_editor(GUICore::IContext* context, ShowcaseState& state, ShowcaseHandles& handles)
             {
+                GUICore::LayoutConfig editor_layout = grow_y();
+                editor_layout.padding = Float4U(state.density == 1 ? 12.0f : 10.0f);
                 GUICore::ElementHandle editor = GUI::begin_h_layout(context, id(context, "overview.editor"),
-                    "DCC editor composition", grow_y());
-                surface(context, "gui.surface.0", style_scalar(context, "gui.radius.large", 16.0f), false);
+                    "DCC editor composition", editor_layout);
+                surface(context, "gui.surface.0", style_scalar(context, "gui.radius.large", 16.0f), true, true);
 
                 GUICore::LayoutConfig library_layout = fixed(176.0f, 0.0f);
                 library_layout.height.kind = GUICore::SizeKind::percent;
@@ -669,7 +710,7 @@ namespace Luna
                 GUICore::FlexLayoutDesc asset_flex;
                 asset_flex.axis = GUICore::LayoutAxis::x;
                 asset_flex.cross_alignment = GUICore::FlexAlignment::center;
-                asset_flex.main_axis_gap = 8.0f;
+                asset_flex.main_axis_gap = 9.0f;
                 GUI::end_h_layout(context, asset_header, asset_flex);
                 const c8* inspector_tabs[] = { "Inspector", "Channels" };
                 GUI::button_group(context, id(context, "overview.inspector.tabs"),
@@ -684,6 +725,7 @@ namespace Luna
                 GUICore::FlexLayoutDesc editor_flex;
                 editor_flex.axis = GUICore::LayoutAxis::x;
                 editor_flex.cross_alignment = GUICore::FlexAlignment::stretch;
+                editor_flex.main_axis_gap = style_scalar(context, "gui.section.gap", 16.0f);
                 GUI::end_h_layout(context, editor, editor_flex);
             }
 
@@ -696,7 +738,7 @@ namespace Luna
                 banner_layout.padding = Float4U(28.0f);
                 GUICore::ElementHandle banner = GUI::begin_h_layout(context, id(context, "overview.banner"),
                     "Style summary", banner_layout);
-                surface(context, "gui.surface.1", style_scalar(context, "gui.radius.large", 16.0f), false);
+                surface(context, "gui.surface.1", style_scalar(context, "gui.radius.large", 16.0f), true, true);
                 GUICore::ElementHandle summary = GUI::begin_v_layout(context, id(context, "overview.banner.summary"),
                     "Summary", grow_x(130.0f));
                 label(context, id(context, "overview.banner.active"), "READY  STYLE ACTIVE", fill_width(22.0f),
@@ -712,7 +754,7 @@ namespace Luna
                 GUICore::FlexLayoutDesc banner_flex;
                 banner_flex.axis = GUICore::LayoutAxis::x;
                 banner_flex.cross_alignment = GUICore::FlexAlignment::center;
-                banner_flex.main_axis_gap = 22.0f;
+                banner_flex.main_axis_gap = 24.0f;
                 GUI::end_h_layout(context, banner, banner_flex);
                 build_mini_editor(context, state, handles);
             }
@@ -737,12 +779,16 @@ namespace Luna
                     "Progress and LED", "Determinate work and semantic status");
                 label(context, id(context, "primitives.progress.label1"), "Baking textures                         68%",
                     fill_width(24.0f), 11.0f, "gui.text.secondary");
-                GUI::progress_bar(context, id(context, "primitives.progress.1"), 0.68f, fill_width(22.0f));
+                GUI::ProgressBarDesc progress_desc;
+                progress_desc.show_overlay = false;
+                GUI::progress_bar(context, id(context, "primitives.progress.1"), 0.68f, fill_width(10.0f),
+                    progress_desc);
                 label(context, id(context, "primitives.progress.label2"), "Compiling shaders                      42%",
                     fill_width(24.0f), 11.0f, "gui.text.secondary");
-                GUI::progress_bar(context, id(context, "primitives.progress.2"), 0.42f, fill_width(22.0f));
-                led_label(context, state, id(context, "primitives.led.online"), "Online", "gui.status.success", 100.0f);
-                led_label(context, state, id(context, "primitives.led.working"), "Working", "gui.status.busy", 100.0f);
+                GUI::progress_bar(context, id(context, "primitives.progress.2"), 0.42f, fill_width(10.0f),
+                    progress_desc);
+                led_label(context, id(context, "primitives.led.online"), "Online", "gui.status.success", 100.0f);
+                led_label(context, id(context, "primitives.led.working"), "Working", "gui.status.busy", 100.0f);
                 end_panel(context, progress);
                 end_two_columns(context, row);
                 GUICore::ElementHandle sdf_card = begin_card(context, "primitives.sdf", fill_width(220.0f),
@@ -1014,9 +1060,9 @@ namespace Luna
                     "Hover for tooltip", fill_width(48.0f));
                 GUI::set_item_tooltip(context, id(context, "overlay.tooltip.layer"), tooltip_button,
                     "Available on hover or pointer focus.");
-                led_label(context, state, id(context, "overlay.notification.success"), "Build complete",
+                led_label(context, id(context, "overlay.notification.success"), "Build complete",
                     "gui.status.success", 150.0f);
-                led_label(context, state, id(context, "overlay.notification.warning"), "2 warnings",
+                led_label(context, id(context, "overlay.notification.warning"), "2 warnings",
                     "gui.status.warning", 150.0f);
                 end_panel(context, popup_card);
                 end_two_columns(context, row);
@@ -1040,7 +1086,7 @@ namespace Luna
                     "Tabs, splitters, viewport tools, console, and status feedback in one functional software surface.");
                 GUICore::ElementHandle workspace = GUI::begin_v_layout(context, id(context, "workspace.demo"),
                     "Workspace", grow_y());
-                surface(context, "gui.surface.0", style_scalar(context, "gui.radius.large", 16.0f), false);
+                surface(context, "gui.surface.0", style_scalar(context, "gui.radius.large", 16.0f), true, true);
                 GUICore::ElementHandle menu = GUI::begin_h_layout(context, id(context, "workspace.menu"),
                     "Menu", fill_width(44.0f));
                 label(context, id(context, "workspace.menu.items"),
@@ -1114,6 +1160,8 @@ namespace Luna
                     GUI::ScrollViewDesc desc;
                     desc.horizontal = false;
                     GUI::begin_scroll_view(context, id(context, "showcase.content.scroll"), "Content scroll", grow_y(), desc);
+                    GUICore::ElementHandle page = GUI::begin_v_layout(context, id(context, "showcase.content.page"),
+                        "Scrollable page", grow_y());
                     if(state.section == 1) build_primitives(context, state);
                     else if(state.section == 2) build_buttons(context, state);
                     else if(state.section == 3) build_input(context, state);
@@ -1122,12 +1170,19 @@ namespace Luna
                     else if(state.section == 6) build_tables(context);
                     else if(state.section == 7) build_overlay(context, state, handles);
                     else build_workspace(context, state);
+                    GUICore::FlexLayoutDesc page_flex;
+                    page_flex.axis = GUICore::LayoutAxis::y;
+                    page_flex.cross_alignment = GUICore::FlexAlignment::stretch;
+                    page_flex.main_axis_gap = style_scalar(context, "gui.section.gap", 16.0f);
+                    page_flex.clip_children = false;
+                    GUI::end_v_layout(context, page, page_flex);
                     GUI::end_scroll_view(context);
                 }
                 GUICore::FlexLayoutDesc content_flex;
                 content_flex.axis = GUICore::LayoutAxis::y;
                 content_flex.cross_alignment = GUICore::FlexAlignment::stretch;
-                content_flex.main_axis_gap = 16.0f;
+                content_flex.main_axis_gap = style_scalar(context, "gui.section.gap", 16.0f);
+                content_flex.clip_children = false;
                 GUI::end_v_layout(context, content, content_flex);
             }
 

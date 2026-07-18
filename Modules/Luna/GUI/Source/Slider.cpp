@@ -45,6 +45,36 @@ namespace Luna
                     0.0f, 1.0f) : 0.0f;
             }
 
+            static void draw_rounded_rect(GUICore::IContext* context, const RectF& rect,
+                const Float4U& scale, const Float4U& color, f32 radius)
+            {
+                GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::rounded_rect;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = rect;
+                command.rect_layout_scale = scale;
+                command.color = color;
+                command.radius = radius;
+                context->draw(command);
+            }
+
+            static void draw_shadow(GUICore::IContext* context, const RectF& rect,
+                const Float4U& scale, const Float4U& color, f32 radius, const Float2U& offset,
+                f32 softness, GUICore::ShadowMode mode = GUICore::ShadowMode::outer)
+            {
+                GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::shadow;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = rect;
+                command.rect_layout_scale = scale;
+                command.color = color;
+                command.radius = radius;
+                command.shadow.offset = offset;
+                command.shadow.softness = softness;
+                command.shadow.mode = mode;
+                context->draw(command);
+            }
+
             static RV draw_slider(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 GUICore::DrawPhase, void* userdata)
             {
@@ -54,29 +84,58 @@ namespace Luna
                 f32 knob_size = style_scalar(context, element, "gui.slider.knob_size", 12.0f);
                 Float4U disabled = style_color(context, element, "gui.slider.disabled",
                     Float4U(0.32f, 0.36f, 0.42f, 1.0f));
-                GUICore::DrawCommand command;
-                command.type = GUICore::DrawCommandType::rounded_rect;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.rect = RectF(knob_size * 0.5f, -2.0f, -knob_size, 4.0f);
-                command.rect_layout_scale = Float4U(0.0f, 0.5f, 0.0f, 0.0f);
-                command.color = data->enabled ? style_color(context, element, "gui.slider.track",
-                    Float4U(0.07f, 0.09f, 0.12f, 1.0f)) : disabled;
-                command.radius = 2.0f;
-                context->draw(command);
+                const RectF track_rect(knob_size * 0.5f, -2.0f, -knob_size, 4.0f);
+                const Float4U track_scale(0.0f, 0.5f, 0.0f, 0.0f);
+                draw_rounded_rect(context, track_rect, track_scale,
+                    data->enabled ? style_color(context, element, "gui.slider.track",
+                        Float4U(0.07f, 0.09f, 0.12f, 1.0f)) : disabled, 2.0f);
                 if(fraction > 0.0f)
                 {
-                    command.rect = RectF(knob_size * 0.5f, -2.0f, -knob_size * 0.5f, 4.0f);
-                    command.rect_layout_scale = Float4U(0.0f, 0.5f, fraction, 0.0f);
-                    command.color = data->enabled ? style_color(context, element, "gui.slider.fill",
-                        Float4U(0.20f, 0.42f, 0.72f, 1.0f)) : disabled;
-                    context->draw(command);
+                    const RectF fill_rect(knob_size * 0.5f, -2.0f, -knob_size * fraction, 4.0f);
+                    const Float4U fill_scale(0.0f, 0.5f, fraction, 0.0f);
+                    draw_rounded_rect(context, fill_rect, fill_scale,
+                        data->enabled ? style_color(context, element, "gui.slider.fill",
+                            Float4U(0.20f, 0.42f, 0.72f, 1.0f)) : disabled, 2.0f);
+                    if(data->enabled)
+                    {
+                        Float4U highlight = style_color(context, element, "gui.shadow.inset_light",
+                            Float4U(1.0f, 1.0f, 1.0f, 0.5f));
+                        highlight.w *= 0.35f;
+                        draw_shadow(context, fill_rect, fill_scale, highlight, 2.0f,
+                            Float2U(0.0f, -1.0f), 1.0f, GUICore::ShadowMode::inner);
+                    }
                 }
-                command.rect = RectF(-knob_size * 0.5f, -knob_size * 0.5f, knob_size, knob_size);
-                command.rect_layout_scale = Float4U(fraction, 0.5f, 0.0f, 0.0f);
-                command.color = data->enabled ? style_color(context, element, "gui.slider.knob",
-                    Float4U(0.32f, 0.58f, 0.90f, 1.0f)) : disabled;
-                command.radius = knob_size * 0.5f;
-                context->draw(command);
+                if(data->enabled)
+                {
+                    const f32 softness = style_scalar(context, element, "gui.shadow.softness", 5.0f);
+                    draw_shadow(context, track_rect, track_scale,
+                        style_color(context, element, "gui.shadow.inset",
+                            Float4U(0.0f, 0.0f, 0.0f, 0.18f)), 2.0f,
+                        Float2U(1.5f, 1.5f), softness * 0.45f, GUICore::ShadowMode::inner);
+                    draw_shadow(context, track_rect, track_scale,
+                        style_color(context, element, "gui.shadow.inset_light",
+                            Float4U(1.0f, 1.0f, 1.0f, 0.65f)), 2.0f,
+                        Float2U(-1.5f, -1.5f), softness * 0.35f, GUICore::ShadowMode::inner);
+                }
+                const RectF knob_rect(-knob_size * fraction, -knob_size * 0.5f, knob_size, knob_size);
+                const Float4U knob_scale(fraction, 0.5f, 0.0f, 0.0f);
+                if(data->enabled)
+                {
+                    const Float2U shadow_offset = style_vector2(context, element, "gui.shadow.offset",
+                        Float2U(2.0f));
+                    const f32 softness = style_scalar(context, element, "gui.shadow.softness", 5.0f) * 0.55f;
+                    draw_shadow(context, knob_rect, knob_scale,
+                        style_color(context, element, "gui.shadow.dark",
+                            Float4U(0.0f, 0.0f, 0.0f, 0.20f)), knob_size * 0.5f,
+                        shadow_offset, softness);
+                    draw_shadow(context, knob_rect, knob_scale,
+                        style_color(context, element, "gui.shadow.light",
+                            Float4U(1.0f, 1.0f, 1.0f, 0.75f)), knob_size * 0.5f,
+                        Float2U(-shadow_offset.x, -shadow_offset.y), softness);
+                }
+                draw_rounded_rect(context, knob_rect, knob_scale,
+                    data->enabled ? style_color(context, element, "gui.slider.knob",
+                        Float4U(0.32f, 0.58f, 0.90f, 1.0f)) : disabled, knob_size * 0.5f);
                 return ok;
             }
 

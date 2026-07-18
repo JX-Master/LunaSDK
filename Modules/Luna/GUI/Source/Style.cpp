@@ -165,6 +165,10 @@ namespace Luna
                 GUICore::style_f32x4(Float4U(0.20f, 0.24f, 0.29f, 1.0f)), "Choice", "Switch off track.");
             add("gui.switch.on", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.15f, 0.50f, 0.76f, 1.0f)), "Choice", "Switch on track.");
+            add("gui.switch.knob.off", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.96f, 0.97f, 0.99f, 1.0f)), "Choice", "Switch off-state knob fill.");
+            add("gui.switch.knob.on", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(1.0f)), "Choice", "Switch on-state knob fill.");
             add("gui.switch.size", GUICore::StyleValueType::f32x2,
                 GUICore::style_f32x2(Float2U(46.0f, 24.0f)), "Choice", "Switch track size.");
 
@@ -400,7 +404,7 @@ namespace Luna
             set_color("gui.status.off", color(dark ? 0x515554 : 0xc4c7c7));
             set_scalar("gui.control.height", control_height);
             set_scalar("gui.control.small_height", small_height);
-            set_scalar("gui.section.gap", touch ? 16.0f : 10.0f);
+            set_scalar("gui.section.gap", touch ? 18.0f : 13.0f);
             set_scalar("gui.radius.small", radius_small);
             set_scalar("gui.radius.medium", radius_medium);
             set_scalar("gui.radius.large", radius_large);
@@ -411,7 +415,9 @@ namespace Luna
             set_vector2("gui.shadow.offset", Float2U(touch ? 3.0f : 2.0f));
             set_scalar("gui.shadow.softness", touch ? 5.0f : 4.0f);
             context->set_style_value(style, Name("gui.font"), GUICore::style_name(desc.font));
-            set_scalar("gui.text.font_size", touch ? 14.0f : 13.0f);
+            // Open Sans has a smaller apparent x-height than the Inter face used by the HTML
+            // reference. Keep the density relationship while compensating the default UI size.
+            set_scalar("gui.text.font_size", touch ? 16.0f : 15.0f);
 
             set_color("gui.button.background", surface1);
             set_color("gui.button.background_hovered", mix(surface1, accent_subtle, 0.45f));
@@ -441,6 +447,8 @@ namespace Luna
             set_color("gui.choice.disabled", surface4);
             set_color("gui.switch.off", surface3);
             set_color("gui.switch.on", accent);
+            set_color("gui.switch.knob.off", dark ? surface1 : Float4U(1.0f));
+            set_color("gui.switch.knob.on", dark ? accent_ink : Float4U(1.0f));
             set_vector2("gui.switch.size", touch ? Float2U(52.0f, 32.0f) : Float2U(46.0f, 24.0f));
 
             set_color("gui.disclosure.header", surface2);
