@@ -24,6 +24,11 @@ namespace Luna
     {
         namespace
         {
+            static_assert(sizeof(SDFInstance) == sizeof(f32) * 10,
+                "SDFInstance must match the instance input layout used by SDFVS.");
+            static_assert(sizeof(SDFState) == sizeof(f32) * 12,
+                "SDFState must match the structured-buffer layout used by SDFVS.");
+
             struct SDFFrameBuffer
             {
                 Float4U screen_params;
@@ -227,10 +232,11 @@ namespace Luna
                 DescriptorSetLayoutBinding bindings[] = {
                     DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::all),
                     DescriptorSetLayoutBinding::read_buffer_view(1, 1, ShaderVisibilityFlag::pixel),
-                    DescriptorSetLayoutBinding::read_buffer_view(2, 1, ShaderVisibilityFlag::pixel)
+                    DescriptorSetLayoutBinding::read_buffer_view(2, 1, ShaderVisibilityFlag::pixel),
+                    DescriptorSetLayoutBinding::read_buffer_view(3, 1, ShaderVisibilityFlag::vertex)
                 };
                 luset(m_sdf_descriptor_set_layout,
-                    m_device->new_descriptor_set_layout(DescriptorSetLayoutDesc({bindings, 3})));
+                    m_device->new_descriptor_set_layout(DescriptorSetLayoutDesc({bindings, 4})));
                 IDescriptorSetLayout* descriptor_set_layout = m_sdf_descriptor_set_layout;
                 luset(m_sdf_pipeline_layout, m_device->new_pipeline_layout(PipelineLayoutDesc(
                     {&descriptor_set_layout, 1}, PipelineLayoutFlag::allow_input_assembler_input_layout)));
@@ -272,12 +278,9 @@ namespace Luna
                     InputAttributeDesc(0, 0, 0, Format::rg32_float),
                     InputAttributeDesc(1, 1, offsetof(SDFInstance, draw_rect), Format::rgba32_float),
                     InputAttributeDesc(2, 1, offsetof(SDFInstance, evaluation_origin), Format::rg32_float),
-                    InputAttributeDesc(3, 1, offsetof(SDFInstance, clip_rect), Format::rgba32_float),
-                    InputAttributeDesc(4, 1, offsetof(SDFInstance, rounded_clip_rect), Format::rgba32_float),
-                    InputAttributeDesc(5, 1, offsetof(SDFInstance, rounded_clip_radii), Format::rgba32_float),
-                    InputAttributeDesc(6, 1, offsetof(SDFInstance, program_data), Format::rgba32_uint)
+                    InputAttributeDesc(3, 1, offsetof(SDFInstance, program_data), Format::rgba32_uint)
                 };
-                desc.input_layout = InputLayoutDesc({input_bindings, 2}, {input_attributes, 7});
+                desc.input_layout = InputLayoutDesc({input_bindings, 2}, {input_attributes, 4});
                 desc.pipeline_layout = m_sdf_pipeline_layout;
                 desc.vs = LUNA_CPPSL_GET_SHADER_DATA(SDFVS);
                 desc.ps = LUNA_CPPSL_GET_SHADER_DATA(SDFPS);
@@ -311,6 +314,7 @@ namespace Luna
                 m_draw_list->reset();
                 m_render_batches.clear();
                 m_sdf_instances.clear();
+                m_sdf_states.clear();
                 m_sdf_page_pairs.clear();
                 m_compiled_sdf_shape_floats.clear();
                 m_compiled_sdf_color_floats.clear();
@@ -355,6 +359,23 @@ namespace Luna
                     pair.color_page = color_page;
                     m_sdf_page_pairs.push_back(move(pair));
                     return index;
+                };
+
+                auto resolve_sdf_state = [&](const ClipState& clip)
+                {
+                    SDFState state;
+                    state.clip_rect = Float4U(clip.rect.offset_x, clip.rect.offset_y,
+                        clip.rect.width, clip.rect.height);
+                    state.rounded_clip_rect = Float4U(clip.rounded_rect.offset_x,
+                        clip.rounded_rect.offset_y, clip.rounded_rect.width, clip.rounded_rect.height);
+                    state.rounded_clip_radii = clip.rounded_radii;
+                    for(u32 i = 0; i < m_sdf_states.size(); ++i)
+                    {
+                        if(!memcmp(&m_sdf_states[i], &state, sizeof(SDFState))) return i;
+                    }
+                    u32 state_index = (u32)m_sdf_states.size();
+                    m_sdf_states.push_back(state);
+                    return state_index;
                 };
 
                 auto emit_sdf = [&](const SDFDrawDesc& desc, const Float2U& evaluation_origin,
@@ -402,15 +423,10 @@ namespace Luna
                     instance.draw_rect = Float4U(draw_rect.offset_x, draw_rect.offset_y,
                         draw_rect.width, draw_rect.height);
                     instance.evaluation_origin = evaluation_origin;
-                    instance.clip_rect = Float4U(clip_rect.offset_x, clip_rect.offset_y,
-                        clip_rect.width, clip_rect.height);
-                    instance.rounded_clip_rect = Float4U(clip.rounded_rect.offset_x,
-                        clip.rounded_rect.offset_y, clip.rounded_rect.width, clip.rounded_rect.height);
-                    instance.rounded_clip_radii = clip.rounded_radii;
                     u32 clip_flags = has_clip(clip_rect) ? 1u : 0u;
                     if(has_rounded_clip(clip)) clip_flags |= 2u;
                     instance.program_data = UInt4U(local_shape_first, local_color_first,
-                        clip_flags, 0u);
+                        clip_flags, resolve_sdf_state(clip));
                     flush_pending_vg();
                     m_draw_list->draw_call_barrier();
                     u32 pair_index = get_page_pair(shape_page, color_page);
@@ -680,6 +696,7 @@ namespace Luna
                 luexp(m_draw_list->compile());
                 m_counters.vg_draw_call_count = (u32)m_draw_list->get_draw_calls().size();
                 m_counters.sdf_instance_count = (u32)m_sdf_instances.size();
+                m_counters.sdf_state_count = (u32)m_sdf_states.size();
                 m_counters.sdf_shape_float_count = (u32)m_compiled_sdf_shape_floats.size();
                 m_counters.sdf_color_float_count = (u32)m_compiled_sdf_color_floats.size();
                 m_counters.sdf_program_page_count =
@@ -688,7 +705,10 @@ namespace Luna
                     (u32)((m_compiled_sdf_color_floats.size() + SDF_PROGRAM_PAGE_FLOATS - 1) /
                         SDF_PROGRAM_PAGE_FLOATS);
                 m_counters.sdf_page_pair_count = (u32)m_sdf_page_pairs.size();
-                m_counters.sdf_upload_bytes = m_sdf_instances.size() * sizeof(SDFInstance) +
+                m_counters.sdf_instance_upload_bytes = m_sdf_instances.size() * sizeof(SDFInstance);
+                m_counters.sdf_state_upload_bytes = m_sdf_states.size() * sizeof(SDFState);
+                m_counters.sdf_upload_bytes = m_counters.sdf_instance_upload_bytes +
+                    m_counters.sdf_state_upload_bytes +
                     (m_compiled_sdf_shape_floats.size() + m_compiled_sdf_color_floats.size()) * sizeof(f32);
                 m_counters.sdf_draw_call_count = 0;
                 for(const RenderBatch& batch : m_render_batches)
@@ -711,6 +731,8 @@ namespace Luna
         {
             using namespace RHI;
             if(m_sdf_instances.empty()) return ok;
+            if(m_sdf_states.empty())
+                return set_error(BasicError::bad_data(), "SDF instances were compiled without raster states.");
             lutry
             {
                 SDFFrameBuffer frame_data;
@@ -732,6 +754,18 @@ namespace Luna
                 luexp(m_sdf_instance_buffer->map(0, 0, &mapped_data));
                 memcpy(mapped_data, m_sdf_instances.data(), instance_bytes);
                 m_sdf_instance_buffer->unmap(0, instance_bytes);
+
+                if(m_sdf_state_capacity < m_sdf_states.size())
+                {
+                    luset(m_sdf_state_buffer, m_device->new_buffer(MemoryType::upload,
+                        BufferDesc(BufferUsageFlag::read_buffer,
+                            sizeof(SDFState) * m_sdf_states.size())));
+                    m_sdf_state_capacity = m_sdf_states.size();
+                }
+                usize state_bytes = sizeof(SDFState) * m_sdf_states.size();
+                luexp(m_sdf_state_buffer->map(0, 0, &mapped_data));
+                memcpy(mapped_data, m_sdf_states.data(), state_bytes);
+                m_sdf_state_buffer->unmap(0, state_bytes);
 
                 auto upload_pages = [&](const Vector<f32>& floats, Vector<SDFProgramPage>& pages) -> RV
                 {
@@ -784,7 +818,10 @@ namespace Luna
                                 shape_page.num_floats, sizeof(f32))),
                         WriteDescriptorSet::read_buffer_view(2,
                             BufferViewDesc::structured_buffer(color_page.buffer, 0,
-                                color_page.num_floats, sizeof(f32)))
+                                color_page.num_floats, sizeof(f32))),
+                        WriteDescriptorSet::read_buffer_view(3,
+                            BufferViewDesc::structured_buffer(m_sdf_state_buffer, 0,
+                                (u32)m_sdf_states.size(), sizeof(SDFState)))
                     }));
                 }
             }
@@ -851,6 +888,8 @@ namespace Luna
                         RHI::BufferStateFlag::automatic, RHI::BufferStateFlag::index_buffer));
                     barriers.push_back(RHI::BufferBarrier(m_sdf_instance_buffer,
                         RHI::BufferStateFlag::automatic, RHI::BufferStateFlag::vertex_buffer));
+                    barriers.push_back(RHI::BufferBarrier(m_sdf_state_buffer,
+                        RHI::BufferStateFlag::automatic, RHI::BufferStateFlag::shader_read_vs));
                     for(const SDFProgramPage& page : m_sdf_shape_pages)
                     {
                         barriers.push_back(RHI::BufferBarrier(page.buffer,

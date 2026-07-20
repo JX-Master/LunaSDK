@@ -37,10 +37,14 @@ namespace Luna
         {
             Float4U draw_rect;
             Float2U evaluation_origin;
+            UInt4U program_data;
+        };
+
+        struct SDFState
+        {
             Float4U clip_rect;
             Float4U rounded_clip_rect;
             Float4U rounded_clip_radii;
-            UInt4U program_data;
         };
 
         struct SDFProgramPage
@@ -71,8 +75,10 @@ namespace Luna
             Ref<RHI::IBuffer> m_sdf_index_buffer;
             Ref<RHI::IBuffer> m_sdf_frame_buffer;
             Ref<RHI::IBuffer> m_sdf_instance_buffer;
+            Ref<RHI::IBuffer> m_sdf_state_buffer;
             Vector<RenderBatch> m_render_batches;
             Vector<SDFInstance> m_sdf_instances;
+            Vector<SDFState> m_sdf_states;
             Vector<f32> m_compiled_sdf_shape_floats;
             Vector<f32> m_compiled_sdf_color_floats;
             Vector<SDFProgramPage> m_sdf_shape_pages;
@@ -85,6 +91,7 @@ namespace Luna
             f32 m_screen_width = 0.0f;
             f32 m_screen_height = 0.0f;
             usize m_sdf_instance_capacity = 0;
+            usize m_sdf_state_capacity = 0;
 
             RV init(RHI::IDevice* device);
             RV create_sdf_pipeline(RHI::Format render_target_format);

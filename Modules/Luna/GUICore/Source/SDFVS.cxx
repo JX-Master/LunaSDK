@@ -8,6 +8,13 @@ struct SDFFrameParams
     float4 screen_params;
 };
 
+struct SDFState
+{
+    float4 clip_rect;
+    float4 rounded_clip_rect;
+    float4 rounded_clip_radii;
+};
+
 struct DescSet0
 {
     [[cppsl::cbuffer, cppsl::binding(0)]]
@@ -18,6 +25,9 @@ struct DescSet0
 
     [[cppsl::structured_buffer, cppsl::binding(2)]]
     const float* color_floats;
+
+    [[cppsl::structured_buffer, cppsl::binding(3)]]
+    const SDFState* states;
 };
 
 [[cppsl::desc_set(0)]]
@@ -28,10 +38,7 @@ struct VSInput
     [[cppsl::location(0)]] float2 position;
     [[cppsl::location(1)]] float4 draw_rect;
     [[cppsl::location(2)]] float2 evaluation_origin;
-    [[cppsl::location(3)]] float4 clip_rect;
-    [[cppsl::location(4)]] float4 rounded_clip_rect;
-    [[cppsl::location(5)]] float4 rounded_clip_radii;
-    [[cppsl::location(6)]] uint4 program_data;
+    [[cppsl::location(3)]] uint4 program_data;
 };
 
 struct PSInput
@@ -58,9 +65,10 @@ PSInput vs_main(VSInput vertex_data)
     result.position = float4{clip_position, 0.0f, 1.0f};
     result.screen_position = screen_position;
     result.evaluation_origin = vertex_data.evaluation_origin;
-    result.clip_rect = vertex_data.clip_rect;
-    result.rounded_clip_rect = vertex_data.rounded_clip_rect;
-    result.rounded_clip_radii = vertex_data.rounded_clip_radii;
+    SDFState state = g_set0.states[vertex_data.program_data.w];
+    result.clip_rect = state.clip_rect;
+    result.rounded_clip_rect = state.rounded_clip_rect;
+    result.rounded_clip_radii = state.rounded_clip_radii;
     result.program_data = vertex_data.program_data;
     return result;
 }

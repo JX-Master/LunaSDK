@@ -27,6 +27,8 @@ namespace Luna
             u32 sdf_draw_call_count = 0;
             //! Number of SDF shape instances produced by the latest compilation.
             u32 sdf_instance_count = 0;
+            //! Number of distinct SDF raster states referenced by the latest compilation.
+            u32 sdf_state_count = 0;
             //! Number of scalar floats uploaded for SDF shape programs.
             u32 sdf_shape_float_count = 0;
             //! Number of scalar floats uploaded for SDF color programs.
@@ -37,7 +39,11 @@ namespace Luna
             u32 sdf_page_pair_count = 0;
             //! Number of transitions between VG and SDF batches required by painter order.
             u32 backend_switch_count = 0;
-            //! Number of bytes uploaded for SDF instances, shape programs and color programs.
+            //! Number of bytes uploaded for SDF instance data.
+            usize sdf_instance_upload_bytes = 0;
+            //! Number of bytes uploaded for deduplicated SDF raster states.
+            usize sdf_state_upload_bytes = 0;
+            //! Number of bytes uploaded for SDF instances, states, shape programs and color programs.
             usize sdf_upload_bytes = 0;
             //! Number of contiguous renderer batches needed to preserve painter order.
             u32 render_batch_count = 0;
