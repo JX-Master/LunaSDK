@@ -253,7 +253,8 @@ namespace Luna
             //! Padding applied inside every submitted cell.
             Float4U cell_padding = Float4U(0.0f);
             //! Whether table children are clipped to the table content rectangle.
-            bool clip_children = true;
+            //! @remark Disabled by default to match @ref GUICore::TableLayoutDesc::clip_children.
+            bool clip_children = false;
             //! Whether all rows use @ref fixed_row_height instead of their submitted row track descriptors.
             bool fixed_row_height_mode = false;
             //! Row height used when @ref fixed_row_height_mode is enabled.
@@ -317,8 +318,8 @@ namespace Luna
         //! Describes a menu bar.
         struct MenuBarDesc
         {
-            //! Gap between top-level menu items.
-            f32 gap = 4.0f;
+            //! Gap between top-level menu items. A negative value uses the current Style value.
+            f32 gap = -1.0f;
         };
 
         //! Describes a menu or menu item.

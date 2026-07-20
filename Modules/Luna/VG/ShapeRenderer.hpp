@@ -31,14 +31,14 @@ namespace Luna
             virtual RV begin(RHI::ITexture* render_target) = 0;
 
             //! Adds draw calls to this renderer.
-            //! @param[in] vertex_buffer The vertex buffer fetched from @ref IShapeDrawList::get_vertex_buffer.
-            //! @param[in] index_buffer The index buffer fetched from @ref IShapeDrawList::get_index_buffer.
+            //! @param[in] instance_buffer The instance buffer fetched from @ref IShapeDrawList::get_instance_buffer.
+            //! @param[in] state_buffer The state buffer fetched from @ref IShapeDrawList::get_state_buffer.
             //! @param[in] draw_calls The shape draw calls fetched from @ref IShapeDrawList::get_draw_calls.
             //! @param[in] transform_matrix The projection transform matrix applied to vertices. If this is `nullptr`,
             //! an orthographic projection matching the render target dimensions is used.
             virtual void draw(
-                RHI::IBuffer* vertex_buffer,
-                RHI::IBuffer* index_buffer,
+                RHI::IBuffer* instance_buffer,
+                RHI::IBuffer* state_buffer,
                 Span<const ShapeDrawCall> draw_calls,
                 Float4x4U* transform_matrix = nullptr
             ) = 0;

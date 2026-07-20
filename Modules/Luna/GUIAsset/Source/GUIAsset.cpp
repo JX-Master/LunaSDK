@@ -1304,7 +1304,7 @@ namespace Luna
                 AssetCanvasLayoutDesc canvas_desc;
                 add_property(desc, "size", "Size", NodePropertyKind::size, default_size(320.0f, 240.0f), "Layout");
                 add_property(desc, "padding", "Padding", NodePropertyKind::edge_insets, write_edge_insets(canvas_desc.padding), "Layout");
-                add_property(desc, "clip_children", "Clip Children", NodePropertyKind::boolean, true, "Layout");
+                add_property(desc, "clip_children", "Clip Children", NodePropertyKind::boolean, false, "Layout");
                 register_node_type(desc);
             }
             {

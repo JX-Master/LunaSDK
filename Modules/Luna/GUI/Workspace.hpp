@@ -78,6 +78,8 @@ namespace Luna
         {
             //! Thickness of draggable splitters.
             f32 splitter_size = 6.0f;
+            //! Visible splitter line thickness. This does not affect the draggable hit region.
+            f32 splitter_visual_size = 1.0f;
             //! Minimum fraction retained by either side of a split.
             f32 minimum_split_ratio = 0.08f;
             //! Color used by splitters.
@@ -95,22 +97,22 @@ namespace Luna
             bool close_button = true;
             //! Whether a floating panel can be resized by dragging its border.
             bool resize_border = true;
-            //! Title bar height in logical units.
-            f32 title_bar_height = 28.0f;
+            //! Title bar height in logical units. A non-positive value uses `gui.control.height` from the current Style.
+            f32 title_bar_height = 0.0f;
             //! Border thickness in logical units.
             f32 border_size = 1.0f;
             //! Resize hit region thickness in logical units.
             f32 resize_border_size = 7.0f;
             //! Minimum floating panel size.
             Float2U minimum_floating_size = Float2U(140.0f, 90.0f);
-            //! Panel background color.
-            Float4U background_color = Float4U(0.07f, 0.09f, 0.12f, 0.98f);
-            //! Inactive title bar color.
-            Float4U title_bar_color = Float4U(0.11f, 0.15f, 0.20f, 1.0f);
-            //! Selected title bar or tab color.
-            Float4U active_title_bar_color = Float4U(0.10f, 0.33f, 0.56f, 1.0f);
-            //! Border color.
-            Float4U border_color = Float4U(0.24f, 0.30f, 0.38f, 1.0f);
+            //! Panel background color. Zero alpha uses `gui.surface.1` from the current Style.
+            Float4U background_color = Float4U(0.0f);
+            //! Docked title bar color. Zero alpha uses `gui.surface.1` from the current Style.
+            Float4U title_bar_color = Float4U(0.0f);
+            //! Optional selected title tab fill. Zero alpha keeps the selected tab transparent.
+            Float4U active_title_bar_color = Float4U(0.0f);
+            //! Border color. Zero alpha uses `gui.border.strong` from the current Style.
+            Float4U border_color = Float4U(0.0f);
         };
 
         //! Begins one dock space.

@@ -70,6 +70,18 @@ namespace Luna
                 return clip_rect.width > 0.0f || clip_rect.height > 0.0f;
             }
 
+            struct ClipState
+            {
+                RectF rect;
+                RectF rounded_rect;
+                Float4U rounded_radii = Float4U(0.0f);
+            };
+
+            bool has_rounded_clip(const ClipState& clip)
+            {
+                return has_clip(clip.rounded_rect);
+            }
+
             RectF merge_clip_rect(const RectF& a, const RectF& b)
             {
                 if(has_clip(a) && has_clip(b))
@@ -261,9 +273,11 @@ namespace Luna
                     InputAttributeDesc(1, 1, offsetof(SDFInstance, draw_rect), Format::rgba32_float),
                     InputAttributeDesc(2, 1, offsetof(SDFInstance, evaluation_origin), Format::rg32_float),
                     InputAttributeDesc(3, 1, offsetof(SDFInstance, clip_rect), Format::rgba32_float),
-                    InputAttributeDesc(4, 1, offsetof(SDFInstance, program_data), Format::rgba32_uint)
+                    InputAttributeDesc(4, 1, offsetof(SDFInstance, rounded_clip_rect), Format::rgba32_float),
+                    InputAttributeDesc(5, 1, offsetof(SDFInstance, rounded_clip_radii), Format::rgba32_float),
+                    InputAttributeDesc(6, 1, offsetof(SDFInstance, program_data), Format::rgba32_uint)
                 };
-                desc.input_layout = InputLayoutDesc({input_bindings, 2}, {input_attributes, 5});
+                desc.input_layout = InputLayoutDesc({input_bindings, 2}, {input_attributes, 7});
                 desc.pipeline_layout = m_sdf_pipeline_layout;
                 desc.vs = LUNA_CPPSL_GET_SHADER_DATA(SDFVS);
                 desc.ps = LUNA_CPPSL_GET_SHADER_DATA(SDFPS);
@@ -304,7 +318,7 @@ namespace Luna
                     context_shape_floats.begin(), context_shape_floats.end());
                 m_compiled_sdf_color_floats.insert(m_compiled_sdf_color_floats.end(),
                     context_color_floats.begin(), context_color_floats.end());
-                Vector<RectF> clip_stack;
+                Vector<ClipState> clip_stack;
                 RHI::SamplerDesc nearest_sampler_desc;
                 nearest_sampler_desc.min_filter = RHI::Filter::nearest;
                 nearest_sampler_desc.mag_filter = RHI::Filter::nearest;
@@ -344,8 +358,9 @@ namespace Luna
                 };
 
                 auto emit_sdf = [&](const SDFDrawDesc& desc, const Float2U& evaluation_origin,
-                    const RectF& raster_domain, const RectF& clip_rect)
+                    const RectF& raster_domain, const ClipState& clip)
                 {
+                    const RectF& clip_rect = clip.rect;
                     if(!desc.shape.floats.valid() || !desc.color.floats.valid()) return;
                     u32 shape_page = desc.shape.floats.first_float / SDF_PROGRAM_PAGE_FLOATS;
                     u32 color_page = desc.color.floats.first_float / SDF_PROGRAM_PAGE_FLOATS;
@@ -389,8 +404,13 @@ namespace Luna
                     instance.evaluation_origin = evaluation_origin;
                     instance.clip_rect = Float4U(clip_rect.offset_x, clip_rect.offset_y,
                         clip_rect.width, clip_rect.height);
+                    instance.rounded_clip_rect = Float4U(clip.rounded_rect.offset_x,
+                        clip.rounded_rect.offset_y, clip.rounded_rect.width, clip.rounded_rect.height);
+                    instance.rounded_clip_radii = clip.rounded_radii;
+                    u32 clip_flags = has_clip(clip_rect) ? 1u : 0u;
+                    if(has_rounded_clip(clip)) clip_flags |= 2u;
                     instance.program_data = UInt4U(local_shape_first, local_color_first,
-                        has_clip(clip_rect) ? 1u : 0u, 0u);
+                        clip_flags, 0u);
                     flush_pending_vg();
                     m_draw_list->draw_call_barrier();
                     u32 pair_index = get_page_pair(shape_page, color_page);
@@ -432,10 +452,16 @@ namespace Luna
                         }
                         if(command.type == DrawCommandType::push_clip)
                         {
-                            RectF screen_clip = to_screen_rect(layers, layer_index, resolved_rect);
-                            screen_clip = merge_clip_rect(screen_clip, element_clip);
-                            screen_clip = clip_stack.empty() ? screen_clip : intersect_rect(clip_stack.back(), screen_clip);
-                            clip_stack.push_back(screen_clip);
+                            RectF requested_clip = to_screen_rect(layers, layer_index, resolved_rect);
+                            ClipState pushed_clip = clip_stack.empty() ? ClipState() : clip_stack.back();
+                            pushed_clip.rect = merge_clip_rect(pushed_clip.rect, element_clip);
+                            pushed_clip.rect = merge_clip_rect(pushed_clip.rect, requested_clip);
+                            if(command.radius > 0.0f)
+                            {
+                                pushed_clip.rounded_rect = requested_clip;
+                                pushed_clip.rounded_radii = Float4U(command.radius);
+                            }
+                            clip_stack.push_back(pushed_clip);
                             continue;
                         }
                         if(command.type == DrawCommandType::pop_clip)
@@ -444,15 +470,20 @@ namespace Luna
                             continue;
                         }
 
-                        RectF clip_rect = clip_stack.empty() ? element_clip :
-                            merge_clip_rect(clip_stack.back(), element_clip);
+                        ClipState clip = clip_stack.empty() ? ClipState() : clip_stack.back();
+                        clip.rect = merge_clip_rect(clip.rect, element_clip);
+                        RectF clip_rect = clip.rect;
                         auto visual_overflow_clip = [&]()
                         {
-                            return clip_stack.empty() ? inherited_clip :
-                                merge_clip_rect(clip_stack.back(), inherited_clip);
+                            ClipState overflow_clip = clip_stack.empty() ? ClipState() : clip_stack.back();
+                            overflow_clip.rect = merge_clip_rect(overflow_clip.rect, inherited_clip);
+                            return overflow_clip;
                         };
                         RectF vg_clip = has_clip(clip_rect) ? to_vg_rect(frame_desc, clip_rect) : RectF();
                         m_draw_list->set_clip_rect(vg_clip);
+                        RectF vg_rounded_clip = has_rounded_clip(clip) ?
+                            to_vg_rect(frame_desc, clip.rounded_rect) : RectF();
+                        m_draw_list->set_rounded_clip_rect(vg_rounded_clip, clip.rounded_radii);
                         m_draw_list->set_texture(nullptr);
                         m_draw_list->set_shape_buffer(nullptr);
                         m_draw_list->set_sampler(nullptr);
@@ -502,8 +533,8 @@ namespace Luna
                             if(!append_color_program(m_compiled_sdf_color_floats,
                                 color_floats.cspan(), desc.color))
                                 continue;
-                            RectF sdf_clip = command.type == DrawCommandType::shadow &&
-                                command.shadow.mode == ShadowMode::outer ? visual_overflow_clip() : clip_rect;
+                            ClipState sdf_clip = command.type == DrawCommandType::shadow &&
+                                command.shadow.mode == ShadowMode::outer ? visual_overflow_clip() : clip;
                             emit_sdf(desc, Float2U(screen_rect.offset_x, screen_rect.offset_y),
                                 screen_rect, sdf_clip);
                             continue;
@@ -523,7 +554,7 @@ namespace Luna
                             u32 color_clip_mode = (u32)desc.color.clip_mode;
                             bool may_paint_outside = !(color_clip_mode & SDF_COLOR_OUTER_CLIP_BIT) ||
                                 desc.color.outer_distance > 0.0f;
-                            RectF sdf_clip = may_paint_outside ? visual_overflow_clip() : clip_rect;
+                            ClipState sdf_clip = may_paint_outside ? visual_overflow_clip() : clip;
                             emit_sdf(desc, Float2U(screen_anchor.offset_x, screen_anchor.offset_y),
                                 screen_anchor, sdf_clip);
                             continue;
@@ -607,14 +638,9 @@ namespace Luna
                             VG::TextArrangeResult arranged = VG::arrange_text(command.text.c_str(), command.text.size(),
                                 Span<const VG::TextArrangeSection>(&section, 1), vg_rect,
                                 command.vertical_alignment, command.horizontal_alignment);
-                            Vector<VG::Vertex> vertices;
-                            Vector<u32> indices;
-                            VG::generate_text_arrange_result_draw_vertices(arranged,
+                            VG::commit_text_arrange_result(arranged,
                                 Span<const VG::TextArrangeSection>(&section, 1), m_font_atlas,
-                                vertices, indices);
-                            m_draw_list->set_shape_buffer(m_font_atlas->get_shape_buffer());
-                            m_draw_list->set_texture(nullptr);
-                            m_draw_list->draw_shape_raw(vertices.cspan(), indices.cspan());
+                                m_draw_list);
                             break;
                         }
                         case DrawCommandType::shape:
@@ -649,6 +675,7 @@ namespace Luna
                 m_draw_list->set_shape_buffer(nullptr);
                 m_draw_list->set_sampler(nullptr);
                 m_draw_list->set_clip_rect(RectF());
+                m_draw_list->set_rounded_clip_rect(RectF(), Float4U(0.0f));
                 flush_pending_vg();
                 luexp(m_draw_list->compile());
                 m_counters.vg_draw_call_count = (u32)m_draw_list->get_draw_calls().size();
@@ -810,7 +837,8 @@ namespace Luna
                 luexp(m_shape_renderer->begin(render_target));
                 Float4x4U transform = ProjectionMatrix::make_orthographic_off_center(
                     0.0f, m_screen_width, 0.0f, m_screen_height, 0.0f, 1.0f);
-                m_shape_renderer->draw(m_draw_list->get_vertex_buffer(), m_draw_list->get_index_buffer(),
+                m_shape_renderer->draw(m_draw_list->get_instance_buffer(),
+                    m_draw_list->get_state_buffer(),
                     m_draw_list->get_draw_calls(), &transform);
                 luexp(m_shape_renderer->end());
                 luexp(prepare_sdf_resources());

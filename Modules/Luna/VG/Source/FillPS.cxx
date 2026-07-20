@@ -7,7 +7,6 @@ using namespace cppsl;
 struct TransformParams
 {
     float4x4 transform;
-    float4 clip_rect;
 };
 
 struct DescSet0
@@ -37,6 +36,9 @@ struct PSIn
     [[cppsl::location(4)]] uint begin_command_offset;
     [[cppsl::location(5)]] uint num_commands;
     [[cppsl::location(6)]] float4 color;
+    [[cppsl::location(7)]] float4 clip_rect;
+    [[cppsl::location(8)]] float4 rounded_clip_rect;
+    [[cppsl::location(9)]] float4 rounded_clip_radii;
 };
 
 struct PSOut
@@ -400,9 +402,62 @@ float clip_rect_test(float2 pos, float4 clip_rect)
     return 1.0f;
 }
 
+float rounded_clip_rect_distance(float2 pos, float4 clip_rect, float4 corner_radii)
+{
+    float2 half_size = clip_rect.zw * 0.5f;
+    float2 center = clip_rect.xy + half_size;
+    float2 local = pos - center;
+    float radius;
+    if (local.x < 0.0f)
+    {
+        radius = local.y >= 0.0f ? corner_radii.x : corner_radii.w;
+    }
+    else
+    {
+        radius = local.y >= 0.0f ? corner_radii.y : corner_radii.z;
+    }
+    radius = min(max(radius, 0.0f), min(half_size.x, half_size.y));
+    float2 q = abs(local) - half_size + radius;
+    return sqrt(dot(max(q, float2{0.0f, 0.0f}), max(q, float2{0.0f, 0.0f}))) +
+        min(max(q.x, q.y), 0.0f) - radius;
+}
+
+float rounded_clip_rect_test(float2 pos, float4 clip_rect, float4 corner_radii)
+{
+    float distance = rounded_clip_rect_distance(pos, clip_rect, corner_radii);
+    float width = max(fwidth(distance), 0.0001f);
+    return saturate(0.5f - distance / width);
+}
+
+PSOut transparent_output()
+{
+    PSOut result;
+    result.color = float4{0.0f, 0.0f, 0.0f, 0.0f};
+    return result;
+}
+
 [[cppsl::fragment]]
 PSOut ps_main(PSIn v)
 {
+    float clip_coverage = 1.0f;
+    if (any(v.clip_rect != float4{0.0f, 0.0f, 0.0f, 0.0f}))
+    {
+        clip_coverage = clip_rect_test(v.position_2d, v.clip_rect);
+        if (clip_coverage <= 0.0f)
+        {
+            return transparent_output();
+        }
+    }
+    if (any(v.rounded_clip_rect != float4{0.0f, 0.0f, 0.0f, 0.0f}))
+    {
+        clip_coverage *= rounded_clip_rect_test(v.position_2d,
+            v.rounded_clip_rect, v.rounded_clip_radii);
+        if (clip_coverage <= 0.0f)
+        {
+            return transparent_output();
+        }
+    }
+
     float2 units_per_pixel = fwidth(v.shapecoord);
     float2 pixels_per_unit = 1.0f / units_per_pixel;
     float coverage_x = 0.0f;
@@ -484,10 +539,7 @@ PSOut ps_main(PSIn v)
     float weight_x = 1.0f - abs(abs(coverage_x) * 2.0f - 1.0f);
     float weight_y = 1.0f - abs(abs(coverage_y) * 2.0f - 1.0f);
     float coverage = max(abs(coverage_x * weight_x + coverage_y * weight_y) / max(weight_x + weight_y, 0.0001220703125f), min(abs(coverage_x), abs(coverage_y)));
-    if (any(g_set0.g_cbuffer.clip_rect != float4{0.0f, 0.0f, 0.0f, 0.0f}))
-    {
-        coverage *= clip_rect_test(v.position_2d, g_set0.g_cbuffer.clip_rect);
-    }
+    coverage *= clip_coverage;
 
     PSOut o;
     float4 col = g_set0.g_tex.Sample(g_set0.g_sampler, v.texcoord);

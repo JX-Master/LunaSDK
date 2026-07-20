@@ -29,7 +29,9 @@ struct VSInput
     [[cppsl::location(1)]] float4 draw_rect;
     [[cppsl::location(2)]] float2 evaluation_origin;
     [[cppsl::location(3)]] float4 clip_rect;
-    [[cppsl::location(4)]] uint4 program_data;
+    [[cppsl::location(4)]] float4 rounded_clip_rect;
+    [[cppsl::location(5)]] float4 rounded_clip_radii;
+    [[cppsl::location(6)]] uint4 program_data;
 };
 
 struct PSInput
@@ -38,7 +40,9 @@ struct PSInput
     [[cppsl::location(0)]] float2 screen_position;
     [[cppsl::location(1)]] float2 evaluation_origin;
     [[cppsl::location(2)]] float4 clip_rect;
-    [[cppsl::location(3)]] uint4 program_data;
+    [[cppsl::location(3)]] float4 rounded_clip_rect;
+    [[cppsl::location(4)]] float4 rounded_clip_radii;
+    [[cppsl::location(5)]] uint4 program_data;
 };
 
 [[cppsl::vertex]]
@@ -55,6 +59,8 @@ PSInput vs_main(VSInput vertex_data)
     result.screen_position = screen_position;
     result.evaluation_origin = vertex_data.evaluation_origin;
     result.clip_rect = vertex_data.clip_rect;
+    result.rounded_clip_rect = vertex_data.rounded_clip_rect;
+    result.rounded_clip_radii = vertex_data.rounded_clip_radii;
     result.program_data = vertex_data.program_data;
     return result;
 }

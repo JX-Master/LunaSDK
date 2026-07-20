@@ -20,8 +20,8 @@ namespace Luna
 
         struct DrawCommand
         {
-            Ref<RHI::IBuffer> vertex_buffer;
-            Ref<RHI::IBuffer> index_buffer;
+            Ref<RHI::IBuffer> instance_buffer;
+            Ref<RHI::IBuffer> state_buffer;
             usize num_draw_calls;
             Float4x4U transform_matrix;
         };
@@ -54,8 +54,8 @@ namespace Luna
 
             virtual RV begin(RHI::ITexture* render_target) override;
             virtual void draw(
-                RHI::IBuffer* vertex_buffer,
-                RHI::IBuffer* index_buffer,
+                RHI::IBuffer* instance_buffer,
+                RHI::IBuffer* state_buffer,
                 Span<const ShapeDrawCall> draw_calls,
                 Float4x4U* transform_matrix
             ) override;

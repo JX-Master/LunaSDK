@@ -41,19 +41,25 @@ namespace Luna
             context->draw(command);
         }
 
-        static GUICore::LayoutConfig menu_item_layout(const GUICore::LayoutConfig& source, bool top_level,
-            const c8* label)
+        static GUICore::LayoutConfig menu_item_layout(GUICore::IContext* context,
+            const GUICore::LayoutConfig& source, bool top_level, const c8* label)
         {
             GUICore::LayoutConfig result = source;
+            GUICore::ElementHandle style_element;
+            f32 height = Internal::style_scalar(context, style_element,
+                top_level ? "gui.control.height" : "gui.control.small_height", top_level ? 32.0f : 28.0f);
+            f32 font_size = Internal::style_scalar(context, style_element, "gui.menu_item.font_size", 13.0f);
             if(result.width.kind == GUICore::SizeKind::fit)
             {
                 result.width.kind = top_level ? GUICore::SizeKind::fixed : GUICore::SizeKind::percent;
-                result.width.value = top_level ? max(48.0f, (f32)(label ? strlen(label) : 0) * 8.5f + 24.0f) : 1.0f;
+                f32 horizontal_padding = top_level ? max(height * 0.32f, 10.0f) : 30.0f;
+                result.width.value = top_level ? max(height, (f32)(label ? strlen(label) : 0) *
+                    font_size * 0.58f + horizontal_padding * 2.0f) : 1.0f;
             }
             if(result.height.kind == GUICore::SizeKind::fit)
             {
                 result.height.kind = GUICore::SizeKind::fixed;
-                result.height.value = top_level ? 30.0f : 28.0f;
+                result.height.value = height;
             }
             return result;
         }
@@ -93,12 +99,21 @@ namespace Luna
         LUNA_GUI_API GUICore::ElementHandle begin_menu_bar(GUICore::IContext* context, id_t id,
             const c8* label, const GUICore::LayoutConfig& layout, const MenuBarDesc& desc)
         {
-            GUICore::ElementHandle bar = Internal::begin_element(context, id, label ? label : "Menu Bar", layout);
+            GUICore::LayoutConfig resolved_layout = layout;
+            if(resolved_layout.height.kind == GUICore::SizeKind::fit)
+            {
+                resolved_layout.height.kind = GUICore::SizeKind::fixed;
+                resolved_layout.height.value = Internal::style_scalar(context, GUICore::ElementHandle(),
+                    "gui.control.height", 32.0f);
+            }
+            GUICore::ElementHandle bar = Internal::begin_element(context, id, label ? label : "Menu Bar",
+                resolved_layout);
             draw_menu_rect(context, Internal::style_color(context, bar, "gui.menu_bar.background",
                 Float4U(0.08f, 0.10f, 0.13f, 1.0f)));
             Internal::MenuBarBuildScope scope;
             scope.root = bar;
-            scope.gap = desc.gap;
+            scope.gap = desc.gap >= 0.0f ? desc.gap :
+                Internal::style_scalar(context, bar, "gui.menu_bar.gap", 4.0f);
             Internal::frame_state(context)->menu_bar_stack.push_back(scope);
             return bar;
         }
@@ -176,7 +191,7 @@ namespace Luna
             }
             bool open = is_popup_open(context, popup_id);
             GUICore::ElementHandle item = Internal::begin_element(context, id, label ? label : "Menu",
-                menu_item_layout(layout, top_level, label));
+                menu_item_layout(context, layout, top_level, label));
             Internal::set_interactable(context, item, desc.enabled);
             draw_menu_item(context, item, label, nullptr, false, desc.enabled, top_level, true, open, interaction);
             context->end_element();
@@ -210,7 +225,7 @@ namespace Luna
             }
             if(desc.enabled && interaction.clicked) close_menu_stack(context);
             GUICore::ElementHandle item = Internal::begin_element(context, id, label ? label : "Menu Item",
-                menu_item_layout(layout, false, label));
+                menu_item_layout(context, layout, false, label));
             Internal::set_interactable(context, item, desc.enabled);
             draw_menu_item(context, item, label, desc.shortcut, selected, desc.enabled, false, false, false, interaction);
             context->end_element();
@@ -236,7 +251,8 @@ namespace Luna
             if(resolved.height.kind == GUICore::SizeKind::fit)
             {
                 resolved.height.kind = GUICore::SizeKind::fixed;
-                resolved.height.value = 9.0f;
+                resolved.height.value = Internal::style_scalar(context, GUICore::ElementHandle(),
+                    "gui.control.small_height", 28.0f) * 0.32f;
             }
             GUICore::ElementHandle separator = Internal::begin_element(context, id, "Menu Separator", resolved);
             GUICore::DrawCommand line;

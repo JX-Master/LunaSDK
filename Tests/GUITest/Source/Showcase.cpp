@@ -214,6 +214,45 @@ namespace Luna
                 return submit_color(color_floats);
             }
 
+            RV finish_rounded_children_clip(GUICore::IContext* context, const GUICore::ElementHandle& element,
+                GUICore::DrawPhase, void* userdata)
+            {
+                f32 radius = (f32)(usize)userdata;
+                GUICore::DrawCommand pop_clip;
+                pop_clip.type = GUICore::DrawCommandType::pop_clip;
+                context->draw(pop_clip);
+
+                const GUICore::Element* element_data = context->get_element(element.index);
+                if(!element_data) return ok;
+                const RectF& rect = element_data->layout_result.rect;
+                f32 width = max(rect.width, 1.0f);
+                f32 height = max(rect.height, 1.0f);
+
+                auto submit = [&](Vector<f32>& shape_floats, Vector<f32>& color_floats) -> RV
+                {
+                    auto shape = context->append_sdf_shape_program(shape_floats.cspan());
+                    if(failed(shape)) return shape.errcode();
+                    auto color = context->append_sdf_color_program(color_floats.cspan());
+                    if(failed(color)) return color.errcode();
+                    GUICore::DrawCommand command;
+                    command.type = GUICore::DrawCommandType::sdf;
+                    command.rect_reference = GUICore::DrawCommandRectReference::element;
+                    command.sdf.shape = shape.get();
+                    command.sdf.color = color.get();
+                    context->draw(command);
+                    return ok;
+                };
+
+                Vector<f32> border_shape;
+                GUICore::sdf_shape_add_rounded_rectangle(border_shape, RectF(0.5f, 0.5f,
+                    max(width - 1.0f, 0.0f), max(height - 1.0f, 0.0f)),
+                    Float4U(max(radius - 0.5f, 0.0f)));
+                Vector<f32> border_color;
+                GUICore::sdf_color_add_solid(border_color, style_color(context, "gui.border.strong"),
+                    GUICore::SDFClipDesc::stroke(1.0f));
+                return submit(border_shape, border_color);
+            }
+
             GUICore::ElementHandle sdf_swatch(GUICore::IContext* context, GUI::id_t element_id,
                 const c8* name, u32 kind)
             {
@@ -851,6 +890,16 @@ namespace Luna
                 end_panel(context, choices);
                 GUICore::ElementHandle disclosure = begin_card(context, "buttons.disclosure", grow_x(),
                     "Disclosure and tree", "Expanded, selected, and leaf states");
+                GUI::ScrollViewDesc disclosure_scroll_desc;
+                disclosure_scroll_desc.horizontal = false;
+                disclosure_scroll_desc.scrollbar_mode = GUI::ScrollBarMode::always_visible;
+                GUI::begin_scroll_view(context, id(context, "buttons.disclosure.scroll"),
+                    "Disclosure content", grow_y(), disclosure_scroll_desc);
+                GUICore::LayoutConfig disclosure_content_layout = grow_y();
+                disclosure_content_layout.flex_grow = 0.0f;
+                disclosure_content_layout.flex_shrink = 0.0f;
+                GUICore::ElementHandle disclosure_content = GUI::begin_v_layout(context,
+                    id(context, "buttons.disclosure.content"), "Disclosure controls", disclosure_content_layout);
                 if(GUI::collapsing_header(context, id(context, "buttons.header"), "Transform", fill_width(48.0f)))
                 {
                     label(context, id(context, "buttons.position"), "Position        0.00, 1.25, 0.00",
@@ -858,12 +907,16 @@ namespace Luna
                     label(context, id(context, "buttons.rotation"), "Rotation        0, 15, 0",
                         fill_width(34.0f), 10.0f, "gui.text.secondary");
                 }
-                GUI::tree_node(context, id(context, "buttons.tree.scene"), "Scene", GUI::TreeNodeFlag::none, 0,
-                    fill_width(40.0f));
-                GUI::tree_node(context, id(context, "buttons.tree.ball"), "Material Ball",
-                    GUI::TreeNodeFlag::selected, 1, fill_width(40.0f));
-                GUI::tree_node(context, id(context, "buttons.tree.camera"), "Camera",
-                    GUI::TreeNodeFlag::leaf, 1, fill_width(40.0f));
+                if(GUI::tree_node(context, id(context, "buttons.tree.scene"), "Scene",
+                    GUI::TreeNodeFlag::none, 0, fill_width(40.0f)))
+                {
+                    GUI::tree_node(context, id(context, "buttons.tree.ball"), "Material Ball",
+                        GUI::TreeNodeFlag::selected, 1, fill_width(40.0f));
+                    GUI::tree_node(context, id(context, "buttons.tree.camera"), "Camera",
+                        GUI::TreeNodeFlag::leaf, 1, fill_width(40.0f));
+                }
+                end_panel(context, disclosure_content);
+                GUI::end_scroll_view(context);
                 end_panel(context, disclosure);
                 end_two_columns(context, row2);
             }
@@ -1041,7 +1094,7 @@ namespace Luna
                 GUICore::ElementHandle menu_card = begin_card(context, "overlay.menu", grow_x(),
                     "Menu bar", "Shortcut, checked, disabled, and separator states");
                 GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, id(context, "overlay.menu.bar"),
-                    "Menu", fill_width(48.0f));
+                    "Menu", fill_width(style_scalar(context, "gui.control.height", 32.0f)));
                 if(GUI::begin_menu(context, id(context, "overlay.menu.file"), "File"))
                 {
                     GUI::menu_item(context, id(context, "overlay.menu.new"), "New");
@@ -1084,60 +1137,286 @@ namespace Luna
             {
                 section_heading(context, "workspace", "GUITEST - WORKSPACE", "Docked editor composition",
                     "Tabs, splitters, viewport tools, console, and status feedback in one functional software surface.");
+                GUI::id_t dock_space_id = id(context, "workspace.dockspace");
+                GUI::id_t hierarchy_id = id(context, "workspace.panel.hierarchy");
+                GUI::id_t viewport_id = id(context, "workspace.panel.viewport");
+                GUI::id_t material_editor_id = id(context, "workspace.panel.material_editor");
+                GUI::id_t shader_graph_id = id(context, "workspace.panel.shader_graph");
+                GUI::id_t inspector_id = id(context, "workspace.panel.inspector");
+                GUI::id_t layers_id = id(context, "workspace.panel.layers");
+                GUI::id_t console_id = id(context, "workspace.panel.console");
+                GUI::id_t build_id = id(context, "workspace.panel.build");
+                GUI::id_t pinned_inspector_id = id(context, "workspace.panel.pinned_inspector");
+
                 GUICore::ElementHandle workspace = GUI::begin_v_layout(context, id(context, "workspace.demo"),
-                    "Workspace", grow_y());
-                surface(context, "gui.surface.0", style_scalar(context, "gui.radius.large", 16.0f), true, true);
-                GUICore::ElementHandle menu = GUI::begin_h_layout(context, id(context, "workspace.menu"),
-                    "Menu", fill_width(44.0f));
-                label(context, id(context, "workspace.menu.items"),
-                    "File     Edit     Create     Tools     Window     Help                  Untitled Scene.luna*",
-                    grow_x(), 10.0f, "gui.text.secondary");
-                GUI::end_h_layout(context, menu);
-                GUICore::ElementHandle body = GUI::begin_h_layout(context, id(context, "workspace.body"),
-                    "Workspace body", grow_y());
-                GUICore::LayoutConfig hierarchy_layout = fixed(180.0f, 0.0f);
-                hierarchy_layout.height.kind = GUICore::SizeKind::percent;
-                hierarchy_layout.height.value = 1.0f;
-                hierarchy_layout.padding = Float4U(10.0f);
-                GUICore::ElementHandle hierarchy = begin_panel(context, id(context, "workspace.hierarchy"),
-                    "Hierarchy", hierarchy_layout, "gui.surface.1", 0.0f, false);
-                label(context, id(context, "workspace.hierarchy.title"), "Hierarchy", fill_width(40.0f), 12.0f);
-                GUI::tree_node(context, id(context, "workspace.scene"), "Scene", GUI::TreeNodeFlag::none, 0,
-                    fill_width(40.0f));
-                GUI::tree_node(context, id(context, "workspace.camera"), "Camera", GUI::TreeNodeFlag::leaf, 1,
-                    fill_width(40.0f));
-                GUI::tree_node(context, id(context, "workspace.ball"), "Material Ball",
-                    GUI::TreeNodeFlag::selected | GUI::TreeNodeFlag::leaf, 1, fill_width(40.0f));
-                end_panel(context, hierarchy);
-                GUICore::ElementHandle viewport = GUI::begin_v_layout(context, id(context, "workspace.viewport"),
-                    "Viewport", grow_x());
-                label(context, id(context, "workspace.tabs"), "Viewport       Material Editor       Shader Graph       +",
-                    fill_width(44.0f), 11.0f, "gui.text.secondary");
-                GUI::image(context, id(context, "workspace.image"), state.material_preview,
-                    grow_y(), flipped_image());
-                label(context, id(context, "workspace.console"),
-                    "Console     Build\n[Info] Dock workspace initialized.\n[Warning] Texture mip chain is incomplete.",
-                    fill_width(130.0f), 10.0f, "gui.text.secondary");
-                GUI::end_v_layout(context, viewport);
-                GUICore::LayoutConfig inspector_layout = fixed(220.0f, 0.0f);
-                inspector_layout.height.kind = GUICore::SizeKind::percent;
-                inspector_layout.height.value = 1.0f;
-                inspector_layout.padding = Float4U(12.0f);
-                GUICore::ElementHandle inspector = begin_panel(context, id(context, "workspace.inspector"),
-                    "Inspector", inspector_layout, "gui.surface.1", 0.0f, false);
-                label(context, id(context, "workspace.inspector.title"), "Inspector       Layers",
-                    fill_width(44.0f), 11.0f);
-                GUI::drag_float3(context, id(context, "workspace.position"), state.position, -100.0f, 100.0f,
-                    fill_width(48.0f));
-                GUI::checkbox(context, id(context, "workspace.visible"), "Visible", &state.checkbox_value,
-                    fill_width(48.0f));
-                GUI::slider_float(context, id(context, "workspace.roughness"), &state.roughness, 0.0f, 1.0f,
-                    fill_width(48.0f));
-                end_panel(context, inspector);
-                GUICore::FlexLayoutDesc body_flex;
-                body_flex.axis = GUICore::LayoutAxis::x;
-                body_flex.cross_alignment = GUICore::FlexAlignment::stretch;
-                GUI::end_h_layout(context, body, body_flex);
+                    "Workspace", fill_width(660.0f));
+                f32 workspace_radius = style_scalar(context, "gui.radius.large", 16.0f);
+                surface(context, "gui.surface.0", workspace_radius, true, true);
+                GUICore::DrawCommand push_workspace_clip;
+                push_workspace_clip.type = GUICore::DrawCommandType::push_clip;
+                push_workspace_clip.rect_reference = GUICore::DrawCommandRectReference::element;
+                push_workspace_clip.radius = workspace_radius;
+                context->draw(push_workspace_clip);
+                GUICore::DrawConfig workspace_clip;
+                workspace_clip.name = Name("guitest.workspace.rounded_clip");
+                workspace_clip.callback = finish_rounded_children_clip;
+                workspace_clip.userdata = (void*)(usize)(u32)workspace_radius;
+                workspace_clip.phases = GUICore::DrawPhaseFlag::after_children;
+                context->set_draw_config(workspace, workspace_clip);
+
+                GUICore::ElementHandle reset_layout_item;
+                GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, id(context, "workspace.menu"),
+                    "Workspace menu", fill_width(style_scalar(context, "gui.control.height", 32.0f)));
+                if(GUI::begin_menu(context, id(context, "workspace.menu.file"), "File"))
+                {
+                    GUI::menu_item(context, id(context, "workspace.menu.file.new"), "New Scene");
+                    GUI::menu_item(context, id(context, "workspace.menu.file.open"), "Open...");
+                    GUI::menu_separator(context, id(context, "workspace.menu.file.separator"));
+                    GUI::MenuItemDesc save_desc;
+                    save_desc.shortcut = "Ctrl+S";
+                    GUI::menu_item(context, id(context, "workspace.menu.file.save"), "Save", false, save_desc);
+                    lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 220.0f, 142.0f)));
+                }
+                if(GUI::begin_menu(context, id(context, "workspace.menu.edit"), "Edit"))
+                {
+                    GUI::MenuItemDesc undo_desc;
+                    undo_desc.shortcut = "Ctrl+Z";
+                    GUI::menu_item(context, id(context, "workspace.menu.edit.undo"), "Undo", false, undo_desc);
+                    GUI::MenuItemDesc redo_desc;
+                    redo_desc.shortcut = "Ctrl+Y";
+                    GUI::menu_item(context, id(context, "workspace.menu.edit.redo"), "Redo", false, redo_desc);
+                    lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 86.0f)));
+                }
+                if(GUI::begin_menu(context, id(context, "workspace.menu.create"), "Create"))
+                {
+                    GUI::menu_item(context, id(context, "workspace.menu.create.material"), "Material");
+                    GUI::menu_item(context, id(context, "workspace.menu.create.light"), "Light");
+                    GUI::menu_item(context, id(context, "workspace.menu.create.camera"), "Camera");
+                    lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 118.0f)));
+                }
+                if(GUI::begin_menu(context, id(context, "workspace.menu.tools"), "Tools"))
+                {
+                    GUI::menu_item(context, id(context, "workspace.menu.tools.bake"), "Bake Materials");
+                    GUI::menu_item(context, id(context, "workspace.menu.tools.profiler"), "Memory Profiler");
+                    lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 210.0f, 86.0f)));
+                }
+                if(GUI::begin_menu(context, id(context, "workspace.menu.window"), "Window"))
+                {
+                    GUI::menu_item(context, id(context, "workspace.menu.window.grid"), "Show Grid", &state.menu_grid);
+                    reset_layout_item = GUI::menu_item(context, id(context, "workspace.menu.window.reset"),
+                        "Reset Dock Layout");
+                    lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 220.0f, 86.0f)));
+                }
+                if(GUI::begin_menu(context, id(context, "workspace.menu.help"), "Help"))
+                {
+                    GUI::menu_item(context, id(context, "workspace.menu.help.docs"), "Documentation");
+                    GUI::menu_item(context, id(context, "workspace.menu.help.about"), "About Luna GUI");
+                    lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 210.0f, 86.0f)));
+                }
+                label(context, id(context, "workspace.menu.document"), "Untitled Scene.luna*", grow_x(), 10.0f,
+                    "gui.text.secondary");
+                GUI::end_menu_bar(context, menu_bar);
+
+                if(GUI::is_item_valid(context, reset_layout_item) &&
+                    GUI::is_item_clicked(context, reset_layout_item))
+                {
+                    state.workspace_layout_initialized = false;
+                }
+                if(!state.workspace_layout_initialized)
+                {
+                    GUI::DockSpaceLayoutDesc layout;
+                    layout.root_node = 0;
+                    layout.nodes.resize(7);
+                    layout.nodes[0].split = true;
+                    layout.nodes[0].split_axis = GUI::DockSplitAxis::x;
+                    layout.nodes[0].split_ratio = 0.15f;
+                    layout.nodes[0].child0 = 1;
+                    layout.nodes[0].child1 = 2;
+                    layout.nodes[1].tabs.push_back(hierarchy_id);
+                    layout.nodes[1].selected_tab = hierarchy_id;
+                    layout.nodes[2].split = true;
+                    layout.nodes[2].split_axis = GUI::DockSplitAxis::x;
+                    layout.nodes[2].split_ratio = 0.82f;
+                    layout.nodes[2].child0 = 3;
+                    layout.nodes[2].child1 = 4;
+                    layout.nodes[3].split = true;
+                    layout.nodes[3].split_axis = GUI::DockSplitAxis::y;
+                    layout.nodes[3].split_ratio = 0.76f;
+                    layout.nodes[3].child0 = 5;
+                    layout.nodes[3].child1 = 6;
+                    layout.nodes[4].tabs.push_back(inspector_id);
+                    layout.nodes[4].tabs.push_back(layers_id);
+                    layout.nodes[4].selected_tab = inspector_id;
+                    layout.nodes[5].tabs.push_back(viewport_id);
+                    layout.nodes[5].tabs.push_back(material_editor_id);
+                    layout.nodes[5].tabs.push_back(shader_graph_id);
+                    layout.nodes[5].selected_tab = viewport_id;
+                    layout.nodes[6].tabs.push_back(console_id);
+                    layout.nodes[6].tabs.push_back(build_id);
+                    layout.nodes[6].selected_tab = console_id;
+                    GUI::DockSpaceFloatingPanelDesc floating;
+                    floating.panel = pinned_inspector_id;
+                    floating.rect = RectF(610.0f, 118.0f, 380.0f, 238.0f);
+                    floating.z_order = 1;
+                    layout.floating_panels.push_back(floating);
+                    GUI::set_dockspace_layout(context, dock_space_id, layout);
+                    state.workspace_layout_initialized = true;
+                }
+
+                GUI::DockSpaceDesc dock_space_desc;
+                dock_space_desc.splitter_size = 6.0f;
+                dock_space_desc.splitter_visual_size = 1.0f;
+                dock_space_desc.splitter_color = style_color(context, "gui.border.strong");
+                dock_space_desc.docking_indicator_color = style_color(context, "gui.accent");
+                GUI::begin_dock_space(context, dock_space_id, "Workspace dock space", grow_y(), dock_space_desc);
+
+                GUI::DockPanelDesc panel_desc;
+                panel_desc.close_button = false;
+                panel_desc.title_bar_height = style_scalar(context, "gui.control.height", 40.0f);
+                panel_desc.background_color = style_color(context, "gui.surface.1");
+                panel_desc.title_bar_color = style_color(context, "gui.surface.1");
+                panel_desc.border_color = style_color(context, "gui.border.strong");
+
+                if(GUI::begin_dock_panel(context, hierarchy_id, "Hierarchy", nullptr, panel_desc))
+                {
+                    GUICore::LayoutConfig panel_layout = grow_y();
+                    panel_layout.padding = Float4U(10.0f);
+                    GUICore::ElementHandle panel = GUI::begin_v_layout(context,
+                        id(context, "workspace.hierarchy.content"), "Hierarchy content", panel_layout);
+                    if(GUI::tree_node(context, id(context, "workspace.scene"), "Scene",
+                        GUI::TreeNodeFlag::none, 0, fill_width(40.0f)))
+                    {
+                        GUI::tree_node(context, id(context, "workspace.camera"), "Camera",
+                            GUI::TreeNodeFlag::leaf, 1, fill_width(40.0f));
+                        GUI::tree_node(context, id(context, "workspace.ball"), "Material Ball",
+                            GUI::TreeNodeFlag::selected | GUI::TreeNodeFlag::leaf, 1, fill_width(40.0f));
+                    }
+                    end_panel(context, panel);
+                    GUI::end_dock_panel(context);
+                }
+
+                if(GUI::begin_dock_panel(context, viewport_id, "Viewport", nullptr, panel_desc))
+                {
+                    GUICore::ElementHandle panel = GUI::begin_v_layout(context,
+                        id(context, "workspace.viewport.content"), "Viewport content", grow_y());
+                    const c8* tools[] = { "Select", "Move", "Frame" };
+                    GUI::button_group(context, id(context, "workspace.viewport.tools"), Span<const c8*>(tools, 3),
+                        &state.space_mode, fill_width(44.0f));
+                    GUI::image(context, id(context, "workspace.image"), state.material_preview,
+                        grow_y(), flipped_image());
+                    end_panel(context, panel, 0.0f);
+                    GUI::end_dock_panel(context);
+                }
+                if(GUI::begin_dock_panel(context, material_editor_id, "Material Editor", nullptr, panel_desc))
+                {
+                    GUICore::LayoutConfig panel_layout = grow_y();
+                    panel_layout.padding = Float4U(12.0f);
+                    GUICore::ElementHandle panel = GUI::begin_v_layout(context,
+                        id(context, "workspace.material.content"), "Material editor content", panel_layout);
+                    label(context, id(context, "workspace.material.title"), "M_Rusted_Metal", fill_width(34.0f), 13.0f);
+                    GUI::slider_float(context, id(context, "workspace.material.roughness"), &state.roughness,
+                        0.0f, 1.0f, fill_width(48.0f));
+                    GUI::slider_float(context, id(context, "workspace.material.metallic"), &state.metallic,
+                        0.0f, 1.0f, fill_width(48.0f));
+                    end_panel(context, panel);
+                    GUI::end_dock_panel(context);
+                }
+                if(GUI::begin_dock_panel(context, shader_graph_id, "Shader Graph", nullptr, panel_desc))
+                {
+                    GUICore::LayoutConfig panel_layout = grow_y();
+                    panel_layout.padding = Float4U(12.0f);
+                    GUICore::ElementHandle panel = GUI::begin_v_layout(context,
+                        id(context, "workspace.shader.content"), "Shader graph content", panel_layout);
+                    label(context, id(context, "workspace.shader.title"), "Surface -> PBR Output",
+                        fill_width(40.0f), 13.0f);
+                    label(context, id(context, "workspace.shader.note"),
+                        "Drag this tab to create a floating shader workspace.", fill_width(40.0f), 10.0f,
+                        "gui.text.secondary");
+                    end_panel(context, panel);
+                    GUI::end_dock_panel(context);
+                }
+
+                if(GUI::begin_dock_panel(context, inspector_id, "Inspector", nullptr, panel_desc))
+                {
+                    GUICore::LayoutConfig panel_layout = grow_y();
+                    panel_layout.padding = Float4U(12.0f);
+                    GUICore::ElementHandle panel = GUI::begin_v_layout(context,
+                        id(context, "workspace.inspector.content"), "Inspector content", panel_layout);
+                    label(context, id(context, "workspace.inspector.transform"), "Transform",
+                        fill_width(34.0f), 12.0f);
+                    GUI::drag_float3(context, id(context, "workspace.position"), state.position, -100.0f, 100.0f,
+                        fill_width(48.0f));
+                    GUI::checkbox(context, id(context, "workspace.visible"), "Visible", &state.checkbox_value,
+                        fill_width(48.0f));
+                    GUI::slider_float(context, id(context, "workspace.roughness"), &state.roughness, 0.0f, 1.0f,
+                        fill_width(48.0f));
+                    end_panel(context, panel);
+                    GUI::end_dock_panel(context);
+                }
+                if(GUI::begin_dock_panel(context, layers_id, "Layers", nullptr, panel_desc))
+                {
+                    GUICore::LayoutConfig panel_layout = grow_y();
+                    panel_layout.padding = Float4U(12.0f);
+                    GUICore::ElementHandle panel = GUI::begin_v_layout(context,
+                        id(context, "workspace.layers.content"), "Layers content", panel_layout);
+                    GUI::checkbox(context, id(context, "workspace.layers.geometry"), "Geometry",
+                        &state.checkbox_value, fill_width(40.0f));
+                    GUI::checkbox(context, id(context, "workspace.layers.lighting"), "Lighting",
+                        &state.live_preview, fill_width(40.0f));
+                    end_panel(context, panel);
+                    GUI::end_dock_panel(context);
+                }
+
+                if(GUI::begin_dock_panel(context, console_id, "Console", nullptr, panel_desc))
+                {
+                    GUICore::LayoutConfig panel_layout = grow_y();
+                    panel_layout.padding = Float4U(10.0f);
+                    GUICore::ElementHandle panel = GUI::begin_v_layout(context,
+                        id(context, "workspace.console.content"), "Console content", panel_layout);
+                    label(context, id(context, "workspace.console.info"),
+                        "[Info] Dock workspace initialized.", fill_width(30.0f), 10.0f, "gui.text.secondary");
+                    label(context, id(context, "workspace.console.warning"),
+                        "[Warning] Texture mip chain is incomplete.", fill_width(30.0f), 10.0f,
+                        "gui.status.warning");
+                    end_panel(context, panel, 2.0f);
+                    GUI::end_dock_panel(context);
+                }
+                if(GUI::begin_dock_panel(context, build_id, "Build", nullptr, panel_desc))
+                {
+                    GUICore::LayoutConfig panel_layout = grow_y();
+                    panel_layout.padding = Float4U(10.0f);
+                    GUICore::ElementHandle panel = GUI::begin_v_layout(context,
+                        id(context, "workspace.build.content"), "Build content", panel_layout);
+                    label(context, id(context, "workspace.build.title"), "Material bake queue",
+                        fill_width(30.0f), 10.0f, "gui.text.secondary");
+                    GUI::ProgressBarDesc progress_desc;
+                    progress_desc.show_overlay = false;
+                    GUI::progress_bar(context, id(context, "workspace.build.progress"), 0.68f,
+                        fill_width(10.0f), progress_desc);
+                    end_panel(context, panel);
+                    GUI::end_dock_panel(context);
+                }
+
+                GUI::DockPanelDesc floating_panel_desc = panel_desc;
+                floating_panel_desc.close_button = true;
+                if(GUI::begin_dock_panel(context, pinned_inspector_id, "Inspector (Pinned)",
+                    &state.pinned_inspector_open, floating_panel_desc))
+                {
+                    GUICore::LayoutConfig panel_layout = grow_y();
+                    panel_layout.padding = Float4U(12.0f);
+                    GUICore::ElementHandle panel = GUI::begin_v_layout(context,
+                        id(context, "workspace.pinned.content"), "Pinned inspector content", panel_layout);
+                    label(context, id(context, "workspace.pinned.scale"), "Scale",
+                        fill_width(30.0f), 11.0f, "gui.text.secondary");
+                    GUI::drag_float3(context, id(context, "workspace.pinned.position"), state.position,
+                        -100.0f, 100.0f, fill_width(48.0f));
+                    GUI::checkbox(context, id(context, "workspace.pinned.visible"), "Visible",
+                        &state.checkbox_value, fill_width(48.0f));
+                    end_panel(context, panel);
+                    GUI::end_dock_panel(context);
+                }
+                GUI::end_dock_space(context);
+
                 GUICore::FlexLayoutDesc workspace_flex;
                 workspace_flex.axis = GUICore::LayoutAxis::y;
                 workspace_flex.cross_alignment = GUICore::FlexAlignment::stretch;
@@ -1147,7 +1426,7 @@ namespace Luna
             void build_content(GUICore::IContext* context, ShowcaseState& state, ShowcaseHandles& handles)
             {
                 GUICore::LayoutConfig layout = grow_x();
-                layout.padding = Float4U(18.0f);
+                layout.padding = state.section == 0 ? Float4U(18.0f) : Float4U(0.0f);
                 GUICore::ElementHandle content = GUI::begin_v_layout(context, id(context, "showcase.content"),
                     "Content", layout);
                 rounded_rect(context, style_color(context, "gui.canvas"), 0.0f);
@@ -1160,8 +1439,10 @@ namespace Luna
                     GUI::ScrollViewDesc desc;
                     desc.horizontal = false;
                     GUI::begin_scroll_view(context, id(context, "showcase.content.scroll"), "Content scroll", grow_y(), desc);
-                    GUICore::ElementHandle page = GUI::begin_v_layout(context, id(context, "showcase.content.page"),
-                        "Scrollable page", grow_y());
+                    GUICore::LayoutConfig page_layout = grow_y();
+                    page_layout.padding = Float4U(18.0f);
+                    GUICore::ElementHandle page = GUI::begin_v_layout(context,
+                        id(context, "showcase.content.page"), "Scrollable page", page_layout);
                     if(state.section == 1) build_primitives(context, state);
                     else if(state.section == 2) build_buttons(context, state);
                     else if(state.section == 3) build_input(context, state);

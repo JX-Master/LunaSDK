@@ -240,6 +240,9 @@ namespace Luna
                 u32 child1 = U32_MAX;
                 Vector<id_t> tabs;
                 id_t selected_tab = 0;
+                f32 tab_indicator_x = 0.0f;
+                f32 tab_indicator_width = 0.0f;
+                bool tab_indicator_initialized = false;
                 RectF rect;
                 RectF splitter_rect;
             };

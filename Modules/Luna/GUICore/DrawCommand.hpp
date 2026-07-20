@@ -43,7 +43,7 @@ namespace Luna
             shadow,
             //! Draws one analytic SDF shape and color program pair.
             sdf,
-            //! Pushes a clip rectangle.
+            //! Pushes a clip rectangle. A positive @ref DrawCommand::radius enables rounded clipping.
             push_clip,
             //! Pops the current clip rectangle.
             pop_clip
@@ -171,7 +171,9 @@ namespace Luna
             Float4U color_bottom_right = Float4U(1.0f);
             //! Bottom-left color for gradient rectangle commands.
             Float4U color_bottom_left = Float4U(1.0f);
-            //! Corner radius for rounded rectangles.
+            //! Corner radius for rounded rectangles, shadows and rounded clip rectangles.
+            //! @remark A positive value makes a @ref DrawCommandType::push_clip command establish an additional
+            //! rounded clip rectangle until its matching @ref DrawCommandType::pop_clip command.
             f32 radius = 0.0f;
             //! Line width for line commands.
             f32 line_width = 1.0f;

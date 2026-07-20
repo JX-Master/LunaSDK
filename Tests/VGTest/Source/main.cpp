@@ -299,7 +299,9 @@ int luna_main(int argc, const char* argv[])
             Float4x4 view_matrix = inverse(AffineMatrix::make(app.camera_position, app.camera_rotation, Float3(1.0f)));
             Float4x4U mat = Float4x4U(mul(view_matrix, proj_matrix));
 
-            app.shape_renderer->draw(app.shape_draw_list->get_vertex_buffer(), app.shape_draw_list->get_index_buffer(),  app.shape_draw_list->get_draw_calls(), &mat);
+            app.shape_renderer->draw(app.shape_draw_list->get_instance_buffer(),
+                app.shape_draw_list->get_state_buffer(),
+                app.shape_draw_list->get_draw_calls(), &mat);
 
             luexp(app.shape_renderer->end());
             app.shape_renderer->prepare(app.command_buffer);

@@ -27,23 +27,38 @@ namespace Luna
         //! @addtogroup VG
         //! @{
         
-        //! Describes one vertex to be drawn for the glyph.
-        struct Vertex
+        //! Describes one quad instance to be drawn by the shape renderer.
+        struct ShapeInstance
         {
-            //! The position of the vertex.
-            Float2U position;
-            //! The shape coordinate of the vertex for mapping the shape
-            //! commands.
-            Float2U shapecoord;
-            //! The texture coordinate of the vertex for sampling
-            //! the attached resources.
-            Float2U texcoord;
-            //! The offset of the first command for this shape in the shape buffer.
-            u32 begin_command;
-            //! The number of commands (f32 values) used for this shape.
-            u32 num_commands;
-            //! An additional color that can be used to tint the vertex.
+            //! The minimum and maximum draw positions encoded as
+            //! `{min_x, min_y, max_x, max_y}`.
+            Float4U position_bounds;
+            //! The minimum and maximum shape coordinates encoded as
+            //! `{min_x, min_y, max_x, max_y}`.
+            Float4U shapecoord_bounds;
+            //! The minimum and maximum texture coordinates encoded as
+            //! `{min_x, min_y, max_x, max_y}`.
+            Float4U texcoord_bounds;
+            //! The shape command range and state index encoded as
+            //! `{begin_command, num_commands, state_index, 0}`.
+            UInt4U command_range_and_state;
+            //! An additional color used to tint the shape.
             Float4U color;
+        };
+
+        //! Describes one reusable shape rendering state stored in the state buffer.
+        struct ShapeState
+        {
+            //! The local transform matrix applied to the shape.
+            Float4x4U transform;
+            //! The clip rectangle encoded as `{offset_x, offset_y, width, height}`.
+            //! All zeroes disable rectangular clipping.
+            Float4U clip_rect;
+            //! The rounded clip rectangle encoded as `{offset_x, offset_y, width, height}`.
+            //! All zeroes disable rounded clipping.
+            Float4U rounded_clip_rect;
+            //! Corner radii of @ref rounded_clip_rect in top-left, top-right, bottom-right and bottom-left order.
+            Float4U rounded_clip_radii;
         };
 
         //! Describes one shape draw call.
@@ -55,14 +70,10 @@ namespace Luna
             Ref<RHI::ITexture> texture;
             //! The attached sampler for this draw call.
             RHI::SamplerDesc sampler;
-            //! The clip rectangle for this draw call.
-            RectF clip_rect;
-            //! The fist index to draw for this draw call.
-            u32 base_index;
-            //! The number of indices to draw for this draw call.
-            u32 num_indices;
-            //! The transform matrix for this draw call.
-            Float4x4U transform;
+            //! The first shape instance to draw for this draw call.
+            u32 base_instance;
+            //! The number of shape instances to draw for this draw call.
+            u32 num_instances;
         };
 
         //! @interface IShapeDrawList
@@ -121,7 +132,7 @@ namespace Luna
 
             //! Sets the transform matrix for the following draw calls.
             //! @details The initial transform matrix is @ref Float4x4::identity when the draw list has been reset.
-            //! @param[in] origin The origin point position to set.
+            //! @param[in] transform The transform matrix to set.
             virtual void set_transform(const Float4x4U& transform) = 0;
 
             //! Gets the transform matrix for the following draw calls.
@@ -137,15 +148,24 @@ namespace Luna
             //! @return Returns the set clip rectangle.
             virtual RectF get_clip_rect() = 0;
 
+            //! Sets an additional rounded clip rectangle for the following draw calls.
+            //! @param[in] clip_rect The rounded clip rectangle to set. A zero-sized rectangle disables rounded clipping.
+            //! @param[in] corner_radii Corner radii in top-left, top-right, bottom-right and bottom-left order.
+            //! @remark The rounded clip is intersected with the ordinary clip rectangle set by @ref set_clip_rect.
+            virtual void set_rounded_clip_rect(const RectF& clip_rect, const Float4U& corner_radii) = 0;
+
+            //! Gets the rounded clip rectangle for the following draw calls.
+            //! @return Returns the set rounded clip rectangle.
+            virtual RectF get_rounded_clip_rect() = 0;
+
+            //! Gets the rounded clip corner radii for the following draw calls.
+            //! @return Returns corner radii in top-left, top-right, bottom-right and bottom-left order.
+            virtual Float4U get_rounded_clip_radii() = 0;
+
             //! Forces geometry recorded after this call into a new draw call.
             //! @remark This is useful when another renderer must insert commands between two ranges of VG geometry
             //! without changing the current VG draw state. The call has no effect until more geometry is recorded.
             virtual void draw_call_barrier() = 0;
-
-            //! Draws one shape by submitting vertices and indices directly.
-            //! @param[in] vertices The draw vertices.
-            //! @param[in] indices The draw indices. Valid index range is [`0`, `vertices.size()`).
-            virtual void draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices) = 0;
 
             //! Draws one shape. The shape is drawn by adding one draw rect (two triangles) to the list.
             //! @param[in] begin_command The index of the first command point of the glyph to draw in shape buffer.
@@ -154,9 +174,9 @@ namespace Luna
             //! @param[in] max_position The maximum position of the bounding rect of the shape.
             //! @param[in] min_shapecoord The shape coordinate value that maps to the minimum position of the bounding rect of the shape.
             //! @param[in] max_shapecoord The shape coordinate value that maps to the maximum position of the bounding rect of the shape.
-            //! @param[in] color The color to tint the shape in RGBA8 form.
+            //! @param[in] color The floating-point RGBA color used to tint the shape.
             //! @param[in] min_texcoord The texture coordinate value that maps to the minimum position of the bounding rect of the shape.
-            //! @param[in] max_shapecoord The texture coordinate value that maps to the maximum position of the bounding rect of the shape.
+            //! @param[in] max_texcoord The texture coordinate value that maps to the maximum position of the bounding rect of the shape.
             virtual void draw_shape(u32 begin_command, u32 num_commands,
                 const Float2U& min_position, const Float2U& max_position,
                 const Float2U& min_shapecoord, const Float2U& max_shapecoord,
@@ -167,58 +187,39 @@ namespace Luna
             //! Builds render resources and draw calls that can be used for drawing glyphs.
             virtual RV compile() = 0;
 
-            //! Gets the compiled vertex buffer used for rendering glyphs in this draw list.
-            //! @return Returns the compiled vertex buffer.
+            //! Gets the compiled instance buffer used for rendering shapes in this draw list.
+            //! @return Returns the compiled instance buffer.
             //! @par Valid Usage
             //! * This function must be called after calling @ref compile in order to let new shape draw commands 
             //! take effect.
-            virtual RHI::IBuffer* get_vertex_buffer() = 0;
+            virtual RHI::IBuffer* get_instance_buffer() = 0;
 
-            //! Gets the number of vertices in the vertex buffer returned by @ref get_vertex_buffer.
-            //! @return Returns the number of vertices in the vertex buffer.
+            //! Gets the number of instances in the buffer returned by @ref get_instance_buffer.
+            //! @return Returns the number of compiled shape instances.
             //! @par Valid Usage
             //! * This function must be called after calling @ref compile in order to let new shape draw commands 
             //! take effect.
-            virtual u32 get_vertex_buffer_size() = 0;
+            virtual u32 get_instance_buffer_size() = 0;
 
-            //! Gets the compiled index buffer used for rendering glyphs in this draw list.
-            //! @return Returns the compiled index buffer.
+            //! Gets the compiled state buffer used by shape instances in this draw list.
+            //! @return Returns the compiled state buffer.
             //! @par Valid Usage
-            //! * This function must be called after calling @ref compile in order to let new shape draw commands 
+            //! * This function must be called after calling @ref compile in order to let new shape states
             //! take effect.
-            virtual RHI::IBuffer* get_index_buffer() = 0;
+            virtual RHI::IBuffer* get_state_buffer() = 0;
 
-            //! Gets the number of indices in the index buffer returned by @ref get_index_buffer.
-            //! @return Returns the number of indices in the index buffer.
+            //! Gets the number of unique states in the buffer returned by @ref get_state_buffer.
+            //! @return Returns the number of compiled unique shape states.
             //! @par Valid Usage
-            //! * This function must be called after calling @ref compile in order to let new shape draw commands 
+            //! * This function must be called after calling @ref compile in order to let new shape states
             //! take effect.
-            virtual u32 get_index_buffer_size() = 0;
+            virtual u32 get_state_buffer_size() = 0;
 
             //! Gets an array of draw calls that should be invoked to draw glyphs in this draw list.
             //! @param[out] out_draw_calls Returns the compiled draw calls. Elements will be pushed to the end of the vector,
             //! and existing elements will not be modified.
             virtual Span<const ShapeDrawCall> get_draw_calls() = 0;
         };
-
-        //! Generates vertices and indices used to draw one shape rectangle.
-        //! @param[out] out_vertices The buffer to write generated vertices to. 4 vertices will be written.
-        //! @param[out] out_indices The buffer to write generated indices to. 6 indices will be written.
-        //! @param[in] begin_command The index of the first command point of the glyph to draw in shape buffer.
-        //! @param[in] num_commands The number of command points of the glyph to draw.
-        //! @param[in] min_position The minimum position of the bounding rect of the shape.
-        //! @param[in] max_position The maximum position of the bounding rect of the shape.
-        //! @param[in] min_shapecoord The shape coordinate value that maps to the minimum position of the bounding rect of the shape.
-        //! @param[in] max_shapecoord The shape coordinate value that maps to the maximum position of the bounding rect of the shape.
-        //! @param[in] color The color to tint the shape in RGBA8 form.
-        //! @param[in] min_texcoord The texture coordinate value that maps to the minimum position of the bounding rect of the shape.
-        //! @param[in] max_shapecoord The texture coordinate value that maps to the maximum position of the bounding rect of the shape.
-        LUNA_VG_API void get_rect_shape_draw_vertices(Vertex out_vertices[4], u32 out_indices[6],
-            u32 begin_command, u32 num_commands,
-            const Float2U& min_position, const Float2U& max_position,
-            const Float2U& min_shapecoord, const Float2U& max_shapecoord,
-            const Float4U& color = Color::white(),
-            const Float2U& min_texcoord = Float2U(0.0f), const Float2U& max_texcoord = Float2U(0.0f));
 
         //! Creates a new shape draw list.
         //! @param[in] device The device used to render to the draw list. This is used to create 

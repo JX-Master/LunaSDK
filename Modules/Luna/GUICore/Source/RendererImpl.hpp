@@ -38,6 +38,8 @@ namespace Luna
             Float4U draw_rect;
             Float2U evaluation_origin;
             Float4U clip_rect;
+            Float4U rounded_clip_rect;
+            Float4U rounded_clip_radii;
             UInt4U program_data;
         };
 

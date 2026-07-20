@@ -17,42 +17,64 @@ namespace Luna
 {
     namespace VG
     {
+        static_assert(sizeof(ShapeState) == sizeof(f32) * 28,
+            "ShapeState must match the structured-buffer layout used by FillVS.");
+
         ShapeDrawCall& ShapeDrawList::get_current_draw_call()
         {
-            if (m_state_dirty || m_draw_calls.empty())
+            if (m_draw_call_dirty || m_draw_calls.empty())
             {
                 new_draw_call();
-                m_state_dirty = false;
+                m_draw_call_dirty = false;
             }
             return m_draw_calls.back();
+        }
+        u32 ShapeDrawList::resolve_current_state_index()
+        {
+            if (!m_state_index_dirty)
+            {
+                return m_current_state_index;
+            }
+            ShapeState state;
+            state.transform = m_transform;
+            state.clip_rect = Float4U(m_clip_rect.offset_x, m_clip_rect.offset_y,
+                m_clip_rect.width, m_clip_rect.height);
+            state.rounded_clip_rect = Float4U(m_rounded_clip_rect.offset_x, m_rounded_clip_rect.offset_y,
+                m_rounded_clip_rect.width, m_rounded_clip_rect.height);
+            state.rounded_clip_radii = m_rounded_clip_radii;
+            for (usize i = 0; i < m_states.size(); ++i)
+            {
+                const ShapeState& existing_state = m_states[i];
+                if (!memcmp(&existing_state, &state, sizeof(ShapeState)))
+                {
+                    m_current_state_index = (u32)i;
+                    m_state_index_dirty = false;
+                    return m_current_state_index;
+                }
+            }
+            m_current_state_index = (u32)m_states.size();
+            m_states.push_back(state);
+            m_state_index_dirty = false;
+            return m_current_state_index;
         }
         void ShapeDrawList::reset()
         {
             lutsassert();
             m_draw_calls.clear();
             m_draw_call_buffers.clear();
-            m_vertices.clear();
-            m_indices.clear();
+            m_instances.clear();
+            m_states.clear();
             m_internal_shape_buffer->get_shape_points(true).clear();
             m_shape_buffer.reset();
             m_texture.reset();
             m_sampler = get_default_sampler();
             m_transform = Float4x4::identity();
             m_clip_rect = RectF{0, 0, 0, 0};
-            m_state_dirty = false;
-        }
-        void ShapeDrawList::draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices)
-        {
-            lutsassert();
-            auto& dc = get_current_draw_call();
-            u32 idx_offset = (u32)m_vertices.size();
-            m_vertices.insert(m_vertices.end(), vertices);
-            m_indices.reserve(m_indices.size() + indices.size());
-            for(u32 i : indices)
-            {
-                m_indices.push_back(idx_offset + i);
-            }
-            dc.num_indices += (u32)indices.size();
+            m_rounded_clip_rect = RectF{0, 0, 0, 0};
+            m_rounded_clip_radii = Float4U(0.0f);
+            m_state_index_dirty = true;
+            m_current_state_index = 0;
+            m_draw_call_dirty = false;
         }
         void ShapeDrawList::draw_shape(u32 begin_command, u32 num_commands,
             const Float2U& min_position, const Float2U& max_position,
@@ -61,21 +83,18 @@ namespace Luna
         {
             lutsassert();
             auto& dc = get_current_draw_call();
-            u32 idx_offset = (u32)m_vertices.size();
-            Vertex v[4];
-            u32 indices[6];
-            get_rect_shape_draw_vertices(v, indices, begin_command, num_commands, 
-                min_position, max_position, min_shapecoord, max_shapecoord,
-                color, min_texcoord, max_texcoord);
-            m_vertices.insert(m_vertices.end(), Span<Vertex>(v, 4));
-            indices[0] += idx_offset;
-            indices[1] += idx_offset;
-            indices[2] += idx_offset;
-            indices[3] += idx_offset;
-            indices[4] += idx_offset;
-            indices[5] += idx_offset;
-            m_indices.insert(m_indices.end(), Span<u32>(indices, 6));
-            dc.num_indices += 6;
+            ShapeInstance instance;
+            instance.position_bounds = Float4U(min_position.x, min_position.y,
+                max_position.x, max_position.y);
+            instance.shapecoord_bounds = Float4U(min_shapecoord.x, min_shapecoord.y,
+                max_shapecoord.x, max_shapecoord.y);
+            instance.texcoord_bounds = Float4U(min_texcoord.x, min_texcoord.y,
+                max_texcoord.x, max_texcoord.y);
+            instance.command_range_and_state = UInt4U(begin_command, num_commands,
+                resolve_current_state_index(), 0);
+            instance.color = color;
+            m_instances.push_back(instance);
+            ++dc.num_instances;
         }
         RV ShapeDrawList::compile()
         {
@@ -83,38 +102,35 @@ namespace Luna
             lutry
             {
                 // Pack data.
-                u32 num_vertices = (u32)m_vertices.size();
-                u32 num_indices = (u32)m_indices.size();
-                u32 num_internal_buffer_points = (u32)m_internal_shape_buffer->get_shape_points().size();
-                if (m_vertex_buffer_capacity < num_vertices)
+                u32 num_instances = (u32)m_instances.size();
+                if (m_instance_buffer_capacity < num_instances)
                 {
-                    // Recreate vertex buffer.
-                    luset(m_vertex_buffer, m_device->new_buffer(RHI::MemoryType::upload, RHI::BufferDesc(
-                        RHI::BufferUsageFlag::vertex_buffer, num_vertices * sizeof(Vertex))));
-                    m_vertex_buffer_capacity = num_vertices;
+                    luset(m_instance_buffer, m_device->new_buffer(RHI::MemoryType::upload, RHI::BufferDesc(
+                        RHI::BufferUsageFlag::vertex_buffer, num_instances * sizeof(ShapeInstance))));
+                    m_instance_buffer_capacity = num_instances;
                 }
-                m_vertex_buffer_size = num_vertices;
-                if (m_index_buffer_capacity < num_indices)
+                m_instance_buffer_size = num_instances;
+                if(m_instance_buffer)
                 {
-                    // Recreate index buffer.
-                    luset(m_index_buffer, m_device->new_buffer(RHI::MemoryType::upload, RHI::BufferDesc(
-                        RHI::BufferUsageFlag::index_buffer, num_indices * sizeof(u32))));
-                    m_index_buffer_capacity = num_indices;
+                    ShapeInstance* instance_data = nullptr;
+                    luexp(m_instance_buffer->map(0, 0, (void**)&instance_data));
+                    memcpy(instance_data, m_instances.data(), m_instances.size() * sizeof(ShapeInstance));
+                    m_instance_buffer->unmap(0, sizeof(ShapeInstance) * m_instances.size());
                 }
-                m_index_buffer_size = num_indices;
-                if(m_vertex_buffer)
+                u32 num_states = (u32)m_states.size();
+                if (m_state_buffer_capacity < num_states)
                 {
-                    Vertex* vertex_data = nullptr;
-                    luexp(m_vertex_buffer->map(0, 0, (void**)&vertex_data));
-                    memcpy(vertex_data, m_vertices.data(), m_vertices.size() * sizeof(Vertex));
-                    m_vertex_buffer->unmap(0, sizeof(Vertex) * m_vertices.size());
+                    luset(m_state_buffer, m_device->new_buffer(RHI::MemoryType::upload, RHI::BufferDesc(
+                        RHI::BufferUsageFlag::read_buffer, num_states * sizeof(ShapeState))));
+                    m_state_buffer_capacity = num_states;
                 }
-                if(m_index_buffer)
+                m_state_buffer_size = num_states;
+                if (m_state_buffer)
                 {
-                    u32* index_data = nullptr;
-                    luexp(m_index_buffer->map(0, 0, (void**)&index_data));
-                    memcpy(index_data, m_indices.data(), m_indices.size() * sizeof(u32));
-                    m_index_buffer->unmap(0, sizeof(u32) * m_indices.size());
+                    ShapeState* state_data = nullptr;
+                    luexp(m_state_buffer->map(0, 0, (void**)&state_data));
+                    memcpy(state_data, m_states.data(), m_states.size() * sizeof(ShapeState));
+                    m_state_buffer->unmap(0, sizeof(ShapeState) * m_states.size());
                 }
                 for(usize i = 0; i < m_draw_calls.size(); ++i)
                 {
@@ -130,47 +146,6 @@ namespace Luna
             }
             lucatchret;
             return ok;
-        }
-        LUNA_VG_API void get_rect_shape_draw_vertices(Vertex out_vertices[4], u32 out_indices[6],
-            u32 begin_command, u32 num_commands,
-            const Float2U& min_position, const Float2U& max_position,
-            const Float2U& min_shapecoord, const Float2U& max_shapecoord,
-            const Float4U& color,
-            const Float2U& min_texcoord, const Float2U& max_texcoord)
-        {
-            out_vertices[0].position = min_position;
-            //out_vertices[1].position = Float2U(min_position.x, max_position.y);
-            out_vertices[1].position.x = min_position.x;
-            out_vertices[1].position.y = max_position.y;
-            out_vertices[2].position = max_position;
-            //out_vertices[3].position = Float2U(max_position.x, min_position.y);
-            out_vertices[3].position.x = max_position.x;
-            out_vertices[3].position.y = min_position.y;
-            out_vertices[0].shapecoord = min_shapecoord;
-            //out_vertices[1].shapecoord = Float2U(min_shapecoord.x, max_shapecoord.y);
-            out_vertices[1].shapecoord.x = min_shapecoord.x;
-            out_vertices[1].shapecoord.y = max_shapecoord.y;
-            out_vertices[2].shapecoord = max_shapecoord;
-            //out_vertices[3].shapecoord = Float2U(max_shapecoord.x, min_shapecoord.y);
-            out_vertices[3].shapecoord.x = max_shapecoord.x;
-            out_vertices[3].shapecoord.y = min_shapecoord.y;
-            out_vertices[0].texcoord = min_texcoord;
-            //out_vertices[1].texcoord = Float2U(min_texcoord.x, max_texcoord.y);
-            out_vertices[1].texcoord.x = min_texcoord.x;
-            out_vertices[1].texcoord.y = max_texcoord.y;
-            out_vertices[2].texcoord = max_texcoord;
-            //out_vertices[3].texcoord = Float2U(max_texcoord.x, min_texcoord.y);
-            out_vertices[3].texcoord.x = max_texcoord.x;
-            out_vertices[3].texcoord.y = min_texcoord.y;
-            out_vertices[0].color = out_vertices[1].color = out_vertices[2].color = out_vertices[3].color = color;
-            out_vertices[0].begin_command = out_vertices[1].begin_command = out_vertices[2].begin_command = out_vertices[3].begin_command = begin_command;
-            out_vertices[0].num_commands = out_vertices[1].num_commands = out_vertices[2].num_commands = out_vertices[3].num_commands = num_commands;
-            out_indices[0] = 0;
-            out_indices[1] = 1;
-            out_indices[2] = 2;
-            out_indices[3] = 0;
-            out_indices[4] = 2;
-            out_indices[5] = 3;
         }
         LUNA_VG_API Ref<IShapeDrawList> new_shape_draw_list(RHI::IDevice* device)
         {

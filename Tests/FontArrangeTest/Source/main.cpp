@@ -210,7 +210,9 @@ int luna_main(int argc, const char* argv[])
             app.command_buffer->end_render_pass();
 
             luexp(app.shape_renderer->begin(back_buffer));
-            app.shape_renderer->draw(app.shape_draw_list->get_vertex_buffer(), app.shape_draw_list->get_index_buffer(),  app.shape_draw_list->get_draw_calls());
+            app.shape_renderer->draw(app.shape_draw_list->get_instance_buffer(),
+                app.shape_draw_list->get_state_buffer(),
+                app.shape_draw_list->get_draw_calls());
             luexp(app.shape_renderer->end());
             app.shape_renderer->prepare(app.command_buffer);
             desc.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);

@@ -29,7 +29,9 @@ struct PSInput
     [[cppsl::location(0)]] float2 screen_position;
     [[cppsl::location(1)]] float2 evaluation_origin;
     [[cppsl::location(2)]] float4 clip_rect;
-    [[cppsl::location(3)]] uint4 program_data;
+    [[cppsl::location(3)]] float4 rounded_clip_rect;
+    [[cppsl::location(4)]] float4 rounded_clip_radii;
+    [[cppsl::location(5)]] uint4 program_data;
 };
 
 struct PSOutput
@@ -374,16 +376,47 @@ PSOutput transparent_output()
     return result;
 }
 
+float rounded_clip_rect_distance(float2 point, float4 clip_rect, float4 corner_radii)
+{
+    float2 half_size = clip_rect.zw * 0.5f;
+    float2 center = clip_rect.xy + half_size;
+    float2 local = point - center;
+    float radius;
+    if(local.x < 0.0f)
+    {
+        radius = local.y < 0.0f ? corner_radii.x : corner_radii.w;
+    }
+    else
+    {
+        radius = local.y < 0.0f ? corner_radii.y : corner_radii.z;
+    }
+    radius = min(max(radius, 0.0f), min(half_size.x, half_size.y));
+    float2 q = abs(local) - half_size + radius;
+    return sqrt(dot(max(q, float2{0.0f, 0.0f}), max(q, float2{0.0f, 0.0f}))) +
+        min(max(q.x, q.y), 0.0f) - radius;
+}
+
 [[cppsl::fragment]]
 PSOutput ps_main(PSInput pixel)
 {
-    if(pixel.program_data.z != 0)
+    float raster_clip_coverage = 1.0f;
+    if((pixel.program_data.z & 1u) != 0)
     {
         float2 clip_max = pixel.clip_rect.xy + pixel.clip_rect.zw;
         bool inside_clip = pixel.screen_position.x >= pixel.clip_rect.x &&
             pixel.screen_position.y >= pixel.clip_rect.y && pixel.screen_position.x < clip_max.x &&
             pixel.screen_position.y < clip_max.y;
         if(!inside_clip)
+        {
+            return transparent_output();
+        }
+    }
+    if((pixel.program_data.z & 2u) != 0)
+    {
+        float rounded_clip_distance = rounded_clip_rect_distance(pixel.screen_position,
+            pixel.rounded_clip_rect, pixel.rounded_clip_radii);
+        raster_clip_coverage = distance_coverage(rounded_clip_distance, 0.0f);
+        if(raster_clip_coverage <= 0.0f)
         {
             return transparent_output();
         }
@@ -415,8 +448,8 @@ PSOutput ps_main(PSInput pixel)
         payload_float += 1;
         clip_distance = max(clip_distance, shape.distance - outer_distance);
     }
-    float clip_coverage = (has_inner_clip || has_outer_clip) ?
-        distance_coverage(clip_distance, 0.0f) : 1.0f;
+    float clip_coverage = raster_clip_coverage * ((has_inner_clip || has_outer_clip) ?
+        distance_coverage(clip_distance, 0.0f) : 1.0f);
     if(clip_coverage <= 0.0f)
     {
         return transparent_output();

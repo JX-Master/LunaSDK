@@ -35,6 +35,8 @@ namespace Luna
             bool triplanar = true;
             bool disclosure_open = true;
             bool menu_grid = true;
+            bool workspace_layout_initialized = false;
+            bool pinned_inspector_open = true;
             f32 roughness = 0.36f;
             f32 metallic = 0.82f;
             i32 subdivisions = 64;

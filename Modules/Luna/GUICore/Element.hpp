@@ -165,7 +165,8 @@ namespace Luna
             //! Gap between adjacent flex lines on the cross axis.
             f32 cross_axis_gap = 0.0f;
             //! Whether child clip rectangles should be intersected with the parent content rectangle.
-            bool clip_children = true;
+            //! @remark Disabled by default so visual overflow may reach the inherited ancestor clip.
+            bool clip_children = false;
         };
 
         //! Identifies how grid layout derives its column count and cell size.
@@ -190,7 +191,8 @@ namespace Luna
             //! Gap between adjacent cells.
             Float2U gap = Float2U(0.0f);
             //! Whether child clip rectangles should be intersected with the parent content rectangle.
-            bool clip_children = true;
+            //! @remark Disabled by default so visual overflow may reach the inherited ancestor clip.
+            bool clip_children = false;
         };
 
         //! Describes one child placement rule for canvas layout.
@@ -219,7 +221,8 @@ namespace Luna
             //! Fallback placement used when no item matches a child.
             CanvasLayoutItem default_item;
             //! Whether child clip rectangles should be intersected with the parent content rectangle.
-            bool clip_children = true;
+            //! @remark Disabled by default so visual overflow may reach the inherited ancestor clip.
+            bool clip_children = false;
         };
 
         //! Describes one scroll viewport layout pass.
@@ -233,6 +236,7 @@ namespace Luna
             //! itself. Values should be non-negative.
             Float2U max_scroll_delta = Float2U(0.0f);
             //! Whether child clip rectangles should be intersected with the viewport content rectangle.
+            //! @remark Enabled by default because the viewport rectangle defines the visible scroll region.
             bool clip_children = true;
         };
 
@@ -292,7 +296,8 @@ namespace Luna
             //! Gap between adjacent columns and rows.
             Float2U gap = Float2U(0.0f);
             //! Whether child clip rectangles should be intersected with the table content rectangle.
-            bool clip_children = true;
+            //! @remark Disabled by default so visual overflow may reach the inherited ancestor clip.
+            bool clip_children = false;
         };
 
         //! Describes the layout result of one element.

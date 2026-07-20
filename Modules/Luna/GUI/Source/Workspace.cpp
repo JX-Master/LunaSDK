@@ -10,6 +10,8 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
 #include "Internal.hpp"
+#include <Luna/VG/TextArranger.hpp>
+#include <cstring>
 
 namespace Luna
 {
@@ -328,6 +330,58 @@ namespace Luna
                 return panel && panel->label ? panel->label : "Panel";
             }
 
+            static f32 dock_tab_label_width(GUICore::IContext* context,
+                const GUICore::ElementHandle& element, const c8* label, f32 font_size)
+            {
+                const c8* text = label ? label : "";
+                usize text_size = strlen(text);
+                if(!text_size) return 0.0f;
+                f32 fallback = (f32)text_size * font_size * 0.58f;
+                GUICore::FontDesc font = context->get_font(style_name(context, element, "gui.font"));
+                if(!font.font)
+                {
+                    font.font = Font::get_default_font();
+                    font.font_index = 0;
+                }
+                if(!font.font) return fallback;
+                VG::TextArrangeSection section;
+                section.font_file = font.font;
+                section.font_index = font.font_index;
+                section.font_size = font_size;
+                section.num_chars = text_size;
+                VG::TextArrangeResult arranged = VG::arrange_text(text, text_size,
+                    Span<const VG::TextArrangeSection>(&section, 1),
+                    RectF(0.0f, 0.0f, 1000000.0f, max(font_size * 2.0f, 1.0f)),
+                    VG::TextAlignment::begin, VG::TextAlignment::begin);
+                f32 width = arranged.bounding_rect.width;
+                if(!arranged.lines.empty() && !arranged.lines[0].glyphs.empty())
+                {
+                    const VG::TextGlyphArrangeResult& last = arranged.lines[0].glyphs.back();
+                    width = max(width, last.origin_offset + last.advance_length);
+                }
+                return width > 0.0f ? ceil(width) + 1.0f : fallback;
+            }
+
+            static f32 dock_tab_width(GUICore::IContext* context,
+                const GUICore::ElementHandle& element, const c8* label, f32 font_size)
+            {
+                f32 padding = style_scalar(context, element, "gui.tab.padding_x", 14.0f);
+                return dock_tab_label_width(context, element, label, font_size) + padding * 2.0f;
+            }
+
+            static f32 dock_tab_width_scale(GUICore::IContext* context,
+                const GUICore::ElementHandle& element, DockSpaceAction& action,
+                const DockTreeNode& leaf, f32 font_size, f32 available_width)
+            {
+                f32 natural_width = 0.0f;
+                for(id_t tab : leaf.tabs)
+                {
+                    natural_width += dock_tab_width(context, element, panel_label(action, tab), font_size);
+                }
+                return natural_width > available_width && natural_width > 0.0f ?
+                    max(available_width, 0.0f) / natural_width : 1.0f;
+            }
+
             static RV layout_dock_space(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 const RectF& rect, void* userdata)
             {
@@ -397,14 +451,31 @@ namespace Luna
                 context->draw(command);
             }
 
-            static void draw_text(GUICore::IContext* context, const RectF& rect, const c8* text,
-                const Float4U& color, f32 size, GUICore::DrawCommandRectReference reference)
+            static void draw_shadow(GUICore::IContext* context, const RectF& rect, const Float4U& color,
+                f32 radius, const Float2U& offset, f32 softness, GUICore::ShadowMode mode)
+            {
+                GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::shadow;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = rect;
+                command.color = color;
+                command.radius = radius;
+                command.shadow.offset = offset;
+                command.shadow.softness = softness;
+                command.shadow.mode = mode;
+                context->draw(command);
+            }
+
+            static void draw_text(GUICore::IContext* context, const GUICore::ElementHandle& element,
+                const RectF& rect, const c8* text, const Float4U& color, f32 size,
+                GUICore::DrawCommandRectReference reference)
             {
                 GUICore::DrawCommand command;
                 command.type = GUICore::DrawCommandType::text;
                 command.rect_reference = reference;
                 command.rect = rect;
                 command.color = color;
+                command.font = style_name(context, element, "gui.font");
                 command.font_size = size;
                 command.horizontal_alignment = VG::TextAlignment::begin;
                 command.vertical_alignment = VG::TextAlignment::center;
@@ -500,7 +571,20 @@ namespace Luna
                 {
                     if(node.active && node.split && rect_valid(node.splitter_rect))
                     {
-                        draw_rect(context, GUICore::DrawCommandType::rect, node.splitter_rect,
+                        RectF visual_rect = node.splitter_rect;
+                        f32 visual_size = clamp(action.desc.splitter_visual_size, 0.0f,
+                            action.desc.splitter_size);
+                        if(node.split_axis == DockSplitAxis::x)
+                        {
+                            visual_rect.offset_x += (visual_rect.width - visual_size) * 0.5f;
+                            visual_rect.width = visual_size;
+                        }
+                        else
+                        {
+                            visual_rect.offset_y += (visual_rect.height - visual_size) * 0.5f;
+                            visual_rect.height = visual_size;
+                        }
+                        draw_rect(context, GUICore::DrawCommandType::rect, visual_rect,
                             action.desc.splitter_color, 0.0f, GUICore::DrawCommandRectReference::layer);
                     }
                 }
@@ -589,62 +673,152 @@ namespace Luna
                 const DockPanelDesc& desc = panel.desc;
                 f32 panel_width = panel_element->layout_result.rect.width;
                 f32 panel_height = panel_element->layout_result.rect.height;
-                draw_rect(context, GUICore::DrawCommandType::rect, RectF(), desc.background_color);
+                Float4U background_color = desc.background_color.w > 0.0f ? desc.background_color :
+                    style_color(context, element, "gui.surface.1", Float4U(0.07f, 0.09f, 0.12f, 0.98f));
+                Float4U title_bar_color = desc.title_bar_color.w > 0.0f ? desc.title_bar_color :
+                    style_color(context, element, "gui.surface.1", Float4U(0.11f, 0.15f, 0.20f, 1.0f));
+                Float4U border_color = desc.border_color.w > 0.0f ? desc.border_color :
+                    style_color(context, element, "gui.border.strong", Float4U(0.24f, 0.30f, 0.38f, 1.0f));
+                bool floating = persistent->mode == DockPanelMode::floating;
+                f32 panel_radius = style_scalar(context, element, "gui.radius.medium", 9.0f);
+                if(floating)
+                {
+                    Float4U shadow_color = style_color(context, element, "gui.shadow.dark",
+                        Float4U(0.0f, 0.0f, 0.0f, 0.30f));
+                    shadow_color.w = min(shadow_color.w * 1.5f, 0.34f);
+                    f32 shadow_softness = style_scalar(context, element, "gui.shadow.softness", 4.0f);
+                    draw_shadow(context, RectF(), shadow_color, panel_radius, Float2U(0.0f,
+                        shadow_softness * 2.0f), shadow_softness * 4.0f, GUICore::ShadowMode::outer);
+                    draw_rect(context, GUICore::DrawCommandType::rounded_rect, RectF(), border_color, panel_radius);
+                    draw_rect(context, GUICore::DrawCommandType::rounded_rect, RectF(1.0f, 1.0f, -2.0f, -2.0f),
+                        background_color, max(panel_radius - 1.0f, 0.0f));
+                    Float4U panel_highlight = style_color(context, element, "gui.shadow.inset_light",
+                        Float4U(1.0f, 1.0f, 1.0f, 0.65f));
+                    panel_highlight.w *= 0.45f;
+                    draw_shadow(context, RectF(1.0f, 1.0f, -2.0f, -2.0f), panel_highlight,
+                        max(panel_radius - 1.0f, 0.0f), Float2U(0.0f, -1.0f), 1.0f,
+                        GUICore::ShadowMode::inner);
+                }
+                else
+                {
+                    draw_rect(context, GUICore::DrawCommandType::rect, RectF(), background_color);
+                }
                 if(desc.title_bar)
                 {
-                    u32 leaf_index = persistent->mode == DockPanelMode::docking ? find_panel_leaf(state, panel.id) : U32_MAX;
+                    const f32 title_height = desc.title_bar_height;
+                    const f32 text_padding = floating ? 12.0f :
+                        style_scalar(context, element, "gui.tab.padding_x", 14.0f);
+                    const f32 font_size = floating ?
+                        style_scalar(context, element, "gui.text.font_size", 16.0f) :
+                        style_scalar(context, element, "gui.menu_item.font_size", 13.0f);
+                    draw_rect(context, GUICore::DrawCommandType::rect,
+                        RectF(floating ? 12.0f : 0.0f, max(title_height - 1.0f, 0.0f),
+                        floating ? max(panel_width - 24.0f, 0.0f) : panel_width, 1.0f),
+                        style_color(context, element, "gui.border", border_color));
+                    if(!floating)
+                    {
+                        draw_rect(context, GUICore::DrawCommandType::rect,
+                            RectF(0.0f, 0.0f, panel_width, max(title_height - 1.0f, 0.0f)), title_bar_color);
+                    }
+
+                    auto draw_tab = [&](const RectF& tab_rect, const c8* label, bool selected, bool reserve_close)
+                    {
+                        if(selected && desc.active_title_bar_color.w > 0.0f)
+                        {
+                            draw_rect(context, GUICore::DrawCommandType::rect, tab_rect,
+                                desc.active_title_bar_color);
+                        }
+                        f32 close_reserve = reserve_close ? title_height * 0.72f : 0.0f;
+                        RectF text_rect(tab_rect.offset_x + text_padding, 0.0f,
+                            max(tab_rect.width - text_padding * 2.0f - close_reserve, 0.0f), title_height);
+                        draw_text(context, element, text_rect, label, style_color(context, element,
+                            selected && !floating ? "gui.focus" : selected ? "gui.text.color" : "gui.text.secondary",
+                            selected ? Float4U(0.72f, 0.38f, 0.40f, 1.0f) :
+                            Float4U(0.65f, 0.68f, 0.72f, 1.0f)), font_size,
+                            GUICore::DrawCommandRectReference::element);
+                    };
+
+                    u32 leaf_index = floating ? U32_MAX : find_panel_leaf(state, panel.id);
                     if(leaf_index < state.nodes.size() && !state.nodes[leaf_index].tabs.empty())
                     {
                         DockTreeNode& leaf = state.nodes[leaf_index];
-                        f32 width = panel_width / (f32)leaf.tabs.size();
+                        f32 width_scale = dock_tab_width_scale(context, element, action, leaf,
+                            font_size, panel_width);
+                        f32 x = 0.0f;
+                        f32 target_indicator_x = 0.0f;
+                        f32 target_indicator_width = 0.0f;
                         for(usize i = 0; i < leaf.tabs.size(); ++i)
                         {
                             id_t tab = leaf.tabs[i];
-                            Float4U color = tab == leaf.selected_tab ? desc.active_title_bar_color : desc.title_bar_color;
-                            RectF tab_rect(width * (f32)i, 0.0f, width, desc.title_bar_height);
-                            draw_rect(context, GUICore::DrawCommandType::rect, tab_rect, color);
-                            RectF text_rect(tab_rect.offset_x + 10.0f, 0.0f,
-                                max(tab_rect.width - 20.0f, 0.0f), desc.title_bar_height);
-                            draw_text(context, text_rect, panel_label(action, tab), Float4U(0.92f, 0.94f, 0.97f, 1.0f),
-                                15.0f, GUICore::DrawCommandRectReference::element);
+                            const c8* label = panel_label(action, tab);
+                            f32 width = dock_tab_width(context, element, label, font_size) * width_scale;
+                            RectF tab_rect(x, 0.0f, width, desc.title_bar_height);
+                            bool selected = tab == leaf.selected_tab;
+                            draw_tab(tab_rect, label, selected,
+                                selected && panel.close.id && i + 1 == leaf.tabs.size());
+                            if(selected)
+                            {
+                                f32 indicator_inset = min(10.0f, tab_rect.width * 0.25f);
+                                target_indicator_x = tab_rect.offset_x + indicator_inset;
+                                target_indicator_width = max(tab_rect.width - indicator_inset * 2.0f, 0.0f);
+                            }
+                            x += width;
                         }
+                        if(!leaf.tab_indicator_initialized)
+                        {
+                            leaf.tab_indicator_x = target_indicator_x;
+                            leaf.tab_indicator_width = target_indicator_width;
+                            leaf.tab_indicator_initialized = true;
+                        }
+                        else
+                        {
+                            f32 delta_time = max(context->get_frame_desc().delta_time, 0.0f);
+                            leaf.tab_indicator_x = smooth_step(leaf.tab_indicator_x,
+                                target_indicator_x, 10.0f, delta_time);
+                            leaf.tab_indicator_width = smooth_step(leaf.tab_indicator_width,
+                                target_indicator_width, 10.0f, delta_time);
+                        }
+                        draw_rect(context, GUICore::DrawCommandType::rounded_rect,
+                            RectF(leaf.tab_indicator_x, max(title_height - 2.0f, 0.0f),
+                            leaf.tab_indicator_width, 2.0f), style_color(context, element, "gui.accent",
+                            Float4U(0.89f, 0.31f, 0.35f, 1.0f)), 1.0f);
                     }
                     else
                     {
-                        draw_rect(context, GUICore::DrawCommandType::rect,
-                            RectF(0.0f, 0.0f, panel_width, desc.title_bar_height), desc.active_title_bar_color);
-                        draw_text(context, RectF(10.0f, 0.0f, max(panel_width - 20.0f, 0.0f),
-                            desc.title_bar_height), panel.label,
-                            Float4U(0.92f, 0.94f, 0.97f, 1.0f), 15.0f,
-                            GUICore::DrawCommandRectReference::element);
+                        draw_tab(RectF(0.0f, 0.0f, panel_width, desc.title_bar_height), panel.label,
+                            true, panel.close.id);
                     }
                 }
                 f32 border = max(desc.border_size, 0.0f);
-                if(border > 0.0f)
+                if(border > 0.0f && !floating)
                 {
                     draw_rect(context, GUICore::DrawCommandType::rect,
-                        RectF(0.0f, 0.0f, panel_width, border), desc.border_color);
+                        RectF(0.0f, 0.0f, panel_width, border), border_color);
                     draw_rect(context, GUICore::DrawCommandType::rect,
-                        RectF(0.0f, max(panel_height - border, 0.0f), panel_width, border), desc.border_color);
+                        RectF(0.0f, max(panel_height - border, 0.0f), panel_width, border), border_color);
                     draw_rect(context, GUICore::DrawCommandType::rect,
-                        RectF(0.0f, 0.0f, border, panel_height), desc.border_color);
+                        RectF(0.0f, 0.0f, border, panel_height), border_color);
                     draw_rect(context, GUICore::DrawCommandType::rect,
-                        RectF(max(panel_width - border, 0.0f), 0.0f, border, panel_height), desc.border_color);
+                        RectF(max(panel_width - border, 0.0f), 0.0f, border, panel_height), border_color);
                 }
                 if(panel.close.id)
                 {
-                    f32 x = panel_width - desc.title_bar_height + 8.0f;
-                    f32 y = 8.0f;
+                    f32 icon_size = clamp(desc.title_bar_height * 0.24f, 8.0f, 12.0f);
+                    f32 x = panel_width - desc.title_bar_height +
+                        (desc.title_bar_height - icon_size) * 0.5f;
+                    f32 y = (desc.title_bar_height - icon_size) * 0.5f;
                     GUICore::DrawCommand line;
                     line.type = GUICore::DrawCommandType::line;
                     line.rect_reference = GUICore::DrawCommandRectReference::element;
                     line.rect = RectF(x, y, 0.0f, 0.0f);
-                    line.point1 = Float2U(x + 10.0f, y + 10.0f);
-                    line.color = Float4U(0.92f, 0.94f, 0.97f, 1.0f);
+                    line.point1 = Float2U(x + icon_size, y + icon_size);
+                    line.color = style_color(context, element,
+                        context->get_interaction_state(panel.close.id).hovered ? "gui.accent" : "gui.text.secondary",
+                        Float4U(0.72f, 0.74f, 0.76f, 1.0f));
                     line.line_width = 1.5f;
                     context->draw(line);
-                    line.rect = RectF(x + 10.0f, y, 0.0f, 0.0f);
-                    line.point1 = Float2U(x, y + 10.0f);
+                    line.rect = RectF(x + icon_size, y, 0.0f, 0.0f);
+                    line.point1 = Float2U(x, y + icon_size);
                     context->draw(line);
                 }
                 if(panel.resize.id && desc.resize_border)
@@ -656,7 +830,7 @@ namespace Luna
                         max(panel_height - 4.0f, 0.0f), 0.0f, 0.0f);
                     line.point1 = Float2U(max(panel_width - 4.0f, 0.0f),
                         max(panel_height - 13.0f, 0.0f));
-                    line.color = desc.border_color;
+                    line.color = border_color;
                     line.line_width = 1.5f;
                     context->draw(line);
                 }
@@ -749,14 +923,28 @@ namespace Luna
                             if(leaf_index < state.nodes.size())
                             {
                                 DockTreeNode& leaf = state.nodes[leaf_index];
+                                const GUICore::Element* panel_element = context->get_element(panel.root.index);
+                                f32 panel_width = panel_element ? panel_element->layout_result.rect.width : 0.0f;
+                                f32 font_size = style_scalar(context, panel.title,
+                                    "gui.menu_item.font_size", 13.0f);
+                                f32 width_scale = dock_tab_width_scale(context, panel.title,
+                                    action, leaf, font_size, panel_width);
                                 for(const GUICore::RoutedInputEvent& routed : context->get_routed_input_events(panel.title.id))
                                 {
                                     if(routed.event.type != GUICore::InputEventType::pointer_down || !routed.has_element_position) continue;
-                                    f32 width = leaf.tabs.empty() ? 1.0f :
-                                        context->get_element(panel.root.index)->layout_result.rect.width / (f32)leaf.tabs.size();
-                                    usize tab_index = min((usize)(routed.element_position.x / max(width, 1.0f)),
-                                        leaf.tabs.empty() ? (usize)0 : leaf.tabs.size() - 1);
-                                    if(!leaf.tabs.empty()) leaf.selected_tab = leaf.tabs[tab_index];
+                                    f32 x = 0.0f;
+                                    for(id_t tab : leaf.tabs)
+                                    {
+                                        f32 width = dock_tab_width(context, panel.title,
+                                            panel_label(action, tab), font_size) * width_scale;
+                                        if(routed.element_position.x >= x &&
+                                            routed.element_position.x < x + width)
+                                        {
+                                            leaf.selected_tab = tab;
+                                            break;
+                                        }
+                                        x += width;
+                                    }
                                     break;
                                 }
                             }
@@ -1002,6 +1190,11 @@ namespace Luna
             info.label = label ? label : "Panel";
             info.open = open;
             info.desc = desc;
+            if(info.desc.title_bar_height <= 0.0f)
+            {
+                info.desc.title_bar_height = Internal::style_scalar(context, GUICore::ElementHandle(),
+                    "gui.control.height", 32.0f);
+            }
             info.submitted = !open || *open;
             if(!info.submitted)
             {
@@ -1048,13 +1241,13 @@ namespace Luna
             info.root = Internal::begin_element(context, Internal::derived_id(id, "dock.panel.root"),
                 info.label.c_str(), root_layout);
 
-            if(desc.title_bar)
+            if(info.desc.title_bar)
             {
                 GUICore::LayoutConfig title_layout;
                 title_layout.width.kind = GUICore::SizeKind::percent;
                 title_layout.width.value = 1.0f;
                 title_layout.height.kind = GUICore::SizeKind::fixed;
-                title_layout.height.value = desc.title_bar_height;
+                title_layout.height.value = info.desc.title_bar_height;
                 info.title = Internal::begin_element(context, Internal::derived_id(id, "dock.panel.title"),
                     "Dock Panel Title", title_layout);
                 Internal::set_interactable(context, info.title, true);
@@ -1156,7 +1349,7 @@ namespace Luna
             add_item(panel.raise, Float2U(0.0f), Float2U(1.0f), Float2U(0.0f), Float4U(0.0f));
             GUICore::CanvasLayoutDesc* canvas = Internal::allocate_frame<GUICore::CanvasLayoutDesc>(context);
             canvas->items = Span<const GUICore::CanvasLayoutItem>(items, item_count);
-            canvas->clip_children = true;
+            canvas->clip_children = false;
             GUICore::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.dock_panel");
             callbacks.callback = GUICore::layout_canvas;

@@ -225,8 +225,8 @@ namespace Luna
 
             luexp(app.shape_draw_list->compile());
             luexp(app.shape_renderer->begin(app.curve_texture));
-            app.shape_renderer->draw(app.shape_draw_list->get_vertex_buffer(),
-                app.shape_draw_list->get_index_buffer(),
+            app.shape_renderer->draw(app.shape_draw_list->get_instance_buffer(),
+                app.shape_draw_list->get_state_buffer(),
                 app.shape_draw_list->get_draw_calls(),
                 nullptr);
             luexp(app.shape_renderer->end());
