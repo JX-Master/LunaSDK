@@ -33,6 +33,16 @@ namespace Luna
                 u32 payload_float = 0;
             };
 
+            struct ColorInstructionInfo
+            {
+                ColorHeaderInfo header;
+                u32 next_float = 0;
+                u32 num_stops = 0;
+                Float2U shadow_offset = Float2U(0.0f);
+                f32 shadow_softness = 0.0f;
+                f32 shadow_spread = 0.0f;
+            };
+
             bool decode_u32(f32 value, u32& result)
             {
                 if(!std::isfinite(value) || value < 0.0f || value > 16777215.0f)
@@ -149,14 +159,14 @@ namespace Luna
                     floats[offset + 3]);
             }
 
-            RV decode_color_header(Span<const f32> floats, ColorHeaderInfo& output)
+            RV decode_color_header(Span<const f32> floats, u32 first_float, ColorHeaderInfo& output)
             {
-                if(floats.empty())
+                if(first_float >= floats.size())
                 {
-                    return set_error(BasicError::bad_data(), "SDF color program is empty.");
+                    return set_error(BasicError::bad_data(), "SDF color instruction is truncated.");
                 }
                 u32 encoded_opcode = 0;
-                if(!decode_u32(floats[0], encoded_opcode) ||
+                if(!decode_u32(floats[first_float], encoded_opcode) ||
                     (encoded_opcode & ~(SDF_COLOR_OPCODE_MASK | SDF_COLOR_CLIP_MASK)))
                 {
                     return set_error(BasicError::bad_data(), "SDF color opcode is invalid.");
@@ -169,7 +179,9 @@ namespace Luna
                 }
                 output.instruction = (SDFColorInstruction)base_opcode;
                 output.clip_mode = (SDFClipMode)(encoded_opcode & SDF_COLOR_CLIP_MASK);
-                output.payload_float = 1;
+                output.inner_distance = 0.0f;
+                output.outer_distance = 0.0f;
+                output.payload_float = first_float + 1;
                 if(encoded_opcode & SDF_COLOR_INNER_CLIP_BIT)
                 {
                     if(output.payload_float >= floats.size() ||
@@ -187,6 +199,136 @@ namespace Luna
                         return set_error(BasicError::bad_data(), "SDF outer clip distance is invalid.");
                     }
                     output.outer_distance = floats[output.payload_float++];
+                }
+                return ok;
+            }
+
+            RV parse_color_instruction(Span<const f32> floats, u32 first_float,
+                ColorInstructionInfo& output)
+            {
+                RV header_result = decode_color_header(floats, first_float, output.header);
+                if(failed(header_result)) return header_result;
+                u32 cursor = output.header.payload_float;
+                switch(output.header.instruction)
+                {
+                case SDFColorInstruction::solid:
+                    if(cursor + 4 > floats.size() || !finite4(read_color(floats, cursor)))
+                    {
+                        return set_error(BasicError::bad_data(), "Invalid SDF solid color instruction.");
+                    }
+                    output.next_float = cursor + 4;
+                    break;
+                case SDFColorInstruction::linear_gradient:
+                case SDFColorInstruction::radial_gradient:
+                {
+                    if(cursor + 6 > floats.size())
+                    {
+                        return set_error(BasicError::bad_data(), "SDF gradient instruction is truncated.");
+                    }
+                    for(u32 i = 0; i < 4; ++i)
+                    {
+                        if(!std::isfinite(floats[cursor + i]))
+                        {
+                            return set_error(BasicError::bad_data(), "SDF gradient geometry is invalid.");
+                        }
+                    }
+                    u32 spread = 0;
+                    if(!decode_u32(floats[cursor + 4], spread) ||
+                        spread > (u32)SDFGradientSpread::repeat ||
+                        !decode_u32(floats[cursor + 5], output.num_stops))
+                    {
+                        return set_error(BasicError::bad_data(), "SDF gradient settings are invalid.");
+                    }
+                    cursor += 6;
+                    if(output.header.instruction == SDFColorInstruction::radial_gradient &&
+                        (floats[cursor - 4] <= 0.0f || floats[cursor - 3] <= 0.0f))
+                    {
+                        return set_error(BasicError::bad_data(),
+                            "SDF radial gradient radii must be positive.");
+                    }
+                    break;
+                }
+                case SDFColorInstruction::conic_gradient:
+                {
+                    if(cursor + 5 > floats.size())
+                    {
+                        return set_error(BasicError::bad_data(),
+                            "SDF conic gradient instruction is truncated.");
+                    }
+                    if(!std::isfinite(floats[cursor]) || !std::isfinite(floats[cursor + 1]) ||
+                        !std::isfinite(floats[cursor + 2]))
+                    {
+                        return set_error(BasicError::bad_data(),
+                            "SDF conic gradient geometry is invalid.");
+                    }
+                    u32 spread = 0;
+                    if(!decode_u32(floats[cursor + 3], spread) ||
+                        spread > (u32)SDFGradientSpread::repeat ||
+                        !decode_u32(floats[cursor + 4], output.num_stops))
+                    {
+                        return set_error(BasicError::bad_data(), "SDF conic gradient settings are invalid.");
+                    }
+                    cursor += 5;
+                    break;
+                }
+                case SDFColorInstruction::bilinear_gradient:
+                    if(cursor + 20 > floats.size())
+                    {
+                        return set_error(BasicError::bad_data(),
+                            "Invalid SDF bilinear gradient instruction size.");
+                    }
+                    for(u32 i = 0; i < 20; ++i)
+                    {
+                        if(!std::isfinite(floats[cursor + i]))
+                        {
+                            return set_error(BasicError::bad_data(),
+                                "SDF bilinear gradient contains a non-finite parameter.");
+                        }
+                    }
+                    output.next_float = cursor + 20;
+                    break;
+                case SDFColorInstruction::shadow:
+                    if(cursor + 8 > floats.size() || !finite4(read_color(floats, cursor)))
+                    {
+                        return set_error(BasicError::bad_data(),
+                            "Invalid SDF shadow instruction size or color.");
+                    }
+                    output.shadow_offset = Float2U(floats[cursor + 4], floats[cursor + 5]);
+                    output.shadow_softness = floats[cursor + 6];
+                    output.shadow_spread = floats[cursor + 7];
+                    if(!finite2(output.shadow_offset) || !std::isfinite(output.shadow_softness) ||
+                        output.shadow_softness < 0.0f || !std::isfinite(output.shadow_spread))
+                    {
+                        return set_error(BasicError::bad_data(), "SDF shadow parameters are invalid.");
+                    }
+                    output.next_float = cursor + 8;
+                    break;
+                default:
+                    return set_error(BasicError::bad_data(), "Unknown SDF color instruction.");
+                }
+
+                if(output.header.instruction == SDFColorInstruction::linear_gradient ||
+                    output.header.instruction == SDFColorInstruction::radial_gradient ||
+                    output.header.instruction == SDFColorInstruction::conic_gradient)
+                {
+                    if(output.num_stops < 2 || output.num_stops > SDF_MAX_COLOR_STOPS ||
+                        cursor + output.num_stops * 6 > floats.size())
+                    {
+                        return set_error(BasicError::bad_data(), "SDF gradient stop count is invalid.");
+                    }
+                    f32 former_position = -F32_INFINITY;
+                    for(u32 i = 0; i < output.num_stops; ++i)
+                    {
+                        u32 stop = cursor + i * 6;
+                        if(!std::isfinite(floats[stop]) || floats[stop] < former_position ||
+                            !std::isfinite(floats[stop + 1]) || !finite4(read_color(floats, stop + 2)))
+                        {
+                            return set_error(BasicError::bad_data(),
+                                "SDF gradient stops are invalid or unsorted.");
+                        }
+                        former_position = floats[stop];
+                    }
+                    output.next_float = cursor + output.num_stops * 6;
                 }
                 return ok;
             }
@@ -680,136 +822,89 @@ namespace Luna
 
         RV validate_sdf_color_program(Span<const f32> floats, SDFColorProgram* out_program)
         {
-            ColorHeaderInfo header;
-            RV header_result = decode_color_header(floats, header);
-            if(failed(header_result)) return header_result;
-            u32 cursor = header.payload_float;
-            u32 num_stops = 0;
-            Float2U shadow_offset(0.0f);
-            f32 shadow_softness = 0.0f;
-            f32 shadow_spread = 0.0f;
-            switch(header.instruction)
+            if(floats.empty())
             {
-            case SDFColorInstruction::solid:
-                if(cursor + 4 != floats.size() || !finite4(read_color(floats, cursor)))
-                {
-                    return set_error(BasicError::bad_data(), "Invalid SDF solid color instruction.");
-                }
-                break;
-            case SDFColorInstruction::linear_gradient:
-            case SDFColorInstruction::radial_gradient:
-            {
-                if(cursor + 6 > floats.size())
-                {
-                    return set_error(BasicError::bad_data(), "SDF gradient instruction is truncated.");
-                }
-                for(u32 i = 0; i < 4; ++i)
-                {
-                    if(!std::isfinite(floats[cursor + i]))
-                    {
-                        return set_error(BasicError::bad_data(), "SDF gradient geometry is invalid.");
-                    }
-                }
-                u32 spread = 0;
-                if(!decode_u32(floats[cursor + 4], spread) || spread > (u32)SDFGradientSpread::repeat ||
-                    !decode_u32(floats[cursor + 5], num_stops))
-                {
-                    return set_error(BasicError::bad_data(), "SDF gradient settings are invalid.");
-                }
-                cursor += 6;
-                if(header.instruction == SDFColorInstruction::radial_gradient &&
-                    (floats[cursor - 4] <= 0.0f || floats[cursor - 3] <= 0.0f))
-                {
-                    return set_error(BasicError::bad_data(), "SDF radial gradient radii must be positive.");
-                }
-                break;
+                return set_error(BasicError::bad_data(), "SDF color program is empty.");
             }
-            case SDFColorInstruction::conic_gradient:
+            if(floats.size() > SDF_MAX_COLOR_FLOATS)
             {
-                if(cursor + 5 > floats.size())
-                {
-                    return set_error(BasicError::bad_data(), "SDF conic gradient instruction is truncated.");
-                }
-                if(!std::isfinite(floats[cursor]) || !std::isfinite(floats[cursor + 1]) ||
-                    !std::isfinite(floats[cursor + 2]))
-                {
-                    return set_error(BasicError::bad_data(), "SDF conic gradient geometry is invalid.");
-                }
-                u32 spread = 0;
-                if(!decode_u32(floats[cursor + 3], spread) || spread > (u32)SDFGradientSpread::repeat ||
-                    !decode_u32(floats[cursor + 4], num_stops))
-                {
-                    return set_error(BasicError::bad_data(), "SDF conic gradient settings are invalid.");
-                }
-                cursor += 5;
-                break;
-            }
-            case SDFColorInstruction::bilinear_gradient:
-                if(cursor + 20 != floats.size())
-                {
-                    return set_error(BasicError::bad_data(), "Invalid SDF bilinear gradient instruction size.");
-                }
-                for(u32 i = 0; i < 20; ++i)
-                {
-                    if(!std::isfinite(floats[cursor + i]))
-                    {
-                        return set_error(BasicError::bad_data(),
-                            "SDF bilinear gradient contains a non-finite parameter.");
-                    }
-                }
-                break;
-            case SDFColorInstruction::shadow:
-                if(cursor + 8 != floats.size() || !finite4(read_color(floats, cursor)))
-                {
-                    return set_error(BasicError::bad_data(), "Invalid SDF shadow instruction size or color.");
-                }
-                shadow_offset = Float2U(floats[cursor + 4], floats[cursor + 5]);
-                shadow_softness = floats[cursor + 6];
-                shadow_spread = floats[cursor + 7];
-                if(!finite2(shadow_offset) || !std::isfinite(shadow_softness) ||
-                    shadow_softness < 0.0f || !std::isfinite(shadow_spread))
-                {
-                    return set_error(BasicError::bad_data(), "SDF shadow parameters are invalid.");
-                }
-                break;
-            default:
-                return set_error(BasicError::bad_data(), "Unknown SDF color instruction.");
+                return set_error(BasicError::bad_data(), "SDF color program exceeds the float limit.");
             }
 
-            if(header.instruction == SDFColorInstruction::linear_gradient ||
-                header.instruction == SDFColorInstruction::radial_gradient ||
-                header.instruction == SDFColorInstruction::conic_gradient)
+            u32 cursor = 0;
+            u32 num_instructions = 0;
+            Float4U effect_outsets(0.0f);
+            bool uses_shape_bounds = false;
+            bool uses_raster_domain = false;
+            bool may_paint_outside = false;
+            bool has_unbounded_non_shadow = false;
+            while(cursor < floats.size())
             {
-                if(num_stops < 2 || num_stops > SDF_MAX_COLOR_STOPS ||
-                    cursor + num_stops * 6 != floats.size())
+                if(num_instructions >= SDF_MAX_COLOR_INSTRUCTIONS)
                 {
-                    return set_error(BasicError::bad_data(), "SDF gradient stop count is invalid.");
+                    return set_error(BasicError::bad_data(),
+                        "SDF color program exceeds the instruction limit.");
                 }
-                f32 former_position = -F32_INFINITY;
-                for(u32 i = 0; i < num_stops; ++i)
+                ColorInstructionInfo instruction;
+                RV parse_result = parse_color_instruction(floats, cursor, instruction);
+                if(failed(parse_result)) return parse_result;
+                if(instruction.next_float <= cursor)
                 {
-                    u32 stop = cursor + i * 6;
-                    if(!std::isfinite(floats[stop]) || floats[stop] < former_position ||
-                        !std::isfinite(floats[stop + 1]) || !finite4(read_color(floats, stop + 2)))
-                    {
-                        return set_error(BasicError::bad_data(),
-                            "SDF gradient stops are invalid or unsorted.");
-                    }
-                    former_position = floats[stop];
+                    return set_error(BasicError::bad_data(), "SDF color instruction has invalid length.");
                 }
+
+                u32 clip_mode = (u32)instruction.header.clip_mode;
+                if(instruction.header.instruction == SDFColorInstruction::shadow)
+                {
+                    f32 margin = max(instruction.shadow_spread, 0.0f) +
+                        instruction.shadow_softness * 3.0f + 1.0f;
+                    effect_outsets.x = max(effect_outsets.x,
+                        max(1.0f, margin - instruction.shadow_offset.x));
+                    effect_outsets.y = max(effect_outsets.y,
+                        max(1.0f, margin - instruction.shadow_offset.y));
+                    effect_outsets.z = max(effect_outsets.z,
+                        max(1.0f, margin + instruction.shadow_offset.x));
+                    effect_outsets.w = max(effect_outsets.w,
+                        max(1.0f, margin + instruction.shadow_offset.y));
+                    uses_shape_bounds = true;
+                }
+                else if(clip_mode & SDF_COLOR_OUTER_CLIP_BIT)
+                {
+                    f32 outset = instruction.header.outer_distance + 1.0f;
+                    effect_outsets.x = max(effect_outsets.x, outset);
+                    effect_outsets.y = max(effect_outsets.y, outset);
+                    effect_outsets.z = max(effect_outsets.z, outset);
+                    effect_outsets.w = max(effect_outsets.w, outset);
+                    uses_shape_bounds = true;
+                }
+                else
+                {
+                    uses_raster_domain = true;
+                    has_unbounded_non_shadow = true;
+                }
+                if(!(clip_mode & SDF_COLOR_OUTER_CLIP_BIT) ||
+                    instruction.header.outer_distance > 0.0f)
+                {
+                    may_paint_outside = true;
+                }
+
+                cursor = instruction.next_float;
+                ++num_instructions;
+            }
+            if(num_instructions > 1 && has_unbounded_non_shadow)
+            {
+                return set_error(BasicError::bad_data(),
+                    "Multi-instruction SDF color programs require outer clipping on non-shadow paints.");
             }
 
             if(out_program)
             {
                 out_program->floats = SDFBufferRange { 0, (u32)floats.size() };
-                out_program->instruction = header.instruction;
-                out_program->clip_mode = header.clip_mode;
-                out_program->inner_distance = header.inner_distance;
-                out_program->outer_distance = header.outer_distance;
-                out_program->num_stops = num_stops;
-                out_program->shadow_offset = shadow_offset;
-                out_program->shadow_softness = shadow_softness;
-                out_program->shadow_spread = shadow_spread;
+                out_program->num_instructions = num_instructions;
+                out_program->effect_outsets = effect_outsets;
+                out_program->uses_shape_bounds = uses_shape_bounds;
+                out_program->uses_raster_domain = uses_raster_domain;
+                out_program->may_paint_outside = may_paint_outside;
             }
             return ok;
         }
@@ -890,12 +985,16 @@ namespace Luna
             SDFColorProgram program;
             RV validation = validate_sdf_color_program(floats, &program);
             if(failed(validation)) return validation.errcode();
-            u32 mode = (u32)program.clip_mode;
-            if((mode & SDF_COLOR_INNER_CLIP_BIT) && distance < -program.inner_distance)
+            if(program.num_instructions != 1) return BasicError::bad_data();
+            ColorInstructionInfo instruction;
+            RV parse_result = parse_color_instruction(floats, 0, instruction);
+            if(failed(parse_result)) return parse_result.errcode();
+            u32 mode = (u32)instruction.header.clip_mode;
+            if((mode & SDF_COLOR_INNER_CLIP_BIT) && distance < -instruction.header.inner_distance)
             {
                 return 0.0f;
             }
-            if((mode & SDF_COLOR_OUTER_CLIP_BIT) && distance > program.outer_distance)
+            if((mode & SDF_COLOR_OUTER_CLIP_BIT) && distance > instruction.header.outer_distance)
             {
                 return 0.0f;
             }
@@ -907,16 +1006,17 @@ namespace Luna
             SDFColorProgram program;
             RV validation = validate_sdf_color_program(floats, &program);
             if(failed(validation)) return validation.errcode();
-            ColorHeaderInfo header;
-            RV header_result = decode_color_header(floats, header);
-            if(failed(header_result)) return header_result.errcode();
-            u32 cursor = header.payload_float;
-            if(program.instruction == SDFColorInstruction::solid ||
-                program.instruction == SDFColorInstruction::shadow)
+            if(program.num_instructions != 1) return BasicError::bad_data();
+            ColorInstructionInfo instruction;
+            RV parse_result = parse_color_instruction(floats, 0, instruction);
+            if(failed(parse_result)) return parse_result.errcode();
+            u32 cursor = instruction.header.payload_float;
+            if(instruction.header.instruction == SDFColorInstruction::solid ||
+                instruction.header.instruction == SDFColorInstruction::shadow)
             {
                 return read_color(floats, cursor);
             }
-            if(program.instruction == SDFColorInstruction::bilinear_gradient)
+            if(instruction.header.instruction == SDFColorInstruction::bilinear_gradient)
             {
                 f32 x = floats[cursor + 2] != 0.0f ?
                     clamp01((point.x - floats[cursor]) / floats[cursor + 2]) : 0.0f;
@@ -930,7 +1030,7 @@ namespace Luna
             f32 coordinate = 0.0f;
             u32 stop_base = 0;
             SDFGradientSpread spread = SDFGradientSpread::pad;
-            if(program.instruction == SDFColorInstruction::linear_gradient)
+            if(instruction.header.instruction == SDFColorInstruction::linear_gradient)
             {
                 f32 dx = floats[cursor + 2] - floats[cursor];
                 f32 dy = floats[cursor + 3] - floats[cursor + 1];
@@ -941,7 +1041,7 @@ namespace Luna
                 spread = (SDFGradientSpread)(u32)floats[cursor + 4];
                 stop_base = cursor + 6;
             }
-            else if(program.instruction == SDFColorInstruction::radial_gradient)
+            else if(instruction.header.instruction == SDFColorInstruction::radial_gradient)
             {
                 coordinate = length2((point.x - floats[cursor]) / floats[cursor + 2],
                     (point.y - floats[cursor + 1]) / floats[cursor + 3]);
@@ -956,7 +1056,7 @@ namespace Luna
                 spread = (SDFGradientSpread)(u32)floats[cursor + 3];
                 stop_base = cursor + 5;
             }
-            return evaluate_stops(floats, stop_base, program.num_stops, coordinate, spread);
+            return evaluate_stops(floats, stop_base, instruction.num_stops, coordinate, spread);
         }
     }
 }

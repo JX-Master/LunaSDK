@@ -36,49 +36,34 @@ namespace Luna
                 usize item_index = 0;
             };
 
-            static void draw_button_group_item_surface(GUICore::IContext* context,
+            static RV draw_button_group_item_surface(GUICore::IContext* context,
                 const GUICore::ElementHandle& element, const RectF& rect, const Float4U& rect_layout_scale,
                 f32 radius, const Float4U& color, bool selected)
             {
-                GUICore::DrawCommand command;
+                RoundedRectEffect effects[3];
+                u32 num_effects = 0;
                 if(selected)
                 {
-                    command.type = GUICore::DrawCommandType::shadow;
-                    command.rect_reference = GUICore::DrawCommandRectReference::element;
-                    command.rect = rect;
-                    command.rect_layout_scale = rect_layout_scale;
-                    command.color = color;
-                    command.color.w *= 0.24f;
-                    command.radius = radius;
-                    command.shadow.offset = Float2U(0.0f,
+                    RoundedRectEffect& shadow = effects[num_effects++];
+                    shadow.shadow = true;
+                    shadow.color = color;
+                    shadow.color.w *= 0.24f;
+                    shadow.shadow_desc.offset = Float2U(0.0f,
                         style_vector2(context, element, "gui.shadow.offset", Float2U(3.0f)).y);
-                    command.shadow.softness =
+                    shadow.shadow_desc.softness =
                         style_scalar(context, element, "gui.shadow.softness", 5.0f) * 0.8f;
-                    context->draw(command);
                 }
-
-                command = GUICore::DrawCommand();
-                command.type = GUICore::DrawCommandType::rounded_rect;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.rect = rect;
-                command.rect_layout_scale = rect_layout_scale;
-                command.color = color;
-                command.radius = radius;
-                context->draw(command);
-
+                effects[num_effects++].color = color;
                 if(selected)
                 {
-                    command = GUICore::DrawCommand();
-                    command.type = GUICore::DrawCommandType::shadow;
-                    command.rect_reference = GUICore::DrawCommandRectReference::element;
-                    command.rect = rect;
-                    command.rect_layout_scale = rect_layout_scale;
-                    command.color = Float4U(1.0f, 1.0f, 1.0f, 0.34f);
-                    command.radius = radius;
-                    command.shadow.offset = Float2U(0.0f, 1.0f);
-                    command.shadow.mode = GUICore::ShadowMode::inner;
-                    context->draw(command);
+                    RoundedRectEffect& highlight = effects[num_effects++];
+                    highlight.shadow = true;
+                    highlight.color = Float4U(1.0f, 1.0f, 1.0f, 0.34f);
+                    highlight.shadow_desc.offset = Float2U(0.0f, 1.0f);
+                    highlight.shadow_desc.mode = GUICore::ShadowMode::inner;
                 }
+                return draw_rounded_rect_effects(context, element, rect, rect_layout_scale,
+                    radius, Span<const RoundedRectEffect>(effects, num_effects));
             }
 
             static RV draw_button_group(GUICore::IContext* context, const GUICore::ElementHandle& element,
@@ -91,48 +76,45 @@ namespace Luna
                 f32 item_radius = style_scalar(context, element, "gui.group.selected_radius",
                     max(radius - item_inset - 1.0f, 0.0f));
                 f32 shadow_softness = style_scalar(context, element, "gui.shadow.softness", 5.0f);
-                GUICore::DrawCommand command;
-                command.type = GUICore::DrawCommandType::rounded_rect;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.color = style_color(context, element, "gui.group.border", Float4U(0.24f, 0.30f, 0.38f, 1.0f));
-                command.radius = radius;
-                context->draw(command);
-                command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
-                command.color = style_color(context, element, "gui.group.background", Float4U(0.08f, 0.10f, 0.13f, 1.0f));
-                command.radius = max(radius - 1.0f, 0.0f);
-                context->draw(command);
+                RoundedRectEffect border;
+                border.color = style_color(context, element, "gui.group.border",
+                    Float4U(0.24f, 0.30f, 0.38f, 1.0f));
+                if(RV result = draw_rounded_rect_effects(context, element, RectF(), Float4U(), radius,
+                    Span<const RoundedRectEffect>(&border, 1)); failed(result))
+                {
+                    return result;
+                }
 
-                command = GUICore::DrawCommand();
-                command.type = GUICore::DrawCommandType::shadow;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
-                command.color = style_color(context, element, "gui.shadow.inset_light",
+                RoundedRectEffect inner_effects[3];
+                inner_effects[0].color = style_color(context, element, "gui.group.background",
+                    Float4U(0.08f, 0.10f, 0.13f, 1.0f));
+                inner_effects[1].shadow = true;
+                inner_effects[1].color = style_color(context, element, "gui.shadow.inset_light",
                     Float4U(1.0f, 1.0f, 1.0f, 0.90f));
-                command.radius = max(radius - 1.0f, 0.0f);
-                command.shadow.offset = Float2U(-2.0f, -2.0f);
-                command.shadow.softness = shadow_softness * 0.4f;
-                command.shadow.mode = GUICore::ShadowMode::inner;
-                context->draw(command);
-
-                command = GUICore::DrawCommand();
-                command.type = GUICore::DrawCommandType::shadow;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
-                command.color = style_color(context, element, "gui.shadow.inset",
+                inner_effects[1].shadow_desc.offset = Float2U(-2.0f, -2.0f);
+                inner_effects[1].shadow_desc.softness = shadow_softness * 0.4f;
+                inner_effects[1].shadow_desc.mode = GUICore::ShadowMode::inner;
+                inner_effects[2].shadow = true;
+                inner_effects[2].color = style_color(context, element, "gui.shadow.inset",
                     Float4U(0.0f, 0.0f, 0.0f, 0.18f));
-                command.radius = max(radius - 1.0f, 0.0f);
-                command.shadow.offset = Float2U(2.0f, 2.0f);
-                command.shadow.softness = shadow_softness * 0.5f;
-                command.shadow.mode = GUICore::ShadowMode::inner;
-                context->draw(command);
+                inner_effects[2].shadow_desc.offset = Float2U(2.0f, 2.0f);
+                inner_effects[2].shadow_desc.softness = shadow_softness * 0.5f;
+                inner_effects[2].shadow_desc.mode = GUICore::ShadowMode::inner;
+                if(RV result = draw_rounded_rect_effects(context, element,
+                    RectF(1.0f, 1.0f, -2.0f, -2.0f),
+                    Float4U(), max(radius - 1.0f, 0.0f),
+                    Span<const RoundedRectEffect>(inner_effects, 3)); failed(result))
+                {
+                    return result;
+                }
 
-                auto draw_item_surface = [&](f32 position, const Float4U& color, bool selected)
+                auto draw_item_surface = [&](f32 position, const Float4U& color, bool selected) -> RV
                 {
                     f32 item_width = 1.0f / (f32)data->item_count;
                     RectF item_rect(item_inset - position * item_width * item_inset * 2.0f, item_inset,
                         -item_inset * item_width * 2.0f, -item_inset * 2.0f);
                     Float4U item_scale(position * item_width, 0.0f, item_width, 0.0f);
-                    draw_button_group_item_surface(context, element, item_rect, item_scale,
+                    return draw_button_group_item_surface(context, element, item_rect, item_scale,
                         item_radius, color, selected);
                 };
 
@@ -153,22 +135,35 @@ namespace Luna
                         (data->selected_items && data->selected_items[hovered_item]));
                 if(hovered_item >= 0 && !hovered_selected)
                 {
-                    draw_item_surface((f32)hovered_item,
+                    if(RV result = draw_item_surface((f32)hovered_item,
                         style_color(context, element, "gui.group.hovered",
-                            Float4U(0.13f, 0.19f, 0.27f, 1.0f)), false);
+                            Float4U(0.13f, 0.19f, 0.27f, 1.0f)), false); failed(result))
+                    {
+                        return result;
+                    }
                 }
 
                 Float4U selected_color = style_color(context, element, "gui.group.selected",
                     Float4U(0.16f, 0.35f, 0.58f, 1.0f));
                 if(data->state)
                 {
-                    draw_item_surface(data->state->animated_index, selected_color, true);
+                    if(RV result = draw_item_surface(data->state->animated_index,
+                        selected_color, true); failed(result))
+                    {
+                        return result;
+                    }
                 }
                 else if(data->selected_items)
                 {
                     for(usize i = 0; i < data->item_count; ++i)
                     {
-                        if(data->selected_items[i]) draw_item_surface((f32)i, selected_color, true);
+                        if(data->selected_items[i])
+                        {
+                            if(RV result = draw_item_surface((f32)i, selected_color, true); failed(result))
+                            {
+                                return result;
+                            }
+                        }
                     }
                 }
                 return ok;

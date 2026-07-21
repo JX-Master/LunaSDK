@@ -190,12 +190,9 @@ namespace Luna
                 Vector<f32> color_floats;
                 if(kind == 0)
                 {
-                    Vector<f32> shadow_floats;
-                    GUICore::sdf_color_add_shadow(shadow_floats,
+                    GUICore::sdf_color_add_shadow(color_floats,
                         style_color(context, "gui.shadow.dark", Float4U(0.0f, 0.0f, 0.0f, 0.2f)),
                         Float2U(3.0f, 4.0f), 6.0f, 0.0f, GUICore::SDFClipDesc::inner(0.0f));
-                    RV result = submit_color(shadow_floats);
-                    if(failed(result)) return result;
                     GUICore::sdf_color_add_linear_gradient(color_floats, Float2U(0.0f, 0.0f),
                         Float2U(width, height), Span<const GUICore::SDFGradientStop>(stops, 3));
                 }

@@ -192,23 +192,6 @@ namespace Luna
                 return result;
             }
 
-            static void draw_progress_shadow(GUICore::IContext* context, const RectF& rect,
-                const Float4U& scale, const Float4U& color, f32 radius, const Float2U& offset,
-                f32 softness)
-            {
-                GUICore::DrawCommand command;
-                command.type = GUICore::DrawCommandType::shadow;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.rect = rect;
-                command.rect_layout_scale = scale;
-                command.color = color;
-                command.radius = radius;
-                command.shadow.offset = offset;
-                command.shadow.softness = softness;
-                command.shadow.mode = GUICore::ShadowMode::inner;
-                context->draw(command);
-            }
-
             static RV draw_progress(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 GUICore::DrawPhase, void* userdata)
             {
@@ -224,30 +207,49 @@ namespace Luna
                 command.color = style_color(context, element, "gui.progress.border", Float4U(0.24f, 0.29f, 0.35f, 1.0f));
                 command.radius = radius;
                 context->draw(command);
-                command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
-                command.color = style_color(context, element, "gui.progress.background", Float4U(0.07f, 0.08f, 0.10f, 1.0f));
-                command.radius = max(radius - 1.0f, 0.0f);
-                context->draw(command);
-                const RectF inner_rect = command.rect;
-                const f32 inner_radius = command.radius;
+                const RectF inner_rect(1.0f, 1.0f, -2.0f, -2.0f);
+                const f32 inner_radius = max(radius - 1.0f, 0.0f);
                 const f32 softness = style_scalar(context, element, "gui.shadow.softness", 5.0f);
-                draw_progress_shadow(context, inner_rect, Float4U(),
-                    style_color(context, element, "gui.shadow.inset", Float4U(0.0f, 0.0f, 0.0f, 0.18f)),
-                    inner_radius, Float2U(2.0f, 2.0f), softness * 0.5f);
-                draw_progress_shadow(context, inner_rect, Float4U(),
-                    style_color(context, element, "gui.shadow.inset_light", Float4U(1.0f, 1.0f, 1.0f, 0.65f)),
-                    inner_radius, Float2U(-2.0f, -2.0f), softness * 0.4f);
+                RoundedRectEffect track_effects[3];
+                track_effects[0].color = style_color(context, element, "gui.progress.background",
+                    Float4U(0.07f, 0.08f, 0.10f, 1.0f));
+                track_effects[1].shadow = true;
+                track_effects[1].color = style_color(context, element, "gui.shadow.inset",
+                    Float4U(0.0f, 0.0f, 0.0f, 0.18f));
+                track_effects[1].shadow_desc.offset = Float2U(2.0f, 2.0f);
+                track_effects[1].shadow_desc.softness = softness * 0.5f;
+                track_effects[1].shadow_desc.mode = GUICore::ShadowMode::inner;
+                track_effects[2].shadow = true;
+                track_effects[2].color = style_color(context, element, "gui.shadow.inset_light",
+                    Float4U(1.0f, 1.0f, 1.0f, 0.65f));
+                track_effects[2].shadow_desc.offset = Float2U(-2.0f, -2.0f);
+                track_effects[2].shadow_desc.softness = softness * 0.4f;
+                track_effects[2].shadow_desc.mode = GUICore::ShadowMode::inner;
+                if(RV result = draw_rounded_rect_effects(context, element, inner_rect, Float4U(),
+                    inner_radius, Span<const RoundedRectEffect>(track_effects, 3)); failed(result))
+                {
+                    return result;
+                }
                 if(data->fraction > 0.0f)
                 {
-                    command.rect = RectF(1.0f, 1.0f, -2.0f * data->fraction, -2.0f);
-                    command.rect_layout_scale = Float4U(0.0f, 0.0f, data->fraction, 0.0f);
-                    command.color = style_color(context, element, "gui.progress.fill", Float4U(0.15f, 0.46f, 0.76f, 1.0f));
-                    context->draw(command);
+                    RectF fill_rect(1.0f, 1.0f, -2.0f * data->fraction, -2.0f);
+                    Float4U fill_scale(0.0f, 0.0f, data->fraction, 0.0f);
+                    RoundedRectEffect fill_effects[2];
+                    fill_effects[0].color = style_color(context, element, "gui.progress.fill",
+                        Float4U(0.15f, 0.46f, 0.76f, 1.0f));
                     Float4U highlight = style_color(context, element, "gui.shadow.inset_light",
                         Float4U(1.0f, 1.0f, 1.0f, 0.65f));
                     highlight.w *= 0.4f;
-                    draw_progress_shadow(context, command.rect, command.rect_layout_scale, highlight,
-                        command.radius, Float2U(0.0f, -1.0f), 1.0f);
+                    fill_effects[1].shadow = true;
+                    fill_effects[1].color = highlight;
+                    fill_effects[1].shadow_desc.offset = Float2U(0.0f, -1.0f);
+                    fill_effects[1].shadow_desc.softness = 1.0f;
+                    fill_effects[1].shadow_desc.mode = GUICore::ShadowMode::inner;
+                    if(RV result = draw_rounded_rect_effects(context, element, fill_rect, fill_scale,
+                        inner_radius, Span<const RoundedRectEffect>(fill_effects, 2)); failed(result))
+                    {
+                        return result;
+                    }
                 }
                 if(data->show_overlay)
                 {

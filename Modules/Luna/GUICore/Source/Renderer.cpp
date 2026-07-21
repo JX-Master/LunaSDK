@@ -29,6 +29,10 @@ namespace Luna
             static_assert(sizeof(SDFState) == sizeof(f32) * 12,
                 "SDFState must match the structured-buffer layout used by SDFVS.");
 
+            constexpr u32 SDF_INSTANCE_COLOR_FLOAT_COUNT_SHIFT = 2;
+            static_assert(SDF_MAX_COLOR_FLOATS <= 0x7FF,
+                "SDF color float count must fit the instance encoding.");
+
             struct SDFFrameBuffer
             {
                 Float4U screen_params;
@@ -68,6 +72,12 @@ namespace Luna
             {
                 return RectF(rect.offset_x - amount, rect.offset_y - amount,
                     rect.width + amount * 2.0f, rect.height + amount * 2.0f);
+            }
+
+            RectF expand_rect(const RectF& rect, const Float4U& outsets)
+            {
+                return RectF(rect.offset_x - outsets.x, rect.offset_y - outsets.y,
+                    rect.width + outsets.x + outsets.z, rect.height + outsets.y + outsets.w);
             }
 
             bool has_clip(const RectF& clip_rect)
@@ -395,24 +405,15 @@ namespace Luna
                     RectF shape_rect(evaluation_origin.x + desc.shape.bounds.offset_x,
                         evaluation_origin.y + desc.shape.bounds.offset_y,
                         desc.shape.bounds.width, desc.shape.bounds.height);
-                    RectF draw_rect;
-                    if(desc.color.instruction == SDFColorInstruction::shadow)
+                    RectF draw_rect(0.0f, 0.0f, 0.0f, 0.0f);
+                    if(desc.color.uses_shape_bounds)
                     {
-                        RectF shadow_rect = shape_rect;
-                        shadow_rect.offset_x += desc.color.shadow_offset.x;
-                        shadow_rect.offset_y += desc.color.shadow_offset.y;
-                        f32 shadow_margin = max(desc.color.shadow_spread, 0.0f) +
-                            desc.color.shadow_softness * 3.0f + 1.0f;
-                        draw_rect = union_rect(expand_rect(shape_rect, 1.0f),
-                            expand_rect(shadow_rect, shadow_margin));
+                        draw_rect = expand_rect(shape_rect, desc.color.effect_outsets);
                     }
-                    else if((u32)desc.color.clip_mode & SDF_COLOR_OUTER_CLIP_BIT)
+                    if(desc.color.uses_raster_domain)
                     {
-                        draw_rect = expand_rect(shape_rect, desc.color.outer_distance + 1.0f);
-                    }
-                    else
-                    {
-                        draw_rect = rect_visible(raster_domain) ? raster_domain : expand_rect(shape_rect, 1.0f);
+                        RectF domain = rect_visible(raster_domain) ? raster_domain : expand_rect(shape_rect, 1.0f);
+                        draw_rect = union_rect(draw_rect, domain);
                     }
                     if(!rect_visible(draw_rect) ||
                         (has_clip(clip_rect) && !rect_visible(intersect_rect(draw_rect, clip_rect))))
@@ -425,8 +426,10 @@ namespace Luna
                     instance.evaluation_origin = evaluation_origin;
                     u32 clip_flags = has_clip(clip_rect) ? 1u : 0u;
                     if(has_rounded_clip(clip)) clip_flags |= 2u;
+                    u32 packed_program_data = clip_flags |
+                        (desc.color.floats.num_floats << SDF_INSTANCE_COLOR_FLOAT_COUNT_SHIFT);
                     instance.program_data = UInt4U(local_shape_first, local_color_first,
-                        clip_flags, resolve_sdf_state(clip));
+                        packed_program_data, resolve_sdf_state(clip));
                     flush_pending_vg();
                     m_draw_list->draw_call_barrier();
                     u32 pair_index = get_page_pair(shape_page, color_page);
@@ -567,10 +570,8 @@ namespace Luna
                                 continue;
                             }
                             RectF screen_anchor = to_screen_rect(layers, layer_index, resolved_rect);
-                            u32 color_clip_mode = (u32)desc.color.clip_mode;
-                            bool may_paint_outside = !(color_clip_mode & SDF_COLOR_OUTER_CLIP_BIT) ||
-                                desc.color.outer_distance > 0.0f;
-                            ClipState sdf_clip = may_paint_outside ? visual_overflow_clip() : clip;
+                            ClipState sdf_clip = desc.color.may_paint_outside ?
+                                visual_overflow_clip() : clip;
                             emit_sdf(desc, Float2U(screen_anchor.offset_x, screen_anchor.offset_y),
                                 screen_anchor, sdf_clip);
                             continue;

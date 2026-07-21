@@ -159,6 +159,64 @@ namespace Luna
                 return style_value(context, element, entry, GUICore::style_name(fallback)).name;
             }
 
+            RV draw_rounded_rect_effects(GUICore::IContext* context,
+                const GUICore::ElementHandle& element, const RectF& rect,
+                const Float4U& rect_layout_scale, f32 radius, Span<const RoundedRectEffect> effects)
+            {
+                if(!context || effects.empty()) return BasicError::bad_arguments();
+                const GUICore::Element* element_data = context->get_element(element.index);
+                if(!element_data) return BasicError::bad_arguments();
+                const RectF& element_rect = element_data->layout_result.rect;
+                auto resolve_extent = [](f32 element_extent, f32 offset, f32 extent, f32 scale)
+                {
+                    f32 scaled_extent = extent + element_extent * scale;
+                    if(scaled_extent > 0.0f) return scaled_extent;
+                    return extent < 0.0f ? max(element_extent + scaled_extent, 1.0f) :
+                        max(element_extent - offset, 1.0f);
+                };
+                f32 width = resolve_extent(element_rect.width, rect.offset_x, rect.width,
+                    rect_layout_scale.z);
+                f32 height = resolve_extent(element_rect.height, rect.offset_y, rect.height,
+                    rect_layout_scale.w);
+
+                Vector<f32> shape_floats;
+                GUICore::sdf_shape_add_rounded_rectangle(shape_floats,
+                    RectF(0.0f, 0.0f, width, height), Float4U(max(radius, 0.0f)));
+                auto shape = context->append_sdf_shape_program(shape_floats.cspan());
+                if(failed(shape)) return shape.errcode();
+
+                Vector<f32> color_floats;
+                for(const RoundedRectEffect& effect : effects)
+                {
+                    GUICore::SDFBufferRange range;
+                    if(effect.shadow)
+                    {
+                        GUICore::SDFClipDesc clip = effect.shadow_desc.mode == GUICore::ShadowMode::inner ?
+                            GUICore::SDFClipDesc::outer(0.0f) : GUICore::SDFClipDesc::inner(0.0f);
+                        range = GUICore::sdf_color_add_shadow(color_floats, effect.color,
+                            effect.shadow_desc.offset, effect.shadow_desc.softness,
+                            effect.shadow_desc.spread, clip);
+                    }
+                    else
+                    {
+                        range = GUICore::sdf_color_add_solid(color_floats, effect.color);
+                    }
+                    if(!range.valid()) return BasicError::bad_data();
+                }
+                auto color = context->append_sdf_color_program(color_floats.cspan());
+                if(failed(color)) return color.errcode();
+
+                GUICore::DrawCommand command;
+                command.type = GUICore::DrawCommandType::sdf;
+                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                command.rect = rect;
+                command.rect_layout_scale = rect_layout_scale;
+                command.sdf.shape = shape.get();
+                command.sdf.color = color.get();
+                context->draw(command);
+                return ok;
+            }
+
             VG::TextAlignment text_alignment(TextAlignment alignment)
             {
                 switch(alignment)

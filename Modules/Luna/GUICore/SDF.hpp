@@ -26,6 +26,12 @@ namespace Luna
         //! Maximum number of color stops accepted in one SDF gradient program.
         constexpr u32 SDF_MAX_COLOR_STOPS = 16;
 
+        //! Maximum number of color instructions accepted in one SDF color program.
+        constexpr u32 SDF_MAX_COLOR_INSTRUCTIONS = 8;
+
+        //! Maximum number of scalar floats accepted in one SDF color program.
+        constexpr u32 SDF_MAX_COLOR_FLOATS = 1024;
+
         //! Number of scalar floats in one renderer SDF program page.
         //! @remark One page occupies 16 MiB and no individual program may cross a page boundary.
         constexpr u32 SDF_PROGRAM_PAGE_FLOATS = 4 * 1024 * 1024;
@@ -182,27 +188,21 @@ namespace Luna
             u32 num_instructions = 0;
         };
 
-        //! Describes one validated SDF color program.
+        //! Describes one validated SDF color program containing one or more paint instructions.
         struct SDFColorProgram
         {
             //! Color-buffer float range.
             SDFBufferRange floats;
-            //! Base color instruction encoded by the program.
-            SDFColorInstruction instruction = SDFColorInstruction::solid;
-            //! Signed-distance clip mode encoded in the opcode.
-            SDFClipMode clip_mode = SDFClipMode::none;
-            //! Decoded inner clip distance, or zero when inner clipping is disabled.
-            f32 inner_distance = 0.0f;
-            //! Decoded outer clip distance, or zero when outer clipping is disabled.
-            f32 outer_distance = 0.0f;
-            //! Number of gradient stops, or zero for instructions without stops.
-            u32 num_stops = 0;
-            //! Shadow offset decoded from a shadow instruction.
-            Float2U shadow_offset = Float2U(0.0f);
-            //! Shadow softness decoded from a shadow instruction.
-            f32 shadow_softness = 0.0f;
-            //! Shadow spread decoded from a shadow instruction.
-            f32 shadow_spread = 0.0f;
+            //! Number of consecutive color instructions in the program.
+            u32 num_instructions = 0;
+            //! Conservative left, top, right and bottom outsets required around the shape bounds.
+            Float4U effect_outsets = Float4U(0.0f);
+            //! Whether at least one instruction uses shape-derived bounds.
+            bool uses_shape_bounds = false;
+            //! Whether at least one instruction uses the submitted raster domain as its draw bounds.
+            bool uses_raster_domain = false;
+            //! Whether at least one instruction may paint beyond the source shape boundary.
+            bool may_paint_outside = false;
         };
 
         //! Describes one color stop in an SDF gradient program.
@@ -217,7 +217,7 @@ namespace Luna
             f32 midpoint = 0.5f;
         };
 
-        //! Describes one SDF draw by referencing one reusable shape and one color instruction.
+        //! Describes one SDF draw by referencing one reusable shape and one or more color instructions.
         struct SDFDrawDesc
         {
             //! Validated shape program stored by the current context.
@@ -347,9 +347,13 @@ namespace Luna
             SDFShapeProgram* out_program = nullptr);
 
         //! Validates one standalone SDF color program.
-        //! @param[in] floats Complete color instruction.
-        //! @param[out] out_program Receives decoded instruction metadata when non-null.
+        //! @param[in] floats One or more complete consecutive color instructions.
+        //! @param[out] out_program Receives the aggregate program metadata when non-null.
         //! @return Returns success or a format error.
+        //! @remark A multi-instruction program applies all paints to the same shape in append order and
+        //! composites each newer result over the accumulated result using premultiplied source-over blending.
+        //! Non-shadow instructions without an outer clip are rejected in multi-instruction programs because
+        //! their raster domain would otherwise be widened by the other effects.
         LUNA_GUICORE_API RV validate_sdf_color_program(Span<const f32> floats,
             SDFColorProgram* out_program = nullptr);
 
@@ -360,14 +364,14 @@ namespace Luna
         LUNA_GUICORE_API R<f32> evaluate_sdf_shape(Span<const f32> floats, const Float2U& point);
 
         //! Evaluates the ideal hard clip mask encoded in one SDF color instruction.
-        //! @param[in] floats Complete color instruction.
+        //! @param[in] floats Exactly one complete color instruction.
         //! @param[in] distance Signed distance of the sample point from the source shape.
         //! @return Returns `1` when the point passes the clip limits, or `0` otherwise.
         //! @remark The renderer adds derivative-based anti-aliasing around enabled clip boundaries.
         LUNA_GUICORE_API R<f32> evaluate_sdf_clip(Span<const f32> floats, f32 distance);
 
-        //! Evaluates the base color of one standalone SDF color program on the CPU.
-        //! @param[in] floats Complete color instruction.
+        //! Evaluates the base color of one standalone SDF color instruction on the CPU.
+        //! @param[in] floats Exactly one complete color instruction.
         //! @param[in] point Local-space sample point.
         //! @return Returns a non-premultiplied sRGB color. For a shadow instruction this returns the shadow color;
         //! shape-dependent shadow coverage is evaluated by the renderer.

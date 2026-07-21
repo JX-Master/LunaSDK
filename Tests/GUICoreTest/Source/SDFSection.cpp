@@ -56,7 +56,8 @@ namespace Luna::GUICoreTest
             "rectangle", "rounded_rectangle", "circle", "ellipse", "capsule",
             "union_op", "intersection_op", "difference_op", "xor_op",
             "solid", "linear_gradient", "radial_gradient", "conic_gradient", "bilinear_gradient",
-            "shadow", "00b", "01b  inner=7", "10b  outer=8", "11b  inner=7  outer=8"
+            "3 effects / 1 color span", "00b", "01b  inner=7", "10b  outer=8",
+            "11b  inner=7  outer=8"
         };
 
         GUICore::id_t sample_id(SDFSample sample)
@@ -198,21 +199,12 @@ namespace Luna::GUICoreTest
             }
             else if(sample == SDFSample::shadow)
             {
-                Vector<f32> outer_shadow;
-                sdf_color_add_shadow(outer_shadow, Float4U(0.0f, 0.0f, 0.0f, 0.42f),
+                sdf_color_add_shadow(color_floats, Float4U(0.0f, 0.0f, 0.0f, 0.42f),
                     Float2U(4.0f, 5.0f), 5.0f, 0.0f, SDFClipDesc::inner(0.0f));
-                RV result = submit_color(outer_shadow);
-                if(failed(result)) return result;
-                Vector<f32> fill_floats;
-                sdf_color_add_linear_gradient(fill_floats, Float2U(0.0f, 0.0f),
+                sdf_color_add_linear_gradient(color_floats, Float2U(0.0f, 0.0f),
                     Float2U(SAMPLE_RECT.width, SAMPLE_RECT.height), Span<const SDFGradientStop>(stops, 3));
-                result = submit_color(fill_floats);
-                if(failed(result)) return result;
-                Vector<f32> inner_shadow;
-                sdf_color_add_shadow(inner_shadow, Float4U(0.30f, 0.0f, 0.03f, 0.55f),
+                sdf_color_add_shadow(color_floats, Float4U(0.30f, 0.0f, 0.03f, 0.55f),
                     Float2U(3.0f, 3.0f), 4.0f, 1.0f, SDFClipDesc::outer(0.0f));
-                result = submit_color(inner_shadow);
-                if(failed(result)) return result;
             }
             else if(sample == SDFSample::no_clip)
             {
@@ -236,11 +228,8 @@ namespace Luna::GUICoreTest
                     Float2U(SAMPLE_RECT.width, SAMPLE_RECT.height), Span<const SDFGradientStop>(stops, 3));
             }
 
-            if(sample != SDFSample::shadow)
-            {
-                RV result = submit_color(color_floats);
-                if(failed(result)) return result;
-            }
+            RV color_result = submit_color(color_floats);
+            if(failed(color_result)) return color_result;
             if(sample >= SDFSample::no_clip)
             {
                 Vector<f32> boundary_floats;

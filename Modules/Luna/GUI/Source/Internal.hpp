@@ -83,6 +83,17 @@ namespace Luna
             Name style_name(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 const c8* entry, const Name& fallback = Name());
 
+            struct RoundedRectEffect
+            {
+                bool shadow = false;
+                Float4U color = Float4U(1.0f);
+                GUICore::ShadowDesc shadow_desc;
+            };
+
+            RV draw_rounded_rect_effects(GUICore::IContext* context,
+                const GUICore::ElementHandle& element, const RectF& rect,
+                const Float4U& rect_layout_scale, f32 radius, Span<const RoundedRectEffect> effects);
+
             VG::TextAlignment text_alignment(TextAlignment alignment);
             f32 smooth_step(f32 current, f32 target, f32 speed, f32 delta_time);
             void set_flex_layout(GUICore::IContext* context, const GUICore::ElementHandle& element,

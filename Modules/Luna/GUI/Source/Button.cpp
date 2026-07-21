@@ -37,23 +37,24 @@ namespace Luna
                 const f32 radius = style_scalar(context, element, "gui.button.radius", 4.0f);
                 const Float2U shadow_offset = style_vector2(context, element, "gui.shadow.offset", Float2U(3.0f));
                 const f32 shadow_softness = style_scalar(context, element, "gui.shadow.softness", 5.0f);
-                GUICore::DrawCommand command;
+                RoundedRectEffect outer_effects[3];
+                u32 num_outer_effects = 0;
                 if(data->enabled && active < 0.999f)
                 {
-                    command.type = GUICore::DrawCommandType::shadow;
-                    command.rect_reference = GUICore::DrawCommandRectReference::element;
-                    command.radius = radius;
-                    command.color = style_color(context, element, "gui.shadow.dark",
+                    RoundedRectEffect& dark = outer_effects[num_outer_effects++];
+                    dark.shadow = true;
+                    dark.color = style_color(context, element, "gui.shadow.dark",
                         Float4U(0.0f, 0.0f, 0.0f, 0.20f));
-                    command.color.w *= 1.0f - active;
-                    command.shadow.offset = shadow_offset;
-                    command.shadow.softness = shadow_softness;
-                    context->draw(command);
-                    command.color = style_color(context, element, "gui.shadow.light",
+                    dark.color.w *= 1.0f - active;
+                    dark.shadow_desc.offset = shadow_offset;
+                    dark.shadow_desc.softness = shadow_softness;
+                    RoundedRectEffect& light = outer_effects[num_outer_effects++];
+                    light.shadow = true;
+                    light.color = style_color(context, element, "gui.shadow.light",
                         Float4U(1.0f, 1.0f, 1.0f, 0.80f));
-                    command.color.w *= 1.0f - active;
-                    command.shadow.offset = Float2U(-shadow_offset.x, -shadow_offset.y);
-                    context->draw(command);
+                    light.color.w *= 1.0f - active;
+                    light.shadow_desc.offset = Float2U(-shadow_offset.x, -shadow_offset.y);
+                    light.shadow_desc.softness = shadow_softness;
                 }
                 Float4U color = style_color(context, element, data->enabled ? "gui.button.background" :
                     "gui.button.background_disabled", data->enabled ? Float4U(0.12f, 0.18f, 0.27f, 1.0f) :
@@ -65,32 +66,36 @@ namespace Luna
                     color = mix_color(color, style_color(context, element, "gui.button.background_active",
                         Float4U(0.20f, 0.36f, 0.58f, 1.0f)), data->state->active);
                 }
-                command.type = GUICore::DrawCommandType::rounded_rect;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.rect = RectF();
-                command.color = context->focused_element() == element.id ?
+                RoundedRectEffect& border = outer_effects[num_outer_effects++];
+                border.color = context->focused_element() == element.id ?
                     style_color(context, element, "gui.button.focus", Float4U(0.45f, 0.60f, 0.85f, 1.0f)) :
                     style_color(context, element, "gui.button.border", Float4U(0.24f, 0.29f, 0.35f, 1.0f));
-                command.radius = radius;
-                context->draw(command);
-                command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
-                command.color = color;
-                command.radius = max(radius - 1.0f, 0.0f);
-                context->draw(command);
+                if(RV result = draw_rounded_rect_effects(context, element, RectF(), Float4U(), radius,
+                    Span<const RoundedRectEffect>(outer_effects, num_outer_effects)); failed(result))
+                {
+                    return result;
+                }
+
+                RoundedRectEffect inner_effects[2];
+                inner_effects[0].color = color;
+                u32 num_inner_effects = 1;
                 if(data->enabled && active > 0.001f)
                 {
-                    command = GUICore::DrawCommand();
-                    command.type = GUICore::DrawCommandType::shadow;
-                    command.rect_reference = GUICore::DrawCommandRectReference::element;
-                    command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
-                    command.color = style_color(context, element, "gui.shadow.inset",
+                    RoundedRectEffect& inset = inner_effects[num_inner_effects++];
+                    inset.shadow = true;
+                    inset.color = style_color(context, element, "gui.shadow.inset",
                         Float4U(0.0f, 0.0f, 0.0f, 0.22f));
-                    command.color.w *= active;
-                    command.radius = max(radius - 1.0f, 0.0f);
-                    command.shadow.offset = Float2U(1.5f, 1.5f);
-                    command.shadow.softness = 2.5f;
-                    command.shadow.mode = GUICore::ShadowMode::inner;
-                    context->draw(command);
+                    inset.color.w *= active;
+                    inset.shadow_desc.offset = Float2U(1.5f, 1.5f);
+                    inset.shadow_desc.softness = 2.5f;
+                    inset.shadow_desc.mode = GUICore::ShadowMode::inner;
+                }
+                if(RV result = draw_rounded_rect_effects(context, element,
+                    RectF(1.0f, 1.0f, -2.0f, -2.0f),
+                    Float4U(), max(radius - 1.0f, 0.0f),
+                    Span<const RoundedRectEffect>(inner_effects, num_inner_effects)); failed(result))
+                {
+                    return result;
                 }
                 return ok;
             }

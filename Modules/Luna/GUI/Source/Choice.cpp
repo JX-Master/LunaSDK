@@ -64,23 +64,6 @@ namespace Luna
                 context->draw(command);
             }
 
-            static void draw_shadow(GUICore::IContext* context, const RectF& rect, const Float4U& scale,
-                const Float4U& color, f32 radius, const Float2U& offset, f32 softness,
-                GUICore::ShadowMode mode = GUICore::ShadowMode::outer)
-            {
-                GUICore::DrawCommand command;
-                command.type = GUICore::DrawCommandType::shadow;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.rect = rect;
-                command.rect_layout_scale = scale;
-                command.color = color;
-                command.radius = radius;
-                command.shadow.offset = offset;
-                command.shadow.softness = softness;
-                command.shadow.mode = mode;
-                context->draw(command);
-            }
-
             static void draw_line(GUICore::IContext* context, const Float2U& begin, const Float2U& end,
                 const Float4U& scale, const Float4U& color, f32 width)
             {
@@ -199,30 +182,50 @@ namespace Luna
                     draw_rect(context, track_rect, track_scale,
                         style_color(context, element, "gui.choice.border", Float4U(0.55f, 0.64f, 0.76f, 1.0f)),
                         switch_size.y * 0.5f);
-                    draw_rect(context, inner_track_rect, track_scale, mix_color(off, on, selected),
-                        inner_track_radius);
+                    RoundedRectEffect track_effects[2];
+                    track_effects[0].color = mix_color(off, on, selected);
+                    u32 num_track_effects = 1;
                     if(data->enabled)
                     {
                         const f32 softness = style_scalar(context, element, "gui.shadow.softness", 5.0f);
-                        draw_shadow(context, inner_track_rect, track_scale,
-                            style_color(context, element, "gui.shadow.inset",
-                                Float4U(0.0f, 0.0f, 0.0f, 0.18f)), inner_track_radius,
-                            Float2U(2.0f, 2.0f), softness * 0.5f, GUICore::ShadowMode::inner);
+                        RoundedRectEffect& shadow = track_effects[num_track_effects++];
+                        shadow.shadow = true;
+                        shadow.color = style_color(context, element, "gui.shadow.inset",
+                            Float4U(0.0f, 0.0f, 0.0f, 0.18f));
+                        shadow.shadow_desc.offset = Float2U(2.0f, 2.0f);
+                        shadow.shadow_desc.softness = softness * 0.5f;
+                        shadow.shadow_desc.mode = GUICore::ShadowMode::inner;
+                    }
+                    if(RV result = draw_rounded_rect_effects(context, element, inner_track_rect, track_scale,
+                        inner_track_radius, Span<const RoundedRectEffect>(track_effects,
+                            num_track_effects)); failed(result))
+                    {
+                        return result;
                     }
                     const RectF knob_rect(4.0f + knob_travel * selected, knob_size * -0.5f,
                         knob_size, knob_size);
                     const Float4U knob_scale(0.0f, 0.5f, 0.0f, 0.0f);
+                    RoundedRectEffect knob_effects[2];
+                    u32 num_knob_effects = 0;
                     if(data->enabled)
                     {
                         const Float2U shadow_offset = style_vector2(context, element, "gui.shadow.offset",
                             Float2U(2.0f));
                         const f32 softness = style_scalar(context, element, "gui.shadow.softness", 5.0f) * 0.55f;
-                        draw_shadow(context, knob_rect, knob_scale,
-                            style_color(context, element, "gui.shadow.dark",
-                                Float4U(0.0f, 0.0f, 0.0f, 0.20f)), knob_size * 0.5f,
-                            shadow_offset, softness);
+                        RoundedRectEffect& shadow = knob_effects[num_knob_effects++];
+                        shadow.shadow = true;
+                        shadow.color = style_color(context, element, "gui.shadow.dark",
+                            Float4U(0.0f, 0.0f, 0.0f, 0.20f));
+                        shadow.shadow_desc.offset = shadow_offset;
+                        shadow.shadow_desc.softness = softness;
                     }
-                    draw_rect(context, knob_rect, knob_scale, knob, knob_size * 0.5f);
+                    knob_effects[num_knob_effects++].color = knob;
+                    if(RV result = draw_rounded_rect_effects(context, element, knob_rect, knob_scale,
+                        knob_size * 0.5f, Span<const RoundedRectEffect>(knob_effects,
+                            num_knob_effects)); failed(result))
+                    {
+                        return result;
+                    }
                 }
                 GUICore::DrawCommand text;
                 text.type = GUICore::DrawCommandType::text;

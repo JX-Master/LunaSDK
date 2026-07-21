@@ -45,10 +45,26 @@ struct ShapeResult
     bool valid;
 };
 
+struct ColorResult
+{
+    float4 color;
+    uint next_float;
+    bool valid;
+};
+
 ShapeResult make_shape_result(float distance, bool valid)
 {
     ShapeResult result;
     result.distance = distance;
+    result.valid = valid;
+    return result;
+}
+
+ColorResult make_color_result(float4 color, uint next_float, bool valid)
+{
+    ColorResult result;
+    result.color = color;
+    result.next_float = next_float;
     result.valid = valid;
     return result;
 }
@@ -376,6 +392,107 @@ PSOutput transparent_output()
     return result;
 }
 
+ColorResult evaluate_color_instruction(float2 local_point, ShapeResult shape, uint shape_first,
+    uint color_float, uint color_end, float raster_clip_coverage)
+{
+    if(color_float >= color_end)
+    {
+        return make_color_result(float4{0.0f, 0.0f, 0.0f, 0.0f}, color_float, false);
+    }
+    uint encoded_opcode = (uint)g_set0.color_floats[color_float];
+    uint opcode = encoded_opcode & 0xFF;
+    bool has_inner_clip = (encoded_opcode & 0x100) != 0;
+    bool has_outer_clip = (encoded_opcode & 0x200) != 0;
+    uint payload_float = color_float + 1;
+    float clip_distance = -1000000.0f;
+    if(has_inner_clip)
+    {
+        float inner_distance = g_set0.color_floats[payload_float];
+        payload_float += 1;
+        clip_distance = max(clip_distance, -shape.distance - inner_distance);
+    }
+    if(has_outer_clip)
+    {
+        float outer_distance = g_set0.color_floats[payload_float];
+        payload_float += 1;
+        clip_distance = max(clip_distance, shape.distance - outer_distance);
+    }
+
+    uint next_float = payload_float;
+    if(opcode == 1)
+    {
+        next_float += 4;
+    }
+    else if(opcode == 2 || opcode == 3)
+    {
+        next_float += 6 + (uint)g_set0.color_floats[payload_float + 5] * 6;
+    }
+    else if(opcode == 4)
+    {
+        next_float += 5 + (uint)g_set0.color_floats[payload_float + 4] * 6;
+    }
+    else if(opcode == 5)
+    {
+        next_float += 20;
+    }
+    else if(opcode == 6)
+    {
+        next_float += 8;
+    }
+    else
+    {
+        return make_color_result(float4{0.0f, 0.0f, 0.0f, 0.0f}, color_float, false);
+    }
+    if(next_float > color_end)
+    {
+        return make_color_result(float4{0.0f, 0.0f, 0.0f, 0.0f}, color_float, false);
+    }
+
+    float clip_coverage = raster_clip_coverage * ((has_inner_clip || has_outer_clip) ?
+        distance_coverage(clip_distance, 0.0f) : 1.0f);
+    if(clip_coverage <= 0.0f)
+    {
+        return make_color_result(float4{0.0f, 0.0f, 0.0f, 0.0f}, next_float, true);
+    }
+
+    float4 output_color;
+    if(opcode == 6)
+    {
+        float4 shadow_color = read_color(payload_float);
+        float2 shadow_offset = float2{g_set0.color_floats[payload_float + 4],
+            g_set0.color_floats[payload_float + 5]};
+        float softness = g_set0.color_floats[payload_float + 6];
+        float spread = g_set0.color_floats[payload_float + 7];
+        ShapeResult shifted_shape = evaluate_shape(local_point - shadow_offset, shape_first);
+        if(!shifted_shape.valid)
+        {
+            return make_color_result(float4{0.0f, 0.0f, 0.0f, 0.0f}, color_float, false);
+        }
+        float blurred_coverage = distance_coverage(shifted_shape.distance - spread, softness);
+        float shadow_field;
+        if(has_inner_clip && !has_outer_clip)
+        {
+            shadow_field = blurred_coverage;
+        }
+        else if(has_outer_clip && !has_inner_clip)
+        {
+            shadow_field = 1.0f - blurred_coverage;
+        }
+        else
+        {
+            float source_coverage = distance_coverage(shape.distance, 0.0f);
+            shadow_field = blurred_coverage * (1.0f - source_coverage) +
+                (1.0f - blurred_coverage) * source_coverage;
+        }
+        output_color = premultiply(shadow_color, shadow_field * clip_coverage);
+    }
+    else
+    {
+        output_color = premultiply(evaluate_paint(local_point, opcode, payload_float), clip_coverage);
+    }
+    return make_color_result(output_color, next_float, true);
+}
+
 float rounded_clip_rect_distance(float2 point, float4 clip_rect, float4 corner_radii)
 {
     float2 half_size = clip_rect.zw * 0.5f;
@@ -429,73 +546,46 @@ PSOutput ps_main(PSInput pixel)
         return transparent_output();
     }
 
+    uint num_color_floats = (pixel.program_data.z >> 2) & 0x7FF;
+    if(num_color_floats == 0)
+    {
+        return transparent_output();
+    }
     uint color_float = pixel.program_data.y;
-    uint encoded_opcode = (uint)g_set0.color_floats[color_float];
-    uint opcode = encoded_opcode & 0xFF;
-    bool has_inner_clip = (encoded_opcode & 0x100) != 0;
-    bool has_outer_clip = (encoded_opcode & 0x200) != 0;
-    uint payload_float = color_float + 1;
-    float clip_distance = -1000000.0f;
-    if(has_inner_clip)
+    uint color_end = color_float + num_color_floats;
+    ColorResult first_color = evaluate_color_instruction(local_point, shape, pixel.program_data.x,
+        color_float, color_end, raster_clip_coverage);
+    if(!first_color.valid)
     {
-        float inner_distance = g_set0.color_floats[payload_float];
-        payload_float += 1;
-        clip_distance = max(clip_distance, -shape.distance - inner_distance);
+        return transparent_output();
     }
-    if(has_outer_clip)
+    if(first_color.next_float == color_end)
     {
-        float outer_distance = g_set0.color_floats[payload_float];
-        payload_float += 1;
-        clip_distance = max(clip_distance, shape.distance - outer_distance);
+        PSOutput result;
+        result.color = first_color.color;
+        return result;
     }
-    float clip_coverage = raster_clip_coverage * ((has_inner_clip || has_outer_clip) ?
-        distance_coverage(clip_distance, 0.0f) : 1.0f);
-    if(clip_coverage <= 0.0f)
+    if(first_color.next_float <= color_float || first_color.next_float > color_end)
     {
         return transparent_output();
     }
 
-    float4 output_color;
-    if(opcode == 6)
+    float4 output_color = first_color.color;
+    color_float = first_color.next_float;
+    uint instruction_index = 1;
+    while(color_float < color_end && instruction_index < 8)
     {
-        float4 shadow_color = read_color(payload_float);
-        float2 shadow_offset = float2{g_set0.color_floats[payload_float + 4],
-            g_set0.color_floats[payload_float + 5]};
-        float softness = g_set0.color_floats[payload_float + 6];
-        float spread = g_set0.color_floats[payload_float + 7];
-        ShapeResult shifted_shape = evaluate_shape(local_point - shadow_offset, pixel.program_data.x);
-        if(!shifted_shape.valid)
+        ColorResult color = evaluate_color_instruction(local_point, shape, pixel.program_data.x,
+            color_float, color_end, raster_clip_coverage);
+        if(!color.valid || color.next_float <= color_float || color.next_float > color_end)
         {
             return transparent_output();
         }
-        float blurred_coverage = distance_coverage(shifted_shape.distance - spread, softness);
-        float shadow_field;
-        if(has_inner_clip && !has_outer_clip)
-        {
-            // Inner clipping selects the exterior side of the source shape.
-            shadow_field = blurred_coverage;
-        }
-        else if(has_outer_clip && !has_inner_clip)
-        {
-            // Outer clipping selects the interior side of the source shape.
-            shadow_field = 1.0f - blurred_coverage;
-        }
-        else
-        {
-            // Blend both sides through the anti-aliased source boundary. Using abs(blurred - source)
-            // would collapse to zero where both coverages are near 0.5 and create a hard one-pixel edge.
-            float source_coverage = distance_coverage(shape.distance, 0.0f);
-            shadow_field = blurred_coverage * (1.0f - source_coverage) +
-                (1.0f - blurred_coverage) * source_coverage;
-        }
-        float shadow_coverage = shadow_field * clip_coverage;
-        output_color = premultiply(shadow_color, shadow_coverage);
+        output_color = color.color + output_color * (1.0f - color.color.w);
+        color_float = color.next_float;
+        instruction_index += 1;
     }
-    else if(opcode >= 1 && opcode <= 5)
-    {
-        output_color = premultiply(evaluate_paint(local_point, opcode, payload_float), clip_coverage);
-    }
-    else
+    if(color_float != color_end)
     {
         return transparent_output();
     }
