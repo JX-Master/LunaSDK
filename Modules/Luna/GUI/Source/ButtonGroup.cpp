@@ -85,25 +85,19 @@ namespace Luna
                     return result;
                 }
 
-                RoundedRectEffect inner_effects[3];
+                RoundedRectEffect inner_effects[2];
                 inner_effects[0].color = style_color(context, element, "gui.group.background",
                     Float4U(0.08f, 0.10f, 0.13f, 1.0f));
                 inner_effects[1].shadow = true;
-                inner_effects[1].color = style_color(context, element, "gui.shadow.inset_light",
-                    Float4U(1.0f, 1.0f, 1.0f, 0.90f));
-                inner_effects[1].shadow_desc.offset = Float2U(-2.0f, -2.0f);
-                inner_effects[1].shadow_desc.softness = shadow_softness * 0.4f;
-                inner_effects[1].shadow_desc.mode = GUICore::ShadowMode::inner;
-                inner_effects[2].shadow = true;
-                inner_effects[2].color = style_color(context, element, "gui.shadow.inset",
+                inner_effects[1].color = style_color(context, element, "gui.shadow.inset",
                     Float4U(0.0f, 0.0f, 0.0f, 0.18f));
-                inner_effects[2].shadow_desc.offset = Float2U(2.0f, 2.0f);
-                inner_effects[2].shadow_desc.softness = shadow_softness * 0.5f;
-                inner_effects[2].shadow_desc.mode = GUICore::ShadowMode::inner;
+                inner_effects[1].shadow_desc.offset = Float2U(1.0f, 1.0f);
+                inner_effects[1].shadow_desc.softness = shadow_softness * 0.65f;
+                inner_effects[1].shadow_desc.mode = GUICore::ShadowMode::inner;
                 if(RV result = draw_rounded_rect_effects(context, element,
                     RectF(1.0f, 1.0f, -2.0f, -2.0f),
                     Float4U(), max(radius - 1.0f, 0.0f),
-                    Span<const RoundedRectEffect>(inner_effects, 3)); failed(result))
+                    Span<const RoundedRectEffect>(inner_effects, 2)); failed(result))
                 {
                     return result;
                 }

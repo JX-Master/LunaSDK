@@ -42,6 +42,24 @@ namespace Luna
             context->draw(command);
         }
 
+        static void draw_combo_chevron(GUICore::IContext* context, const Float4U& color, bool open)
+        {
+            const f32 outer_y = open ? 2.5f : -2.5f;
+            const f32 center_y = -outer_y;
+            GUICore::DrawCommand line;
+            line.type = GUICore::DrawCommandType::line;
+            line.rect_reference = GUICore::DrawCommandRectReference::element;
+            line.rect = RectF(-23.0f, outer_y, 0.0f, 0.0f);
+            line.point1 = Float2U(-18.0f, center_y);
+            line.rect_layout_scale = Float4U(1.0f, 0.5f, 1.0f, 0.5f);
+            line.color = color;
+            line.line_width = 1.6f;
+            context->draw(line);
+            line.rect = RectF(-18.0f, center_y, 0.0f, 0.0f);
+            line.point1 = Float2U(-13.0f, outer_y);
+            context->draw(line);
+        }
+
         LUNA_GUI_API GUICore::ElementHandle combo(GUICore::IContext* context, id_t id, const c8* label,
             i32* current_item, Span<const c8*> items, const GUICore::LayoutConfig& layout, const ComboDesc& desc)
         {
@@ -87,9 +105,8 @@ namespace Luna
             draw_combo_rect(context, background, max(radius - 1.0f, 0.0f), RectF(1.0f, 1.0f, -2.0f, -2.0f));
             const c8* selected = "";
             if(current_item && *current_item >= 0 && (usize)*current_item < items.size()) selected = items[(usize)*current_item];
-            draw_combo_text(context, RectF(8.0f, 0.0f, -36.0f, 0.0f), selected, text_color, font_size);
-            draw_combo_text(context, RectF(-28.0f, 0.0f, 20.0f, 0.0f), open ? "^" : "v",
-                text_color, font_size, VG::TextAlignment::center);
+            draw_combo_text(context, RectF(12.0f, 0.0f, -44.0f, 0.0f), selected, text_color, font_size);
+            draw_combo_chevron(context, text_color, open);
             context->end_element();
 
             if(open)

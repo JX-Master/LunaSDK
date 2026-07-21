@@ -462,7 +462,6 @@ namespace Luna
                         {
                             const Element& element = elements[command.element];
                             element_clip = to_screen_rect(layers, layer_index, element.layout_result.clip_rect);
-                            inherited_clip = element_clip;
                             if(element.parent != INVALID_ELEMENT && element.parent < elements.size())
                             {
                                 inherited_clip = to_screen_rect(layers, layer_index,

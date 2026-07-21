@@ -30,6 +30,20 @@ namespace Luna
                 schema.description = description;
                 context->register_style_entry_schema(schema);
             };
+            auto add_typography = [&](const c8* role, f32 font_size, const Float4U& color,
+                const c8* description)
+            {
+                String entry;
+                strprintf(entry, "gui.typography.%s.font", role);
+                add(entry.c_str(), GUICore::StyleValueType::name, GUICore::style_name(Name()),
+                    "Typography", description);
+                strprintf(entry, "gui.typography.%s.font_size", role);
+                add(entry.c_str(), GUICore::StyleValueType::f32, GUICore::style_f32(font_size),
+                    "Typography", description);
+                strprintf(entry, "gui.typography.%s.color", role);
+                add(entry.c_str(), GUICore::StyleValueType::f32x4, GUICore::style_f32x4(color),
+                    "Typography", description);
+            };
 
             add("gui.canvas", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.922f, 0.925f, 0.918f, 1.0f)), "Palette", "Application canvas color.");
@@ -110,6 +124,26 @@ namespace Luna
                 GUICore::style_f32x4(Float4U(0.48f, 0.52f, 0.58f, 1.0f)), "Text", "Disabled text color.");
             add("gui.text.font_size", GUICore::StyleValueType::f32, GUICore::style_f32(16.0f),
                 "Text", "Default text size.");
+            add_typography("heading1", 32.0f, Float4U(0.15f, 0.16f, 0.17f, 1.0f),
+                "Heading level 1 font, size, and color.");
+            add_typography("heading2", 28.0f, Float4U(0.15f, 0.16f, 0.17f, 1.0f),
+                "Heading level 2 font, size, and color.");
+            add_typography("heading3", 24.0f, Float4U(0.15f, 0.16f, 0.17f, 1.0f),
+                "Heading level 3 font, size, and color.");
+            add_typography("heading4", 20.0f, Float4U(0.15f, 0.16f, 0.17f, 1.0f),
+                "Heading level 4 font, size, and color.");
+            add_typography("heading5", 18.0f, Float4U(0.15f, 0.16f, 0.17f, 1.0f),
+                "Heading level 5 font, size, and color.");
+            add_typography("heading6", 16.0f, Float4U(0.15f, 0.16f, 0.17f, 1.0f),
+                "Heading level 6 font, size, and color.");
+            add_typography("body", 16.0f, Float4U(0.15f, 0.16f, 0.17f, 1.0f),
+                "Body font, size, and color.");
+            add_typography("cite", 14.0f, Float4U(0.36f, 0.38f, 0.40f, 1.0f),
+                "Citation and supporting-copy font, size, and color.");
+            add_typography("code", 14.0f, Float4U(0.75f, 0.26f, 0.29f, 1.0f),
+                "Code and numeric-data font, size, and color.");
+            add_typography("caption", 13.0f, Float4U(0.51f, 0.53f, 0.55f, 1.0f),
+                "Caption and metadata font, size, and color.");
 
             add("gui.button.background", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.12f, 0.18f, 0.27f, 1.0f)), "Button", "Button fill.");
@@ -343,6 +377,21 @@ namespace Luna
             {
                 context->set_style_value(style, Name(entry), GUICore::style_f32x2(value));
             };
+            auto set_name = [&](const c8* entry, const Name& value)
+            {
+                context->set_style_value(style, Name(entry), GUICore::style_name(value));
+            };
+            auto set_typography = [&](const c8* role, const Name& font, f32 font_size,
+                const Float4U& color)
+            {
+                String entry;
+                strprintf(entry, "gui.typography.%s.font", role);
+                set_name(entry.c_str(), font);
+                strprintf(entry, "gui.typography.%s.font_size", role);
+                set_scalar(entry.c_str(), font_size);
+                strprintf(entry, "gui.typography.%s.color", role);
+                set_color(entry.c_str(), color);
+            };
 
             const bool dark = desc.color_theme == ColorTheme::dark;
             const bool touch = desc.input_mode == InputMode::touch;
@@ -418,6 +467,16 @@ namespace Luna
             // Open Sans has a smaller apparent x-height than the Inter face used by the HTML
             // reference. Keep the density relationship while compensating the default UI size.
             set_scalar("gui.text.font_size", touch ? 16.0f : 15.0f);
+            set_typography("heading1", desc.font, touch ? 32.0f : 30.0f, text);
+            set_typography("heading2", desc.font, touch ? 28.0f : 26.0f, text);
+            set_typography("heading3", desc.font, touch ? 24.0f : 22.0f, text);
+            set_typography("heading4", desc.font, touch ? 20.0f : 19.0f, text);
+            set_typography("heading5", desc.font, touch ? 18.0f : 17.0f, text);
+            set_typography("heading6", desc.font, touch ? 16.0f : 15.0f, text);
+            set_typography("body", desc.font, touch ? 16.0f : 15.0f, text);
+            set_typography("cite", desc.font, touch ? 14.0f : 13.0f, secondary);
+            set_typography("code", desc.monospace_font, touch ? 14.0f : 13.0f, accent_active);
+            set_typography("caption", desc.font, touch ? 13.0f : 12.0f, muted);
 
             set_color("gui.button.background", surface1);
             set_color("gui.button.background_hovered", mix(surface1, accent_subtle, 0.45f));

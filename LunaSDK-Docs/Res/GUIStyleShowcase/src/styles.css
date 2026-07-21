@@ -61,7 +61,7 @@ select:focus-visible {
 code,
 kbd,
 output {
-  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-family: var(--font-family-mono, "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace);
 }
 
 #root {
@@ -70,6 +70,8 @@ output {
 
 .app-shell {
   color-scheme: light;
+  --font-family-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
   --canvas: #ebecea;
   --surface-0: #f3f3f0;
   --surface-1: #f8f8f5;
@@ -122,6 +124,17 @@ output {
   --space-5: 24px;
   --content-pad: 22px;
   --font-ui: 14px;
+  --type-h1: 32px;
+  --type-h2: 28px;
+  --type-h3: 24px;
+  --type-h4: 20px;
+  --type-h5: 18px;
+  --type-h6: 16px;
+  --type-body: 16px;
+  --type-cite: 14px;
+  --type-code: 14px;
+  --type-caption: 13px;
+  font-family: var(--font-family-ui);
   color: var(--text);
   background: var(--canvas);
   display: grid;
@@ -171,6 +184,16 @@ output {
   --space-5: 18px;
   --content-pad: 18px;
   --font-ui: 13px;
+  --type-h1: 30px;
+  --type-h2: 26px;
+  --type-h3: 22px;
+  --type-h4: 19px;
+  --type-h5: 17px;
+  --type-h6: 15px;
+  --type-body: 15px;
+  --type-cite: 13px;
+  --type-code: 13px;
+  --type-caption: 12px;
   --radius-sm: 6px;
   --radius-md: 9px;
   --radius-lg: 14px;
@@ -1091,6 +1114,7 @@ progress::-webkit-progress-value { border-radius: var(--radius-pill); background
 
 .card-grid.two-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .card-grid.three-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card-grid.three-columns.typography-grid { grid-template-columns: minmax(0, 1.45fr) repeat(2, minmax(0, 1fr)); }
 .span-two { grid-column: span 2; }
 
 .demo-card {
@@ -1125,13 +1149,19 @@ progress::-webkit-progress-value { border-radius: var(--radius-pill); background
   padding: 17px;
 }
 
-.type-stack { display: flex; flex-direction: column; gap: 8px; }
-.type-stack h1, .type-stack h2, .type-stack p { margin: 0; }
-.type-stack h1 { font-size: 24px; letter-spacing: -.04em; }
-.type-stack h2 { font-size: 17px; }
-.type-stack p { color: var(--text-secondary); font-size: 12px; }
-.type-stack small { color: var(--text-muted); }
-.type-stack code { padding: 8px 10px; border-radius: var(--radius-sm); color: var(--accent-text); background: var(--surface-2); box-shadow: var(--shadow-inset); font-size: 10px; }
+.type-stack { display: flex; flex-direction: column; gap: 7px; font-family: var(--font-family-ui); }
+.type-stack h1, .type-stack h2, .type-stack h3, .type-stack h4, .type-stack h5,
+.type-stack h6, .type-stack p, .type-stack cite { margin: 0; }
+.type-stack h1 { font-size: var(--type-h1); font-weight: 600; letter-spacing: -.04em; }
+.type-stack h2 { font-size: var(--type-h2); font-weight: 600; letter-spacing: -.03em; }
+.type-stack h3 { font-size: var(--type-h3); font-weight: 600; }
+.type-stack h4 { font-size: var(--type-h4); font-weight: 600; }
+.type-stack h5 { font-size: var(--type-h5); font-weight: 600; }
+.type-stack h6 { font-size: var(--type-h6); font-weight: 600; }
+.type-stack p { color: var(--text); font-size: var(--type-body); }
+.type-stack cite { color: var(--text-secondary); font-size: var(--type-cite); font-style: italic; }
+.type-stack small { color: var(--text-muted); font-size: var(--type-caption); }
+.type-stack code { padding: 8px 10px; border-radius: var(--radius-sm); color: var(--accent-text); background: var(--surface-2); box-shadow: var(--shadow-inset); font-family: var(--font-family-mono); font-size: var(--type-code); }
 
 .progress-stack label { display: grid; grid-template-columns: 1fr auto; gap: 7px; align-items: center; color: var(--text-secondary); font-size: 11px; }
 .progress-stack progress { grid-column: 1 / -1; }
@@ -1402,7 +1432,7 @@ td:last-child { display: flex; align-items: center; gap: 8px; }
   .brand-lockup small, .accent-picker span, .top-status { display: none; }
   .style-switcher { flex: 1; overflow-x: auto; }
   .section-heading, .overview-banner { grid-template-columns: 1fr; gap: 14px; }
-  .card-grid.two-columns, .card-grid.three-columns { grid-template-columns: 1fr; }
+  .card-grid.two-columns, .card-grid.three-columns, .card-grid.three-columns.typography-grid { grid-template-columns: 1fr; }
   .span-two { grid-column: auto; }
   .mini-editor { display: block; min-height: 0; }
   .mini-library { display: none; }

@@ -451,21 +451,6 @@ namespace Luna
                 context->draw(command);
             }
 
-            static void draw_shadow(GUICore::IContext* context, const RectF& rect, const Float4U& color,
-                f32 radius, const Float2U& offset, f32 softness, GUICore::ShadowMode mode)
-            {
-                GUICore::DrawCommand command;
-                command.type = GUICore::DrawCommandType::shadow;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.rect = rect;
-                command.color = color;
-                command.radius = radius;
-                command.shadow.offset = offset;
-                command.shadow.softness = softness;
-                command.shadow.mode = mode;
-                context->draw(command);
-            }
-
             static void draw_text(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 const RectF& rect, const c8* text, const Float4U& color, f32 size,
                 GUICore::DrawCommandRectReference reference)
@@ -685,19 +670,37 @@ namespace Luna
                 {
                     Float4U shadow_color = style_color(context, element, "gui.shadow.dark",
                         Float4U(0.0f, 0.0f, 0.0f, 0.30f));
-                    shadow_color.w = min(shadow_color.w * 1.5f, 0.34f);
+                    shadow_color.w = min(shadow_color.w * 1.18f, 0.34f);
                     f32 shadow_softness = style_scalar(context, element, "gui.shadow.softness", 4.0f);
-                    draw_shadow(context, RectF(), shadow_color, panel_radius, Float2U(0.0f,
-                        shadow_softness * 2.0f), shadow_softness * 4.0f, GUICore::ShadowMode::outer);
-                    draw_rect(context, GUICore::DrawCommandType::rounded_rect, RectF(), border_color, panel_radius);
-                    draw_rect(context, GUICore::DrawCommandType::rounded_rect, RectF(1.0f, 1.0f, -2.0f, -2.0f),
-                        background_color, max(panel_radius - 1.0f, 0.0f));
+                    RoundedRectEffect outer_effects[2];
+                    outer_effects[0].shadow = true;
+                    outer_effects[0].color = shadow_color;
+                    outer_effects[0].shadow_desc.offset = Float2U(0.0f, shadow_softness * 1.6f);
+                    outer_effects[0].shadow_desc.softness = shadow_softness * 3.5f;
+                    outer_effects[1].color = border_color;
+                    if(RV result = draw_rounded_rect_effects(context, element, RectF(), Float4U(), panel_radius,
+                        Span<const RoundedRectEffect>(outer_effects, 2)); failed(result))
+                    {
+                        return result;
+                    }
+
+                    RoundedRectEffect inner_effects[2];
+                    inner_effects[0].color = background_color;
                     Float4U panel_highlight = style_color(context, element, "gui.shadow.inset_light",
                         Float4U(1.0f, 1.0f, 1.0f, 0.65f));
-                    panel_highlight.w *= 0.45f;
-                    draw_shadow(context, RectF(1.0f, 1.0f, -2.0f, -2.0f), panel_highlight,
-                        max(panel_radius - 1.0f, 0.0f), Float2U(0.0f, -1.0f), 1.0f,
-                        GUICore::ShadowMode::inner);
+                    panel_highlight.w *= 0.16f;
+                    inner_effects[1].shadow = true;
+                    inner_effects[1].color = panel_highlight;
+                    inner_effects[1].shadow_desc.offset = Float2U(0.0f, -1.0f);
+                    inner_effects[1].shadow_desc.softness = max(shadow_softness * 0.65f, 1.0f);
+                    inner_effects[1].shadow_desc.mode = GUICore::ShadowMode::inner;
+                    if(RV result = draw_rounded_rect_effects(context, element,
+                        RectF(1.0f, 1.0f, -2.0f, -2.0f), Float4U(),
+                        max(panel_radius - 1.0f, 0.0f),
+                        Span<const RoundedRectEffect>(inner_effects, 2)); failed(result))
+                    {
+                        return result;
+                    }
                 }
                 else
                 {

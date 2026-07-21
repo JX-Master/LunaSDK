@@ -26,10 +26,44 @@ namespace Luna
                 TextDesc desc;
             };
 
+            struct TypographyEntries
+            {
+                const c8* font;
+                const c8* font_size;
+                const c8* color;
+            };
+
+            static const TypographyEntries& typography_entries(TypographyRole role)
+            {
+                static const TypographyEntries entries[] = {
+                    { "gui.typography.heading1.font", "gui.typography.heading1.font_size", "gui.typography.heading1.color" },
+                    { "gui.typography.heading2.font", "gui.typography.heading2.font_size", "gui.typography.heading2.color" },
+                    { "gui.typography.heading3.font", "gui.typography.heading3.font_size", "gui.typography.heading3.color" },
+                    { "gui.typography.heading4.font", "gui.typography.heading4.font_size", "gui.typography.heading4.color" },
+                    { "gui.typography.heading5.font", "gui.typography.heading5.font_size", "gui.typography.heading5.color" },
+                    { "gui.typography.heading6.font", "gui.typography.heading6.font_size", "gui.typography.heading6.color" },
+                    { "gui.typography.body.font", "gui.typography.body.font_size", "gui.typography.body.color" },
+                    { "gui.typography.cite.font", "gui.typography.cite.font_size", "gui.typography.cite.color" },
+                    { "gui.typography.code.font", "gui.typography.code.font_size", "gui.typography.code.color" },
+                    { "gui.typography.caption.font", "gui.typography.caption.font_size", "gui.typography.caption.color" }
+                };
+                usize index = (usize)role;
+                if(index >= sizeof(entries) / sizeof(entries[0])) index = (usize)TypographyRole::body;
+                return entries[index];
+            }
+
+            static Name resolve_font_id(GUICore::IContext* context,
+                const GUICore::ElementHandle& element, const TextDesc& desc)
+            {
+                const TypographyEntries& entries = typography_entries(desc.typography);
+                Name default_font = style_name(context, element, "gui.font");
+                return desc.font.empty() ? style_name(context, element, entries.font, default_font) : desc.font;
+            }
+
             static GUICore::FontDesc resolve_font(GUICore::IContext* context,
                 const GUICore::ElementHandle& element, const TextDesc& desc)
             {
-                Name font_id = desc.font.empty() ? style_name(context, element, "gui.font") : desc.font;
+                Name font_id = resolve_font_id(context, element, desc);
                 GUICore::FontDesc font = context->get_font(font_id);
                 if(!font.font)
                 {
@@ -42,7 +76,20 @@ namespace Luna
             static f32 resolve_font_size(GUICore::IContext* context, const GUICore::ElementHandle& element,
                 const TextDesc& desc)
             {
-                return desc.font_size > 0.0f ? desc.font_size : style_scalar(context, element, "gui.text.font_size", 16.0f);
+                if(desc.font_size > 0.0f) return desc.font_size;
+                const TypographyEntries& entries = typography_entries(desc.typography);
+                f32 fallback = style_scalar(context, element, "gui.text.font_size", 16.0f);
+                return style_scalar(context, element, entries.font_size, fallback);
+            }
+
+            static Float4U resolve_text_color(GUICore::IContext* context,
+                const GUICore::ElementHandle& element, const TextDesc& desc)
+            {
+                if(desc.color.w >= 0.0f) return desc.color;
+                const TypographyEntries& entries = typography_entries(desc.typography);
+                Float4U fallback = style_color(context, element, "gui.text.color",
+                    Float4U(0.86f, 0.88f, 0.92f, 1.0f));
+                return style_color(context, element, entries.color, fallback);
             }
 
             static GUICore::MeasureResult measure_text(GUICore::IContext* context,
@@ -88,10 +135,9 @@ namespace Luna
                 command.rect_reference = GUICore::DrawCommandRectReference::element;
                 command.rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
                 command.text = data->text ? data->text : "";
-                command.font = data->desc.font.empty() ? style_name(context, element, "gui.font") : data->desc.font;
+                command.font = resolve_font_id(context, element, data->desc);
                 command.font_size = resolve_font_size(context, element, data->desc);
-                command.color = data->desc.color.w >= 0.0f ? data->desc.color :
-                    style_color(context, element, "gui.text.color", Float4U(0.86f, 0.88f, 0.92f, 1.0f));
+                command.color = resolve_text_color(context, element, data->desc);
                 command.horizontal_alignment = text_alignment(data->desc.horizontal_alignment);
                 command.vertical_alignment = text_alignment(data->desc.vertical_alignment);
                 context->draw(command);

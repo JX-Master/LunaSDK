@@ -46,6 +46,8 @@ namespace Luna
             Float4U accent = Float4U(0.890f, 0.310f, 0.349f, 1.0f);
             //! Registered font used by controls and text.
             Name font = Name("default");
+            //! Registered monospaced font used by the code typography role.
+            Name monospace_font = Name("default");
         };
 
         //! Registers style schemas consumed by the editor GUI package.

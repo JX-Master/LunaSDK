@@ -18,6 +18,12 @@ namespace Luna
     {
         namespace Internal
         {
+            struct PopupPanelDrawData
+            {
+                const c8* prefix = nullptr;
+                Float4U background_fallback = Float4U(0.0f);
+            };
+
             static Ref<PopupState> popup_state(GUICore::IContext* context, id_t id, bool create)
             {
                 id_t state_id = GUICore::make_state_id<PopupState>(id);
@@ -34,36 +40,53 @@ namespace Luna
                 return result;
             }
 
-            static void draw_panel(GUICore::IContext* context, const GUICore::ElementHandle& element,
-                const c8* prefix, const Float4U& background_fallback)
+            static RV draw_panel(GUICore::IContext* context, const GUICore::ElementHandle& element,
+                GUICore::DrawPhase, void* userdata)
             {
+                PopupPanelDrawData* data = (PopupPanelDrawData*)userdata;
+                if(!data || !data->prefix) return BasicError::bad_arguments();
+                const c8* prefix = data->prefix;
                 String name;
                 strprintf(name, "gui.%s.background", prefix);
-                Float4U background = style_color(context, element, name.c_str(), background_fallback);
+                Float4U background = style_color(context, element, name.c_str(), data->background_fallback);
                 strprintf(name, "gui.%s.border", prefix);
                 Float4U border = style_color(context, element, name.c_str(), Float4U(0.24f, 0.30f, 0.38f, 1.0f));
                 strprintf(name, "gui.%s.radius", prefix);
                 f32 radius = style_scalar(context, element, name.c_str(), 5.0f);
-                GUICore::DrawCommand command;
-                command.type = GUICore::DrawCommandType::shadow;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.color = style_color(context, element, "gui.shadow.dark",
+                f32 shadow_softness = style_scalar(context, element, "gui.shadow.softness", 6.0f);
+                RoundedRectEffect outer_effects[2];
+                outer_effects[0].shadow = true;
+                outer_effects[0].color = style_color(context, element, "gui.shadow.dark",
                     Float4U(0.0f, 0.0f, 0.0f, 0.28f));
-                command.color.w = min(command.color.w * 1.35f, 0.64f);
-                command.radius = radius;
-                command.shadow.offset = style_vector2(context, element, "gui.shadow.offset", Float2U(4.0f));
-                command.shadow.softness = style_scalar(context, element, "gui.shadow.softness", 6.0f) * 1.8f;
-                context->draw(command);
-                command.type = GUICore::DrawCommandType::rounded_rect;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
-                command.rect = RectF();
-                command.color = border;
-                command.radius = radius;
-                context->draw(command);
-                command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
-                command.color = background;
-                command.radius = max(radius - 1.0f, 0.0f);
-                context->draw(command);
+                outer_effects[0].color.w = min(outer_effects[0].color.w * 1.18f, 0.46f);
+                outer_effects[0].shadow_desc.offset = Float2U(0.0f, shadow_softness * 1.4f);
+                outer_effects[0].shadow_desc.softness = shadow_softness * 3.0f;
+                outer_effects[1].color = border;
+                if(RV result = draw_rounded_rect_effects(context, element, RectF(), Float4U(), radius,
+                    Span<const RoundedRectEffect>(outer_effects, 2)); failed(result))
+                {
+                    return result;
+                }
+
+                RoundedRectEffect fill;
+                fill.color = background;
+                return draw_rounded_rect_effects(context, element,
+                    RectF(1.0f, 1.0f, -2.0f, -2.0f), Float4U(), max(radius - 1.0f, 0.0f),
+                    Span<const RoundedRectEffect>(&fill, 1));
+            }
+
+            static void set_panel_draw_config(GUICore::IContext* context,
+                const GUICore::ElementHandle& element, const c8* prefix,
+                const Float4U& background_fallback)
+            {
+                PopupPanelDrawData* data = allocate_frame<PopupPanelDrawData>(context);
+                data->prefix = prefix;
+                data->background_fallback = background_fallback;
+                GUICore::DrawConfig draw;
+                draw.name = Name("gui.popup_panel");
+                draw.callback = draw_panel;
+                draw.userdata = data;
+                context->set_draw_config(element, draw);
             }
 
             static GUICore::LayoutConfig panel_layout(GUICore::IContext* context,
@@ -118,7 +141,8 @@ namespace Luna
             interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
             context->set_interactable(root, interactable);
-            Internal::draw_panel(context, root, "popup", Float4U(0.08f, 0.10f, 0.13f, 0.98f));
+            Internal::set_panel_draw_config(context, root, "popup",
+                Float4U(0.08f, 0.10f, 0.13f, 0.98f));
             Ref<Internal::PopupState> state = Internal::popup_state(context, id, true);
             state->flags = desc.flags;
             Ref<Internal::FrameState> frame = Internal::frame_state(context);
@@ -183,7 +207,8 @@ namespace Luna
             GUICore::ElementHandle root = Internal::begin_element(context,
                 Internal::derived_id(id, "tooltip.root"), "Tooltip", desc.layout);
             context->set_layout_config(root, Internal::panel_layout(context, root, desc.layout, "tooltip"));
-            Internal::draw_panel(context, root, "tooltip", Float4U(0.05f, 0.06f, 0.07f, 0.97f));
+            Internal::set_panel_draw_config(context, root, "tooltip",
+                Float4U(0.05f, 0.06f, 0.07f, 0.97f));
             if(out_handle) *out_handle = root;
             return true;
         }

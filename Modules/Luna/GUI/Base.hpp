@@ -37,6 +37,31 @@ namespace Luna
             end
         };
 
+        //! Selects a semantic typography role resolved from the bound Style.
+        enum class TypographyRole : u8
+        {
+            //! Largest page or document heading.
+            heading1,
+            //! Second-level section heading.
+            heading2,
+            //! Third-level section heading.
+            heading3,
+            //! Fourth-level section heading.
+            heading4,
+            //! Fifth-level section heading.
+            heading5,
+            //! Smallest semantic heading.
+            heading6,
+            //! Primary prose and ordinary application copy.
+            body,
+            //! Secondary quotation, attribution, or supporting copy.
+            cite,
+            //! Monospaced code and numeric data.
+            code,
+            //! Compact metadata and captions.
+            caption
+        };
+
         //! Bit flags controlling image rendering.
         enum class ImageFlag : u8
         {
@@ -60,6 +85,8 @@ namespace Luna
         //! Describes text presentation.
         struct TextDesc
         {
+            //! Semantic typography role used when font, size, or color is not explicitly overridden.
+            TypographyRole typography = TypographyRole::body;
             //! Horizontal text alignment.
             TextAlignment horizontal_alignment = TextAlignment::begin;
             //! Vertical text alignment.

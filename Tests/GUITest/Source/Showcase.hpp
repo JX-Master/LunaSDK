@@ -26,6 +26,7 @@ namespace Luna
             i32 console_tab = 0;
             i32 inspector_tab = 0;
             i32 combo_item = 0;
+            i32 table_selection = 0;
             i32 radio_value = 1;
             bool selected_group_multi[4] = { true, false, true, false };
             bool checkbox_value = true;
@@ -45,6 +46,7 @@ namespace Luna
             String asset_name = "M_Rusted_Metal";
             String readonly_value = "Read-only value";
             String search_query;
+            String table_filter;
             Ref<RHI::ITexture> material_preview;
             Ref<RHI::ITexture> material_sand;
             Ref<RHI::ITexture> material_rusted;

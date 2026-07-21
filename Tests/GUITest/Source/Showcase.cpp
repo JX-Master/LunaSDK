@@ -304,6 +304,14 @@ namespace Luna
                 return GUI::text(context, element_id, value, layout, text_desc(context, size, color));
             }
 
+            GUICore::ElementHandle typography_label(GUICore::IContext* context, GUI::id_t element_id,
+                const c8* value, const GUICore::LayoutConfig& layout, GUI::TypographyRole typography)
+            {
+                GUI::TextDesc desc;
+                desc.typography = typography;
+                return GUI::text(context, element_id, value, layout, desc);
+            }
+
             GUICore::ElementHandle begin_panel(GUICore::IContext* context, GUI::id_t element_id,
                 const c8* name, const GUICore::LayoutConfig& input, const c8* background = "gui.surface.1",
                 f32 radius = 12.0f, bool raised = true)
@@ -710,8 +718,8 @@ namespace Luna
                 toolbar_flex.main_alignment = GUICore::FlexAlignment::space_between;
                 GUI::end_h_layout(context, toolbar, toolbar_flex);
                 GUI::image(context, id(context, "overview.viewport.image"), state.material_preview,
-                    fill_width(state.density == 1 ? 420.0f : 444.0f), flipped_image(0.14f, 0.86f));
-                GUICore::LayoutConfig console_layout = fill_width(122.0f);
+                    grow_y(), flipped_image(0.14f, 0.86f));
+                GUICore::LayoutConfig console_layout = fill_width(104.0f);
                 console_layout.padding = Float4U(10.0f, 0.0f, 10.0f, 8.0f);
                 GUICore::ElementHandle console = begin_panel(context, id(context, "overview.console"),
                     "Console", console_layout, "gui.surface.1", 0.0f, false);
@@ -800,17 +808,33 @@ namespace Luna
                 section_heading(context, "primitives", "GUITEST - PRIMITIVES", "Type, imagery, progress, and system light",
                     "Foundational drawing and semantic feedback, including the LED vocabulary used by editor status surfaces.");
                 GUICore::ElementHandle row;
-                page_two_columns(context, id(context, "primitives.row1"), row, 280.0f);
+                page_two_columns(context, id(context, "primitives.row1"), row, 430.0f);
                 GUICore::ElementHandle typography = begin_card(context, "primitives.typography", grow_x(),
-                    "Typography", "Default UI font and numeric hierarchy");
-                label(context, id(context, "primitives.type.h1"), "Editor title", fill_width(44.0f), 24.0f);
-                label(context, id(context, "primitives.type.h2"), "Panel heading", fill_width(34.0f), 17.0f);
-                label(context, id(context, "primitives.type.body"),
-                    "Primary body text keeps dense application copy readable.", fill_width(42.0f), 12.0f,
-                    "gui.text.secondary");
-                label(context, id(context, "primitives.type.code"), "Float3U(1.0f, 2.0f, 3.0f)",
-                    fill_width(34.0f), 11.0f, "gui.accent.active");
-                end_panel(context, typography);
+                    "Typography", "Semantic roles resolved from the active Style");
+                typography_label(context, id(context, "primitives.type.h1"), "H1  Editor title",
+                    fill_width(42.0f), GUI::TypographyRole::heading1);
+                typography_label(context, id(context, "primitives.type.h2"), "H2  Workspace title",
+                    fill_width(36.0f), GUI::TypographyRole::heading2);
+                typography_label(context, id(context, "primitives.type.h3"), "H3  Panel heading",
+                    fill_width(32.0f), GUI::TypographyRole::heading3);
+                typography_label(context, id(context, "primitives.type.h4"), "H4  Property group",
+                    fill_width(28.0f), GUI::TypographyRole::heading4);
+                typography_label(context, id(context, "primitives.type.h5"), "H5  Subsection",
+                    fill_width(26.0f), GUI::TypographyRole::heading5);
+                typography_label(context, id(context, "primitives.type.h6"), "H6  Dense heading",
+                    fill_width(24.0f), GUI::TypographyRole::heading6);
+                typography_label(context, id(context, "primitives.type.body"),
+                    "Body  Primary application copy remains readable.", fill_width(26.0f),
+                    GUI::TypographyRole::body);
+                typography_label(context, id(context, "primitives.type.cite"),
+                    "Cite  Supporting context and attribution.", fill_width(24.0f),
+                    GUI::TypographyRole::cite);
+                typography_label(context, id(context, "primitives.type.code"),
+                    "Code  Float3U(1.0f, 2.0f, 3.0f)", fill_width(24.0f), GUI::TypographyRole::code);
+                typography_label(context, id(context, "primitives.type.caption"),
+                    "Caption  Secondary metadata - 12:45:08", fill_width(22.0f),
+                    GUI::TypographyRole::caption);
+                end_panel(context, typography, 4.0f);
                 GUICore::ElementHandle progress = begin_card(context, "primitives.progress", grow_x(),
                     "Progress and LED", "Determinate work and semantic status");
                 label(context, id(context, "primitives.progress.label1"), "Baking textures                         68%",
@@ -1046,39 +1070,127 @@ namespace Luna
                 end_two_columns(context, row);
             }
 
-            void table_row(GUICore::IContext* context, GUI::id_t element_id, const c8* value, bool selected)
+            struct TableRecord
             {
-                GUICore::LayoutConfig layout = fill_width(48.0f);
+                const c8* cells[6];
+                const c8* status_color;
+            };
+
+            void table_cell(GUICore::IContext* context, GUI::id_t element_id, const c8* value,
+                bool header, bool status, const c8* status_color)
+            {
+                GUICore::LayoutConfig layout;
                 layout.padding = Float4U(12.0f, 0.0f, 12.0f, 0.0f);
-                GUICore::ElementHandle row = GUI::begin_h_layout(context, element_id, "Table row", layout);
-                if(selected) rounded_rect(context, style_color(context, "gui.accent.subtle"), 0.0f);
-                label(context, GUICore::make_scoped_id(element_id, 1), value, grow_x(), 11.0f,
-                    selected ? "gui.accent.active" : "gui.text.secondary");
+                GUICore::ElementHandle cell = GUI::begin_h_layout(context, element_id,
+                    header ? "Table header cell" : "Table cell", layout);
+                if(status)
+                {
+                    GUICore::ElementHandle indicator = GUI::begin_v_layout(context,
+                        GUICore::make_scoped_id(element_id, 1), "Status LED", fixed(10.0f, 10.0f));
+                    Float4U led = style_color(context, status_color);
+                    Float4U glow = led;
+                    glow.w *= 0.45f;
+                    rounded_shadow(context, glow, 5.0f, Float2U(), 3.0f, GUICore::ShadowMode::outer);
+                    rounded_rect(context, style_color(context, "gui.border"), 5.0f);
+                    rounded_rect(context, led, 4.0f, RectF(1.0f, 1.0f, -2.0f, -2.0f));
+                    GUI::end_v_layout(context, indicator);
+                }
+                typography_label(context, GUICore::make_scoped_id(element_id, 2), value,
+                    grow_x(), header ? GUI::TypographyRole::caption : GUI::TypographyRole::cite);
                 GUICore::FlexLayoutDesc flex;
                 flex.axis = GUICore::LayoutAxis::x;
                 flex.cross_alignment = GUICore::FlexAlignment::center;
-                GUI::end_h_layout(context, row, flex);
+                flex.main_axis_gap = status ? 8.0f : 0.0f;
+                GUI::end_h_layout(context, cell, flex);
             }
 
-            void build_tables(GUICore::IContext* context)
+            void build_tables(GUICore::IContext* context, ShowcaseState& state)
             {
                 section_heading(context, "tables", "GUITEST - TABLES", "Dense, resizable data",
                     "Readable rows, clear selection, subtle hierarchy, and generous splitter hit targets.");
-                GUICore::ElementHandle card = begin_card(context, "tables.memory", fill_width(650.0f),
+                GUICore::ElementHandle card = begin_card(context, "tables.memory", fill_width(470.0f),
                     "Memory Profiler", "Visual row states and resize-handle targets");
-                GUI::text_button(context, id(context, "tables.snapshot"), "Snapshot", fill_width(44.0f));
-                table_row(context, id(context, "tables.header"),
-                    "#       TYPE                         CATEGORY       SIZE        ALLOCATIONS       STATUS", false);
-                table_row(context, id(context, "tables.row1"),
-                    "0001    RHI::Texture                 Graphics       128.0 MB    12                Resident", true);
-                table_row(context, id(context, "tables.row2"),
-                    "0002    VG::ShapeBuffer              Vector         48.6 MB     64                Resident", false);
-                table_row(context, id(context, "tables.row3"),
-                    "0003    Asset::Texture               Content        32.1 MB     24                Streaming", false);
-                table_row(context, id(context, "tables.row4"),
-                    "0004    GUI::State                   Interface      2.8 MB      1264              Resident", false);
-                table_row(context, id(context, "tables.row5"),
-                    "0005    Shader Cache                 Graphics       1.4 MB      116               Offline", false);
+                GUICore::ElementHandle toolbar = GUI::begin_h_layout(context, id(context, "tables.toolbar"),
+                    "Table toolbar", fill_width(44.0f));
+                GUI::TextInputDesc filter_desc;
+                filter_desc.placeholder = "Filter allocations...";
+                GUI::input_text(context, id(context, "tables.filter"), state.table_filter, grow_x(), filter_desc);
+                GUI::text_button(context, id(context, "tables.snapshot"), "Snapshot", fixed(130.0f, 44.0f));
+                GUI::text_button(context, id(context, "tables.settings"), "...", fixed(44.0f, 44.0f));
+                GUICore::FlexLayoutDesc toolbar_flex;
+                toolbar_flex.axis = GUICore::LayoutAxis::x;
+                toolbar_flex.cross_alignment = GUICore::FlexAlignment::stretch;
+                toolbar_flex.main_axis_gap = 8.0f;
+                GUI::end_h_layout(context, toolbar, toolbar_flex);
+
+                GUICore::LayoutConfig table_layout = fill_width(294.0f);
+                table_layout.padding = Float4U(1.0f);
+                GUI::TableDesc table_desc;
+                table_desc.gap = Float2U(1.0f);
+                table_desc.clip_children = true;
+                table_desc.fixed_row_height_mode = true;
+                table_desc.fixed_row_height = 48.0f;
+                GUICore::ElementHandle table = GUI::begin_table_layout(context, id(context, "tables.grid"),
+                    "Memory allocation table", table_layout, table_desc);
+                rounded_rect(context, style_color(context, "gui.border"),
+                    style_scalar(context, "gui.radius.medium", 9.0f));
+                rounded_rect(context, style_color(context, "gui.surface.1"),
+                    max(style_scalar(context, "gui.radius.medium", 9.0f) - 1.0f, 0.0f),
+                    RectF(1.0f, 1.0f, -2.0f, -2.0f));
+                rounded_rect(context, style_color(context, "gui.surface.2"), 0.0f,
+                    RectF(1.0f, 1.0f, -2.0f, 48.0f));
+
+                static const f32 COLUMN_WIDTHS[] = { 0.06f, 0.23f, 0.16f, 0.13f, 0.16f, 0.26f };
+                GUICore::TableTrackDesc columns[6];
+                for(usize i = 0; i < 6; ++i)
+                {
+                    columns[i].kind = GUICore::TableTrackSizeKind::percent;
+                    columns[i].value = COLUMN_WIDTHS[i];
+                }
+                GUI::set_table_columns(context, Span<const GUICore::TableTrackDesc>(columns, 6));
+
+                static const c8* HEADERS[] = { "#", "TYPE", "CATEGORY", "SIZE", "ALLOCATIONS", "STATUS" };
+                static const TableRecord RECORDS[] = {
+                    { { "0001", "RHI::Texture", "Graphics", "128.0 MB", "12", "Resident" }, "gui.status.success" },
+                    { { "0002", "VG::ShapeBuffer", "Vector", "48.6 MB", "64", "Resident" }, "gui.status.success" },
+                    { { "0003", "Asset::Texture", "Content", "32.1 MB", "24", "Streaming" }, "gui.status.warning" },
+                    { { "0004", "GUI::State", "Interface", "2.8 MB", "1,264", "Resident" }, "gui.status.success" },
+                    { { "0005", "Shader Cache", "Graphics", "1.4 MB", "116", "Offline" }, "gui.status.off" }
+                };
+                GUI::begin_table_row(context);
+                for(usize column = 0; column < 6; ++column)
+                {
+                    table_cell(context, GUICore::make_scoped_id(table.id, (u64)column + 1),
+                        HEADERS[column], true, false, nullptr);
+                }
+                GUI::end_table_row(context);
+                for(usize row = 0; row < 5; ++row)
+                {
+                    f32 row_y = 50.0f + (f32)row * 49.0f;
+                    if((i32)row == state.table_selection)
+                    {
+                        rounded_rect(context, style_color(context, "gui.accent.subtle"), 0.0f,
+                            RectF(1.0f, row_y, -2.0f, 48.0f));
+                        rounded_rect(context, style_color(context, "gui.accent"), 0.0f,
+                            RectF(1.0f, row_y, 3.0f, 48.0f));
+                    }
+                    else if(row & 1)
+                    {
+                        Float4U zebra = style_color(context, "gui.surface.2");
+                        zebra.w *= 0.52f;
+                        rounded_rect(context, zebra, 0.0f, RectF(1.0f, row_y, -2.0f, 48.0f));
+                    }
+                    GUI::begin_table_row(context);
+                    for(usize column = 0; column < 6; ++column)
+                    {
+                        GUI::id_t cell_id = GUICore::make_scoped_id(
+                            GUICore::make_scoped_id(table.id, (u64)row + 10), (u64)column + 1);
+                        table_cell(context, cell_id, RECORDS[row].cells[column], false,
+                            column == 5, RECORDS[row].status_color);
+                    }
+                    GUI::end_table_row(context);
+                }
+                GUI::end_table_layout(context, table);
                 end_panel(context, card);
             }
 
@@ -1445,7 +1557,7 @@ namespace Luna
                     else if(state.section == 3) build_input(context, state);
                     else if(state.section == 4) build_layouts(context, state);
                     else if(state.section == 5) build_scroll_views(context);
-                    else if(state.section == 6) build_tables(context);
+                    else if(state.section == 6) build_tables(context, state);
                     else if(state.section == 7) build_overlay(context, state, handles);
                     else build_workspace(context, state);
                     GUICore::FlexLayoutDesc page_flex;

@@ -465,10 +465,15 @@ export function App() {
         </Section>
 
         <Section id="primitives" eyebrow="GUITest · Primitives" title="Type, imagery, progress, and system light" description="Foundational drawing and semantic feedback, including the proposed LED primitive for tool status.">
-          <div className="card-grid three-columns">
+          <div className="card-grid three-columns typography-grid">
             <Card title="Typography" note="Inter + IBM Plex Mono">
               <div className="type-stack">
-                <h1>Editor title</h1><h2>Panel heading</h2><p>Primary body text keeps dense application copy readable.</p><small>Secondary metadata · 12:45:08</small><code>Float3U(1.0f, 2.0f, 3.0f)</code>
+                <h1>H1 · Editor title</h1><h2>H2 · Workspace title</h2><h3>H3 · Panel heading</h3>
+                <h4>H4 · Property group</h4><h5>H5 · Subsection</h5><h6>H6 · Dense heading</h6>
+                <p>Body · Primary application copy remains readable.</p>
+                <cite>Cite · Supporting context and attribution.</cite>
+                <code>Code · Float3U(1.0f, 2.0f, 3.0f)</code>
+                <small>Caption · Secondary metadata · 12:45:08</small>
               </div>
             </Card>
             <Card title="Progress" note="Determinate, busy, and disabled">
