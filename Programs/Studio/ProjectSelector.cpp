@@ -175,14 +175,20 @@ namespace Luna
         return context->get_interaction_state(id).clicked;
     }
 
+    static Float4U style_color(GUICore::IContext* context, const c8* entry, const Float4U& fallback)
+    {
+        return context->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name(entry),
+            GUICore::style_f32x4(fallback)).number;
+    }
+
     static void draw_label(GUICore::IContext* context, GUICore::id_t id, const RectF& rect, const c8* text,
-        f32 font_size = 16.0f, const Float4U& color = Float4U(0.88f, 0.90f, 0.94f, 1.0f))
+        f32 font_size = 16.0f)
     {
         (void)id;
         GUICore::DrawCommand command;
         command.type = GUICore::DrawCommandType::text;
         command.rect = rect;
-        command.color = color;
+        command.color = style_color(context, "gui.text.color", Float4U(0.15f, 0.16f, 0.17f, 1.0f));
         command.font_size = font_size;
         command.text = text ? text : "";
         context->draw(command);
@@ -235,7 +241,7 @@ namespace Luna
         GUICore::ElementHandle root = context->begin_element(PROJECT_SELECTOR_ROOT_ID);
         set_element_rect(context, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
         draw_rect(context, PROJECT_SELECTOR_BACKGROUND_ID, RectF(0.0f, 0.0f, surface_size.x, surface_size.y),
-            Float4U(0.055f, 0.07f, 0.085f, 1.0f), 0.0f);
+            style_color(context, "gui.canvas", Float4U(0.92f, 0.93f, 0.92f, 1.0f)), 0.0f);
 
         f32 content_w = max(surface_size.x - 32.0f, 320.0f);
         f32 y = 16.0f;
@@ -292,7 +298,8 @@ namespace Luna
                 f32 recent_h = max(surface_size.y - y - 24.0f, 120.0f);
                 RectF view_rect(32.0f, y, max(content_w - 32.0f, 260.0f), recent_h);
                 GUICore::ElementHandle scroll = begin_scroll_region(context, PROJECT_SELECTOR_RECENT_VIEW_ID, view_rect);
-                draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 3, view_rect, Float4U(0.035f, 0.045f, 0.055f, 1.0f), 4.0f);
+                draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 3, view_rect,
+                    style_color(context, "gui.surface.0", Float4U(0.95f, 0.95f, 0.94f, 1.0f)), 4.0f);
                 push_clip(context, view_rect);
 
                 f32 row_h = 34.0f;
@@ -304,7 +311,7 @@ namespace Luna
                 f32 x = view_rect.offset_x;
                 f32 header_y = view_rect.offset_y - recent_scroll;
                 draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 4, RectF(x, header_y, view_rect.width, header_h),
-                    Float4U(0.08f, 0.10f, 0.12f, 1.0f), 0.0f);
+                    style_color(context, "gui.surface.2", Float4U(0.93f, 0.93f, 0.92f, 1.0f)), 0.0f);
                 draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 5, RectF(x + 8.0f, header_y + 2.0f, path_w - 16.0f, 26.0f), "Project");
                 draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 6, RectF(x + path_w + 8.0f, header_y + 2.0f, time_w - 16.0f, 26.0f), "Last Used");
                 draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 7, RectF(x + path_w + time_w + 8.0f, header_y + 2.0f, open_w - 16.0f, 26.0f), "Open");
@@ -318,18 +325,23 @@ namespace Luna
                         continue;
                     }
                     GUICore::id_t row_base = PROJECT_SELECTOR_FIRST_RECENT_ID + (GUICore::id_t)i * PROJECT_SELECTOR_RECENT_STRIDE;
-                    Float4U row_color = (i % 2) ? Float4U(0.09f, 0.11f, 0.14f, 0.96f) :
-                        Float4U(0.065f, 0.08f, 0.10f, 0.96f);
+                    Float4U row_color = (i % 2) ?
+                        style_color(context, "gui.surface.1", Float4U(0.97f, 0.97f, 0.96f, 1.0f)) :
+                        style_color(context, "gui.surface.0", Float4U(0.95f, 0.95f, 0.94f, 1.0f));
                     draw_rect(context, row_base, RectF(x, row_y, view_rect.width, row_h), row_color, 0.0f);
                     DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(recents[i].m_last_use_time));
                     String time_text;
                     strprintf(time_text, "%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
                     draw_label(context, row_base + 1, RectF(x + 8.0f, row_y + 3.0f, path_w - 16.0f, 28.0f), recents[i].m_path.encode().c_str());
                     draw_label(context, row_base + 2, RectF(x + path_w + 8.0f, row_y + 3.0f, time_w - 16.0f, 28.0f), time_text.c_str());
-                    GUICore::ElementHandle open = GUI::text_button(context, row_base + 3, "Open", fixed_layout(open_w - 8.0f, 26.0f));
-                    set_element_rect(context, open, RectF(x + path_w + time_w + 4.0f, row_y + 4.0f, open_w - 8.0f, 26.0f));
-                    GUICore::ElementHandle remove = GUI::text_button(context, row_base + 4, "Remove", fixed_layout(remove_w - 8.0f, 26.0f));
-                    set_element_rect(context, remove, RectF(x + path_w + time_w + open_w + 4.0f, row_y + 4.0f, remove_w - 8.0f, 26.0f));
+                    GUICore::ElementHandle open = GUI::text_button(context, row_base + 3, "Open",
+                        fixed_layout(open_w - 8.0f, 28.0f));
+                    set_element_rect(context, open,
+                        RectF(x + path_w + time_w + 4.0f, row_y + 3.0f, open_w - 8.0f, 28.0f));
+                    GUICore::ElementHandle remove = GUI::text_button(context, row_base + 4, "Remove",
+                        fixed_layout(remove_w - 8.0f, 28.0f));
+                    set_element_rect(context, remove,
+                        RectF(x + path_w + time_w + open_w + 4.0f, row_y + 3.0f, remove_w - 8.0f, 28.0f));
                 }
                 pop_clip(context);
                 context->end_element();
@@ -353,6 +365,9 @@ namespace Luna
             lulet(gui_renderer, GUICore::new_renderer(g_env->device));
             GUI::register_style_schemas(gui);
             luexp(gui->register_font(Name("default"), Font::get_default_font()));
+            GUI::DefaultStyleDesc style_desc;
+            style_desc.input_mode = GUI::InputMode::pointer;
+            GUI::set_default_style(gui, style_desc);
 
             // Create back buffer.
             u32 w = 0, h = 0;
@@ -389,7 +404,6 @@ namespace Luna
                 if (fb_sz.x && fb_sz.y && (fb_sz.x != w || fb_sz.y != h))
                 {
                     luexp(swap_chain->reset({fb_sz.x, fb_sz.y, 2, RHI::Format::unknown, true}));
-                    f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
                     w = fb_sz.x;
                     h = fb_sz.y;
                 }
@@ -480,7 +494,8 @@ namespace Luna
                 f32 content_rows_height = 30.0f + (f32)recents.size() * 34.0f;
                 recent_scroll = clamp(recent_scroll, 0.0f, max(content_rows_height - visible_rows_height, 0.0f));
 
-                Float4U clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+                Float4U clear_color = style_color(gui, "gui.canvas",
+                    Float4U(0.92f, 0.93f, 0.92f, 1.0f));
 
                 RHI::RenderPassDesc render_pass;
                 lulet(back_buffer, swap_chain->get_current_back_buffer());

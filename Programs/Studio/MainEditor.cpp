@@ -205,6 +205,9 @@ namespace Luna
             m_gui = GUICore::new_context();
             GUI::register_style_schemas(m_gui);
             luexp(m_gui->register_font(Name("default"), Font::get_default_font()));
+            GUI::DefaultStyleDesc style_desc;
+            style_desc.input_mode = GUI::InputMode::pointer;
+            GUI::set_default_style(m_gui, style_desc);
             luset(m_gui_renderer, GUICore::new_renderer(g_env->device));
 
             // Create asset browser instance.
@@ -345,8 +348,10 @@ namespace Luna
             luexp(m_gui->generate_draw_commands());
             RHI::RenderPassDesc render_pass;
             lulet(back_buffer, m_swap_chain->get_current_back_buffer());
+            Float4U clear_color = m_gui->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
+                GUICore::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
             render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store,
-                { 0.0f, 0.0f, 0.0f, 1.0f });
+                clear_color);
             m_cmdbuf->begin_render_pass(render_pass);
             m_cmdbuf->end_render_pass();
             luexp(m_gui_renderer->prepare(m_gui, m_cmdbuf, back_buffer));

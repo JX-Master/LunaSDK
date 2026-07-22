@@ -40,7 +40,7 @@ namespace
     {
         i32 section = 0;
         i32 theme = 0;
-        i32 density = 1;
+        i32 density = 0;
         i32 max_frames = -1;
     };
 

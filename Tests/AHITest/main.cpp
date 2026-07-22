@@ -265,10 +265,15 @@ namespace Luna
         return context->get_interaction_state(id).clicked;
     }
 
+    inline Float4U style_color(GUICore::IContext* context, const c8* entry, const Float4U& fallback)
+    {
+        return context->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name(entry),
+            GUICore::style_f32x4(fallback)).number;
+    }
+
     void draw_label(GUICore::IContext* context, GUICore::id_t id, const RectF& rect, const c8* text)
     {
         GUI::TextDesc desc;
-        desc.color = Float4U(0.88f, 0.90f, 0.94f, 1.0f);
         desc.font_size = 16.0f;
         GUICore::ElementHandle element = GUI::text(context, id, text ? text : "",
             fixed_layout(rect.width, rect.height), desc);
@@ -284,13 +289,14 @@ namespace Luna
         context->draw(command);
     }
 
-    void build_gui(App& app, const Float2U& surface_size, i32& current_playback_adapter, i32& current_capture_adapter)
+    GUICore::ElementHandle build_gui(App& app, const Float2U& surface_size,
+        i32& current_playback_adapter, i32& current_capture_adapter)
     {
         GUICore::IContext* context = app.gui;
         GUICore::ElementHandle root = context->begin_element(ROOT_ID);
         set_element_rect(context, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
         draw_solid_rect(context, RectF(0.0f, 0.0f, surface_size.x, surface_size.y),
-            Float4U(0.06f, 0.075f, 0.09f, 1.0f));
+            style_color(context, "gui.canvas", Float4U(0.92f, 0.93f, 0.92f, 1.0f)));
 
         f32 y = 16.0f;
         draw_label(context, FIRST_TEXT_ID, RectF(18.0f, y, 260.0f, 28.0f), "AHI Test");
@@ -401,8 +407,9 @@ namespace Luna
                         {
                             AudioSource& source = app.audio_sources[i];
                             f32 row_y = y + (f32)i * 38.0f;
-                            Float4U row_color = (i % 2) ? Float4U(0.09f, 0.11f, 0.14f, 0.95f) :
-                                Float4U(0.065f, 0.08f, 0.10f, 0.95f);
+                            Float4U row_color = (i % 2) ?
+                                style_color(context, "gui.surface.1", Float4U(0.97f, 0.97f, 0.96f, 1.0f)) :
+                                style_color(context, "gui.surface.0", Float4U(0.95f, 0.95f, 0.94f, 1.0f));
                             draw_solid_rect(context, RectF(table_x, row_y, table_w, 34.0f), row_color);
                             draw_label(context, FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 1,
                                 RectF(table_x + 8.0f, row_y + 4.0f, 120.0f, 26.0f), "Audio Source");
@@ -419,14 +426,16 @@ namespace Luna
                             set_element_rect(context, volume, RectF(table_x + 140.0f + freq_w, row_y + 4.0f, volume_w - 92.0f, 26.0f));
                             GUICore::ElementHandle apply = GUI::text_button(context,
                                 FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 4,
-                                "Apply", fixed_layout(72.0f, 26.0f));
-                            set_element_rect(context, apply, RectF(table_x + table_w - 80.0f, row_y + 4.0f, 72.0f, 26.0f));
+                                "Apply", fixed_layout(72.0f, 28.0f));
+                            set_element_rect(context, apply,
+                                RectF(table_x + table_w - 80.0f, row_y + 3.0f, 72.0f, 28.0f));
                         }
                     }
                 }
             }
         }
         context->end_element();
+        return root;
     }
 
     RV run_app()
@@ -468,6 +477,9 @@ namespace Luna
             app.gui = GUICore::new_context();
             GUI::register_style_schemas(app.gui);
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
+            GUI::DefaultStyleDesc style_desc;
+            style_desc.input_mode = GUI::InputMode::pointer;
+            GUI::set_default_style(app.gui, style_desc);
             GUIWindow::GUICoreWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;
@@ -490,7 +502,6 @@ namespace Luna
                 if (fb_sz.x && fb_sz.y && (fb_sz.x != app.width || fb_sz.y != app.height))
                 {
                     luexp(app.swap_chain->reset({fb_sz.x, fb_sz.y, 2, RHI::Format::unknown, true}));
-                    f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
                     app.width = fb_sz.x;
                     app.height = fb_sz.y;
                 }
@@ -507,10 +518,17 @@ namespace Luna
                 static i32 current_playback_adapter = 0;
                 static i32 current_capture_adapter = 0;
                 app.gui->push_layer(DEFAULT_LAYER_ID, Float2U(0.0f));
-                build_gui(app, frame.screen_size, current_playback_adapter, current_capture_adapter);
+                GUICore::ElementHandle root = build_gui(app, frame.screen_size,
+                    current_playback_adapter, current_capture_adapter);
                 app.gui->pop_layer();
+                RectF screen_rect(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y);
+                luexp(GUI::layout_tree(app.gui, root, screen_rect));
                 app.gui->route_input();
-                GUI::resolve_interactions(app.gui);
+                GUI::ResolveResult resolved = GUI::resolve_interactions(app.gui);
+                if(resolved.relayout_requested)
+                {
+                    luexp(GUI::layout_tree(app.gui, root, screen_rect));
+                }
                 luexp(GUIWindow::update_text_input(&input_adapter));
 
                 if(clicked(app.gui, CREATE_DEVICE_BUTTON_ID))
@@ -550,7 +568,8 @@ namespace Luna
                     }
                 }
 
-                Float4U clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+                Float4U clear_color = style_color(app.gui, "gui.canvas",
+                    Float4U(0.92f, 0.93f, 0.92f, 1.0f));
 
                 RHI::RenderPassDesc render_pass;
                 lulet(back_buffer, app.swap_chain->get_current_back_buffer());

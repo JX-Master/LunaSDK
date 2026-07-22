@@ -277,7 +277,6 @@ namespace Luna
     void draw_label(GUICore::IContext* context, GUICore::id_t id, f32 x, f32 y, f32 width, const c8* text)
     {
         GUI::TextDesc desc;
-        desc.color = Float4U(0.88f, 0.88f, 0.90f, 1.0f);
         desc.font_size = 16.0f;
         GUICore::ElementHandle element = GUI::text(context, id, text, fixed_layout(width, 24.0f), desc);
         set_element_rect(context, element, RectF(x, y, width, 24.0f));
@@ -414,6 +413,9 @@ namespace Luna
             app.gui = GUICore::new_context();
             GUI::register_style_schemas(app.gui);
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
+            GUI::DefaultStyleDesc style_desc;
+            style_desc.input_mode = GUI::InputMode::pointer;
+            GUI::set_default_style(app.gui, style_desc);
             luexp(recreate_curve_texture(app));
         }
         lucatchret;
@@ -482,7 +484,10 @@ namespace Luna
 
                 lulet(back_buffer, app.swap_chain->get_current_back_buffer());
                 RHI::RenderPassDesc render_pass;
-                render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, Float4U(0.02f, 0.025f, 0.03f, 1.0f));
+                Float4U clear_color = app.gui->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
+                    GUICore::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
+                render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear,
+                    RHI::StoreOp::store, clear_color);
                 app.cmdbuf->begin_render_pass(render_pass);
                 app.cmdbuf->end_render_pass();
                 luexp(app.gui_renderer->prepare(app.gui, app.cmdbuf, back_buffer));

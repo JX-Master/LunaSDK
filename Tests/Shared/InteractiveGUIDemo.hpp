@@ -172,6 +172,9 @@ namespace Luna
                 app.gui = GUICore::new_context();
                 GUI::register_style_schemas(app.gui);
                 luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
+                GUI::DefaultStyleDesc style_desc;
+                style_desc.input_mode = GUI::InputMode::pointer;
+                GUI::set_default_style(app.gui, style_desc);
             }
             lucatchret;
             return ok;
@@ -256,8 +259,10 @@ namespace Luna
 
                     lulet(back_buffer, app.swap_chain->get_current_back_buffer());
                     RHI::RenderPassDesc render_pass;
+                    Float4U clear_color = app.gui->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
+                        GUICore::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
                     render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store,
-                        Float4U(0.02f, 0.025f, 0.03f, 1.0f));
+                        clear_color);
                     app.cmdbuf->begin_render_pass(render_pass);
                     app.cmdbuf->end_render_pass();
                     luexp(render_interactive_gui_demo(app, back_buffer));
