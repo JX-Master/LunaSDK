@@ -21,6 +21,8 @@
 #include <Luna/Window/AppMain.hpp>
 #include <Luna/Window/Event.hpp>
 #include <Luna/Window/Window.hpp>
+#include <cstdlib>
+#include <cstring>
 
 using namespace Luna;
 
@@ -31,6 +33,7 @@ namespace
         Ref<Window::IWindow> window;
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
+        Ref<RHI::ITexture> depth_texture;
         Ref<GUICore::IContext> gui;
         Ref<GUICore::IRenderer> renderer;
         u32 queue = U32_MAX;
@@ -38,6 +41,47 @@ namespace
         u32 height = 0;
         GUICoreTest::CoreSheetState sheet;
     };
+
+    bool is_world_surface_slice(const CoreTestApp& app)
+    {
+        return app.sheet.slice_index == GUICoreTest::WORLD_SURFACE_SLICE;
+    }
+
+    void validate_surface_ray_mapping()
+    {
+        GUICore::SurfaceRayHit hit;
+        bool intersects = GUICore::ray_to_surface(Float3U(24.0f, 48.0f, -10.0f),
+            Float3U(0.0f, 0.0f, 2.0f), Float4x4U(Float4x4::identity()), hit);
+        luassert(intersects);
+        luassert(abs(hit.position.x - 24.0f) < 0.0001f);
+        luassert(abs(hit.position.y - 48.0f) < 0.0001f);
+        luassert(abs(hit.ray_distance - 5.0f) < 0.0001f);
+
+        Float4x4 surface_to_world = AffineMatrix::make_translation(Float3(10.0f, 20.0f, 5.0f));
+        intersects = GUICore::ray_to_surface(Float3U(13.0f, 27.0f, 0.0f),
+            Float3U(0.0f, 0.0f, 1.0f), Float4x4U(inverse(surface_to_world)), hit);
+        luassert(intersects);
+        luassert(abs(hit.position.x - 3.0f) < 0.0001f);
+        luassert(abs(hit.position.y - 7.0f) < 0.0001f);
+        luassert(!GUICore::ray_to_surface(Float3U(0.0f), Float3U(1.0f, 0.0f, 0.0f),
+            Float4x4U(Float4x4::identity()), hit));
+    }
+
+    RV resize_depth_texture(CoreTestApp& app, const UInt2U& size)
+    {
+        if(!size.x || !size.y)
+        {
+            app.depth_texture = nullptr;
+            return ok;
+        }
+        auto dev = RHI::get_main_device();
+        auto result = dev->new_texture(RHI::MemoryType::local,
+            RHI::TextureDesc::tex2d(RHI::Format::d32_float,
+                RHI::TextureUsageFlag::depth_stencil_attachment, size.x, size.y, 1, 1));
+        if(failed(result)) return result.errcode();
+        app.depth_texture = result.get();
+        return ok;
+    }
 
     void build_sheet(GUICore::IContext* context, GUICoreTest::CoreSheetState& state)
     {
@@ -158,6 +202,7 @@ namespace
             luset(app.renderer, GUICore::new_renderer(dev));
             app.gui = GUICore::new_context();
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
+            validate_surface_ray_mapping();
         }
         lucatchret;
         return ok;
@@ -167,10 +212,34 @@ namespace
     {
         lutry
         {
-            luexp(app.renderer->prepare(app.gui, app.cmdbuf, back_buffer));
+            GUICore::RenderSurfaceDesc surface;
+            bool world_surface = is_world_surface_slice(app);
+            if(world_surface)
+            {
+                GUICore::FrameDesc frame = app.gui->get_frame_desc();
+                f32 width = max(frame.screen_size.x, 1.0f);
+                f32 height = max(frame.screen_size.y, 1.0f);
+                Float3 eye(width * 0.74f, height * 0.28f, height * 1.85f);
+                Float3 target(width * 0.5f, height * 0.5f, 0.0f);
+                Float4x4 view = AffineMatrix::make_look_at(eye, target, Float3(0.0f, -1.0f, 0.0f));
+                Float4x4 projection = ProjectionMatrix::make_perspective_fov(PI / 2.6f,
+                    (f32)app.width / (f32)app.height, 1.0f, height * 8.0f);
+                surface.use_custom_transform = true;
+                surface.surface_to_clip = mul(view, projection);
+                surface.depth_stencil_format = RHI::Format::d32_float;
+                surface.depth_test_enable = true;
+                surface.depth_write_enable = false;
+                surface.depth_compare_function = RHI::CompareFunction::less_equal;
+            }
+            luexp(app.renderer->prepare(app.gui, app.cmdbuf, back_buffer, surface));
             RHI::RenderPassDesc render_pass;
             render_pass.color_attachments[0] = RHI::ColorAttachment(
                 back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
+            if(world_surface)
+            {
+                render_pass.depth_stencil_attachment = RHI::DepthStencilAttachment(
+                    app.depth_texture, false, RHI::LoadOp::clear, RHI::StoreOp::store, 1.0f);
+            }
             app.cmdbuf->begin_render_pass(render_pass);
             app.renderer->render(app.cmdbuf);
             app.cmdbuf->end_render_pass();
@@ -179,12 +248,14 @@ namespace
         return ok;
     }
 
-    RV run_core_test()
+    RV run_core_test(u32 initial_slice, u32 max_frames)
     {
         lutry
         {
             CoreTestApp app;
             luexp(init_core_test(app));
+            app.sheet.slice_index = min(initial_slice, GUICoreTest::NUM_SLICES - 1);
+            u32 rendered_frames = 0;
 
             GUIWindow::GUICoreWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
@@ -208,6 +279,7 @@ namespace
                 if(fb_sz.x && fb_sz.y && (fb_sz.x != app.width || fb_sz.y != app.height))
                 {
                     luexp(app.swap_chain->reset({ fb_sz.x, fb_sz.y, 2, RHI::Format::unknown, true }));
+                    luexp(resize_depth_texture(app, fb_sz));
                     app.width = fb_sz.x;
                     app.height = fb_sz.y;
                 }
@@ -294,6 +366,8 @@ namespace
                 app.cmdbuf->wait();
                 luexp(app.cmdbuf->reset());
                 luexp(app.swap_chain->present());
+                ++rendered_frames;
+                if(rendered_frames >= max_frames) break;
             }
 
             GUIWindow::uninstall_window_event_handler(&input_adapter);
@@ -305,10 +379,21 @@ namespace
 
 int luna_main(int argc, const char* argv[])
 {
-    (void)argc;
-    (void)argv;
+    u32 initial_slice = 0;
+    u32 max_frames = U32_MAX;
+    for(int i = 1; i < argc; ++i)
+    {
+        if(!strcmp(argv[i], "--world-space"))
+        {
+            initial_slice = GUICoreTest::WORLD_SURFACE_SLICE;
+        }
+        else if(!strncmp(argv[i], "--frames=", 9))
+        {
+            max_frames = max<u32>((u32)strtoul(argv[i] + 9, nullptr, 10), 1);
+        }
+    }
     Luna::init();
-    lupanic_if_failed(run_core_test());
+    lupanic_if_failed(run_core_test(initial_slice, max_frames));
     Luna::close();
     return 0;
 }

@@ -10,12 +10,39 @@
 #pragma once
 #include "Context.hpp"
 #include <Luna/RHI/CommandBuffer.hpp>
+#include <Luna/RHI/PipelineState.hpp>
+#include <Luna/Runtime/Math/Matrix.hpp>
 #include "Renderer.generated.hpp"
 
 namespace Luna
 {
     namespace GUICore
     {
+        //! Describes how one logical GUI surface is projected and rendered.
+        struct RenderSurfaceDesc
+        {
+            //! Whether @ref surface_to_clip replaces the default orthographic projection.
+            bool use_custom_transform = false;
+            //! Matrix that transforms `(x, y, 0, 1)` positions from GUI surface coordinates to clip space.
+            Float4x4U surface_to_clip;
+            //! Depth-stencil attachment format of the caller-owned render pass, or @ref RHI::Format::unknown
+            //! when the pass has no depth-stencil attachment.
+            RHI::Format depth_stencil_format = RHI::Format::unknown;
+            //! Whether scene depth testing is enabled.
+            bool depth_test_enable = false;
+            //! Whether passing GUI fragments write depth.
+            //! @remark World-space transparent GUI normally leaves this disabled.
+            bool depth_write_enable = false;
+            //! Depth comparison function used when @ref depth_test_enable is `true`.
+            RHI::CompareFunction depth_compare_function = RHI::CompareFunction::less_equal;
+            //! Triangle culling used by the SDF and integrated VG pipelines.
+            RHI::CullMode cull_mode = RHI::CullMode::none;
+
+            //! Constructs a screen-space surface description with depth testing disabled.
+            RenderSurfaceDesc() :
+                surface_to_clip(Float4x4::identity()) {}
+        };
+
         //! Runtime counters collected by one GUI Core renderer.
         struct RendererPerformanceCounters
         {
@@ -55,6 +82,16 @@ namespace Luna
         //! the backend for text, images, lines and complex monochrome paths.
         struct [[Luna::interface("{780B8352-8D7E-4401-8C12-77D06818B841}")]] IRenderer : virtual Interface
         {
+            //! Compiles one context using the default orthographic screen-space surface.
+            //! @param[in] context The GUI Core context to render.
+            //! @param[in] cmdbuf The command buffer that receives resource barriers required by renderer resources.
+            //! @param[in] render_target The render target used to select the pipeline format and viewport dimensions.
+            //! @return Returns success or failure code.
+            RV prepare(IContext* context, RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target)
+            {
+                return prepare(context, cmdbuf, render_target, RenderSurfaceDesc());
+            }
+
             //! Compiles one context's generated draw command stream and prepares referenced resources.
             //! @param[in] context The GUI Core context to render.
             //! @param[in] cmdbuf The command buffer that receives resource barriers required by renderer resources.
@@ -62,7 +99,11 @@ namespace Luna
             //! @return Returns success or failure code.
             //! @remark The command buffer must not be inside a render pass. The caller remains responsible for
             //! transitioning @p render_target and beginning a compatible render pass before calling @ref render.
-            virtual RV prepare(IContext* context, RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target) = 0;
+            //! @param[in] surface The projection, depth and culling configuration of the logical GUI surface.
+            //! @remark Layout, clips and input positions remain in logical surface coordinates even when a custom
+            //! transform projects the surface into three-dimensional clip space.
+            virtual RV prepare(IContext* context, RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target,
+                const RenderSurfaceDesc& surface) = 0;
 
             //! Records the prepared GUI draw calls into an active render pass.
             //! @param[in] cmdbuf The command buffer whose active render pass receives the draw calls.

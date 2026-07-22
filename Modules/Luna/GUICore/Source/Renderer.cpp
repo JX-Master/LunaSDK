@@ -35,7 +35,7 @@ namespace Luna
 
             struct SDFFrameBuffer
             {
-                Float4U screen_params;
+                Float4x4U surface_to_clip;
             };
 
             bool color_visible(const Float4U& color)
@@ -274,7 +274,8 @@ namespace Luna
             return ok;
         }
 
-        RV Renderer::create_sdf_pipeline(RHI::Format render_target_format)
+        RV Renderer::create_sdf_pipeline(RHI::Format render_target_format,
+            const RenderSurfaceDesc& surface)
         {
             using namespace RHI;
             lutry
@@ -298,13 +299,20 @@ namespace Luna
                     BlendFactor::one, BlendFactor::one_minus_src_alpha, BlendOp::add,
                     BlendFactor::one, BlendFactor::one_minus_src_alpha, BlendOp::add,
                     ColorWriteMask::all)});
-                desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::none,
+                desc.rasterizer_state = RasterizerDesc(FillMode::solid, surface.cull_mode,
                     false, false, false, false, false);
-                desc.depth_stencil_state = DepthStencilDesc(false, false);
+                desc.depth_stencil_state = DepthStencilDesc(surface.depth_test_enable,
+                    surface.depth_write_enable, surface.depth_compare_function);
                 desc.num_color_attachments = 1;
                 desc.color_formats[0] = render_target_format;
+                desc.depth_stencil_format = surface.depth_stencil_format;
                 luset(m_sdf_pipeline_state, m_device->new_graphics_pipeline_state(desc));
                 m_render_target_format = render_target_format;
+                m_depth_stencil_format = surface.depth_stencil_format;
+                m_depth_test_enable = surface.depth_test_enable;
+                m_depth_write_enable = surface.depth_write_enable;
+                m_depth_compare_function = surface.depth_compare_function;
+                m_cull_mode = surface.cull_mode;
             }
             lucatchret;
             return ok;
@@ -736,8 +744,7 @@ namespace Luna
             lutry
             {
                 SDFFrameBuffer frame_data;
-                frame_data.screen_params = Float4U(m_screen_width, m_screen_height,
-                    1.0f / m_screen_width, 1.0f / m_screen_height);
+                frame_data.surface_to_clip = m_surface_to_clip;
                 void* mapped_data = nullptr;
                 luexp(m_sdf_frame_buffer->map(0, 0, &mapped_data));
                 memcpy(mapped_data, &frame_data, sizeof(frame_data));
@@ -852,13 +859,29 @@ namespace Luna
         }
 
         RV Renderer::prepare(IContext* context, RHI::ICommandBuffer* cmdbuf,
-            RHI::ITexture* render_target)
+            RHI::ITexture* render_target, const RenderSurfaceDesc& surface)
         {
             if(!context || !cmdbuf || !render_target) return BasicError::bad_arguments();
-            auto render_target_desc = render_target->get_desc();
-            if(render_target_desc.format != m_render_target_format)
+            if(surface.depth_write_enable && !surface.depth_test_enable)
             {
-                RV result = create_sdf_pipeline(render_target_desc.format);
+                return set_error(BasicError::bad_arguments(),
+                    "GUI depth writes require depth testing to be enabled.");
+            }
+            if((surface.depth_test_enable || surface.depth_write_enable) &&
+                surface.depth_stencil_format == RHI::Format::unknown)
+            {
+                return set_error(BasicError::bad_arguments(),
+                    "GUI depth testing requires a depth-stencil attachment format.");
+            }
+            auto render_target_desc = render_target->get_desc();
+            if(render_target_desc.format != m_render_target_format ||
+                surface.depth_stencil_format != m_depth_stencil_format ||
+                surface.depth_test_enable != m_depth_test_enable ||
+                surface.depth_write_enable != m_depth_write_enable ||
+                surface.depth_compare_function != m_depth_compare_function ||
+                surface.cull_mode != m_cull_mode)
+            {
+                RV result = create_sdf_pipeline(render_target_desc.format, surface);
                 if(failed(result)) return result;
             }
             m_render_target_width = render_target_desc.width;
@@ -866,17 +889,35 @@ namespace Luna
             const FrameDesc frame_desc = context->get_frame_desc();
             m_screen_width = max(frame_desc.screen_size.x, 1.0f);
             m_screen_height = max(frame_desc.screen_size.y, 1.0f);
+            m_surface_to_clip = surface.use_custom_transform ? surface.surface_to_clip :
+                Float4x4U(ProjectionMatrix::make_orthographic_off_center(
+                    0.0f, m_screen_width, m_screen_height, 0.0f, 0.0f, 1.0f));
             m_counters = RendererPerformanceCounters();
             u64 prepare_begin = get_ticks();
             lutry
             {
                 luexp(compile_draw_commands(context));
-                luexp(m_shape_renderer->begin(render_target));
-                Float4x4U transform = ProjectionMatrix::make_orthographic_off_center(
-                    0.0f, m_screen_width, 0.0f, m_screen_height, 0.0f, 1.0f);
+                VG::ShapeRendererPassDesc vg_pass;
+                vg_pass.render_target = render_target;
+                vg_pass.depth_stencil_format = surface.depth_stencil_format;
+                vg_pass.depth_test_enable = surface.depth_test_enable;
+                vg_pass.depth_write_enable = surface.depth_write_enable;
+                vg_pass.depth_compare_function = surface.depth_compare_function;
+                vg_pass.cull_mode = surface.cull_mode;
+                luexp(m_shape_renderer->begin(vg_pass));
+                // GUICore SDF programs use top-left surface coordinates, while the VG draw list keeps its
+                // historical bottom-left coordinates. Convert VG positions before applying the public surface
+                // transform so both backends have identical clip-space output.
+                Float4x4 vg_to_surface(
+                    1.0f, 0.0f, 0.0f, 0.0f,
+                    0.0f, -1.0f, 0.0f, 0.0f,
+                    0.0f, 0.0f, 1.0f, 0.0f,
+                    0.0f, m_screen_height, 0.0f, 1.0f);
+                Float4x4U vg_surface_to_clip = mul(vg_to_surface,
+                    m_surface_to_clip.to_float4x4());
                 m_shape_renderer->draw(m_draw_list->get_instance_buffer(),
                     m_draw_list->get_state_buffer(),
-                    m_draw_list->get_draw_calls(), &transform);
+                    m_draw_list->get_draw_calls(), &vg_surface_to_clip);
                 luexp(m_shape_renderer->end());
                 luexp(prepare_sdf_resources());
                 if(!m_sdf_instances.empty())

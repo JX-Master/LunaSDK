@@ -37,6 +37,12 @@ namespace Luna::GUICoreTest
                 subtitle = "Scalar-float programs combine analytic geometry, paint opcodes, clip bits, and shadows.";
                 break;
             }
+            if(state.slice_index == WORLD_SURFACE_SLICE)
+            {
+                title = "World-space GUI Surface";
+                subtitle = "SDF geometry and VG text share one perspective transform and derivative antialiasing.";
+                break;
+            }
             title = layout_slice_title(state.slice_index - NUM_INPUT_SLICES);
             subtitle = layout_slice_subtitle(state.slice_index - NUM_INPUT_SLICES);
             break;

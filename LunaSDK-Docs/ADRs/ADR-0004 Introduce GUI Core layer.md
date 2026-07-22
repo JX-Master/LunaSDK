@@ -2,7 +2,7 @@
 Approved.
 
 ## Last updated
-2026/7/17
+2026/7/22
 
 ## Background
 LunaSDK currently has a `GUI` module that has already moved away from the old ImGui backend. The current implementation uses explicit GUI contexts, per-frame descriptions, layers, state objects, style entries, render proxies, VG-backed drawing, and GUI debugging support. This direction has proven useful for Studio, GUIEditor, in-game GUI rendering, and custom vector rendering.
@@ -22,6 +22,18 @@ At the same time, GUIEditor and GUIAsset need stable design-time and runtime met
 Since common GUI concepts will be moved into `GUICore`, the high-level immediate API does not need to remain a fully generic widget framework. Instead, LunaSDK should support multiple immediate API packages for different application domains. Each package can make stronger visual and interaction assumptions, keep its implementation smaller, and still interoperate with other packages because they all build the same `GUICore` element tree.
 
 The original GUICore rendering boundary assumed that every generated draw command would be compiled into one VG shape draw list and rasterized exclusively by VG. This is sufficient for ordinary vector shapes, text, and images, but it is too restrictive for procedural shadows, temporary render targets, offscreen composition, and future multi-pass effects. Some of these operations do not consume a VG shape buffer and are more naturally implemented by dedicated RHI pipelines. Requiring VG to own every such pipeline would make VG absorb GUI-specific render orchestration that is unrelated to vector path rasterization.
+
+GUICore layout, drawing and input use a two-dimensional logical coordinate system. This is appropriate for desktop
+windows and render-to-texture interfaces, but in-game GUI also needs to render directly on an arbitrary plane in a
+three-dimensional scene. The standalone VG renderer already accepts a 4x4 projection transform and evaluates contour
+antialiasing from perspective-correct interpolated shape coordinates, while the initial GUICore SDF path mapped
+instance rectangles directly from logical screen coordinates to clip space. A complete core rendering contract must
+therefore support window and world-space surfaces without coupling GUICore to a game camera, physics world or scene
+graph, enlarging every SDF instance, or changing the logical input model.
+
+World-space rendering must preserve existing screen-space output, keep SDF and VG content aligned under one surface
+transform, preserve analytic antialiasing under perspective, optionally use scene depth, and continue routing input as
+host-independent two-dimensional events.
 
 ## Decision
 Introduce a new `GUICore` layer between `VG` and high-level immediate GUI packages.
@@ -78,6 +90,189 @@ This decision removes the following concepts from the long-term high-level `GUI`
 Direct RHI use is an internal rendering-layer capability, not a general escape hatch that lets immediate API packages inject arbitrary command-buffer callbacks. Public draw commands must remain inspectable data with deterministic ordering and declared resource usage. New RHI-backed primitives should be represented by explicit draw-command types and implemented by rendering-layer command compilers.
 
 The rendering layer owns command compilation and backend interleaving, but the application owns render-pass boundaries. Rendering uses a two-step contract: `IRenderer::prepare` runs outside a render pass to compile commands, upload temporary data, and transition internally sampled resources; `IRenderer::render` runs inside an application-owned compatible pass and submits the prepared VG and direct-RHI batches in painter order. A backend used by the rendering layer must therefore support pass-independent preparation and pass-local submission without claiming exclusive ownership of the target pass. The old `IContext::compile_draw_commands(VG::IShapeDrawList*)` path is removed from the long-term contract.
+
+### SDF shape and paint programs
+GUICore owns a signed-distance-field backend for analytic GUI geometry and effects. VG remains the backend for text,
+images, icons and arbitrary vector contours, while SDF handles rectangles, rounded rectangles, circles, ellipses,
+capsules, constructive geometry, gradients, borders, highlights and soft inset or outset effects.
+
+The SDF backend consumes two private transient scalar-float streams:
+
+1. A **shape buffer** containing analytic primitives and prefix constructive-solid-geometry expressions.
+2. A **color buffer** containing one or more ordered concrete paint or effect instructions for a reusable shape.
+
+Both resources use a four-byte structured-buffer stride, matching the scalar storage model of `VG::IShapeBuffer` but
+remaining a separate GUICore ABI. Widget semantics, Style names and arbitrary shader callbacks do not enter either
+stream. Immediate API packages resolve Style values into concrete color instructions before submission.
+
+#### Scalar instruction format
+Every instruction begins with an integer-valued float32 opcode. Opcodes remain below `2^24`, so conversion between
+the float representation and `u32` is exact. There is no universal record-length, arity or format-version header.
+Fixed-length instructions derive their layout from the opcode; variable instructions carry only their own required
+count, such as `num_stops` or a future `num_points`.
+
+CPU handles retain offset and allocation length for validation, page packing and diagnostics. These lengths are not
+repeated in every instruction. The GPU instance stores the color span length, from which the shader reaches the end
+by parsing each instruction's known layout. Streams are transient rather than persistent serialized ABIs; any future
+persistent cache version belongs to resource-level metadata.
+
+The initial limits are:
+
+1. 64 shape instructions, 512 shape floats and an evaluation stack depth of 16.
+2. 8 ordered color instructions, 1024 color floats and 16 stops per gradient instruction.
+3. 16 MiB per scalar program page; no individual shape or color program may cross a page boundary.
+
+#### Shape instructions
+The initial shape instruction set contains:
+
+1. Axis-aligned rectangle.
+2. Axis-aligned rounded rectangle with four independent circular corner radii.
+3. Circle.
+4. Axis-aligned ellipse.
+5. Capsule defined by a line segment and radius.
+6. Prefix union, intersection, difference and exclusive-or operations.
+
+Shape coordinates use top-left GUI logical coordinates with Y increasing downward. A primitive returns a signed
+distance with negative values inside. Binary operations preserve operand order and use prefix notation:
+
+```text
+union(A, B)        = min(A, B)
+intersection(A, B) = max(A, B)
+difference(A, B)   = max(A, -B)
+xor(A, B)          = max(min(A, B), -max(A, B))
+```
+
+The CPU validator derives expression length, operand count, maximum stack depth, instruction count and conservative
+bounds before any program is uploaded.
+
+#### Color instructions and distance clipping
+The low eight bits of a color opcode select the base algorithm. Two additional bits select independent signed-distance
+limits:
+
+```text
+bits 0..7: base color opcode
+bit 8:     inner clip
+bit 9:     outer clip
+```
+
+The initial algorithms are solid color, linear gradient, elliptical radial gradient, conic gradient, four-corner
+bilinear gradient and analytic shadow. Colors are concrete non-premultiplied sRGB values. Gradient instructions store
+ordered fixed-stride stops, support pad and repeat spread, midpoint-adjusted sRGB interpolation and at most 16 stops.
+
+For signed distance `d`, an instruction may store `inner_distance`, `outer_distance`, or both. The shader forms:
+
+```text
+inner term   = -d - inner_distance
+outer term   =  d - outer_distance
+clip distance = maximum of the enabled terms
+```
+
+The resulting modes are:
+
+1. `00b`: no SDF clipping inside the finite raster mesh.
+2. `01b`: reject points deeper than `inner_distance` inside the contour.
+3. `10b`: reject points farther than `outer_distance` outside the contour.
+4. `11b`: keep an independently controlled boundary band on both sides.
+
+Conventional fill is outer clip with `outer_distance = 0`. A centered stroke of width `w` uses both clips with each
+distance set to `w / 2`. Different distances produce asymmetric inward and outward strokes without multiplying the
+base opcode set. Clip coverage uses `fwidth` antialiasing, and shader discard may occur only after coverage is zero.
+
+#### Ordered multi-effect programs and shape reuse
+One SDF draw references one validated shape range and one contiguous color span. A color span may contain several
+ordered instructions, such as:
+
+```text
+OuterShadow -> SolidColor -> InnerHighlight
+```
+
+The shader evaluates the base shape once, executes each color instruction in order and composes results with
+premultiplied source-over. Shadows with different offsets still perform their required shifted shape evaluation.
+Single-instruction programs keep a fast path. Several draws may also reference the same shape range with different
+color spans when their raster domains, clip state or painter-order requirements prevent safe fusion.
+
+This makes fill, border, highlight and shadow reuse explicit without expanding `SDFInstance`. The current instance is
+40 bytes and stores the draw rectangle, evaluation origin, program offsets/span metadata and an index into a deduplicated
+48-byte raster state containing rectangular and rounded GUI clips.
+
+#### Unified analytic shadow
+Inner and outer shadows use one Shadow opcode containing RGBA, offset, softness and spread. The shader compares the
+original shape mask with a shifted softened mask to produce a two-sided signal. Generic clip flags choose the visible
+part: inner clip at zero selects the outer side, outer clip at zero selects the inner side, no clip keeps both sides,
+and both clips retain a bounded contour band. Shadow data does not live in `SDFDrawDesc` or per-instance state.
+
+#### Raster domain, GUI clipping and blending
+Every SDF draw uses a finite rectangle mesh as its shader invocation domain. NoClip and InnerClip mean only that the
+shader does not impose an outward SDF limit; they do not create an infinite draw. The renderer derives conservative
+bounds from the submitted draw rectangle, shape bounds, color clip distances, effect outsets and shadow falloff.
+
+The responsibilities remain separate:
+
+1. The rectangle mesh bounds shader invocation.
+2. The shape buffer supplies signed distance.
+3. Color clip bits restrict signed-distance coverage inside the mesh.
+4. Color instructions compute paint or effects.
+5. Deduplicated raster state and the GUI clip stack implement parent, rounded-container and scroll clipping.
+
+The SDF pipeline emits premultiplied-alpha output and uses source-over blending. Invalid CPU programs fail closed;
+unknown or malformed shader instructions output transparent black.
+
+#### Ownership, paging and batch interleaving
+The context owns transient shape/color streams. Regenerating draw commands restores the recorded stream prefix before
+delayed callbacks run, so generation is deterministic. The renderer validates programs, packs them into reusable
+structured-buffer pages and stores page-local offsets in instances.
+
+Consecutive SDF instances using the same shape/color page pair are submitted with `draw_indexed_instanced` without
+changing logical order. SDF instance state is not a batch key. VG and SDF batches remain interleaved in exact painter
+order, and the application-owned `prepare`/`render` boundary applies to both backends. Transitional rectangle,
+rounded-rectangle, gradient-rectangle and shadow commands compile into the same SDF representation; text, images,
+lines and arbitrary vector paths continue through VG.
+
+### GUI surface rendering
+One GUICore context describes one logical two-dimensional **GUI surface**. `FrameDesc::screen_size`, element layout
+rectangles, layer positions, SDF programs, VG positions, GUI clips and input events remain in surface-local logical
+coordinates with a top-left origin and downward-positive Y axis.
+
+The host may supply a `surface_to_clip` matrix when preparing the renderer. It maps positions `(x, y, 0, 1)` from
+logical surface coordinates directly to clip space. Without a custom transform, the renderer derives the existing
+top-left orthographic projection from `FrameDesc::screen_size`. The matrix is stored once in frame data and does not
+become part of `SDFInstance`, `SDFState` or the SDF batch key.
+
+SDF draw rectangles remain axis-aligned quads in surface-local coordinates. The vertex shader transforms their four
+vertices into clip space and passes the original surface position to the pixel shader using perspective-correct
+interpolation. Shape evaluation, gradients, color effects, rectangular clips and rounded clips continue to use the
+surface coordinate system. The integrated VG draw list historically generates bottom-left coordinates; the GUICore
+renderer converts those positions to the public top-left convention before applying the same surface transform.
+
+The first implementation supports one plane per context. Per-element transforms and several non-coplanar surfaces in
+one context are deferred; a host that needs several independently placed panels uses one context and one renderer
+preparation per surface.
+
+#### Perspective antialiasing
+Analytic coverage remains derivative based. The SDF pixel shader evaluates signed distance in perspective-correct
+surface coordinates and uses `fwidth(distance)` to obtain the local-coordinate footprint of one framebuffer pixel.
+VG retains its existing derivative-based contour coverage and receives the equivalent surface transform.
+
+Soft-shadow parameters remain surface-local logical distances so a shadow scales and foreshortens with its surface.
+The shader combines analytic softness with a minimum derivative footprint so minified or grazing-angle shadows do not
+alias.
+
+#### Optional scene depth
+The render-surface description may declare a depth-stencil format, depth test/write state, comparison function and
+cull mode. Screen-space rendering leaves depth disabled. A normal in-game panel uses `less_equal` depth testing with
+depth writes disabled so scene geometry can occlude the GUI without transparent GUI fragments becoming occluders.
+
+SDF and integrated VG pipelines use compatible color, depth and raster state. The caller still owns attachment
+transitions and render-pass creation, and the active pass must match the formats declared during `prepare`.
+
+#### Surface input mapping
+GUICore does not accept camera rays or query a physics world. The host selects a surface, intersects the pointer ray
+with its plane, transforms the hit into logical surface coordinates and submits an ordinary `InputEvent` to that
+surface's context.
+
+GUICore provides a math helper that maps a world-space ray through a host-provided `world_to_surface` affine matrix.
+It intentionally returns positions outside `FrameDesc::screen_size`, allowing captured sliders and drags to continue
+after a pointer leaves the panel. Surface selection, occlusion and nearest-hit ordering remain host responsibilities.
 
 ### GUICore responsibilities
 `GUICore` owns the following systems:
@@ -168,6 +363,41 @@ Optional callback-bearing records are stored in separate per-context sparse arra
 An element stores only a `u32` index for each optional record, with `U32_MAX` meaning the default behavior. The sparse arrays are logically cleared and rebuilt by `begin_frame`, while their allocated capacity can be reused. Callback userdata is frame-scoped unless the installing package deliberately provides longer-lived storage. Cross-frame widget data belongs in the state store, not callback configuration.
 
 `LayoutCallbackConfig::algorithm` is semantic metadata for diagnostics and higher-level capability recognition. GUI Core dispatches through callback pointers and never uses the name as a callback registry key.
+
+### Per-element navigation policy
+GUICore consumes semantic navigation input rather than hard-wiring platform keys. Host adapters translate keyboard,
+gamepad or other input into directional navigation, sequential forward/backward navigation, confirm and back actions.
+
+GUICore does not store a context-level navigation graph. Explicit relationships are usually view- and
+business-specific, especially for game menus, virtualized lists, canvas overlays, custom inspectors and interfaces
+whose next target depends on application state. Each element instead carries a small frame-local navigation
+configuration for each action:
+
+1. `NavigationMode::automatic`
+   - Use GUICore's built-in navigation.
+   - Directional actions use the spatial focus algorithm.
+   - Forward/backward actions use focusable order within the active focus scope.
+   - Confirm and back use default event delivery and action behavior.
+
+2. `NavigationMode::none`
+   - Consume the request without moving focus or invoking a callback.
+   - This explicitly blocks one direction or action.
+
+3. `NavigationMode::callback`
+   - Invoke the callback attached to the focused element.
+   - The callback may call `IContext::focus_element` to select a target.
+   - The callback may call `IContext::navigate_default` when it deliberately wants automatic behavior.
+
+A callback return value reports whether it handled the request. Returning `false` consumes the request as a no-op; it
+does not silently fall back to automatic navigation. This keeps fallback explicit and lets view code implement direct
+jumps, wrapping, conditional skipping, modal rules and virtualized navigation without expanding the core element with
+target fields.
+
+`NavigationConfig` is rebuilt each frame like layout, interactable and draw configuration. GUICore owns semantic
+events, default algorithms, opt-out modes, callback dispatch and focus mutation APIs, but not application navigation
+edges. Inspection tools can report automatic, disabled and callback modes from the current element array, but cannot
+predict all targets selected inside business callbacks. GUIAsset must serialize higher-level navigation properties or
+handler identifiers rather than raw callback pointers.
 
 Drag-drop is a composite interaction protocol rather than a GUICore primitive. GUICore does not store payloads, source or target type lists, deliveries, or drag-drop state, and its input router does not special-case pointer release for dropping. A high-level package may implement drag-drop by composing generic hit testing, pointer capture, routed input events, context state, layers, and draw commands. Different packages may choose different payload protocols, activation thresholds, previews, target feedback, and delivery lifetimes.
 
@@ -337,6 +567,13 @@ Expected benefits:
 6. **Specialized UI packages**: different domains can provide different immediate API packages without duplicating core layout, input, state, and draw infrastructure.
 7. **Simpler default GUI package**: the default editor-style package can stop pretending to be fully generic and can optimize for DCC/editor workflows.
 8. **Extensible rendering orchestration**: GUICore can preserve one painter-ordered command stream while combining VG vector rasterization with dedicated RHI pipelines, offscreen targets, and future multi-pass effects.
+9. **Direct world-space GUI**: SDF geometry, VG text, images and icons can render on an arbitrary scene plane without an intermediate GUI texture.
+10. **Stable hot-path data**: world-space projection does not enlarge the 40-byte SDF instance, duplicate raster states or change existing batch keys.
+11. **Resolution-independent perspective output**: perspective-correct local coordinates retain analytic gradients, clipping and antialiasing at the final scene sampling rate.
+12. **Host-independent world input**: ray-to-surface mapping reuses the existing logical input router without adding camera, scene or physics dependencies to GUICore.
+13. **Reusable analytic effects**: one validated SDF shape can drive ordered fill, asymmetric stroke, gradient, highlight and shadow instructions without duplicating geometry.
+14. **Compact programmable data**: scalar opcode streams avoid universal headers, while multi-effect color spans and deduplicated raster states reduce instance and upload cost.
+15. **View-owned explicit navigation**: applications can block or override individual navigation actions without making GUICore own a business-specific graph.
 
 Risks:
 
@@ -348,6 +585,14 @@ Risks:
 6. **Customization regression risk**: removing render proxies reduces per-widget render customization in the default GUI package. This is intentional, but it must be documented and offset by supporting additional immediate API packages.
 7. **Rendering-layer scope risk**: the new rendering layer may duplicate VG or grow into a general-purpose render graph if its responsibilities are not kept to GUI command execution.
 8. **Backend interleaving risk**: VG-backed and direct-RHI commands must preserve exact painter order, clipping, internal resource states, and compatibility with the application-owned render pass.
+9. **Surface-transform integration risk**: custom transforms must follow GUICore's top-left coordinate convention and be paired with a compatible host render pass.
+10. **Grazing-angle risk**: extremely minified surfaces and geometry crossing the near plane require explicit visual regression coverage.
+11. **World-input adapter risk**: platform IME rectangles must be projected back to screen space, while surface selection and occlusion remain host responsibilities.
+12. **Initial plane-count limitation**: one context cannot initially contain several independently transformed planes.
+13. **SDF validation dependency**: scalar instructions omit universal record lengths and versions, so CPU validation must reject malformed programs before upload.
+14. **SDF shader-cost risk**: deep CSG, many gradient stops, multi-effect spans and shifted shadow evaluation can increase fragment cost.
+15. **Approximate-distance risk**: CSG min/max preserves contours but not exact Euclidean distance near every seam.
+16. **Navigation inspection limitation**: tools can see callback presence and mode but cannot infer every runtime target selected by view code.
 
 Mitigations:
 
@@ -361,6 +606,14 @@ Mitigations:
 8. Keep vector path rasterization in VG and add direct RHI pipelines only for explicit GUICore primitives that do not naturally use VG shape buffers.
 9. Keep RHI execution internal to the rendering layer; do not expose arbitrary command-buffer callbacks as ordinary draw commands.
 10. Split renderer execution into pass-independent `prepare` and pass-local `render` operations. Applications own target transitions and render-pass begin/end; the rendering layer owns internal resources, sampled-resource transitions, PSO and descriptor binding, and ordered draw submission.
+11. Keep the public surface coordinate convention fixed at top-left/Y-down and adapt backend-specific coordinate conventions inside the renderer.
+12. Validate both default orthographic and custom perspective paths with the same mixed SDF/VG sample content.
+13. Keep scene selection, ray ordering, camera composition and IME screen projection in host adapters rather than GUICore.
+14. Validate every SDF opcode, count, scalar parameter, prefix expression and program boundary before upload.
+15. Keep strict shape-instruction, stack-depth, color-instruction and gradient-stop limits and prevent programs from crossing pages.
+16. Maintain CPU reference evaluation, cross-backend shader compilation, visual SDF samples and counters for scalar data, upload bytes, instances, pages and backend switches.
+17. Treat fragment discard and multi-effect fusion as measured optimizations rather than unconditional assumptions.
+18. Keep navigation callbacks frame-local and require explicit calls to `navigate_default` when view code wants automatic fallback.
 
 ## Alternatives considered
 
@@ -452,17 +705,135 @@ Mitigations:
     2. It makes it unclear which layer owns frame state, input routing, layout, and rendering.
     3. It weakens the rule that GUICore owns the only runtime element tree.
 
+### Store an explicit navigation graph in GUICore::IContext
+* Status: rejected.
+* Pros:
+    1. Makes explicit edges easy for GUICore tools to visualize and validate.
+* Cons:
+    1. Adds graph ownership, lifetime, validation and cross-frame cleanup to the core.
+    2. Encourages business-specific relationships to leak into GUICore.
+    3. Handles dynamic, conditional and virtualized targets less naturally than view callbacks.
+
+### Store direct navigation target IDs in every element
+* Status: rejected for the initial design.
+* Pros:
+    1. Keeps explicit relationships beside element input data.
+* Cons:
+    1. Requires several permanent target fields on every element.
+    2. Is too rigid for wrapping, conditional skipping, virtualized views and state-dependent targets.
+
+### Support automatic navigation only
+* Status: rejected.
+* Pros:
+    1. Preserves the smallest navigation API.
+* Cons:
+    1. Tree order and geometry cannot reliably represent every editor, game-menu and custom-view navigation rule.
+
+### Keep a common float4 SDF instruction header
+* Status: rejected.
+* Pros:
+    1. Gives every instruction an explicit record length, arity and version.
+* Cons:
+    1. Repeats metadata already implied by fixed opcodes.
+    2. Wastes space and diverges from VG's scalar structured-buffer convention.
+    3. Variable instructions can carry their own count without a universal header.
+
+### Keep fill, stroke and shadow fields in SDF instance state
+* Status: rejected.
+* Pros:
+    1. Makes simple passes easy to configure without parsing a color instruction.
+* Cons:
+    1. Mixes geometry references with concrete paint algorithms.
+    2. Duplicates color and effect data and enlarges the hot instance stream.
+    3. Prevents one reusable shape from selecting independent ordered color programs cleanly.
+
+### Define separate fill and stroke opcodes for every paint algorithm
+* Status: rejected.
+* Pros:
+    1. Gives every combination a direct shader branch.
+* Cons:
+    1. Multiplies the opcode set as new paints and effects are added.
+    2. Generic inner/outer distance clip bits express fill, symmetric and asymmetric strokes for every algorithm.
+
+### Require one fixed allocation size for every SDF instruction
+* Status: rejected.
+* Pros:
+    1. Makes random access and bounds validation trivial.
+* Cons:
+    1. Wastes substantial space for gradients and future point lists.
+    2. Opcode-specific count fields preserve compactness while keeping parsing bounded.
+
+### Treat NoClip and InnerClip as infinite SDF draws
+* Status: rejected.
+* Pros:
+    1. Avoids deriving effect-specific bounds.
+* Cons:
+    1. The finite rectangle mesh already defines shader invocation.
+    2. Treating clip semantics as raster bounds would conflate two independent responsibilities.
+
+### Extend the VG contour command buffer with SDF operations
+* Status: rejected.
+* Pros:
+    1. Uses one public vector command stream and renderer.
+* Cons:
+    1. VG evaluates contour coverage rather than signed distance.
+    2. Adding GUI CSG, gradients and analytic shadows would join unrelated raster models and expand VG into a GUI-specific backend.
+
+### Render every world-space GUI to a texture and map the texture to a mesh
+* Status: rejected as the only world-space path; remains supported as an application choice.
+* Pros:
+    1. Naturally supports arbitrary mesh placement and material composition.
+    2. Can cache interfaces that update infrequently.
+* Cons:
+    1. Requires an offscreen target and additional texture memory.
+    2. Adds filtering blur and update latency.
+    3. Prevents SDF and VG analytic coverage from being evaluated directly at the final scene sampling rate.
+
+### Store a 4x4 transform in every SDF instance
+* Status: rejected for the initial surface model.
+* Pros:
+    1. Allows independently transformed elements inside one context.
+* Cons:
+    1. Enlarges the hot instance stream and duplicates a transform shared by most GUI geometry.
+    2. Complicates clipping, CPU culling, batching and input semantics.
+    3. A surface-level transform already covers ordinary in-game panels.
+
+### Submit world-space rays directly to GUICore input routing
+* Status: rejected.
+* Pros:
+    1. Lets GUICore perform surface intersection internally.
+* Cons:
+    1. Couples the input router to cameras, scene surfaces, occlusion and hit ordering.
+    2. Duplicates responsibilities already owned by game and viewport hosts.
+    3. Breaks the host-independent two-dimensional input contract.
+
+### Add perspective projection without depth configuration
+* Status: rejected.
+* Pros:
+    1. Requires fewer pipeline variants and a smaller preparation descriptor.
+* Cons:
+    1. Direct-rendered panels cannot be correctly occluded by scene geometry.
+    2. Applications would need a separate ad-hoc rendering path for depth-tested GUI.
+
 ## Remarks
 This ADR does not require an immediate full rewrite. It defines the target architecture and migration discipline. The project may temporarily build GUICore beside the current GUI runtime, but every migration phase should reduce the old widget-node-specific code surface.
 
 The name `GUICore` is intentionally explicit. It should be understood as a lower-level primitive layer, not as a widget API. Normal application code should usually use one of the immediate API packages built on top of `GUICore`.
 
+Until GUICore is formally released, architectural refinements to its logical layer, rendering layer, navigation,
+SDF programs, surface model and related core contracts are recorded by revising this ADR rather than creating
+additional GUICore-specific ADRs. The version history below preserves when each refinement was adopted.
+
 ## Version history
+* **2026/7/22** Consolidated the previously separate per-element navigation and SDF shape/paint decisions into ADR-0004, and established this ADR as the single pre-release architecture record for GUICore.
+* **2026/7/22** Integrated the world-space GUI surface decision into this ADR. GUICore now defines one top-left logical surface per context, a shared SDF/VG surface-to-clip transform, perspective derivative antialiasing, optional scene depth and host-side ray-to-surface input mapping.
+* **2026/7/17** Adopted scalar SDF shape and color instruction streams, analytic primitives and prefix CSG, generic inner/outer distance clipping, unified shadows, bounded paging, deduplicated raster state and ordered multi-effect color spans.
 * **2026/7/17** Defined application-owned render-pass boundaries. `IRenderer::prepare` compiles commands and prepares internal resources outside a pass, while `IRenderer::render` submits ordered VG and direct-RHI batches inside a compatible application-owned pass. VG shape renderers follow the same preparation/submission split.
 * **2026/7/17** Split GUICore internally into a logical layer and a rendering layer. The logical layer generates ordered primitive draw commands, while the rendering layer owns command compilation and backend interleaving and may combine VG rasterization with explicit GUICore-owned RHI pipelines for shadows, offscreen composition, and future multi-pass effects.
 * **2026/7/13** Made human-readable debug names and high-level debug views resident in all builds, and removed the dedicated GUI Core debug compilation option. The remaining memory and update cost is small compared with the API, ABI, build, and tooling complexity caused by conditional availability.
 * **2026/7/12** Replaced the duplicated `DebugInfo` snapshot, issue/pass logs, input replay, and frame timeline with direct read-only inspection of the current element and layer data. Performance counters remain available in all builds, and debug names cannot affect GUI behavior.
 * **2026/7/12** Reconciled the approved architecture with the implementation: layers keep ordered generated-command indexes and compile into one VG draw list; optional layout, navigation, hit-test and draw callback bindings use per-frame sparse arrays; Stack Layout is removed; and element state IDs are derived externally.
 * **2026/7/4** Clarified the layout model: flex replaces the old linear-layout wording, element sizing is fixed/percent/fit with min/max constraints, and content-driven measurement is supplied by package-owned measure callbacks.
+* **2026/6/28** Adopted semantic navigation input with automatic, disabled and callback policy stored per element instead of a context-owned navigation graph.
 * **2026/6/17** Revised the decision to remove `GUI::Node`, `GUI::RenderProxy`, and `GUI::IContext` from the long-term architecture, define the element tree as typeless data, and narrow the default `GUI` module into one editor-style immediate API package.
 * **2026/6/16** Proposed.

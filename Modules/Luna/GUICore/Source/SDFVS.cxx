@@ -5,7 +5,7 @@ using namespace cppsl;
 
 struct SDFFrameParams
 {
-    float4 screen_params;
+    float4x4 surface_to_clip;
 };
 
 struct SDFState
@@ -44,7 +44,7 @@ struct VSInput
 struct PSInput
 {
     [[cppsl::position]] float4 position;
-    [[cppsl::location(0)]] float2 screen_position;
+    [[cppsl::location(0)]] float2 surface_position;
     [[cppsl::location(1)]] float2 evaluation_origin;
     [[cppsl::location(2)]] float4 clip_rect;
     [[cppsl::location(3)]] float4 rounded_clip_rect;
@@ -57,13 +57,11 @@ PSInput vs_main(VSInput vertex_data)
 {
     float2 draw_origin = float2{vertex_data.draw_rect.x, vertex_data.draw_rect.y};
     float2 draw_size = float2{vertex_data.draw_rect.z, vertex_data.draw_rect.w};
-    float2 screen_position = draw_origin + vertex_data.position * draw_size;
-    float2 clip_position;
-    clip_position.x = screen_position.x / g_set0.frame.screen_params.x * 2.0f - 1.0f;
-    clip_position.y = 1.0f - screen_position.y / g_set0.frame.screen_params.y * 2.0f;
+    float2 surface_position = draw_origin + vertex_data.position * draw_size;
     PSInput result;
-    result.position = float4{clip_position, 0.0f, 1.0f};
-    result.screen_position = screen_position;
+    result.position = mul(g_set0.frame.surface_to_clip,
+        float4{surface_position, 0.0f, 1.0f});
+    result.surface_position = surface_position;
     result.evaluation_origin = vertex_data.evaluation_origin;
     SDFState state = g_set0.states[vertex_data.program_data.w];
     result.clip_rect = state.clip_rect;

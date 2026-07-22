@@ -18,7 +18,9 @@ namespace Luna::GUICoreTest
     inline constexpr u32 NUM_INPUT_SLICES = 3;
     inline constexpr u32 NUM_LAYOUT_SLICES = 15;
     inline constexpr u32 NUM_SDF_SLICES = 1;
-    inline constexpr u32 NUM_SLICES = NUM_INPUT_SLICES + NUM_LAYOUT_SLICES + NUM_SDF_SLICES;
+    inline constexpr u32 NUM_WORLD_SLICES = 1;
+    inline constexpr u32 NUM_SLICES = NUM_INPUT_SLICES + NUM_LAYOUT_SLICES + NUM_SDF_SLICES + NUM_WORLD_SLICES;
+    inline constexpr u32 WORLD_SURFACE_SLICE = NUM_SLICES - 1;
 
     enum : GUICore::id_t
     {

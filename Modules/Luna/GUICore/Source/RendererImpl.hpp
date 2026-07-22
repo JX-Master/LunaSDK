@@ -86,21 +86,27 @@ namespace Luna
             Vector<SDFPagePair> m_sdf_page_pairs;
             RendererPerformanceCounters m_counters;
             RHI::Format m_render_target_format = RHI::Format::unknown;
+            RHI::Format m_depth_stencil_format = RHI::Format::unknown;
+            RHI::CompareFunction m_depth_compare_function = RHI::CompareFunction::less_equal;
+            RHI::CullMode m_cull_mode = RHI::CullMode::none;
+            bool m_depth_test_enable = false;
+            bool m_depth_write_enable = false;
             u32 m_render_target_width = 0;
             u32 m_render_target_height = 0;
             f32 m_screen_width = 0.0f;
             f32 m_screen_height = 0.0f;
+            Float4x4U m_surface_to_clip = Float4x4::identity();
             usize m_sdf_instance_capacity = 0;
             usize m_sdf_state_capacity = 0;
 
             RV init(RHI::IDevice* device);
-            RV create_sdf_pipeline(RHI::Format render_target_format);
+            RV create_sdf_pipeline(RHI::Format render_target_format, const RenderSurfaceDesc& surface);
             RV compile_draw_commands(IContext* context);
             RV prepare_sdf_resources();
             void render_sdf(RHI::ICommandBuffer* cmdbuf, const RenderBatch& batch);
 
             virtual RV prepare(IContext* context, RHI::ICommandBuffer* cmdbuf,
-                RHI::ITexture* render_target) override;
+                RHI::ITexture* render_target, const RenderSurfaceDesc& surface) override;
             virtual void render(RHI::ICommandBuffer* cmdbuf) override;
             virtual RendererPerformanceCounters get_performance_counters() const override;
         };

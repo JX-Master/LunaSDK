@@ -111,7 +111,7 @@ namespace Luna
             g_quad_vertex_buffer = nullptr;
             g_quad_index_buffer = nullptr;
         }
-        RV FillShapeRenderer::create_pso(RHI::Format rt_format)
+        RV FillShapeRenderer::create_pso(RHI::Format rt_format, const ShapeRendererPassDesc& pass_desc)
         {
             using namespace RHI;
             lutry
@@ -135,27 +135,52 @@ namespace Luna
                 desc.ps = LUNA_CPPSL_GET_SHADER_DATA(FillPS);
                 desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::zero,
                         BlendFactor::one, BlendOp::add, ColorWriteMask::all) });
-                desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, false, false, false, false, false);
-                desc.depth_stencil_state = DepthStencilDesc(false, false);
+                desc.rasterizer_state = RasterizerDesc(FillMode::solid, pass_desc.cull_mode,
+                    false, false, false, false, false);
+                desc.depth_stencil_state = DepthStencilDesc(pass_desc.depth_test_enable,
+                    pass_desc.depth_write_enable, pass_desc.depth_compare_function);
                 desc.num_color_attachments = 1;
                 desc.color_formats[0] = rt_format;
+                desc.depth_stencil_format = pass_desc.depth_stencil_format;
                 luset(m_fill_pso, get_main_device()->new_graphics_pipeline_state(desc));
             }
             lucatchret;
             return ok;
         }
-        RV FillShapeRenderer::begin(RHI::ITexture* render_target)
+        RV FillShapeRenderer::begin(const ShapeRendererPassDesc& pass_desc)
         {
             lutsassert();
+            RHI::ITexture* render_target = pass_desc.render_target;
             if(render_target)
             {
                 auto desc = render_target->get_desc();
                 lutry
                 {
-                    if (m_rt_format != desc.format)
+                    if(pass_desc.depth_write_enable && !pass_desc.depth_test_enable)
                     {
-                        luexp(create_pso(desc.format));
+                        return set_error(BasicError::bad_arguments(),
+                            "VG depth writes require depth testing to be enabled.");
+                    }
+                    if((pass_desc.depth_test_enable || pass_desc.depth_write_enable) &&
+                        pass_desc.depth_stencil_format == RHI::Format::unknown)
+                    {
+                        return set_error(BasicError::bad_arguments(),
+                            "VG depth testing requires a depth-stencil attachment format.");
+                    }
+                    if(m_rt_format != desc.format ||
+                        m_depth_stencil_format != pass_desc.depth_stencil_format ||
+                        m_depth_test_enable != pass_desc.depth_test_enable ||
+                        m_depth_write_enable != pass_desc.depth_write_enable ||
+                        m_depth_compare_function != pass_desc.depth_compare_function ||
+                        m_cull_mode != pass_desc.cull_mode)
+                    {
+                        luexp(create_pso(desc.format, pass_desc));
                         m_rt_format = desc.format;
+                        m_depth_stencil_format = pass_desc.depth_stencil_format;
+                        m_depth_test_enable = pass_desc.depth_test_enable;
+                        m_depth_write_enable = pass_desc.depth_write_enable;
+                        m_depth_compare_function = pass_desc.depth_compare_function;
+                        m_cull_mode = pass_desc.cull_mode;
                     }
                     m_render_target = render_target;
                     m_screen_width = desc.width;

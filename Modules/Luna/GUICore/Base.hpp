@@ -68,7 +68,9 @@ namespace Luna
         //! Describes one GUI Core frame.
         struct FrameDesc
         {
-            //! The logical screen size used by layout and input positions.
+            //! The logical GUI surface size used by layout and input positions.
+            //! @remark A window host normally treats this as screen size. A world-space host treats it as the
+            //! logical dimensions of one projected GUI surface.
             Float2U screen_size = Float2U(0.0f);
             //! The render target size in physical pixels.
             UInt2U framebuffer_size = UInt2U(0, 0);

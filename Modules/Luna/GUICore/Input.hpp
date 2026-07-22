@@ -106,7 +106,9 @@ namespace Luna
         };
 
         //! Describes one input event sent to a GUI Core context.
-        //! @remark Positions use screen logical coordinates whose origin is the top-left corner of @ref FrameDesc::screen_size.
+        //! @remark Positions use GUI surface logical coordinates whose origin is the top-left corner of
+        //! @ref FrameDesc::screen_size. Window hosts use screen coordinates; world-space hosts map pointer rays
+        //! into the target surface before submitting events.
         struct InputEvent
         {
             //! The kind of this input event.
@@ -119,7 +121,7 @@ namespace Luna
             //! @remark Current GUI Core routing supports one pointer stream. This field does not yet create
             //! independent hover, capture or button state for multiple pointers.
             u64 pointer_id = 0;
-            //! The pointer position in screen logical coordinates.
+            //! The pointer position in GUI surface logical coordinates.
             Float2U position = Float2U(0.0f);
             //! Wheel or trackpad scrolling delta in logical units.
             Float2U wheel_delta = Float2U(0.0f);
@@ -142,7 +144,7 @@ namespace Luna
         {
             //! Whether any element requests platform text input.
             bool active = false;
-            //! The active text input rectangle in screen logical coordinates.
+            //! The active text input rectangle in GUI surface logical coordinates.
             RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             //! The current UTF-8 byte cursor offset used by the active text input element.
             i32 cursor = 0;

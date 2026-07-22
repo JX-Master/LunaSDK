@@ -5,7 +5,7 @@ using namespace cppsl;
 
 struct SDFFrameParams
 {
-    float4 screen_params;
+    float4x4 surface_to_clip;
 };
 
 struct DescSet0
@@ -26,7 +26,7 @@ DescSet0 g_set0;
 struct PSInput
 {
     [[cppsl::position]] float4 position;
-    [[cppsl::location(0)]] float2 screen_position;
+    [[cppsl::location(0)]] float2 surface_position;
     [[cppsl::location(1)]] float2 evaluation_origin;
     [[cppsl::location(2)]] float4 clip_rect;
     [[cppsl::location(3)]] float4 rounded_clip_rect;
@@ -368,11 +368,12 @@ float normal_distribution_cdf(float value)
 
 float distance_coverage(float distance, float softness)
 {
+    float width = max(fwidth(distance), 0.0001f);
     if(softness > 0.0001f)
     {
-        return normal_distribution_cdf(-distance / softness);
+        float filtered_softness = sqrt(softness * softness + width * width / 12.0f);
+        return normal_distribution_cdf(-distance / filtered_softness);
     }
-    float width = max(fwidth(distance), 0.0001f);
     return saturate(0.5f - distance / width);
 }
 
@@ -520,9 +521,9 @@ PSOutput ps_main(PSInput pixel)
     if((pixel.program_data.z & 1u) != 0)
     {
         float2 clip_max = pixel.clip_rect.xy + pixel.clip_rect.zw;
-        bool inside_clip = pixel.screen_position.x >= pixel.clip_rect.x &&
-            pixel.screen_position.y >= pixel.clip_rect.y && pixel.screen_position.x < clip_max.x &&
-            pixel.screen_position.y < clip_max.y;
+        bool inside_clip = pixel.surface_position.x >= pixel.clip_rect.x &&
+            pixel.surface_position.y >= pixel.clip_rect.y && pixel.surface_position.x < clip_max.x &&
+            pixel.surface_position.y < clip_max.y;
         if(!inside_clip)
         {
             return transparent_output();
@@ -530,7 +531,7 @@ PSOutput ps_main(PSInput pixel)
     }
     if((pixel.program_data.z & 2u) != 0)
     {
-        float rounded_clip_distance = rounded_clip_rect_distance(pixel.screen_position,
+        float rounded_clip_distance = rounded_clip_rect_distance(pixel.surface_position,
             pixel.rounded_clip_rect, pixel.rounded_clip_radii);
         raster_clip_coverage = distance_coverage(rounded_clip_distance, 0.0f);
         if(raster_clip_coverage <= 0.0f)
@@ -539,7 +540,7 @@ PSOutput ps_main(PSInput pixel)
         }
     }
 
-    float2 local_point = pixel.screen_position - pixel.evaluation_origin;
+    float2 local_point = pixel.surface_position - pixel.evaluation_origin;
     ShapeResult shape = evaluate_shape(local_point, pixel.program_data.x);
     if(!shape.valid)
     {
