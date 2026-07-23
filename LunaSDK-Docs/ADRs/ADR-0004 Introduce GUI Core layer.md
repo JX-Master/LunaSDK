@@ -417,6 +417,25 @@ An immediate API package does not need to be universally customizable. The defau
 
 Different immediate API packages can coexist and nest because they all submit elements into the same `GUICore` context. For example, an editor-style package and an in-game HUD package may both build into one frame as long as they follow the same core layer, layout, input, and draw command rules.
 
+### Built-in vector icons and composition
+The default `GUI` package provides a curated core icon set for common navigation, editing, file, status and
+interaction actions. The checked-in icon data is generated offline from a pinned revision of the MIT-licensed
+Phosphor icon source. The generator converts supported SVG paths into native VG scalar shape commands, so deployed
+applications do not parse SVG, depend on an SVG runtime, or compile one C++ function per icon. GUI initializes one
+shared immutable VG shape buffer and each icon variant references a compact range of that buffer. Missing optional
+weights fall back to the regular variant.
+
+An icon is an ordinary measured and drawn child element. Containers such as buttons, menu items, tabs and rows do
+not expose icon slots, inspect their children for icon types, or alter behavior based on icon presence. Applications
+compose an icon and text with the same flex, grid and other layout primitives used for arbitrary children. The
+container's normal gap, alignment and interaction rules determine the result. This preserves package layering and
+allows application-defined icon elements to participate without widget-specific integration.
+
+The built-in core set remains intentionally curated to bound binary size. Editor- or DCC-specific icon packs may be
+generated and linked by higher-level packages without expanding the default GUI binary. Icon provenance, source
+revision and selected variants remain in a machine-readable manifest beside the generated data, and the upstream
+license is distributed with that data.
+
 ### Rendering policy and style schema
 `GUI::RenderProxy` is removed from the target architecture.
 
@@ -825,6 +844,7 @@ SDF programs, surface model and related core contracts are recorded by revising 
 additional GUICore-specific ADRs. The version history below preserves when each refinement was adopted.
 
 ## Version history
+* **2026/7/22** Added the default GUI package's curated Phosphor-derived vector icon pack, offline SVG-to-VG generation contract and ordinary-child composition rule; widget containers remain icon-agnostic.
 * **2026/7/22** Consolidated the previously separate per-element navigation and SDF shape/paint decisions into ADR-0004, and established this ADR as the single pre-release architecture record for GUICore.
 * **2026/7/22** Integrated the world-space GUI surface decision into this ADR. GUICore now defines one top-left logical surface per context, a shared SDF/VG surface-to-clip transform, perspective derivative antialiasing, optional scene depth and host-side ray-to-surface input mapping.
 * **2026/7/17** Adopted scalar SDF shape and color instruction streams, analytic primitives and prefix CSG, generic inner/outer distance clipping, unified shadows, bounded paging, deduplicated raster state and ordered multi-effect color spans.

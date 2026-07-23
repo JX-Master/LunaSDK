@@ -10,6 +10,8 @@ public sealed class GUITargetRules : TargetRules
     {
         Headers(
             "Base.hpp",
+            "Icons.hpp",
+            "IconNames.inl",
             "Style.hpp",
             "Widgets.hpp",
             "Layouts.hpp",
@@ -19,6 +21,7 @@ public sealed class GUITargetRules : TargetRules
             "Source/**.hpp");
         MetaHeaders("Source/State.hpp");
         Sources("Source/**.cpp");
+        EmbeddedHeader("Res/PhosphorCore.bin", "PhosphorCoreData.hpp", "PHOSPHOR_CORE_DATA", "PHOSPHOR_CORE_SIZE");
         DependsOn("Runtime", "RHI", "VG", "Font", "GUICore");
     }
 }

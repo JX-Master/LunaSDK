@@ -23,6 +23,18 @@ namespace Luna
                 "Scroll Views", "Tables", "Overlay", "Workspace"
             };
 
+            constexpr GUI::IconName SECTION_ICONS[] = {
+                GUI::IconName::squares_four,
+                GUI::IconName::stack,
+                GUI::IconName::cursor_click,
+                GUI::IconName::sliders_horizontal,
+                GUI::IconName::grid_four,
+                GUI::IconName::columns,
+                GUI::IconName::list_bullets,
+                GUI::IconName::bell,
+                GUI::IconName::sidebar
+            };
+
             GUICore::LayoutConfig fixed(f32 width, f32 height)
             {
                 GUICore::LayoutConfig layout;
@@ -312,6 +324,133 @@ namespace Luna
                 return GUI::text(context, element_id, value, layout, desc);
             }
 
+            GUI::IconDesc icon_desc(GUICore::IContext* context, const c8* color,
+                GUI::IconWeight weight = GUI::IconWeight::regular, f32 size = 0.0f)
+            {
+                GUI::IconDesc desc;
+                desc.weight = weight;
+                desc.tint = style_color(context, color);
+                desc.size = size;
+                return desc;
+            }
+
+            void selected_button_surface(GUICore::IContext* context)
+            {
+                const f32 radius = style_scalar(context, "gui.button.radius",
+                    style_scalar(context, "gui.radius.medium", 9.0f));
+                rounded_rect(context, style_color(context, "gui.accent"), radius);
+                rounded_rect(context, style_color(context, "gui.accent.subtle"),
+                    max(radius - 1.0f, 0.0f), RectF(1.0f, 1.0f, -2.0f, -2.0f));
+            }
+
+            void icon_label(GUICore::IContext* context, GUI::id_t element_id, GUI::IconName icon_name,
+                const c8* value, const GUICore::LayoutConfig& layout, f32 icon_size = 18.0f,
+                f32 text_size = 0.0f, const c8* color = "gui.text.color",
+                GUI::IconWeight weight = GUI::IconWeight::regular)
+            {
+                GUICore::ElementHandle row = GUI::begin_h_layout(context, element_id, value, layout);
+                GUI::icon(context, GUICore::make_scoped_id(element_id, "icon"), icon_name,
+                    fixed(icon_size, icon_size), icon_desc(context, color, weight, icon_size));
+                label(context, GUICore::make_scoped_id(element_id, "text"), value, grow_x(), text_size, color);
+                GUICore::FlexLayoutDesc flex;
+                flex.axis = GUICore::LayoutAxis::x;
+                flex.cross_alignment = GUICore::FlexAlignment::center;
+                flex.main_axis_gap = style_scalar(context, "gui.control.content_gap", 8.0f);
+                GUI::end_h_layout(context, row, flex);
+            }
+
+            void tree_label(GUICore::IContext* context, GUI::id_t element_id, GUI::IconName icon_name,
+                const c8* value, i32 depth, bool expanded, bool has_children, bool selected = false)
+            {
+                GUICore::LayoutConfig layout = fill_width(28.0f);
+                layout.padding.x = 4.0f + (f32)depth * 14.0f;
+                layout.padding.z = 4.0f;
+                GUICore::ElementHandle row = GUI::begin_h_layout(context, element_id, value, layout);
+                if(selected)
+                {
+                    rounded_rect(context, style_color(context, "gui.accent.subtle"), 6.0f);
+                }
+                if(has_children)
+                {
+                    GUI::icon(context, GUICore::make_scoped_id(element_id, "caret"),
+                        expanded ? GUI::IconName::caret_down : GUI::IconName::caret_right,
+                        fixed(13.0f, 13.0f), icon_desc(context, "gui.text.muted", GUI::IconWeight::bold, 13.0f));
+                }
+                else
+                {
+                    GUICore::ElementHandle spacer = GUI::begin_v_layout(context,
+                        GUICore::make_scoped_id(element_id, "spacer"), "Tree spacer", fixed(13.0f, 13.0f));
+                    GUI::end_v_layout(context, spacer);
+                }
+                const c8* color = selected ? "gui.accent.active" : "gui.text.secondary";
+                GUI::icon(context, GUICore::make_scoped_id(element_id, "icon"), icon_name,
+                    fixed(16.0f, 16.0f), icon_desc(context, color,
+                        selected ? GUI::IconWeight::fill : GUI::IconWeight::regular, 16.0f));
+                label(context, GUICore::make_scoped_id(element_id, "text"), value, grow_x(), 10.0f, color);
+                if(selected)
+                {
+                    GUI::icon(context, GUICore::make_scoped_id(element_id, "visible"), GUI::IconName::eye,
+                        fixed(15.0f, 15.0f), icon_desc(context, "gui.text.muted", GUI::IconWeight::regular, 15.0f));
+                }
+                GUICore::FlexLayoutDesc flex;
+                flex.axis = GUICore::LayoutAxis::x;
+                flex.cross_alignment = GUICore::FlexAlignment::center;
+                flex.main_axis_gap = 5.0f;
+                GUI::end_h_layout(context, row, flex);
+            }
+
+            GUICore::ElementHandle icon_button(GUICore::IContext* context, GUI::id_t element_id,
+                GUI::IconName icon_name, const c8* value, const GUICore::LayoutConfig& layout,
+                const GUI::ButtonDesc& desc = GUI::ButtonDesc(), bool show_text = true,
+                GUI::IconWeight weight = GUI::IconWeight::regular, bool selected = false)
+            {
+                GUICore::LayoutConfig resolved_layout = layout;
+                if(!show_text && resolved_layout.padding.x == 0.0f && resolved_layout.padding.y == 0.0f &&
+                    resolved_layout.padding.z == 0.0f && resolved_layout.padding.w == 0.0f)
+                {
+                    // A non-zero symmetric value opts out of the text-button default padding while keeping
+                    // the icon centered in the complete button rectangle.
+                    resolved_layout.padding = Float4U(0.01f);
+                }
+                GUICore::ElementHandle button = GUI::begin_button(context, element_id, value, resolved_layout, desc);
+                if(selected)
+                {
+                    selected_button_surface(context);
+                }
+                const c8* color = !desc.enabled ? "gui.text.disabled" :
+                    (selected ? "gui.accent.active" : "gui.button.text");
+                GUI::icon(context, GUICore::make_scoped_id(element_id, "icon"), icon_name,
+                    fixed(18.0f, 18.0f), icon_desc(context, color, weight, 18.0f));
+                if(show_text)
+                {
+                    GUICore::LayoutConfig text_layout;
+                    text_layout.width.kind = GUICore::SizeKind::fit;
+                    text_layout.height.kind = GUICore::SizeKind::fit;
+                    GUI::TextDesc desc;
+                    desc.color = style_color(context, color);
+                    GUI::text(context, GUICore::make_scoped_id(element_id, "text"), value, text_layout, desc);
+                }
+                GUI::end_button(context);
+                return button;
+            }
+
+            GUICore::ElementHandle icon_menu_item(GUICore::IContext* context, GUI::id_t element_id,
+                GUI::IconName icon_name, const c8* value, const GUI::MenuItemDesc& desc = GUI::MenuItemDesc())
+            {
+                GUICore::ElementHandle item = GUI::begin_menu_item(context, element_id, value, desc);
+                const c8* color = desc.enabled ? "gui.menu_item.text" : "gui.menu_item.text_disabled";
+                GUI::icon(context, GUICore::make_scoped_id(element_id, "icon"), icon_name,
+                    fixed(16.0f, 16.0f), icon_desc(context, color, GUI::IconWeight::regular, 16.0f));
+                label(context, GUICore::make_scoped_id(element_id, "text"), value, grow_x(), 0.0f, color);
+                if(desc.shortcut && desc.shortcut[0])
+                {
+                    label(context, GUICore::make_scoped_id(element_id, "shortcut"), desc.shortcut,
+                        fixed(72.0f, 20.0f), 0.0f, color);
+                }
+                GUI::end_menu_item(context);
+                return item;
+            }
+
             GUICore::ElementHandle begin_panel(GUICore::IContext* context, GUI::id_t element_id,
                 const c8* name, const GUICore::LayoutConfig& input, const c8* background = "gui.surface.1",
                 f32 radius = 12.0f, bool raised = true)
@@ -371,7 +510,7 @@ namespace Luna
             }
 
             void section_heading(GUICore::IContext* context, const c8* prefix, const c8* eyebrow,
-                const c8* title, const c8* description)
+                const c8* title, const c8* description, GUI::IconName section_icon)
             {
                 String row_name(prefix);
                 row_name.append(".heading");
@@ -382,7 +521,8 @@ namespace Luna
                 GUICore::ElementHandle left = GUI::begin_v_layout(context, id(context, left_name.c_str()),
                     "Section title", fixed(450.0f, 92.0f));
                 label(context, GUICore::make_scoped_id(left.id, 1), eyebrow, fill_width(22.0f), 10.0f, "gui.accent.active");
-                label(context, GUICore::make_scoped_id(left.id, 2), title, fill_width(48.0f), 28.0f);
+                icon_label(context, GUICore::make_scoped_id(left.id, 2), section_icon, title,
+                    fill_width(48.0f), 24.0f, 28.0f, "gui.text.color", GUI::IconWeight::duotone);
                 end_panel(context, left, 2.0f);
                 label(context, GUICore::make_scoped_id(row.id, 3), description, grow_x(), 13.0f, "gui.text.secondary");
                 GUICore::FlexLayoutDesc flex;
@@ -414,6 +554,17 @@ namespace Luna
                 GUICore::ElementHandle& row, f32 height)
             {
                 row = GUI::begin_h_layout(context, element_id, "Card row", fill_width(height));
+            }
+
+            void page_two_columns_fit(GUICore::IContext* context, GUI::id_t element_id,
+                GUICore::ElementHandle& row)
+            {
+                GUICore::LayoutConfig layout;
+                layout.width.kind = GUICore::SizeKind::percent;
+                layout.width.value = 1.0f;
+                layout.height.kind = GUICore::SizeKind::fit;
+                layout.flex_shrink = 0.0f;
+                row = GUI::begin_h_layout(context, element_id, "Content-sized card row", layout);
             }
 
             void end_two_columns(GUICore::IContext* context, const GUICore::ElementHandle& row)
@@ -496,7 +647,8 @@ namespace Luna
                 GUICore::ElementHandle logo = GUI::begin_v_layout(context, id(context, "showcase.logo"),
                     "Logo", fixed(40.0f, 40.0f));
                 rounded_rect(context, style_color(context, "gui.accent"), 12.0f);
-                label(context, id(context, "showcase.logo.text"), "L", fill(), 20.0f, "gui.accent.ink");
+                GUI::icon(context, id(context, "showcase.logo.icon"), GUI::IconName::package, fill(),
+                    icon_desc(context, "gui.accent.ink", GUI::IconWeight::duotone, 24.0f));
                 GUI::end_v_layout(context, logo);
                 GUICore::ElementHandle brand_text = GUI::begin_v_layout(context, id(context, "showcase.brand.text"),
                     "Brand text", grow_x());
@@ -528,10 +680,16 @@ namespace Luna
                 GUI::end_h_layout(context, status, status_flex);
 
                 GUICore::ElementHandle controls = GUI::begin_h_layout(context, id(context, "showcase.controls"),
-                    "Style controls", fixed(430.0f, height - 16.0f));
+                    "Style controls", fixed(474.0f, height - 16.0f));
+                GUI::icon(context, id(context, "showcase.theme.icon"),
+                    state.theme == 0 ? GUI::IconName::sun : GUI::IconName::moon, fixed(18.0f, 18.0f),
+                    icon_desc(context, "gui.text.secondary", GUI::IconWeight::regular, 18.0f));
                 const c8* themes[] = { "Light", "Dark" };
                 GUI::button_group(context, id(context, "showcase.theme"), Span<const c8*>(themes, 2),
                     &state.theme, fixed(126.0f, height - 22.0f));
+                GUI::icon(context, id(context, "showcase.density.icon"),
+                    state.density == 0 ? GUI::IconName::mouse : GUI::IconName::hand_tap, fixed(18.0f, 18.0f),
+                    icon_desc(context, "gui.text.secondary", GUI::IconWeight::regular, 18.0f));
                 const c8* densities[] = { "Compact", "Touch" };
                 GUI::button_group(context, id(context, "showcase.density"), Span<const c8*>(densities, 2),
                     &state.density, fixed(158.0f, height - 22.0f));
@@ -568,13 +726,27 @@ namespace Luna
                 GUICore::ElementHandle navigation = GUI::begin_v_layout(context, id(context, "showcase.navigation"),
                     "Navigation", layout);
                 rounded_rect(context, style_color(context, "gui.surface.0"), 0.0f);
-                label(context, id(context, "showcase.navigation.title"), "COMPONENTS        gui.editor",
-                    fill_width(34.0f), 10.0f, "gui.text.muted");
+                icon_label(context, id(context, "showcase.navigation.title"), GUI::IconName::tree_structure,
+                    "COMPONENTS", fill_width(34.0f), 16.0f, 10.0f, "gui.text.muted",
+                    GUI::IconWeight::bold);
                 for(i32 i = 0; i < 9; ++i)
                 {
-                    handles.navigation[i] = GUI::selectable(context,
-                        GUICore::make_scoped_id(navigation.id, (u64)i + 10), SECTION_LABELS[i], state.section == i,
+                    GUI::id_t item_id = GUICore::make_scoped_id(navigation.id, (u64)i + 10);
+                    handles.navigation[i] = GUI::begin_button(context, item_id, SECTION_LABELS[i],
                         fill_width(style_scalar(context, "gui.control.height", 40.0f)));
+                    if(state.section == i)
+                    {
+                        selected_button_surface(context);
+                        rounded_rect(context, style_color(context, "gui.accent"), 1.5f,
+                            RectF(3.0f, 8.0f, 3.0f, -16.0f));
+                    }
+                    const c8* item_color = state.section == i ? "gui.accent.active" : "gui.text.secondary";
+                    GUI::icon(context, GUICore::make_scoped_id(item_id, "icon"), SECTION_ICONS[i],
+                        fixed(18.0f, 18.0f), icon_desc(context, item_color,
+                            state.section == i ? GUI::IconWeight::fill : GUI::IconWeight::regular, 18.0f));
+                    label(context, GUICore::make_scoped_id(item_id, "text"), SECTION_LABELS[i],
+                        grow_x(), 11.0f, item_color);
+                    GUI::end_button(context);
                 }
                 GUICore::ElementHandle spacer = GUI::begin_v_layout(context, id(context, "showcase.navigation.spacer"),
                     "Spacer", grow_y());
@@ -587,8 +759,8 @@ namespace Luna
                     fill_width(18.0f), 9.0f, "gui.text.muted");
                 const c8* style_name = state.theme == 0 ? (state.density == 0 ? "light.compact" : "light.touch") :
                     (state.density == 0 ? "dark.compact" : "dark.touch");
-                label(context, id(context, "showcase.navigation.footer.value"), style_name,
-                    fill_width(22.0f), 12.0f, "gui.accent.active");
+                icon_label(context, id(context, "showcase.navigation.footer.value"), GUI::IconName::check_circle,
+                    style_name, fill_width(22.0f), 15.0f, 12.0f, "gui.accent.active", GUI::IconWeight::fill);
                 label(context, id(context, "showcase.navigation.footer.note"), "Same component tree - Style only",
                     fill_width(18.0f), 9.0f, "gui.text.muted");
                 end_panel(context, footer, 3.0f);
@@ -678,23 +850,44 @@ namespace Luna
                 library_layout.padding = Float4U(10.0f);
                 GUICore::ElementHandle library = begin_panel(context, id(context, "overview.library"),
                     "Library", library_layout, "gui.surface.1", 15.0f, false);
-                label(context, id(context, "overview.library.title"), "Scene Hierarchy        +",
-                    fill_width(34.0f), 11.0f);
+                GUICore::ElementHandle library_title = GUI::begin_h_layout(context,
+                    id(context, "overview.library.title"), "Scene Hierarchy", fill_width(34.0f));
+                GUI::icon(context, id(context, "overview.library.title.icon"), GUI::IconName::tree_structure,
+                    fixed(17.0f, 17.0f), icon_desc(context, "gui.text.secondary", GUI::IconWeight::regular, 17.0f));
+                label(context, id(context, "overview.library.title.text"), "Scene Hierarchy",
+                    grow_x(), 11.0f);
+                icon_button(context, id(context, "overview.library.add"), GUI::IconName::plus, "Add object",
+                    fixed(28.0f, 28.0f), GUI::ButtonDesc(), false, GUI::IconWeight::bold);
+                GUICore::FlexLayoutDesc library_title_flex;
+                library_title_flex.axis = GUICore::LayoutAxis::x;
+                library_title_flex.cross_alignment = GUICore::FlexAlignment::center;
+                library_title_flex.main_axis_gap = 6.0f;
+                GUI::end_h_layout(context, library_title, library_title_flex);
+                GUICore::ElementHandle search_row = GUI::begin_h_layout(context,
+                    id(context, "overview.library.search.row"), "Search scene", fill_width(
+                        style_scalar(context, "gui.control.small_height", 32.0f)));
+                GUI::icon(context, id(context, "overview.library.search.icon"), GUI::IconName::magnifying_glass,
+                    fixed(16.0f, 16.0f), icon_desc(context, "gui.text.muted", GUI::IconWeight::regular, 16.0f));
                 GUI::TextInputDesc search_desc;
                 search_desc.placeholder = "Search scene...";
                 GUI::input_text(context, id(context, "overview.library.search"), state.search_query,
-                    fill_width(style_scalar(context, "gui.control.small_height", 32.0f)), search_desc);
-                label(context, id(context, "overview.tree.root"), "v  Desert_Outpost", fill_width(28.0f),
-                    10.0f, "gui.text.secondary");
-                label(context, id(context, "overview.tree.environment"), "    v  Environment", fill_width(28.0f),
-                    10.0f, "gui.text.secondary");
-                label(context, id(context, "overview.tree.sun"), "        Sun_Light", fill_width(28.0f),
-                    10.0f, "gui.text.muted");
-                GUI::selectable(context, id(context, "overview.tree.ball"), "        Material_Ball", true,
-                    fill_width(30.0f));
+                    grow_x(), search_desc);
+                GUICore::FlexLayoutDesc search_flex;
+                search_flex.axis = GUICore::LayoutAxis::x;
+                search_flex.cross_alignment = GUICore::FlexAlignment::center;
+                search_flex.main_axis_gap = 6.0f;
+                GUI::end_h_layout(context, search_row, search_flex);
+                tree_label(context, id(context, "overview.tree.root"), GUI::IconName::package,
+                    "Desert_Outpost", 0, true, true);
+                tree_label(context, id(context, "overview.tree.environment"), GUI::IconName::folder_open,
+                    "Environment", 1, true, true);
+                tree_label(context, id(context, "overview.tree.sun"), GUI::IconName::sun,
+                    "Sun_Light", 2, false, false);
+                tree_label(context, id(context, "overview.tree.ball"), GUI::IconName::bounding_box,
+                    "Material_Ball", 2, false, false, true);
                 divider(context, id(context, "overview.library.divider"));
-                label(context, id(context, "overview.library.assets"), "Assets                              3 items",
-                    fill_width(28.0f), 10.0f, "gui.text.secondary");
+                icon_label(context, id(context, "overview.library.assets"), GUI::IconName::folder_open,
+                    "Assets  -  3 items", fill_width(28.0f), 16.0f, 10.0f, "gui.text.secondary");
                 build_asset_row(context, state, handles, library.id, 0, "M_Desert_Sand", "Material - 3.6 MB");
                 build_asset_row(context, state, handles, library.id, 1, "M_Rusted_Metal", "Material - 2.1 MB");
                 build_asset_row(context, state, handles, library.id, 2, "M_Concrete_Grime", "Material - 1.8 MB");
@@ -705,13 +898,36 @@ namespace Luna
                 GUICore::ElementHandle toolbar = GUI::begin_h_layout(context, id(context, "overview.viewport.toolbar"),
                     "Viewport toolbar", fill_width(48.0f));
                 rounded_rect(context, style_color(context, "gui.surface.1"), 0.0f);
-                const c8* tools[] = { "Select", "Move", "Rotate", "Frame" };
-                GUI::button_group(context, id(context, "overview.viewport.tools"), Span<const c8*>(tools, 4),
-                    &state.selected_group, fixed(270.0f, 40.0f));
+                GUICore::ElementHandle tool_row = GUI::begin_h_layout(context,
+                    id(context, "overview.viewport.tools"), "Viewport tools", fixed(184.0f, 40.0f));
+                const GUI::IconName tool_icons[] = {
+                    GUI::IconName::selection, GUI::IconName::arrows_out,
+                    GUI::IconName::arrows_clockwise, GUI::IconName::bounding_box
+                };
+                const c8* tool_labels[] = { "Select", "Move", "Rotate", "Frame" };
+                for(i32 tool_index = 0; tool_index < 4; ++tool_index)
+                {
+                    GUI::id_t tool_id = GUICore::make_scoped_id(tool_row.id, (u64)tool_index + 1);
+                    GUICore::ElementHandle tool = icon_button(context, tool_id, tool_icons[tool_index],
+                        tool_labels[tool_index], fixed(40.0f, 40.0f), GUI::ButtonDesc(), false,
+                        tool_index == state.selected_group ? GUI::IconWeight::bold : GUI::IconWeight::regular,
+                        tool_index == state.selected_group);
+                    if(GUI::is_item_valid(context, tool) && GUI::is_item_clicked(context, tool))
+                    {
+                        state.selected_group = tool_index;
+                    }
+                }
+                GUICore::FlexLayoutDesc tool_flex;
+                tool_flex.axis = GUICore::LayoutAxis::x;
+                tool_flex.cross_alignment = GUICore::FlexAlignment::center;
+                tool_flex.main_axis_gap = 6.0f;
+                GUI::end_h_layout(context, tool_row, tool_flex);
                 const c8* spaces[] = { "Local", "World" };
                 GUI::button_group(context, id(context, "overview.viewport.space"), Span<const c8*>(spaces, 2),
                     &state.space_mode, fixed(126.0f, 40.0f));
-                GUI::text_button(context, id(context, "overview.viewport.more"), "...", fixed(40.0f, 40.0f));
+                icon_button(context, id(context, "overview.viewport.more"), GUI::IconName::dots_three,
+                    "More viewport options", fixed(40.0f, 40.0f), GUI::ButtonDesc(), false,
+                    GUI::IconWeight::bold);
                 GUICore::FlexLayoutDesc toolbar_flex;
                 toolbar_flex.axis = GUICore::LayoutAxis::x;
                 toolbar_flex.cross_alignment = GUICore::FlexAlignment::center;
@@ -726,12 +942,12 @@ namespace Luna
                 const c8* console_tabs[] = { "Console", "Bake Queue 2", "Messages" };
                 GUI::button_group(context, id(context, "overview.console.tabs"),
                     Span<const c8*>(console_tabs, 3), &state.console_tab, fill_width(36.0f));
-                label(context, id(context, "overview.console.line1"),
+                icon_label(context, id(context, "overview.console.line1"), GUI::IconName::check_circle,
                     "[ready]  Renderer initialized successfully.                         10:23:45",
-                    fill_width(24.0f), 9.0f, "gui.text.secondary");
-                label(context, id(context, "overview.console.line2"),
+                    fill_width(24.0f), 14.0f, 9.0f, "gui.status.success", GUI::IconWeight::fill);
+                icon_label(context, id(context, "overview.console.line2"), GUI::IconName::spinner_gap,
                     "[busy]   Bake queue contains two materials.                         10:24:12",
-                    fill_width(24.0f), 9.0f, "gui.text.secondary");
+                    fill_width(24.0f), 14.0f, 9.0f, "gui.status.busy", GUI::IconWeight::bold);
                 end_panel(context, console, 2.0f);
                 GUICore::FlexLayoutDesc viewport_flex;
                 viewport_flex.axis = GUICore::LayoutAxis::y;
@@ -777,7 +993,8 @@ namespace Luna
             {
                 section_heading(context, "overview", "SELECTED DIRECTION - SOFT WORKSHOP",
                     "A tactile workbench for serious tools",
-                    "Warm machined surfaces, disciplined red accents, and instrument-like status semantics, scaled from compact desktop density to touch.");
+                    "Warm machined surfaces, disciplined red accents, and instrument-like status semantics, scaled from compact desktop density to touch.",
+                    GUI::IconName::squares_four);
                 GUICore::LayoutConfig banner_layout = fill_width(194.0f);
                 banner_layout.padding = Float4U(28.0f);
                 GUICore::ElementHandle banner = GUI::begin_h_layout(context, id(context, "overview.banner"),
@@ -806,7 +1023,8 @@ namespace Luna
             void build_primitives(GUICore::IContext* context, ShowcaseState& state)
             {
                 section_heading(context, "primitives", "GUITEST - PRIMITIVES", "Type, imagery, progress, and system light",
-                    "Foundational drawing and semantic feedback, including the LED vocabulary used by editor status surfaces.");
+                    "Foundational drawing and semantic feedback, including the LED vocabulary used by editor status surfaces.",
+                    GUI::IconName::stack);
                 GUICore::ElementHandle row;
                 page_two_columns(context, id(context, "primitives.row1"), row, 430.0f);
                 GUICore::ElementHandle typography = begin_card(context, "primitives.typography", grow_x(),
@@ -864,6 +1082,64 @@ namespace Luna
                 sdf_flex.main_axis_gap = 14.0f;
                 GUI::end_h_layout(context, sdf_row, sdf_flex);
                 end_panel(context, sdf_card);
+                GUICore::ElementHandle icon_card = begin_card(context, "primitives.icons", fill_width(220.0f),
+                    "Built-in icons", "Phosphor geometry rendered through the shared VG shape buffer");
+                struct IconSample
+                {
+                    GUI::IconName name;
+                    GUI::IconWeight weight;
+                };
+                const IconSample icon_samples[][7] = {
+                    {
+                        { GUI::IconName::folder, GUI::IconWeight::regular },
+                        { GUI::IconName::floppy_disk, GUI::IconWeight::regular },
+                        { GUI::IconName::magnifying_glass, GUI::IconWeight::regular },
+                        { GUI::IconName::gear_six, GUI::IconWeight::regular },
+                        { GUI::IconName::trash, GUI::IconWeight::regular },
+                        { GUI::IconName::camera, GUI::IconWeight::regular },
+                        { GUI::IconName::play, GUI::IconWeight::regular }
+                    },
+                    {
+                        { GUI::IconName::caret_left, GUI::IconWeight::bold },
+                        { GUI::IconName::caret_right, GUI::IconWeight::bold },
+                        { GUI::IconName::plus, GUI::IconWeight::bold },
+                        { GUI::IconName::minus, GUI::IconWeight::bold },
+                        { GUI::IconName::check, GUI::IconWeight::bold },
+                        { GUI::IconName::x, GUI::IconWeight::bold },
+                        { GUI::IconName::dots_three, GUI::IconWeight::bold }
+                    },
+                    {
+                        { GUI::IconName::check_circle, GUI::IconWeight::fill },
+                        { GUI::IconName::warning_circle, GUI::IconWeight::fill },
+                        { GUI::IconName::bell, GUI::IconWeight::fill },
+                        { GUI::IconName::heart, GUI::IconWeight::fill },
+                        { GUI::IconName::star, GUI::IconWeight::fill },
+                        { GUI::IconName::folder_open, GUI::IconWeight::fill },
+                        { GUI::IconName::package, GUI::IconWeight::duotone }
+                    }
+                };
+                for(u32 row_index = 0; row_index < 3; ++row_index)
+                {
+                    GUI::id_t icon_row_id = GUICore::make_scoped_id(
+                        id(context, "primitives.icons.row"), (u64)row_index + 1);
+                    GUICore::ElementHandle icon_row = GUI::begin_h_layout(context,
+                        icon_row_id, "Icon weight row", fill_width(42.0f));
+                    for(u32 icon_index = 0; icon_index < 7; ++icon_index)
+                    {
+                        GUI::IconDesc icon_desc;
+                        icon_desc.weight = icon_samples[row_index][icon_index].weight;
+                        icon_desc.tint = row_index == 2 ? style_color(context, "gui.accent") :
+                            style_color(context, "gui.icon.color");
+                        GUI::icon(context, GUICore::make_scoped_id(icon_row_id, (u64)icon_index + 1),
+                            icon_samples[row_index][icon_index].name, fixed(28.0f, 28.0f), icon_desc);
+                    }
+                    GUICore::FlexLayoutDesc icon_flex;
+                    icon_flex.axis = GUICore::LayoutAxis::x;
+                    icon_flex.main_axis_gap = 16.0f;
+                    icon_flex.cross_alignment = GUICore::FlexAlignment::center;
+                    GUI::end_h_layout(context, icon_row, icon_flex);
+                }
+                end_panel(context, icon_card);
                 GUICore::ElementHandle image_card = begin_card(context, "primitives.image", fill_width(420.0f),
                     "Image and shape", "Raster material assets and vector primitives");
                 GUI::image(context, id(context, "primitives.image.preview"), state.material_preview,
@@ -874,18 +1150,24 @@ namespace Luna
             void build_buttons(GUICore::IContext* context, ShowcaseState& state)
             {
                 section_heading(context, "buttons", "GUITEST - BUTTONS", "Actions and choices",
-                    "Raised actions, recessed selection wells, explicit focus, and states that never depend on hover alone.");
+                    "Raised actions, recessed selection wells, explicit focus, and states that never depend on hover alone.",
+                    GUI::IconName::cursor_click);
                 GUICore::ElementHandle row1;
-                page_two_columns(context, id(context, "buttons.row1"), row1, 260.0f);
-                GUICore::ElementHandle states = begin_card(context, "buttons.states", grow_x(),
+                page_two_columns_fit(context, id(context, "buttons.row1"), row1);
+                GUICore::ElementHandle states = begin_card(context, "buttons.states", grow(),
                     "Button states", "Default, pressed, destructive, and disabled");
-                GUI::text_button(context, id(context, "buttons.primary"), "Primary", fill_width(44.0f));
-                GUI::text_button(context, id(context, "buttons.neutral"), "Neutral", fill_width(44.0f));
+                icon_button(context, id(context, "buttons.primary"), GUI::IconName::lightning,
+                    "Primary", fill_width(44.0f), GUI::ButtonDesc(), true, GUI::IconWeight::fill);
+                icon_button(context, id(context, "buttons.save"), GUI::IconName::floppy_disk,
+                    "Save", fill_width(44.0f));
+                icon_button(context, id(context, "buttons.upload"), GUI::IconName::upload_simple,
+                    "Upload", fill_width(44.0f));
                 GUI::ButtonDesc disabled;
                 disabled.enabled = false;
-                GUI::text_button(context, id(context, "buttons.disabled"), "Disabled", fill_width(44.0f), disabled);
+                icon_button(context, id(context, "buttons.disabled"), GUI::IconName::gear_six,
+                    "Disabled", fill_width(44.0f), disabled);
                 end_panel(context, states);
-                GUICore::ElementHandle groups = begin_card(context, "buttons.groups", grow_x(),
+                GUICore::ElementHandle groups = begin_card(context, "buttons.groups", grow(),
                     "Button groups", "Single and multiple selection");
                 const c8* items[] = { "Build", "Run", "Profile", "Ship" };
                 GUI::button_group(context, id(context, "buttons.group.single"), Span<const c8*>(items, 4),
@@ -895,7 +1177,7 @@ namespace Luna
                 end_panel(context, groups);
                 end_two_columns(context, row1);
                 GUICore::ElementHandle row2;
-                page_two_columns(context, id(context, "buttons.row2"), row2, 300.0f);
+                page_two_columns(context, id(context, "buttons.row2"), row2, 380.0f);
                 GUICore::ElementHandle choices = begin_card(context, "buttons.choices", grow_x(),
                     "Selection controls", "Checkbox, radio, and switch");
                 GUI::checkbox(context, id(context, "buttons.checkbox"), "Visible in render", &state.checkbox_value,
@@ -945,7 +1227,8 @@ namespace Luna
             void build_input(GUICore::IContext* context, ShowcaseState& state)
             {
                 section_heading(context, "input", "GUITEST - INPUT", "Text, numeric, slider, and color editing",
-                    "Inset fields communicate editability while focus, read-only, disabled, and validation states remain distinct.");
+                    "Inset fields communicate editability while focus, read-only, disabled, and validation states remain distinct.",
+                    GUI::IconName::sliders_horizontal);
                 GUICore::ElementHandle row1;
                 page_two_columns(context, id(context, "input.row1"), row1, 330.0f);
                 GUICore::ElementHandle fields = begin_card(context, "input.fields", grow_x(),
@@ -982,12 +1265,26 @@ namespace Luna
                 GUICore::ElementHandle combo = begin_card(context, "input.combo", grow_x(),
                     "Combo and search", "Popup-ready selector and filtered query");
                 const c8* render_modes[] = { "PBR Metallic Roughness", "Subsurface", "Unlit" };
+                GUICore::ElementHandle combo_row = GUI::begin_h_layout(context, id(context, "input.combo.row"),
+                    "Shader model", fill_width(48.0f));
+                GUI::icon(context, id(context, "input.combo.icon"), GUI::IconName::sliders_horizontal,
+                    fixed(18.0f, 18.0f), icon_desc(context, "gui.text.secondary", GUI::IconWeight::regular, 18.0f));
                 GUI::combo(context, id(context, "input.combo.shader"), "Shader model", &state.combo_item,
-                    Span<const c8*>(render_modes, 3), fill_width(48.0f));
+                    Span<const c8*>(render_modes, 3), grow_x());
+                GUICore::FlexLayoutDesc input_row_flex;
+                input_row_flex.axis = GUICore::LayoutAxis::x;
+                input_row_flex.cross_alignment = GUICore::FlexAlignment::center;
+                input_row_flex.main_axis_gap = 8.0f;
+                GUI::end_h_layout(context, combo_row, input_row_flex);
+                GUICore::ElementHandle search_row = GUI::begin_h_layout(context, id(context, "input.search.row"),
+                    "Filter components", fill_width(48.0f));
+                GUI::icon(context, id(context, "input.search.icon"), GUI::IconName::magnifying_glass,
+                    fixed(18.0f, 18.0f), icon_desc(context, "gui.text.muted", GUI::IconWeight::regular, 18.0f));
                 GUI::TextInputDesc search_desc;
                 search_desc.placeholder = "Filter components...";
                 GUI::input_text(context, id(context, "input.search"), state.search_query,
-                    fill_width(48.0f), search_desc);
+                    grow_x(), search_desc);
+                GUI::end_h_layout(context, search_row, input_row_flex);
                 end_panel(context, combo);
                 end_two_columns(context, row2);
             }
@@ -995,7 +1292,8 @@ namespace Luna
             void build_layouts(GUICore::IContext* context, ShowcaseState& state)
             {
                 section_heading(context, "layouts", "GUITEST - LAYOUTS", "Flex, grid, canvas, focus scope, and tabs",
-                    "The visual system scales without changing layout semantics or stable element identity.");
+                    "The visual system scales without changing layout semantics or stable element identity.",
+                    GUI::IconName::grid_four);
                 GUICore::ElementHandle row1;
                 page_two_columns(context, id(context, "layouts.row1"), row1, 300.0f);
                 GUICore::ElementHandle flex_card = begin_card(context, "layouts.flex", grow_x(),
@@ -1043,7 +1341,8 @@ namespace Luna
             void build_scroll_views(GUICore::IContext* context)
             {
                 section_heading(context, "scroll", "GUITEST - SCROLL VIEWS", "Overlay and reserved scrollbars",
-                    "Compact pointer mode favors overlay scrollbars; touch mode keeps broad, visible affordances.");
+                    "Compact pointer mode favors overlay scrollbars; touch mode keeps broad, visible affordances.",
+                    GUI::IconName::columns);
                 GUICore::ElementHandle row;
                 page_two_columns(context, id(context, "scroll.row"), row, 620.0f);
                 for(i32 column = 0; column < 2; ++column)
@@ -1107,16 +1406,21 @@ namespace Luna
             void build_tables(GUICore::IContext* context, ShowcaseState& state)
             {
                 section_heading(context, "tables", "GUITEST - TABLES", "Dense, resizable data",
-                    "Readable rows, clear selection, subtle hierarchy, and generous splitter hit targets.");
+                    "Readable rows, clear selection, subtle hierarchy, and generous splitter hit targets.",
+                    GUI::IconName::list_bullets);
                 GUICore::ElementHandle card = begin_card(context, "tables.memory", fill_width(470.0f),
                     "Memory Profiler", "Visual row states and resize-handle targets");
                 GUICore::ElementHandle toolbar = GUI::begin_h_layout(context, id(context, "tables.toolbar"),
                     "Table toolbar", fill_width(44.0f));
+                GUI::icon(context, id(context, "tables.filter.icon"), GUI::IconName::magnifying_glass,
+                    fixed(18.0f, 18.0f), icon_desc(context, "gui.text.muted", GUI::IconWeight::regular, 18.0f));
                 GUI::TextInputDesc filter_desc;
                 filter_desc.placeholder = "Filter allocations...";
                 GUI::input_text(context, id(context, "tables.filter"), state.table_filter, grow_x(), filter_desc);
-                GUI::text_button(context, id(context, "tables.snapshot"), "Snapshot", fixed(130.0f, 44.0f));
-                GUI::text_button(context, id(context, "tables.settings"), "...", fixed(44.0f, 44.0f));
+                icon_button(context, id(context, "tables.snapshot"), GUI::IconName::camera,
+                    "Snapshot", fixed(130.0f, 44.0f));
+                icon_button(context, id(context, "tables.settings"), GUI::IconName::gear_six,
+                    "Table settings", fixed(44.0f, 44.0f), GUI::ButtonDesc(), false);
                 GUICore::FlexLayoutDesc toolbar_flex;
                 toolbar_flex.axis = GUICore::LayoutAxis::x;
                 toolbar_flex.cross_alignment = GUICore::FlexAlignment::stretch;
@@ -1197,7 +1501,8 @@ namespace Luna
             void build_overlay(GUICore::IContext* context, ShowcaseState& state, ShowcaseHandles& handles)
             {
                 section_heading(context, "overlay", "GUITEST - OVERLAY", "Menus, popup, tooltip, and dialog layers",
-                    "Transient surfaces use stronger elevation and ordinary alpha while true backdrop blur remains deferred.");
+                    "Transient surfaces use stronger elevation and ordinary alpha while true backdrop blur remains deferred.",
+                    GUI::IconName::bell);
                 GUICore::ElementHandle row;
                 page_two_columns(context, id(context, "overlay.row"), row, 420.0f);
                 GUICore::ElementHandle menu_card = begin_card(context, "overlay.menu", grow_x(),
@@ -1206,20 +1511,25 @@ namespace Luna
                     "Menu", fill_width(style_scalar(context, "gui.control.height", 32.0f)));
                 if(GUI::begin_menu(context, id(context, "overlay.menu.file"), "File"))
                 {
-                    GUI::menu_item(context, id(context, "overlay.menu.new"), "New");
-                    GUI::menu_item(context, id(context, "overlay.menu.save"), "Save All");
+                    icon_menu_item(context, id(context, "overlay.menu.new"), GUI::IconName::file_plus, "New");
+                    icon_menu_item(context, id(context, "overlay.menu.save"), GUI::IconName::floppy_disk, "Save All");
                     GUI::menu_separator(context, id(context, "overlay.menu.separator"));
-                    GUI::menu_item(context, id(context, "overlay.menu.grid"), "Show Grid", &state.menu_grid);
+                    GUICore::ElementHandle grid_item = icon_menu_item(context, id(context, "overlay.menu.grid"),
+                        state.menu_grid ? GUI::IconName::check_circle : GUI::IconName::grid_four, "Show Grid");
+                    if(GUI::is_item_valid(context, grid_item) && GUI::is_item_clicked(context, grid_item))
+                    {
+                        state.menu_grid = !state.menu_grid;
+                    }
                     lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 230.0f, 190.0f)));
                 }
                 GUI::end_menu_bar(context, menu_bar);
                 end_panel(context, menu_card);
                 GUICore::ElementHandle popup_card = begin_card(context, "overlay.popup", grow_x(),
                     "Popup and tooltip", "Independent GUICore layers with analytic shadow");
-                handles.popup_button = GUI::text_button(context, id(context, "overlay.popup.open"), "Open Popup",
-                    fill_width(48.0f));
-                GUICore::ElementHandle tooltip_button = GUI::text_button(context, id(context, "overlay.tooltip"),
-                    "Hover for tooltip", fill_width(48.0f));
+                handles.popup_button = icon_button(context, id(context, "overlay.popup.open"),
+                    GUI::IconName::squares_four, "Open Popup", fill_width(48.0f));
+                GUICore::ElementHandle tooltip_button = icon_button(context, id(context, "overlay.tooltip"),
+                    GUI::IconName::info, "Hover for tooltip", fill_width(48.0f));
                 GUI::set_item_tooltip(context, id(context, "overlay.tooltip.layer"), tooltip_button,
                     "Available on hover or pointer focus.");
                 led_label(context, id(context, "overlay.notification.success"), "Build complete",
@@ -1237,7 +1547,8 @@ namespace Luna
                     label(context, id(context, "overlay.popup.title"), "Popup layer", fill_width(34.0f), 13.0f);
                     label(context, id(context, "overlay.popup.copy"), "Dismiss with Done or Escape.",
                         fill_width(34.0f), 11.0f, "gui.text.secondary");
-                    GUI::text_button(context, id(context, "overlay.popup.done"), "Done", fill_width(44.0f));
+                    icon_button(context, id(context, "overlay.popup.done"), GUI::IconName::check,
+                        "Done", fill_width(44.0f), GUI::ButtonDesc(), true, GUI::IconWeight::bold);
                     lupanic_if_failed(GUI::end_popup(context, popup, RectF(0.0f, 0.0f, 260.0f, 154.0f)));
                 }
             }
@@ -1245,7 +1556,8 @@ namespace Luna
             void build_workspace(GUICore::IContext* context, ShowcaseState& state)
             {
                 section_heading(context, "workspace", "GUITEST - WORKSPACE", "Docked editor composition",
-                    "Tabs, splitters, viewport tools, console, and status feedback in one functional software surface.");
+                    "Tabs, splitters, viewport tools, console, and status feedback in one functional software surface.",
+                    GUI::IconName::sidebar);
                 GUI::id_t dock_space_id = id(context, "workspace.dockspace");
                 GUI::id_t hierarchy_id = id(context, "workspace.panel.hierarchy");
                 GUI::id_t viewport_id = id(context, "workspace.panel.viewport");
@@ -1278,52 +1590,70 @@ namespace Luna
                     "Workspace menu", fill_width(style_scalar(context, "gui.control.height", 32.0f)));
                 if(GUI::begin_menu(context, id(context, "workspace.menu.file"), "File"))
                 {
-                    GUI::menu_item(context, id(context, "workspace.menu.file.new"), "New Scene");
-                    GUI::menu_item(context, id(context, "workspace.menu.file.open"), "Open...");
+                    icon_menu_item(context, id(context, "workspace.menu.file.new"),
+                        GUI::IconName::file_plus, "New Scene");
+                    icon_menu_item(context, id(context, "workspace.menu.file.open"),
+                        GUI::IconName::folder_open, "Open...");
                     GUI::menu_separator(context, id(context, "workspace.menu.file.separator"));
                     GUI::MenuItemDesc save_desc;
                     save_desc.shortcut = "Ctrl+S";
-                    GUI::menu_item(context, id(context, "workspace.menu.file.save"), "Save", false, save_desc);
+                    icon_menu_item(context, id(context, "workspace.menu.file.save"),
+                        GUI::IconName::floppy_disk, "Save", save_desc);
                     lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 220.0f, 142.0f)));
                 }
                 if(GUI::begin_menu(context, id(context, "workspace.menu.edit"), "Edit"))
                 {
                     GUI::MenuItemDesc undo_desc;
                     undo_desc.shortcut = "Ctrl+Z";
-                    GUI::menu_item(context, id(context, "workspace.menu.edit.undo"), "Undo", false, undo_desc);
+                    icon_menu_item(context, id(context, "workspace.menu.edit.undo"),
+                        GUI::IconName::arrow_counter_clockwise, "Undo", undo_desc);
                     GUI::MenuItemDesc redo_desc;
                     redo_desc.shortcut = "Ctrl+Y";
-                    GUI::menu_item(context, id(context, "workspace.menu.edit.redo"), "Redo", false, redo_desc);
+                    icon_menu_item(context, id(context, "workspace.menu.edit.redo"),
+                        GUI::IconName::arrow_clockwise, "Redo", redo_desc);
                     lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 86.0f)));
                 }
                 if(GUI::begin_menu(context, id(context, "workspace.menu.create"), "Create"))
                 {
-                    GUI::menu_item(context, id(context, "workspace.menu.create.material"), "Material");
-                    GUI::menu_item(context, id(context, "workspace.menu.create.light"), "Light");
-                    GUI::menu_item(context, id(context, "workspace.menu.create.camera"), "Camera");
+                    icon_menu_item(context, id(context, "workspace.menu.create.material"),
+                        GUI::IconName::palette, "Material");
+                    icon_menu_item(context, id(context, "workspace.menu.create.light"),
+                        GUI::IconName::lightning, "Light");
+                    icon_menu_item(context, id(context, "workspace.menu.create.camera"),
+                        GUI::IconName::camera, "Camera");
                     lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 118.0f)));
                 }
                 if(GUI::begin_menu(context, id(context, "workspace.menu.tools"), "Tools"))
                 {
-                    GUI::menu_item(context, id(context, "workspace.menu.tools.bake"), "Bake Materials");
-                    GUI::menu_item(context, id(context, "workspace.menu.tools.profiler"), "Memory Profiler");
+                    icon_menu_item(context, id(context, "workspace.menu.tools.bake"),
+                        GUI::IconName::spinner_gap, "Bake Materials");
+                    icon_menu_item(context, id(context, "workspace.menu.tools.profiler"),
+                        GUI::IconName::database, "Memory Profiler");
                     lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 210.0f, 86.0f)));
                 }
                 if(GUI::begin_menu(context, id(context, "workspace.menu.window"), "Window"))
                 {
-                    GUI::menu_item(context, id(context, "workspace.menu.window.grid"), "Show Grid", &state.menu_grid);
-                    reset_layout_item = GUI::menu_item(context, id(context, "workspace.menu.window.reset"),
-                        "Reset Dock Layout");
+                    GUICore::ElementHandle grid_item = icon_menu_item(context,
+                        id(context, "workspace.menu.window.grid"),
+                        state.menu_grid ? GUI::IconName::check_circle : GUI::IconName::grid_four, "Show Grid");
+                    if(GUI::is_item_valid(context, grid_item) && GUI::is_item_clicked(context, grid_item))
+                    {
+                        state.menu_grid = !state.menu_grid;
+                    }
+                    reset_layout_item = icon_menu_item(context, id(context, "workspace.menu.window.reset"),
+                        GUI::IconName::arrows_counter_clockwise, "Reset Dock Layout");
                     lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 220.0f, 86.0f)));
                 }
                 if(GUI::begin_menu(context, id(context, "workspace.menu.help"), "Help"))
                 {
-                    GUI::menu_item(context, id(context, "workspace.menu.help.docs"), "Documentation");
-                    GUI::menu_item(context, id(context, "workspace.menu.help.about"), "About Luna GUI");
+                    icon_menu_item(context, id(context, "workspace.menu.help.docs"),
+                        GUI::IconName::file_text, "Documentation");
+                    icon_menu_item(context, id(context, "workspace.menu.help.about"),
+                        GUI::IconName::info, "About Luna GUI");
                     lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 210.0f, 86.0f)));
                 }
-                label(context, id(context, "workspace.menu.document"), "Untitled Scene.luna*", grow_x(), 10.0f,
-                    "gui.text.secondary");
+                icon_label(context, id(context, "workspace.menu.document"), GUI::IconName::file_code,
+                    "Untitled Scene.luna*", grow_x(), 16.0f, 10.0f, "gui.text.secondary");
                 GUI::end_menu_bar(context, menu_bar);
 
                 if(GUI::is_item_valid(context, reset_layout_item) &&
@@ -1392,14 +1722,12 @@ namespace Luna
                     panel_layout.padding = Float4U(10.0f);
                     GUICore::ElementHandle panel = GUI::begin_v_layout(context,
                         id(context, "workspace.hierarchy.content"), "Hierarchy content", panel_layout);
-                    if(GUI::tree_node(context, id(context, "workspace.scene"), "Scene",
-                        GUI::TreeNodeFlag::none, 0, fill_width(40.0f)))
-                    {
-                        GUI::tree_node(context, id(context, "workspace.camera"), "Camera",
-                            GUI::TreeNodeFlag::leaf, 1, fill_width(40.0f));
-                        GUI::tree_node(context, id(context, "workspace.ball"), "Material Ball",
-                            GUI::TreeNodeFlag::selected | GUI::TreeNodeFlag::leaf, 1, fill_width(40.0f));
-                    }
+                    tree_label(context, id(context, "workspace.scene"), GUI::IconName::folder_open,
+                        "Scene", 0, true, true);
+                    tree_label(context, id(context, "workspace.camera"), GUI::IconName::camera,
+                        "Camera", 1, false, false);
+                    tree_label(context, id(context, "workspace.ball"), GUI::IconName::bounding_box,
+                        "Material Ball", 1, false, false, true);
                     end_panel(context, panel);
                     GUI::end_dock_panel(context);
                 }
@@ -1408,9 +1736,29 @@ namespace Luna
                 {
                     GUICore::ElementHandle panel = GUI::begin_v_layout(context,
                         id(context, "workspace.viewport.content"), "Viewport content", grow_y());
-                    const c8* tools[] = { "Select", "Move", "Frame" };
-                    GUI::button_group(context, id(context, "workspace.viewport.tools"), Span<const c8*>(tools, 3),
-                        &state.space_mode, fill_width(44.0f));
+                    GUICore::ElementHandle tools = GUI::begin_h_layout(context,
+                        id(context, "workspace.viewport.tools"), "Viewport tools", fill_width(44.0f));
+                    const GUI::IconName tool_icons[] = {
+                        GUI::IconName::selection, GUI::IconName::arrows_out, GUI::IconName::bounding_box
+                    };
+                    const c8* tool_labels[] = { "Select", "Move", "Frame" };
+                    for(i32 tool_index = 0; tool_index < 3; ++tool_index)
+                    {
+                        GUI::id_t tool_id = GUICore::make_scoped_id(tools.id, (u64)tool_index + 1);
+                        GUICore::ElementHandle tool = icon_button(context, tool_id, tool_icons[tool_index],
+                            tool_labels[tool_index], fixed(40.0f, 40.0f), GUI::ButtonDesc(), false,
+                            tool_index == state.space_mode ? GUI::IconWeight::bold : GUI::IconWeight::regular,
+                            tool_index == state.space_mode);
+                        if(GUI::is_item_valid(context, tool) && GUI::is_item_clicked(context, tool))
+                        {
+                            state.space_mode = tool_index;
+                        }
+                    }
+                    GUICore::FlexLayoutDesc tool_flex;
+                    tool_flex.axis = GUICore::LayoutAxis::x;
+                    tool_flex.cross_alignment = GUICore::FlexAlignment::center;
+                    tool_flex.main_axis_gap = 6.0f;
+                    GUI::end_h_layout(context, tools, tool_flex);
                     GUI::image(context, id(context, "workspace.image"), state.material_preview,
                         grow_y(), flipped_image());
                     end_panel(context, panel, 0.0f);
@@ -1422,7 +1770,8 @@ namespace Luna
                     panel_layout.padding = Float4U(12.0f);
                     GUICore::ElementHandle panel = GUI::begin_v_layout(context,
                         id(context, "workspace.material.content"), "Material editor content", panel_layout);
-                    label(context, id(context, "workspace.material.title"), "M_Rusted_Metal", fill_width(34.0f), 13.0f);
+                    icon_label(context, id(context, "workspace.material.title"), GUI::IconName::palette,
+                        "M_Rusted_Metal", fill_width(34.0f), 18.0f, 13.0f);
                     GUI::slider_float(context, id(context, "workspace.material.roughness"), &state.roughness,
                         0.0f, 1.0f, fill_width(48.0f));
                     GUI::slider_float(context, id(context, "workspace.material.metallic"), &state.metallic,
@@ -1436,8 +1785,8 @@ namespace Luna
                     panel_layout.padding = Float4U(12.0f);
                     GUICore::ElementHandle panel = GUI::begin_v_layout(context,
                         id(context, "workspace.shader.content"), "Shader graph content", panel_layout);
-                    label(context, id(context, "workspace.shader.title"), "Surface -> PBR Output",
-                        fill_width(40.0f), 13.0f);
+                    icon_label(context, id(context, "workspace.shader.title"), GUI::IconName::code,
+                        "Surface to PBR Output", fill_width(40.0f), 18.0f, 13.0f);
                     label(context, id(context, "workspace.shader.note"),
                         "Drag this tab to create a floating shader workspace.", fill_width(40.0f), 10.0f,
                         "gui.text.secondary");
@@ -1451,8 +1800,8 @@ namespace Luna
                     panel_layout.padding = Float4U(12.0f);
                     GUICore::ElementHandle panel = GUI::begin_v_layout(context,
                         id(context, "workspace.inspector.content"), "Inspector content", panel_layout);
-                    label(context, id(context, "workspace.inspector.transform"), "Transform",
-                        fill_width(34.0f), 12.0f);
+                    icon_label(context, id(context, "workspace.inspector.transform"), GUI::IconName::bounding_box,
+                        "Transform", fill_width(34.0f), 18.0f, 12.0f);
                     GUI::drag_float3(context, id(context, "workspace.position"), state.position, -100.0f, 100.0f,
                         fill_width(48.0f));
                     GUI::checkbox(context, id(context, "workspace.visible"), "Visible", &state.checkbox_value,
@@ -1482,11 +1831,11 @@ namespace Luna
                     panel_layout.padding = Float4U(10.0f);
                     GUICore::ElementHandle panel = GUI::begin_v_layout(context,
                         id(context, "workspace.console.content"), "Console content", panel_layout);
-                    label(context, id(context, "workspace.console.info"),
-                        "[Info] Dock workspace initialized.", fill_width(30.0f), 10.0f, "gui.text.secondary");
-                    label(context, id(context, "workspace.console.warning"),
-                        "[Warning] Texture mip chain is incomplete.", fill_width(30.0f), 10.0f,
-                        "gui.status.warning");
+                    icon_label(context, id(context, "workspace.console.info"), GUI::IconName::info,
+                        "Dock workspace initialized.", fill_width(30.0f), 15.0f, 10.0f, "gui.text.secondary");
+                    icon_label(context, id(context, "workspace.console.warning"), GUI::IconName::warning,
+                        "Texture mip chain is incomplete.", fill_width(30.0f), 15.0f, 10.0f,
+                        "gui.status.warning", GUI::IconWeight::fill);
                     end_panel(context, panel, 2.0f);
                     GUI::end_dock_panel(context);
                 }
@@ -1496,8 +1845,9 @@ namespace Luna
                     panel_layout.padding = Float4U(10.0f);
                     GUICore::ElementHandle panel = GUI::begin_v_layout(context,
                         id(context, "workspace.build.content"), "Build content", panel_layout);
-                    label(context, id(context, "workspace.build.title"), "Material bake queue",
-                        fill_width(30.0f), 10.0f, "gui.text.secondary");
+                    icon_label(context, id(context, "workspace.build.title"), GUI::IconName::spinner_gap,
+                        "Material bake queue", fill_width(30.0f), 15.0f, 10.0f,
+                        "gui.text.secondary", GUI::IconWeight::bold);
                     GUI::ProgressBarDesc progress_desc;
                     progress_desc.show_overlay = false;
                     GUI::progress_bar(context, id(context, "workspace.build.progress"), 0.68f,
@@ -1584,14 +1934,14 @@ namespace Luna
                 swatch.tint = style_color(context, color_key);
                 GUI::shape(context, GUICore::make_scoped_id(element_id, 1), state.circle,
                     fixed(17.0f, 17.0f), swatch);
-                label(context, GUICore::make_scoped_id(element_id, 2), label_text, grow_x(), 10.0f,
+                label(context, GUICore::make_scoped_id(element_id, 2), label_text, fixed(68.0f, 24.0f), 10.0f,
                     "gui.text.secondary");
-                label(context, GUICore::make_scoped_id(element_id, 3), token, fixed(108.0f, 24.0f),
+                label(context, GUICore::make_scoped_id(element_id, 3), token, grow_x(24.0f),
                     8.0f, "gui.text.muted");
                 GUICore::FlexLayoutDesc flex;
                 flex.axis = GUICore::LayoutAxis::x;
                 flex.cross_alignment = GUICore::FlexAlignment::center;
-                flex.main_axis_gap = 8.0f;
+                flex.main_axis_gap = 6.0f;
                 GUI::end_h_layout(context, row, flex);
             }
 
@@ -1604,8 +1954,18 @@ namespace Luna
                 GUICore::ElementHandle panel = GUI::begin_v_layout(context, id(context, "showcase.tokens"),
                     "Style Inspector", layout);
                 rounded_rect(context, style_color(context, "gui.surface.0"), 0.0f);
-                label(context, id(context, "showcase.tokens.title"), "Style Inspector                         Settings",
-                    fill_width(30.0f), 13.0f);
+                GUICore::ElementHandle title = GUI::begin_h_layout(context,
+                    id(context, "showcase.tokens.title"), "Style Inspector", fill_width(34.0f));
+                GUI::icon(context, id(context, "showcase.tokens.title.icon"), GUI::IconName::palette,
+                    fixed(20.0f, 20.0f), icon_desc(context, "gui.text.color", GUI::IconWeight::duotone, 20.0f));
+                label(context, id(context, "showcase.tokens.title.text"), "Style Inspector", grow_x(), 13.0f);
+                icon_button(context, id(context, "showcase.tokens.settings"), GUI::IconName::gear_six,
+                    "Style settings", fixed(30.0f, 30.0f), GUI::ButtonDesc(), false);
+                GUICore::FlexLayoutDesc title_flex;
+                title_flex.axis = GUICore::LayoutAxis::x;
+                title_flex.cross_alignment = GUICore::FlexAlignment::center;
+                title_flex.main_axis_gap = 8.0f;
+                GUI::end_h_layout(context, title, title_flex);
                 const c8* style_name = state.theme == 0 ? (state.density == 0 ? "light.compact" : "light.touch") :
                     (state.density == 0 ? "dark.compact" : "dark.touch");
                 label(context, id(context, "showcase.tokens.style"), style_name, fill_width(20.0f),

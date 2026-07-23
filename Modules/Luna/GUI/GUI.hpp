@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Style.hpp"
+#include "Icons.hpp"
 #include "Widgets.hpp"
 #include "Layouts.hpp"
 #include "Overlay.hpp"

@@ -58,6 +58,20 @@ namespace Luna
             const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
         //! Ends the current menu popup.
         LUNA_GUI_API RV end_menu(GUICore::IContext* context, const RectF& rect);
+        //! Begins one menu item as a generic horizontal child container.
+        //! @param[in] context The GUI context receiving the element.
+        //! @param[in] id Element ID.
+        //! @param[in] label Debug label. This value is not rendered automatically.
+        //! @param[in] desc Menu-item behavior and appearance.
+        //! @param[in] layout Layout configuration.
+        //! @return Returns the created menu-item element. Call @ref end_menu_item after submitting its children.
+        //! @remark Icons, text, shortcut labels and other content are ordinary children. The menu item does not
+        //! inspect or special-case child element types.
+        LUNA_GUI_API GUICore::ElementHandle begin_menu_item(GUICore::IContext* context, id_t id,
+            const c8* label = nullptr, const MenuItemDesc& desc = MenuItemDesc(),
+            const GUICore::LayoutConfig& layout = GUICore::LayoutConfig());
+        //! Ends a menu-item child container begun by @ref begin_menu_item.
+        LUNA_GUI_API void end_menu_item(GUICore::IContext* context);
         //! Adds one menu item.
         LUNA_GUI_API GUICore::ElementHandle menu_item(GUICore::IContext* context, id_t id, const c8* label,
             bool selected = false, const MenuItemDesc& desc = MenuItemDesc(),

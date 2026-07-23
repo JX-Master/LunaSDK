@@ -95,8 +95,14 @@ namespace Luna
                 "Density", "Default control and hit-target height.");
             add("gui.control.small_height", GUICore::StyleValueType::f32, GUICore::style_f32(40.0f),
                 "Density", "Small control height.");
+            add("gui.icon.size", GUICore::StyleValueType::f32, GUICore::style_f32(20.0f),
+                "Density", "Default square icon size.");
+            add("gui.icon.color", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.15f, 0.16f, 0.17f, 1.0f)), "Text", "Default icon color.");
             add("gui.section.gap", GUICore::StyleValueType::f32, GUICore::style_f32(16.0f),
                 "Density", "Default gap between control groups.");
+            add("gui.control.content_gap", GUICore::StyleValueType::f32, GUICore::style_f32(8.0f),
+                "Density", "Default gap between children inside a control container.");
             add("gui.radius.small", GUICore::StyleValueType::f32, GUICore::style_f32(7.0f),
                 "Shape", "Small control corner radius.");
             add("gui.radius.medium", GUICore::StyleValueType::f32, GUICore::style_f32(12.0f),
@@ -340,6 +346,8 @@ namespace Luna
                 "Menu", "Menu item corner radius.");
             add("gui.menu_item.font_size", GUICore::StyleValueType::f32, GUICore::style_f32(15.0f),
                 "Menu", "Menu item text size.");
+            add("gui.menu_item.padding_x", GUICore::StyleValueType::f32, GUICore::style_f32(10.0f),
+                "Menu", "Horizontal padding for composed menu-item content.");
             add("gui.menu_separator.color", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.24f, 0.30f, 0.38f, 1.0f)), "Menu", "Menu separator color.");
 
@@ -453,7 +461,10 @@ namespace Luna
             set_color("gui.status.off", color(dark ? 0x515554 : 0xc4c7c7));
             set_scalar("gui.control.height", control_height);
             set_scalar("gui.control.small_height", small_height);
+            set_scalar("gui.icon.size", touch ? 20.0f : 16.0f);
+            set_color("gui.icon.color", text);
             set_scalar("gui.section.gap", touch ? 18.0f : 13.0f);
+            set_scalar("gui.control.content_gap", touch ? 9.0f : 7.0f);
             set_scalar("gui.radius.small", radius_small);
             set_scalar("gui.radius.medium", radius_medium);
             set_scalar("gui.radius.large", radius_large);
@@ -580,6 +591,7 @@ namespace Luna
             set_color("gui.menu_item.text_disabled", disabled);
             set_scalar("gui.menu_item.radius", radius_small);
             set_scalar("gui.menu_item.font_size", touch ? 14.0f : 13.0f);
+            set_scalar("gui.menu_item.padding_x", touch ? 14.0f : 10.0f);
             set_color("gui.menu_separator.color", border);
         }
 

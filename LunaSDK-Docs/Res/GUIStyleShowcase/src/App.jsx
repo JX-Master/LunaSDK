@@ -56,6 +56,7 @@ import {
   Wrench,
   X,
 } from "@phosphor-icons/react";
+import { BuiltInIconCatalog } from "./iconCatalog.jsx";
 
 const sections = [
   { id: "overview", label: "Overview", icon: SquaresFour },
@@ -385,7 +386,7 @@ export function App() {
     >
       <header className="topbar">
         <div className="brand-lockup">
-          <span className="brand-icon"><Cube size={24} weight="duotone" /></span>
+          <span className="brand-icon" aria-hidden="true"><Cube size={24} weight="duotone" /></span>
           <div><strong>Luna GUI</strong><small>Design Language Lab</small></div>
         </div>
         <div className="top-status" aria-label="System status">
@@ -494,6 +495,9 @@ export function App() {
                 <img src="/material-preview.png" alt="Material preview" />
                 <div className="shape-gallery"><span><Cube size={34} weight="duotone" />Shape</span><span><ImageSquare size={34} />Image</span><span><BoundingBox size={34} />Bounds</span><span><VectorThree size={34} />Vector</span></div>
               </div>
+            </Card>
+            <Card title="Built-in Core icons" note="The exact 112 names embedded by Luna::GUI" className="span-three icon-catalog-card">
+              <BuiltInIconCatalog />
             </Card>
           </div>
         </Section>

@@ -96,6 +96,49 @@ namespace Luna
             for(const Internal::PopupBuildScope& scope : frame->popup_stack) close_popup(context, scope.popup_id);
         }
 
+        static GUICore::ElementHandle begin_menu_item_container(GUICore::IContext* context, id_t id,
+            const c8* label, const MenuItemDesc& desc, const GUICore::LayoutConfig& layout)
+        {
+            GUICore::InteractionState interaction = context->get_interaction_state(id);
+            Ref<Internal::FrameState> frame = Internal::frame_state(context);
+            if(interaction.hovered && !frame->popup_stack.empty())
+            {
+                frame->popup_stack.back().hovered_menu_item = id;
+            }
+            if(desc.enabled && interaction.clicked) close_menu_stack(context);
+
+            GUICore::LayoutConfig resolved_layout = menu_item_layout(context, layout, false, label);
+            if(resolved_layout.padding.x == 0.0f && resolved_layout.padding.y == 0.0f &&
+                resolved_layout.padding.z == 0.0f && resolved_layout.padding.w == 0.0f)
+            {
+                f32 horizontal_padding = Internal::style_scalar(context, GUICore::ElementHandle(),
+                    "gui.menu_item.padding_x", 10.0f);
+                resolved_layout.padding = Float4U(horizontal_padding, 0.0f, horizontal_padding, 0.0f);
+            }
+            GUICore::ElementHandle item = Internal::begin_element(context, id,
+                label ? label : "Menu Item", resolved_layout);
+            Internal::set_interactable(context, item, desc.enabled);
+            if(desc.enabled && (interaction.hovered || interaction.active))
+            {
+                draw_menu_rect(context, Internal::style_color(context, item,
+                    interaction.active ? "gui.menu_item.active" : "gui.menu_item.hovered",
+                    interaction.active ? Float4U(0.18f, 0.36f, 0.62f, 1.0f) :
+                    Float4U(0.14f, 0.22f, 0.32f, 1.0f)),
+                    Internal::style_scalar(context, item, "gui.menu_item.radius", 3.0f));
+            }
+            GUICore::FlexLayoutDesc* flex = Internal::allocate_frame<GUICore::FlexLayoutDesc>(context);
+            flex->axis = GUICore::LayoutAxis::x;
+            flex->main_axis_gap = Internal::style_scalar(context, item, "gui.control.content_gap", 8.0f);
+            flex->cross_alignment = GUICore::FlexAlignment::center;
+            GUICore::LayoutCallbackConfig callbacks;
+            callbacks.algorithm = Name("gui.menu_item");
+            callbacks.measure_callback = GUICore::measure_flex;
+            callbacks.callback = GUICore::layout_flex;
+            callbacks.userdata = flex;
+            context->set_layout_callback_config(item, callbacks);
+            return item;
+        }
+
         LUNA_GUI_API GUICore::ElementHandle begin_menu_bar(GUICore::IContext* context, id_t id,
             const c8* label, const GUICore::LayoutConfig& layout, const MenuBarDesc& desc)
         {
@@ -212,6 +255,19 @@ namespace Luna
             Ref<Internal::FrameState> frame = Internal::frame_state(context);
             luassert(!frame->popup_stack.empty());
             return end_popup(context, frame->popup_stack.back().root, rect);
+        }
+
+        LUNA_GUI_API GUICore::ElementHandle begin_menu_item(GUICore::IContext* context, id_t id,
+            const c8* label, const MenuItemDesc& desc, const GUICore::LayoutConfig& layout)
+        {
+            luassert(context && id);
+            return begin_menu_item_container(context, id, label, desc, layout);
+        }
+
+        LUNA_GUI_API void end_menu_item(GUICore::IContext* context)
+        {
+            luassert(context);
+            context->end_element();
         }
 
         LUNA_GUI_API GUICore::ElementHandle menu_item(GUICore::IContext* context, id_t id, const c8* label,

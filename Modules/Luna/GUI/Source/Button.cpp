@@ -107,6 +107,7 @@ namespace Luna
                 flex->axis = GUICore::LayoutAxis::x;
                 flex->main_alignment = GUICore::FlexAlignment::center;
                 flex->cross_alignment = GUICore::FlexAlignment::center;
+                flex->main_axis_gap = style_scalar(context, element, "gui.control.content_gap", 8.0f);
                 GUICore::LayoutCallbackConfig callbacks;
                 callbacks.algorithm = Name("gui.button");
                 callbacks.measure_callback = GUICore::measure_flex;

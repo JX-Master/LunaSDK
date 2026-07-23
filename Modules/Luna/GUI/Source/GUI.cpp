@@ -36,11 +36,12 @@ namespace Luna
             virtual RV on_init() override
             {
                 Meta::register_GUI_types();
-                return ok;
+                return Internal::initialize_icons();
             }
 
             virtual void on_close() override
             {
+                Internal::close_icons();
             }
         };
 

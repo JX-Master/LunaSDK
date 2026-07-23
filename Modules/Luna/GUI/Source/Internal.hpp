@@ -17,6 +17,9 @@ namespace Luna
     {
         namespace Internal
         {
+            RV initialize_icons();
+            void close_icons();
+
             Ref<FrameState> frame_state(GUICore::IContext* context);
             void* allocate_frame_raw(GUICore::IContext* context, usize size, usize alignment);
             c8* copy_frame_string(GUICore::IContext* context, const c8* string, usize* out_size = nullptr);
