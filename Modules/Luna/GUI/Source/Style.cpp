@@ -306,6 +306,12 @@ namespace Luna
                 "Overlay", "Popup content padding.");
             add("gui.popup.gap", GUICore::StyleValueType::f32, GUICore::style_f32(4.0f),
                 "Overlay", "Popup item gap.");
+            add("gui.popup.backdrop_softness", GUICore::StyleValueType::f32,
+                GUICore::style_f32(0.0f), "Overlay",
+                "Popup backdrop blur softness. Zero disables capture.");
+            add("gui.popup.backdrop_downsample_level", GUICore::StyleValueType::f32,
+                GUICore::style_f32(1.0f), "Overlay",
+                "Popup backdrop blur power-of-two downsample level.");
             add("gui.tooltip.background", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.05f, 0.06f, 0.07f, 0.97f)), "Overlay", "Tooltip background.");
             add("gui.tooltip.border", GUICore::StyleValueType::f32x4,
@@ -316,6 +322,18 @@ namespace Luna
                 "Overlay", "Tooltip content padding.");
             add("gui.tooltip.gap", GUICore::StyleValueType::f32, GUICore::style_f32(4.0f),
                 "Overlay", "Tooltip item gap.");
+            add("gui.tooltip.backdrop_softness", GUICore::StyleValueType::f32,
+                GUICore::style_f32(0.0f), "Overlay",
+                "Tooltip backdrop blur softness. Zero disables capture.");
+            add("gui.tooltip.backdrop_downsample_level", GUICore::StyleValueType::f32,
+                GUICore::style_f32(1.0f), "Overlay",
+                "Tooltip backdrop blur power-of-two downsample level.");
+            add("gui.dock_panel.floating.backdrop_softness",
+                GUICore::StyleValueType::f32, GUICore::style_f32(0.0f),
+                "Dock Space", "Floating dock panel backdrop blur softness. Zero disables capture.");
+            add("gui.dock_panel.floating.backdrop_downsample_level",
+                GUICore::StyleValueType::f32, GUICore::style_f32(1.0f),
+                "Dock Space", "Floating dock panel backdrop blur power-of-two downsample level.");
             add("gui.combo.background", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.10f, 0.13f, 0.18f, 1.0f)), "Combo", "Combo background.");
             add("gui.combo.background_hovered", GUICore::StyleValueType::f32x4,

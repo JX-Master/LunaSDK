@@ -497,20 +497,12 @@ namespace Luna
                 Float4U clear_color = style_color(gui, "gui.canvas",
                     Float4U(0.92f, 0.93f, 0.92f, 1.0f));
 
-                RHI::RenderPassDesc render_pass;
                 lulet(back_buffer, swap_chain->get_current_back_buffer());
-                render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
-                cmdbuf->begin_render_pass(render_pass);
-                cmdbuf->end_render_pass();
-                luexp(gui_renderer->prepare(gui, cmdbuf, back_buffer));
-                render_pass.color_attachments[0] = RHI::ColorAttachment(
-                    back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
-                cmdbuf->begin_render_pass(render_pass);
-                gui_renderer->render(cmdbuf);
-                cmdbuf->end_render_pass();
-                cmdbuf->resource_barrier({}, {
-                    {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
-                    });
+                GUICore::RenderTargetDesc target(back_buffer);
+                target.color_load_op = RHI::LoadOp::clear;
+                target.color_clear_value = clear_color;
+                target.color_final_state = RHI::TextureStateFlag::present;
+                luexp(gui_renderer->render(gui, cmdbuf, target));
                 luexp(cmdbuf->submit({}, {}, true));
                 cmdbuf->wait();
                 luexp(cmdbuf->reset());

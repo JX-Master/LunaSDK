@@ -11,7 +11,9 @@ The drawing system provides a narrow bridge between GUI data and rendering:
 4. Generate commands after layout and input routing while preserving element painter order and layer Z order.
 5. Keep rendering policy outside GUI Core widgets, because GUI Core has no widgets.
 
-GUI Core does not begin RHI render passes or present swapchains. The application owns RHI command buffers and render targets.
+GUI Core owns every render/compute pass and target transition needed to execute its final command stream. The
+application owns the command buffer, final color and optional depth-stencil textures, submission, synchronization
+and presentation.
 
 ## Concepts
 ### Draw command
@@ -30,6 +32,8 @@ Supported command types are:
 9. `sdf`
 10. `push_clip`
 11. `pop_clip`
+12. `backdrop_blur_capture`
+13. `backdrop_blur`
 
 `rect`, `gradient_rect`, `rounded_rect` and `shadow` are convenient commands for common GUI chrome. The renderer
 translates them to SDF shape and color programs before submission. Use `sdf` directly for circles, ellipses,
@@ -56,6 +60,35 @@ For each layer, GUI Core replays element construction as a painter-order operati
 
 This lets a container draw its background below children and its border or feedback above children without
 requiring the final layout rectangle during element construction.
+
+### Backdrop capture and drawing
+`BackdropBlurCaptureDesc` is a sparse element attachment. When it is enabled, command generation inserts a
+`backdrop_blur_capture` marker immediately after entering the element and before its `before_children` callback. The
+marker has no raster output; it tells the renderer to materialize all earlier target color into an immutable filtered
+texture.
+
+A `backdrop_blur` draw command resolves the nearest capture attachment in its owning element's self-or-ancestor
+chain. Parent links remain layer-local. The relationship is resolved while the final command stream is compiled and
+is valid only for that render recording. Missing captures fail instead of reusing stale frame data.
+
+Capture softness is expressed in logical surface units. One capture may serve several backdrop draw commands. A
+later nested capture includes all commands completed before its own marker, including earlier backdrop draws.
+Rounded masks and GUI clips affect backdrop drawing; they do not truncate the source neighborhood required by the
+filter kernel.
+
+The renderer treats softness as the Gaussian standard deviation. Each requested downsample level is a separate
+2x center-and-diagonal tent pass, followed by normalized horizontal and vertical Gaussian passes at the resulting
+resolution. The requested level is a minimum; the renderer adds levels until the largest framebuffer-space working
+standard deviation is at most 10 pixels, subject to the bounded chain and captured extent, then clamps the working
+kernel to that limit if no more levels are available. Gaussian support is truncated at 2.5 standard deviations, and
+the capture halo covers its texel-rounded radius plus the footprint of the downsample tent chain. Working standard
+deviations are quantized to half-pixel steps, and normalized adjacent-tap offsets and weights are precomputed on the
+CPU before linear sampling. A quantized working standard deviation at or below 0.5 pixels skips the Gaussian passes.
+
+Intermediate texture precision follows the target format family instead of using a fixed format. RGBA/BGRA 8-bit
+targets use storage-writable RGBA8 UNORM intermediates, while supported floating-point targets retain matching
+floating-point precision. The filter operates on the numeric values supplied by the texture format and performs no
+explicit sRGB/linear transfer-function conversion.
 
 ### Rectangle reference
 `DrawCommandRectReference::layer` means `DrawCommand::rect` is already in layer coordinates.
@@ -278,26 +311,60 @@ context->draw(pop);
 
 Use explicit clips only when a command sequence needs a region stricter than the element layout clip. Scroll viewports and layout containers normally receive their base clipping from `LayoutResult::clip_rect` automatically.
 
-### Prepare and render
-Create one GUICore renderer for the RHI device and reuse it. `prepare` generates commands if necessary, validates
-and uploads SDF programs, and prepares both SDF and VG batches. Call it outside a render pass. The application
-retains ownership of target transitions and render-pass boundaries.
+### Draw a backdrop-filtered surface
+Attach capture configuration to the surface root, then emit `backdrop_blur` before its tint and children:
+
+```cpp
+GUICore::BackdropBlurCaptureDesc capture;
+capture.softness = 12.0f;
+capture.downsample_level = 1;
+context->set_backdrop_blur_capture(panel, capture);
+
+GUICore::DrawCommand backdrop;
+backdrop.type = GUICore::DrawCommandType::backdrop_blur;
+backdrop.rect_reference = GUICore::DrawCommandRectReference::element;
+backdrop.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+backdrop.radius = 8.0f;
+context->draw_for_element(panel, backdrop);
+```
+
+The same element may own and consume the capture because lookup starts at self. A regular rounded rectangle drawn
+after `backdrop_blur` supplies the translucent tint; blur capture does not select widget colors.
+
+The `GUI` package wires this mechanism into popups, tooltips and floating dock panels. It exposes
+`gui.popup.backdrop_softness`, `gui.tooltip.backdrop_softness` and
+`gui.dock_panel.floating.backdrop_softness`, plus a corresponding `backdrop_downsample_level` entry for each surface.
+Softness defaults to zero so these controls do not force a pass break until a style explicitly enables the effect.
+
+### Render
+Create one GUICore renderer for the RHI device and reuse it. `render` generates commands when necessary, compiles the
+ordered plan, uploads resources, records every target transition, and begins and ends all required render/compute
+passes. Call it while the graphics command buffer is recording and outside every pass. It returns outside every pass
+and does not submit the command buffer.
 
 ```cpp
 Ref<GUICore::IRenderer> renderer;
 luset(renderer, GUICore::new_renderer(device));
 
-luexp(renderer->prepare(context, command_buffer, render_target));
-RHI::RenderPassDesc render_pass;
-render_pass.color_attachments[0] = RHI::ColorAttachment(
-    render_target, RHI::LoadOp::load, RHI::StoreOp::store);
-command_buffer->begin_render_pass(render_pass);
-renderer->render(command_buffer);
-command_buffer->end_render_pass();
+GUICore::RenderTargetDesc target;
+target.color_texture = render_target;
+target.color_load_op = RHI::LoadOp::load;
+target.color_final_state = RHI::TextureStateFlag::shader_read_ps;
+luexp(renderer->render(context, command_buffer, target));
 ```
 
+The first internal color pass uses `color_load_op` and `color_clear_value`; every resumed pass uses load/store.
+Color storage is always preserved. `depth_stencil_texture` is optional and required only when surface depth testing
+is enabled.
+
+Without live captures, the renderer records one color pass. Each live capture may end the current pass, filter the
+accumulated target through compute passes, then resume color drawing in a load/store pass. A live capture requires a
+single-sample `tex2d` color target with `color_attachment | read_texture` usage. A non-sampleable swapchain target
+remains valid when no live capture is present.
+
 `generate_draw_commands` remains useful when tooling needs to inspect the final ordered stream. It is idempotent
-until a tree, layout, layer, draw configuration, or stored program mutation invalidates the stream.
+until a tree, layout, layer, draw configuration, backdrop capture attachment, or stored program mutation invalidates
+the stream.
 
 ## Examples
 ### Button chrome from delayed primitive commands

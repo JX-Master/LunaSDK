@@ -1501,7 +1501,7 @@ namespace Luna
             void build_overlay(GUICore::IContext* context, ShowcaseState& state, ShowcaseHandles& handles)
             {
                 section_heading(context, "overlay", "GUITEST - OVERLAY", "Menus, popup, tooltip, and dialog layers",
-                    "Transient surfaces use stronger elevation and ordinary alpha while true backdrop blur remains deferred.",
+                    "Transient surfaces use painter-ordered backdrop capture, separable blur, and translucent tint.",
                     GUI::IconName::bell);
                 GUICore::ElementHandle row;
                 page_two_columns(context, id(context, "overlay.row"), row, 420.0f);
@@ -1525,7 +1525,7 @@ namespace Luna
                 GUI::end_menu_bar(context, menu_bar);
                 end_panel(context, menu_card);
                 GUICore::ElementHandle popup_card = begin_card(context, "overlay.popup", grow_x(),
-                    "Popup and tooltip", "Independent GUICore layers with analytic shadow");
+                    "Popup and tooltip", "Independent GUICore layers with captured backdrop blur");
                 handles.popup_button = icon_button(context, id(context, "overlay.popup.open"),
                     GUI::IconName::squares_four, "Open Popup", fill_width(48.0f));
                 GUICore::ElementHandle tooltip_button = icon_button(context, id(context, "overlay.tooltip"),

@@ -668,6 +668,17 @@ namespace Luna
                 f32 panel_radius = style_scalar(context, element, "gui.radius.medium", 9.0f);
                 if(floating)
                 {
+                    if(style_scalar(context, element,
+                        "gui.dock_panel.floating.backdrop_softness", 0.0f) > 0.0f)
+                    {
+                        GUICore::DrawCommand backdrop;
+                        backdrop.type = GUICore::DrawCommandType::backdrop_blur;
+                        backdrop.rect_reference = GUICore::DrawCommandRectReference::element;
+                        backdrop.rect_layout_scale =
+                            Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+                        backdrop.radius = panel_radius;
+                        context->draw(backdrop);
+                    }
                     Float4U shadow_color = style_color(context, element, "gui.shadow.dark",
                         Float4U(0.0f, 0.0f, 0.0f, 0.30f));
                     shadow_color.w = min(shadow_color.w * 1.18f, 0.34f);
@@ -1243,6 +1254,21 @@ namespace Luna
             }
             info.root = Internal::begin_element(context, Internal::derived_id(id, "dock.panel.root"),
                 info.label.c_str(), root_layout);
+            if(info.floating)
+            {
+                f32 softness = Internal::style_scalar(context, info.root,
+                    "gui.dock_panel.floating.backdrop_softness", 0.0f);
+                if(softness > 0.0f)
+                {
+                    f32 downsample_level = Internal::style_scalar(context, info.root,
+                        "gui.dock_panel.floating.backdrop_downsample_level", 1.0f);
+                    GUICore::BackdropBlurCaptureDesc capture;
+                    capture.softness = softness;
+                    capture.downsample_level = (u8)clamp(
+                        (i32)round(downsample_level), 0, 4);
+                    context->set_backdrop_blur_capture(info.root, capture);
+                }
+            }
 
             if(info.desc.title_bar)
             {

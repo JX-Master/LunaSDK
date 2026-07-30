@@ -37,6 +37,12 @@ namespace Luna::GUICoreTest
                 subtitle = "Scalar-float programs combine analytic geometry, paint opcodes, clip bits, and shadows.";
                 break;
             }
+            if(state.slice_index == BLUR_MATERIALS_SLICE)
+            {
+                title = "Backdrop Blur Gallery";
+                subtitle = "Eight glass presets compare blur, transmission, tint, grain, and edge lighting.";
+                break;
+            }
             if(state.slice_index == WORLD_SURFACE_SLICE)
             {
                 title = "World-space GUI Surface";

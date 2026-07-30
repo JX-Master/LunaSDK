@@ -2,7 +2,7 @@
 Approved.
 
 ## Last updated
-2026/7/22
+2026/7/30
 
 ## Background
 LunaSDK currently has a `GUI` module that has already moved away from the old ImGui backend. The current implementation uses explicit GUI contexts, per-frame descriptions, layers, state objects, style entries, render proxies, VG-backed drawing, and GUI debugging support. This direction has proven useful for Studio, GUIEditor, in-game GUI rendering, and custom vector rendering.
@@ -22,6 +22,13 @@ At the same time, GUIEditor and GUIAsset need stable design-time and runtime met
 Since common GUI concepts will be moved into `GUICore`, the high-level immediate API does not need to remain a fully generic widget framework. Instead, LunaSDK should support multiple immediate API packages for different application domains. Each package can make stronger visual and interaction assumptions, keep its implementation smaller, and still interoperate with other packages because they all build the same `GUICore` element tree.
 
 The original GUICore rendering boundary assumed that every generated draw command would be compiled into one VG shape draw list and rasterized exclusively by VG. This is sufficient for ordinary vector shapes, text, and images, but it is too restrictive for procedural shadows, temporary render targets, offscreen composition, and future multi-pass effects. Some of these operations do not consume a VG shape buffer and are more naturally implemented by dedicated RHI pipelines. Requiring VG to own every such pipeline would make VG absorb GUI-specific render orchestration that is unrelated to vector path rasterization.
+
+The later application-owned render-pass boundary is also too restrictive for painter-ordered effects. A backdrop blur
+must finish all earlier GUI draws, make their color result readable, run one or more filtering passes, then resume
+ordinary GUI drawing with the previous color contents loaded. A renderer that is invoked only inside one
+application-owned render pass cannot perform those transitions or decide how many render passes the final command
+stream requires. Replaying every prefix into a second private target would preserve the old public interface but
+would duplicate GUI work and would not necessarily capture the real target contents.
 
 GUICore layout, drawing and input use a two-dimensional logical coordinate system. This is appropriate for desktop
 windows and render-to-texture interfaces, but in-game GUI also needs to render directly on an arbitrary plane in a
@@ -81,15 +88,76 @@ This decision removes the following concepts from the long-term high-level `GUI`
 
 2. **Rendering layer**
    - Consumes the generated draw-command stream and compiles it into an ordered render plan and concrete RHI command-buffer operations.
-   - Owns pipeline selection, descriptor binding, temporary render resources, internal sampled-resource transitions, and preservation of painter order across different rasterization paths.
-   - Does not begin or end the host render pass and does not transition the host render target. The application selects and transitions the target, begins a compatible render pass, invokes the prepared rendering plan, and ends the pass.
+   - Owns pipeline selection, descriptor binding, temporary render resources, target and sampled-resource transitions, all GUI render/compute pass boundaries, and preservation of painter order across different rasterization paths.
+   - Receives a caller-provided final color texture and an optional depth-stencil texture. It derives attachment formats from those resources, begins and ends every GUI pass, and leaves the attachments in documented final states.
    - Uses VG as the primary backend for vector paths, rounded rectangles, text, images, and other suitable vector primitives.
-   - May use GUICore-owned RHI pipelines directly for primitives or effects that do not naturally use VG shape buffers, such as analytic shadows, offscreen composition, and future multi-pass effects.
+   - May use GUICore-owned RHI pipelines directly for primitives or effects that do not naturally use VG shape buffers, such as analytic shadows, backdrop filtering and offscreen composition.
    - Does not interpret widget semantics or high-level style policy. Immediate API packages still decide which primitives and effects to emit.
 
 Direct RHI use is an internal rendering-layer capability, not a general escape hatch that lets immediate API packages inject arbitrary command-buffer callbacks. Public draw commands must remain inspectable data with deterministic ordering and declared resource usage. New RHI-backed primitives should be represented by explicit draw-command types and implemented by rendering-layer command compilers.
 
-The rendering layer owns command compilation and backend interleaving, but the application owns render-pass boundaries. Rendering uses a two-step contract: `IRenderer::prepare` runs outside a render pass to compile commands, upload temporary data, and transition internally sampled resources; `IRenderer::render` runs inside an application-owned compatible pass and submits the prepared VG and direct-RHI batches in painter order. A backend used by the rendering layer must therefore support pass-independent preparation and pass-local submission without claiming exclusive ownership of the target pass. The old `IContext::compile_draw_commands(VG::IShapeDrawList*)` path is removed from the long-term contract.
+The renderer exposes one recording entry point. `IRenderer::render` receives the context, a recording graphics command
+buffer, one render-target description and one surface description. The command buffer must not be inside any pass
+when the call begins or ends. The renderer generates commands when necessary, compiles the ordered plan, uploads
+resources, records every required barrier and graphics/compute pass, and transitions the supplied attachments to
+their requested final states. It does not submit, wait, reset the command buffer, present a swapchain, or provide
+cross-queue synchronization; those remain application responsibilities.
+
+The required color texture is the final GUI target. The target description supplies the first-pass color load
+operation, clear value and requested final state; color storage is always preserved. An optional depth-stencil
+texture supplies its own load/store/clear values and final state. `RenderSurfaceDesc` keeps projection, depth
+test/write, comparison and culling policy, but no longer duplicates the depth format. When depth testing is enabled,
+the target description must provide a compatible depth-stencil texture.
+
+### Painter-ordered backdrop blur
+Backdrop blur is split into capture and drawing responsibilities.
+
+1. A `BackdropBlurCaptureDesc` is attached sparsely to an element. At that element's painter entry, before its
+   `before_children` callback, command generation inserts an inspectable `backdrop_blur_capture` marker. The marker
+   draws no pixels but forms an ordered render-plan barrier.
+2. A `backdrop_blur` draw command resolves the nearest capture attachment in the current element's
+   self-or-ancestor chain. Parent links never cross layers. The compiler converts this relationship into a frame-local
+   capture resource reference; missing or forward references fail closed.
+3. Reaching a live capture marker flushes pending VG, SDF and backdrop batches, stores and ends the current color
+   pass, makes the accumulated target readable, filters the required region into an immutable renderer-owned texture,
+   then resumes GUI drawing in a new load/store pass.
+4. One capture result may serve multiple descendant draw commands. A later capture sees every command completed
+   before its own marker, including earlier backdrop draws. Capture contents are regenerated each frame; only
+   allocation capacity may be pooled across frames.
+
+The semantic output region is bounded by the capture element and its consuming backdrop draws. Filtering reads an
+expanded source region that includes the algorithm's kernel halo. Rounded masks and GUI clips apply when the filtered
+result is drawn, not while its source is captured. Screen-space target coordinates map filtered pixels back to draw
+commands without stretching a cropped texture.
+
+Softness is a Gaussian standard deviation in logical surface units. Filtering first performs the requested
+power-of-two downsample chain using an energy-preserving center-and-diagonal tent kernel derived from Studio Bloom,
+then performs normalized horizontal and vertical Gaussian convolution at the working resolution. Linear sampling
+combines adjacent Gaussian tap pairs. The requested downsample level is a minimum: the renderer adds levels until
+the largest framebuffer-space working standard deviation is at most 10 pixels, or until the bounded chain reaches
+its limit or the captured extent. If the limit is reached first, the working kernel clamps to 10 pixels. Gaussian
+support is truncated at 2.5 standard deviations. The capture halo covers that texel-rounded support plus the
+footprint contributed by the downsample tent chain.
+Working standard deviations are quantized to half-pixel steps, and normalized paired sample offsets and weights are
+precomputed on the CPU. A quantized working standard deviation at or below 0.5 pixels skips Gaussian convolution
+and retains only the requested snapshot or downsample result.
+
+Backdrop filtering uses a storage-writable intermediate format selected from the caller's color-target format
+rather than a fixed format. Ordinary RGBA/BGRA 8-bit targets use RGBA8 UNORM storage, floating-point targets preserve
+their floating-point precision when the RHI supports the corresponding storage format, and unsupported integer,
+compressed or depth formats fail explicitly. GUICore filters the numeric values supplied by the texture format and
+does not explicitly decode or encode a transfer function. This accepts the small luminance difference between
+encoded-space and linear-light blur in exchange for a simpler and less expensive filter.
+
+The initial backdrop implementation supports single-sample, two-dimensional screen-space targets. A target used by
+a live capture must support both `color_attachment` and `read_texture`. Non-sampleable swapchain images remain valid
+when the command stream has no live captures; a capture on such a target returns `not_supported` instead of silently
+changing semantics. Perspective/world-space backdrop filtering and MSAA capture are deferred.
+
+VG remains a raster backend rather than a render-pass owner. Its integrated shape renderer receives target format,
+extent and fixed-function compatibility data, exposes the resource usages needed by recorded draw ranges, and can
+submit selected ranges into GUICore-owned passes. GUICore combines those usages with SDF and backdrop resources and
+records the actual barriers.
 
 ### SDF shape and paint programs
 GUICore owns a signed-distance-field backend for analytic GUI geometry and effects. VG remains the backend for text,
@@ -223,8 +291,8 @@ delayed callbacks run, so generation is deterministic. The renderer validates pr
 structured-buffer pages and stores page-local offsets in instances.
 
 Consecutive SDF instances using the same shape/color page pair are submitted with `draw_indexed_instanced` without
-changing logical order. SDF instance state is not a batch key. VG and SDF batches remain interleaved in exact painter
-order, and the application-owned `prepare`/`render` boundary applies to both backends. Transitional rectangle,
+changing logical order. SDF instance state is not a batch key. VG, SDF and backdrop batches remain interleaved in
+exact painter order, and capture markers prevent batching across a target-read boundary. Transitional rectangle,
 rounded-rectangle, gradient-rectangle and shadow commands compile into the same SDF representation; text, images,
 lines and arbitrary vector paths continue through VG.
 
@@ -233,7 +301,7 @@ One GUICore context describes one logical two-dimensional **GUI surface**. `Fram
 rectangles, layer positions, SDF programs, VG positions, GUI clips and input events remain in surface-local logical
 coordinates with a top-left origin and downward-positive Y axis.
 
-The host may supply a `surface_to_clip` matrix when preparing the renderer. It maps positions `(x, y, 0, 1)` from
+The host may supply a `surface_to_clip` matrix when rendering. It maps positions `(x, y, 0, 1)` from
 logical surface coordinates directly to clip space. Without a custom transform, the renderer derives the existing
 top-left orthographic projection from `FrameDesc::screen_size`. The matrix is stored once in frame data and does not
 become part of `SDFInstance`, `SDFState` or the SDF batch key.
@@ -258,12 +326,14 @@ The shader combines analytic softness with a minimum derivative footprint so min
 alias.
 
 #### Optional scene depth
-The render-surface description may declare a depth-stencil format, depth test/write state, comparison function and
-cull mode. Screen-space rendering leaves depth disabled. A normal in-game panel uses `less_equal` depth testing with
-depth writes disabled so scene geometry can occlude the GUI without transparent GUI fragments becoming occluders.
+The render-surface description declares depth test/write state, comparison function and cull mode. The render-target
+description optionally supplies the real depth-stencil texture and its load/store/clear contract. Screen-space
+rendering leaves depth disabled. A normal in-game panel uses `less_equal` depth testing with depth writes disabled so
+scene geometry can occlude the GUI without transparent GUI fragments becoming occluders.
 
-SDF and integrated VG pipelines use compatible color, depth and raster state. The caller still owns attachment
-transitions and render-pass creation, and the active pass must match the formats declared during `prepare`.
+SDF and integrated VG pipelines derive compatible color and depth formats from the supplied attachments. GUICore
+owns their barriers and pass creation. If a backdrop capture interrupts a depth-enabled GUI pass, intermediate
+depth/stencil contents are preserved and the resumed pass loads them before drawing continues.
 
 #### Surface input mapping
 GUICore does not accept camera rays or query a physics world. The host selects a surface, intersects the pointer ray
@@ -474,7 +544,11 @@ Modules/Luna/GUIWindow
 
 `GUICore` may depend on `Runtime`, `RHI`, `VG`, and `Font` only when required for draw command and font resource integration. It must not depend on `Window`, `HID` platform event types, Studio, GUIEditor, or high-level GUI widgets.
 
-Within `GUICore`, logical data and algorithms should remain separable from rendering implementation code. RHI pipeline objects, descriptor sets, and temporary GPU resources belong to the rendering layer and must not be stored in elements or required by unrelated layout and input APIs. Host render targets, their attachment transitions, and render-pass begin/end operations remain application responsibilities.
+Within `GUICore`, logical data and algorithms should remain separable from rendering implementation code. RHI
+pipeline objects, descriptor sets, backdrop capture textures and other temporary GPU resources belong to the
+rendering layer and must not be stored in elements, context state objects or unrelated layout/input APIs. Applications
+create the final color and optional depth-stencil textures and own command-buffer submission, synchronization and
+presentation. GUICore owns attachment transitions and every render/compute pass recorded by its renderer.
 
 `GUI` depends on `GUICore` and provides the default editor-style immediate API package. It must not define its own runtime context, runtime node tree, or render proxy system.
 
@@ -585,7 +659,8 @@ Expected benefits:
 5. **Better in-game GUI support**: layers, draw primitives, interactables, and input routing are host-independent and can be used for window GUI and in-game surfaces.
 6. **Specialized UI packages**: different domains can provide different immediate API packages without duplicating core layout, input, state, and draw infrastructure.
 7. **Simpler default GUI package**: the default editor-style package can stop pretending to be fully generic and can optimize for DCC/editor workflows.
-8. **Extensible rendering orchestration**: GUICore can preserve one painter-ordered command stream while combining VG vector rasterization with dedicated RHI pipelines, offscreen targets, and future multi-pass effects.
+8. **Extensible rendering orchestration**: GUICore can preserve one painter-ordered command stream while selecting
+   one or many passes and combining VG vector rasterization with dedicated RHI pipelines and temporary targets.
 9. **Direct world-space GUI**: SDF geometry, VG text, images and icons can render on an arbitrary scene plane without an intermediate GUI texture.
 10. **Stable hot-path data**: world-space projection does not enlarge the 40-byte SDF instance, duplicate raster states or change existing batch keys.
 11. **Resolution-independent perspective output**: perspective-correct local coordinates retain analytic gradients, clipping and antialiasing at the final scene sampling rate.
@@ -603,8 +678,10 @@ Risks:
 5. **Performance regression risk**: a data-oriented design still needs benchmarks; new abstractions should not assume they are faster without measurement.
 6. **Customization regression risk**: removing render proxies reduces per-widget render customization in the default GUI package. This is intentional, but it must be documented and offset by supporting additional immediate API packages.
 7. **Rendering-layer scope risk**: the new rendering layer may duplicate VG or grow into a general-purpose render graph if its responsibilities are not kept to GUI command execution.
-8. **Backend interleaving risk**: VG-backed and direct-RHI commands must preserve exact painter order, clipping, internal resource states, and compatibility with the application-owned render pass.
-9. **Surface-transform integration risk**: custom transforms must follow GUICore's top-left coordinate convention and be paired with a compatible host render pass.
+8. **Backend interleaving risk**: VG-backed and direct-RHI commands must preserve exact painter order, clipping and
+   resource states across GUICore-owned pass boundaries.
+9. **Surface-transform integration risk**: custom transforms must follow GUICore's top-left coordinate convention
+   and use attachments compatible with the renderer-owned pass plan.
 10. **Grazing-angle risk**: extremely minified surfaces and geometry crossing the near plane require explicit visual regression coverage.
 11. **World-input adapter risk**: platform IME rectangles must be projected back to screen space, while surface selection and occlusion remain host responsibilities.
 12. **Initial plane-count limitation**: one context cannot initially contain several independently transformed planes.
@@ -612,6 +689,10 @@ Risks:
 14. **SDF shader-cost risk**: deep CSG, many gradient stops, multi-effect spans and shifted shadow evaluation can increase fragment cost.
 15. **Approximate-distance risk**: CSG min/max preserves contours but not exact Euclidean distance near every seam.
 16. **Navigation inspection limitation**: tools can see callback presence and mode but cannot infer every runtime target selected by view code.
+17. **Backdrop pass-break risk**: each live capture may store and reload attachments and dispatch filtering work;
+    tile-based GPUs can make pass breaks more expensive than the backdrop draw itself.
+18. **Attachment capability risk**: a target that is valid for ordinary GUI drawing may not be sampleable for
+    backdrop capture. Swapchain, MSAA and perspective paths require explicit validation rather than implicit fallback.
 
 Mitigations:
 
@@ -624,7 +705,9 @@ Mitigations:
 7. Document each immediate API package's intended domain and supported customization surface.
 8. Keep vector path rasterization in VG and add direct RHI pipelines only for explicit GUICore primitives that do not naturally use VG shape buffers.
 9. Keep RHI execution internal to the rendering layer; do not expose arbitrary command-buffer callbacks as ordinary draw commands.
-10. Split renderer execution into pass-independent `prepare` and pass-local `render` operations. Applications own target transitions and render-pass begin/end; the rendering layer owns internal resources, sampled-resource transitions, PSO and descriptor binding, and ordered draw submission.
+10. Expose one renderer entry point that starts and ends outside every pass. Let GUICore compile the complete plan,
+    transition supplied attachments and record all required graphics/compute passes; keep submit, synchronization and
+    presentation application-owned.
 11. Keep the public surface coordinate convention fixed at top-left/Y-down and adapt backend-specific coordinate conventions inside the renderer.
 12. Validate both default orthographic and custom perspective paths with the same mixed SDF/VG sample content.
 13. Keep scene selection, ray ordering, camera composition and IME screen projection in host adapters rather than GUICore.
@@ -633,6 +716,8 @@ Mitigations:
 16. Maintain CPU reference evaluation, cross-backend shader compilation, visual SDF samples and counters for scalar data, upload bytes, instances, pages and backend switches.
 17. Treat fragment discard and multi-effect fusion as measured optimizations rather than unconditional assumptions.
 18. Keep navigation callbacks frame-local and require explicit calls to `navigate_default` when view code wants automatic fallback.
+19. Track capture count, render-pass count, filtered pixels, blur dispatches and temporary texture bytes. Eliminate
+    unused captures, share one immutable result across multiple draws, and reject unsupported target capabilities.
 
 ## Alternatives considered
 
@@ -647,6 +732,17 @@ Mitigations:
     2. Offscreen and multi-pass composition require render-target and pass orchestration above individual VG shape draws.
     3. VG would accumulate GUI-specific pipelines and scheduling responsibilities unrelated to vector rasterization.
     4. A single VG draw-list contract cannot naturally describe arbitrary ordered RHI-backed primitives without becoming a general GUI renderer itself.
+
+### Keep application-owned render passes and replay painter prefixes for backdrop capture
+* Status: rejected.
+* Pros:
+    1. Preserves the existing public `prepare`/`render` split.
+    2. Does not require GUICore to begin or end the application's target pass.
+* Cons:
+    1. Every capture requires replaying earlier GUI ranges into a private target, duplicating raster work.
+    2. The replayed prefix is not guaranteed to match color already present in the real target.
+    3. Nested captures multiply work and make target/depth equivalence difficult to validate.
+    4. Pass count and attachment lifetimes remain split across two owners.
 
 ### Give each immediate API package direct RHI rendering callbacks
 * Status: rejected.
@@ -844,6 +940,14 @@ SDF programs, surface model and related core contracts are recorded by revising 
 additional GUICore-specific ADRs. The version history below preserves when each refinement was adopted.
 
 ## Version history
+* **2026/7/30** Replaced the application-owned `prepare`/`render` split with one GUICore-owned rendering entry point.
+  The host supplies a final color texture and optional depth-stencil texture while GUICore records all attachment
+  transitions and graphics/compute passes. Added painter-ordered backdrop capture attachments, self-or-ancestor
+  backdrop draws, immutable frame-local capture results and explicit target capability limits. Backdrop filtering
+  uses Studio Bloom-derived tent downsampling followed by normalized horizontal and vertical Gaussian convolution.
+  Revised the filter budget to performance-driven automatic downsampling, 2.5-sigma support, half-pixel
+  precomputed kernels, target-derived intermediate precision, transfer-function-agnostic filtering and a sub-pixel
+  fast path.
 * **2026/7/22** Added the default GUI package's curated Phosphor-derived vector icon pack, offline SVG-to-VG generation contract and ordinary-child composition rule; widget containers remain icon-agnostic.
 * **2026/7/22** Consolidated the previously separate per-element navigation and SDF shape/paint decisions into ADR-0004, and established this ADR as the single pre-release architecture record for GUICore.
 * **2026/7/22** Integrated the world-space GUI surface decision into this ADR. GUICore now defines one top-left logical surface per context, a shared SDF/VG surface-to-clip transform, perspective derivative antialiasing, optional scene depth and host-side ray-to-surface input mapping.

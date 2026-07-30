@@ -551,6 +551,8 @@ namespace Luna
             u32 hit_test_config = U32_MAX;
             //! Sparse draw configuration index owned by the context, or `U32_MAX` when no callback is attached.
             u32 draw_config = U32_MAX;
+            //! Sparse backdrop blur capture index owned by the context, or `U32_MAX` when capture is disabled.
+            u32 backdrop_blur_capture = U32_MAX;
         };
 
         //! One GUI layer record.

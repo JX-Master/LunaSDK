@@ -180,17 +180,16 @@ namespace Luna
             return ok;
         }
 
-        inline RV render_interactive_gui_demo(InteractiveGUIDemoApp& app, RHI::ITexture* back_buffer)
+        inline RV render_interactive_gui_demo(InteractiveGUIDemoApp& app, RHI::ITexture* back_buffer,
+            const Float4U& clear_color)
         {
             lutry
             {
-                luexp(app.renderer->prepare(app.gui, app.cmdbuf, back_buffer));
-                RHI::RenderPassDesc render_pass;
-                render_pass.color_attachments[0] = RHI::ColorAttachment(
-                    back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
-                app.cmdbuf->begin_render_pass(render_pass);
-                app.renderer->render(app.cmdbuf);
-                app.cmdbuf->end_render_pass();
+                GUICore::RenderTargetDesc target(back_buffer);
+                target.color_load_op = RHI::LoadOp::clear;
+                target.color_clear_value = clear_color;
+                target.color_final_state = RHI::TextureStateFlag::present;
+                luexp(app.renderer->render(app.gui, app.cmdbuf, target));
             }
             lucatchret;
             return ok;
@@ -258,18 +257,9 @@ namespace Luna
                     luexp(GUIWindow::update_text_input(&input_adapter));
 
                     lulet(back_buffer, app.swap_chain->get_current_back_buffer());
-                    RHI::RenderPassDesc render_pass;
                     Float4U clear_color = app.gui->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
                         GUICore::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
-                    render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store,
-                        clear_color);
-                    app.cmdbuf->begin_render_pass(render_pass);
-                    app.cmdbuf->end_render_pass();
-                    luexp(render_interactive_gui_demo(app, back_buffer));
-                    app.cmdbuf->resource_barrier({}, {
-                        { back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic,
-                            RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none }
-                    });
+                    luexp(render_interactive_gui_demo(app, back_buffer, clear_color));
                     luexp(app.cmdbuf->submit({}, {}, true));
                     app.cmdbuf->wait();
                     luexp(app.cmdbuf->reset());

@@ -274,6 +274,20 @@ namespace Luna
             //! elements without delayed draw behavior.
             virtual DrawConfig get_draw_config(const ElementHandle& element) const = 0;
 
+            //! Enables backdrop capture at one element's painter entry.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @param[in] desc The capture and filtering configuration.
+            //! @remark Command generation inserts the capture before the element's @ref DrawPhase::before_children
+            //! callback. Invalid handles are ignored.
+            virtual void set_backdrop_blur_capture(const ElementHandle& element,
+                const BackdropBlurCaptureDesc& desc) = 0;
+
+            //! Gets backdrop capture configuration attached to an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @return Returns the attached configuration, or a default configuration for invalid handles and
+            //! elements without backdrop capture.
+            virtual BackdropBlurCaptureDesc get_backdrop_blur_capture(const ElementHandle& element) const = 0;
+
             //! Generates the final draw command stream for the current element trees.
             //! @return Returns success or failure code.
             //! @remark Generation traverses layers from bottom to top and elements in painter order. Element draw

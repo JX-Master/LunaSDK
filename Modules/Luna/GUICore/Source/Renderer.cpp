@@ -15,8 +15,10 @@
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/VG/Shapes.hpp>
 #include <Luna/VG/TextArranger.hpp>
+#include <BackdropBlurCS.hpp>
 #include <SDFVS.hpp>
 #include <SDFPS.hpp>
+#include <cmath>
 
 namespace Luna
 {
@@ -41,6 +43,157 @@ namespace Luna
             bool color_visible(const Float4U& color)
             {
                 return color.w > 0.0f;
+            }
+
+            RHI::Format select_backdrop_intermediate_format(RHI::Format format)
+            {
+                using RHI::Format;
+                switch(format)
+                {
+                case Format::rgba8_unorm:
+                case Format::rgba8_unorm_srgb:
+                case Format::bgra8_unorm:
+                case Format::bgra8_unorm_srgb:
+                    // sRGB and BGRA storage writes are not portable across
+                    // the supported RHI backends.
+                    return Format::rgba8_unorm;
+                case Format::rgba16_float:
+                    return Format::rgba16_float;
+                case Format::rgba32_float:
+                    return Format::rgba32_float;
+                case Format::rgba16_unorm:
+                case Format::rgb10a2_unorm:
+                case Format::rg11b10_float:
+                case Format::rgb9e5_float:
+                    return Format::rgba16_float;
+                default:
+                    return Format::unknown;
+                }
+            }
+
+            struct BackdropGaussianKernel
+            {
+                f32 center_weight = 1.0f;
+                u32 pair_count = 0;
+                Float4U pairs[MAX_BACKDROP_GAUSSIAN_PAIRS] = {};
+            };
+
+            f32 quantize_backdrop_gaussian_sigma(f32 sigma)
+            {
+                f32 quantized_sigma = (f32)std::floor(
+                    (f64)sigma / BACKDROP_GAUSSIAN_SIGMA_QUANTIZATION + 0.5) *
+                    BACKDROP_GAUSSIAN_SIGMA_QUANTIZATION;
+                return min(max(quantized_sigma, 0.0f),
+                    MAX_BACKDROP_WORKING_SIGMA);
+            }
+
+            u32 calculate_backdrop_downsample_passes(
+                const BackdropBlurCaptureDesc& desc,
+                f32 framebuffer_scale_x, f32 framebuffer_scale_y)
+            {
+                u32 pass_count = min<u32>(desc.downsample_level,
+                    MAX_BACKDROP_DOWNSAMPLE_PASSES);
+                f32 sigma = max(desc.softness, 0.0f) *
+                    max(framebuffer_scale_x, framebuffer_scale_y);
+                while(pass_count < MAX_BACKDROP_DOWNSAMPLE_PASSES &&
+                    sigma / (f32)(1u << pass_count) >
+                        MAX_BACKDROP_WORKING_SIGMA)
+                {
+                    ++pass_count;
+                }
+                return pass_count;
+            }
+
+            BackdropGaussianKernel build_backdrop_gaussian_kernel(f32 sigma)
+            {
+                BackdropGaussianKernel kernel;
+                f64 quantized_sigma =
+                    quantize_backdrop_gaussian_sigma(sigma);
+                luassert(quantized_sigma >
+                    BACKDROP_GAUSSIAN_FAST_PATH_SIGMA);
+                u32 radius = min<u32>((u32)std::ceil(
+                    quantized_sigma * BACKDROP_GAUSSIAN_SUPPORT),
+                    MAX_BACKDROP_GAUSSIAN_PAIRS * 2);
+                f64 weights[MAX_BACKDROP_GAUSSIAN_PAIRS * 2 + 1] = {};
+                weights[0] = 1.0;
+                f64 total_weight = 1.0;
+                f64 inverse_two_sigma_squared =
+                    0.5 / (quantized_sigma * quantized_sigma);
+                for(u32 i = 1; i <= radius; ++i)
+                {
+                    weights[i] = std::exp(
+                        -(f64)(i * i) * inverse_two_sigma_squared);
+                    total_weight += weights[i] * 2.0;
+                }
+                kernel.center_weight = (f32)(1.0 / total_weight);
+                for(u32 i = 1; i <= radius; i += 2)
+                {
+                    f64 first_weight = weights[i];
+                    f64 second_weight =
+                        i + 1 <= radius ? weights[i + 1] : 0.0;
+                    f64 pair_weight = first_weight + second_weight;
+                    f64 pair_offset = ((f64)i * first_weight +
+                        (f64)(i + 1) * second_weight) / pair_weight;
+                    luassert(kernel.pair_count <
+                        MAX_BACKDROP_GAUSSIAN_PAIRS);
+                    kernel.pairs[kernel.pair_count++] = Float4U(
+                        (f32)pair_offset,
+                        (f32)(pair_weight / total_weight), 0.0f, 0.0f);
+                }
+                return kernel;
+            }
+
+            f32 calculate_backdrop_capture_halo(
+                const BackdropBlurCaptureDesc& desc,
+                f32 framebuffer_scale_x, f32 framebuffer_scale_y)
+            {
+                u32 pass_count = calculate_backdrop_downsample_passes(
+                    desc, framebuffer_scale_x, framebuffer_scale_y);
+                u32 downsample_factor = 1u << pass_count;
+                f32 downsample_support = pass_count ?
+                    (f32)(downsample_factor - 1) : 0.0f;
+                auto axis_support = [&](f32 framebuffer_scale)
+                {
+                    f32 working_sigma =
+                        max(desc.softness, 0.0f) *
+                        framebuffer_scale / (f32)downsample_factor;
+                    f32 quantized_sigma =
+                        quantize_backdrop_gaussian_sigma(
+                            working_sigma);
+                    f32 gaussian_support = 0.0f;
+                    if(quantized_sigma >
+                        BACKDROP_GAUSSIAN_FAST_PATH_SIGMA)
+                    {
+                        gaussian_support = (f32)std::ceil(
+                            quantized_sigma *
+                                BACKDROP_GAUSSIAN_SUPPORT) *
+                            (f32)downsample_factor;
+                    }
+                    return (downsample_support + gaussian_support) /
+                        framebuffer_scale;
+                };
+                return max(axis_support(framebuffer_scale_x),
+                    axis_support(framebuffer_scale_y));
+            }
+
+            void set_backdrop_gaussian_kernel(BackdropBlurParams& parameters,
+                const BackdropGaussianKernel& kernel)
+            {
+                parameters.gaussian_center_weight = kernel.center_weight;
+                parameters.gaussian_pair_count = kernel.pair_count;
+                parameters.gaussian_pair_0 = kernel.pairs[0];
+                parameters.gaussian_pair_1 = kernel.pairs[1];
+                parameters.gaussian_pair_2 = kernel.pairs[2];
+                parameters.gaussian_pair_3 = kernel.pairs[3];
+                parameters.gaussian_pair_4 = kernel.pairs[4];
+                parameters.gaussian_pair_5 = kernel.pairs[5];
+                parameters.gaussian_pair_6 = kernel.pairs[6];
+                parameters.gaussian_pair_7 = kernel.pairs[7];
+                parameters.gaussian_pair_8 = kernel.pairs[8];
+                parameters.gaussian_pair_9 = kernel.pairs[9];
+                parameters.gaussian_pair_10 = kernel.pairs[10];
+                parameters.gaussian_pair_11 = kernel.pairs[11];
+                parameters.gaussian_pair_12 = kernel.pairs[12];
             }
 
             bool rect_visible(const RectF& rect)
@@ -251,6 +404,30 @@ namespace Luna
                 luset(m_sdf_pipeline_layout, m_device->new_pipeline_layout(PipelineLayoutDesc(
                     {&descriptor_set_layout, 1}, PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
+                luset(m_backdrop_descriptor_set_layout,
+                    m_device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
+                        DescriptorSetLayoutBinding::uniform_buffer_view(
+                            0, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_texture_view(
+                            TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_write_texture_view(
+                            TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::sampler(
+                            3, 1, ShaderVisibilityFlag::compute)
+                    })));
+                IDescriptorSetLayout* backdrop_descriptor_set_layout =
+                    m_backdrop_descriptor_set_layout;
+                luset(m_backdrop_pipeline_layout,
+                    m_device->new_pipeline_layout(PipelineLayoutDesc(
+                        {&backdrop_descriptor_set_layout, 1},
+                        PipelineLayoutFlag::deny_vertex_shader_access |
+                        PipelineLayoutFlag::deny_pixel_shader_access)));
+                ComputePipelineStateDesc backdrop_pipeline_desc;
+                LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(backdrop_pipeline_desc, BackdropBlurCS);
+                backdrop_pipeline_desc.pipeline_layout = m_backdrop_pipeline_layout;
+                luset(m_backdrop_pipeline_state,
+                    m_device->new_compute_pipeline_state(backdrop_pipeline_desc));
+
                 Float2U vertices[] = {
                     Float2U(0.0f, 0.0f), Float2U(0.0f, 1.0f),
                     Float2U(1.0f, 1.0f), Float2U(1.0f, 0.0f)
@@ -274,7 +451,7 @@ namespace Luna
             return ok;
         }
 
-        RV Renderer::create_sdf_pipeline(RHI::Format render_target_format,
+        RV Renderer::create_sdf_pipeline(RHI::Format render_target_format, RHI::Format depth_stencil_format,
             const RenderSurfaceDesc& surface)
         {
             using namespace RHI;
@@ -305,10 +482,10 @@ namespace Luna
                     surface.depth_write_enable, surface.depth_compare_function);
                 desc.num_color_attachments = 1;
                 desc.color_formats[0] = render_target_format;
-                desc.depth_stencil_format = surface.depth_stencil_format;
+                desc.depth_stencil_format = depth_stencil_format;
                 luset(m_sdf_pipeline_state, m_device->new_graphics_pipeline_state(desc));
                 m_render_target_format = render_target_format;
-                m_depth_stencil_format = surface.depth_stencil_format;
+                m_depth_stencil_format = depth_stencil_format;
                 m_depth_test_enable = surface.depth_test_enable;
                 m_depth_write_enable = surface.depth_write_enable;
                 m_depth_compare_function = surface.depth_compare_function;
@@ -318,7 +495,7 @@ namespace Luna
             return ok;
         }
 
-        RV Renderer::compile_draw_commands(IContext* context)
+        RV Renderer::compile_draw_commands(IContext* context, RHI::ITexture* render_target)
         {
             lutry
             {
@@ -329,6 +506,137 @@ namespace Luna
                 Span<const DrawCommand> commands = context->get_draw_commands();
                 Span<const f32> context_shape_floats = context->get_sdf_shape_floats();
                 Span<const f32> context_color_floats = context->get_sdf_color_floats();
+                Vector<u32> command_capture_indices;
+                command_capture_indices.resize(commands.size());
+                for(u32& index : command_capture_indices) index = U32_MAX;
+                Vector<u32> element_capture_indices;
+                element_capture_indices.resize(elements.size());
+                for(u32& index : element_capture_indices) index = U32_MAX;
+                m_num_backdrop_captures = 0;
+
+                Vector<ClipState> capture_clip_stack;
+                for(u32 layer_index = 0; layer_index < layers.size(); ++layer_index)
+                {
+                    capture_clip_stack.clear();
+                    const Layer& layer = layers[layer_index];
+                    for(u32 command_index : layer.draw_command_indices)
+                    {
+                        if(command_index >= commands.size()) continue;
+                        const DrawCommand& command = commands[command_index];
+                        RectF resolved_rect = resolve_draw_rect(command, elements);
+                        RectF element_clip;
+                        if(command.element != INVALID_ELEMENT && command.element < elements.size())
+                        {
+                            element_clip = to_screen_rect(layers, layer_index,
+                                elements[command.element].layout_result.clip_rect);
+                        }
+                        if(command.type == DrawCommandType::push_clip)
+                        {
+                            RectF requested_clip = to_screen_rect(layers, layer_index, resolved_rect);
+                            ClipState pushed_clip = capture_clip_stack.empty() ?
+                                ClipState() : capture_clip_stack.back();
+                            pushed_clip.rect = merge_clip_rect(pushed_clip.rect, element_clip);
+                            pushed_clip.rect = merge_clip_rect(pushed_clip.rect, requested_clip);
+                            if(command.radius > 0.0f)
+                            {
+                                pushed_clip.rounded_rect = requested_clip;
+                                pushed_clip.rounded_radii = Float4U(command.radius);
+                            }
+                            capture_clip_stack.push_back(pushed_clip);
+                            continue;
+                        }
+                        if(command.type == DrawCommandType::pop_clip)
+                        {
+                            if(!capture_clip_stack.empty()) capture_clip_stack.pop_back();
+                            continue;
+                        }
+                        if(command.type == DrawCommandType::backdrop_blur_capture)
+                        {
+                            if(command.element == INVALID_ELEMENT ||
+                                command.element >= elements.size())
+                            {
+                                return set_error(BasicError::bad_data(),
+                                    "A backdrop capture marker must belong to an element.");
+                            }
+                            if(m_num_backdrop_captures >= m_backdrop_captures.size())
+                            {
+                                m_backdrop_captures.push_back(BackdropCapture());
+                            }
+                            u32 capture_index = m_num_backdrop_captures++;
+                            BackdropCapture& capture = m_backdrop_captures[capture_index];
+                            capture.element = command.element;
+                            capture.desc = command.backdrop_blur_capture;
+                            capture.consumer_bounds = RectF();
+                            capture.source_rect = RectF();
+                            capture.used = false;
+                            element_capture_indices[command.element] = capture_index;
+                            command_capture_indices[command_index] = capture_index;
+                            continue;
+                        }
+                        if(command.type != DrawCommandType::backdrop_blur) continue;
+                        if(command.element == INVALID_ELEMENT || command.element >= elements.size())
+                        {
+                            return set_error(BasicError::bad_data(),
+                                "A backdrop blur draw command must belong to an element.");
+                        }
+                        u32 source_element = command.element;
+                        u32 capture_index = U32_MAX;
+                        while(source_element != INVALID_ELEMENT && source_element < elements.size())
+                        {
+                            capture_index = element_capture_indices[source_element];
+                            if(capture_index != U32_MAX) break;
+                            source_element = elements[source_element].parent;
+                        }
+                        if(capture_index == U32_MAX)
+                        {
+                            return set_error(BasicError::bad_data(),
+                                "A backdrop blur draw command has no preceding self-or-ancestor capture.");
+                        }
+                        command_capture_indices[command_index] = capture_index;
+                        RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
+                        ClipState clip = capture_clip_stack.empty() ?
+                            ClipState() : capture_clip_stack.back();
+                        clip.rect = merge_clip_rect(clip.rect, element_clip);
+                        if(has_clip(clip.rect))
+                        {
+                            screen_rect = intersect_rect(screen_rect, clip.rect);
+                        }
+                        if(rect_visible(screen_rect))
+                        {
+                            BackdropCapture& capture = m_backdrop_captures[capture_index];
+                            capture.used = true;
+                            capture.consumer_bounds =
+                                union_rect(capture.consumer_bounds, screen_rect);
+                        }
+                    }
+                }
+
+                RectF screen_bounds(0.0f, 0.0f, m_screen_width, m_screen_height);
+                for(u32 capture_index = 0;
+                    capture_index < m_num_backdrop_captures; ++capture_index)
+                {
+                    BackdropCapture& capture = m_backdrop_captures[capture_index];
+                    if(!capture.used) continue;
+                    if(!std::isfinite(capture.desc.softness))
+                    {
+                        return set_error(BasicError::bad_data(),
+                            "Backdrop blur softness must be finite.");
+                    }
+                    f32 halo = calculate_backdrop_capture_halo(
+                        capture.desc,
+                        (f32)m_render_target_width / m_screen_width,
+                        (f32)m_render_target_height / m_screen_height);
+                    capture.source_rect = intersect_rect(
+                        expand_rect(capture.consumer_bounds, halo), screen_bounds);
+                    if(!rect_visible(capture.source_rect))
+                    {
+                        capture.used = false;
+                        continue;
+                    }
+                    luexp(prepare_backdrop_capture(capture, render_target));
+                    ++m_counters.backdrop_capture_count;
+                }
+
                 m_draw_list->reset();
                 m_render_batches.clear();
                 m_sdf_instances.clear();
@@ -495,6 +803,19 @@ namespace Luna
                             if(!clip_stack.empty()) clip_stack.pop_back();
                             continue;
                         }
+                        if(command.type == DrawCommandType::backdrop_blur_capture)
+                        {
+                            u32 capture_index = command_capture_indices[command_index];
+                            if(capture_index < m_num_backdrop_captures &&
+                                m_backdrop_captures[capture_index].used)
+                            {
+                                flush_pending_vg();
+                                m_draw_list->draw_call_barrier();
+                                m_render_batches.push_back({
+                                    RenderBatchType::backdrop_capture, 0, 0, capture_index});
+                            }
+                            continue;
+                        }
 
                         ClipState clip = clip_stack.empty() ? ClipState() : clip_stack.back();
                         clip.rect = merge_clip_rect(clip.rect, element_clip);
@@ -513,6 +834,59 @@ namespace Luna
                         m_draw_list->set_texture(nullptr);
                         m_draw_list->set_shape_buffer(nullptr);
                         m_draw_list->set_sampler(nullptr);
+
+                        if(command.type == DrawCommandType::backdrop_blur)
+                        {
+                            u32 capture_index = command_capture_indices[command_index];
+                            if(capture_index >= m_num_backdrop_captures ||
+                                !m_backdrop_captures[capture_index].used)
+                            {
+                                continue;
+                            }
+                            RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
+                            if((has_clip(clip_rect) &&
+                                !rect_visible(intersect_rect(screen_rect, clip_rect))) ||
+                                !rect_visible(screen_rect))
+                            {
+                                continue;
+                            }
+                            const BackdropCapture& capture =
+                                m_backdrop_captures[capture_index];
+                            const RectF& source_rect = capture.source_rect;
+                            f32 min_u = (screen_rect.offset_x - source_rect.offset_x) /
+                                source_rect.width;
+                            f32 max_u = (screen_rect.offset_x + screen_rect.width -
+                                source_rect.offset_x) / source_rect.width;
+                            f32 min_v = (screen_rect.offset_y - source_rect.offset_y) /
+                                source_rect.height;
+                            f32 max_v = (screen_rect.offset_y + screen_rect.height -
+                                source_rect.offset_y) / source_rect.height;
+                            RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
+                            m_draw_list->set_texture(capture.blur_textures[1]);
+                            auto& points =
+                                m_draw_list->get_shape_buffer()->get_shape_points(true);
+                            u32 begin = (u32)points.size();
+                            if(command.radius > 0.0f)
+                            {
+                                VG::ShapeBuilder::add_rounded_rectangle_filled(points,
+                                    0.0f, 0.0f, vg_rect.width, vg_rect.height,
+                                    command.radius);
+                            }
+                            else
+                            {
+                                VG::ShapeBuilder::add_rectangle_filled(points,
+                                    0.0f, 0.0f, vg_rect.width, vg_rect.height);
+                            }
+                            u32 end = (u32)points.size();
+                            m_draw_list->draw_shape(begin, end - begin,
+                                Float2U(vg_rect.offset_x, vg_rect.offset_y),
+                                Float2U(vg_rect.offset_x + vg_rect.width,
+                                    vg_rect.offset_y + vg_rect.height),
+                                Float2U(0.0f), Float2U(vg_rect.width, vg_rect.height),
+                                Float4U(1.0f), Float2U(min_u, max_v),
+                                Float2U(max_u, min_v));
+                            continue;
+                        }
 
                         if(command.type == DrawCommandType::rect ||
                             command.type == DrawCommandType::gradient_rect ||
@@ -724,12 +1098,351 @@ namespace Luna
                     if(batch.type == RenderBatchType::sdf) ++m_counters.sdf_draw_call_count;
                 }
                 m_counters.backend_switch_count = 0;
-                for(usize i = 1; i < m_render_batches.size(); ++i)
+                RenderBatchType previous_backend = RenderBatchType::backdrop_capture;
+                for(const RenderBatch& batch : m_render_batches)
                 {
-                    if(m_render_batches[i - 1].type != m_render_batches[i].type)
+                    if(batch.type == RenderBatchType::backdrop_capture) continue;
+                    if(previous_backend != RenderBatchType::backdrop_capture &&
+                        previous_backend != batch.type)
+                    {
                         ++m_counters.backend_switch_count;
+                    }
+                    previous_backend = batch.type;
                 }
                 m_counters.render_batch_count = (u32)m_render_batches.size();
+            }
+            lucatchret;
+            return ok;
+        }
+
+        RV Renderer::prepare_backdrop_capture(BackdropCapture& capture,
+            RHI::ITexture* render_target)
+        {
+            using namespace RHI;
+            lutry
+            {
+                TextureDesc target_desc = render_target->get_desc();
+                if(!test_flags(target_desc.usages, TextureUsageFlag::read_texture))
+                {
+                    return set_error(BasicError::not_supported(),
+                        "Backdrop capture requires a color target with read_texture usage.");
+                }
+                Format intermediate_format =
+                    select_backdrop_intermediate_format(target_desc.format);
+                if(intermediate_format == Format::unknown)
+                {
+                    return set_error(BasicError::not_supported(),
+                        "The GUI color-target format does not have a supported "
+                        "backdrop-filtering intermediate format.");
+                }
+
+                f32 framebuffer_scale_x = (f32)m_render_target_width / m_screen_width;
+                f32 framebuffer_scale_y = (f32)m_render_target_height / m_screen_height;
+                u32 source_width = max<u32>((u32)ceil(
+                    capture.source_rect.width * framebuffer_scale_x), 1);
+                u32 source_height = max<u32>((u32)ceil(
+                    capture.source_rect.height * framebuffer_scale_y), 1);
+                u32 requested_downsample_passes =
+                    calculate_backdrop_downsample_passes(capture.desc,
+                        framebuffer_scale_x, framebuffer_scale_y);
+                u32 width = source_width;
+                u32 height = source_height;
+                capture.downsample_pass_count = 0;
+                while(capture.downsample_pass_count <
+                    requested_downsample_passes && (width > 1 || height > 1))
+                {
+                    width = max(width >> 1, 1u);
+                    height = max(height >> 1, 1u);
+                    ++capture.downsample_pass_count;
+                }
+                u32 downsample_factor = 1u << capture.downsample_pass_count;
+                f32 horizontal_sigma =
+                    quantize_backdrop_gaussian_sigma(
+                        max(capture.desc.softness, 0.0f) *
+                        framebuffer_scale_x /
+                        (f32)downsample_factor);
+                f32 vertical_sigma =
+                    quantize_backdrop_gaussian_sigma(
+                        max(capture.desc.softness, 0.0f) *
+                        framebuffer_scale_y /
+                        (f32)downsample_factor);
+                capture.horizontal_blur = width > 1 &&
+                    horizontal_sigma > BACKDROP_GAUSSIAN_FAST_PATH_SIGMA;
+                capture.vertical_blur = height > 1 &&
+                    vertical_sigma > BACKDROP_GAUSSIAN_FAST_PATH_SIGMA;
+                u32 gaussian_pass_count =
+                    (capture.horizontal_blur ? 1u : 0u) +
+                    (capture.vertical_blur ? 1u : 0u);
+                capture.filter_pass_count =
+                    capture.downsample_pass_count + gaussian_pass_count;
+                if(!capture.filter_pass_count)
+                {
+                    capture.filter_pass_count = 1;
+                }
+                luassert(capture.filter_pass_count <=
+                    MAX_BACKDROP_FILTER_PASSES);
+
+                auto ensure_texture = [&](Ref<ITexture>& texture,
+                    const TextureDesc& required_desc) -> RV
+                {
+                    bool recreate_texture = !texture;
+                    if(texture)
+                    {
+                        TextureDesc existing_desc = texture->get_desc();
+                        recreate_texture =
+                            existing_desc.type != required_desc.type ||
+                            existing_desc.format != required_desc.format ||
+                            existing_desc.width != required_desc.width ||
+                            existing_desc.height != required_desc.height ||
+                            existing_desc.depth != required_desc.depth ||
+                            existing_desc.array_size != required_desc.array_size ||
+                            existing_desc.mip_levels != required_desc.mip_levels ||
+                            existing_desc.sample_count !=
+                                required_desc.sample_count ||
+                            existing_desc.usages != required_desc.usages;
+                    }
+                    if(recreate_texture)
+                    {
+                        auto result = m_device->new_texture(
+                            MemoryType::local, required_desc);
+                        if(failed(result)) return result.errcode();
+                        texture = result.get();
+                    }
+                    return ok;
+                };
+
+                usize downsample_pixels = 0;
+                if(capture.downsample_pass_count)
+                {
+                    u32 base_width = max(source_width >> 1, 1u);
+                    u32 base_height = max(source_height >> 1, 1u);
+                    TextureDesc downsample_desc = TextureDesc::tex2d(
+                        intermediate_format,
+                        TextureUsageFlag::read_texture |
+                            TextureUsageFlag::read_write_texture,
+                        base_width, base_height, 1,
+                        capture.downsample_pass_count);
+                    luexp(ensure_texture(
+                        capture.downsample_texture, downsample_desc));
+                    for(u32 i = 0; i < capture.downsample_pass_count; ++i)
+                    {
+                        downsample_pixels +=
+                            (usize)max(base_width >> i, 1u) *
+                            (usize)max(base_height >> i, 1u);
+                    }
+                }
+                else
+                {
+                    capture.downsample_texture = nullptr;
+                }
+
+                TextureDesc blur_desc = TextureDesc::tex2d(intermediate_format,
+                    TextureUsageFlag::read_texture |
+                        TextureUsageFlag::read_write_texture,
+                    width, height, 1, 1);
+                for(u32 i = 0; i < 2; ++i)
+                {
+                    luexp(ensure_texture(capture.blur_textures[i], blur_desc));
+                }
+
+                u32 uniform_alignment = (u32)m_device->check_feature(
+                    DeviceFeature::uniform_buffer_data_alignment).
+                    uniform_buffer_data_alignment;
+                u32 parameter_buffer_size = (u32)align_upper(
+                    sizeof(BackdropBlurParams), uniform_alignment);
+                u32 pass_count = capture.filter_pass_count;
+                for(u32 i = 0; i < pass_count; ++i)
+                {
+                    if(!capture.descriptor_sets[i])
+                    {
+                        luset(capture.descriptor_sets[i],
+                            m_device->new_descriptor_set(DescriptorSetDesc(
+                                m_backdrop_descriptor_set_layout)));
+                    }
+                    if(!capture.parameter_buffers[i] ||
+                        capture.parameter_buffers[i]->get_desc().size <
+                            parameter_buffer_size)
+                    {
+                        luset(capture.parameter_buffers[i],
+                            m_device->new_buffer(MemoryType::upload,
+                                BufferDesc(BufferUsageFlag::uniform_buffer,
+                                    parameter_buffer_size)));
+                    }
+                }
+
+                SamplerDesc sampler(Filter::linear, Filter::linear, Filter::nearest,
+                    TextureAddressMode::clamp, TextureAddressMode::clamp,
+                    TextureAddressMode::clamp);
+
+                u32 pass_index = 0;
+                auto configure_pass = [&](const BackdropBlurParams& parameters,
+                    ITexture* source, u32 source_mip,
+                    ITexture* destination, u32 destination_mip) -> RV
+                {
+                    void* mapped_data = nullptr;
+                    RV map_result =
+                        capture.parameter_buffers[pass_index]->map(
+                            0, parameter_buffer_size, &mapped_data);
+                    if(failed(map_result)) return map_result;
+                    memcpy(mapped_data, &parameters,
+                        sizeof(BackdropBlurParams));
+                    capture.parameter_buffers[pass_index]->unmap(
+                        0, sizeof(BackdropBlurParams));
+                    RV update_result =
+                        capture.descriptor_sets[pass_index]->update_descriptors({
+                        WriteDescriptorSet::uniform_buffer_view(0,
+                            BufferViewDesc::uniform_buffer(
+                                capture.parameter_buffers[pass_index], 0,
+                                parameter_buffer_size)),
+                        WriteDescriptorSet::read_texture_view(1,
+                            TextureViewDesc::tex2d(
+                                source, Format::unknown, source_mip, 1)),
+                        WriteDescriptorSet::read_write_texture_view(2,
+                            TextureViewDesc::tex2d(
+                                destination, Format::unknown,
+                                destination_mip, 1)),
+                        WriteDescriptorSet::sampler(3, sampler)
+                    });
+                    if(failed(update_result)) return update_result;
+                    capture.filter_passes[pass_index] = {
+                        source, destination, source_mip, destination_mip,
+                        parameters.destination_size
+                    };
+                    ++pass_index;
+                    return ok;
+                };
+
+                if(capture.downsample_pass_count)
+                {
+                    TextureDesc downsample_desc =
+                        capture.downsample_texture->get_desc();
+                    for(u32 i = 0; i < capture.downsample_pass_count; ++i)
+                    {
+                        BackdropBlurParams parameters{};
+                        parameters.destination_size = UInt2U(
+                            max(downsample_desc.width >> i, 1u),
+                            max(downsample_desc.height >> i, 1u));
+                        parameters.source_uv_origin = i ?
+                            Float2U(0.0f) : Float2U(
+                                capture.source_rect.offset_x / m_screen_width,
+                                capture.source_rect.offset_y / m_screen_height);
+                        parameters.source_uv_size = i ?
+                            Float2U(1.0f) : Float2U(
+                                capture.source_rect.width / m_screen_width,
+                                capture.source_rect.height / m_screen_height);
+                        parameters.filter_mode = 1;
+                        bool write_final_texture =
+                            !gaussian_pass_count &&
+                            i + 1 == capture.downsample_pass_count;
+                        luexp(configure_pass(parameters,
+                            i ? capture.downsample_texture.get() :
+                                render_target,
+                            i ? i - 1 : 0,
+                            write_final_texture ?
+                                capture.blur_textures[1].get() :
+                                capture.downsample_texture.get(),
+                            write_final_texture ? 0 : i));
+                    }
+                }
+
+                ITexture* base_source = capture.downsample_pass_count ?
+                    capture.downsample_texture.get() : render_target;
+                u32 base_source_mip = capture.downsample_pass_count ?
+                    capture.downsample_pass_count - 1 : 0;
+                Float2U base_source_uv_origin = capture.downsample_pass_count ?
+                    Float2U(0.0f) : Float2U(
+                        capture.source_rect.offset_x / m_screen_width,
+                        capture.source_rect.offset_y / m_screen_height);
+                Float2U base_source_uv_size = capture.downsample_pass_count ?
+                    Float2U(1.0f) : Float2U(
+                        capture.source_rect.width / m_screen_width,
+                        capture.source_rect.height / m_screen_height);
+
+                if(!capture.downsample_pass_count && !gaussian_pass_count)
+                {
+                    BackdropBlurParams snapshot_parameters{};
+                    snapshot_parameters.destination_size =
+                        UInt2U(width, height);
+                    snapshot_parameters.source_uv_origin =
+                        base_source_uv_origin;
+                    snapshot_parameters.source_uv_size =
+                        base_source_uv_size;
+                    luexp(configure_pass(snapshot_parameters,
+                        base_source, base_source_mip,
+                        capture.blur_textures[1], 0));
+                }
+
+                if(capture.horizontal_blur)
+                {
+                    BackdropBlurParams horizontal_parameters{};
+                    horizontal_parameters.destination_size =
+                        UInt2U(width, height);
+                    horizontal_parameters.source_uv_origin =
+                        base_source_uv_origin;
+                    horizontal_parameters.source_uv_size =
+                        base_source_uv_size;
+                    horizontal_parameters.sample_step = Float2U(
+                        capture.downsample_pass_count ?
+                            1.0f / (f32)width :
+                            1.0f / (f32)m_render_target_width,
+                        0.0f);
+                    horizontal_parameters.filter_mode = 2;
+                    set_backdrop_gaussian_kernel(horizontal_parameters,
+                        build_backdrop_gaussian_kernel(horizontal_sigma));
+                    luexp(configure_pass(horizontal_parameters,
+                        base_source, base_source_mip,
+                        capture.vertical_blur ?
+                            capture.blur_textures[0].get() :
+                            capture.blur_textures[1].get(),
+                        0));
+                }
+
+                if(capture.vertical_blur)
+                {
+                    BackdropBlurParams vertical_parameters{};
+                    vertical_parameters.destination_size =
+                        UInt2U(width, height);
+                    bool reads_horizontal_result = capture.horizontal_blur;
+                    vertical_parameters.source_uv_origin =
+                        reads_horizontal_result ?
+                        Float2U(0.0f) : base_source_uv_origin;
+                    vertical_parameters.source_uv_size =
+                        reads_horizontal_result ?
+                        Float2U(1.0f) : base_source_uv_size;
+                    vertical_parameters.sample_step = Float2U(0.0f,
+                        reads_horizontal_result ||
+                            capture.downsample_pass_count ?
+                            1.0f / (f32)height :
+                            1.0f / (f32)m_render_target_height);
+                    vertical_parameters.filter_mode = 2;
+                    set_backdrop_gaussian_kernel(vertical_parameters,
+                        build_backdrop_gaussian_kernel(vertical_sigma));
+                    luexp(configure_pass(vertical_parameters,
+                        reads_horizontal_result ?
+                            capture.blur_textures[0].get() :
+                            base_source,
+                        reads_horizontal_result ? 0 : base_source_mip,
+                        capture.blur_textures[1], 0));
+                }
+                luassert(pass_index == pass_count);
+
+                usize bytes_per_pixel =
+                    bits_per_pixel(intermediate_format) / 8;
+                m_counters.backdrop_temporary_texture_bytes +=
+                    (downsample_pixels +
+                        (usize)width * (usize)height * 2u) *
+                    bytes_per_pixel;
+                m_counters.backdrop_filtered_pixel_count +=
+                    (u64)downsample_pixels +
+                    (u64)width * (u64)height *
+                        (u64)gaussian_pass_count;
+                if(!capture.downsample_pass_count &&
+                    !gaussian_pass_count)
+                {
+                    m_counters.backdrop_filtered_pixel_count +=
+                        (u64)width * (u64)height;
+                }
+                m_counters.backdrop_blur_dispatch_count += pass_count;
             }
             lucatchret;
             return ok;
@@ -858,9 +1571,11 @@ namespace Luna
             cmdbuf->draw_indexed_instanced(6, batch.count, 0, 0, batch.first);
         }
 
-        RV Renderer::prepare(IContext* context, RHI::ICommandBuffer* cmdbuf,
-            RHI::ITexture* render_target, const RenderSurfaceDesc& surface)
+        RV Renderer::render(IContext* context, RHI::ICommandBuffer* cmdbuf,
+            const RenderTargetDesc& target, const RenderSurfaceDesc& surface)
         {
+            using namespace RHI;
+            RHI::ITexture* render_target = target.color_texture;
             if(!context || !cmdbuf || !render_target) return BasicError::bad_arguments();
             if(surface.depth_write_enable && !surface.depth_test_enable)
             {
@@ -868,20 +1583,50 @@ namespace Luna
                     "GUI depth writes require depth testing to be enabled.");
             }
             if((surface.depth_test_enable || surface.depth_write_enable) &&
-                surface.depth_stencil_format == RHI::Format::unknown)
+                !target.depth_stencil_texture)
             {
                 return set_error(BasicError::bad_arguments(),
-                    "GUI depth testing requires a depth-stencil attachment format.");
+                    "GUI depth testing requires a depth-stencil texture.");
             }
             auto render_target_desc = render_target->get_desc();
+            if(render_target_desc.type != RHI::TextureType::tex2d || render_target_desc.sample_count != 1 ||
+                !test_flags(render_target_desc.usages, RHI::TextureUsageFlag::color_attachment))
+            {
+                return set_error(BasicError::bad_arguments(),
+                    "The GUI color target must be a single-sample 2D color attachment.");
+            }
+            RHI::Format depth_stencil_format = RHI::Format::unknown;
+            if(target.depth_stencil_texture)
+            {
+                auto depth_desc = target.depth_stencil_texture->get_desc();
+                if(depth_desc.type != RHI::TextureType::tex2d || depth_desc.sample_count != 1 ||
+                    depth_desc.width != render_target_desc.width || depth_desc.height != render_target_desc.height ||
+                    !test_flags(depth_desc.usages, RHI::TextureUsageFlag::depth_stencil_attachment))
+                {
+                    return set_error(BasicError::bad_arguments(),
+                        "The GUI depth-stencil target must match the color target extent and sample count.");
+                }
+                depth_stencil_format = depth_desc.format;
+            }
+            if(test_flags(target.color_final_state,
+                    RHI::TextureStateFlag::automatic) ||
+                target.color_final_state == RHI::TextureStateFlag::none ||
+                (target.depth_stencil_texture &&
+                    (test_flags(target.depth_stencil_final_state,
+                        RHI::TextureStateFlag::automatic) ||
+                    target.depth_stencil_final_state == RHI::TextureStateFlag::none)))
+            {
+                return set_error(BasicError::bad_arguments(),
+                    "GUI attachment final states must be concrete resource states.");
+            }
             if(render_target_desc.format != m_render_target_format ||
-                surface.depth_stencil_format != m_depth_stencil_format ||
+                depth_stencil_format != m_depth_stencil_format ||
                 surface.depth_test_enable != m_depth_test_enable ||
                 surface.depth_write_enable != m_depth_write_enable ||
                 surface.depth_compare_function != m_depth_compare_function ||
                 surface.cull_mode != m_cull_mode)
             {
-                RV result = create_sdf_pipeline(render_target_desc.format, surface);
+                RV result = create_sdf_pipeline(render_target_desc.format, depth_stencil_format, surface);
                 if(failed(result)) return result;
             }
             m_render_target_width = render_target_desc.width;
@@ -893,13 +1638,19 @@ namespace Luna
                 Float4x4U(ProjectionMatrix::make_orthographic_off_center(
                     0.0f, m_screen_width, m_screen_height, 0.0f, 0.0f, 1.0f));
             m_counters = RendererPerformanceCounters();
-            u64 prepare_begin = get_ticks();
+            u64 render_begin = get_ticks();
             lutry
             {
-                luexp(compile_draw_commands(context));
+                luexp(compile_draw_commands(context, render_target));
+                if(surface.use_custom_transform &&
+                    m_counters.backdrop_capture_count)
+                {
+                    return set_error(BasicError::not_supported(),
+                        "Backdrop capture is only supported for the default orthographic GUI surface.");
+                }
                 VG::ShapeRendererPassDesc vg_pass;
                 vg_pass.render_target = render_target;
-                vg_pass.depth_stencil_format = surface.depth_stencil_format;
+                vg_pass.depth_stencil_format = depth_stencil_format;
                 vg_pass.depth_test_enable = surface.depth_test_enable;
                 vg_pass.depth_write_enable = surface.depth_write_enable;
                 vg_pass.depth_compare_function = surface.depth_compare_function;
@@ -944,26 +1695,161 @@ namespace Luna
                     cmdbuf->resource_barrier(barriers.cspan(), {});
                 }
                 m_shape_renderer->prepare(cmdbuf);
+                Vector<RHI::TextureBarrier> attachment_barriers;
+                attachment_barriers.push_back(RHI::TextureBarrier(render_target,
+                    RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic,
+                    RHI::TextureStateFlag::color_attachment_write));
+                if(target.depth_stencil_texture)
+                {
+                    attachment_barriers.push_back(RHI::TextureBarrier(target.depth_stencil_texture,
+                        RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic,
+                        surface.depth_write_enable ? RHI::TextureStateFlag::depth_stencil_attachment_write :
+                            RHI::TextureStateFlag::depth_stencil_attachment_read));
+                }
+                cmdbuf->resource_barrier({}, attachment_barriers.cspan());
+
+                auto begin_gui_pass = [&](bool first_pass, bool last_pass)
+                {
+                    RHI::RenderPassDesc pass;
+                    pass.color_attachments[0] = RHI::ColorAttachment(render_target,
+                        first_pass ? target.color_load_op : RHI::LoadOp::load,
+                        RHI::StoreOp::store, target.color_clear_value);
+                    if(target.depth_stencil_texture)
+                    {
+                        pass.depth_stencil_attachment = RHI::DepthStencilAttachment(
+                            target.depth_stencil_texture, !surface.depth_write_enable,
+                            first_pass ? target.depth_load_op : RHI::LoadOp::load,
+                            last_pass ? target.depth_store_op : RHI::StoreOp::store,
+                            target.depth_clear_value,
+                            first_pass ? target.stencil_load_op : RHI::LoadOp::load,
+                            last_pass ? target.stencil_store_op : RHI::StoreOp::store,
+                            target.stencil_clear_value);
+                    }
+                    cmdbuf->begin_render_pass(pass);
+                    ++m_counters.render_pass_count;
+                };
+                u32 remaining_captures = m_counters.backdrop_capture_count;
+                begin_gui_pass(true, remaining_captures == 0);
+                for(const RenderBatch& batch : m_render_batches)
+                {
+                    if(batch.type == RenderBatchType::backdrop_capture)
+                    {
+                        cmdbuf->end_render_pass();
+                        record_backdrop_capture(cmdbuf,
+                            m_backdrop_captures[batch.resource_index], render_target);
+                        --remaining_captures;
+                        begin_gui_pass(false, remaining_captures == 0);
+                    }
+                    else
+                    {
+                        submit_batch(cmdbuf, batch);
+                    }
+                }
+                cmdbuf->end_render_pass();
+
+                Vector<RHI::TextureBarrier> final_barriers;
+                final_barriers.push_back(RHI::TextureBarrier(render_target,
+                    RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic,
+                    target.color_final_state));
+                if(target.depth_stencil_texture)
+                {
+                    final_barriers.push_back(RHI::TextureBarrier(target.depth_stencil_texture,
+                        RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic,
+                        target.depth_stencil_final_state));
+                }
+                cmdbuf->resource_barrier({}, final_barriers.cspan());
             }
             lucatchret;
-            m_counters.prepare_ms = perf_elapsed_ms(prepare_begin, get_ticks());
+            m_counters.render_ms = perf_elapsed_ms(render_begin, get_ticks());
             return ok;
         }
 
-        void Renderer::render(RHI::ICommandBuffer* cmdbuf)
+        void Renderer::submit_batch(RHI::ICommandBuffer* cmdbuf,
+            const RenderBatch& batch)
         {
             if(!cmdbuf) return;
-            for(const RenderBatch& batch : m_render_batches)
+            if(batch.type == RenderBatchType::vg)
             {
-                if(batch.type == RenderBatchType::vg)
+                m_shape_renderer->submit(cmdbuf, batch.first, batch.count);
+            }
+            else if(batch.type == RenderBatchType::sdf)
+            {
+                render_sdf(cmdbuf, batch);
+            }
+        }
+
+        void Renderer::record_backdrop_capture(RHI::ICommandBuffer* cmdbuf,
+            const BackdropCapture& capture, RHI::ITexture* render_target)
+        {
+            using namespace RHI;
+            u32 pass_count = capture.filter_pass_count;
+            Vector<BufferBarrier> parameter_barriers;
+            parameter_barriers.reserve(pass_count);
+            for(u32 i = 0; i < pass_count; ++i)
+            {
+                parameter_barriers.push_back(BufferBarrier(
+                    capture.parameter_buffers[i], BufferStateFlag::automatic,
+                    BufferStateFlag::uniform_buffer_cs));
+            }
+            TextureBarrier render_target_barrier(render_target,
+                TEXTURE_BARRIER_ALL_SUBRESOURCES,
+                TextureStateFlag::automatic, TextureStateFlag::shader_read_cs);
+            cmdbuf->resource_barrier(parameter_barriers.cspan(),
+                {&render_target_barrier, 1});
+
+            cmdbuf->begin_compute_pass();
+            cmdbuf->set_compute_pipeline_layout(m_backdrop_pipeline_layout);
+            cmdbuf->set_compute_pipeline_state(m_backdrop_pipeline_state);
+
+            for(u32 pass_index = 0; pass_index < pass_count; ++pass_index)
+            {
+                const BackdropFilterPass& filter_pass =
+                    capture.filter_passes[pass_index];
+                ITexture* source = filter_pass.source;
+                ITexture* destination = filter_pass.destination;
+                u32 source_mip = filter_pass.source_mip;
+                u32 destination_mip = filter_pass.destination_mip;
+
+                if(source != render_target)
                 {
-                    m_shape_renderer->submit(cmdbuf, batch.first, batch.count);
+                    TextureBarrier pass_barriers[] = {
+                        TextureBarrier(source,
+                            SubresourceIndex(source_mip, 0),
+                            TextureStateFlag::automatic,
+                            TextureStateFlag::shader_read_cs),
+                        TextureBarrier(destination,
+                            SubresourceIndex(destination_mip, 0),
+                            TextureStateFlag::automatic,
+                            TextureStateFlag::shader_write_cs)
+                    };
+                    cmdbuf->resource_barrier({}, {pass_barriers, 2});
                 }
                 else
                 {
-                    render_sdf(cmdbuf, batch);
+                    TextureBarrier destination_barrier(destination,
+                        SubresourceIndex(destination_mip, 0),
+                        TextureStateFlag::automatic,
+                        TextureStateFlag::shader_write_cs);
+                    cmdbuf->resource_barrier({},
+                        {&destination_barrier, 1});
                 }
+                cmdbuf->set_compute_descriptor_set(
+                    0, capture.descriptor_sets[pass_index]);
+                cmdbuf->dispatch(
+                    (u32)align_upper(filter_pass.destination_size.x, 8u) / 8u,
+                    (u32)align_upper(filter_pass.destination_size.y, 8u) / 8u, 1);
             }
+            cmdbuf->end_compute_pass();
+
+            TextureBarrier final_texture_barriers[] = {
+                TextureBarrier(capture.blur_textures[1],
+                    TEXTURE_BARRIER_ALL_SUBRESOURCES,
+                    TextureStateFlag::automatic, TextureStateFlag::shader_read_ps),
+                TextureBarrier(render_target, TEXTURE_BARRIER_ALL_SUBRESOURCES,
+                    TextureStateFlag::automatic,
+                    TextureStateFlag::color_attachment_write)
+            };
+            cmdbuf->resource_barrier({}, {final_texture_barriers, 2});
         }
 
         RendererPerformanceCounters Renderer::get_performance_counters() const

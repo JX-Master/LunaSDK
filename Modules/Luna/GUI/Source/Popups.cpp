@@ -53,6 +53,16 @@ namespace Luna
                 Float4U border = style_color(context, element, name.c_str(), Float4U(0.24f, 0.30f, 0.38f, 1.0f));
                 strprintf(name, "gui.%s.radius", prefix);
                 f32 radius = style_scalar(context, element, name.c_str(), 5.0f);
+                strprintf(name, "gui.%s.backdrop_softness", prefix);
+                if(style_scalar(context, element, name.c_str(), 0.0f) > 0.0f)
+                {
+                    GUICore::DrawCommand backdrop;
+                    backdrop.type = GUICore::DrawCommandType::backdrop_blur;
+                    backdrop.rect_reference = GUICore::DrawCommandRectReference::element;
+                    backdrop.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+                    backdrop.radius = radius;
+                    context->draw(backdrop);
+                }
                 f32 shadow_softness = style_scalar(context, element, "gui.shadow.softness", 6.0f);
                 RoundedRectEffect outer_effects[2];
                 outer_effects[0].shadow = true;
@@ -87,6 +97,20 @@ namespace Luna
                 draw.callback = draw_panel;
                 draw.userdata = data;
                 context->set_draw_config(element, draw);
+                String name;
+                strprintf(name, "gui.%s.backdrop_softness", prefix);
+                f32 softness = style_scalar(context, element, name.c_str(), 0.0f);
+                if(softness > 0.0f)
+                {
+                    strprintf(name, "gui.%s.backdrop_downsample_level", prefix);
+                    f32 downsample_level =
+                        style_scalar(context, element, name.c_str(), 1.0f);
+                    GUICore::BackdropBlurCaptureDesc capture;
+                    capture.softness = softness;
+                    capture.downsample_level = (u8)clamp(
+                        (i32)round(downsample_level), 0, 4);
+                    context->set_backdrop_blur_capture(element, capture);
+                }
             }
 
             static GUICore::LayoutConfig panel_layout(GUICore::IContext* context,

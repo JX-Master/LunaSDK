@@ -13,6 +13,7 @@ public sealed class GUICoreTargetRules : TargetRules
         Sources("Source/**.cpp");
         Shader("Source/SDFVS.cxx", "vertex", "vs_main");
         Shader("Source/SDFPS.cxx", "pixel", "ps_main");
+        Shader("Source/BackdropBlurCS.cxx", "compute", "cs_main");
         DependsOn("Runtime", "RHI", "VG", "Font");
     }
 }

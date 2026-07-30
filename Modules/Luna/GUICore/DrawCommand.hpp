@@ -46,7 +46,13 @@ namespace Luna
             //! Pushes a clip rectangle. A positive @ref DrawCommand::radius enables rounded clipping.
             push_clip,
             //! Pops the current clip rectangle.
-            pop_clip
+            pop_clip,
+            //! Captures and filters the already rendered backdrop for one element.
+            //! @remark This marker is generated automatically from @ref BackdropBlurCaptureDesc attachments and
+            //! does not draw pixels.
+            backdrop_blur_capture,
+            //! Draws the nearest self-or-ancestor backdrop capture through the command rectangle.
+            backdrop_blur
         };
 
         //! Identifies the coordinate space used by a draw command rectangle.
@@ -101,6 +107,19 @@ namespace Luna
             void* userdata = nullptr;
             //! Traversal phases that invoke @ref callback.
             DrawPhaseFlag phases = DrawPhaseFlag::before_children;
+        };
+
+        //! Describes one backdrop blur capture attached to an element.
+        struct BackdropBlurCaptureDesc
+        {
+            //! Gaussian blur standard deviation in logical surface coordinates.
+            //! @remark Values less than or equal to zero request an unfiltered backdrop snapshot. Sub-pixel
+            //! framebuffer-space values may use the same fast path.
+            f32 softness = 0.0f;
+            //! Number of power-of-two downsample steps used for filtering.
+            //! @remark Higher values reduce filtering cost and source detail. This is a minimum requested level:
+            //! the renderer clamps it to the captured extent and may add steps to keep the working filter bounded.
+            u8 downsample_level = 0;
         };
 
         //! Describes one vector shape stored in a VG shape buffer.
@@ -200,6 +219,8 @@ namespace Luna
             //! Shadow payload used by shadow commands. @ref rect, @ref radius and @ref color describe the source
             //! rounded rectangle and shadow color.
             ShadowDesc shadow;
+            //! Backdrop capture payload used by @ref DrawCommandType::backdrop_blur_capture.
+            BackdropBlurCaptureDesc backdrop_blur_capture;
             //! SDF payload used by SDF commands. @ref rect places the payload's local coordinate origin in the
             //! element or layer coordinate space selected by @ref rect_reference. Its resolved extent is also the
             //! finite raster domain when the color program does not enable outer clipping.

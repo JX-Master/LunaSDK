@@ -31,8 +31,9 @@ position to the pixel shader through perspective-correct interpolation. Pixel de
 the local footprint of a framebuffer pixel and retain antialiased edges under projection.
 
 ### Depth mode
-Depth testing is optional. If the caller declares a depth-stencil format, the active render pass must use a compatible
-attachment. A typical world panel enables `less_equal` depth testing and disables depth writes.
+Depth testing is optional. The render target description may provide a depth-stencil texture; GUICore derives its
+format and owns the compatible pass. A typical world panel enables `less_equal` depth testing and disables depth
+writes.
 
 ### Host input mapping
 The host chooses the world surface hit by a pointer ray and maps the hit into surface-local coordinates. It then feeds
@@ -64,31 +65,39 @@ surface.use_custom_transform = true;
 surface.surface_to_clip = surface_to_clip;
 ```
 
-### 3. Prepare and render
+### 3. Render
 
 ```cpp
 lutry
 {
-    luexp(renderer->prepare(context, command_buffer, scene_color, surface));
-    command_buffer->begin_render_pass(scene_pass);
-    renderer->render(command_buffer);
-    command_buffer->end_render_pass();
+    GUICore::RenderTargetDesc target;
+    target.color_texture = scene_color;
+    target.color_load_op = RHI::LoadOp::load;
+    target.color_final_state = RHI::TextureStateFlag::color_attachment_write;
+    luexp(renderer->render(context, command_buffer, target, surface));
 }
 lucatchret;
 ```
 
-The original three-argument `prepare` helper remains available for screen-space GUI.
+The command buffer must be outside every pass before and after `render`. GUICore records attachment barriers and all
+required graphics/compute passes; the host still owns command-buffer submission and scene synchronization.
 
 ### 4. Enable scene depth when needed
 
 ```cpp
-surface.depth_stencil_format = scene_depth->get_desc().format;
 surface.depth_test_enable = true;
 surface.depth_write_enable = false;
 surface.depth_compare_function = RHI::CompareFunction::less_equal;
+
+GUICore::RenderTargetDesc target;
+target.color_texture = scene_color;
+target.depth_stencil_texture = scene_depth;
+target.depth_load_op = RHI::LoadOp::load;
+target.depth_store_op = RHI::StoreOp::store;
 ```
 
-The color and depth attachments in the active render pass must match the formats supplied during `prepare`.
+The color and depth textures must have matching extents and sample counts. If backdrop capture interrupts a
+depth-enabled pass, GUICore preserves depth/stencil contents and loads them again before continuing.
 
 ### 5. Map pointer rays
 
@@ -115,3 +124,7 @@ when positioning a platform IME candidate window. Clipboard callbacks are unchan
 The initial feature treats one context as one plane. Per-element three-dimensional transforms, curved surfaces and
 several independently transformed layers in one context are outside the first implementation. A host may still use
 several contexts and render each with a different surface transform.
+
+Painter-ordered backdrop capture is initially screen-space only. A command stream containing a live capture returns
+`not_supported` when `use_custom_transform` is enabled because a perspective-projected logical rectangle does not
+have one uniform screen-space blur radius or a simple axis-aligned capture region.

@@ -67,6 +67,7 @@ namespace Luna
             Vector<NavigationConfig> m_navigation_configs;
             Vector<ElementHitTestConfig> m_hit_test_configs;
             Vector<DrawConfig> m_draw_configs;
+            Vector<BackdropBlurCaptureDesc> m_backdrop_blur_captures;
             Vector<DrawCommand> m_recorded_draw_commands;
             Vector<Vector<DrawOperation>> m_layer_draw_operations;
             Vector<DrawCommand> m_draw_commands;
@@ -156,6 +157,10 @@ namespace Luna
             virtual void set_element_debug_name(const ElementHandle& element, const Name& name) override;
             virtual void set_draw_config(const ElementHandle& element, const DrawConfig& config) override;
             virtual DrawConfig get_draw_config(const ElementHandle& element) const override;
+            virtual void set_backdrop_blur_capture(const ElementHandle& element,
+                const BackdropBlurCaptureDesc& desc) override;
+            virtual BackdropBlurCaptureDesc get_backdrop_blur_capture(
+                const ElementHandle& element) const override;
             virtual RV generate_draw_commands() override;
             virtual Span<const DrawCommand> get_draw_commands() const override;
             virtual R<SDFShapeProgram> append_sdf_shape_program(Span<const f32> floats) override;

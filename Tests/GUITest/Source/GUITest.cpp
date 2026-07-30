@@ -14,6 +14,7 @@
 #include <Luna/Image/Image.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/RHI/SwapChain.hpp>
+#include <Luna/RHIUtility/BlitContext.hpp>
 #include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <Luna/Runtime/File.hpp>
@@ -49,6 +50,8 @@ namespace
         Ref<Window::IWindow> window;
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
+        Ref<RHI::ITexture> gui_target;
+        Ref<RHIUtility::IBlitContext> blit_context;
         Ref<GUICore::IContext> gui;
         Ref<GUICore::IRenderer> renderer;
         u32 queue = U32_MAX;
@@ -105,8 +108,44 @@ namespace
         desc.input_mode = app.state.density == 0 ? GUI::InputMode::pointer : GUI::InputMode::touch;
         desc.accent = Float4U(0.890f, 0.310f, 0.349f, 1.0f);
         GUI::set_default_style(app.gui, desc);
+        app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
+            Name("gui.popup.backdrop_softness"), GUICore::style_f32(12.0f));
+        app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
+            Name("gui.tooltip.backdrop_softness"), GUICore::style_f32(10.0f));
+        app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
+            Name("gui.dock_panel.floating.backdrop_softness"),
+            GUICore::style_f32(14.0f));
+        Float4U popup_background = app.gui->get_style_value(
+            Name(GUI::DEFAULT_STYLE_NAME), Name("gui.popup.background"),
+            GUICore::style_f32x4(Float4U(0.1f))).number;
+        popup_background.w = 0.72f;
+        app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
+            Name("gui.popup.background"),
+            GUICore::style_f32x4(popup_background));
+        Float4U tooltip_background = app.gui->get_style_value(
+            Name(GUI::DEFAULT_STYLE_NAME), Name("gui.tooltip.background"),
+            GUICore::style_f32x4(Float4U(0.1f))).number;
+        tooltip_background.w = 0.76f;
+        app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
+            Name("gui.tooltip.background"),
+            GUICore::style_f32x4(tooltip_background));
         app.applied_theme = app.state.theme;
         app.applied_density = app.state.density;
+    }
+
+    RV resize_gui_target(DemoApp& app, const UInt2U& size)
+    {
+        lutry
+        {
+            luset(app.gui_target, RHI::get_main_device()->new_texture(
+                RHI::MemoryType::local, RHI::TextureDesc::tex2d(
+                    app.swap_chain->get_desc().format,
+                    RHI::TextureUsageFlag::color_attachment |
+                        RHI::TextureUsageFlag::read_texture,
+                    size.x, size.y, 1, 1)));
+        }
+        lucatchret;
+        return ok;
     }
 
     RV init_demo(DemoApp& app, const DemoOptions& options)
@@ -150,6 +189,11 @@ namespace
                 RHI::SwapChainDesc({ size.x, size.y, 2, RHI::Format::bgra8_unorm, true,
                     RHI::ColorSpace::srgb })));
             luset(app.cmdbuf, device->new_command_buffer(app.queue));
+            luset(app.blit_context, RHIUtility::new_blit_context(
+                device, app.swap_chain->get_desc().format));
+            luexp(resize_gui_target(app, size));
+            app.width = size.x;
+            app.height = size.y;
             luset(app.renderer, GUICore::new_renderer(device));
             app.gui = GUICore::new_context();
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
@@ -169,17 +213,32 @@ namespace
         return ok;
     }
 
-    RV render_demo(DemoApp& app, RHI::ITexture* back_buffer)
+    RV render_demo(DemoApp& app, RHI::ITexture* back_buffer,
+        const Float4U& clear_color)
     {
         lutry
         {
-            luexp(app.renderer->prepare(app.gui, app.cmdbuf, back_buffer));
-            RHI::RenderPassDesc render_pass;
-            render_pass.color_attachments[0] = RHI::ColorAttachment(
-                back_buffer, RHI::LoadOp::load, RHI::StoreOp::store);
-            app.cmdbuf->begin_render_pass(render_pass);
-            app.renderer->render(app.cmdbuf);
-            app.cmdbuf->end_render_pass();
+            GUICore::RenderTargetDesc target(app.gui_target);
+            target.color_load_op = RHI::LoadOp::clear;
+            target.color_clear_value = clear_color;
+            target.color_final_state = RHI::TextureStateFlag::shader_read_ps;
+            luexp(app.renderer->render(app.gui, app.cmdbuf, target));
+            app.blit_context->reset();
+            RHI::SamplerDesc sampler(RHI::Filter::linear, RHI::Filter::linear,
+                RHI::Filter::nearest, RHI::TextureAddressMode::clamp,
+                RHI::TextureAddressMode::clamp, RHI::TextureAddressMode::clamp);
+            app.blit_context->blit(back_buffer, RHI::SubresourceIndex(0, 0),
+                RHI::TextureViewDesc::tex2d(app.gui_target), sampler,
+                Float2U(0.0f), Float2U((f32)app.width, 0.0f),
+                Float2U(0.0f, (f32)app.height),
+                Float2U((f32)app.width, (f32)app.height));
+            luexp(app.blit_context->commit(app.cmdbuf, false));
+            app.cmdbuf->resource_barrier({}, {
+                {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES,
+                    RHI::TextureStateFlag::automatic,
+                    RHI::TextureStateFlag::present,
+                    RHI::ResourceBarrierFlag::none}
+            });
         }
         lucatchret;
         return ok;
@@ -216,6 +275,7 @@ namespace
                 {
                     luexp(app.swap_chain->reset({ framebuffer_size.x, framebuffer_size.y, 2,
                         RHI::Format::unknown, true }));
+                    luexp(resize_gui_target(app, framebuffer_size));
                     app.width = framebuffer_size.x;
                     app.height = framebuffer_size.y;
                 }
@@ -228,6 +288,12 @@ namespace
                 frame.delta_time = 1.0f / 60.0f;
                 app.gui->begin_frame(frame);
                 GUIWindow::update_input(&input_adapter);
+                if(options.max_frames >= 0 && frame_index == 0 &&
+                    app.state.section == 7)
+                {
+                    GUI::open_popup(app.gui,
+                        app.gui->make_id("overlay.popup.layer"));
+                }
 
                 GUITest::ShowcaseHandles handles;
                 GUICore::ElementHandle root = GUITest::build_showcase(app.gui, app.state, handles);
@@ -250,16 +316,7 @@ namespace
                 lulet(back_buffer, app.swap_chain->get_current_back_buffer());
                 Float4U clear_color = app.gui->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
                     GUICore::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
-                RHI::RenderPassDesc clear_pass;
-                clear_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer,
-                    RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
-                app.cmdbuf->begin_render_pass(clear_pass);
-                app.cmdbuf->end_render_pass();
-                luexp(render_demo(app, back_buffer));
-                app.cmdbuf->resource_barrier({}, {
-                    { back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic,
-                        RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none }
-                });
+                luexp(render_demo(app, back_buffer, clear_color));
                 luexp(app.cmdbuf->submit({}, {}, true));
                 app.cmdbuf->wait();
                 luexp(app.cmdbuf->reset());

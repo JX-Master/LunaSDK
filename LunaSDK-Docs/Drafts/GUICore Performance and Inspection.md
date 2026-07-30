@@ -13,7 +13,15 @@ GUI Core does not provide issue/pass logs, input recording, input replay, frame 
 
 ## Concepts
 ### Performance counters
-`PerformanceCounters` contains element, layer, input, state, style and draw-command counts. It also records time spent on state cleanup, input routing, draw generation and draw compilation.
+`PerformanceCounters` contains element, layer, input, state, style and draw-command counts. It also records time spent on state cleanup, input routing and draw generation.
+
+`RendererPerformanceCounters` reports the renderer's latest recording time, backend batches and uploads. Backdrop
+telemetry includes live capture count, graphics pass count, filtered pixels, blur dispatches and approximate temporary
+texture bytes. A capture attachment with no visible consumer is not counted because the compiler eliminates it.
+One live capture normally records one compute dispatch per effective downsample level plus horizontal and vertical
+Gaussian dispatches. A sub-pixel working standard deviation omits Gaussian convolution and records only the
+snapshot or requested downsample chain. Filtered-pixel and temporary-byte counters include the complete downsample
+chain and use the target-derived intermediate format size.
 
 Performance counters are operational telemetry and remain available in every build.
 
@@ -44,6 +52,17 @@ log_info("GUICore: elements=%u draw=%u callbacks=%u route=%.3f ms generate=%.3f 
 
 Counters reflect the most recent operations that updated them.
 
+Renderer counters are read from the renderer after recording:
+
+```cpp
+GUICore::RendererPerformanceCounters rendering = renderer->get_performance_counters();
+log_info("GUICore renderer: %.3f ms, %u passes, %u captures, %llu filtered pixels",
+    rendering.render_ms,
+    rendering.render_pass_count,
+    rendering.backdrop_capture_count,
+    rendering.backdrop_filtered_pixel_count);
+```
+
 ### Scan the element tree
 ```cpp
 Span<const GUICore::Layer> layers = context->get_layers();
@@ -57,6 +76,7 @@ for(u32 i = 0; i < elements.size(); ++i)
     GUICore::NavigationConfig navigation = context->get_navigation_config(handle);
     GUICore::ElementHitTestConfig hit_test = context->get_hit_test_config(handle);
     GUICore::DrawConfig draw = context->get_draw_config(handle);
+    GUICore::BackdropBlurCaptureDesc backdrop = context->get_backdrop_blur_capture(handle);
     GUICore::InteractionState interaction = context->get_interaction_state(element.id);
 }
 ```

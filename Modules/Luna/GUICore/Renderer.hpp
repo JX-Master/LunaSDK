@@ -25,9 +25,6 @@ namespace Luna
             bool use_custom_transform = false;
             //! Matrix that transforms `(x, y, 0, 1)` positions from GUI surface coordinates to clip space.
             Float4x4U surface_to_clip;
-            //! Depth-stencil attachment format of the caller-owned render pass, or @ref RHI::Format::unknown
-            //! when the pass has no depth-stencil attachment.
-            RHI::Format depth_stencil_format = RHI::Format::unknown;
             //! Whether scene depth testing is enabled.
             bool depth_test_enable = false;
             //! Whether passing GUI fragments write depth.
@@ -43,11 +40,50 @@ namespace Luna
                 surface_to_clip(Float4x4::identity()) {}
         };
 
+        //! Describes the application-owned attachments used by one GUI render recording.
+        struct RenderTargetDesc
+        {
+            //! Required final GUI color texture.
+            RHI::ITexture* color_texture = nullptr;
+            //! Load operation used by the first GUICore-owned color pass.
+            RHI::LoadOp color_load_op = RHI::LoadOp::load;
+            //! Clear value used when @ref color_load_op is @ref RHI::LoadOp::clear.
+            Float4U color_clear_value = Float4U(0.0f);
+            //! Color texture state guaranteed when @ref IRenderer::render returns.
+            //! @remark @ref RHI::TextureStateFlag::automatic is not a valid final state.
+            RHI::TextureStateFlag color_final_state = RHI::TextureStateFlag::shader_read_ps;
+            //! Optional scene depth-stencil texture.
+            RHI::ITexture* depth_stencil_texture = nullptr;
+            //! Depth load operation used by the first GUICore-owned pass.
+            RHI::LoadOp depth_load_op = RHI::LoadOp::load;
+            //! Depth store operation used by the final GUICore-owned pass.
+            RHI::StoreOp depth_store_op = RHI::StoreOp::store;
+            //! Clear value used when @ref depth_load_op is @ref RHI::LoadOp::clear.
+            f32 depth_clear_value = 1.0f;
+            //! Stencil load operation used by the first GUICore-owned pass.
+            RHI::LoadOp stencil_load_op = RHI::LoadOp::load;
+            //! Stencil store operation used by the final GUICore-owned pass.
+            RHI::StoreOp stencil_store_op = RHI::StoreOp::store;
+            //! Clear value used when @ref stencil_load_op is @ref RHI::LoadOp::clear.
+            u8 stencil_clear_value = 0;
+            //! Depth-stencil texture state guaranteed when @ref IRenderer::render returns.
+            //! @remark This field is ignored when @ref depth_stencil_texture is `nullptr`.
+            RHI::TextureStateFlag depth_stencil_final_state =
+                RHI::TextureStateFlag::depth_stencil_attachment_read;
+
+            //! Constructs an empty render-target description.
+            RenderTargetDesc() = default;
+            //! Constructs a color-only render-target description.
+            //! @param[in] color_texture The final GUI color texture.
+            explicit RenderTargetDesc(RHI::ITexture* color_texture) :
+                color_texture(color_texture) {}
+        };
+
         //! Runtime counters collected by one GUI Core renderer.
         struct RendererPerformanceCounters
         {
-            //! Time spent compiling draw commands and preparing renderer resources for the latest frame, in milliseconds.
-            f64 prepare_ms = 0.0;
+            //! CPU time spent compiling and recording the latest GUI render plan, in milliseconds.
+            f64 render_ms = 0.0;
             //! Number of VG draw calls produced by the latest compilation.
             u32 vg_draw_call_count = 0;
             //! Number of instanced SDF draw calls produced by the latest compilation.
@@ -74,6 +110,16 @@ namespace Luna
             usize sdf_upload_bytes = 0;
             //! Number of contiguous renderer batches needed to preserve painter order.
             u32 render_batch_count = 0;
+            //! Number of live backdrop captures materialized by the latest rendering.
+            u32 backdrop_capture_count = 0;
+            //! Number of graphics passes recorded by the latest rendering.
+            u32 render_pass_count = 0;
+            //! Number of pixels processed across backdrop filtering dispatches.
+            u64 backdrop_filtered_pixel_count = 0;
+            //! Number of compute dispatches used for backdrop filtering.
+            u32 backdrop_blur_dispatch_count = 0;
+            //! Approximate bytes occupied by live backdrop filtering textures.
+            usize backdrop_temporary_texture_bytes = 0;
         };
 
         //! @interface IRenderer
@@ -82,36 +128,30 @@ namespace Luna
         //! the backend for text, images, lines and complex monochrome paths.
         struct [[Luna::interface("{780B8352-8D7E-4401-8C12-77D06818B841}")]] IRenderer : virtual Interface
         {
-            //! Compiles one context using the default orthographic screen-space surface.
+            //! Records one context using the default orthographic screen-space surface.
             //! @param[in] context The GUI Core context to render.
-            //! @param[in] cmdbuf The command buffer that receives resource barriers required by renderer resources.
-            //! @param[in] render_target The render target used to select the pipeline format and viewport dimensions.
+            //! @param[in] cmdbuf The recording graphics command buffer that receives the complete GUI render plan.
+            //! @param[in] target The required color and optional depth-stencil attachments.
             //! @return Returns success or failure code.
-            RV prepare(IContext* context, RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target)
+            RV render(IContext* context, RHI::ICommandBuffer* cmdbuf, const RenderTargetDesc& target)
             {
-                return prepare(context, cmdbuf, render_target, RenderSurfaceDesc());
+                return render(context, cmdbuf, target, RenderSurfaceDesc());
             }
 
-            //! Compiles one context's generated draw command stream and prepares referenced resources.
+            //! Compiles and records one context's complete GUI render plan.
             //! @param[in] context The GUI Core context to render.
-            //! @param[in] cmdbuf The command buffer that receives resource barriers required by renderer resources.
-            //! @param[in] render_target The render target used to select the pipeline format and viewport dimensions.
-            //! @return Returns success or failure code.
-            //! @remark The command buffer must not be inside a render pass. The caller remains responsible for
-            //! transitioning @p render_target and beginning a compatible render pass before calling @ref render.
+            //! @param[in] cmdbuf The recording graphics command buffer that receives all resource barriers and passes.
+            //! @param[in] target The required color and optional depth-stencil attachments.
             //! @param[in] surface The projection, depth and culling configuration of the logical GUI surface.
+            //! @return Returns success or failure code.
+            //! @remark The command buffer must not be inside any pass when this call begins or returns. GUICore records
+            //! every attachment transition and render/compute pass, but does not submit, wait or reset the command buffer.
             //! @remark Layout, clips and input positions remain in logical surface coordinates even when a custom
             //! transform projects the surface into three-dimensional clip space.
-            virtual RV prepare(IContext* context, RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target,
+            virtual RV render(IContext* context, RHI::ICommandBuffer* cmdbuf, const RenderTargetDesc& target,
                 const RenderSurfaceDesc& surface) = 0;
 
-            //! Records the prepared GUI draw calls into an active render pass.
-            //! @param[in] cmdbuf The command buffer whose active render pass receives the draw calls.
-            //! @remark Call @ref prepare before this function. This function only binds pipelines, descriptors,
-            //! viewports and buffers and submits draw calls. It does not begin or end a render pass.
-            virtual void render(RHI::ICommandBuffer* cmdbuf) = 0;
-
-            //! Gets counters for the latest prepared frame.
+            //! Gets counters for the latest recorded frame.
             //! @return Returns the latest renderer performance counters.
             virtual RendererPerformanceCounters get_performance_counters() const = 0;
         };

@@ -18,8 +18,12 @@ namespace Luna::GUICoreTest
     inline constexpr u32 NUM_INPUT_SLICES = 3;
     inline constexpr u32 NUM_LAYOUT_SLICES = 15;
     inline constexpr u32 NUM_SDF_SLICES = 1;
+    inline constexpr u32 NUM_BLUR_SLICES = 1;
     inline constexpr u32 NUM_WORLD_SLICES = 1;
-    inline constexpr u32 NUM_SLICES = NUM_INPUT_SLICES + NUM_LAYOUT_SLICES + NUM_SDF_SLICES + NUM_WORLD_SLICES;
+    inline constexpr u32 NUM_SLICES = NUM_INPUT_SLICES + NUM_LAYOUT_SLICES + NUM_SDF_SLICES +
+        NUM_BLUR_SLICES + NUM_WORLD_SLICES;
+    inline constexpr u32 BLUR_MATERIALS_SLICE =
+        NUM_INPUT_SLICES + NUM_LAYOUT_SLICES + NUM_SDF_SLICES;
     inline constexpr u32 WORLD_SURFACE_SLICE = NUM_SLICES - 1;
 
     enum : GUICore::id_t
@@ -30,6 +34,7 @@ namespace Luna::GUICoreTest
         ID_INPUT = 20,
         ID_LAYOUT = 30,
         ID_SDF = 31,
+        ID_BLUR = 32,
         ID_POINTER_BASE_LAYER = 40,
         ID_POINTER_TOP_LAYER = 41,
         ID_POINTER_A = 42,
@@ -51,6 +56,15 @@ namespace Luna::GUICoreTest
         ID_LAYOUT_CANVAS = 65,
         ID_LAYOUT_SCROLL = 66,
         ID_SDF_SAMPLE_BASE = 200,
+        ID_BLUR_BACKGROUND = 300,
+        ID_BLUR_CLEAR = 301,
+        ID_BLUR_ACRYLIC = 302,
+        ID_BLUR_MICA = 303,
+        ID_BLUR_LAMINATED = 304,
+        ID_BLUR_GRAIN_FROST = 305,
+        ID_BLUR_SMOKED = 306,
+        ID_BLUR_ICE_FROST = 307,
+        ID_BLUR_CHAMPAGNE = 308,
         ID_LAYOUT_DEMO_BASE = 1000
     };
 
@@ -59,6 +73,7 @@ namespace Luna::GUICoreTest
         u32 slice_index = 0;
         bool z_down = false;
         bool x_down = false;
+        f32 animation_time = 0.0f;
         Float2U sheet_position = Float2U(36.0f, 36.0f);
         GUICore::CanvasLayoutItem screen_item;
         GUICore::CanvasLayoutDesc screen_canvas;
@@ -78,6 +93,8 @@ namespace Luna::GUICoreTest
         GUICore::ScrollViewportLayoutDesc scroll_viewport_layout;
         Vector<GUICore::CanvasLayoutItem> sdf_items;
         GUICore::CanvasLayoutDesc sdf_canvas;
+        Vector<GUICore::CanvasLayoutItem> blur_items;
+        GUICore::CanvasLayoutDesc blur_canvas;
     };
 
     GUICore::LayoutConfig fixed_layout(f32 width, f32 height);
@@ -118,4 +135,6 @@ namespace Luna::GUICoreTest
     bool process_layout_slice_input(GUICore::IContext* context, CoreSheetState& state, u32 layout_slice);
     void add_sdf_slice_items(CoreSheetState& state);
     void build_sdf_slice(GUICore::IContext* context, CoreSheetState& state);
+    void add_blur_slice_items(CoreSheetState& state);
+    void build_blur_slice(GUICore::IContext* context, CoreSheetState& state);
 }

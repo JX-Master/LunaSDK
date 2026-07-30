@@ -75,6 +75,7 @@ namespace Luna
             m_navigation_configs.clear();
             m_hit_test_configs.clear();
             m_draw_configs.clear();
+            m_backdrop_blur_captures.clear();
             m_recorded_draw_commands.clear();
             m_layer_draw_operations.clear();
             m_draw_commands.clear();
@@ -762,6 +763,47 @@ namespace Luna
             return m_draw_configs[e.draw_config];
         }
 
+        void Context::set_backdrop_blur_capture(const ElementHandle& element,
+            const BackdropBlurCaptureDesc& desc)
+        {
+            lutsassert();
+            luassert_msg(!m_generating_draw_commands,
+                "Backdrop blur capture configuration cannot change while callbacks are running.");
+            Element* e = mutable_element(element);
+            if(!e)
+            {
+                return;
+            }
+            if(e->backdrop_blur_capture == U32_MAX)
+            {
+                e->backdrop_blur_capture = (u32)m_backdrop_blur_captures.size();
+                m_backdrop_blur_captures.push_back(desc);
+            }
+            else
+            {
+                m_backdrop_blur_captures[e->backdrop_blur_capture] = desc;
+            }
+            m_draw_commands_generated = false;
+        }
+
+        BackdropBlurCaptureDesc Context::get_backdrop_blur_capture(
+            const ElementHandle& element) const
+        {
+            lutsassert();
+            if(!element.id || element.generation != m_generation ||
+                element.index >= m_elements.size())
+            {
+                return BackdropBlurCaptureDesc();
+            }
+            const Element& e = m_elements[element.index];
+            if(e.id != element.id ||
+                e.backdrop_blur_capture >= m_backdrop_blur_captures.size())
+            {
+                return BackdropBlurCaptureDesc();
+            }
+            return m_backdrop_blur_captures[e.backdrop_blur_capture];
+        }
+
         Span<const DrawCommand> Context::get_draw_commands() const
         {
             lutsassert();
@@ -892,6 +934,20 @@ namespace Luna
                     switch(operation.type)
                     {
                     case DrawOperationType::begin_element:
+                        if(operation.index < m_elements.size())
+                        {
+                            const Element& element = m_elements[operation.index];
+                            if(element.backdrop_blur_capture < m_backdrop_blur_captures.size())
+                            {
+                                DrawCommand marker;
+                                marker.type = DrawCommandType::backdrop_blur_capture;
+                                marker.rect_reference = DrawCommandRectReference::element;
+                                marker.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+                                marker.backdrop_blur_capture =
+                                    m_backdrop_blur_captures[element.backdrop_blur_capture];
+                                append_draw_command(layer_index, operation.index, marker);
+                            }
+                        }
                         result = invoke_draw_callback(layer_index, operation.index, DrawPhase::before_children);
                         break;
                     case DrawOperationType::static_command:
