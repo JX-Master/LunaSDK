@@ -334,7 +334,14 @@ after `backdrop_blur` supplies the translucent tint; blur capture does not selec
 The `GUI` package wires this mechanism into popups, tooltips and floating dock panels. It exposes
 `gui.popup.backdrop_softness`, `gui.tooltip.backdrop_softness` and
 `gui.dock_panel.floating.backdrop_softness`, plus a corresponding `backdrop_downsample_level` entry for each surface.
-Softness defaults to zero so these controls do not force a pass break until a style explicitly enables the effect.
+The general editor style keeps softness at zero because some hosts render directly to a non-sampleable swap-chain
+texture. A host with a color target that supports `read_texture` can opt in; the GUITest reference theme uses
+softness 16 for floating dock panels, with one requested downsample level. Popup and
+tooltip backgrounds, plus `gui.dock_panel.floating.background`, provide a 96% surface tint over the filtered result.
+GUITest deliberately exaggerates its Popup and Tooltip samples to softness 30 and a 35% surface tint so the neutral
+Overlay backdrop makes filtering and transmission immediately visible.
+Popup panels place the inset backdrop result after their opaque border underlay and before the translucent surface
+tint, so the border remains crisp without covering the filtered interior.
 
 ### Render
 Create one GUICore renderer for the RHI device and reuse it. `render` generates commands when necessary, compiles the

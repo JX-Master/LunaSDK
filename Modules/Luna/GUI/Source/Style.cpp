@@ -297,7 +297,7 @@ namespace Luna
                 "Tab Bar", "Tab horizontal padding.");
 
             add("gui.popup.background", GUICore::StyleValueType::f32x4,
-                GUICore::style_f32x4(Float4U(0.08f, 0.10f, 0.13f, 0.98f)), "Overlay", "Popup background.");
+                GUICore::style_f32x4(Float4U(0.08f, 0.10f, 0.13f, 0.96f)), "Overlay", "Popup background.");
             add("gui.popup.border", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.24f, 0.30f, 0.38f, 1.0f)), "Overlay", "Popup border.");
             add("gui.popup.radius", GUICore::StyleValueType::f32, GUICore::style_f32(5.0f),
@@ -313,7 +313,7 @@ namespace Luna
                 GUICore::style_f32(1.0f), "Overlay",
                 "Popup backdrop blur power-of-two downsample level.");
             add("gui.tooltip.background", GUICore::StyleValueType::f32x4,
-                GUICore::style_f32x4(Float4U(0.05f, 0.06f, 0.07f, 0.97f)), "Overlay", "Tooltip background.");
+                GUICore::style_f32x4(Float4U(0.05f, 0.06f, 0.07f, 0.96f)), "Overlay", "Tooltip background.");
             add("gui.tooltip.border", GUICore::StyleValueType::f32x4,
                 GUICore::style_f32x4(Float4U(0.28f, 0.33f, 0.40f, 1.0f)), "Overlay", "Tooltip border.");
             add("gui.tooltip.radius", GUICore::StyleValueType::f32, GUICore::style_f32(4.0f),
@@ -328,6 +328,9 @@ namespace Luna
             add("gui.tooltip.backdrop_downsample_level", GUICore::StyleValueType::f32,
                 GUICore::style_f32(1.0f), "Overlay",
                 "Tooltip backdrop blur power-of-two downsample level.");
+            add("gui.dock_panel.floating.background", GUICore::StyleValueType::f32x4,
+                GUICore::style_f32x4(Float4U(0.973f, 0.973f, 0.961f, 0.96f)),
+                "Dock Space", "Floating dock panel glass tint.");
             add("gui.dock_panel.floating.backdrop_softness",
                 GUICore::StyleValueType::f32, GUICore::style_f32(0.0f),
                 "Dock Space", "Floating dock panel backdrop blur softness. Zero disables capture.");
@@ -588,11 +591,13 @@ namespace Luna
             set_scalar("gui.popup.radius", radius_medium);
             set_scalar("gui.popup.padding", touch ? 12.0f : 7.0f);
             set_scalar("gui.popup.gap", touch ? 7.0f : 4.0f);
-            set_color("gui.tooltip.background", Float4U(surface1.x, surface1.y, surface1.z, 0.97f));
+            set_color("gui.tooltip.background", Float4U(surface1.x, surface1.y, surface1.z, 0.96f));
             set_color("gui.tooltip.border", border_strong);
             set_scalar("gui.tooltip.radius", radius_small);
             set_scalar("gui.tooltip.padding", touch ? 10.0f : 7.0f);
             set_scalar("gui.tooltip.gap", touch ? 7.0f : 4.0f);
+            set_color("gui.dock_panel.floating.background",
+                Float4U(surface1.x, surface1.y, surface1.z, 0.96f));
 
             set_color("gui.combo.background", surface0);
             set_color("gui.combo.background_hovered", surface2);

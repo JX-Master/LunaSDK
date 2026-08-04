@@ -658,13 +658,18 @@ namespace Luna
                 const DockPanelDesc& desc = panel.desc;
                 f32 panel_width = panel_element->layout_result.rect.width;
                 f32 panel_height = panel_element->layout_result.rect.height;
+                bool floating = persistent->mode == DockPanelMode::floating;
+                Float4U surface_color =
+                    style_color(context, element, "gui.surface.1", Float4U(0.07f, 0.09f, 0.12f, 1.0f));
+                Float4U floating_background_fallback = surface_color;
+                floating_background_fallback.w = 0.96f;
                 Float4U background_color = desc.background_color.w > 0.0f ? desc.background_color :
-                    style_color(context, element, "gui.surface.1", Float4U(0.07f, 0.09f, 0.12f, 0.98f));
+                    floating ? style_color(context, element, "gui.dock_panel.floating.background",
+                        floating_background_fallback) : surface_color;
                 Float4U title_bar_color = desc.title_bar_color.w > 0.0f ? desc.title_bar_color :
                     style_color(context, element, "gui.surface.1", Float4U(0.11f, 0.15f, 0.20f, 1.0f));
                 Float4U border_color = desc.border_color.w > 0.0f ? desc.border_color :
                     style_color(context, element, "gui.border.strong", Float4U(0.24f, 0.30f, 0.38f, 1.0f));
-                bool floating = persistent->mode == DockPanelMode::floating;
                 f32 panel_radius = style_scalar(context, element, "gui.radius.medium", 9.0f);
                 if(floating)
                 {

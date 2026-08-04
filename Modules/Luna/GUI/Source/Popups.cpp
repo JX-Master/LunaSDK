@@ -54,15 +54,7 @@ namespace Luna
                 strprintf(name, "gui.%s.radius", prefix);
                 f32 radius = style_scalar(context, element, name.c_str(), 5.0f);
                 strprintf(name, "gui.%s.backdrop_softness", prefix);
-                if(style_scalar(context, element, name.c_str(), 0.0f) > 0.0f)
-                {
-                    GUICore::DrawCommand backdrop;
-                    backdrop.type = GUICore::DrawCommandType::backdrop_blur;
-                    backdrop.rect_reference = GUICore::DrawCommandRectReference::element;
-                    backdrop.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
-                    backdrop.radius = radius;
-                    context->draw(backdrop);
-                }
+                bool draw_backdrop = style_scalar(context, element, name.c_str(), 0.0f) > 0.0f;
                 f32 shadow_softness = style_scalar(context, element, "gui.shadow.softness", 6.0f);
                 RoundedRectEffect outer_effects[2];
                 outer_effects[0].shadow = true;
@@ -76,6 +68,16 @@ namespace Luna
                     Span<const RoundedRectEffect>(outer_effects, 2)); failed(result))
                 {
                     return result;
+                }
+                if(draw_backdrop)
+                {
+                    GUICore::DrawCommand backdrop;
+                    backdrop.type = GUICore::DrawCommandType::backdrop_blur;
+                    backdrop.rect_reference = GUICore::DrawCommandRectReference::element;
+                    backdrop.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
+                    backdrop.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+                    backdrop.radius = max(radius - 1.0f, 0.0f);
+                    context->draw(backdrop);
                 }
 
                 RoundedRectEffect fill;
@@ -166,7 +168,7 @@ namespace Luna
             set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
             context->set_interactable(root, interactable);
             Internal::set_panel_draw_config(context, root, "popup",
-                Float4U(0.08f, 0.10f, 0.13f, 0.98f));
+                Float4U(0.08f, 0.10f, 0.13f, 0.96f));
             Ref<Internal::PopupState> state = Internal::popup_state(context, id, true);
             state->flags = desc.flags;
             Ref<Internal::FrameState> frame = Internal::frame_state(context);
@@ -232,7 +234,7 @@ namespace Luna
                 Internal::derived_id(id, "tooltip.root"), "Tooltip", desc.layout);
             context->set_layout_config(root, Internal::panel_layout(context, root, desc.layout, "tooltip"));
             Internal::set_panel_draw_config(context, root, "tooltip",
-                Float4U(0.05f, 0.06f, 0.07f, 0.97f));
+                Float4U(0.05f, 0.06f, 0.07f, 0.96f));
             if(out_handle) *out_handle = root;
             return true;
         }

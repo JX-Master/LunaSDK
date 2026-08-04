@@ -1532,6 +1532,24 @@ namespace Luna
                     GUI::IconName::info, "Hover for tooltip", fill_width(48.0f));
                 GUI::set_item_tooltip(context, id(context, "overlay.tooltip.layer"), tooltip_button,
                     "Available on hover or pointer focus.");
+                GUICore::ElementHandle backdrop_source = GUI::begin_h_layout(context,
+                    id(context, "overlay.popup.backdrop_source"), "Backdrop source", fill_width(56.0f));
+                const c8* backdrop_colors[] = {
+                    "gui.accent", "gui.status.busy", "gui.status.success", "gui.status.warning"
+                };
+                for(usize i = 0; i < 4; ++i)
+                {
+                    GUICore::ElementHandle sample = GUI::begin_v_layout(context,
+                        GUICore::make_scoped_id(backdrop_source.id, (u64)i + 1),
+                        "Backdrop color sample", grow_x(56.0f));
+                    rounded_rect(context, style_color(context, backdrop_colors[i]), 9.0f);
+                    GUI::end_v_layout(context, sample);
+                }
+                GUICore::FlexLayoutDesc backdrop_flex;
+                backdrop_flex.axis = GUICore::LayoutAxis::x;
+                backdrop_flex.cross_alignment = GUICore::FlexAlignment::stretch;
+                backdrop_flex.main_axis_gap = 6.0f;
+                GUI::end_h_layout(context, backdrop_source, backdrop_flex);
                 led_label(context, id(context, "overlay.notification.success"), "Build complete",
                     "gui.status.success", 150.0f);
                 led_label(context, id(context, "overlay.notification.warning"), "2 warnings",
@@ -1712,7 +1730,6 @@ namespace Luna
                 GUI::DockPanelDesc panel_desc;
                 panel_desc.close_button = false;
                 panel_desc.title_bar_height = style_scalar(context, "gui.control.height", 40.0f);
-                panel_desc.background_color = style_color(context, "gui.surface.1");
                 panel_desc.title_bar_color = style_color(context, "gui.surface.1");
                 panel_desc.border_color = style_color(context, "gui.border.strong");
 

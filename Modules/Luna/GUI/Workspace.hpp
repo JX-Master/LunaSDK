@@ -105,7 +105,8 @@ namespace Luna
             f32 resize_border_size = 7.0f;
             //! Minimum floating panel size.
             Float2U minimum_floating_size = Float2U(140.0f, 90.0f);
-            //! Panel background color. Zero alpha uses `gui.surface.1` from the current Style.
+            //! Panel background color. Zero alpha uses `gui.surface.1` for docked panels and
+            //! `gui.dock_panel.floating.background` for floating panels from the current Style.
             Float4U background_color = Float4U(0.0f);
             //! Docked title bar color. Zero alpha uses `gui.surface.1` from the current Style.
             Float4U title_bar_color = Float4U(0.0f);

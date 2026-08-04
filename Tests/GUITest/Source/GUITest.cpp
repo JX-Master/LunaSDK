@@ -108,27 +108,31 @@ namespace
         desc.input_mode = app.state.density == 0 ? GUI::InputMode::pointer : GUI::InputMode::touch;
         desc.accent = Float4U(0.890f, 0.310f, 0.349f, 1.0f);
         GUI::set_default_style(app.gui, desc);
+        // The reference showcase renders to a sampleable GUI target. Popups and tooltips
+        // intentionally exaggerate blur and transmission so the neutral Overlay sample makes
+        // capture and filtering visually obvious.
         app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
-            Name("gui.popup.backdrop_softness"), GUICore::style_f32(12.0f));
+            Name("gui.popup.backdrop_softness"), GUICore::style_f32(30.0f));
         app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
-            Name("gui.tooltip.backdrop_softness"), GUICore::style_f32(10.0f));
-        app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
-            Name("gui.dock_panel.floating.backdrop_softness"),
-            GUICore::style_f32(14.0f));
+            Name("gui.popup.backdrop_downsample_level"), GUICore::style_f32(1.0f));
         Float4U popup_background = app.gui->get_style_value(
             Name(GUI::DEFAULT_STYLE_NAME), Name("gui.popup.background"),
             GUICore::style_f32x4(Float4U(0.1f))).number;
-        popup_background.w = 0.72f;
+        popup_background.w = 0.35f;
         app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
-            Name("gui.popup.background"),
-            GUICore::style_f32x4(popup_background));
+            Name("gui.popup.background"), GUICore::style_f32x4(popup_background));
+        app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
+            Name("gui.tooltip.backdrop_softness"), GUICore::style_f32(30.0f));
+        app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
+            Name("gui.tooltip.backdrop_downsample_level"), GUICore::style_f32(1.0f));
         Float4U tooltip_background = app.gui->get_style_value(
             Name(GUI::DEFAULT_STYLE_NAME), Name("gui.tooltip.background"),
             GUICore::style_f32x4(Float4U(0.1f))).number;
-        tooltip_background.w = 0.76f;
+        tooltip_background.w = 0.35f;
         app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
-            Name("gui.tooltip.background"),
-            GUICore::style_f32x4(tooltip_background));
+            Name("gui.tooltip.background"), GUICore::style_f32x4(tooltip_background));
+        app.gui->set_style_value(Name(GUI::DEFAULT_STYLE_NAME),
+            Name("gui.dock_panel.floating.backdrop_softness"), GUICore::style_f32(16.0f));
         app.applied_theme = app.state.theme;
         app.applied_density = app.state.density;
     }
@@ -288,8 +292,9 @@ namespace
                 frame.delta_time = 1.0f / 60.0f;
                 app.gui->begin_frame(frame);
                 GUIWindow::update_input(&input_adapter);
-                if(options.max_frames >= 0 && frame_index == 0 &&
-                    app.state.section == 7)
+                bool verify_popup_blur = options.max_frames >= 0 &&
+                    frame_index == 0 && app.state.section == 7;
+                if(verify_popup_blur)
                 {
                     GUI::open_popup(app.gui,
                         app.gui->make_id("overlay.popup.layer"));
@@ -312,11 +317,37 @@ namespace
                 }
                 luexp(GUIWindow::update_text_input(&input_adapter));
                 luexp(app.gui->generate_draw_commands());
+                if(verify_popup_blur)
+                {
+                    u32 capture_commands = 0;
+                    u32 blur_commands = 0;
+                    for(const GUICore::DrawCommand& command : app.gui->get_draw_commands())
+                    {
+                        if(command.type == GUICore::DrawCommandType::backdrop_blur_capture)
+                        {
+                            ++capture_commands;
+                        }
+                        else if(command.type == GUICore::DrawCommandType::backdrop_blur)
+                        {
+                            ++blur_commands;
+                        }
+                    }
+                    luassert(capture_commands == 1);
+                    luassert(blur_commands == 1);
+                }
 
                 lulet(back_buffer, app.swap_chain->get_current_back_buffer());
                 Float4U clear_color = app.gui->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
                     GUICore::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
                 luexp(render_demo(app, back_buffer, clear_color));
+                if(verify_popup_blur)
+                {
+                    GUICore::RendererPerformanceCounters counters =
+                        app.renderer->get_performance_counters();
+                    luassert(counters.backdrop_capture_count == 1);
+                    luassert(counters.backdrop_blur_dispatch_count >= 3);
+                    luassert(counters.backdrop_filtered_pixel_count > 0);
+                }
                 luexp(app.cmdbuf->submit({}, {}, true));
                 app.cmdbuf->wait();
                 luexp(app.cmdbuf->reset());
