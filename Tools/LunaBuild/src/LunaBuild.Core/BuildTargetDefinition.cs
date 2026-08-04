@@ -58,4 +58,11 @@ public sealed record BuildTargetDefinition(
     string? MsvcRuntimeLibrary,
     bool EnableRtti,
     string? DotNetProjectFile,
-    string? DotNetOutputFile);
+    string? DotNetOutputFile,
+    string ProjectName,
+    string QualifiedName,
+    string ProjectRootDirectory,
+    string ProjectBuildDirectory,
+    string ConfigurationId,
+    BuildOptions Options,
+    bool IsHostProject);

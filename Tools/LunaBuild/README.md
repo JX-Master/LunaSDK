@@ -4,7 +4,7 @@ LunaBuild is the C# front-end for LunaSDK builds.
 
 The build front-end and back-end are separated in C#:
 
-- `LunaBuild.Core` owns workspace discovery, project target rule loading, build options, and build graph data.
+- `LunaBuild.Core` owns workspace discovery, build sessions, project import and configuration, target rule loading, build options, and build graph data.
 - `LunaBuild.Cli` exposes `inspect`, `generate`, `build`, `clean`, `install`, `run`, and `package`.
 - `build` passes the in-memory `BuildGraph` object directly to the C# MakeSystem backend.
 - `generate` writes a LunaRules debug dump by default. JSON output is still available for inspection with `--format json`; IDE/project files are available with `--format compile_commands`, `--format vs2022`, `--format vscode`, and `--format xcode`.
@@ -12,9 +12,24 @@ The build front-end and back-end are separated in C#:
 Target configuration lives in project-local C# `TargetRules` classes. A rule
 file must be named `*.Target.cs` and should live in the target's project
 directory. LunaBuild target rules are the authoritative build definitions.
-LunaBuild scans these project rule files, compiles them into a temporary project rules assembly under
-`build/LunaBuild/ProjectRules`, then loads the resulting `TargetRules` types.
+LunaBuild scans these project rule files, compiles each project into its own
+rules assembly under that project's build directory, then loads the resulting
+`TargetRules` types in isolated load contexts.
 `Tools/LunaBuild` should stay project-agnostic.
+
+A root-level `*.Project.cs` file may import another LunaBuild project from any
+filesystem location. The importer explicitly assigns the imported project's
+configuration, may adopt named action configurations exported by that project,
+and refers to imported targets as `<Project>.<Target>`. Bare CLI target names
+always select targets from the host project. Imported outputs default to:
+
+```text
+<host-build>/Projects/<imported-root>-<canonical-root-hash>/
+```
+
+This keeps rules assemblies, generated files, object files, binaries, caches,
+and .NET intermediates out of the imported source tree. See
+`docs/TargetRules.md` for the project import API and visibility rules.
 
 The target rule authoring format is documented in `docs/TargetRules.md`.
 The LunaRules debug format is documented in `docs/LunaRules.md`. It is not the normal front-end/back-end transport.
@@ -23,6 +38,7 @@ Common commands:
 
 ```powershell
 dotnet run --project LunaBuild.csproj -- inspect --root .
+dotnet run --project LunaBuild.csproj -- build --root . --target ImportedProject.Runtime
 dotnet run --project LunaBuild.csproj -- generate --root . --target ObjLoader --output build/LunaBuild/ObjLoader.lunarules
 dotnet run --project LunaBuild.csproj -- generate --root . --target ObjLoader --format json --output build/LunaBuild/ObjLoader.graph.json
 dotnet run --project LunaBuild.csproj -- generate --root . --format vs2022 --all --platform Windows --arch x64

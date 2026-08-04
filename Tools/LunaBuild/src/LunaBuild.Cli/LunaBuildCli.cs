@@ -66,6 +66,11 @@ public static class LunaBuildCli
                 Console.WriteLine($"  {property.Name}={property.Value}");
             }
         }
+        Console.WriteLine("Projects:");
+        foreach(var project in context.Session.Projects)
+        {
+            Console.WriteLine($"  {project.Name}: source={project.RootDirectory}, build={project.BuildDirectory}, configuration={project.ConfigurationId}");
+        }
         Console.WriteLine($"Targets: {targets.Count}");
 
         foreach(var target in targets)
@@ -73,7 +78,7 @@ public static class LunaBuildCli
             var deps = target.Dependencies.Count == 0
                 ? "-"
                 : string.Join(", ", target.Dependencies);
-            Console.WriteLine($"  {target.Name} [{target.Category}] -> {deps}");
+            Console.WriteLine($"  {target.QualifiedName} [{target.Category}] -> {deps}");
         }
         return 0;
     }
@@ -164,21 +169,21 @@ public static class LunaBuildCli
 
         var context = CreateBuildContext(options);
         var workspace = context.Workspace;
-        var target = context.Targets.FirstOrDefault(target => string.Equals(target.Name, options.TargetName, StringComparison.OrdinalIgnoreCase))
+        var target = ResolveSelectedTarget(context.Targets, options.TargetName)
             ?? throw new ArgumentException($"Unknown target: {options.TargetName}");
         if(target.Kind is not (BuildTargetKind.Executable or BuildTargetKind.DotNetProject))
         {
             throw new ArgumentException($"Target `{target.Name}` is {target.Kind} and cannot be run.");
         }
 
-        var graph = GenerateGraph(workspace, context.BuildOptions, context.Targets, target.Name, allTargets: false);
+        var graph = GenerateGraph(workspace, context.BuildOptions, context.Targets, target.QualifiedName, allTargets: false);
         var result = ExecuteBuild(workspace, graph, options.ForceRebuild);
         Console.WriteLine(result.UpToDate
             ? $"Up to date. Nodes: {result.NodesVisited}"
             : $"Build finished. Nodes: {result.NodesVisited}, Actions: {result.ActionsExecuted}");
 
-        var executable = BuildGraphQueries.FindRunnableOutput(workspace, graph, target.Name)
-            ?? throw new InvalidOperationException($"Target `{target.Name}` did not produce a runnable output.");
+        var executable = BuildGraphQueries.FindRunnableOutput(workspace, graph, target.QualifiedName)
+            ?? throw new InvalidOperationException($"Target `{target.QualifiedName}` did not produce a runnable output.");
         if(!File.Exists(executable))
         {
             throw new FileNotFoundException($"Runnable output is missing after build: {executable}", executable);
@@ -228,25 +233,25 @@ public static class LunaBuildCli
         }
 
         var context = CreateBuildContext(options);
-        if(context.BuildOptions.Platform != BuildPlatform.Android)
-        {
-            throw new ArgumentException("package currently supports Android targets only. Pass --platform Android.");
-        }
-
-        var target = context.Targets.FirstOrDefault(target => string.Equals(target.Name, options.TargetName, StringComparison.OrdinalIgnoreCase))
+        var target = ResolveSelectedTarget(context.Targets, options.TargetName)
             ?? throw new ArgumentException($"Unknown target: {options.TargetName}");
+        if(target.Options.Platform != BuildPlatform.Android)
+        {
+            throw new ArgumentException(
+                $"Target `{target.QualifiedName}` is configured for {target.Options.Platform}; package currently supports Android targets only.");
+        }
         if(target.Kind != BuildTargetKind.Executable)
         {
             throw new ArgumentException($"Target `{target.Name}` is {target.Kind} and cannot be packaged as an Android application.");
         }
 
-        var graph = GenerateGraph(context.Workspace, context.BuildOptions, context.Targets, target.Name, allTargets: false);
+        var graph = GenerateGraph(context.Workspace, context.BuildOptions, context.Targets, target.QualifiedName, allTargets: false);
         var result = ExecuteBuild(context.Workspace, graph, options.ForceRebuild);
         Console.WriteLine(result.UpToDate
             ? $"Up to date. Nodes: {result.NodesVisited}"
             : $"Build finished. Nodes: {result.NodesVisited}, Actions: {result.ActionsExecuted}");
 
-        var packageResult = PackageAndroid(context.Workspace, context.BuildOptions, graph, target, options.OutputPath);
+        var packageResult = PackageAndroid(context.Workspace, target.Options, graph, target, options.OutputPath);
         Console.WriteLine($"Android package finished. Native libraries: {packageResult.NativeLibrariesCopied}, APK: {packageResult.ApkPath}");
         return 0;
     }
@@ -279,30 +284,45 @@ public static class LunaBuildCli
         IReadOnlySet<BuildTargetCategory>? categoryFilter,
         bool includeAllDiscoveredWhenUnfiltered = false)
     {
+        IReadOnlyList<BuildTargetDefinition> roots;
         if(allTargets || string.IsNullOrWhiteSpace(targetName))
         {
             if(categoryFilter is { Count: > 0 })
             {
-                return targets
+                roots = targets
+                    .Where(target => target.IsHostProject)
                     .Where(target => categoryFilter.Contains(target.Category))
-                    .OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase)
                     .ToArray();
             }
-            if(includeAllDiscoveredWhenUnfiltered)
+            else if(includeAllDiscoveredWhenUnfiltered)
             {
-                return targets;
+                roots = targets.Where(target => target.IsHostProject).ToArray();
             }
-            return targets
-                .Where(target => BuildTargetCategoryPolicy.IsDefaultEnabled(target.Category))
-                .OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+            else
+            {
+                roots = targets
+                    .Where(target => target.IsHostProject)
+                    .Where(target => BuildTargetCategoryPolicy.IsDefaultEnabled(target.Category))
+                    .ToArray();
+            }
+        }
+        else
+        {
+            roots = new[]
+            {
+                ResolveSelectedTarget(targets, targetName)
+                    ?? throw new ArgumentException($"Unknown target: {targetName}"),
+            };
         }
 
-        var targetMap = targets.ToDictionary(target => target.Name, StringComparer.OrdinalIgnoreCase);
+        var targetMap = targets.ToDictionary(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase);
         var selected = new List<BuildTargetDefinition>();
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        Visit(targetName);
-        return selected.OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+        foreach(var root in roots)
+        {
+            Visit(root.QualifiedName);
+        }
+        return selected.OrderBy(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase).ToArray();
 
         void Visit(string name)
         {
@@ -340,31 +360,13 @@ public static class LunaBuildCli
     private static BuildContext CreateBuildContext(CommandLineOptions options, BuildWorkspace? existingWorkspace = null)
     {
         var workspace = existingWorkspace ?? BuildWorkspace.Discover(options.RootDirectory);
-        var provider = new ProjectTargetRulesProvider();
-        var projectRules = provider.GetProjectRules(workspace);
-        var projectDefinition = MergeProjectDefinitions(projectRules.Select(rules => rules.ToDefinition(workspace)).ToArray());
-        var buildOptions = options.ToBuildOptions(projectDefinition);
-        foreach(var rules in projectRules)
-        {
-            buildOptions = rules.ConfigureBuildOptions(workspace, buildOptions);
-        }
-        var targets = new TargetDiscovery(new ITargetRulesProvider[] { provider }).DiscoverTargets(workspace, buildOptions);
-        return new BuildContext(workspace, buildOptions, targets, projectDefinition);
-    }
-
-    private static BuildProjectDefinition MergeProjectDefinitions(IReadOnlyList<BuildProjectDefinition> definitions)
-    {
-        if(definitions.Count == 0)
-        {
-            return BuildProjectDefinition.Empty;
-        }
-
-        return new BuildProjectDefinition(
-            string.Join("+", definitions.Select(definition => definition.Name).Order(StringComparer.OrdinalIgnoreCase)),
-            definitions
-                .SelectMany(definition => definition.Properties)
-                .OrderBy(property => property.Name, StringComparer.OrdinalIgnoreCase)
-                .ToArray());
+        var session = BuildSession.Create(workspace, options.ToBuildOptions);
+        return new BuildContext(
+            session.HostWorkspace,
+            session.HostProject.PrimaryOptions,
+            session.Targets,
+            session.HostProject.Definition,
+            session);
     }
 
     private static IReadOnlySet<BuildTargetCategory>? TargetCategoryFilter(CommandLineOptions options)
@@ -377,6 +379,19 @@ public static class LunaBuildCli
     private static IReadOnlySet<BuildTargetCategory> AllTargetCategories()
     {
         return Enum.GetValues<BuildTargetCategory>().ToHashSet();
+    }
+
+    private static BuildTargetDefinition? ResolveSelectedTarget(
+        IReadOnlyList<BuildTargetDefinition> targets,
+        string? name)
+    {
+        if(string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+        return name.Contains('.', StringComparison.Ordinal)
+            ? targets.FirstOrDefault(target => target.QualifiedName.Equals(name, StringComparison.OrdinalIgnoreCase))
+            : targets.FirstOrDefault(target => target.IsHostProject && target.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
 
     private static BuildGraphOutputFormat ResolveOutputFormat(CommandLineOptions options)
@@ -537,11 +552,27 @@ public static class LunaBuildCli
         BuildTargetDefinition target,
         string? outputPath)
     {
-        var androidProject = Path.Combine(target.Directory, "AndroidProject");
-        if(!File.Exists(Path.Combine(androidProject, "settings.gradle")))
+        var sourceAndroidProject = Path.Combine(target.Directory, "AndroidProject");
+        if(!File.Exists(Path.Combine(sourceAndroidProject, "settings.gradle")))
         {
-            throw new DirectoryNotFoundException($"Android project was not found for target `{target.Name}`: {androidProject}");
+            throw new DirectoryNotFoundException($"Android project was not found for target `{target.QualifiedName}`: {sourceAndroidProject}");
         }
+
+        var packageRoot = Path.Combine(
+            target.ProjectBuildDirectory,
+            options.Platform.ToString(),
+            options.Architecture,
+            options.Mode.ToString());
+        if(!target.IsHostProject)
+        {
+            packageRoot = Path.Combine(packageRoot, target.ConfigurationId);
+        }
+        var androidProject = Path.Combine(packageRoot, "package", target.Name, "AndroidProject");
+        if(Directory.Exists(androidProject))
+        {
+            Directory.Delete(androidProject, recursive: true);
+        }
+        CopyDirectory(sourceAndroidProject, androidProject);
 
         var abi = AndroidAbi(options.Architecture);
         var jniLibsDirectory = Path.Combine(androidProject, "app", "src", "main", "jniLibs", abi);
@@ -598,6 +629,25 @@ public static class LunaBuildCli
         }
 
         return new AndroidPackageResult(sharedLibraries.Length + 1, apk);
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach(var file in Directory.EnumerateFiles(source))
+        {
+            File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), overwrite: true);
+        }
+        foreach(var directory in Directory.EnumerateDirectories(source))
+        {
+            var name = Path.GetFileName(directory);
+            if(name.Equals(".gradle", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("build", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            CopyDirectory(directory, Path.Combine(destination, name));
+        }
     }
 
     private static IEnumerable<string> FindAndroidSharedLibraries(BuildWorkspace workspace, BuildGraph graph)
@@ -905,12 +955,12 @@ public static class LunaBuildCli
         Console.WriteLine("Usage: lunabuild <inspect|generate|build|clean|install|run|package> [options]");
         Console.WriteLine();
         Console.WriteLine("Options:");
-        Console.WriteLine("  --root <path>       LunaSDK repository root. Defaults to auto-discovery.");
+        Console.WriteLine("  --root <path>       Host project root. Defaults to auto-discovery.");
         Console.WriteLine("  --output <path>     Graph output path for generate, or optional debug dump for build.");
         Console.WriteLine("  --format <name>     rules, json, compile_commands, vs2022, vscode, or xcode.");
         Console.WriteLine("  --vscode-debugger <name>");
         Console.WriteLine("                       VSCode launch debugger: cppvsdbg, cppdbg, or lldb-dap. Can repeat or use commas.");
-        Console.WriteLine("  --target <name>     Select one target.");
+        Console.WriteLine("  --target <name>     Select a host target, or use <Project>.<Target> for an imported target.");
         Console.WriteLine("  --all               Select all discovered targets.");
         Console.WriteLine("  --category <name>   Filter all-target operations by Engine, Tests, or Tools. Can repeat or use commas.");
         Console.WriteLine("  --force             Force build actions to run even when up to date.");
@@ -937,7 +987,8 @@ public static class LunaBuildCli
         BuildWorkspace Workspace,
         BuildOptions BuildOptions,
         IReadOnlyList<BuildTargetDefinition> Targets,
-        BuildProjectDefinition Project);
+        BuildProjectDefinition Project,
+        BuildSession Session);
 }
 
 internal sealed class CommandLineOptions
@@ -1124,16 +1175,10 @@ internal sealed class CommandLineOptions
 
     private static void ValidatePlatformArchitecture(BuildPlatform platform, string architecture)
     {
-        if(platform == BuildPlatform.MacOS && !IsMacOsSupportedArchitecture(architecture))
+        if(string.IsNullOrWhiteSpace(architecture))
         {
-            throw new ArgumentException($"Unsupported macOS architecture: {architecture}. LunaSDK supports macOS arm64 only.");
+            throw new ArgumentException("Architecture cannot be empty.");
         }
-    }
-
-    private static bool IsMacOsSupportedArchitecture(string architecture)
-    {
-        return architecture.Equals("arm64", StringComparison.OrdinalIgnoreCase) ||
-            architecture.Equals("aarch64", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string RequireValue(string[] args, ref int index, string optionName)

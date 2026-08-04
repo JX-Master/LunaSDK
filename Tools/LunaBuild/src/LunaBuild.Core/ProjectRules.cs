@@ -5,6 +5,9 @@ public abstract class ProjectRules
     private readonly List<BuildPropertyDefinition> _properties = new();
     private readonly List<string> _globalDefines = new();
     private readonly List<string> _globalUndefines = new();
+    private readonly List<string> _globalIncludeDirectories = new();
+    private readonly List<BuildActionConfigurationDefinition> _actionConfigurations = new();
+    private string? _libraryPrefix;
     private BuildWorkspace? _currentWorkspace;
     private BuildOptions? _currentOptions;
 
@@ -43,11 +46,62 @@ public abstract class ProjectRules
         _globalUndefines.AddRange(undefines);
     }
 
+    protected void GlobalIncludeDirectories(params string[] directories)
+    {
+        _globalIncludeDirectories.AddRange(directories);
+    }
+
+    protected void LibraryPrefix(string prefix)
+    {
+        _libraryPrefix = prefix;
+    }
+
+    protected void ActionConfiguration(
+        string name,
+        IReadOnlyDictionary<string, string>? targets = null,
+        IReadOnlyDictionary<string, string>? files = null,
+        IReadOnlyDictionary<string, string>? directories = null,
+        IReadOnlyDictionary<string, string>? values = null)
+    {
+        if(string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Action configuration name cannot be empty.", nameof(name));
+        }
+        if(_actionConfigurations.Any(configuration => configuration.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"Project `{Name}` declares action configuration `{name}` more than once.");
+        }
+        _actionConfigurations.Add(new BuildActionConfigurationDefinition(
+            name,
+            Name,
+            Workspace.RootDirectory,
+            Workspace.BuildDirectory,
+            Options.Properties,
+            Copy(targets, resolvePaths: false),
+            Copy(files, resolvePaths: true),
+            Copy(directories, resolvePaths: true),
+            Copy(values, resolvePaths: false)));
+
+        IReadOnlyDictionary<string, string> Copy(IReadOnlyDictionary<string, string>? source, bool resolvePaths)
+        {
+            return source is null
+                ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                : source.ToDictionary(
+                    pair => pair.Key,
+                    pair => resolvePaths ? Workspace.ResolveRepositoryPath(pair.Value) : pair.Value,
+                    StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
     protected virtual void ConfigureProperties(BuildWorkspace workspace)
     {
     }
 
     protected virtual void Configure(BuildWorkspace workspace, BuildOptions options)
+    {
+    }
+
+    protected virtual void ConfigureProject(Project project)
     {
     }
 
@@ -70,6 +124,9 @@ public abstract class ProjectRules
     {
         _globalDefines.Clear();
         _globalUndefines.Clear();
+        _globalIncludeDirectories.Clear();
+        _actionConfigurations.Clear();
+        _libraryPrefix = null;
         _currentWorkspace = workspace;
         _currentOptions = options;
         try
@@ -87,7 +144,29 @@ public abstract class ProjectRules
                     .Distinct(StringComparer.Ordinal)
                     .Order(StringComparer.Ordinal)
                     .ToArray(),
+                GlobalIncludeDirectories = options.GlobalIncludeDirectories
+                    .Concat(_globalIncludeDirectories.Select(workspace.ResolveRepositoryPath))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Order(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                ActionConfigurations = _actionConfigurations.ToArray(),
+                LibraryPrefix = _libraryPrefix ?? options.LibraryPrefix,
             };
+        }
+        finally
+        {
+            _currentWorkspace = null;
+            _currentOptions = null;
+        }
+    }
+
+    internal void ConfigureProjectInstance(Project project)
+    {
+        _currentWorkspace = project.Workspace;
+        _currentOptions = project.PrimaryOptions;
+        try
+        {
+            ConfigureProject(project);
         }
         finally
         {

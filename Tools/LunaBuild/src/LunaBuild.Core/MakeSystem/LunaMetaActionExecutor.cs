@@ -21,7 +21,11 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
         Directory.CreateDirectory(Path.GetDirectoryName(stamp)!);
         Directory.CreateDirectory(Path.GetDirectoryName(depfile)!);
 
-        var tool = LocateLunaMetaTool(context.Workspace, context.Graph.Options);
+        var tool = context.Workspace.ResolveRepositoryPath(payload.Required("tool"));
+        if(!File.Exists(tool))
+        {
+            throw new MakeSystemException($"Metadata tool was not built or does not exist: {tool}");
+        }
         var args = new List<string>
         {
             "--output-dir",
@@ -31,7 +35,7 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
             "--depfile",
             depfile,
             "--target",
-            payload.Required("target"),
+            payload.Contains("target_name") ? payload.Required("target_name") : payload.Required("target"),
             "--mode",
             payload.Required("mode"),
             "--platform",
@@ -50,14 +54,15 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
             args.Add("--header-language");
             args.Add(language);
         }
-        if(context.Graph.Options.Platform == BuildPlatform.MacOS && OperatingSystem.IsMacOS())
+        if(context.Options.Platform == BuildPlatform.MacOS && OperatingSystem.IsMacOS())
         {
             var appleToolchain = AppleClangToolchainLocator.LocateMacOS();
             args.Add("--isysroot");
             args.Add(appleToolchain.SdkPath);
             args.Add("--resource-dir");
-            args.Add(TryLocateLlvmResourceDirectory(context.Workspace) ??
-                await LocateClangResourceDirectoryAsync(context.Workspace, appleToolchain.Clang, cancellationToken));
+            args.Add(payload.Contains("resource_dir")
+                ? context.Workspace.ResolveRepositoryPath(payload.Required("resource_dir"))
+                : await LocateClangResourceDirectoryAsync(context.Workspace, appleToolchain.Clang, cancellationToken));
         }
         foreach(var include in payload.All("include"))
         {
@@ -87,27 +92,6 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
         }
     }
 
-    private static string? TryLocateLlvmResourceDirectory(BuildWorkspace workspace)
-    {
-        var clangDirectory = Path.Combine(
-            workspace.RootDirectory,
-            "SDKs",
-            "llvm-21.1.1",
-            "macosx",
-            "arm64",
-            "lib",
-            "clang");
-        if(!Directory.Exists(clangDirectory))
-        {
-            return null;
-        }
-
-        return Directory.EnumerateDirectories(clangDirectory)
-            .Where(directory => Directory.Exists(Path.Combine(directory, "include")))
-            .OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault();
-    }
-
     private async Task<string> LocateClangResourceDirectoryAsync(
         BuildWorkspace workspace,
         string clang,
@@ -132,30 +116,6 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
             throw new MakeSystemException("clang -print-resource-dir returned an empty path.");
         }
         return path;
-    }
-
-    private static string LocateLunaMetaTool(BuildWorkspace workspace, BuildOptions options)
-    {
-        var executable = OperatingSystem.IsWindows() ? "LunaMetaTool.exe" : "LunaMetaTool";
-        var candidates = new[]
-        {
-            Path.Combine(workspace.BuildDirectory, options.Platform.ToString(), options.Architecture, options.Mode.ToString(), "bin", executable),
-            Path.Combine(workspace.BuildDirectory, "MacOS", "arm64", "Debug", "bin", executable),
-            Path.Combine(workspace.BuildDirectory, "Windows", "x64", "Debug", "bin", executable),
-            Path.Combine(workspace.RootDirectory, "Tools", "LunaMetaTool", "bin", executable),
-            Path.Combine(workspace.RootDirectory, "SDKs", "LunaMetaTool", "macosx", "arm64", "bin", executable),
-            Path.Combine(workspace.RootDirectory, "SDKs", "LunaMetaTool", "windows", "x64", "bin", executable),
-        };
-        foreach(var candidate in candidates)
-        {
-            if(File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-        throw new MakeSystemException(
-            "LunaMetaTool is missing. Expected one of:" +
-            string.Concat(candidates.Select(path => $"{Environment.NewLine}  {path}")));
     }
 
     private static string FormatToolFailure(

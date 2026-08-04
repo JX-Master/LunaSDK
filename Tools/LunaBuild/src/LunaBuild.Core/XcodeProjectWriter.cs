@@ -17,8 +17,8 @@ public static class XcodeProjectWriter
         Directory.CreateDirectory(paths.ProjectDirectory);
         CleanGeneratedProject(paths.ProjectDirectory);
 
-        var orderedTargets = targets.OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase).ToArray();
-        var targetMap = orderedTargets.ToDictionary(target => target.Name, StringComparer.OrdinalIgnoreCase);
+        var orderedTargets = targets.OrderBy(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase).ToArray();
+        var targetMap = orderedTargets.ToDictionary(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase);
         var scriptPath = Path.Combine(paths.OutputDirectory, "lunabuild-xcode.sh");
         WriteHelperScript(scriptPath, workspace, options);
 
@@ -131,19 +131,19 @@ public static class XcodeProjectWriter
         string scriptPath,
         BuildTargetDefinition target)
     {
-        var outputPath = IdeProjectModel.FindPrimaryOutput(workspace, graph, target.Name)
-            ?? Path.Combine(paths.OutputDirectory, target.Name + ".stamp");
+        var outputPath = IdeProjectModel.FindPrimaryOutput(workspace, graph, target.QualifiedName)
+            ?? Path.Combine(paths.OutputDirectory, IdeProjectModel.SanitizeFileName(target.QualifiedName) + ".stamp");
         return new XcodeTargetInfo(
-            Name: target.Name,
+            Name: target.QualifiedName,
             Target: target,
-            TargetId: Id("Target:" + target.Name),
-            ProductFileId: Id("Product:" + target.Name),
+            TargetId: Id("Target:" + target.QualifiedName),
+            ProductFileId: Id("Product:" + target.QualifiedName),
             ProductName: Path.GetFileName(outputPath),
             ProductPath: outputPath,
-            SourceGroupId: Id("Group:Target:" + target.Name),
-            ConfigListId: Id("ConfigList:Target:" + target.Name),
-            ConfigId: Id("Config:Target:" + target.Name + ":" + options.Mode),
-            BuildArguments: $"{ShellQuote(scriptPath)} target {ShellQuote(target.Name)}");
+            SourceGroupId: Id("Group:Target:" + target.QualifiedName),
+            ConfigListId: Id("ConfigList:Target:" + target.QualifiedName),
+            ConfigId: Id("Config:Target:" + target.QualifiedName + ":" + target.Options.Mode),
+            BuildArguments: $"{ShellQuote(scriptPath)} target {ShellQuote(target.QualifiedName)}");
     }
 
     private static IReadOnlyList<XcodeTargetInfo> CreateUtilityTargets(XcodePaths paths, string scriptPath, BuildOptions options)
@@ -185,7 +185,7 @@ public static class XcodeProjectWriter
         var childRefs = new StringBuilder();
         foreach(var file in files)
         {
-            var fileId = Id("File:" + target.Name + ":" + file.Path);
+            var fileId = Id("File:" + target.QualifiedName + ":" + file.Path);
             var name = Path.GetFileName(file.Path);
             objects.Add(FileReference(fileId, name, file.Path, XcodeFileType(file.Path)));
             childRefs.Append("\t\t\t\t");
@@ -325,13 +325,14 @@ public static class XcodeProjectWriter
     private static XcodeObject TargetBuildConfiguration(BuildWorkspace workspace, string id, BuildOptions options, BuildTargetDefinition target)
     {
         var includePaths = target.IncludeDirectories
-            .Concat(new[] { workspace.ResolveRepositoryPath("Modules"), target.Directory })
+            .Concat(target.Options.GlobalIncludeDirectories)
+            .Concat(new[] { target.Directory })
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order(StringComparer.OrdinalIgnoreCase)
             .Select(PbxString)
             .ToArray();
         var defines = target.Defines
-            .Concat(new[] { "LUNA_MANUAL_CONFIG_DEBUG_LEVEL" })
+            .Concat(target.Options.GlobalDefines)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .Select(PbxString)
@@ -416,7 +417,7 @@ public static class XcodeProjectWriter
 
     private static void WriteHelperScript(string scriptPath, BuildWorkspace workspace, BuildOptions options)
     {
-        var projectPath = Path.Combine(workspace.RootDirectory, "LunaBuild.csproj");
+        var projectPath = IdeProjectModel.ResolveRunnerProject(workspace);
         var commonArgs = string.Join(" ", IdeProjectModel.CommonBuildOptionArguments(options));
         var text = string.Join('\n',
             "#!/bin/sh",

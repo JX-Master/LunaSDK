@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.Loader;
+using System.Security.Cryptography;
+using System.Text;
 using System.Xml.Linq;
 
 namespace LunaBuild.Core;
@@ -8,12 +11,12 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
 {
     private Assembly? _assembly;
     private string? _assemblyWorkspaceRoot;
+    private AssemblyLoadContext? _loadContext;
 
     private static readonly string[] ExcludedTopLevelDirectories =
     {
         ".git",
         "build",
-        "SDKs",
         "Tools/LunaBuild",
     };
 
@@ -59,22 +62,43 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
         }
 
         var assemblyPath = CompileRulesAssembly(workspace, ruleFiles);
-        _assembly = Assembly.LoadFrom(assemblyPath);
+        _loadContext = new ProjectRulesLoadContext();
+        _assembly = _loadContext.LoadFromAssemblyPath(assemblyPath);
         _assemblyWorkspaceRoot = workspace.RootDirectory;
         return _assembly;
     }
 
     private static IEnumerable<string> DiscoverRuleFiles(BuildWorkspace workspace)
     {
-        foreach(var file in Directory.EnumerateFiles(workspace.RootDirectory, "*.Target.cs", SearchOption.AllDirectories)
-            .Concat(Directory.EnumerateFiles(workspace.RootDirectory, "*.Project.cs", SearchOption.AllDirectories)))
+        return DiscoverDirectory(workspace.RootDirectory, isProjectRoot: true);
+
+        IEnumerable<string> DiscoverDirectory(string directory, bool isProjectRoot)
         {
-            var relative = workspace.ToRepositoryRelativePath(file);
-            if(ExcludedTopLevelDirectories.Any(excluded => IsInDirectory(relative, excluded)))
+            if(!isProjectRoot && Directory.EnumerateFiles(directory, "*.Project.cs", SearchOption.TopDirectoryOnly).Any())
             {
-                continue;
+                yield break;
             }
-            yield return file;
+
+            foreach(var file in Directory.EnumerateFiles(directory, "*.Target.cs", SearchOption.TopDirectoryOnly)
+                .Concat(Directory.EnumerateFiles(directory, "*.Project.cs", SearchOption.TopDirectoryOnly))
+                .Order(StringComparer.OrdinalIgnoreCase))
+            {
+                yield return file;
+            }
+
+            foreach(var child in Directory.EnumerateDirectories(directory).Order(StringComparer.OrdinalIgnoreCase))
+            {
+                var relative = workspace.ToRepositoryRelativePath(child);
+                if(ExcludedTopLevelDirectories.Any(excluded =>
+                    relative.Equals(excluded, StringComparison.OrdinalIgnoreCase) || IsInDirectory(relative, excluded)))
+                {
+                    continue;
+                }
+                foreach(var file in DiscoverDirectory(child, isProjectRoot: false))
+                {
+                    yield return file;
+                }
+            }
         }
     }
 
@@ -111,13 +135,14 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
 
     private static string CompileRulesAssembly(BuildWorkspace workspace, IReadOnlyList<string> ruleFiles)
     {
-        var projectDirectory = Path.Combine(workspace.BuildDirectory, "ProjectRules");
+        var projectDirectory = Path.Combine(workspace.BuildDirectory, "Rules");
         Directory.CreateDirectory(projectDirectory);
         using var compileLock = AcquireLock(Path.Combine(projectDirectory, "compile.lock"));
 
         var projectPath = Path.Combine(projectDirectory, "LunaBuild.ProjectRules.csproj");
-        var outputAssembly = Path.Combine(projectDirectory, "bin", "Debug", "net9.0", "LunaBuild.ProjectRules.dll");
-        WriteProjectFile(projectPath, ruleFiles);
+        var assemblyName = "LunaBuild.ProjectRules." + StableHash(workspace.RootDirectory) + "." + RulesContentHash(ruleFiles);
+        var outputAssembly = Path.Combine(projectDirectory, "bin", "Debug", "net9.0", assemblyName + ".dll");
+        WriteProjectFile(projectPath, ruleFiles, assemblyName);
 
         var dotnet = LocateDotnet();
         var args = new[]
@@ -157,7 +182,7 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
         }
     }
 
-    private static void WriteProjectFile(string projectPath, IReadOnlyList<string> ruleFiles)
+    private static void WriteProjectFile(string projectPath, IReadOnlyList<string> ruleFiles, string assemblyName)
     {
         var coreAssembly = typeof(TargetRules).Assembly.Location;
         var document = new XDocument(
@@ -167,6 +192,7 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
                     new XElement("TargetFramework", "net9.0"),
                     new XElement("ImplicitUsings", "enable"),
                     new XElement("Nullable", "enable"),
+                    new XElement("AssemblyName", assemblyName),
                     new XElement("EnableDefaultCompileItems", "false"),
                     new XElement("NuGetAudit", "false")),
                 new XElement("ItemGroup",
@@ -179,6 +205,19 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
                         .Select(path => new XElement("Compile", new XAttribute("Include", path))))));
 
         document.Save(projectPath);
+    }
+
+    private static string StableHash(string value)
+    {
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant()[..12];
+    }
+
+    private static string RulesContentHash(IReadOnlyList<string> ruleFiles)
+    {
+        var identity = string.Join('\n', ruleFiles
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .Select(path => path + ":" + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)))));
+        return StableHash(identity);
     }
 
     private static string LocateDotnet()
@@ -263,4 +302,18 @@ public sealed class ProjectTargetRulesProvider : ITargetRulesProvider
     }
 
     private sealed record ProcessResult(int ExitCode, string Output);
+
+    private sealed class ProjectRulesLoadContext : AssemblyLoadContext
+    {
+        public ProjectRulesLoadContext()
+            : base(isCollectible: false)
+        {
+        }
+
+        protected override Assembly? Load(AssemblyName assemblyName)
+        {
+            var coreAssembly = typeof(TargetRules).Assembly;
+            return assemblyName.Name == coreAssembly.GetName().Name ? coreAssembly : null;
+        }
+    }
 }

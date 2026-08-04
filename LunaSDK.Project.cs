@@ -34,6 +34,32 @@ public sealed class LunaSDKProjectRules : ProjectRules
 
     protected override void Configure(BuildWorkspace workspace, BuildOptions options)
     {
+        GlobalIncludeDirectories("Modules");
+        LibraryPrefix("Luna");
+        ActionConfiguration(
+            "luna.meta",
+            targets: new Dictionary<string, string>
+            {
+                ["tool"] = "LunaMetaTool",
+            },
+            directories: MetaResourceDirectories(workspace, options));
+        ActionConfiguration(
+            "cppsl.shader",
+            targets: new Dictionary<string, string>
+            {
+                ["compiler"] = "CPPSL",
+                ["native_extractor"] = "cppsl-native-extractor",
+            },
+            files: ShaderBackendFiles(workspace),
+            directories: new Dictionary<string, string>
+            {
+                ["standard_library"] = "Tools/CPPSL/std",
+            },
+            values: new Dictionary<string, string>
+            {
+                ["helper_header"] = "Luna/RHI/CppslShaderHelper.hpp",
+                ["namespace"] = "Luna",
+            });
         if(options.Mode == BuildMode.Debug || GetBoolean("api_validation"))
         {
             GlobalDefines("LUNA_ENABLE_API_VALIDATION");
@@ -46,5 +72,35 @@ public sealed class LunaSDKProjectRules : ProjectRules
         {
             GlobalDefines("LUNA_ENABLE_MEMORY_PROFILER");
         }
+    }
+
+    private static IReadOnlyDictionary<string, string> ShaderBackendFiles(BuildWorkspace workspace)
+    {
+        var platform = OperatingSystem.IsWindows() ? "windows" : "macosx";
+        var architecture = OperatingSystem.IsWindows() ? "x64" : "arm64";
+        var executableExtension = OperatingSystem.IsWindows() ? ".exe" : string.Empty;
+        return new Dictionary<string, string>
+        {
+            ["dxc"] = Path.Combine(workspace.RootDirectory, "SDKs", "vulkan-tools", platform, architecture, "bin", "dxc" + executableExtension),
+            ["glslang"] = Path.Combine(workspace.RootDirectory, "SDKs", "vulkan-tools", platform, architecture, "bin", "glslang" + executableExtension),
+        };
+    }
+
+    private static IReadOnlyDictionary<string, string> MetaResourceDirectories(BuildWorkspace workspace, BuildOptions options)
+    {
+        var platform = options.Platform == BuildPlatform.Windows ? "windows" : "macosx";
+        var architecture = options.Platform == BuildPlatform.Windows ? "x64" : "arm64";
+        var clangRoot = Path.Combine(workspace.RootDirectory, "SDKs", "llvm-21.1.1", platform, architecture, "lib", "clang");
+        if(!Directory.Exists(clangRoot))
+        {
+            return new Dictionary<string, string>();
+        }
+        var resourceDirectory = Directory.EnumerateDirectories(clangRoot)
+            .Where(directory => Directory.Exists(Path.Combine(directory, "include")))
+            .OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+        return resourceDirectory is null
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string> { ["clang_resource"] = resourceDirectory };
     }
 }

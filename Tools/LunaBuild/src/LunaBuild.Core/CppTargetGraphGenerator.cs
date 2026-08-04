@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+
 namespace LunaBuild.Core;
 
 public sealed class CppTargetGraphGenerator
@@ -8,20 +11,23 @@ public sealed class CppTargetGraphGenerator
         IReadOnlyList<BuildTargetDefinition> targets,
         string targetName)
     {
-        var targetMap = targets.ToDictionary(target => target.Name, StringComparer.OrdinalIgnoreCase);
-        if(!targetMap.TryGetValue(targetName, out var target))
+        var targetMap = targets.ToDictionary(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase);
+        var target = ResolveTarget(targets, targetName);
+        if(target is null)
         {
             throw new ArgumentException($"Target does not exist: {targetName}");
         }
 
         var builder = new CppTargetGraphBuilder(workspace, options, targetMap);
-        builder.AddTarget(target.Name);
+        builder.AddTarget(target.QualifiedName);
 
         return new BuildGraph(
-            Version: 1,
+            Version: 2,
             Options: options,
             Nodes: builder.Nodes,
-            Targets: new[] { BuildGraphIds.Target(target.Name) });
+            Targets: new[] { BuildGraphIds.Target(target.QualifiedName) })
+            .AddMetadata(targets)
+            .MergeMetadata(builder.AdditionalProjects, builder.AdditionalConfigurations);
     }
 
     public BuildGraph GenerateAll(
@@ -33,15 +39,15 @@ public sealed class CppTargetGraphGenerator
         var rootTargets = targets
             .Where(target => ShouldIncludeRootTarget(target, categoryFilter))
             .ToArray();
-        var targetMap = targets.ToDictionary(target => target.Name, StringComparer.OrdinalIgnoreCase);
+        var targetMap = targets.ToDictionary(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase);
         var builder = new CppTargetGraphBuilder(workspace, options, targetMap);
         foreach(var target in rootTargets.OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase))
         {
-            builder.AddTarget(target.Name);
+            builder.AddTarget(target.QualifiedName);
         }
 
         var targetIds = rootTargets
-            .Select(target => BuildGraphIds.Target(target.Name))
+            .Select(target => BuildGraphIds.Target(target.QualifiedName))
             .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         builder.AddNode(new BuildGraphNode(
@@ -55,34 +61,43 @@ public sealed class CppTargetGraphGenerator
             Depfiles: Array.Empty<string>()));
 
         return new BuildGraph(
-            Version: 1,
+            Version: 2,
             Options: options,
             Nodes: builder.Nodes,
-            Targets: new[] { BuildGraphIds.AllTargets });
+            Targets: new[] { BuildGraphIds.AllTargets })
+            .AddMetadata(targets)
+            .MergeMetadata(builder.AdditionalProjects, builder.AdditionalConfigurations);
     }
 
     private static bool ShouldIncludeRootTarget(
         BuildTargetDefinition target,
         IReadOnlySet<BuildTargetCategory>? categoryFilter)
     {
-        return categoryFilter is { Count: > 0 }
+        return target.IsHostProject && (categoryFilter is { Count: > 0 }
             ? categoryFilter.Contains(target.Category)
-            : BuildTargetCategoryPolicy.IsDefaultEnabled(target.Category);
+            : BuildTargetCategoryPolicy.IsDefaultEnabled(target.Category));
+    }
+
+    private static BuildTargetDefinition? ResolveTarget(IReadOnlyList<BuildTargetDefinition> targets, string name)
+    {
+        return name.Contains('.', StringComparison.Ordinal)
+            ? targets.FirstOrDefault(target => target.QualifiedName.Equals(name, StringComparison.OrdinalIgnoreCase))
+            : targets.FirstOrDefault(target => target.IsHostProject && target.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
 
     private sealed class CppTargetGraphBuilder
     {
-        private const string CppslTargetName = "CPPSL";
-        private const string CppslNativeExtractorTargetName = "cppsl-native-extractor";
-        private const string LunaMetaToolTargetName = "LunaMetaTool";
-
         private readonly BuildWorkspace _workspace;
-        private readonly BuildOptions _options;
+        private BuildOptions _options;
         private readonly IReadOnlyDictionary<string, BuildTargetDefinition> _targetMap;
         private readonly Dictionary<string, BuildGraphNode> _nodesById = new(StringComparer.Ordinal);
         private readonly HashSet<string> _visitedTargets = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _visitingTargets = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, TargetBuildOutputs> _outputsByTarget = new(StringComparer.OrdinalIgnoreCase);
+        private readonly List<BuildGraphProject> _additionalProjects = new();
+        private readonly List<BuildGraphConfiguration> _additionalConfigurations = new();
+        private string _activeProjectName = string.Empty;
+        private string _activeConfigurationId = string.Empty;
 
         public CppTargetGraphBuilder(
             BuildWorkspace workspace,
@@ -95,6 +110,10 @@ public sealed class CppTargetGraphGenerator
         }
 
         public IReadOnlyList<BuildGraphNode> Nodes => _nodesById.Values.ToArray();
+
+        public IReadOnlyList<BuildGraphProject> AdditionalProjects => _additionalProjects;
+
+        public IReadOnlyList<BuildGraphConfiguration> AdditionalConfigurations => _additionalConfigurations;
 
         public TargetBuildOutputs AddTarget(string targetName)
         {
@@ -116,16 +135,25 @@ public sealed class CppTargetGraphGenerator
                 return _outputsByTarget[targetName];
             }
 
+            var previousOptions = _options;
+            var previousProjectName = _activeProjectName;
+            var previousConfigurationId = _activeConfigurationId;
+            _options = target.Options;
+            _activeProjectName = target.ProjectName;
+            _activeConfigurationId = target.ConfigurationId;
+            try
+            {
+
             var dependencyOutputs = target.Dependencies
-                .Where(_targetMap.ContainsKey)
                 .Select(AddTarget)
                 .OrderBy(output => output.TargetId, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
+            ValidateLinkCompatibility(target, dependencyOutputs);
 
-            if(target.Kind == BuildTargetKind.External)
+            if(target.Kind is BuildTargetKind.External or BuildTargetKind.HeaderOnly)
             {
                 var externalOutputs = AddExternalTarget(target, dependencyOutputs);
-                _outputsByTarget[target.Name] = externalOutputs;
+                _outputsByTarget[target.QualifiedName] = externalOutputs;
                 _visitedTargets.Add(targetName);
                 _visitingTargets.Remove(targetName);
                 return externalOutputs;
@@ -134,7 +162,7 @@ public sealed class CppTargetGraphGenerator
             if(target.Kind == BuildTargetKind.DotNetProject)
             {
                 var dotNetOutputs = AddDotNetTarget(target, dependencyOutputs);
-                _outputsByTarget[target.Name] = dotNetOutputs;
+                _outputsByTarget[target.QualifiedName] = dotNetOutputs;
                 _visitedTargets.Add(targetName);
                 _visitingTargets.Remove(targetName);
                 return dotNetOutputs;
@@ -259,7 +287,7 @@ public sealed class CppTargetGraphGenerator
             var linkInputId = target.Kind != BuildTargetKind.Executable && _options.Shared && _options.Platform == BuildPlatform.Windows
                 ? BuildGraphIds.File(_workspace.ToRepositoryRelativePath(Path.ChangeExtension(binaryPath, ".lib")))
                 : binaryId;
-            var targetId = BuildGraphIds.Target(target.Name);
+            var targetId = BuildGraphIds.Target(target.QualifiedName);
             AddNode(new BuildGraphNode(
                 Id: targetId,
                 Kind: BuildGraphNodeKind.Virtual,
@@ -277,7 +305,8 @@ public sealed class CppTargetGraphGenerator
                     .Concat(dependencyLinkInputIds)
                     .Distinct(StringComparer.Ordinal)
                     .ToArray(),
-                target.PublicIncludeDirectories
+                target.Options.GlobalIncludeDirectories
+                    .Concat(target.PublicIncludeDirectories)
                     .Concat(metaOutputs.PublicIncludeDirectories)
                     .Concat(dependencyOutputs.SelectMany(output => output.PublicIncludeDirectories))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -298,14 +327,24 @@ public sealed class CppTargetGraphGenerator
                     .Concat(dependencyFrameworks)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
-                target.RuntimeFiles
+                (target.Kind != BuildTargetKind.Executable && _options.Shared
+                    ? new[] { binaryPath }
+                    : Array.Empty<string>())
+                    .Concat(target.RuntimeFiles)
                     .Concat(dependencyOutputs.SelectMany(output => output.RuntimeFiles))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray());
-            _outputsByTarget[target.Name] = outputs;
+            _outputsByTarget[target.QualifiedName] = outputs;
             _visitedTargets.Add(targetName);
             _visitingTargets.Remove(targetName);
             return outputs;
+            }
+            finally
+            {
+                _options = previousOptions;
+                _activeProjectName = previousProjectName;
+                _activeConfigurationId = previousConfigurationId;
+            }
         }
 
         private TargetBuildOutputs AddDotNetTarget(BuildTargetDefinition target, IReadOnlyList<TargetBuildOutputs> dependencyOutputs)
@@ -335,19 +374,33 @@ public sealed class CppTargetGraphGenerator
                 })
                 .ToArray();
 
-            var outputId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(target.DotNetOutputFile));
+            var dotNetRoot = Path.Combine(GetTargetConfigurationDirectory(target, _options), "dotnet", target.Name);
+            var artifactsDirectory = Path.Combine(dotNetRoot, "artifacts");
+            var dotNetProjectName = Path.GetFileNameWithoutExtension(target.DotNetProjectFile);
+            var outputPath = Path.Combine(
+                artifactsDirectory,
+                "bin",
+                dotNetProjectName,
+                _options.Mode.ToString().ToLowerInvariant(),
+                Path.GetFileName(target.DotNetOutputFile));
+            var outputId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(outputPath));
             var dependencyTargetIds = dependencyOutputs.Select(output => output.TargetId).ToArray();
             AddNode(new BuildGraphNode(
                 Id: outputId,
                 Kind: BuildGraphNodeKind.File,
-                Path: _workspace.ToRepositoryRelativePath(target.DotNetOutputFile),
-                Command: BuildDotNetBuildCommandDescription(_workspace, _options, target),
+                Path: _workspace.ToRepositoryRelativePath(outputPath),
+                Command: BuildDotNetBuildCommandDescription(
+                    _workspace,
+                    _options,
+                    target,
+                    outputPath,
+                    artifactsDirectory),
                 Dependencies: sourceIds,
                 OrderOnlyDependencies: dependencyTargetIds,
                 Outputs: Array.Empty<string>(),
                 Depfiles: Array.Empty<string>()));
 
-            var targetId = BuildGraphIds.Target(target.Name);
+            var targetId = BuildGraphIds.Target(target.QualifiedName);
             AddNode(new BuildGraphNode(
                 Id: targetId,
                 Kind: BuildGraphNodeKind.Virtual,
@@ -362,7 +415,8 @@ public sealed class CppTargetGraphGenerator
                 targetId,
                 outputId,
                 Array.Empty<string>(),
-                target.PublicIncludeDirectories
+                target.Options.GlobalIncludeDirectories
+                    .Concat(target.PublicIncludeDirectories)
                     .Concat(dependencyOutputs.SelectMany(output => output.PublicIncludeDirectories))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
@@ -406,7 +460,7 @@ public sealed class CppTargetGraphGenerator
                 .Select(path => AddFileReferenceNode(path, target.Name))
                 .ToArray();
             var dependencyTargetIds = dependencyOutputs.Select(output => output.TargetId).ToArray();
-            var targetId = BuildGraphIds.Target(target.Name);
+            var targetId = BuildGraphIds.Target(target.QualifiedName);
             AddNode(new BuildGraphNode(
                 Id: targetId,
                 Kind: BuildGraphNodeKind.Virtual,
@@ -425,7 +479,8 @@ public sealed class CppTargetGraphGenerator
                     .Concat(dependencyOutputs.SelectMany(output => output.LinkInputIds))
                     .Distinct(StringComparer.Ordinal)
                     .ToArray(),
-                target.PublicIncludeDirectories
+                target.Options.GlobalIncludeDirectories
+                    .Concat(target.PublicIncludeDirectories)
                     .Concat(dependencyOutputs.SelectMany(output => output.PublicIncludeDirectories))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
@@ -485,38 +540,57 @@ public sealed class CppTargetGraphGenerator
 
         private TargetBuildOutputs? AddLunaMetaToolTargetForMeta(BuildTargetDefinition target)
         {
-            if(target.MetaHeaderFiles.Count == 0 ||
-                target.Name.Equals(LunaMetaToolTargetName, StringComparison.OrdinalIgnoreCase))
+            if(target.MetaHeaderFiles.Count == 0)
+            {
+                return null;
+            }
+            var configuration = RequireActionConfiguration(target, "luna.meta");
+            var localToolTarget = RequireBinding(configuration.Targets, "tool", configuration.Name);
+            var metaTargetName = QualifyTarget(configuration.ProviderProjectName, localToolTarget);
+            if(target.QualifiedName.Equals(metaTargetName, StringComparison.OrdinalIgnoreCase))
             {
                 return null;
             }
             if(IsCurrentBuildHostBuild())
             {
-                return _targetMap.ContainsKey(LunaMetaToolTargetName) ? AddTarget(LunaMetaToolTargetName) : null;
+                if(!_targetMap.ContainsKey(metaTargetName))
+                {
+                    throw new InvalidOperationException(
+                        $"Target `{target.QualifiedName}` uses MetaHeaders(...), but action configuration `{configuration.Name}` references unavailable target `{metaTargetName}`.");
+                }
+                return AddTarget(metaTargetName);
             }
-            return AddHostLunaMetaToolTargetForMeta();
+            return AddHostLunaMetaToolTargetForMeta(target);
         }
 
         private CppslToolBuildOutputs? AddCppslToolTargetsForShaders(BuildTargetDefinition target)
         {
-            if(!target.Shaders.Any(shader => IsShaderEnabledForPlatform(_options.Platform, shader.SourceFile)) ||
-                target.Name.Equals(CppslTargetName, StringComparison.OrdinalIgnoreCase) ||
-                target.Name.Equals(CppslNativeExtractorTargetName, StringComparison.OrdinalIgnoreCase))
+            if(!target.Shaders.Any(shader => IsShaderEnabledForPlatform(_options.Platform, shader.SourceFile)))
+            {
+                return null;
+            }
+            var configuration = RequireActionConfiguration(target, "cppsl.shader");
+            var compilerTarget = RequireBinding(configuration.Targets, "compiler", configuration.Name);
+            var nativeExtractorTarget = RequireBinding(configuration.Targets, "native_extractor", configuration.Name);
+            var cppslTargetName = QualifyTarget(configuration.ProviderProjectName, compilerTarget);
+            var nativeExtractorTargetName = QualifyTarget(configuration.ProviderProjectName, nativeExtractorTarget);
+            if(target.QualifiedName.Equals(cppslTargetName, StringComparison.OrdinalIgnoreCase) ||
+                target.QualifiedName.Equals(nativeExtractorTargetName, StringComparison.OrdinalIgnoreCase))
             {
                 return null;
             }
 
             if(IsCurrentBuildHostBuild())
             {
-                if(!_targetMap.ContainsKey(CppslTargetName) ||
-                    !_targetMap.ContainsKey(CppslNativeExtractorTargetName))
+                if(!_targetMap.ContainsKey(cppslTargetName) ||
+                    !_targetMap.ContainsKey(nativeExtractorTargetName))
                 {
                     throw new InvalidOperationException(
                         $"Target {target.Name} uses Shader(...), but host CPPSL tool targets are not available.");
                 }
 
-                var cppslOutputs = AddTarget(CppslTargetName);
-                var nativeExtractorOutputs = AddTarget(CppslNativeExtractorTargetName);
+                var cppslOutputs = AddTarget(cppslTargetName);
+                var nativeExtractorOutputs = AddTarget(nativeExtractorTargetName);
                 return new CppslToolBuildOutputs(cppslOutputs.BinaryId, nativeExtractorOutputs.BinaryId);
             }
 
@@ -525,55 +599,52 @@ public sealed class CppTargetGraphGenerator
 
         private CppslToolBuildOutputs AddHostCppslToolTargetsForShaders(BuildTargetDefinition target)
         {
+            var configuration = RequireActionConfiguration(target, "cppsl.shader");
+            var compilerTarget = RequireBinding(configuration.Targets, "compiler", configuration.Name);
+            var nativeExtractorTarget = RequireBinding(configuration.Targets, "native_extractor", configuration.Name);
             var hostOptions = BuildOptions.HostDefault() with
             {
-                Properties = _options.Properties,
-                GlobalDefines = _options.GlobalDefines,
-                GlobalUndefines = _options.GlobalUndefines,
+                Properties = configuration.ProviderProperties,
             };
-            var provider = new ProjectTargetRulesProvider();
-            var hostTargets = new TargetDiscovery(new ITargetRulesProvider[] { provider }).DiscoverTargets(_workspace, hostOptions);
-            if(!hostTargets.Any(hostTarget => hostTarget.Name.Equals(CppslTargetName, StringComparison.OrdinalIgnoreCase)) ||
-                !hostTargets.Any(hostTarget => hostTarget.Name.Equals(CppslNativeExtractorTargetName, StringComparison.OrdinalIgnoreCase)))
+            var compilerQualifiedName = QualifyTarget(configuration.ProviderProjectName, compilerTarget);
+            var nativeExtractorQualifiedName = QualifyTarget(configuration.ProviderProjectName, nativeExtractorTarget);
+            var hostTargets = DiscoverHostToolTargets(configuration, hostOptions);
+            if(!hostTargets.Any(hostTarget => hostTarget.Name.Equals(compilerTarget, StringComparison.OrdinalIgnoreCase)) ||
+                !hostTargets.Any(hostTarget => hostTarget.Name.Equals(nativeExtractorTarget, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException(
                     $"Target {target.Name} uses Shader(...), but host CPPSL tool targets are not available for {hostOptions.Platform} {hostOptions.Architecture}.");
             }
 
-            var hostGraph = new CppTargetGraphGenerator().Generate(_workspace, hostOptions, hostTargets, CppslTargetName);
-            foreach(var node in hostGraph.Nodes)
-            {
-                AddNode(node);
-            }
+            var hostGraph = new CppTargetGraphGenerator().Generate(_workspace, hostOptions, hostTargets, compilerQualifiedName);
+            MergeHostGraph(hostGraph);
 
             return new CppslToolBuildOutputs(
-                FindTargetBinaryId(hostGraph, CppslTargetName, OperatingSystem.IsWindows() ? "cppslc.exe" : "cppslc"),
-                FindTargetBinaryId(hostGraph, CppslNativeExtractorTargetName, OperatingSystem.IsWindows() ? "cppsl-native-extractor.exe" : "cppsl-native-extractor"));
+                FindTargetBinaryId(hostGraph, compilerQualifiedName, OperatingSystem.IsWindows() ? "cppslc.exe" : "cppslc"),
+                FindTargetBinaryId(hostGraph, nativeExtractorQualifiedName, OperatingSystem.IsWindows() ? "cppsl-native-extractor.exe" : "cppsl-native-extractor"));
         }
 
-        private TargetBuildOutputs? AddHostLunaMetaToolTargetForMeta()
+        private TargetBuildOutputs? AddHostLunaMetaToolTargetForMeta(BuildTargetDefinition target)
         {
+            var configuration = RequireActionConfiguration(target, "luna.meta");
+            var toolTarget = RequireBinding(configuration.Targets, "tool", configuration.Name);
+            var qualifiedToolTarget = QualifyTarget(configuration.ProviderProjectName, toolTarget);
             var hostOptions = BuildOptions.HostDefault() with
             {
-                Properties = _options.Properties,
-                GlobalDefines = _options.GlobalDefines,
-                GlobalUndefines = _options.GlobalUndefines,
+                Properties = configuration.ProviderProperties,
             };
-            var provider = new ProjectTargetRulesProvider();
-            var hostTargets = new TargetDiscovery(new ITargetRulesProvider[] { provider }).DiscoverTargets(_workspace, hostOptions);
-            if(!hostTargets.Any(target => target.Name.Equals(LunaMetaToolTargetName, StringComparison.OrdinalIgnoreCase)))
+            var hostTargets = DiscoverHostToolTargets(configuration, hostOptions);
+            if(!hostTargets.Any(hostTarget => hostTarget.Name.Equals(toolTarget, StringComparison.OrdinalIgnoreCase)))
             {
-                return null;
+                throw new InvalidOperationException(
+                    $"Target `{target.QualifiedName}` uses MetaHeaders(...), but host tool target `{qualifiedToolTarget}` is unavailable for {hostOptions.Platform} {hostOptions.Architecture}.");
             }
 
-            var hostGraph = new CppTargetGraphGenerator().Generate(_workspace, hostOptions, hostTargets, LunaMetaToolTargetName);
-            foreach(var node in hostGraph.Nodes)
-            {
-                AddNode(node);
-            }
+            var hostGraph = new CppTargetGraphGenerator().Generate(_workspace, hostOptions, hostTargets, qualifiedToolTarget);
+            MergeHostGraph(hostGraph);
 
-            var targetId = BuildGraphIds.Target(LunaMetaToolTargetName);
-            var binaryId = FindTargetBinaryId(hostGraph, LunaMetaToolTargetName, OperatingSystem.IsWindows() ? "LunaMetaTool.exe" : "LunaMetaTool");
+            var targetId = BuildGraphIds.Target(qualifiedToolTarget);
+            var binaryId = FindTargetBinaryId(hostGraph, qualifiedToolTarget, Path.GetFileNameWithoutExtension(toolTarget) + (OperatingSystem.IsWindows() ? ".exe" : string.Empty));
             return new TargetBuildOutputs(
                 targetId,
                 binaryId,
@@ -584,6 +655,49 @@ public sealed class CppTargetGraphGenerator
                 Array.Empty<string>(),
                 Array.Empty<string>(),
                 Array.Empty<string>());
+        }
+
+        private IReadOnlyList<BuildTargetDefinition> DiscoverHostToolTargets(
+            BuildActionConfigurationDefinition configuration,
+            BuildOptions hostOptions)
+        {
+            var workspace = new BuildWorkspace(
+                configuration.ProviderProjectRootDirectory,
+                configuration.ProviderProjectBuildDirectory,
+                _workspace.RunnerProjectPath);
+            var provider = new ProjectTargetRulesProvider();
+            var projectRules = provider.GetProjectRules(workspace);
+            if(projectRules.Count != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Project `{configuration.ProviderProjectName}` must provide exactly one ProjectRules type to configure host tools.");
+            }
+            var configuredOptions = projectRules[0].ConfigureBuildOptions(workspace, hostOptions);
+            var configurationId = ProjectConfigurationIdentity.Create(configuredOptions);
+            return new TargetDiscovery(new ITargetRulesProvider[] { provider })
+                .DiscoverTargets(workspace, configuredOptions)
+                .Select(hostTarget => hostTarget with
+                {
+                    ProjectName = configuration.ProviderProjectName,
+                    QualifiedName = configuration.ProviderProjectName + "." + hostTarget.Name,
+                    ProjectRootDirectory = configuration.ProviderProjectRootDirectory,
+                    ProjectBuildDirectory = configuration.ProviderProjectBuildDirectory,
+                    ConfigurationId = configurationId,
+                    Options = configuredOptions,
+                    IsHostProject = false,
+                    Dependencies = hostTarget.Dependencies.Select(dependency => configuration.ProviderProjectName + "." + dependency).ToArray(),
+                })
+                .ToArray();
+        }
+
+        private void MergeHostGraph(BuildGraph graph)
+        {
+            foreach(var node in graph.Nodes)
+            {
+                AddNode(node);
+            }
+            _additionalProjects.AddRange(graph.Projects);
+            _additionalConfigurations.AddRange(graph.Configurations);
         }
 
         private bool IsCurrentBuildHostBuild()
@@ -619,6 +733,79 @@ public sealed class CppTargetGraphGenerator
             return Path.GetFileName(id[filePrefix.Length..].Replace('\\', '/'));
         }
 
+        private static string QualifyTarget(BuildTargetDefinition owner, string targetName)
+        {
+            return string.IsNullOrWhiteSpace(owner.ProjectName) ? targetName : owner.ProjectName + "." + targetName;
+        }
+
+        private static string QualifyTarget(string projectName, string targetName)
+        {
+            return string.IsNullOrWhiteSpace(projectName) ? targetName : projectName + "." + targetName;
+        }
+
+        private static BuildActionConfigurationDefinition RequireActionConfiguration(
+            BuildTargetDefinition target,
+            string name)
+        {
+            return target.Options.FindActionConfiguration(name) ?? throw new InvalidOperationException(
+                $"Target `{target.QualifiedName}` requires project action configuration `{name}`.");
+        }
+
+        private static string RequireBinding(
+            IReadOnlyDictionary<string, string> bindings,
+            string name,
+            string configurationName)
+        {
+            return bindings.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value)
+                ? value
+                : throw new InvalidOperationException(
+                    $"Action configuration `{configurationName}` does not define required binding `{name}`.");
+        }
+
+        private void ValidateLinkCompatibility(
+            BuildTargetDefinition consumer,
+            IReadOnlyList<TargetBuildOutputs> dependencies)
+        {
+            if(consumer.Kind is BuildTargetKind.External or BuildTargetKind.HeaderOnly or BuildTargetKind.DotNetProject)
+            {
+                return;
+            }
+
+            foreach(var dependencyOutput in dependencies)
+            {
+                const string prefix = "target://";
+                var qualifiedName = dependencyOutput.TargetId.StartsWith(prefix, StringComparison.Ordinal)
+                    ? dependencyOutput.TargetId[prefix.Length..]
+                    : dependencyOutput.TargetId;
+                if(!_targetMap.TryGetValue(qualifiedName, out var dependency) ||
+                    dependency.Kind is BuildTargetKind.External or BuildTargetKind.HeaderOnly or BuildTargetKind.DotNetProject)
+                {
+                    continue;
+                }
+
+                var mismatches = new List<string>();
+                AddMismatch("platform", consumer.Options.Platform, dependency.Options.Platform);
+                AddMismatch("architecture", consumer.Options.Architecture, dependency.Options.Architecture);
+                AddMismatch("mode", consumer.Options.Mode, dependency.Options.Mode);
+                AddMismatch("linkage", consumer.Options.Shared ? "shared" : "static", dependency.Options.Shared ? "shared" : "static");
+                AddMismatch("RHI", consumer.Options.RhiApi, dependency.Options.RhiApi);
+                if(mismatches.Count > 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Native link configuration mismatch: `{consumer.QualifiedName}` cannot link `{dependency.QualifiedName}`. " +
+                        string.Join(", ", mismatches));
+                }
+
+                void AddMismatch<T>(string name, T consumerValue, T dependencyValue)
+                {
+                    if(!EqualityComparer<T>.Default.Equals(consumerValue, dependencyValue))
+                    {
+                        mismatches.Add($"{name}: consumer={consumerValue}, dependency={dependencyValue}");
+                    }
+                }
+            }
+        }
+
         private LunaMetaBuildOutputs AddMetaNodes(
             BuildTargetDefinition target,
             IReadOnlyList<TargetBuildOutputs> dependencyOutputs,
@@ -628,6 +815,8 @@ public sealed class CppTargetGraphGenerator
             {
                 return new LunaMetaBuildOutputs(null, Array.Empty<string>(), Array.Empty<string>(), null);
             }
+            var actionConfiguration = RequireActionConfiguration(target, "luna.meta");
+            var actionConfigurationInputIds = AddActionConfigurationInputNodes(actionConfiguration);
 
             var generatedDirectory = GetGeneratedMetaHeaderDirectory(_workspace, _options, target);
             var generatedByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -724,8 +913,21 @@ public sealed class CppTargetGraphGenerator
                 Id: stampId,
                 Kind: BuildGraphNodeKind.File,
                 Path: _workspace.ToRepositoryRelativePath(stampPath),
-                Command: BuildMetaCommandDescription(_workspace, _options, target, dependencyOutputs, generatedDirectory, stampPath, depfilePath),
-                Dependencies: sourceHeaderIds.Concat(dependencyMetaIds).Concat(toolDependencyIds).ToArray(),
+                Command: BuildMetaCommandDescription(
+                    _workspace,
+                    _options,
+                    target,
+                    dependencyOutputs,
+                    generatedDirectory,
+                    stampPath,
+                    depfilePath,
+                    metaToolOutputs?.BinaryId),
+                Dependencies: sourceHeaderIds
+                    .Concat(dependencyMetaIds)
+                    .Concat(toolDependencyIds)
+                    .Concat(actionConfigurationInputIds)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
                 OrderOnlyDependencies: toolOrderOnlyDependencyIds,
                 Outputs: generatedHeaderIds.Concat(new[] { registrationSourceId }).ToArray(),
                 Depfiles: new[] { depfileId }));
@@ -749,17 +951,25 @@ public sealed class CppTargetGraphGenerator
             foreach(var runtimeFile in runtimeFiles)
             {
                 var sourceId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(runtimeFile));
-                AddNode(new BuildGraphNode(
-                    Id: sourceId,
-                    Kind: BuildGraphNodeKind.File,
-                    Path: _workspace.ToRepositoryRelativePath(runtimeFile),
-                    Command: null,
-                    Dependencies: Array.Empty<string>(),
-                    OrderOnlyDependencies: Array.Empty<string>(),
-                    Outputs: Array.Empty<string>(),
-                    Depfiles: Array.Empty<string>()));
+                if(!_nodesById.ContainsKey(sourceId))
+                {
+                    AddNode(new BuildGraphNode(
+                        Id: sourceId,
+                        Kind: BuildGraphNodeKind.File,
+                        Path: _workspace.ToRepositoryRelativePath(runtimeFile),
+                        Command: null,
+                        Dependencies: Array.Empty<string>(),
+                        OrderOnlyDependencies: Array.Empty<string>(),
+                        Outputs: Array.Empty<string>(),
+                        Depfiles: Array.Empty<string>()));
+                }
 
                 var outputPath = Path.Combine(runtimeDirectory, Path.GetFileName(runtimeFile));
+                if(Path.GetFullPath(runtimeFile).Equals(Path.GetFullPath(outputPath), StringComparison.OrdinalIgnoreCase))
+                {
+                    outputIds.Add(sourceId);
+                    continue;
+                }
                 var outputId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(outputPath));
                 AddNode(new BuildGraphNode(
                     Id: outputId,
@@ -798,6 +1008,9 @@ public sealed class CppTargetGraphGenerator
         private IReadOnlyList<string> AddShaderNodes(BuildTargetDefinition target, CppslToolBuildOutputs? cppslToolOutputs)
         {
             var shaderHeaderIds = new List<string>();
+            var actionConfigurationInputIds = target.Shaders.Any(shader => IsShaderEnabledForPlatform(_options.Platform, shader.SourceFile))
+                ? AddActionConfigurationInputNodes(RequireActionConfiguration(target, "cppsl.shader"))
+                : Array.Empty<string>();
             foreach(var shader in target.Shaders)
             {
                 if(!IsShaderEnabledForPlatform(_options.Platform, shader.SourceFile))
@@ -825,6 +1038,8 @@ public sealed class CppTargetGraphGenerator
                     Command: BuildShaderCommandDescription(_workspace, _options, target, shader, headerPath, cppslToolOutputs),
                     Dependencies: new[] { sourceId }
                         .Concat(cppslToolOutputs?.DependencyIds ?? Array.Empty<string>())
+                        .Concat(actionConfigurationInputIds)
+                        .Distinct(StringComparer.Ordinal)
                         .ToArray(),
                     OrderOnlyDependencies: Array.Empty<string>(),
                     Outputs: Array.Empty<string>(),
@@ -834,12 +1049,66 @@ public sealed class CppTargetGraphGenerator
             return shaderHeaderIds;
         }
 
+        private IReadOnlyList<string> AddActionConfigurationInputNodes(
+            BuildActionConfigurationDefinition configuration)
+        {
+            var files = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach(var (name, path) in configuration.Files)
+            {
+                if(!File.Exists(path))
+                {
+                    throw new FileNotFoundException(
+                        $"Action configuration `{configuration.Name}` file binding `{name}` does not exist: {path}",
+                        path);
+                }
+                files.Add(path);
+            }
+            foreach(var (name, path) in configuration.Directories)
+            {
+                if(!Directory.Exists(path))
+                {
+                    throw new DirectoryNotFoundException(
+                        $"Action configuration `{configuration.Name}` directory binding `{name}` does not exist: {path}");
+                }
+                foreach(var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+                {
+                    files.Add(file);
+                }
+            }
+            return files.Select(path => AddFileReferenceNode(path)).ToArray();
+        }
+
         public void AddNode(BuildGraphNode node)
         {
-            if(!_nodesById.TryAdd(node.Id, node))
+            var configuredNode = node.Options is null
+                ? node with
+                {
+                    Options = _options,
+                    ProjectName = _activeProjectName,
+                    ConfigurationId = _activeConfigurationId,
+                }
+                : node;
+            if(_nodesById.TryGetValue(configuredNode.Id, out var existing))
             {
+                if(!NodesEquivalent(existing, configuredNode))
+                {
+                    throw new InvalidOperationException(
+                        $"Build graph node `{configuredNode.Id}` is produced by multiple non-identical declarations." +
+                        $"{Environment.NewLine}Existing command: {existing.Command ?? "<none>"}" +
+                        $"{Environment.NewLine}Conflicting command: {configuredNode.Command ?? "<none>"}");
+                }
                 return;
             }
+            _nodesById.Add(configuredNode.Id, configuredNode);
+        }
+
+        private static bool NodesEquivalent(BuildGraphNode left, BuildGraphNode right)
+        {
+            return left.Kind == right.Kind && left.Path == right.Path && left.Command == right.Command &&
+                left.Dependencies.SequenceEqual(right.Dependencies, StringComparer.Ordinal) &&
+                left.OrderOnlyDependencies.SequenceEqual(right.OrderOnlyDependencies, StringComparer.Ordinal) &&
+                left.Outputs.SequenceEqual(right.Outputs, StringComparer.Ordinal) &&
+                left.Depfiles.SequenceEqual(right.Depfiles, StringComparer.Ordinal);
         }
     }
 
@@ -900,22 +1169,19 @@ public sealed class CppTargetGraphGenerator
 
     private static string GetObjectPath(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target, string sourceFile)
     {
-        var relativeSource = workspace.ToRepositoryRelativePath(sourceFile)
-            .Replace('/', '_')
-            .Replace(':', '_');
+        var relativeSource = Path.GetRelativePath(target.ProjectRootDirectory, sourceFile).Replace('\\', '/');
+        var sourceHash = StableHash(relativeSource)[..10];
+        var baseName = Path.GetFileNameWithoutExtension(sourceFile);
         var extension = IsResourceSource(sourceFile)
             ? ".res"
             : options.Platform == BuildPlatform.Windows ? ".obj" : ".o";
-        return Path.Combine(GetTargetObjectDirectory(workspace, options, target), $"{relativeSource}{extension}");
+        return Path.Combine(GetTargetObjectDirectory(workspace, options, target), $"{baseName}-{sourceHash}{extension}");
     }
 
     private static string GetTargetObjectDirectory(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target)
     {
         return Path.Combine(
-            workspace.BuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString(),
+            GetTargetConfigurationDirectory(target, options),
             "obj",
             target.Name);
     }
@@ -926,12 +1192,9 @@ public sealed class CppTargetGraphGenerator
             ? $"lib{target.Name}.so"
             : target.Kind == BuildTargetKind.Executable
             ? $"{target.Name}{ExecutableExtension(options.Platform)}"
-            : $"Luna{target.Name}{(options.Shared ? SharedLibraryExtension(options.Platform) : StaticLibraryExtension(options.Platform))}";
+            : $"{options.LibraryPrefix}{target.Name}{(options.Shared ? SharedLibraryExtension(options.Platform) : StaticLibraryExtension(options.Platform))}";
         return Path.Combine(
-            workspace.BuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString(),
+            GetTargetConfigurationDirectory(target, options),
             "bin",
             fileName);
     }
@@ -939,10 +1202,7 @@ public sealed class CppTargetGraphGenerator
     private static string GetGeneratedShaderHeaderDirectory(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target)
     {
         return Path.Combine(
-            workspace.BuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString(),
+            GetTargetConfigurationDirectory(target, options),
             "generated",
             target.Name,
             "shaders");
@@ -956,10 +1216,7 @@ public sealed class CppTargetGraphGenerator
     private static string GetEmbeddedHeaderPath(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target, string headerFile)
     {
         return Path.Combine(
-            workspace.BuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString(),
+            GetTargetConfigurationDirectory(target, options),
             "generated",
             target.Name,
             "embedded",
@@ -969,10 +1226,7 @@ public sealed class CppTargetGraphGenerator
     private static string GetGeneratedMetaHeaderDirectory(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target)
     {
         return Path.Combine(
-            workspace.BuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString(),
+            GetTargetConfigurationDirectory(target, options),
             "generated",
             target.Name,
             "meta");
@@ -997,6 +1251,16 @@ public sealed class CppTargetGraphGenerator
     private static string GetMetaStampPath(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target)
     {
         return Path.Combine(GetGeneratedMetaHeaderDirectory(workspace, options, target), ".luna_meta.stamp");
+    }
+
+    private static string GetTargetConfigurationDirectory(BuildTargetDefinition target, BuildOptions options)
+    {
+        var directory = Path.Combine(
+            target.ProjectBuildDirectory,
+            options.Platform.ToString(),
+            options.Architecture,
+            options.Mode.ToString());
+        return target.IsHostProject ? directory : Path.Combine(directory, target.ConfigurationId);
     }
 
     private static IReadOnlyList<string> GetLinkSideOutputs(BuildWorkspace workspace, BuildOptions options, string binaryPath)
@@ -1044,7 +1308,7 @@ public sealed class CppTargetGraphGenerator
         var lines = new List<string>
         {
             "kind=cpp.compile",
-            $"target={target.Name}",
+            $"target={target.QualifiedName}",
             $"source={workspace.ToRepositoryRelativePath(sourceFile)}",
             $"object={workspace.ToRepositoryRelativePath(objectPath)}",
             $"depfile={workspace.ToRepositoryRelativePath(depfilePath)}",
@@ -1053,12 +1317,12 @@ public sealed class CppTargetGraphGenerator
             $"arch={options.Architecture}",
             $"language={SourceLanguage(sourceFile)}",
             "exceptions=none",
-            "include=Modules",
             "define=LUNA_MANUAL_CONFIG_DEBUG_LEVEL",
             $"define=LUNA_DEBUG_LEVEL={DebugLevel(options.Mode)}",
             options.Shared ? "define=LUNA_BUILD_SHARED_LIB" : "linkage=static",
         };
         lines.AddRange(options.GlobalDefines.Select(define => $"define={define}"));
+        lines.AddRange(options.GlobalIncludeDirectories.Select(path => $"include={workspace.ToRepositoryRelativePath(path)}"));
         if(!target.EnableRtti)
         {
             lines.Add("rtti=none");
@@ -1108,27 +1372,40 @@ public sealed class CppTargetGraphGenerator
         IReadOnlyList<TargetBuildOutputs> dependencyOutputs,
         string generatedDirectory,
         string stampPath,
-        string depfilePath)
+        string depfilePath,
+        string? toolId)
     {
         var lines = new List<string>
         {
             "kind=luna.meta",
-            $"target={target.Name}",
+            $"target={target.QualifiedName}",
+            $"target_name={target.Name}",
             $"output_dir={workspace.ToRepositoryRelativePath(generatedDirectory)}",
             $"stamp={workspace.ToRepositoryRelativePath(stampPath)}",
             $"depfile={workspace.ToRepositoryRelativePath(depfilePath)}",
             $"mode={options.Mode}",
             $"platform={options.Platform}",
             $"arch={options.Architecture}",
-            "include=Modules",
             "define=LUNA_MANUAL_CONFIG_DEBUG_LEVEL",
             $"define=LUNA_DEBUG_LEVEL={DebugLevel(options.Mode)}",
             options.Shared ? "define=LUNA_BUILD_SHARED_LIB" : "linkage=static",
         };
+        if(!string.IsNullOrWhiteSpace(toolId))
+        {
+            lines.Add($"tool={FileIdToRepositoryRelativePath(toolId)}");
+        }
+        var actionConfiguration = options.FindActionConfiguration("luna.meta");
+        if(actionConfiguration is not null && actionConfiguration.Directories.TryGetValue("clang_resource", out var resourceDirectory))
+        {
+            lines.Add($"resource_dir={workspace.ToRepositoryRelativePath(resourceDirectory)}");
+        }
         if(target.MsvcRuntimeLibrary is not null)
         {
             lines.Add($"runtime={target.MsvcRuntimeLibrary}");
         }
+        lines.AddRange(options.GlobalDefines.Select(define => $"define={define}"));
+        lines.AddRange(options.GlobalUndefines.Select(undefine => $"undefine={undefine}"));
+        lines.AddRange(options.GlobalIncludeDirectories.Select(path => $"include={workspace.ToRepositoryRelativePath(path)}"));
         var metaHeaders = target.MetaHeaderFiles
             .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -1167,7 +1444,7 @@ public sealed class CppTargetGraphGenerator
         var lines = new List<string>
         {
             "kind=cppsl.shader",
-            $"target={target.Name}",
+            $"target={target.QualifiedName}",
             $"source={workspace.ToRepositoryRelativePath(shader.SourceFile)}",
             $"header={workspace.ToRepositoryRelativePath(headerPath)}",
             $"intermediate_dir={workspace.ToRepositoryRelativePath(Path.Combine(Path.GetDirectoryName(headerPath)!, ".cppsl", Path.GetFileNameWithoutExtension(shader.SourceFile)))}",
@@ -1182,6 +1459,20 @@ public sealed class CppTargetGraphGenerator
         {
             lines.Add($"cppslc={FileIdToRepositoryRelativePath(cppslToolOutputs.CppslcId)}");
             lines.Add($"native_extractor={FileIdToRepositoryRelativePath(cppslToolOutputs.NativeExtractorId)}");
+        }
+        var actionConfiguration = options.FindActionConfiguration("cppsl.shader") ?? throw new InvalidOperationException(
+            $"Target `{target.QualifiedName}` requires project action configuration `cppsl.shader`.");
+        foreach(var (name, path) in actionConfiguration.Files.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            lines.Add($"{name}={workspace.ToRepositoryRelativePath(path)}");
+        }
+        foreach(var (name, path) in actionConfiguration.Directories.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            lines.Add($"{name}={workspace.ToRepositoryRelativePath(path)}");
+        }
+        foreach(var (name, value) in actionConfiguration.Values.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            lines.Add($"{name}={value}");
         }
         return string.Join('\n', lines);
     }
@@ -1204,7 +1495,6 @@ public sealed class CppTargetGraphGenerator
     {
         return string.Join('\n',
             "kind=file.copy",
-            $"target={target.Name}",
             $"source={workspace.ToRepositoryRelativePath(sourcePath)}",
             $"output={workspace.ToRepositoryRelativePath(outputPath)}");
     }
@@ -1217,7 +1507,7 @@ public sealed class CppTargetGraphGenerator
     {
         return string.Join('\n',
             "kind=bin.embed_header",
-            $"target={target.Name}",
+            $"target={target.QualifiedName}",
             $"source={workspace.ToRepositoryRelativePath(header.SourceFile)}",
             $"output={workspace.ToRepositoryRelativePath(headerPath)}",
             $"data_symbol={header.DataSymbol}",
@@ -1301,7 +1591,7 @@ public sealed class CppTargetGraphGenerator
     {
         return string.Join('\n',
             "kind=rc.compile",
-            $"target={target.Name}",
+            $"target={target.QualifiedName}",
             $"source={workspace.ToRepositoryRelativePath(sourceFile)}",
             $"output={workspace.ToRepositoryRelativePath(outputPath)}",
             $"mode={options.Mode}",
@@ -1323,7 +1613,7 @@ public sealed class CppTargetGraphGenerator
             : options.Shared ? "cpp.link.shared" : "cpp.link.static";
         return string.Join('\n',
             $"kind={actionKind}",
-            $"target={target.Name}",
+            $"target={target.QualifiedName}",
             $"output={workspace.ToRepositoryRelativePath(binaryPath)}",
             $"mode={options.Mode}",
             $"platform={options.Platform}",
@@ -1350,7 +1640,7 @@ public sealed class CppTargetGraphGenerator
     {
         return string.Join('\n',
             "kind=target.cpp",
-            $"name={target.Name}",
+            $"name={target.QualifiedName}",
             $"rules={workspace.ToRepositoryRelativePath(target.ScriptPath)}",
             $"directory={workspace.ToRepositoryRelativePath(target.Directory)}",
             $"source_count={sourceCount}",
@@ -1372,7 +1662,7 @@ public sealed class CppTargetGraphGenerator
     {
         return string.Join('\n',
             "kind=target.external",
-            $"name={target.Name}",
+            $"name={target.QualifiedName}",
             $"rules={workspace.ToRepositoryRelativePath(target.ScriptPath)}",
             $"directory={workspace.ToRepositoryRelativePath(target.Directory)}",
             $"include_count={target.PublicIncludeDirectories.Count}",
@@ -1388,13 +1678,16 @@ public sealed class CppTargetGraphGenerator
     private static string BuildDotNetBuildCommandDescription(
         BuildWorkspace workspace,
         BuildOptions options,
-        BuildTargetDefinition target)
+        BuildTargetDefinition target,
+        string outputPath,
+        string artifactsDirectory)
     {
         return string.Join('\n',
             "kind=dotnet.build",
-            $"name={target.Name}",
+            $"name={target.QualifiedName}",
             $"project={workspace.ToRepositoryRelativePath(target.DotNetProjectFile!)}",
-            $"output={workspace.ToRepositoryRelativePath(target.DotNetOutputFile!)}",
+            $"output={workspace.ToRepositoryRelativePath(outputPath)}",
+            $"artifacts_dir={workspace.ToRepositoryRelativePath(artifactsDirectory)}",
             $"mode={options.Mode}",
             $"platform={options.Platform}",
             $"arch={options.Architecture}");
@@ -1408,7 +1701,7 @@ public sealed class CppTargetGraphGenerator
     {
         return string.Join('\n',
             "kind=target.dotnet",
-            $"name={target.Name}",
+            $"name={target.QualifiedName}",
             $"rules={workspace.ToRepositoryRelativePath(target.ScriptPath)}",
             $"directory={workspace.ToRepositoryRelativePath(target.Directory)}",
             $"project={workspace.ToRepositoryRelativePath(target.DotNetProjectFile!)}",
@@ -1426,5 +1719,10 @@ public sealed class CppTargetGraphGenerator
             BuildMode.Profile => 1,
             _ => 0,
         };
+    }
+
+    private static string StableHash(string value)
+    {
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     }
 }

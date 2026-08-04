@@ -22,20 +22,19 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         var intermediateDirectory = context.Workspace.ResolveRepositoryPath(payload.Required("intermediate_dir"));
         var stage = NormalizeStage(payload.Required("stage"));
         var entry = payload.Required("entry");
+        var standardLibrary = ResolveDirectoryPath(context.Workspace, payload.Required("standard_library"), "shader standard library");
+        var helperHeader = payload.Required("helper_header");
+        var outputNamespace = payload.Required("namespace");
         var sourceName = Path.GetFileNameWithoutExtension(source);
 
         Directory.CreateDirectory(intermediateDirectory);
         Directory.CreateDirectory(Path.GetDirectoryName(header)!);
 
-        var cppslc = payload.Contains("cppslc")
-            ? ResolveToolPath(context.Workspace, payload.Required("cppslc"), "cppslc")
-            : LocateCppslc(context.Workspace);
-        var nativeExtractor = payload.Contains("native_extractor")
-            ? ResolveToolPath(context.Workspace, payload.Required("native_extractor"), "CPPSL native extractor")
-            : LocateNativeExtractor(context.Workspace);
+        var cppslc = ResolveToolPath(context.Workspace, payload.Required("cppslc"), "shader compiler");
+        var nativeExtractor = ResolveToolPath(context.Workspace, payload.Required("native_extractor"), "shader native extractor");
         if(format.Equals("dxil", StringComparison.OrdinalIgnoreCase))
         {
-            await RunCppslAsync(context.Workspace, cppslc, source, intermediateDirectory, stage, entry, nativeExtractor, "hlsl", cancellationToken);
+            await RunCppslAsync(context.Workspace, cppslc, source, intermediateDirectory, stage, entry, nativeExtractor, standardLibrary, "hlsl", cancellationToken);
 
             var hlsl = Path.Combine(intermediateDirectory, sourceName + ".hlsl");
             if(!File.Exists(hlsl))
@@ -44,14 +43,15 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
             }
 
             var dxil = Path.Combine(intermediateDirectory, sourceName + ".dxil");
-            await RunDxcAsync(context.Workspace, hlsl, dxil, stage, entry, cancellationToken);
-            WriteShaderHeader(header, sourceName, dxil, "dxil", entry, 0, 0, 0);
+            var dxc = ResolveToolPath(context.Workspace, payload.Required("dxc"), "DXC");
+            await RunDxcAsync(context.Workspace, dxc, hlsl, dxil, stage, entry, cancellationToken);
+            WriteShaderHeader(header, sourceName, dxil, "dxil", entry, helperHeader, outputNamespace, 0, 0, 0);
             return;
         }
 
         if(format.Equals("spir_v", StringComparison.OrdinalIgnoreCase))
         {
-            await RunCppslAsync(context.Workspace, cppslc, source, intermediateDirectory, stage, entry, nativeExtractor, "glsl", cancellationToken);
+            await RunCppslAsync(context.Workspace, cppslc, source, intermediateDirectory, stage, entry, nativeExtractor, standardLibrary, "glsl", cancellationToken);
 
             var glsl = Path.Combine(intermediateDirectory, sourceName + ".glsl");
             if(!File.Exists(glsl))
@@ -59,14 +59,15 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
                 throw new MakeSystemException($"CPPSL did not produce expected GLSL output: {glsl}");
             }
 
-            var spirv = await RunGlslangAsync(context.Workspace, glsl, intermediateDirectory, sourceName, stage, IsDebug(payload.Required("mode")), cancellationToken);
-            WriteShaderHeader(header, sourceName, spirv, "spirv", "main", 0, 0, 0);
+            var glslang = ResolveToolPath(context.Workspace, payload.Required("glslang"), "glslang");
+            var spirv = await RunGlslangAsync(context.Workspace, glslang, glsl, intermediateDirectory, sourceName, stage, IsDebug(payload.Required("mode")), cancellationToken);
+            WriteShaderHeader(header, sourceName, spirv, "spirv", "main", helperHeader, outputNamespace, 0, 0, 0);
             return;
         }
 
         if(format.Equals("msl", StringComparison.OrdinalIgnoreCase))
         {
-            await RunCppslAsync(context.Workspace, cppslc, source, intermediateDirectory, stage, entry, nativeExtractor, "msl,reflection", cancellationToken);
+            await RunCppslAsync(context.Workspace, cppslc, source, intermediateDirectory, stage, entry, nativeExtractor, standardLibrary, "msl,reflection", cancellationToken);
 
             var metal = Path.Combine(intermediateDirectory, sourceName + ".metal");
             if(!File.Exists(metal))
@@ -76,7 +77,7 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
 
             var metallib = await RunMetalAsync(context.Workspace, metal, intermediateDirectory, sourceName, IsDebug(payload.Required("mode")), cancellationToken);
             var (x, y, z) = ReadMetalNumthreads(Path.Combine(intermediateDirectory, sourceName + ".reflection.json"));
-            WriteShaderHeader(header, sourceName, metallib, "metallib", entry, x, y, z);
+            WriteShaderHeader(header, sourceName, metallib, "metallib", entry, helperHeader, outputNamespace, x, y, z);
             return;
         }
 
@@ -91,10 +92,10 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         string stage,
         string entry,
         string nativeExtractor,
+        string includeStd,
         string target,
         CancellationToken cancellationToken)
     {
-        var includeStd = Path.Combine(workspace.RootDirectory, "Tools", "CPPSL", "std");
         var args = new List<string>
         {
             "compile",
@@ -133,6 +134,16 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         if(!File.Exists(resolved))
         {
             throw new MakeSystemException($"{toolName} was not built or does not exist: {resolved}");
+        }
+        return resolved;
+    }
+
+    private static string ResolveDirectoryPath(BuildWorkspace workspace, string path, string directoryName)
+    {
+        var resolved = workspace.ResolveRepositoryPath(path);
+        if(!Directory.Exists(resolved))
+        {
+            throw new MakeSystemException($"{directoryName} does not exist: {resolved}");
         }
         return resolved;
     }
@@ -199,6 +210,7 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
 
     private async Task<string> RunGlslangAsync(
         BuildWorkspace workspace,
+        string glslang,
         string glsl,
         string intermediateDirectory,
         string sourceName,
@@ -207,7 +219,6 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         CancellationToken cancellationToken)
     {
         var spv = Path.Combine(intermediateDirectory, sourceName + ".spv");
-        var glslang = LocateGlslang(workspace);
         var args = new List<string>
         {
             "-V",
@@ -242,13 +253,13 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
 
     private async Task RunDxcAsync(
         BuildWorkspace workspace,
+        string dxc,
         string hlsl,
         string dxil,
         string stage,
         string entry,
         CancellationToken cancellationToken)
     {
-        var dxc = LocateDxc(workspace);
         var args = new List<string>
         {
             "-E",
@@ -303,107 +314,6 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         return value.Contains(' ') || value.Contains('\t') || value.Contains('"')
             ? "\"" + value.Replace("\"", "\\\"") + "\""
             : value;
-    }
-
-    private static string LocateNativeExtractor(BuildWorkspace workspace)
-    {
-        var executable = OperatingSystem.IsWindows() ? "cppsl-native-extractor.exe" : "cppsl-native-extractor";
-        var candidates = new[]
-        {
-            Path.Combine(workspace.RootDirectory, "SDKs", "CPPSL", "macosx", "arm64", "bin", executable),
-            Path.Combine(workspace.RootDirectory, "SDKs", "CPPSL", "windows", "x64", "bin", executable),
-            Path.Combine(workspace.RootDirectory, "Tools", "CPPSL", "native", "bin", executable),
-        };
-        foreach(var candidate in candidates)
-        {
-            if(File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-        throw new MakeSystemException(
-            "CPPSL native extractor is missing. Expected one of:" +
-            string.Concat(candidates.Select(path => $"{Environment.NewLine}  {path}")));
-    }
-
-    private static string LocateCppslc(BuildWorkspace workspace)
-    {
-        var executable = OperatingSystem.IsWindows() ? "cppslc.exe" : "cppslc";
-        var candidates = new[]
-        {
-            Path.Combine(workspace.RootDirectory, "SDKs", "CPPSL", "macosx", "arm64", "bin", executable),
-            Path.Combine(workspace.RootDirectory, "SDKs", "CPPSL", "windows", "x64", "bin", executable),
-            Path.Combine(workspace.RootDirectory, "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", executable),
-        };
-        foreach(var candidate in candidates)
-        {
-            if(File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-        throw new MakeSystemException(
-            "cppslc is missing. Expected one of:" +
-            string.Concat(candidates.Select(path => $"{Environment.NewLine}  {path}")));
-    }
-
-    private static string LocateDxc(BuildWorkspace workspace)
-    {
-        var candidates = new List<string>
-        {
-            Path.Combine(workspace.RootDirectory, "SDKs", "vulkan-tools", "macosx", "arm64", "bin", "dxc"),
-            Path.Combine(workspace.RootDirectory, "SDKs", "vulkan-tools", "windows", "x64", "bin", "dxc.exe"),
-        };
-        var vulkanSdk = Environment.GetEnvironmentVariable("VULKAN_SDK");
-        if(!string.IsNullOrWhiteSpace(vulkanSdk))
-        {
-            candidates.Add(Path.Combine(vulkanSdk, "Bin", OperatingSystem.IsWindows() ? "dxc.exe" : "dxc"));
-        }
-
-        var pathValue = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-        foreach(var pathEntry in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            candidates.Add(Path.Combine(pathEntry, OperatingSystem.IsWindows() ? "dxc.exe" : "dxc"));
-        }
-
-        foreach(var candidate in candidates)
-        {
-            if(File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-        throw new MakeSystemException("DXC was not found. Install Vulkan SDK or provide SDKs/vulkan-tools/windows/x64/bin/dxc.exe.");
-    }
-
-    private static string LocateGlslang(BuildWorkspace workspace)
-    {
-        var executable = OperatingSystem.IsWindows() ? "glslang.exe" : "glslang";
-        var candidates = new List<string>
-        {
-            Path.Combine(workspace.RootDirectory, "SDKs", "vulkan-tools", "macosx", "arm64", "bin", executable),
-            Path.Combine(workspace.RootDirectory, "SDKs", "vulkan-tools", "windows", "x64", "bin", "glslang.exe"),
-        };
-        var vulkanSdk = Environment.GetEnvironmentVariable("VULKAN_SDK");
-        if(!string.IsNullOrWhiteSpace(vulkanSdk))
-        {
-            candidates.Add(Path.Combine(vulkanSdk, OperatingSystem.IsWindows() ? "Bin" : "bin", executable));
-        }
-
-        var pathValue = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-        foreach(var pathEntry in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            candidates.Add(Path.Combine(pathEntry, executable));
-        }
-
-        foreach(var candidate in candidates)
-        {
-            if(File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-        throw new MakeSystemException("glslang was not found. Install Vulkan SDK or provide SDKs/vulkan-tools/windows/x64/bin/glslang.exe.");
     }
 
     private static string NormalizeStage(string stage)
@@ -499,6 +409,8 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         string binaryPath,
         string dataFormat,
         string entry,
+        string helperHeader,
+        string outputNamespace,
         uint metalNumthreadsX,
         uint metalNumthreadsY,
         uint metalNumthreadsZ)
@@ -507,9 +419,9 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         var builder = new StringBuilder();
         builder.AppendLine("// Autogenerated by cppslc, do not modify.");
         builder.AppendLine("#pragma once");
-        builder.AppendLine("#include <Luna/RHI/CppslShaderHelper.hpp>");
+        builder.Append("#include <").Append(helperHeader).AppendLine(">");
         builder.AppendLine();
-        builder.AppendLine("namespace Luna");
+        builder.Append("namespace ").AppendLine(outputNamespace);
         builder.AppendLine("{");
         builder.Append("    constexpr u8 SHADER_DATA_").Append(sourceName).Append("[] = {");
         for(var i = 0; i < bytes.Length; ++i)

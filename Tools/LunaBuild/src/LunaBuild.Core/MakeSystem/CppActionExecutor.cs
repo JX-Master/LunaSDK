@@ -35,44 +35,44 @@ public sealed class CppActionExecutor : IMakeActionExecutor
 
     private Task CompileAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
-        return context.Graph.Options.Platform switch
+        return context.Options.Platform switch
         {
             BuildPlatform.Windows => CompileMsvcAsync(context, cancellationToken),
             BuildPlatform.MacOS => CompileAppleAsync(context, cancellationToken),
             BuildPlatform.Android => CompileAndroidAsync(context, cancellationToken),
-            _ => throw new MakeSystemException($"C++ compile is not implemented for platform {context.Graph.Options.Platform}."),
+            _ => throw new MakeSystemException($"C++ compile is not implemented for platform {context.Options.Platform}."),
         };
     }
 
     private Task LinkSharedAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
-        return context.Graph.Options.Platform switch
+        return context.Options.Platform switch
         {
             BuildPlatform.Windows => LinkMsvcSharedAsync(context, cancellationToken),
             BuildPlatform.MacOS => LinkAppleSharedAsync(context, cancellationToken),
             BuildPlatform.Android => LinkAndroidSharedAsync(context, cancellationToken),
-            _ => throw new MakeSystemException($"C++ shared linking is not implemented for platform {context.Graph.Options.Platform}."),
+            _ => throw new MakeSystemException($"C++ shared linking is not implemented for platform {context.Options.Platform}."),
         };
     }
 
     private Task LinkStaticAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
-        return context.Graph.Options.Platform switch
+        return context.Options.Platform switch
         {
             BuildPlatform.Windows => LinkMsvcStaticAsync(context, cancellationToken),
             BuildPlatform.MacOS => LinkAppleStaticAsync(context, cancellationToken),
             BuildPlatform.Android => LinkAndroidStaticAsync(context, cancellationToken),
-            _ => throw new MakeSystemException($"C++ static linking is not implemented for platform {context.Graph.Options.Platform}."),
+            _ => throw new MakeSystemException($"C++ static linking is not implemented for platform {context.Options.Platform}."),
         };
     }
 
     private Task LinkExecutableAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
-        return context.Graph.Options.Platform switch
+        return context.Options.Platform switch
         {
             BuildPlatform.Windows => LinkMsvcExecutableAsync(context, cancellationToken),
             BuildPlatform.MacOS => LinkAppleExecutableAsync(context, cancellationToken),
-            _ => throw new MakeSystemException($"C++ executable linking is not implemented for platform {context.Graph.Options.Platform}."),
+            _ => throw new MakeSystemException($"C++ executable linking is not implemented for platform {context.Options.Platform}."),
         };
     }
 
@@ -91,7 +91,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
         Directory.CreateDirectory(Path.GetDirectoryName(depfile)!);
 
-        var args = CppCommandLineBuilder.BuildMsvcCompileArguments(context.Workspace, context.Graph.Options, payload);
+        var args = CppCommandLineBuilder.BuildMsvcCompileArguments(context.Workspace, context.Options, payload);
         var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "cl", args);
         var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.ClExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
@@ -163,7 +163,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
 
     private async Task CompileResourceAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
-        if(context.Graph.Options.Platform != BuildPlatform.Windows || context.Workspace.OptionsHostPlatform() != BuildPlatform.Windows)
+        if(context.Options.Platform != BuildPlatform.Windows || context.Workspace.OptionsHostPlatform() != BuildPlatform.Windows)
         {
             throw new MakeSystemException("Windows resource compilation requires a Windows/MSVC host and target.");
         }
@@ -757,9 +757,9 @@ internal static class BuildWorkspaceExtensions
     public static string OptionsDirectoryName(this MakeActionContext context)
     {
         return Path.Combine(
-            context.Graph.Options.Platform.ToString(),
-            context.Graph.Options.Architecture,
-            context.Graph.Options.Mode.ToString());
+            context.Options.Platform.ToString(),
+            context.Options.Architecture,
+            context.Options.Mode.ToString());
     }
 }
 

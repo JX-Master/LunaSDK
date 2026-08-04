@@ -23,7 +23,7 @@ internal static class IdeProjectModel
         {
             Add(files, target.DotNetProjectFile);
         }
-        foreach(var generatedHeader in FindGeneratedHeaders(workspace, graph, target.Name))
+        foreach(var generatedHeader in FindGeneratedHeaders(workspace, graph, target.QualifiedName))
         {
             Add(files, generatedHeader);
         }
@@ -113,8 +113,14 @@ internal static class IdeProjectModel
             targetName,
             all,
             force,
-            Path.Combine(workspace.RootDirectory, "LunaBuild.csproj"),
+            ResolveRunnerProject(workspace),
             workspace.RootDirectory).Select(Quote));
+    }
+
+    public static string ResolveRunnerProject(BuildWorkspace workspace)
+    {
+        return workspace.RunnerProjectPath ?? throw new FileNotFoundException(
+            "Cannot locate the LunaBuild runner project. Invoke LunaBuild from a checkout containing LunaBuild.csproj.");
     }
 
     public static IReadOnlyList<string> LunaBuildArguments(

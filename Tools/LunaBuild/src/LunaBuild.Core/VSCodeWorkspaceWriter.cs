@@ -49,18 +49,18 @@ public static class VSCodeWorkspaceWriter
         tasks.Add(CreateTask("LunaBuild: clean all", CommandArgs(workspace, options, "clean", targetName: null, all: true, force: false)));
         tasks.Add(CreateTask("LunaBuild: clean full", new[]
         {
-            "run", "--no-restore", "--project", "${workspaceFolder}/LunaBuild.csproj",
+            "run", "--no-restore", "--project", IdeProjectModel.ResolveRunnerProject(workspace),
             "--", "clean", "--root", "${workspaceFolder}", "--full",
         }));
 
-        foreach(var target in targets.OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase))
+        foreach(var target in targets.OrderBy(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase))
         {
-            tasks.Add(CreateTask($"LunaBuild: build {target.Name}", CommandArgs(workspace, options, "build", target.Name, all: false, force: false)));
-            tasks.Add(CreateTask($"LunaBuild: rebuild {target.Name}", CommandArgs(workspace, options, "build", target.Name, all: false, force: true)));
-            tasks.Add(CreateTask($"LunaBuild: clean {target.Name}", CommandArgs(workspace, options, "clean", target.Name, all: false, force: false)));
+            tasks.Add(CreateTask($"LunaBuild: build {target.QualifiedName}", CommandArgs(workspace, options, "build", target.QualifiedName, all: false, force: false)));
+            tasks.Add(CreateTask($"LunaBuild: rebuild {target.QualifiedName}", CommandArgs(workspace, options, "build", target.QualifiedName, all: false, force: true)));
+            tasks.Add(CreateTask($"LunaBuild: clean {target.QualifiedName}", CommandArgs(workspace, options, "clean", target.QualifiedName, all: false, force: false)));
             if(target.Kind is BuildTargetKind.Executable or BuildTargetKind.DotNetProject)
             {
-                tasks.Add(CreateTask($"LunaBuild: run {target.Name}", CommandArgs(workspace, options, "run", target.Name, all: false, force: false)));
+                tasks.Add(CreateTask($"LunaBuild: run {target.QualifiedName}", CommandArgs(workspace, options, "run", target.QualifiedName, all: false, force: false)));
             }
         }
 
@@ -83,16 +83,16 @@ public static class VSCodeWorkspaceWriter
             .ToDictionary(pair => pair.TargetName, pair => pair.OutputPath, StringComparer.OrdinalIgnoreCase);
 
         foreach(var target in targets
-            .Where(target => target.Kind == BuildTargetKind.Executable && executableOutputs.ContainsKey(target.Name))
-            .OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase))
+            .Where(target => target.Kind == BuildTargetKind.Executable && executableOutputs.ContainsKey(target.QualifiedName))
+            .OrderBy(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase))
         {
-            var program = executableOutputs[target.Name];
+            var program = executableOutputs[target.QualifiedName];
             foreach(var debugger in launchOptions.Debuggers)
             {
                 configurations.Add(CreateLaunchConfiguration(
                     workspace,
                     options,
-                    target.Name,
+                    target.QualifiedName,
                     program,
                     debugger,
                     launchOptions.Debuggers.Count > 1));
@@ -203,7 +203,7 @@ public static class VSCodeWorkspaceWriter
             targetName,
             all,
             force,
-            "${workspaceFolder}/LunaBuild.csproj",
+            IdeProjectModel.ResolveRunnerProject(workspace),
             "${workspaceFolder}");
     }
 
