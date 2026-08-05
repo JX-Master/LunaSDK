@@ -44,12 +44,12 @@ struct VSInput
 struct PSInput
 {
     [[cppsl::position]] float4 position;
-    [[cppsl::location(0)]] float2 surface_position;
-    [[cppsl::location(1)]] float2 evaluation_origin;
-    [[cppsl::location(2)]] float4 clip_rect;
-    [[cppsl::location(3)]] float4 rounded_clip_rect;
-    [[cppsl::location(4)]] float4 rounded_clip_radii;
-    [[cppsl::location(5)]] uint4 program_data;
+    [[cppsl::location(1)]] float2 surface_position;
+    [[cppsl::location(2)]] float2 evaluation_origin;
+    [[cppsl::location(3)]] float4 clip_rect;
+    [[cppsl::location(4)]] float4 rounded_clip_rect;
+    [[cppsl::location(5)]] float4 rounded_clip_radii;
+    [[cppsl::location(6)]] uint4 program_data;
 };
 
 [[cppsl::vertex]]

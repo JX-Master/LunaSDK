@@ -26,12 +26,12 @@ DescSet0 g_set0;
 struct PSInput
 {
     [[cppsl::position]] float4 position;
-    [[cppsl::location(0)]] float2 surface_position;
-    [[cppsl::location(1)]] float2 evaluation_origin;
-    [[cppsl::location(2)]] float4 clip_rect;
-    [[cppsl::location(3)]] float4 rounded_clip_rect;
-    [[cppsl::location(4)]] float4 rounded_clip_radii;
-    [[cppsl::location(5)]] uint4 program_data;
+    [[cppsl::location(1)]] float2 surface_position;
+    [[cppsl::location(2)]] float2 evaluation_origin;
+    [[cppsl::location(3)]] float4 clip_rect;
+    [[cppsl::location(4)]] float4 rounded_clip_rect;
+    [[cppsl::location(5)]] float4 rounded_clip_radii;
+    [[cppsl::location(6)]] uint4 program_data;
 };
 
 struct PSOutput
@@ -75,18 +75,18 @@ float4 read_color(uint offset)
         g_set0.color_floats[offset + 2], g_set0.color_floats[offset + 3]};
 }
 
-float rectangle_distance(float2 point, uint offset)
+float rectangle_distance(float2 sample_position, uint offset)
 {
     float4 rect = float4{g_set0.shape_floats[offset], g_set0.shape_floats[offset + 1],
         g_set0.shape_floats[offset + 2], g_set0.shape_floats[offset + 3]};
     float2 half_size = (rect.zw - rect.xy) * 0.5f;
     float2 center = rect.xy + half_size;
-    float2 q = abs(point - center) - half_size;
+    float2 q = abs(sample_position - center) - half_size;
     return sqrt(dot(max(q, float2{0.0f, 0.0f}), max(q, float2{0.0f, 0.0f}))) +
         min(max(q.x, q.y), 0.0f);
 }
 
-float rounded_rectangle_distance(float2 point, uint offset)
+float rounded_rectangle_distance(float2 sample_position, uint offset)
 {
     float4 rect = float4{g_set0.shape_floats[offset], g_set0.shape_floats[offset + 1],
         g_set0.shape_floats[offset + 2], g_set0.shape_floats[offset + 3]};
@@ -94,7 +94,7 @@ float rounded_rectangle_distance(float2 point, uint offset)
         g_set0.shape_floats[offset + 6], g_set0.shape_floats[offset + 7]};
     float2 half_size = (rect.zw - rect.xy) * 0.5f;
     float2 center = rect.xy + half_size;
-    float2 local = point - center;
+    float2 local = sample_position - center;
     float radius;
     if(local.x < 0.0f)
     {
@@ -110,12 +110,12 @@ float rounded_rectangle_distance(float2 point, uint offset)
         min(max(q.x, q.y), 0.0f) - radius;
 }
 
-float capsule_distance(float2 point, uint offset)
+float capsule_distance(float2 sample_position, uint offset)
 {
     float2 point0 = float2{g_set0.shape_floats[offset], g_set0.shape_floats[offset + 1]};
     float2 point1 = float2{g_set0.shape_floats[offset + 2], g_set0.shape_floats[offset + 3]};
     float radius = g_set0.shape_floats[offset + 4];
-    float2 point_from_start = point - point0;
+    float2 point_from_start = sample_position - point0;
     float2 segment = point1 - point0;
     float denominator = dot(segment, segment);
     float amount = denominator > 0.0f ? saturate(dot(point_from_start, segment) / denominator) : 0.0f;
@@ -134,22 +134,22 @@ uint shape_instruction_length(uint opcode)
     return 0;
 }
 
-ShapeResult evaluate_primitive(float2 point, uint offset, uint opcode)
+ShapeResult evaluate_primitive(float2 sample_position, uint offset, uint opcode)
 {
     if(opcode == 1)
     {
-        return make_shape_result(rectangle_distance(point, offset + 1), true);
+        return make_shape_result(rectangle_distance(sample_position, offset + 1), true);
     }
     if(opcode == 2)
     {
-        return make_shape_result(rounded_rectangle_distance(point, offset + 1), true);
+        return make_shape_result(rounded_rectangle_distance(sample_position, offset + 1), true);
     }
     if(opcode == 3)
     {
         float2 center = float2{g_set0.shape_floats[offset + 1],
             g_set0.shape_floats[offset + 2]};
         float radius = g_set0.shape_floats[offset + 3];
-        float2 difference = point - center;
+        float2 difference = sample_position - center;
         return make_shape_result(sqrt(dot(difference, difference)) - radius, true);
     }
     if(opcode == 4)
@@ -158,23 +158,23 @@ ShapeResult evaluate_primitive(float2 point, uint offset, uint opcode)
             g_set0.shape_floats[offset + 2]};
         float2 radii = float2{g_set0.shape_floats[offset + 3],
             g_set0.shape_floats[offset + 4]};
-        float2 normalized = (point - center) / radii;
+        float2 normalized = (sample_position - center) / radii;
         return make_shape_result((sqrt(dot(normalized, normalized)) - 1.0f) *
             min(radii.x, radii.y), true);
     }
     if(opcode == 5)
     {
-        return make_shape_result(capsule_distance(point, offset + 1), true);
+        return make_shape_result(capsule_distance(sample_position, offset + 1), true);
     }
     return make_shape_result(0.0f, false);
 }
 
-ShapeResult evaluate_shape(float2 point, uint first_float)
+ShapeResult evaluate_shape(float2 sample_position, uint first_float)
 {
     uint first_opcode = (uint)g_set0.shape_floats[first_float];
     if(first_opcode >= 1 && first_opcode <= 5)
     {
-        return evaluate_primitive(point, first_float, first_opcode);
+        return evaluate_primitive(sample_position, first_float, first_opcode);
     }
 
     uint offsets[64];
@@ -216,7 +216,7 @@ ShapeResult evaluate_shape(float2 point, uint first_float)
         float distance_value = 0.0f;
         if(opcode >= 1 && opcode <= 5)
         {
-            ShapeResult primitive = evaluate_primitive(point, offset, opcode);
+            ShapeResult primitive = evaluate_primitive(sample_position, offset, opcode);
             if(!primitive.valid)
             {
                 return make_shape_result(0.0f, false);
@@ -295,7 +295,7 @@ float4 evaluate_stops(uint stop_base, uint num_stops, float coordinate, uint spr
     return read_color(last_base + 2);
 }
 
-float4 evaluate_paint(float2 point, uint opcode, uint payload_float)
+float4 evaluate_paint(float2 sample_position, uint opcode, uint payload_float)
 {
     if(opcode == 1)
     {
@@ -306,8 +306,8 @@ float4 evaluate_paint(float2 point, uint opcode, uint payload_float)
         float4 rect = float4{g_set0.color_floats[payload_float],
             g_set0.color_floats[payload_float + 1], g_set0.color_floats[payload_float + 2],
             g_set0.color_floats[payload_float + 3]};
-        float x = rect.z != 0.0f ? saturate((point.x - rect.x) / rect.z) : 0.0f;
-        float y = rect.w != 0.0f ? saturate((point.y - rect.y) / rect.w) : 0.0f;
+        float x = rect.z != 0.0f ? saturate((sample_position.x - rect.x) / rect.z) : 0.0f;
+        float y = rect.w != 0.0f ? saturate((sample_position.y - rect.y) / rect.w) : 0.0f;
         float4 top = lerp(read_color(payload_float + 4), read_color(payload_float + 8), x);
         float4 bottom = lerp(read_color(payload_float + 16), read_color(payload_float + 12), x);
         return lerp(top, bottom, y);
@@ -325,7 +325,7 @@ float4 evaluate_paint(float2 point, uint opcode, uint payload_float)
             g_set0.color_floats[payload_float + 3]};
         float2 direction = end - start;
         float denominator = dot(direction, direction);
-        coordinate = denominator > 0.0f ? dot(point - start, direction) / denominator : 0.0f;
+        coordinate = denominator > 0.0f ? dot(sample_position - start, direction) / denominator : 0.0f;
         spread = (uint)g_set0.color_floats[payload_float + 4];
         num_stops = (uint)g_set0.color_floats[payload_float + 5];
         stop_base = payload_float + 6;
@@ -336,7 +336,7 @@ float4 evaluate_paint(float2 point, uint opcode, uint payload_float)
             g_set0.color_floats[payload_float + 1]};
         float2 radii = float2{g_set0.color_floats[payload_float + 2],
             g_set0.color_floats[payload_float + 3]};
-        float2 normalized = (point - center) / radii;
+        float2 normalized = (sample_position - center) / radii;
         coordinate = sqrt(dot(normalized, normalized));
         spread = (uint)g_set0.color_floats[payload_float + 4];
         num_stops = (uint)g_set0.color_floats[payload_float + 5];
@@ -347,7 +347,7 @@ float4 evaluate_paint(float2 point, uint opcode, uint payload_float)
         float2 center = float2{g_set0.color_floats[payload_float],
             g_set0.color_floats[payload_float + 1]};
         float start_angle = g_set0.color_floats[payload_float + 2];
-        coordinate = (atan2(point.y - center.y, point.x - center.x) - start_angle) / 6.283185307f;
+        coordinate = (atan2(sample_position.y - center.y, sample_position.x - center.x) - start_angle) / 6.283185307f;
         coordinate -= floor(coordinate);
         spread = (uint)g_set0.color_floats[payload_float + 3];
         num_stops = (uint)g_set0.color_floats[payload_float + 4];
@@ -494,11 +494,11 @@ ColorResult evaluate_color_instruction(float2 local_point, ShapeResult shape, ui
     return make_color_result(output_color, next_float, true);
 }
 
-float rounded_clip_rect_distance(float2 point, float4 clip_rect, float4 corner_radii)
+float rounded_clip_rect_distance(float2 sample_position, float4 clip_rect, float4 corner_radii)
 {
     float2 half_size = clip_rect.zw * 0.5f;
     float2 center = clip_rect.xy + half_size;
-    float2 local = point - center;
+    float2 local = sample_position - center;
     float radius;
     if(local.x < 0.0f)
     {
