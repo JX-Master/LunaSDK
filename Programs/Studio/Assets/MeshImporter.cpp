@@ -9,7 +9,7 @@
 */
 #include "MeshAsset.hpp"
 #include "MeshImporter.hpp"
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/ObjLoader/ObjLoader.hpp>
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
@@ -21,31 +21,31 @@ namespace Luna
 {
     namespace
     {
-        GUICore::LayoutConfig fixed_height(f32 height)
+        GUI::LayoutConfig fixed_height(f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::LayoutConfig fill_layout()
+        GUI::LayoutConfig fill_layout()
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.kind = GUI::SizeKind::percent;
             layout.height.value = 1.0f;
             layout.flex_grow = 1.0f;
             return layout;
         }
 
-        GUICore::FlexLayoutDesc vertical_layout(f32 gap = 6.0f)
+        GUI::FlexLayoutDesc vertical_layout(f32 gap = 6.0f)
         {
-            GUICore::FlexLayoutDesc desc;
-            desc.axis = GUICore::LayoutAxis::y;
+            GUI::FlexLayoutDesc desc;
+            desc.axis = GUI::LayoutAxis::y;
             desc.main_axis_gap = gap;
             return desc;
         }
@@ -273,25 +273,25 @@ namespace Luna
         }
     }
 
-    void MeshImporter::on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    void MeshImporter::on_render(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
         if(!m_open)
         {
             return;
         }
-        context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
-        GUI::DockPanelDesc panel_desc;
+        context->push_data_scope(context->make_id((GUI::id_t)(usize)this));
+        EditorGUI::DockPanelDesc panel_desc;
         panel_desc.minimum_floating_size = Float2U(500.0f, 420.0f);
-        if(!GUI::begin_dock_panel(context, context->make_id("obj_mesh_importer"), "Obj Mesh Importer", &m_open,
+        if(!EditorGUI::begin_dock_panel(context, context->make_id("obj_mesh_importer"), "Obj Mesh Importer", &m_open,
             panel_desc))
         {
             context->pop_data_scope();
             return;
         }
 
-        GUICore::ElementHandle select_source = GUI::text_button(context, context->make_id("select_source"),
+        GUI::ElementHandle select_source = EditorGUI::text_button(context, context->make_id("select_source"),
             "Select Source File", fixed_height(30.0f));
-        if(GUI::is_item_clicked(context, select_source))
+        if(EditorGUI::is_item_clicked(context, select_source))
         {
             RV r = select_obj_mesh_file(m_source_file_path, m_obj_file, m_import_names);
             if(failed(r) && r.errcode() != BasicError::interrupted())
@@ -304,16 +304,16 @@ namespace Luna
 
         if(m_source_file_path.empty())
         {
-            GUI::text(context, context->make_id("empty"), "No obj file selected.", fixed_height(26.0f));
+            EditorGUI::text(context, context->make_id("empty"), "No obj file selected.", fixed_height(26.0f));
         }
         else
         {
-            GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, context->make_id("scroll"),
+            GUI::ElementHandle scroll = EditorGUI::begin_scroll_view(context, context->make_id("scroll"),
                 "Obj Mesh Importer Content", fill_layout());
-            GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"),
+            GUI::ElementHandle content = EditorGUI::begin_v_layout(context, context->make_id("content"),
                 "Obj Mesh Importer Content", fill_layout());
-            GUI::text(context, context->make_id("path"), m_source_file_path.encode().c_str(), fixed_height(24.0f));
-            GUI::text(context, context->make_id("object_info"), "Object Information:", fixed_height(24.0f));
+            EditorGUI::text(context, context->make_id("path"), m_source_file_path.encode().c_str(), fixed_height(24.0f));
+            EditorGUI::text(context, context->make_id("object_info"), "Object Information:", fixed_height(24.0f));
 
             String vertex_count;
             String normal_count;
@@ -323,24 +323,24 @@ namespace Luna
             strprintf(normal_count, "Normal entries count: %u", (u32)m_obj_file.attributes.normals.size());
             strprintf(texcoord_count, "TexCoord entries count: %u", (u32)m_obj_file.attributes.texcoords.size());
             strprintf(color_count, "Color entries count: %u", (u32)m_obj_file.attributes.colors.size());
-            GUI::text(context, context->make_id("vertex_count"), vertex_count.c_str(), fixed_height(22.0f));
-            GUI::text(context, context->make_id("normal_count"), normal_count.c_str(), fixed_height(22.0f));
-            GUI::text(context, context->make_id("texcoord_count"), texcoord_count.c_str(), fixed_height(22.0f));
-            GUI::text(context, context->make_id("color_count"), color_count.c_str(), fixed_height(22.0f));
+            EditorGUI::text(context, context->make_id("vertex_count"), vertex_count.c_str(), fixed_height(22.0f));
+            EditorGUI::text(context, context->make_id("normal_count"), normal_count.c_str(), fixed_height(22.0f));
+            EditorGUI::text(context, context->make_id("texcoord_count"), texcoord_count.c_str(), fixed_height(22.0f));
+            EditorGUI::text(context, context->make_id("color_count"), color_count.c_str(), fixed_height(22.0f));
 
             if(m_obj_file.shapes.empty())
             {
-                GUI::text(context, context->make_id("no_shapes"),
+                EditorGUI::text(context, context->make_id("no_shapes"),
                     "No Shape information detected, this model cannot be imported.", fixed_height(26.0f));
             }
             else
             {
                 String mesh_count;
                 strprintf(mesh_count, "%u meshes found", (u32)m_obj_file.shapes.size());
-                GUI::text(context, context->make_id("mesh_count"), mesh_count.c_str(), fixed_height(24.0f));
-                GUICore::ElementHandle import_all = GUI::text_button(context, context->make_id("import_all"),
+                EditorGUI::text(context, context->make_id("mesh_count"), mesh_count.c_str(), fixed_height(24.0f));
+                GUI::ElementHandle import_all = EditorGUI::text_button(context, context->make_id("import_all"),
                     "Import All", fixed_height(30.0f));
-                if(GUI::is_item_clicked(context, import_all))
+                if(EditorGUI::is_item_clicked(context, import_all))
                 {
                     for(u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
                     {
@@ -352,29 +352,29 @@ namespace Luna
                         }
                     }
                 }
-                if(GUI::collapsing_header(context, context->make_id("shapes"), "Shapes"))
+                if(EditorGUI::collapsing_header(context, context->make_id("shapes"), "Shapes"))
                 {
                     for(u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
                     {
-                        context->push_data_scope(context->make_id((GUICore::id_t)i));
+                        context->push_data_scope(context->make_id((GUI::id_t)i));
                         String shape_name;
                         String face_count;
                         strprintf(shape_name, "Name: %s", m_obj_file.shapes[i].name.c_str());
                         strprintf(face_count, "Faces: %u", (u32)m_obj_file.shapes[i].mesh.num_face_vertices.size());
-                        GUI::text(context, context->make_id("shape_name"), shape_name.c_str(), fixed_height(22.0f));
-                        GUI::text(context, context->make_id("face_count"), face_count.c_str(), fixed_height(22.0f));
-                        GUI::text(context, context->make_id("asset_name_label"), "Asset Name", fixed_height(20.0f));
-                        GUI::input_text(context, context->make_id("asset_name"), m_import_names[i], fixed_height(28.0f));
+                        EditorGUI::text(context, context->make_id("shape_name"), shape_name.c_str(), fixed_height(22.0f));
+                        EditorGUI::text(context, context->make_id("face_count"), face_count.c_str(), fixed_height(22.0f));
+                        EditorGUI::text(context, context->make_id("asset_name_label"), "Asset Name", fixed_height(20.0f));
+                        EditorGUI::input_text(context, context->make_id("asset_name"), m_import_names[i], fixed_height(28.0f));
                         if(!m_import_names[i].empty())
                         {
                             Path file_path = m_create_dir;
                             file_path.push_back(m_import_names[i]);
                             String import_path;
                             strprintf(import_path, "The mesh will be imported as: %s", file_path.encode().c_str());
-                            GUI::text(context, context->make_id("import_path"), import_path.c_str(), fixed_height(24.0f));
-                            GUICore::ElementHandle import_button = GUI::text_button(context, context->make_id("import"),
+                            EditorGUI::text(context, context->make_id("import_path"), import_path.c_str(), fixed_height(24.0f));
+                            GUI::ElementHandle import_button = EditorGUI::text_button(context, context->make_id("import"),
                                 "Import", fixed_height(30.0f));
-                            if(GUI::is_item_clicked(context, import_button))
+                            if(EditorGUI::is_item_clicked(context, import_button))
                             {
                                 import_static_mesh(file_path, m_obj_file, i);
                             }
@@ -383,11 +383,11 @@ namespace Luna
                     }
                 }
             }
-            GUI::end_v_layout(context, content, vertical_layout(6.0f));
-            GUI::end_scroll_view(context);
+            EditorGUI::end_v_layout(context, content, vertical_layout(6.0f));
+            EditorGUI::end_scroll_view(context);
         }
 
-        GUI::end_dock_panel(context);
+        EditorGUI::end_dock_panel(context);
         context->pop_data_scope();
     }
 

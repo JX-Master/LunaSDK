@@ -11,47 +11,47 @@
 #include "MaterialEditor.hpp"
 #include "../StudioHeader.hpp"
 #include "../StudioGUI.hpp"
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/Window/MessageBox.hpp>
 namespace Luna
 {
     namespace
     {
-        GUICore::LayoutConfig fixed_height(f32 height)
+        GUI::LayoutConfig fixed_height(f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::FlexLayoutDesc vertical_editor_layout()
+        GUI::FlexLayoutDesc vertical_editor_layout()
         {
-            GUICore::FlexLayoutDesc desc;
-            desc.axis = GUICore::LayoutAxis::y;
+            GUI::FlexLayoutDesc desc;
+            desc.axis = GUI::LayoutAxis::y;
             desc.main_axis_gap = 8.0f;
             return desc;
         }
     }
 
-    void MaterialEditor::on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    void MaterialEditor::on_render(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
         if(!m_open) return;
 
-        context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
-        GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("material_editor"), "Material Editor", layout);
+        context->push_data_scope(context->make_id((GUI::id_t)(usize)this));
+        GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("material_editor"), "Material Editor", layout);
 
         Ref<Material> mat = get_asset_or_async_load_if_not_ready<Material>(m_material);
         if(!mat || (Asset::get_asset_state(m_material) != Asset::AssetState::loaded))
         {
-            GUI::text(context, context->make_id("not_loaded"), "Material Asset is not loaded.", fixed_height(24.0f));
+            EditorGUI::text(context, context->make_id("not_loaded"), "Material Asset is not loaded.", fixed_height(24.0f));
         }
         else
         {
-            GUICore::ElementHandle save_button = GUI::text_button(context, context->make_id("save"), "Save", fixed_height(30.0f));
-            if(GUI::is_item_clicked(context, save_button))
+            GUI::ElementHandle save_button = EditorGUI::text_button(context, context->make_id("save"), "Save", fixed_height(30.0f));
+            if(EditorGUI::is_item_clicked(context, save_button))
             {
                 lutry
                 {
@@ -66,7 +66,7 @@ namespace Luna
 
             i32 material_type = (i32)mat->material_type;
             const c8* material_types[] = {"lit", "unlit"};
-            GUI::combo(context, context->make_id("material_type"), "Material Type", &material_type,
+            EditorGUI::combo(context, context->make_id("material_type"), "Material Type", &material_type,
                 Span<const c8*>(material_types, 2), fixed_height(30.0f));
             mat->material_type = (MeterialType)material_type;
             if(mat->material_type == MeterialType::lit)
@@ -81,12 +81,12 @@ namespace Luna
             {
                 gui_edit_asset_path(context, "Emissive", mat->emissive, m_emissive_name);
             }
-            GUI::DragDesc drag_desc;
+            EditorGUI::DragDesc drag_desc;
             drag_desc.speed = 0.01f;
-            GUI::drag_float(context, context->make_id("emissive_intensity"), &mat->emissive_intensity,
+            EditorGUI::drag_float(context, context->make_id("emissive_intensity"), &mat->emissive_intensity,
                 0.0f, 20.0f, fixed_height(30.0f), drag_desc);
         }
-        GUI::end_v_layout(context, root, vertical_editor_layout());
+        EditorGUI::end_v_layout(context, root, vertical_editor_layout());
         context->pop_data_scope();
     }
 

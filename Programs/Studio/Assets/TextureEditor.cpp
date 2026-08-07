@@ -9,76 +9,76 @@
 */
 #include "Texture.hpp"
 #include "TextureEditor.hpp"
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 
 namespace Luna
 {
     namespace
     {
-        GUICore::LayoutConfig texture_size_layout(RHI::ITexture* texture)
+        GUI::LayoutConfig texture_size_layout(RHI::ITexture* texture)
         {
-            GUICore::LayoutConfig layout;
+            GUI::LayoutConfig layout;
             if(texture)
             {
                 auto desc = texture->get_desc();
-                layout.width.kind = GUICore::SizeKind::fixed;
+                layout.width.kind = GUI::SizeKind::fixed;
                 layout.width.value = (f32)desc.width;
-                layout.height.kind = GUICore::SizeKind::fixed;
+                layout.height.kind = GUI::SizeKind::fixed;
                 layout.height.value = (f32)desc.height;
             }
             return layout;
         }
 
-        GUICore::LayoutConfig fixed_height_layout(f32 height)
+        GUI::LayoutConfig fixed_height_layout(f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
     }
 
-    void TextureEditor::on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    void TextureEditor::on_render(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
         luassert(context);
         if(!m_open)
         {
             return;
         }
-        context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
-        GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("texture_editor"), "Texture Editor", layout);
+        context->push_data_scope(context->make_id((GUI::id_t)(usize)this));
+        GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("texture_editor"), "Texture Editor", layout);
         Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(m_tex);
         if(!tex)
         {
-            GUI::text(context, context->make_id("unavailable"), "Texture Unavailable.", fixed_height_layout(28.0f));
+            EditorGUI::text(context, context->make_id("unavailable"), "Texture Unavailable.", fixed_height_layout(28.0f));
         }
         else
         {
-            GUI::image(context, context->make_id("texture"), tex.get(), texture_size_layout(tex.get()));
+            EditorGUI::image(context, context->make_id("texture"), tex.get(), texture_size_layout(tex.get()));
         }
-        GUI::end_v_layout(context, root, GUICore::FlexLayoutDesc());
+        EditorGUI::end_v_layout(context, root, GUI::FlexLayoutDesc());
         context->pop_data_scope();
     }
 
-    static void on_draw_tex_tile_core(GUICore::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
+    static void on_draw_tex_tile_gui(GUI::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
     {
         if(Asset::get_asset_state(asset) == Asset::AssetState::loaded)
         {
             Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
             if(tex)
             {
-                GUICore::DrawCommand command;
-                command.type = GUICore::DrawCommandType::image;
+                GUI::DrawCommand command;
+                command.type = GUI::DrawCommandType::image;
                 command.rect = draw_rect;
                 command.texture = tex.get();
                 context->draw(command);
                 return;
             }
         }
-        GUICore::DrawCommand command;
-        command.type = GUICore::DrawCommandType::text;
+        GUI::DrawCommand command;
+        command.type = GUI::DrawCommandType::text;
         command.rect = draw_rect;
         command.color = Float4U(1.0f);
         command.font_size = 16.0f;
@@ -87,7 +87,7 @@ namespace Luna
         command.text = "Texture";
         context->draw(command);
     }
-    static void on_draw_tex_tile_preview_core(GUICore::IContext* context, object_t userdata, Asset::asset_t asset,
+    static void on_draw_tex_tile_preview_gui(GUI::IContext* context, object_t userdata, Asset::asset_t asset,
         const RectF& relative_rect)
     {
         if(Asset::get_asset_state(asset) == Asset::AssetState::loaded)
@@ -95,9 +95,9 @@ namespace Luna
             Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
             if(tex)
             {
-                GUICore::DrawCommand command;
-                command.type = GUICore::DrawCommandType::image;
-                command.rect_reference = GUICore::DrawCommandRectReference::element;
+                GUI::DrawCommand command;
+                command.type = GUI::DrawCommandType::image;
+                command.rect_reference = GUI::DrawCommandRectReference::element;
                 command.rect = relative_rect;
                 command.color = Float4U(1.0f);
                 command.texture = tex.get();
@@ -105,9 +105,9 @@ namespace Luna
                 return;
             }
         }
-        GUICore::DrawCommand command;
-        command.type = GUICore::DrawCommandType::text;
-        command.rect_reference = GUICore::DrawCommandRectReference::element;
+        GUI::DrawCommand command;
+        command.type = GUI::DrawCommandType::text;
+        command.rect_reference = GUI::DrawCommandRectReference::element;
         command.rect = relative_rect;
         command.color = Float4U(1.0f);
         command.font_size = 16.0f;
@@ -125,8 +125,8 @@ namespace Luna
     void register_texture_editor()
     {
         AssetEditorDesc desc;
-        desc.on_draw_tile_core = on_draw_tex_tile_core;
-        desc.on_draw_tile_preview_core = on_draw_tex_tile_preview_core;
+        desc.on_draw_tile_gui = on_draw_tex_tile_gui;
+        desc.on_draw_tile_preview_gui = on_draw_tex_tile_preview_gui;
         desc.new_editor = new_tex_editor;
         g_env->register_asset_editor_type(get_static_texture_asset_type(), desc);
     }

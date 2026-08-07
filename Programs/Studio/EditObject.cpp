@@ -9,7 +9,7 @@
 */
 #include "EditObject.hpp"
 #include <Luna/Runtime/Reflection.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/Runtime/HashMap.hpp>
@@ -19,55 +19,55 @@ namespace Luna
 {
     namespace
     {
-        struct CoreGUIPropertyRow
+        struct GUIPropertyRow
         {
-            GUICore::ElementHandle row;
+            GUI::ElementHandle row;
         };
 
-        GUICore::LayoutConfig fixed_size(f32 width, f32 height)
+        GUI::LayoutConfig fixed_size(f32 width, f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::fixed;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::fixed;
             layout.width.value = width;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::LayoutConfig fixed_height(f32 height)
+        GUI::LayoutConfig fixed_height(f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::LayoutConfig fill()
+        GUI::LayoutConfig fill()
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.kind = GUI::SizeKind::percent;
             layout.height.value = 1.0f;
             layout.flex_grow = 1.0f;
             return layout;
         }
 
-        CoreGUIPropertyRow begin_core_gui_property_row(GUICore::IContext* context, const c8* name, f32 height = 30.0f)
+        GUIPropertyRow begin_gui_property_row(GUI::IContext* context, const c8* name, f32 height = 30.0f)
         {
-            GUICore::ElementHandle row = GUI::begin_h_layout(context, context->make_id("row"), name, fixed_height(height));
-            GUI::text(context, context->make_id("label"), name, fixed_size(140.0f, height));
-            return CoreGUIPropertyRow { row };
+            GUI::ElementHandle row = EditorGUI::begin_h_layout(context, context->make_id("row"), name, fixed_height(height));
+            EditorGUI::text(context, context->make_id("label"), name, fixed_size(140.0f, height));
+            return GUIPropertyRow { row };
         }
 
-        void end_core_gui_property_row(GUICore::IContext* context, const CoreGUIPropertyRow& row)
+        void end_gui_property_row(GUI::IContext* context, const GUIPropertyRow& row)
         {
-            GUICore::FlexLayoutDesc desc;
-            desc.axis = GUICore::LayoutAxis::x;
+            GUI::FlexLayoutDesc desc;
+            desc.axis = GUI::LayoutAxis::x;
             desc.main_axis_gap = 8.0f;
-            GUI::end_h_layout(context, row.row, desc);
+            EditorGUI::end_h_layout(context, row.row, desc);
         }
 
         template <typename _Ty>
@@ -81,9 +81,9 @@ namespace Luna
             return iter->second;
         }
 
-        GUI::DragDesc edit_drag_desc(f32 speed)
+        EditorGUI::DragDesc edit_drag_desc(f32 speed)
         {
-            GUI::DragDesc desc;
+            EditorGUI::DragDesc desc;
             desc.speed = speed;
             return desc;
         }
@@ -119,7 +119,7 @@ namespace Luna
         }
     }
 
-    bool edit_enum(GUICore::IContext* context, const c8* name, typeinfo_t type, void* obj)
+    bool edit_enum(GUI::IContext* context, const c8* name, typeinfo_t type, void* obj)
     {
         auto descs = get_enum_options(type);
         if(descs.empty() || is_multienum_type(type))
@@ -141,10 +141,10 @@ namespace Luna
         }
         i32 old_item = current_item;
         context->push_data_scope(context->make_id(name));
-        CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-        GUI::combo(context, context->make_id("value"), name, &current_item, Span<const c8*>(items.data(), items.size()),
+        GUIPropertyRow row = begin_gui_property_row(context, name);
+        EditorGUI::combo(context, context->make_id("value"), name, &current_item, Span<const c8*>(items.data(), items.size()),
             fixed_height(30.0f));
-        end_core_gui_property_row(context, row);
+        end_gui_property_row(context, row);
         context->pop_data_scope();
         if(current_item != old_item)
         {
@@ -154,7 +154,7 @@ namespace Luna
         return false;
     }
 
-    static bool edit_property(GUICore::IContext* context, const c8* name, typeinfo_t object_type, typeinfo_t type, void* obj)
+    static bool edit_property(GUI::IContext* context, const c8* name, typeinfo_t object_type, typeinfo_t type, void* obj)
     {
         auto hide = get_property_attribute(object_type, name, "hide");
         if(hide.boolean())
@@ -162,7 +162,7 @@ namespace Luna
             return false;
         }
 
-        context->push_data_scope(context->make_id((GUICore::id_t)(usize)obj));
+        context->push_data_scope(context->make_id((GUI::id_t)(usize)obj));
         bool edited = false;
 
         if(is_primitive_type(type))
@@ -190,16 +190,16 @@ namespace Luna
                     f32& v_edit = get_edit_buffer(g_radian_edit_buffers, (usize)obj, rad_to_deg(*data));
                     f32 old_edit = v_edit;
                     f32 speed = (v_max_deg <= v_min_deg) ? 1.0f : (v_max_deg - v_min_deg) / 100.0f;
-                    CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-                    GUICore::ElementHandle item = GUI::drag_float(context, context->make_id("value"), &v_edit,
+                    GUIPropertyRow row = begin_gui_property_row(context, name);
+                    GUI::ElementHandle item = EditorGUI::drag_float(context, context->make_id("value"), &v_edit,
                         v_min_deg, v_max_deg, fixed_height(30.0f), edit_drag_desc(speed));
-                    end_core_gui_property_row(context, row);
+                    end_gui_property_row(context, row);
                     edited = (v_edit != old_edit);
                     if(edited)
                     {
                         *data = deg_to_rad(v_edit);
                     }
-                    else if(!GUI::is_item_active(context, item) && !GUI::is_item_focused(context, item))
+                    else if(!EditorGUI::is_item_active(context, item) && !EditorGUI::is_item_focused(context, item))
                     {
                         v_edit = rad_to_deg(*data);
                     }
@@ -211,10 +211,10 @@ namespace Luna
                     {
                         speed = (v_max - v_min) / 100.0f;
                     }
-                    CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-                    GUI::drag_float(context, context->make_id("value"), data, v_min, v_max, fixed_height(30.0f),
+                    GUIPropertyRow row = begin_gui_property_row(context, name);
+                    EditorGUI::drag_float(context, context->make_id("value"), data, v_min, v_max, fixed_height(30.0f),
                         edit_drag_desc(speed));
-                    end_core_gui_property_row(context, row);
+                    end_gui_property_row(context, row);
                     edited = (*data != old_value);
                 }
             }
@@ -222,9 +222,9 @@ namespace Luna
             {
                 bool* data = (bool*)obj;
                 bool old_value = *data;
-                CoreGUIPropertyRow row = begin_core_gui_property_row(context, name, 26.0f);
-                GUI::checkbox(context, context->make_id("value"), "", data, fixed_height(26.0f));
-                end_core_gui_property_row(context, row);
+                GUIPropertyRow row = begin_gui_property_row(context, name, 26.0f);
+                EditorGUI::checkbox(context, context->make_id("value"), "", data, fixed_height(26.0f));
+                end_gui_property_row(context, row);
                 edited = (*data != old_value);
             }
         }
@@ -236,27 +236,27 @@ namespace Luna
         {
             Float2* data = (Float2*)obj;
             Float2 old_value = *data;
-            CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-            GUI::drag_float2(context, context->make_id("value"), data->m, 0.0f, 0.0f, fixed_height(30.0f),
+            GUIPropertyRow row = begin_gui_property_row(context, name);
+            EditorGUI::drag_float2(context, context->make_id("value"), data->m, 0.0f, 0.0f, fixed_height(30.0f),
                 edit_drag_desc(0.01f));
-            end_core_gui_property_row(context, row);
+            end_gui_property_row(context, row);
             edited = !float2_equal(*data, old_value);
         }
         else if(type == typeof<Float3>())
         {
             Float3* data = (Float3*)obj;
             Float3 old_value = *data;
-            CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
+            GUIPropertyRow row = begin_gui_property_row(context, name);
             if(get_property_attribute(object_type, name, "color_gui") == true)
             {
-                GUI::color_edit3(context, context->make_id("value"), name, data->m, fixed_height(30.0f));
+                EditorGUI::color_edit3(context, context->make_id("value"), name, data->m, fixed_height(30.0f));
             }
             else
             {
-                GUI::drag_float3(context, context->make_id("value"), data->m, 0.0f, 0.0f, fixed_height(30.0f),
+                EditorGUI::drag_float3(context, context->make_id("value"), data->m, 0.0f, 0.0f, fixed_height(30.0f),
                     edit_drag_desc(0.01f));
             }
-            end_core_gui_property_row(context, row);
+            end_gui_property_row(context, row);
             edited = !float3_equal(*data, old_value);
         }
         else if(type == typeof<Float4>())
@@ -266,17 +266,17 @@ namespace Luna
             {
                 Float3& euler = get_edit_buffer(g_quaternion_edit_buffers, (usize)obj, quaternion_to_euler_degrees(*data));
                 Float3 old_euler = euler;
-                CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-                GUICore::ElementHandle item = GUI::drag_float3(context, context->make_id("value"), euler.m,
+                GUIPropertyRow row = begin_gui_property_row(context, name);
+                GUI::ElementHandle item = EditorGUI::drag_float3(context, context->make_id("value"), euler.m,
                     0.0f, 0.0f, fixed_height(30.0f), edit_drag_desc(0.1f));
-                end_core_gui_property_row(context, row);
+                end_gui_property_row(context, row);
                 edited = !float3_equal(euler, old_euler);
                 if(edited)
                 {
                     Float3 radians = euler * (PI / 180.0f);
                     *data = Quaternion::from_euler_angles(radians);
                 }
-                else if(!GUI::is_item_active(context, item) && !GUI::is_item_focused(context, item))
+                else if(!EditorGUI::is_item_active(context, item) && !EditorGUI::is_item_focused(context, item))
                 {
                     euler = quaternion_to_euler_degrees(*data);
                 }
@@ -284,10 +284,10 @@ namespace Luna
             else
             {
                 Float4 old_value = *data;
-                CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-                GUI::drag_float4(context, context->make_id("value"), data->m, 0.0f, 0.0f, fixed_height(30.0f),
+                GUIPropertyRow row = begin_gui_property_row(context, name);
+                EditorGUI::drag_float4(context, context->make_id("value"), data->m, 0.0f, 0.0f, fixed_height(30.0f),
                     edit_drag_desc(0.01f));
-                end_core_gui_property_row(context, row);
+                end_gui_property_row(context, row);
                 edited = !float4_equal(*data, old_value);
             }
         }
@@ -301,15 +301,15 @@ namespace Luna
             Name* data = (Name*)obj;
             String& buf = get_edit_buffer(g_name_edit_buffers, (usize)obj, String(data->c_str()));
             String old_buf = buf;
-            CoreGUIPropertyRow row = begin_core_gui_property_row(context, name);
-            GUICore::ElementHandle item = GUI::input_text(context, context->make_id("value"), buf, fixed_height(30.0f));
-            end_core_gui_property_row(context, row);
+            GUIPropertyRow row = begin_gui_property_row(context, name);
+            GUI::ElementHandle item = EditorGUI::input_text(context, context->make_id("value"), buf, fixed_height(30.0f));
+            end_gui_property_row(context, row);
             edited = strcmp(buf.c_str(), old_buf.c_str()) != 0;
             if(edited)
             {
                 *data = buf;
             }
-            else if(!GUI::is_item_active(context, item) && !GUI::is_item_focused(context, item))
+            else if(!EditorGUI::is_item_active(context, item) && !EditorGUI::is_item_focused(context, item))
             {
                 buf = data->c_str();
             }
@@ -319,7 +319,7 @@ namespace Luna
         return edited;
     }
 
-    bool edit_object(GUICore::IContext* context, typeinfo_t type, void* data)
+    bool edit_object(GUI::IContext* context, typeinfo_t type, void* data)
     {
         Vector<StructurePropertyDesc> properties;
         get_struct_properties(type, properties);
@@ -332,12 +332,12 @@ namespace Luna
         return edited;
     }
 
-    static bool edit_scene_object_property(GUICore::IContext* context, World* world, const c8* name, typeinfo_t object_type,
+    static bool edit_scene_object_property(GUI::IContext* context, World* world, const c8* name, typeinfo_t object_type,
         typeinfo_t type, void* obj)
     {
         if(type == typeof<ActorRef>())
         {
-            context->push_data_scope(context->make_id((GUICore::id_t)(usize)obj));
+            context->push_data_scope(context->make_id((GUI::id_t)(usize)obj));
             ActorRef* ref = (ActorRef*)obj;
             bool edited = edit_actor_ref(context, name, world, *ref);
             context->pop_data_scope();
@@ -346,7 +346,7 @@ namespace Luna
         return edit_property(context, name, object_type, type, obj);
     }
 
-    bool edit_scene_object(GUICore::IContext* context, World* world, typeinfo_t type, void* data)
+    bool edit_scene_object(GUI::IContext* context, World* world, typeinfo_t type, void* data)
     {
         Vector<StructurePropertyDesc> properties;
         get_struct_properties(type, properties);
@@ -360,23 +360,23 @@ namespace Luna
         return edited;
     }
 
-    bool edit_asset(GUICore::IContext* context, const c8* name, Asset::asset_t& asset)
+    bool edit_asset(GUI::IContext* context, const c8* name, Asset::asset_t& asset)
     {
         bool edited = false;
-        context->push_data_scope(context->make_id((GUICore::id_t)(usize)&asset));
+        context->push_data_scope(context->make_id((GUI::id_t)(usize)&asset));
 
-        CoreGUIPropertyRow row = begin_core_gui_property_row(context, name, 44.0f);
-        GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"), "Asset Reference", fill());
+        GUIPropertyRow row = begin_gui_property_row(context, name, 44.0f);
+        GUI::ElementHandle content = EditorGUI::begin_v_layout(context, context->make_id("content"), "Asset Reference", fill());
 
-        GUICore::ElementHandle path_row = GUI::begin_h_layout(context, context->make_id("asset_path_row"), "Asset Path Row",
+        GUI::ElementHandle path_row = EditorGUI::begin_h_layout(context, context->make_id("asset_path_row"), "Asset Path Row",
             fixed_height(32.0f));
         if(asset)
         {
             auto path = Asset::get_asset_path(asset);
-            GUI::text(context, context->make_id("path"), path.encode().c_str(), fixed_height(32.0f));
-            GUICore::ElementHandle clear_button = GUI::text_button(context, context->make_id("clear"), "Clear",
+            EditorGUI::text(context, context->make_id("path"), path.encode().c_str(), fixed_height(32.0f));
+            GUI::ElementHandle clear_button = EditorGUI::text_button(context, context->make_id("clear"), "Clear",
                 fixed_size(72.0f, 32.0f));
-            if(GUI::is_item_clicked(context, clear_button))
+            if(EditorGUI::is_item_clicked(context, clear_button))
             {
                 asset.reset();
                 edited = true;
@@ -384,26 +384,26 @@ namespace Luna
         }
         else
         {
-            GUI::text(context, context->make_id("path"), "(None)", fixed_height(32.0f));
+            EditorGUI::text(context, context->make_id("path"), "(None)", fixed_height(32.0f));
         }
-        GUICore::FlexLayoutDesc path_desc;
-        path_desc.axis = GUICore::LayoutAxis::x;
+        GUI::FlexLayoutDesc path_desc;
+        path_desc.axis = GUI::LayoutAxis::x;
         path_desc.main_axis_gap = 8.0f;
-        GUI::end_h_layout(context, path_row, path_desc);
-        GUICore::FlexLayoutDesc content_desc;
-        content_desc.axis = GUICore::LayoutAxis::y;
+        EditorGUI::end_h_layout(context, path_row, path_desc);
+        GUI::FlexLayoutDesc content_desc;
+        content_desc.axis = GUI::LayoutAxis::y;
         content_desc.main_axis_gap = 6.0f;
-        GUI::end_v_layout(context, content, content_desc);
-        end_core_gui_property_row(context, row);
+        EditorGUI::end_v_layout(context, content, content_desc);
+        end_gui_property_row(context, row);
 
         context->pop_data_scope();
         return edited;
     }
 
-    bool edit_actor_ref(GUICore::IContext* context, const c8* name, World* world, ActorRef& ref)
+    bool edit_actor_ref(GUI::IContext* context, const c8* name, World* world, ActorRef& ref)
     {
         bool edited = false;
-        context->push_data_scope(context->make_id((GUICore::id_t)(usize)&ref));
+        context->push_data_scope(context->make_id((GUI::id_t)(usize)&ref));
 
         const c8* actor_name = "(None)";
         if(ref.guid != Guid(0, 0))
@@ -415,10 +415,10 @@ namespace Luna
             }
         }
 
-        CoreGUIPropertyRow row = begin_core_gui_property_row(context, name, 30.0f);
-        GUI::text(context, context->make_id("actor"), actor_name, fixed_size(160.0f, 30.0f));
+        GUIPropertyRow row = begin_gui_property_row(context, name, 30.0f);
+        EditorGUI::text(context, context->make_id("actor"), actor_name, fixed_size(160.0f, 30.0f));
 
-        end_core_gui_property_row(context, row);
+        end_gui_property_row(context, row);
         context->pop_data_scope();
         return edited;
     }

@@ -14,24 +14,24 @@
 
 namespace Luna
 {
-    namespace GUICore
+    namespace GUI
     {
         struct IContext;
     }
 
-    bool edit_enum(GUICore::IContext* context, const c8* name, typeinfo_t type, void* obj);
+    bool edit_enum(GUI::IContext* context, const c8* name, typeinfo_t type, void* obj);
 
     template <typename _Ty>
-    bool edit_enum(GUICore::IContext* context, const c8* name, _Ty& obj)
+    bool edit_enum(GUI::IContext* context, const c8* name, _Ty& obj)
     {
         return edit_enum(context, name, typeof<_Ty>(), &obj);
     }
 
-    bool edit_asset(GUICore::IContext* context, const c8* name, Asset::asset_t& asset);
+    bool edit_asset(GUI::IContext* context, const c8* name, Asset::asset_t& asset);
 
-    bool edit_actor_ref(GUICore::IContext* context, const c8* name, World* world, ActorRef& ref);
+    bool edit_actor_ref(GUI::IContext* context, const c8* name, World* world, ActorRef& ref);
 
-    bool edit_object(GUICore::IContext* context, typeinfo_t type, void* data);
+    bool edit_object(GUI::IContext* context, typeinfo_t type, void* data);
 
-    bool edit_scene_object(GUICore::IContext* context, World* world, typeinfo_t type, void* data);
+    bool edit_scene_object(GUI::IContext* context, World* world, typeinfo_t type, void* data);
 }

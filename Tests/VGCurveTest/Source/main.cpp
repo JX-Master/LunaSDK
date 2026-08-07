@@ -8,7 +8,7 @@
 * @date 2026/6/4
 */
 #include <Luna/Font/Font.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/RHI/SwapChain.hpp>
@@ -55,11 +55,11 @@ namespace Luna
         Ref<Window::IWindow> window;
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
-        Ref<GUICore::IContext> gui;
+        Ref<GUI::IContext> gui;
         Ref<RHI::ITexture> curve_texture;
         Ref<VG::IShapeDrawList> shape_draw_list;
         Ref<VG::IShapeRenderer> shape_renderer;
-        Ref<GUICore::IRenderer> gui_renderer;
+        Ref<GUI::IRenderer> gui_renderer;
         u32 queue = U32_MAX;
         u32 width = 0;
         u32 height = 0;
@@ -83,25 +83,25 @@ namespace Luna
         };
     };
 
-    constexpr GUICore::id_t DEFAULT_LAYER_ID = 1;
-    constexpr GUICore::id_t ROOT_ID = 2;
-    constexpr GUICore::id_t IMAGE_HIT_ID = 100;
-    constexpr GUICore::id_t RESOLUTION_GROUP_ID = 101;
-    constexpr GUICore::id_t FIRST_TEXT_ID = 1000;
+    constexpr GUI::id_t DEFAULT_LAYER_ID = 1;
+    constexpr GUI::id_t ROOT_ID = 2;
+    constexpr GUI::id_t IMAGE_HIT_ID = 100;
+    constexpr GUI::id_t RESOLUTION_GROUP_ID = 101;
+    constexpr GUI::id_t FIRST_TEXT_ID = 1000;
 
-    inline GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
+    inline GUI::LayoutConfig fixed_layout(f32 width, f32 height)
     {
-        GUICore::LayoutConfig layout;
-        layout.width.kind = GUICore::SizeKind::fixed;
+        GUI::LayoutConfig layout;
+        layout.width.kind = GUI::SizeKind::fixed;
         layout.width.value = width;
-        layout.height.kind = GUICore::SizeKind::fixed;
+        layout.height.kind = GUI::SizeKind::fixed;
         layout.height.value = height;
         return layout;
     }
 
-    inline void set_element_rect(GUICore::IContext* context, const GUICore::ElementHandle& element, const RectF& rect)
+    inline void set_element_rect(GUI::IContext* context, const GUI::ElementHandle& element, const RectF& rect)
     {
-        GUICore::LayoutResult layout;
+        GUI::LayoutResult layout;
         layout.rect = rect;
         layout.clip_rect = rect;
         layout.content_size = Float2U(rect.width, rect.height);
@@ -123,11 +123,11 @@ namespace Luna
         return in_bounds(point, rect_min(rect), rect_max(rect));
     }
 
-    void draw_line(GUICore::IContext* context, const Float2U& begin, const Float2U& end,
+    void draw_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
         const Float4U& color, f32 width)
     {
-        GUICore::DrawCommand command;
-        command.type = GUICore::DrawCommandType::line;
+        GUI::DrawCommand command;
+        command.type = GUI::DrawCommandType::line;
         command.rect = RectF(begin.x, begin.y, 0.0f, 0.0f);
         command.point1 = end;
         command.color = color;
@@ -135,11 +135,11 @@ namespace Luna
         context->draw(command);
     }
 
-    void draw_circle(GUICore::IContext* context, const Float2U& center, f32 radius,
+    void draw_circle(GUI::IContext* context, const Float2U& center, f32 radius,
         const Float4U& color)
     {
-        GUICore::DrawCommand command;
-        command.type = GUICore::DrawCommandType::rounded_rect;
+        GUI::DrawCommand command;
+        command.type = GUI::DrawCommandType::rounded_rect;
         command.rect = RectF(center.x - radius, center.y - radius, radius * 2.0f, radius * 2.0f);
         command.color = color;
         command.radius = radius;
@@ -274,22 +274,22 @@ namespace Luna
         }
     }
 
-    void draw_label(GUICore::IContext* context, GUICore::id_t id, f32 x, f32 y, f32 width, const c8* text)
+    void draw_label(GUI::IContext* context, GUI::id_t id, f32 x, f32 y, f32 width, const c8* text)
     {
-        GUI::TextDesc desc;
+        EditorGUI::TextDesc desc;
         desc.font_size = 16.0f;
-        GUICore::ElementHandle element = GUI::text(context, id, text, fixed_layout(width, 24.0f), desc);
+        GUI::ElementHandle element = EditorGUI::text(context, id, text, fixed_layout(width, 24.0f), desc);
         set_element_rect(context, element, RectF(x, y, width, 24.0f));
     }
 
     void build_gui(App& app, const Float2U& surface_size)
     {
-        GUICore::ElementHandle root = app.gui->begin_element(ROOT_ID);
+        GUI::ElementHandle root = app.gui->begin_element(ROOT_ID);
         set_element_rect(app.gui, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
 
         draw_label(app.gui, FIRST_TEXT_ID, 14.0f, 14.0f, 280.0f, "VG Cubic Curve Test");
         draw_label(app.gui, FIRST_TEXT_ID + 1, 14.0f, 62.0f, 220.0f, "Texture resolution");
-        GUICore::ElementHandle resolution = GUI::button_group(app.gui, RESOLUTION_GROUP_ID,
+        GUI::ElementHandle resolution = EditorGUI::button_group(app.gui, RESOLUTION_GROUP_ID,
             Span<const c8*>(RESOLUTION_LABELS, NUM_RESOLUTIONS), &app.resolution_index, fixed_layout(420.0f, 34.0f));
         set_element_rect(app.gui, resolution, RectF(220.0f, 54.0f, 420.0f, 34.0f));
         c8 status[128];
@@ -301,12 +301,12 @@ namespace Luna
         app.display_size = min(TARGET_DISPLAY_SIZE, min(display_limit_x, display_limit_y));
         app.image_rect = RectF(14.0f, 112.0f, app.display_size, app.display_size);
 
-        GUI::ImageDesc image_desc;
-        image_desc.flags = GUI::ImageFlag::flip_y | GUI::ImageFlag::nearest;
-        GUICore::ElementHandle image = GUI::image(app.gui, FIRST_TEXT_ID + 3, app.curve_texture,
+        EditorGUI::ImageDesc image_desc;
+        image_desc.flags = EditorGUI::ImageFlag::flip_y | EditorGUI::ImageFlag::nearest;
+        GUI::ElementHandle image = EditorGUI::image(app.gui, FIRST_TEXT_ID + 3, app.curve_texture,
             fixed_layout(app.display_size, app.display_size), image_desc);
         set_element_rect(app.gui, image, app.image_rect);
-        GUICore::ElementHandle image_hit = GUI::hit_box(app.gui, IMAGE_HIT_ID, fixed_layout(app.display_size, app.display_size));
+        GUI::ElementHandle image_hit = EditorGUI::hit_box(app.gui, IMAGE_HIT_ID, fixed_layout(app.display_size, app.display_size));
         set_element_rect(app.gui, image_hit, app.image_rect);
         if(app.image_rect.width > 1.0f && app.image_rect.height > 1.0f)
         {
@@ -340,7 +340,7 @@ namespace Luna
 
     void update_curve_interaction(App& app)
     {
-        GUICore::InteractionState image_state = app.gui->get_interaction_state(IMAGE_HIT_ID);
+        GUI::InteractionState image_state = app.gui->get_interaction_state(IMAGE_HIT_ID);
         bool left_down = image_state.active;
         Float2U pointer = image_state.pointer_screen_position;
         if(left_down && !app.was_left_down && point_in_rect(pointer, app.image_rect))
@@ -383,8 +383,8 @@ namespace Luna
                 module_rhi(),
                 module_font(),
                 module_vg(),
-                GUICore::module_gui_core(),
                 GUI::module_gui(),
+                EditorGUI::module_editor_gui(),
                 GUIWindow::module_gui_window() }));
             luexp(init_modules());
 
@@ -409,13 +409,13 @@ namespace Luna
             luset(app.cmdbuf, dev->new_command_buffer(app.queue));
             app.shape_draw_list = VG::new_shape_draw_list(dev);
             app.shape_renderer = VG::new_fill_shape_renderer();
-            luset(app.gui_renderer, GUICore::new_renderer(dev));
-            app.gui = GUICore::new_context();
-            GUI::register_style_schemas(app.gui);
+            luset(app.gui_renderer, GUI::new_renderer(dev));
+            app.gui = GUI::new_context();
+            EditorGUI::register_style_schemas(app.gui);
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
-            GUI::DefaultStyleDesc style_desc;
-            style_desc.input_mode = GUI::InputMode::pointer;
-            GUI::set_default_style(app.gui, style_desc);
+            EditorGUI::DefaultStyleDesc style_desc;
+            style_desc.input_mode = EditorGUI::InputMode::pointer;
+            EditorGUI::set_default_style(app.gui, style_desc);
             luexp(recreate_curve_texture(app));
         }
         lucatchret;
@@ -429,7 +429,7 @@ namespace Luna
             App app;
             luexp(init_app(app));
 
-            GUIWindow::GUICoreWindowInputAdapter input_adapter;
+            GUIWindow::GUIWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;
             GUIWindow::install_window_event_handler(&input_adapter);
@@ -459,7 +459,7 @@ namespace Luna
                 }
 
                 auto logical_sz = app.window->get_size();
-                GUICore::FrameDesc frame;
+                GUI::FrameDesc frame;
                 frame.screen_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
                 frame.framebuffer_size = fb_sz;
                 frame.dpi_scale = app.window->get_dpi_scale_factor();
@@ -471,7 +471,7 @@ namespace Luna
                 build_gui(app, frame.screen_size);
                 app.gui->pop_layer();
                 app.gui->route_input();
-                GUI::resolve_interactions(app.gui);
+                EditorGUI::resolve_interactions(app.gui);
                 luexp(GUIWindow::update_text_input(&input_adapter));
                 update_curve_interaction(app);
 
@@ -483,9 +483,9 @@ namespace Luna
                 luexp(draw_curve_texture(app));
 
                 lulet(back_buffer, app.swap_chain->get_current_back_buffer());
-                Float4U clear_color = app.gui->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
-                    GUICore::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
-                GUICore::RenderTargetDesc target(back_buffer);
+                Float4U clear_color = app.gui->get_style_value(Name(EditorGUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
+                    GUI::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
+                GUI::RenderTargetDesc target(back_buffer);
                 target.color_load_op = RHI::LoadOp::clear;
                 target.color_clear_value = clear_color;
                 target.color_final_state = RHI::TextureStateFlag::present;

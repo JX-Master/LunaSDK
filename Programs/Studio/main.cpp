@@ -18,7 +18,7 @@
 #include <Luna/RG/RG.hpp>
 #include <Luna/JobSystem/JobSystem.hpp>
 #include <Luna/ECS/ECS.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 
 #include <Luna/Window/AppMain.hpp>
@@ -70,7 +70,7 @@ namespace Luna
             module_rhi(),
             module_image(),
             module_font(),
-            GUI::module_gui(),
+            EditorGUI::module_editor_gui(),
             GUIWindow::module_gui_window(),
             module_asset(),
             module_obj_loader(),

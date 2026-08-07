@@ -13,7 +13,7 @@
 #include <Luna/Window/Window.hpp>
 #include <Luna/RHI/SwapChain.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/Font/Font.hpp>
 #include <Luna/VG/ShapeDrawList.hpp>
@@ -218,8 +218,8 @@ namespace Luna
         Ref<Window::IWindow> window;
         Ref<RHI::ISwapChain> swap_chain;
         Ref<RHI::ICommandBuffer> cmdbuf;
-        Ref<GUICore::IContext> gui;
-        Ref<GUICore::IRenderer> gui_renderer;
+        Ref<GUI::IContext> gui;
+        Ref<GUI::IRenderer> gui_renderer;
         Vector<Ref<AHI::IAdapter>> playback_adapters;
         Vector<Ref<AHI::IAdapter>> capture_adapters;
         Vector<AudioSource> audio_sources;
@@ -228,72 +228,72 @@ namespace Luna
         u32 height = 0;
     };
 
-    constexpr GUICore::id_t DEFAULT_LAYER_ID = 1;
-    constexpr GUICore::id_t ROOT_ID = 2;
-    constexpr GUICore::id_t ADAPTERS_HEADER_ID = 10;
-    constexpr GUICore::id_t PLAYBACK_COMBO_ID = 11;
-    constexpr GUICore::id_t CAPTURE_COMBO_ID = 12;
-    constexpr GUICore::id_t CREATE_DEVICE_BUTTON_ID = 13;
-    constexpr GUICore::id_t DEVICE_HEADER_ID = 20;
-    constexpr GUICore::id_t INPUT_LEVEL_SLIDER_ID = 21;
-    constexpr GUICore::id_t ADD_SOURCE_BUTTON_ID = 22;
-    constexpr GUICore::id_t FIRST_TEXT_ID = 1000;
-    constexpr GUICore::id_t FIRST_SOURCE_ID = 2000;
-    constexpr GUICore::id_t SOURCE_ID_STRIDE = 16;
+    constexpr GUI::id_t DEFAULT_LAYER_ID = 1;
+    constexpr GUI::id_t ROOT_ID = 2;
+    constexpr GUI::id_t ADAPTERS_HEADER_ID = 10;
+    constexpr GUI::id_t PLAYBACK_COMBO_ID = 11;
+    constexpr GUI::id_t CAPTURE_COMBO_ID = 12;
+    constexpr GUI::id_t CREATE_DEVICE_BUTTON_ID = 13;
+    constexpr GUI::id_t DEVICE_HEADER_ID = 20;
+    constexpr GUI::id_t INPUT_LEVEL_SLIDER_ID = 21;
+    constexpr GUI::id_t ADD_SOURCE_BUTTON_ID = 22;
+    constexpr GUI::id_t FIRST_TEXT_ID = 1000;
+    constexpr GUI::id_t FIRST_SOURCE_ID = 2000;
+    constexpr GUI::id_t SOURCE_ID_STRIDE = 16;
 
-    inline GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
+    inline GUI::LayoutConfig fixed_layout(f32 width, f32 height)
     {
-        GUICore::LayoutConfig layout;
-        layout.width.kind = GUICore::SizeKind::fixed;
+        GUI::LayoutConfig layout;
+        layout.width.kind = GUI::SizeKind::fixed;
         layout.width.value = width;
-        layout.height.kind = GUICore::SizeKind::fixed;
+        layout.height.kind = GUI::SizeKind::fixed;
         layout.height.value = height;
         return layout;
     }
 
-    inline void set_element_rect(GUICore::IContext* context, const GUICore::ElementHandle& element, const RectF& rect)
+    inline void set_element_rect(GUI::IContext* context, const GUI::ElementHandle& element, const RectF& rect)
     {
-        GUICore::LayoutResult layout;
+        GUI::LayoutResult layout;
         layout.rect = rect;
         layout.clip_rect = rect;
         layout.content_size = Float2U(rect.width, rect.height);
         context->set_layout_result(element, layout);
     }
 
-    inline bool clicked(GUICore::IContext* context, GUICore::id_t id)
+    inline bool clicked(GUI::IContext* context, GUI::id_t id)
     {
         return context->get_interaction_state(id).clicked;
     }
 
-    inline Float4U style_color(GUICore::IContext* context, const c8* entry, const Float4U& fallback)
+    inline Float4U style_color(GUI::IContext* context, const c8* entry, const Float4U& fallback)
     {
-        return context->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name(entry),
-            GUICore::style_f32x4(fallback)).number;
+        return context->get_style_value(Name(EditorGUI::DEFAULT_STYLE_NAME), Name(entry),
+            GUI::style_f32x4(fallback)).number;
     }
 
-    void draw_label(GUICore::IContext* context, GUICore::id_t id, const RectF& rect, const c8* text)
+    void draw_label(GUI::IContext* context, GUI::id_t id, const RectF& rect, const c8* text)
     {
-        GUI::TextDesc desc;
+        EditorGUI::TextDesc desc;
         desc.font_size = 16.0f;
-        GUICore::ElementHandle element = GUI::text(context, id, text ? text : "",
+        GUI::ElementHandle element = EditorGUI::text(context, id, text ? text : "",
             fixed_layout(rect.width, rect.height), desc);
         set_element_rect(context, element, rect);
     }
 
-    void draw_solid_rect(GUICore::IContext* context, const RectF& rect, const Float4U& color)
+    void draw_solid_rect(GUI::IContext* context, const RectF& rect, const Float4U& color)
     {
-        GUICore::DrawCommand command;
-        command.type = GUICore::DrawCommandType::rect;
+        GUI::DrawCommand command;
+        command.type = GUI::DrawCommandType::rect;
         command.rect = rect;
         command.color = color;
         context->draw(command);
     }
 
-    GUICore::ElementHandle build_gui(App& app, const Float2U& surface_size,
+    GUI::ElementHandle build_gui(App& app, const Float2U& surface_size,
         i32& current_playback_adapter, i32& current_capture_adapter)
     {
-        GUICore::IContext* context = app.gui;
-        GUICore::ElementHandle root = context->begin_element(ROOT_ID);
+        GUI::IContext* context = app.gui;
+        GUI::ElementHandle root = context->begin_element(ROOT_ID);
         set_element_rect(context, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
         draw_solid_rect(context, RectF(0.0f, 0.0f, surface_size.x, surface_size.y),
             style_color(context, "gui.canvas", Float4U(0.92f, 0.93f, 0.92f, 1.0f)));
@@ -302,9 +302,9 @@ namespace Luna
         draw_label(context, FIRST_TEXT_ID, RectF(18.0f, y, 260.0f, 28.0f), "AHI Test");
         y += 38.0f;
 
-        GUICore::ElementHandle adapters_header;
-        bool show_adapters = GUI::collapsing_header(context, ADAPTERS_HEADER_ID, "Adapters and formats",
-            fixed_layout(max(surface_size.x - 36.0f, 300.0f), 30.0f), GUI::DisclosureDesc(), &adapters_header);
+        GUI::ElementHandle adapters_header;
+        bool show_adapters = EditorGUI::collapsing_header(context, ADAPTERS_HEADER_ID, "Adapters and formats",
+            fixed_layout(max(surface_size.x - 36.0f, 300.0f), 30.0f), EditorGUI::DisclosureDesc(), &adapters_header);
         set_element_rect(context, adapters_header, RectF(18.0f, y, max(surface_size.x - 36.0f, 300.0f), 30.0f));
         y += 38.0f;
         if(show_adapters)
@@ -322,14 +322,14 @@ namespace Luna
                 capture_adapter_names.push_back(adapter->get_name());
             }
             draw_label(context, FIRST_TEXT_ID + 1, RectF(32.0f, y, 160.0f, 28.0f), "Playback Adapter");
-            GUICore::ElementHandle playback_combo = GUI::combo(context, PLAYBACK_COMBO_ID, "Playback Adapters",
+            GUI::ElementHandle playback_combo = EditorGUI::combo(context, PLAYBACK_COMBO_ID, "Playback Adapters",
                 &current_playback_adapter, Span<const c8*>(playback_adapter_names.data(), playback_adapter_names.size()),
                 fixed_layout(max(surface_size.x - 240.0f, 240.0f), 30.0f));
             set_element_rect(context, playback_combo, RectF(198.0f, y, max(surface_size.x - 240.0f, 240.0f), 30.0f));
             y += 38.0f;
 
             draw_label(context, FIRST_TEXT_ID + 2, RectF(32.0f, y, 160.0f, 28.0f), "Capture Adapter");
-            GUICore::ElementHandle capture_combo = GUI::combo(context, CAPTURE_COMBO_ID, "Capture Adapters",
+            GUI::ElementHandle capture_combo = EditorGUI::combo(context, CAPTURE_COMBO_ID, "Capture Adapters",
                 &current_capture_adapter, Span<const c8*>(capture_adapter_names.data(), capture_adapter_names.size()),
                 fixed_layout(max(surface_size.x - 240.0f, 240.0f), 30.0f));
             set_element_rect(context, capture_combo, RectF(198.0f, y, max(surface_size.x - 240.0f, 240.0f), 30.0f));
@@ -338,7 +338,7 @@ namespace Luna
             if(!app.device && (usize)current_playback_adapter < app.playback_adapters.size() &&
                 (usize)current_capture_adapter < app.capture_adapters.size())
             {
-                GUICore::ElementHandle create_device = GUI::text_button(context, CREATE_DEVICE_BUTTON_ID, "Create Device",
+                GUI::ElementHandle create_device = EditorGUI::text_button(context, CREATE_DEVICE_BUTTON_ID, "Create Device",
                     fixed_layout(150.0f, 32.0f));
                 set_element_rect(context, create_device, RectF(32.0f, y, 150.0f, 32.0f));
                 y += 44.0f;
@@ -346,9 +346,9 @@ namespace Luna
 
             if(app.device)
             {
-                GUICore::ElementHandle device_header;
-                bool show_device = GUI::collapsing_header(context, DEVICE_HEADER_ID, "Device",
-                    fixed_layout(max(surface_size.x - 64.0f, 300.0f), 30.0f), GUI::DisclosureDesc(), &device_header);
+                GUI::ElementHandle device_header;
+                bool show_device = EditorGUI::collapsing_header(context, DEVICE_HEADER_ID, "Device",
+                    fixed_layout(max(surface_size.x - 64.0f, 300.0f), 30.0f), EditorGUI::DisclosureDesc(), &device_header);
                 set_element_rect(context, device_header, RectF(32.0f, y, max(surface_size.x - 64.0f, 300.0f), 30.0f));
                 y += 38.0f;
                 if(show_device)
@@ -383,12 +383,12 @@ namespace Luna
                     y += 38.0f;
 
                     draw_label(context, FIRST_TEXT_ID + 5, RectF(48.0f, y, 150.0f, 28.0f), "Input Audio Level");
-                    GUICore::ElementHandle level_slider = GUI::slider_float(context, INPUT_LEVEL_SLIDER_ID,
+                    GUI::ElementHandle level_slider = EditorGUI::slider_float(context, INPUT_LEVEL_SLIDER_ID,
                         &input_audio_level, 0.0f, 1.0f, fixed_layout(max(surface_size.x - 250.0f, 220.0f), 26.0f));
                     set_element_rect(context, level_slider, RectF(210.0f, y + 2.0f, max(surface_size.x - 250.0f, 220.0f), 26.0f));
                     y += 42.0f;
 
-                    GUICore::ElementHandle add_source = GUI::text_button(context, ADD_SOURCE_BUTTON_ID, "Add Audio Source",
+                    GUI::ElementHandle add_source = EditorGUI::text_button(context, ADD_SOURCE_BUTTON_ID, "Add Audio Source",
                         fixed_layout(170.0f, 32.0f));
                     set_element_rect(context, add_source, RectF(48.0f, y, 170.0f, 32.0f));
                     y += 46.0f;
@@ -411,21 +411,21 @@ namespace Luna
                                 style_color(context, "gui.surface.1", Float4U(0.97f, 0.97f, 0.96f, 1.0f)) :
                                 style_color(context, "gui.surface.0", Float4U(0.95f, 0.95f, 0.94f, 1.0f));
                             draw_solid_rect(context, RectF(table_x, row_y, table_w, 34.0f), row_color);
-                            draw_label(context, FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 1,
+                            draw_label(context, FIRST_SOURCE_ID + (GUI::id_t)i * SOURCE_ID_STRIDE + 1,
                                 RectF(table_x + 8.0f, row_y + 4.0f, 120.0f, 26.0f), "Audio Source");
-                            GUI::DragDesc drag_desc;
+                            EditorGUI::DragDesc drag_desc;
                             drag_desc.speed = 1.0f;
-                            GUICore::ElementHandle frequency = GUI::drag_float(context,
-                                FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 2,
+                            GUI::ElementHandle frequency = EditorGUI::drag_float(context,
+                                FIRST_SOURCE_ID + (GUI::id_t)i * SOURCE_ID_STRIDE + 2,
                                 &source.frequency, 8.176f, 15804.266f,
                                 fixed_layout(freq_w - 12.0f, 26.0f), drag_desc);
                             set_element_rect(context, frequency, RectF(table_x + 130.0f, row_y + 4.0f, freq_w - 12.0f, 26.0f));
-                            GUICore::ElementHandle volume = GUI::slider_float(context,
-                                FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 3,
+                            GUI::ElementHandle volume = EditorGUI::slider_float(context,
+                                FIRST_SOURCE_ID + (GUI::id_t)i * SOURCE_ID_STRIDE + 3,
                                 &source.volume, 0.0f, 1.0f, fixed_layout(volume_w - 92.0f, 26.0f));
                             set_element_rect(context, volume, RectF(table_x + 140.0f + freq_w, row_y + 4.0f, volume_w - 92.0f, 26.0f));
-                            GUICore::ElementHandle apply = GUI::text_button(context,
-                                FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 4,
+                            GUI::ElementHandle apply = EditorGUI::text_button(context,
+                                FIRST_SOURCE_ID + (GUI::id_t)i * SOURCE_ID_STRIDE + 4,
                                 "Apply", fixed_layout(72.0f, 28.0f));
                             set_element_rect(context, apply,
                                 RectF(table_x + table_w - 80.0f, row_y + 3.0f, 72.0f, 28.0f));
@@ -448,8 +448,8 @@ namespace Luna
                 module_window(),
                 module_font(),
                 module_vg(),
-                GUICore::module_gui_core(),
                 GUI::module_gui(),
+                EditorGUI::module_editor_gui(),
                 GUIWindow::module_gui_window()}));
             luexp(init_modules());
 
@@ -473,14 +473,14 @@ namespace Luna
             luset(app.swap_chain, dev->new_swap_chain(graphics_queue, app.window,
                 RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true, RHI::ColorSpace::srgb})));
             luset(app.cmdbuf, dev->new_command_buffer(graphics_queue));
-            luset(app.gui_renderer, GUICore::new_renderer(dev));
-            app.gui = GUICore::new_context();
-            GUI::register_style_schemas(app.gui);
+            luset(app.gui_renderer, GUI::new_renderer(dev));
+            app.gui = GUI::new_context();
+            EditorGUI::register_style_schemas(app.gui);
             luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
-            GUI::DefaultStyleDesc style_desc;
-            style_desc.input_mode = GUI::InputMode::pointer;
-            GUI::set_default_style(app.gui, style_desc);
-            GUIWindow::GUICoreWindowInputAdapter input_adapter;
+            EditorGUI::DefaultStyleDesc style_desc;
+            style_desc.input_mode = EditorGUI::InputMode::pointer;
+            EditorGUI::set_default_style(app.gui, style_desc);
+            GUIWindow::GUIWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;
             GUIWindow::install_window_event_handler(&input_adapter);
@@ -507,7 +507,7 @@ namespace Luna
                 }
                 auto sz = app.window->get_size();
 
-                GUICore::FrameDesc frame;
+                GUI::FrameDesc frame;
                 frame.screen_size = Float2U((f32)sz.x, (f32)sz.y);
                 frame.framebuffer_size = fb_sz;
                 frame.dpi_scale = app.window->get_dpi_scale_factor();
@@ -518,16 +518,16 @@ namespace Luna
                 static i32 current_playback_adapter = 0;
                 static i32 current_capture_adapter = 0;
                 app.gui->push_layer(DEFAULT_LAYER_ID, Float2U(0.0f));
-                GUICore::ElementHandle root = build_gui(app, frame.screen_size,
+                GUI::ElementHandle root = build_gui(app, frame.screen_size,
                     current_playback_adapter, current_capture_adapter);
                 app.gui->pop_layer();
                 RectF screen_rect(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y);
-                luexp(GUI::layout_tree(app.gui, root, screen_rect));
+                luexp(EditorGUI::layout_tree(app.gui, root, screen_rect));
                 app.gui->route_input();
-                GUI::ResolveResult resolved = GUI::resolve_interactions(app.gui);
+                EditorGUI::ResolveResult resolved = EditorGUI::resolve_interactions(app.gui);
                 if(resolved.relayout_requested)
                 {
-                    luexp(GUI::layout_tree(app.gui, root, screen_rect));
+                    luexp(EditorGUI::layout_tree(app.gui, root, screen_rect));
                 }
                 luexp(GUIWindow::update_text_input(&input_adapter));
 
@@ -552,7 +552,7 @@ namespace Luna
                 }
                 for(usize i = 0; i < app.audio_sources.size(); ++i)
                 {
-                    GUICore::id_t apply_id = FIRST_SOURCE_ID + (GUICore::id_t)i * SOURCE_ID_STRIDE + 4;
+                    GUI::id_t apply_id = FIRST_SOURCE_ID + (GUI::id_t)i * SOURCE_ID_STRIDE + 4;
                     if(clicked(app.gui, apply_id))
                     {
                         AudioSource& source = app.audio_sources[i];
@@ -572,7 +572,7 @@ namespace Luna
                     Float4U(0.92f, 0.93f, 0.92f, 1.0f));
 
                 lulet(back_buffer, app.swap_chain->get_current_back_buffer());
-                GUICore::RenderTargetDesc target(back_buffer);
+                GUI::RenderTargetDesc target(back_buffer);
                 target.color_load_op = RHI::LoadOp::clear;
                 target.color_clear_value = clear_color;
                 target.color_final_state = RHI::TextureStateFlag::present;

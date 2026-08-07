@@ -12,10 +12,10 @@
 
 namespace Luna
 {
-    namespace GUICore
+    namespace GUI
     {
         struct IContext;
     }
 
-    bool gui_edit_asset_path(GUICore::IContext* context, const c8* label, Asset::asset_t& asset, String& path_text, const c8* failure_title = "Failed to set asset reference");
+    bool gui_edit_asset_path(GUI::IContext* context, const c8* label, Asset::asset_t& asset, String& path_text, const c8* failure_title = "Failed to set asset reference");
 }
