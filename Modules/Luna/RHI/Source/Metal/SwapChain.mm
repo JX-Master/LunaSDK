@@ -122,6 +122,7 @@ namespace Luna
             size.height = desc.height;
             layer.drawableSize = size;
             layer.maximumDrawableCount = desc.buffer_count;
+            BOOL wants_extended_dynamic_range = NO;
             if(desc.color_space != ColorSpace::unspecified)
             {
                 CGColorSpaceRef cs;
@@ -132,15 +133,18 @@ namespace Luna
                     break;
                     case ColorSpace::scrgb_linear:
                     cs = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearSRGB);
+                    wants_extended_dynamic_range = YES;
                     break;
                     case ColorSpace::bt2020:
                     cs = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020);
+                    wants_extended_dynamic_range = YES;
                     break;
                     case ColorSpace::display_p3:
                     cs = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
                     break;
                     case ColorSpace::acescg_linear:
                     cs = CGColorSpaceCreateWithName(kCGColorSpaceACESCGLinear);
+                    wants_extended_dynamic_range = YES;
                     break;
                     default: 
                     return RHIError::color_space_not_supported();
@@ -152,6 +156,14 @@ namespace Luna
             {
                 layer.colorspace = nil;
             }
+#if defined(LUNA_PLATFORM_MACOS)
+            layer.wantsExtendedDynamicRangeContent = wants_extended_dynamic_range;
+#elif defined(LUNA_PLATFORM_IOS)
+            if(@available(iOS 16.0, *))
+            {
+                layer.wantsExtendedDynamicRangeContent = wants_extended_dynamic_range;
+            }
+#endif
             return ok;
         }
 

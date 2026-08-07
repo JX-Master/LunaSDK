@@ -8,11 +8,16 @@
 * @date 2020/4/20
 */
 #include "ProjectSelector.hpp"
-#include "StudioHeader.hpp"
+#include "StudioEnv.hpp"
+#include <Luna/Font/Font.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
+#include <Luna/GUICore/GUICore.hpp>
 #include <Luna/Runtime/Time.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/VariantUtils/JSON.hpp>
+#include <Luna/VG/ShapeDrawList.hpp>
+#include <Luna/VG/ShapeRenderer.hpp>
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/Thread.hpp>
@@ -132,20 +137,242 @@ namespace Luna
         }
     }
 
+    constexpr GUICore::id_t PROJECT_SELECTOR_LAYER_ID = 1;
+    constexpr GUICore::id_t PROJECT_SELECTOR_ROOT_ID = 2;
+    constexpr GUICore::id_t PROJECT_SELECTOR_BACKGROUND_ID = 3;
+    constexpr GUICore::id_t PROJECT_SELECTOR_NEW_HEADER_ID = 10;
+    constexpr GUICore::id_t PROJECT_SELECTOR_NAME_INPUT_ID = 11;
+    constexpr GUICore::id_t PROJECT_SELECTOR_CREATE_DIR_ID = 12;
+    constexpr GUICore::id_t PROJECT_SELECTOR_CREATE_BUTTON_ID = 13;
+    constexpr GUICore::id_t PROJECT_SELECTOR_OPEN_HEADER_ID = 20;
+    constexpr GUICore::id_t PROJECT_SELECTOR_BROWSE_BUTTON_ID = 21;
+    constexpr GUICore::id_t PROJECT_SELECTOR_RECENT_VIEW_ID = 22;
+    constexpr GUICore::id_t PROJECT_SELECTOR_FIRST_TEXT_ID = 1000;
+    constexpr GUICore::id_t PROJECT_SELECTOR_FIRST_RECENT_ID = 2000;
+    constexpr GUICore::id_t PROJECT_SELECTOR_RECENT_STRIDE = 8;
+
+    static GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
+    {
+        GUICore::LayoutConfig layout;
+        layout.width.kind = GUICore::SizeKind::fixed;
+        layout.width.value = width;
+        layout.height.kind = GUICore::SizeKind::fixed;
+        layout.height.value = height;
+        return layout;
+    }
+
+    static void set_element_rect(GUICore::IContext* context, const GUICore::ElementHandle& element, const RectF& rect)
+    {
+        GUICore::LayoutResult layout;
+        layout.rect = rect;
+        layout.clip_rect = rect;
+        layout.content_size = Float2U(rect.width, rect.height);
+        context->set_layout_result(element, layout);
+    }
+
+    static bool clicked(GUICore::IContext* context, GUICore::id_t id)
+    {
+        return context->get_interaction_state(id).clicked;
+    }
+
+    static Float4U style_color(GUICore::IContext* context, const c8* entry, const Float4U& fallback)
+    {
+        return context->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name(entry),
+            GUICore::style_f32x4(fallback)).number;
+    }
+
+    static void draw_label(GUICore::IContext* context, GUICore::id_t id, const RectF& rect, const c8* text,
+        f32 font_size = 16.0f)
+    {
+        (void)id;
+        GUICore::DrawCommand command;
+        command.type = GUICore::DrawCommandType::text;
+        command.rect = rect;
+        command.color = style_color(context, "gui.text.color", Float4U(0.15f, 0.16f, 0.17f, 1.0f));
+        command.font_size = font_size;
+        command.text = text ? text : "";
+        context->draw(command);
+    }
+
+    static void draw_rect(GUICore::IContext* context, GUICore::id_t id, const RectF& rect,
+        const Float4U& color, f32 radius = 0.0f)
+    {
+        (void)id;
+        GUICore::DrawCommand command;
+        command.type = radius > 0.0f ? GUICore::DrawCommandType::rounded_rect : GUICore::DrawCommandType::rect;
+        command.rect = rect;
+        command.color = color;
+        command.radius = radius;
+        context->draw(command);
+    }
+
+    static void push_clip(GUICore::IContext* context, const RectF& rect)
+    {
+        GUICore::DrawCommand command;
+        command.type = GUICore::DrawCommandType::push_clip;
+        command.rect = rect;
+        command.rect_reference = GUICore::DrawCommandRectReference::layer;
+        context->draw(command);
+    }
+
+    static void pop_clip(GUICore::IContext* context)
+    {
+        GUICore::DrawCommand command;
+        command.type = GUICore::DrawCommandType::pop_clip;
+        context->draw(command);
+    }
+
+    static GUICore::ElementHandle begin_scroll_region(GUICore::IContext* context, GUICore::id_t id, const RectF& rect)
+    {
+        GUICore::ElementHandle element = context->begin_element(id);
+        context->set_layout_config(element, fixed_layout(rect.width, rect.height));
+        GUICore::Interactable interactable;
+        interactable.pointer_hit_behavior = GUICore::PointerHitBehavior::target;
+        set_flags(interactable.flags, GUICore::InteractableFlag::hoverable);
+        set_flags(interactable.flags, GUICore::InteractableFlag::scrollable);
+        context->set_interactable(element, interactable);
+        set_element_rect(context, element, rect);
+        return element;
+    }
+
+    static GUICore::ElementHandle build_project_selector_gui(GUICore::IContext* context, const Float2U& surface_size, String& project_name,
+        bool& create_dir, const Vector<RecentFileRecord>& recents, f32 recent_scroll)
+    {
+        GUICore::ElementHandle root = context->begin_element(PROJECT_SELECTOR_ROOT_ID);
+        set_element_rect(context, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
+        draw_rect(context, PROJECT_SELECTOR_BACKGROUND_ID, RectF(0.0f, 0.0f, surface_size.x, surface_size.y),
+            style_color(context, "gui.canvas", Float4U(0.92f, 0.93f, 0.92f, 1.0f)), 0.0f);
+
+        f32 content_w = max(surface_size.x - 32.0f, 320.0f);
+        f32 y = 16.0f;
+        draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID, RectF(16.0f, y, 360.0f, 30.0f), "Luna Studio Project Selector", 20.0f);
+        y += 46.0f;
+
+        GUICore::ElementHandle new_header;
+        GUI::DisclosureDesc header_desc;
+        header_desc.default_open = true;
+        bool show_new_project = GUI::collapsing_header(context, PROJECT_SELECTOR_NEW_HEADER_ID, "New Project",
+            fixed_layout(content_w, 30.0f), header_desc, &new_header);
+        set_element_rect(context, new_header, RectF(16.0f, y, content_w, 30.0f));
+        y += 40.0f;
+        if(show_new_project)
+        {
+            draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 1, RectF(32.0f, y, 160.0f, 30.0f), "Project Name");
+            GUICore::ElementHandle input = GUI::input_text(context, PROJECT_SELECTOR_NAME_INPUT_ID, project_name,
+                fixed_layout(max(content_w - 190.0f, 160.0f), 30.0f));
+            set_element_rect(context, input, RectF(190.0f, y, max(content_w - 190.0f, 160.0f), 30.0f));
+            y += 40.0f;
+
+            GUICore::ElementHandle checkbox = GUI::checkbox(context, PROJECT_SELECTOR_CREATE_DIR_ID, "Create Project Folder", &create_dir,
+                fixed_layout(260.0f, 30.0f));
+            set_element_rect(context, checkbox, RectF(32.0f, y, 260.0f, 30.0f));
+            y += 42.0f;
+
+            GUICore::ElementHandle create_button = GUI::text_button(context, PROJECT_SELECTOR_CREATE_BUTTON_ID, "Create New Project",
+                fixed_layout(190.0f, 32.0f));
+            set_element_rect(context, create_button, RectF(32.0f, y, 190.0f, 32.0f));
+            y += 46.0f;
+        }
+
+        GUICore::ElementHandle open_header;
+        bool show_open_project = GUI::collapsing_header(context, PROJECT_SELECTOR_OPEN_HEADER_ID, "Open Existing Project",
+            fixed_layout(content_w, 30.0f), header_desc, &open_header);
+        set_element_rect(context, open_header, RectF(16.0f, y, content_w, 30.0f));
+        y += 40.0f;
+        if(show_open_project)
+        {
+            GUICore::ElementHandle browse_button = GUI::text_button(context, PROJECT_SELECTOR_BROWSE_BUTTON_ID, "Browse Project File",
+                fixed_layout(190.0f, 32.0f));
+            set_element_rect(context, browse_button, RectF(32.0f, y, 190.0f, 32.0f));
+            y += 48.0f;
+
+            if(recents.empty())
+            {
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 2, RectF(32.0f, y, 260.0f, 28.0f), "No recent projects.");
+            }
+            else
+            {
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 2, RectF(32.0f, y, 260.0f, 28.0f), "Recent Projects");
+                y += 34.0f;
+
+                f32 recent_h = max(surface_size.y - y - 24.0f, 120.0f);
+                RectF view_rect(32.0f, y, max(content_w - 32.0f, 260.0f), recent_h);
+                GUICore::ElementHandle scroll = begin_scroll_region(context, PROJECT_SELECTOR_RECENT_VIEW_ID, view_rect);
+                draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 3, view_rect,
+                    style_color(context, "gui.surface.0", Float4U(0.95f, 0.95f, 0.94f, 1.0f)), 4.0f);
+                push_clip(context, view_rect);
+
+                f32 row_h = 34.0f;
+                f32 header_h = 30.0f;
+                f32 path_w = max(view_rect.width - 284.0f, 160.0f);
+                f32 time_w = 120.0f;
+                f32 open_w = 72.0f;
+                f32 remove_w = 88.0f;
+                f32 x = view_rect.offset_x;
+                f32 header_y = view_rect.offset_y - recent_scroll;
+                draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 4, RectF(x, header_y, view_rect.width, header_h),
+                    style_color(context, "gui.surface.2", Float4U(0.93f, 0.93f, 0.92f, 1.0f)), 0.0f);
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 5, RectF(x + 8.0f, header_y + 2.0f, path_w - 16.0f, 26.0f), "Project");
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 6, RectF(x + path_w + 8.0f, header_y + 2.0f, time_w - 16.0f, 26.0f), "Last Used");
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 7, RectF(x + path_w + time_w + 8.0f, header_y + 2.0f, open_w - 16.0f, 26.0f), "Open");
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 8, RectF(x + path_w + time_w + open_w + 8.0f, header_y + 2.0f, remove_w - 16.0f, 26.0f), "Remove");
+
+                for(usize i = 0; i < recents.size(); ++i)
+                {
+                    f32 row_y = view_rect.offset_y + header_h + (f32)i * row_h - recent_scroll;
+                    if(row_y + row_h < view_rect.offset_y || row_y > view_rect.offset_y + view_rect.height)
+                    {
+                        continue;
+                    }
+                    GUICore::id_t row_base = PROJECT_SELECTOR_FIRST_RECENT_ID + (GUICore::id_t)i * PROJECT_SELECTOR_RECENT_STRIDE;
+                    Float4U row_color = (i % 2) ?
+                        style_color(context, "gui.surface.1", Float4U(0.97f, 0.97f, 0.96f, 1.0f)) :
+                        style_color(context, "gui.surface.0", Float4U(0.95f, 0.95f, 0.94f, 1.0f));
+                    draw_rect(context, row_base, RectF(x, row_y, view_rect.width, row_h), row_color, 0.0f);
+                    DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(recents[i].m_last_use_time));
+                    String time_text;
+                    strprintf(time_text, "%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
+                    draw_label(context, row_base + 1, RectF(x + 8.0f, row_y + 3.0f, path_w - 16.0f, 28.0f), recents[i].m_path.encode().c_str());
+                    draw_label(context, row_base + 2, RectF(x + path_w + 8.0f, row_y + 3.0f, time_w - 16.0f, 28.0f), time_text.c_str());
+                    GUICore::ElementHandle open = GUI::text_button(context, row_base + 3, "Open",
+                        fixed_layout(open_w - 8.0f, 28.0f));
+                    set_element_rect(context, open,
+                        RectF(x + path_w + time_w + 4.0f, row_y + 3.0f, open_w - 8.0f, 28.0f));
+                    GUICore::ElementHandle remove = GUI::text_button(context, row_base + 4, "Remove",
+                        fixed_layout(remove_w - 8.0f, 28.0f));
+                    set_element_rect(context, remove,
+                        RectF(x + path_w + time_w + open_w + 4.0f, row_y + 3.0f, remove_w - 8.0f, 28.0f));
+                }
+                pop_clip(context);
+                context->end_element();
+            }
+        }
+
+        context->end_element();
+        return root;
+    }
+
     R<Path> select_project()
     {
         Path path;
         lutry
         {
             lulet(window, Window::new_window("Luna Studio - Open Project", Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500));
-            lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
+            lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window,
+                RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true, RHI::ColorSpace::srgb})));
             lulet(cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
-            Ref<GUI::IContext> gui = GUI::new_context(g_env->device);
+            Ref<GUICore::IContext> gui = GUICore::new_context();
+            lulet(gui_renderer, GUICore::new_renderer(g_env->device));
+            GUI::register_style_schemas(gui);
+            luexp(gui->register_font(Name("default"), Font::get_default_font()));
+            GUI::DefaultStyleDesc style_desc;
+            style_desc.input_mode = GUI::InputMode::pointer;
+            GUI::set_default_style(gui, style_desc);
 
             // Create back buffer.
             u32 w = 0, h = 0;
 
-            GUIWindow::GUIWindowInputAdapter input_adapter;
+            GUIWindow::GUICoreWindowInputAdapter input_adapter;
             input_adapter.window = window;
             input_adapter.gui = gui;
             GUIWindow::install_window_event_handler(&input_adapter);
@@ -156,6 +383,7 @@ namespace Luna
             read_recents(recents);
 
             bool create_dir = true;
+            f32 recent_scroll = 0.0f;
 
             while (path.empty())
             {
@@ -176,93 +404,36 @@ namespace Luna
                 if (fb_sz.x && fb_sz.y && (fb_sz.x != w || fb_sz.y != h))
                 {
                     luexp(swap_chain->reset({fb_sz.x, fb_sz.y, 2, RHI::Format::unknown, true}));
-                    f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
                     w = fb_sz.x;
                     h = fb_sz.y;
                 }
                 auto sz = window->get_size();
 
-                GUI::FrameDesc frame;
-                frame.surface_size = Float2U((f32)sz.x, (f32)sz.y);
+                GUICore::FrameDesc frame;
+                frame.screen_size = Float2U((f32)sz.x, (f32)sz.y);
                 frame.framebuffer_size = fb_sz;
                 frame.dpi_scale = window->get_dpi_scale_factor();
                 frame.delta_time = 1.0f / 60.0f;
                 gui->begin_frame(frame);
+                GUIWindow::update_input(&input_adapter);
 
-                GUI::ItemHandle create_project_button;
-                GUI::ItemHandle browse_project_button;
-                Vector<GUI::ItemHandle> recent_open_buttons;
-                Vector<GUI::ItemHandle> recent_remove_buttons;
-
-                GUI::begin_window(gui, "Luna Studio Project Selector", GUI::Size::fixed((f32)sz.x, (f32)sz.y));
+                gui->push_layer(PROJECT_SELECTOR_LAYER_ID, Float2U(0.0f));
+                GUICore::ElementHandle root = build_project_selector_gui(gui, frame.screen_size, new_solution_name, create_dir,
+                    recents, recent_scroll);
+                gui->pop_layer();
+                luexp(GUI::layout_tree(gui, root,
+                    RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                gui->route_input();
+                GUI::ResolveResult resolved = GUI::resolve_interactions(gui);
+                if(resolved.relayout_requested)
                 {
-                    GUI::ItemHandle new_project = GUI::collapsing_header(gui, "New Project");
-                    if (GUI::get_item_state(new_project, GUI::State::open()))
-                    {
-                        GUI::text(gui, "Project Name");
-                        GUI::input_text(gui, "Project Name", new_solution_name);
-                        GUI::checkbox(gui, "Create Project Folder", &create_dir);
-                        create_project_button = GUI::button(gui, "Create New Project");
-                    }
-
-                    GUI::ItemHandle open_project = GUI::collapsing_header(gui, "Open Existing Project");
-                    if (GUI::get_item_state(open_project, GUI::State::open()))
-                    {
-                        browse_project_button = GUI::button(gui, "Browse Project File");
-
-                        if (!recents.empty())
-                        {
-                            GUI::text(gui, "Recent Projects");
-                            f32 recent_h = max((f32)sz.y - 260.0f, 120.0f);
-                            f32 recent_w = max((f32)sz.x - 32.0f, 120.0f);
-                            GUI::begin_scroll_view(gui, "Recent Projects", GUI::Size::fixed(recent_w, recent_h));
-                            GUI::TableDesc recent_table;
-                            recent_table.style.padding = GUI::EdgeInsets::xy(8.0f, 4.0f);
-                            recent_table.style.border_size = 1.0f;
-                            recent_table.style.background_mode = GUI::TableBackgroundMode::alternate_rows;
-                            recent_table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.72f);
-                            recent_table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.17f, 0.72f);
-                            recent_table.style.row_separators = true;
-                            recent_table.style.column_separators = true;
-                            recent_table.style.resize_fixed_columns = true;
-                            f32 recent_table_w = max(recent_w - 16.0f, 120.0f);
-                            recent_table.column_sizes.push_back(GUI::TableTrackSize::fixed(max(recent_table_w - 286.0f, 160.0f)));
-                            recent_table.column_sizes.push_back(GUI::TableTrackSize::fixed(120.0f));
-                            recent_table.column_sizes.push_back(GUI::TableTrackSize::fixed(72.0f));
-                            recent_table.column_sizes.push_back(GUI::TableTrackSize::fixed(88.0f));
-                            GUI::begin_table_layout(gui, "Recent Project Table", recent_table);
-                            for(usize i = 0; i < recents.size(); ++i)
-                            {
-                                if(GUI::begin_table_row(gui))
-                                {
-                                    DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(recents[i].m_last_use_time));
-                                    String time_text;
-                                    strprintf(time_text, "%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
-                                    GUI::push_id(gui, (u64)i);
-                                    GUI::text(gui, recents[i].m_path.encode().c_str());
-                                    GUI::text(gui, time_text.c_str());
-                                    recent_open_buttons.push_back(GUI::button(gui, "Open"));
-                                    recent_remove_buttons.push_back(GUI::button(gui, "Remove"));
-                                    GUI::pop_id(gui);
-                                    GUI::end_table_row(gui);
-                                }
-                            }
-                            GUI::end_table_layout(gui);
-                            GUI::end_scroll_view(gui);
-                        }
-                        else
-                        {
-                            GUI::text(gui, "No recent projects.");
-                        }
-                    }
+                    luexp(GUI::layout_tree(gui, root,
+                        RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
                 }
-                GUI::end_window(gui);
-
-                lulet(gui_desc, gui->end_build());
-                luexp(gui->submit(gui_desc));
                 luexp(GUIWindow::update_text_input(&input_adapter));
+                luexp(gui->generate_draw_commands());
 
-                if (GUI::is_item_clicked(create_project_button))
+                if (clicked(gui, PROJECT_SELECTOR_CREATE_BUTTON_ID))
                 {
                     auto rpath = Window::open_dir_dialog("Select Project Folder");
                     if (succeeded(rpath))
@@ -279,7 +450,7 @@ namespace Luna
                     }
                 }
 
-                if (GUI::is_item_clicked(browse_project_button))
+                if (clicked(gui, PROJECT_SELECTOR_BROWSE_BUTTON_ID))
                 {
                     Window::FileDialogFilter filter;
                     filter.name = "Luna Project File";
@@ -294,13 +465,14 @@ namespace Luna
                 }
 
                 usize remove_recent_index = USIZE_MAX;
-                for(usize i = 0; i < recent_open_buttons.size(); ++i)
+                for(usize i = 0; i < recents.size(); ++i)
                 {
-                    if (i < recents.size() && GUI::is_item_clicked(recent_open_buttons[i]))
+                    GUICore::id_t row_base = PROJECT_SELECTOR_FIRST_RECENT_ID + (GUICore::id_t)i * PROJECT_SELECTOR_RECENT_STRIDE;
+                    if (clicked(gui, row_base + 3))
                     {
                         path = recents[i].m_path;
                     }
-                    if (i < recents.size() && GUI::is_item_clicked(recent_remove_buttons[i]))
+                    if (clicked(gui, row_base + 4))
                     {
                         remove_recent_index = i;
                     }
@@ -310,22 +482,35 @@ namespace Luna
                     recents.erase(recents.begin() + remove_recent_index);
                     write_recents(recents, Path());
                 }
+                Span<const GUICore::RoutedInputEvent> recent_events = gui->get_routed_input_events(PROJECT_SELECTOR_RECENT_VIEW_ID);
+                for(const GUICore::RoutedInputEvent& routed : recent_events)
+                {
+                    if(routed.event.type == GUICore::InputEventType::pointer_wheel)
+                    {
+                        recent_scroll = max(recent_scroll - routed.event.wheel_delta.y * 32.0f, 0.0f);
+                    }
+                }
+                f32 visible_rows_height = max((f32)sz.y - 260.0f, 120.0f);
+                f32 content_rows_height = 30.0f + (f32)recents.size() * 34.0f;
+                recent_scroll = clamp(recent_scroll, 0.0f, max(content_rows_height - visible_rows_height, 0.0f));
 
-                Float4U clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+                Float4U clear_color = style_color(gui, "gui.canvas",
+                    Float4U(0.92f, 0.93f, 0.92f, 1.0f));
 
-                RHI::RenderPassDesc render_pass;
                 lulet(back_buffer, swap_chain->get_current_back_buffer());
-                render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
-                cmdbuf->begin_render_pass(render_pass);
-                cmdbuf->end_render_pass();
-                luexp(gui->render(cmdbuf, back_buffer));
-                cmdbuf->resource_barrier({}, {
-                    {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
-                    });
+                GUICore::RenderTargetDesc target(back_buffer);
+                target.color_load_op = RHI::LoadOp::clear;
+                target.color_clear_value = clear_color;
+                target.color_final_state = RHI::TextureStateFlag::present;
+                luexp(gui_renderer->render(gui, cmdbuf, target));
                 luexp(cmdbuf->submit({}, {}, true));
                 cmdbuf->wait();
                 luexp(cmdbuf->reset());
                 luexp(swap_chain->present());
+            }
+            if(window->is_text_input_active())
+            {
+                luexp(window->end_text_input());
             }
             GUIWindow::uninstall_window_event_handler(&input_adapter);
             if (path.empty())

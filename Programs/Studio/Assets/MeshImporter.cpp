@@ -9,6 +9,7 @@
 */
 #include "MeshAsset.hpp"
 #include "MeshImporter.hpp"
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/ObjLoader/ObjLoader.hpp>
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
@@ -18,6 +19,76 @@
 #include <Luna/VariantUtils/JSON.hpp>
 namespace Luna
 {
+    namespace
+    {
+        GUICore::LayoutConfig fixed_height(f32 height)
+        {
+            GUICore::LayoutConfig layout;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.value = height;
+            return layout;
+        }
+
+        GUICore::LayoutConfig fill_layout()
+        {
+            GUICore::LayoutConfig layout;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.value = 1.0f;
+            layout.flex_grow = 1.0f;
+            return layout;
+        }
+
+        GUICore::FlexLayoutDesc vertical_layout(f32 gap = 6.0f)
+        {
+            GUICore::FlexLayoutDesc desc;
+            desc.axis = GUICore::LayoutAxis::y;
+            desc.main_axis_gap = gap;
+            return desc;
+        }
+
+        RV select_obj_mesh_file(Path& source_file_path, ObjLoader::ObjMesh& obj_file, Vector<String>& import_names)
+        {
+            lutry
+            {
+                Window::FileDialogFilter filter;
+                filter.name = "Obj File";
+                const c8* extension = "obj";
+                filter.extensions = {&extension, 1};
+                lulet(file_path, Window::open_file_dialog("Select Source File", {&filter, 1}));
+                Path path = file_path[0];
+
+                lulet(obj_file_handle, open_file(path.encode(PathSeparator::system_preferred).c_str(),
+                    FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing));
+                lulet(obj_file_data, load_file_data(obj_file_handle));
+
+                path.replace_extension("mtl");
+                auto f = open_file(path.encode(PathSeparator::system_preferred).c_str(),
+                    FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing);
+
+                Blob mtl_file_data;
+                if(succeeded(f))
+                {
+                    luset(mtl_file_data, load_file_data(f.get()));
+                }
+
+                luset(obj_file, ObjLoader::load(obj_file_data.cspan(), mtl_file_data.cspan()));
+                source_file_path = file_path[0];
+
+                import_names.clear();
+                for(auto& i : obj_file.shapes)
+                {
+                    import_names.push_back(String(i.name.c_str()));
+                }
+            }
+            lucatchret;
+            return ok;
+        }
+    }
+
     template <>
     struct hash<ObjLoader::Index>
     {
@@ -202,74 +273,47 @@ namespace Luna
         }
     }
 
-    void MeshImporter::on_render(GUI::IContext* context)
+    void MeshImporter::on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
     {
-        char title[32];
-        snprintf(title, 32, "Obj Mesh Importer###%d", (u32)(usize)this);
-
-        if(!m_open) return;
-
-        GUI::begin_window(context, title, &m_open, GUI::Size::fixed(620.0f, 720.0f));
-        GUI::ItemHandle select_source = GUI::button(context, "Select Source File");
-
-        if (GUI::is_item_clicked(select_source))
+        if(!m_open)
         {
-            lutry
+            return;
+        }
+        context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
+        GUI::DockPanelDesc panel_desc;
+        panel_desc.minimum_floating_size = Float2U(500.0f, 420.0f);
+        if(!GUI::begin_dock_panel(context, context->make_id("obj_mesh_importer"), "Obj Mesh Importer", &m_open,
+            panel_desc))
+        {
+            context->pop_data_scope();
+            return;
+        }
+
+        GUICore::ElementHandle select_source = GUI::text_button(context, context->make_id("select_source"),
+            "Select Source File", fixed_height(30.0f));
+        if(GUI::is_item_clicked(context, select_source))
+        {
+            RV r = select_obj_mesh_file(m_source_file_path, m_obj_file, m_import_names);
+            if(failed(r) && r.errcode() != BasicError::interrupted())
             {
-                Window::FileDialogFilter filter;
-                filter.name = "Obj File";
-                const c8* extension = "obj";
-                filter.extensions = {&extension, 1};
-                lulet(file_path, Window::open_file_dialog("Select Source File", {&filter, 1}));
-                // Open file.
-                auto path = file_path[0];
-
-                lulet(obj_file, open_file(path.encode(PathSeparator::system_preferred).c_str(),
-                    FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing));
-                lulet(obj_file_data, load_file_data(obj_file));
-
-                path.replace_extension("mtl");
-                auto f = open_file(path.encode(PathSeparator::system_preferred).c_str(),
-                    FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing);
-
-                Blob mtl_file_data;
-
-                if (succeeded(f))
-                {
-                    luset(mtl_file_data, load_file_data(f.get()));
-                }
-
-                luset(m_obj_file, ObjLoader::load(obj_file_data.cspan(), mtl_file_data.cspan()));
-
-                m_source_file_path = file_path[0];
-
-                m_import_names.clear();
-                for (auto& i : m_obj_file.shapes)
-                {
-                    m_import_names.push_back(String(i.name.c_str()));
-                }
-            }
-            lucatch
-            {
-                if (luerr != BasicError::interrupted())
-                {
-                    auto _ = Window::message_box(explain(luerr), "Failed to import obj file",
-                        Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                }
+                auto _ = Window::message_box(explain(r.errcode()), "Failed to import obj file",
+                    Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
                 m_source_file_path.clear();
-
             }
         }
 
-        if (m_source_file_path.empty())
+        if(m_source_file_path.empty())
         {
-            GUI::text(context, "No obj file selected.");
+            GUI::text(context, context->make_id("empty"), "No obj file selected.", fixed_height(26.0f));
         }
         else
         {
-            GUI::begin_scroll_view(context, "Obj Mesh Importer Content", GUI::Size::fixed(604.0f, 650.0f));
-            GUI::text(context, m_source_file_path.encode().c_str());
-            GUI::text(context, "Object Information:");
+            GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, context->make_id("scroll"),
+                "Obj Mesh Importer Content", fill_layout());
+            GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"),
+                "Obj Mesh Importer Content", fill_layout());
+            GUI::text(context, context->make_id("path"), m_source_file_path.encode().c_str(), fixed_height(24.0f));
+            GUI::text(context, context->make_id("object_info"), "Object Information:", fixed_height(24.0f));
 
             String vertex_count;
             String normal_count;
@@ -279,23 +323,26 @@ namespace Luna
             strprintf(normal_count, "Normal entries count: %u", (u32)m_obj_file.attributes.normals.size());
             strprintf(texcoord_count, "TexCoord entries count: %u", (u32)m_obj_file.attributes.texcoords.size());
             strprintf(color_count, "Color entries count: %u", (u32)m_obj_file.attributes.colors.size());
-            GUI::text(context, vertex_count.c_str());
-            GUI::text(context, normal_count.c_str());
-            GUI::text(context, texcoord_count.c_str());
-            GUI::text(context, color_count.c_str());
+            GUI::text(context, context->make_id("vertex_count"), vertex_count.c_str(), fixed_height(22.0f));
+            GUI::text(context, context->make_id("normal_count"), normal_count.c_str(), fixed_height(22.0f));
+            GUI::text(context, context->make_id("texcoord_count"), texcoord_count.c_str(), fixed_height(22.0f));
+            GUI::text(context, context->make_id("color_count"), color_count.c_str(), fixed_height(22.0f));
 
-            if (m_obj_file.shapes.empty())
+            if(m_obj_file.shapes.empty())
             {
-                GUI::text(context, "No Shape information detected, this model cannot be imported.");
+                GUI::text(context, context->make_id("no_shapes"),
+                    "No Shape information detected, this model cannot be imported.", fixed_height(26.0f));
             }
             else
             {
                 String mesh_count;
                 strprintf(mesh_count, "%u meshes found", (u32)m_obj_file.shapes.size());
-                GUI::text(context, mesh_count.c_str());
-                if(GUI::is_item_clicked(GUI::button(context, "Import All")))
+                GUI::text(context, context->make_id("mesh_count"), mesh_count.c_str(), fixed_height(24.0f));
+                GUICore::ElementHandle import_all = GUI::text_button(context, context->make_id("import_all"),
+                    "Import All", fixed_height(30.0f));
+                if(GUI::is_item_clicked(context, import_all))
                 {
-                    for (u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
+                    for(u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
                     {
                         if(!m_import_names[i].empty())
                         {
@@ -305,39 +352,43 @@ namespace Luna
                         }
                     }
                 }
-                GUI::ItemHandle shapes_header = GUI::collapsing_header(context, "Shapes");
-                if (GUI::get_item_state(shapes_header, GUI::State::open()))
+                if(GUI::collapsing_header(context, context->make_id("shapes"), "Shapes"))
                 {
-                    for (u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
+                    for(u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
                     {
+                        context->push_data_scope(context->make_id((GUICore::id_t)i));
                         String shape_name;
                         String face_count;
                         strprintf(shape_name, "Name: %s", m_obj_file.shapes[i].name.c_str());
                         strprintf(face_count, "Faces: %u", (u32)m_obj_file.shapes[i].mesh.num_face_vertices.size());
-                        GUI::text(context, shape_name.c_str());
-                        GUI::text(context, face_count.c_str());
-
-                        GUI::push_id(context, i);
-                        GUI::input_text(context, "Asset Name", m_import_names[i]);
-                        if (!m_import_names[i].empty())
+                        GUI::text(context, context->make_id("shape_name"), shape_name.c_str(), fixed_height(22.0f));
+                        GUI::text(context, context->make_id("face_count"), face_count.c_str(), fixed_height(22.0f));
+                        GUI::text(context, context->make_id("asset_name_label"), "Asset Name", fixed_height(20.0f));
+                        GUI::input_text(context, context->make_id("asset_name"), m_import_names[i], fixed_height(28.0f));
+                        if(!m_import_names[i].empty())
                         {
                             Path file_path = m_create_dir;
                             file_path.push_back(m_import_names[i]);
                             String import_path;
                             strprintf(import_path, "The mesh will be imported as: %s", file_path.encode().c_str());
-                            GUI::text(context, import_path.c_str());
-                            if (GUI::is_item_clicked(GUI::button(context, "Import")))
+                            GUI::text(context, context->make_id("import_path"), import_path.c_str(), fixed_height(24.0f));
+                            GUICore::ElementHandle import_button = GUI::text_button(context, context->make_id("import"),
+                                "Import", fixed_height(30.0f));
+                            if(GUI::is_item_clicked(context, import_button))
                             {
                                 import_static_mesh(file_path, m_obj_file, i);
                             }
                         }
-                        GUI::pop_id(context);
+                        context->pop_data_scope();
                     }
                 }
             }
+            GUI::end_v_layout(context, content, vertical_layout(6.0f));
             GUI::end_scroll_view(context);
         }
-        GUI::end_window(context);
+
+        GUI::end_dock_panel(context);
+        context->pop_data_scope();
     }
 
     static Ref<IAssetEditor> new_static_mesh_importer(const Path& create_dir)

@@ -1,0 +1,42 @@
+{
+  "source": {
+    "repository": "https://github.com/phosphor-icons/core",
+    "package": "@phosphor-icons/core",
+    "version": "2.1.1",
+    "revision": "2b75f3ad12b420c9504ef05df8d2564a28f8500e",
+    "license": "MIT"
+  },
+  "icons": [
+    "arrow-up", "arrow-down", "arrow-left", "arrow-right",
+    "caret-up", "caret-down", "caret-left", "caret-right",
+    "arrow-clockwise", "arrow-counter-clockwise", "arrows-clockwise", "arrows-counter-clockwise",
+    "arrows-in", "arrows-out", "sidebar", "columns", "rows", "squares-four", "grid-four",
+    "list-bullets", "tree-structure", "stack", "dots-three", "dots-six-vertical",
+    "plus", "minus", "x", "check", "magnifying-glass", "magnifying-glass-plus",
+    "magnifying-glass-minus", "funnel", "gear-six", "sliders-horizontal", "copy", "scissors",
+    "clipboard-text", "trash", "floppy-disk", "upload-simple", "download-simple", "link-simple",
+    "link-break", "pencil-simple", "eye", "eye-slash", "lock", "lock-open",
+    "file", "file-text", "file-plus", "file-minus", "file-code", "file-image", "folder",
+    "folder-open", "folder-plus", "archive", "package", "image-square", "film-strip", "music-note",
+    "database", "cloud", "code", "terminal-window", "command", "keyboard",
+    "info", "warning", "question", "check-circle", "x-circle", "warning-circle", "bell",
+    "bell-slash", "lightning", "spinner-gap", "play", "pause", "stop", "record", "power",
+    "prohibit", "sun", "moon", "speaker-high", "speaker-slash", "heart", "star", "user", "users",
+    "cursor", "cursor-click", "cursor-text", "hand-tap", "mouse", "selection", "bounding-box",
+    "frame-corners", "crop", "crosshair", "camera", "palette", "house", "calendar", "clock",
+    "globe", "wifi-high", "bluetooth", "game-controller", "map-trifold"
+  ],
+  "weights": {
+    "bold": [
+      "caret-up", "caret-down", "caret-left", "caret-right", "plus", "minus", "x", "check",
+      "dots-three", "dots-six-vertical", "magnifying-glass", "funnel", "arrow-clockwise",
+      "arrow-counter-clockwise", "play", "stop"
+    ],
+    "fill": [
+      "check-circle", "x-circle", "warning-circle", "bell", "bell-slash", "play", "pause", "stop",
+      "record", "heart", "star", "eye", "eye-slash", "folder", "folder-open", "lock", "lock-open",
+      "lightning", "sun", "moon"
+    ],
+    "duotone": ["package"]
+  }
+}

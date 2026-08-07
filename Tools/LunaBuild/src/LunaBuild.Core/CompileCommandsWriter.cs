@@ -20,9 +20,10 @@ public static class CompileCommandsWriter
             Directory.CreateDirectory(directory);
         }
 
+        var appleToolchain = LocateAppleToolchain(graph.Options);
         var entries = graph.Nodes
             .Where(node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.compile")
-            .Select(node => CreateEntry(workspace, graph, node))
+            .Select(node => CreateEntry(workspace, graph, node, appleToolchain))
             .Where(entry => entry is not null)
             .OrderBy(entry => entry!.File, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -30,7 +31,16 @@ public static class CompileCommandsWriter
         File.WriteAllText(outputPath, JsonSerializer.Serialize(entries, JsonOptions), new UTF8Encoding(false));
     }
 
-    private static CompileCommandEntry? CreateEntry(BuildWorkspace workspace, BuildGraph graph, BuildGraphNode node)
+    private static AppleClangToolchain? LocateAppleToolchain(BuildOptions options)
+    {
+        if(options.Platform != BuildPlatform.MacOS || !OperatingSystem.IsMacOS())
+        {
+            return null;
+        }
+        return AppleClangToolchainLocator.LocateMacOS();
+    }
+
+    private static CompileCommandEntry? CreateEntry(BuildWorkspace workspace, BuildGraph graph, BuildGraphNode node, AppleClangToolchain? appleToolchain)
     {
         var payload = ActionPayload.Parse(node.Command!);
         var language = payload.Required("language");
@@ -40,7 +50,13 @@ public static class CompileCommandsWriter
             return null;
         }
 
-        var command = CppCommandLineBuilder.BuildCompileCommand(workspace, graph.Options, node.Command!).ToShellCommand();
+        var command = CppCommandLineBuilder.BuildCompileCommand(
+            workspace,
+            graph.Options,
+            node.Command!,
+            appleClangPath: appleToolchain?.Clang,
+            appleClangCxxPath: appleToolchain?.ClangCxx,
+            appleSdkPath: appleToolchain?.SdkPath).ToShellCommand();
         return new CompileCommandEntry(
             Directory: workspace.RootDirectory,
             File: workspace.ResolveRepositoryPath(payload.Required("source")),

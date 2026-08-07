@@ -11,33 +11,66 @@
 #include "ModelEditor.hpp"
 #include "../StudioHeader.hpp"
 #include "../StudioGUI.hpp"
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include "../Mesh.hpp"
 namespace Luna
 {
-    void ModelEditor::on_render(GUI::IContext* context)
+    namespace
     {
-        char title[256];
-        auto path = Asset::get_asset_path(m_model);
-        if(!path.empty())
+        GUICore::LayoutConfig fixed_size(f32 width, f32 height)
         {
-            snprintf(title, 256, "Model Editor - %s###%d", path.encode().c_str(), (u32)(usize)this);
+            GUICore::LayoutConfig layout;
+            layout.width.kind = GUICore::SizeKind::fixed;
+            layout.width.value = width;
+            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.value = height;
+            return layout;
         }
-        else
+
+        GUICore::LayoutConfig fixed_height(f32 height)
         {
-            snprintf(title, 256, "Model Editor###%d", (u32)(usize)this);
+            GUICore::LayoutConfig layout;
+            layout.width.kind = GUICore::SizeKind::percent;
+            layout.width.value = 1.0f;
+            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.value = height;
+            return layout;
         }
+
+        GUICore::FlexLayoutDesc vertical_editor_layout()
+        {
+            GUICore::FlexLayoutDesc desc;
+            desc.axis = GUICore::LayoutAxis::y;
+            desc.main_axis_gap = 8.0f;
+            return desc;
+        }
+
+        GUICore::FlexLayoutDesc material_slot_row_layout()
+        {
+            GUICore::FlexLayoutDesc desc;
+            desc.axis = GUICore::LayoutAxis::x;
+            desc.main_axis_gap = 8.0f;
+            return desc;
+        }
+    }
+
+    void ModelEditor::on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    {
         if(!m_open) return;
-        GUI::begin_window(context, title, &m_open, GUI::Size::fixed(760.0f, 620.0f));
+
+        context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
+        GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("model_editor"), "Model Editor", layout);
 
         Ref<Model> model = get_asset_or_async_load_if_not_ready<Model>(m_model);
-        if (!model || (Asset::get_asset_state(m_model) != Asset::AssetState::loaded))
+        if(!model || (Asset::get_asset_state(m_model) != Asset::AssetState::loaded))
         {
-            GUI::text(context, "Model Asset is not loaded.");
+            GUI::text(context, context->make_id("not_loaded"), "Model Asset is not loaded.", fixed_height(24.0f));
         }
         else
         {
-            if (GUI::is_item_clicked(GUI::button(context, "Save")))
+            GUICore::ElementHandle save_button = GUI::text_button(context, context->make_id("save"), "Save", fixed_height(30.0f));
+            if(GUI::is_item_clicked(context, save_button))
             {
                 lutry
                 {
@@ -45,19 +78,20 @@ namespace Luna
                 }
                 lucatch
                 {
-                    auto _ = Window::message_box(explain(luerr), "Failed to save asset", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                    auto _ = Window::message_box(explain(luerr), "Failed to save asset", Window::MessageBoxType::ok,
+                        Window::MessageBoxIcon::error);
                 }
             }
 
             gui_edit_asset_path(context, "Mesh Asset", model->mesh, m_mesh_name, "Failed to set mesh asset reference");
-            if (model->mesh)
+            if(model->mesh)
             {
                 Ref<Mesh> mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
-                if (mesh)
+                if(mesh)
                 {
                     char mesh_info[64];
                     snprintf(mesh_info, 64, "This mesh requires %u material(s).", (u32)mesh->pieces.size());
-                    GUI::text(context, mesh_info);
+                    GUI::text(context, context->make_id("mesh_info"), mesh_info, fixed_height(24.0f));
                 }
             }
 
@@ -65,46 +99,48 @@ namespace Luna
             m_mat_names.resize(num_mats);
             i32 remove_index = -1;
             i32 add_index = -1;
-            for (u32 i = 0; i < num_mats; ++i)
+            for(u32 i = 0; i < num_mats; ++i)
             {
                 char mat_name[32];
                 snprintf(mat_name, 32, "Material slot %u", i);
-                GUI::push_id(context, i);
-                GUI::LayoutDesc row;
-                row.gap = 8.0f;
-                row.cross_axis_alignment = GUI::LayoutCrossAxisAlignment::center;
-                GUI::begin_h_layout(context, "Material Slot Row", row);
-                GUI::set_next_item_layout(context, GUI::LayoutStyle::fill_width());
+                context->push_data_scope(context->make_id((GUICore::id_t)i));
+                GUICore::ElementHandle row = GUI::begin_h_layout(context, context->make_id("material_slot_row"), mat_name,
+                    fixed_height(30.0f));
                 gui_edit_asset_path(context, mat_name, model->materials[i], m_mat_names[i], "Failed to set material asset reference");
-                GUI::ItemHandle remove_button = GUI::button(context, "Remove current slot");
-                GUI::ItemHandle add_button = GUI::button(context, "Add before this");
-                GUI::end_h_layout(context);
-                if (GUI::is_item_clicked(remove_button))
+                GUICore::ElementHandle remove_button = GUI::text_button(context, context->make_id("remove"), "Remove current slot",
+                    fixed_size(152.0f, 30.0f));
+                GUICore::ElementHandle add_button = GUI::text_button(context, context->make_id("add"), "Add before this",
+                    fixed_size(128.0f, 30.0f));
+                GUI::end_h_layout(context, row, material_slot_row_layout());
+                if(GUI::is_item_clicked(context, remove_button))
                 {
                     remove_index = i;
                 }
-                if (GUI::is_item_clicked(add_button))
+                if(GUI::is_item_clicked(context, add_button))
                 {
                     add_index = i;
                 }
-                GUI::pop_id(context);
+                context->pop_data_scope();
             }
-            if (remove_index >= 0)
+            if(remove_index >= 0)
             {
                 model->materials.erase(model->materials.begin() + remove_index);
             }
-            else if (add_index >= 0)
+            else if(add_index >= 0)
             {
                 model->materials.insert(model->materials.begin() + add_index, Asset::asset_t());
             }
-            if (GUI::is_item_clicked(GUI::button(context, "Add a new material slot")))
+            if(GUI::is_item_clicked(context, GUI::text_button(context, context->make_id("add_material_slot"),
+                "Add a new material slot", fixed_height(30.0f))))
             {
                 model->materials.push_back(Asset::asset_t());
             }
         }
 
-        GUI::end_window(context);
+        GUI::end_v_layout(context, root, vertical_editor_layout());
+        context->pop_data_scope();
     }
+
     Ref<IAssetEditor> new_model_editor(object_t userdata, Asset::asset_t editing_asset)
     {
         auto edt = new_object<ModelEditor>();
@@ -115,7 +151,6 @@ namespace Luna
     {
         AssetEditorDesc desc;
         desc.new_editor = new_model_editor;
-        desc.on_draw_tile = nullptr;
         g_env->register_asset_editor_type(get_model_asset_type(), desc);
     }
 }

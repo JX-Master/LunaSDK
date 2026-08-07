@@ -29,8 +29,73 @@ var constexprEvaluationShader = Path.Combine(fixturesRoot, "valid", "constexpr_e
 var functionTemplateShader = Path.Combine(fixturesRoot, "valid", "function_template", "FunctionTemplate.cxx");
 var templateMemberFunctionShader = Path.Combine(fixturesRoot, "valid", "template_member_function", "TemplateMemberFunction.cxx");
 var templateStructShader = Path.Combine(fixturesRoot, "valid", "template_struct", "TemplateStruct.cxx");
+var localArrayShader = Path.Combine(fixturesRoot, "valid", "local_array", "LocalArray.cxx");
+var cStyleCastShader = Path.Combine(fixturesRoot, "valid", "c_style_cast", "CStyleCast.cxx");
 
 if (!ExpectSchemaV3Facts(schemaV3Shader, stdRoot))
+{
+    return 1;
+}
+
+var localArrayResult = compiler.Compile(new CppslCompileOptions(
+    localArrayShader,
+    Path.Combine(outputDir, "local-array"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!localArrayResult.Succeeded || localArrayResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected local_array fixture to compile.");
+    foreach (var diagnostic in localArrayResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+var localArrayHlslText = File.ReadAllText(localArrayResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var localArrayGlslText = File.ReadAllText(localArrayResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var localArrayMslText = File.ReadAllText(localArrayResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertContainsAll(localArrayHlslText, new[] { "float values[4];" },
+        "expected HLSL local arrays to place dimensions after the variable name.") ||
+    !AssertContainsAll(localArrayGlslText, new[] { "float values[4];" },
+        "expected GLSL local arrays to place dimensions after the variable name.") ||
+    !AssertContainsAll(localArrayMslText, new[] { "float values[4];" },
+        "expected MSL local arrays to place dimensions after the variable name.") ||
+    !AssertNotContainsAny(localArrayHlslText + localArrayGlslText + localArrayMslText,
+        new[] { "float[4] values" }, "target sources must not use C++ array declarator order."))
+{
+    return 1;
+}
+
+var cStyleCastResult = compiler.Compile(new CppslCompileOptions(
+    cStyleCastShader,
+    Path.Combine(outputDir, "c-style-cast"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!cStyleCastResult.Succeeded || cStyleCastResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected c_style_cast fixture to compile.");
+    foreach (var diagnostic in cStyleCastResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+var cStyleCastGlslText = File.ReadAllText(cStyleCastResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+if (!AssertContainsAll(
+        cStyleCastGlslText,
+        new[]
+        {
+            "uint unsigned_value = uint(vertex_data.value);",
+            "int signed_value = int(unsigned_value);",
+            "float float_value = float(signed_value);"
+        },
+        "expected GLSL C-style casts to lower to constructor-style conversions.") ||
+    !AssertNotContainsAny(
+        cStyleCastGlslText,
+        new[] { "(uint)", "(int)", "(float)" },
+        "GLSL output must not contain C-style casts."))
 {
     return 1;
 }

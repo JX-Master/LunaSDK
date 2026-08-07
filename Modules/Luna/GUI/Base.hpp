@@ -5,24 +5,11 @@
 *
 * @file Base.hpp
 * @author JXMaster
-* @date 2026/5/22
+* @date 2026/7/13
 */
 #pragma once
-#include <Luna/Runtime/Interface.hpp>
-#include <Luna/Runtime/Module.hpp>
-#include <Luna/Runtime/Result.hpp>
-#include <Luna/Runtime/Ref.hpp>
-#include <Luna/Runtime/Any.hpp>
-#include <Luna/Runtime/Span.hpp>
-#include <Luna/Runtime/Vector.hpp>
-#include <Luna/Runtime/String.hpp>
-#include <Luna/Runtime/Name.hpp>
-#include <Luna/Runtime/HashMap.hpp>
-#include <Luna/Runtime/KeyCode.hpp>
-#include <Luna/Runtime/Math/Vector.hpp>
-#include <Luna/Runtime/Math/Math.hpp>
+#include <Luna/GUICore/GUICore.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/Font/Font.hpp>
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -33,197 +20,392 @@ namespace Luna
     namespace GUI
     {
         //! @addtogroup GUI GUI
+        //! Editor-oriented immediate GUI package implemented on GUI Core.
         //! @{
 
-        //! The stable identifier type used by GUI nodes, layers and state objects.
-        using id_t = u64;
+        //! Stable identifier used by GUI package elements and package-owned state.
+        using id_t = GUICore::id_t;
 
-        //! Identifies one input event kind accepted by GUI contexts.
-        enum class InputEventType : u8
-        {
-            //! The pointer entered the GUI screen or interactive surface.
-            pointer_enter,
-            //! The pointer left the GUI screen or interactive surface.
-            pointer_leave,
-            //! The pointer position changed.
-            pointer_move,
-            //! A pointer button was pressed.
-            pointer_down,
-            //! A pointer button was released.
-            pointer_up,
-            //! The pointer wheel or trackpad scrolling value changed.
-            pointer_wheel,
-            //! A keyboard key was pressed.
-            key_down,
-            //! A keyboard key was released.
-            key_up,
-            //! UTF-8 text input was committed by the host platform or input method.
-            text_utf8,
-            //! The GUI screen gained input focus.
-            focus,
-            //! The GUI screen lost input focus.
-            blur
-        };
-
-        //! Identifies one pointer button.
-        enum class PointerButton : u8
-        {
-            //! Primary pointer button.
-            left,
-            //! Secondary pointer button.
-            right,
-            //! Middle pointer button.
-            middle,
-            //! First additional pointer button.
-            extra1,
-            //! Second additional pointer button.
-            extra2
-        };
-
-        //! Bit flags describing active keyboard modifiers for one input event or current input state.
-        enum class KeyModifierFlag : u8
-        {
-            //! No modifier key is active.
-            none = 0x00,
-            //! Control key on Windows/Linux, or the platform-specific control key when applicable.
-            ctrl = 0x01,
-            //! Shift key.
-            shift = 0x02,
-            //! Alt or Option key.
-            alt = 0x04,
-            //! System command key, such as Command on macOS.
-            system = 0x08
-        };
-
-        //! Aligns text inside the rectangle passed to text rendering helpers.
+        //! Horizontal or vertical text alignment inside an element.
         enum class TextAlignment : u8
         {
-            //! Align to the beginning edge of the axis.
+            //! Aligns content to the beginning edge.
             begin,
-            //! Align to the center of the axis.
+            //! Aligns content to the center.
             center,
-            //! Align to the ending edge of the axis.
+            //! Aligns content to the ending edge.
             end
         };
 
-        //! Describes one GUI frame and the screen being built and rendered.
-        struct FrameDesc
+        //! Selects a semantic typography role resolved from the bound Style.
+        enum class TypographyRole : u8
         {
-            //! The logical GUI screen size. Input positions and layout values are expressed in this coordinate space.
-            Float2U surface_size = Float2U(0.0f);
-            //! The render target size in physical pixels.
-            UInt2U framebuffer_size = UInt2U(0, 0);
-            //! The DPI scale applied by the host screen.
-            f32 dpi_scale = 1.0f;
-            //! The elapsed time since the previous frame, in seconds.
-            f32 delta_time = 1.0f / 60.0f;
+            //! Largest page or document heading.
+            heading1,
+            //! Second-level section heading.
+            heading2,
+            //! Third-level section heading.
+            heading3,
+            //! Fourth-level section heading.
+            heading4,
+            //! Fifth-level section heading.
+            heading5,
+            //! Smallest semantic heading.
+            heading6,
+            //! Primary prose and ordinary application copy.
+            body,
+            //! Secondary quotation, attribution, or supporting copy.
+            cite,
+            //! Monospaced code and numeric data.
+            code,
+            //! Compact metadata and captions.
+            caption
         };
 
-        //! Describes one input event sent to a GUI context.
-        //! @remark Positions use screen logical coordinates, whose origin is the top-left corner of @ref FrameDesc::surface_size.
-        struct InputEvent
+        //! Bit flags controlling image rendering.
+        enum class ImageFlag : u8
         {
-            //! The kind of this input event.
-            InputEventType type = InputEventType::pointer_move;
-            //! The host-defined input device identifier.
-            u64 device_id = 0;
-            //! The host-defined pointer identifier, used for multi-pointer input sources.
-            u64 pointer_id = 0;
-            //! The pointer position in screen logical coordinates.
+            //! Uses default image sampling.
+            none = 0x00,
+            //! Flips texture coordinates vertically.
+            flip_y = 0x01,
+            //! Uses nearest-neighbor texture sampling.
+            nearest = 0x02
+        };
+
+        //! Controls scrollbar presentation in a scroll view.
+        enum class ScrollBarMode : u8
+        {
+            //! Scrollbars fade in while scrolling or interacting and overlay content.
+            dynamic_overlay,
+            //! Scrollbars remain visible and reserve space beside the content viewport.
+            always_visible
+        };
+
+        //! Describes text presentation.
+        struct TextDesc
+        {
+            //! Semantic typography role used when font, size, or color is not explicitly overridden.
+            TypographyRole typography = TypographyRole::body;
+            //! Horizontal text alignment.
+            TextAlignment horizontal_alignment = TextAlignment::begin;
+            //! Vertical text alignment.
+            TextAlignment vertical_alignment = TextAlignment::center;
+            //! Optional text color override. A negative alpha uses the bound style value.
+            Float4U color = Float4U(0.0f, 0.0f, 0.0f, -1.0f);
+            //! Optional font size override. Non-positive values use the bound style value.
+            f32 font_size = 0.0f;
+            //! Optional registered GUI Core font ID. Empty names use the bound style value.
+            Name font;
+        };
+
+        //! Describes a button container.
+        struct ButtonDesc
+        {
+            //! Whether the button accepts input.
+            bool enabled = true;
+        };
+
+        //! Describes a single-selection button group.
+        struct ButtonGroupDesc
+        {
+            //! Whether group items accept input.
+            bool enabled = true;
+            //! Minimum width assigned to every item.
+            f32 item_min_width = 64.0f;
+        };
+
+        //! Describes a shape element.
+        struct ShapeWidgetDesc
+        {
+            //! Shape tint color.
+            Float4U tint = Float4U(1.0f);
+        };
+
+        //! Describes a shape button.
+        struct ShapeButtonDesc
+        {
+            //! Whether the button accepts input.
+            bool enabled = true;
+            //! Empty space between the shape and the button bounds.
+            f32 padding = 6.0f;
+            //! Shape tint color. A negative alpha uses the button text color.
+            Float4U tint = Float4U(0.0f, 0.0f, 0.0f, -1.0f);
+        };
+
+        //! Describes an invisible hit-test element.
+        struct HitBoxDesc
+        {
+            //! Whether the element accepts input.
+            bool enabled = true;
+        };
+
+        //! Describes a selectable, checkbox, radio button, or toggle switch.
+        struct ChoiceDesc
+        {
+            //! Whether the control accepts input.
+            bool enabled = true;
+        };
+
+        //! Describes a disclosure control.
+        struct DisclosureDesc
+        {
+            //! Whether the control accepts input.
+            bool enabled = true;
+            //! Initial state used when no persistent state exists.
+            bool default_open = true;
+        };
+
+        //! Describes a draggable numeric editor.
+        struct DragDesc
+        {
+            //! Whether the editor accepts input.
+            bool enabled = true;
+            //! Value change produced by one logical unit of horizontal pointer movement.
+            f32 speed = 0.01f;
+        };
+
+        //! Flags controlling tree node presentation and behavior.
+        enum class TreeNodeFlag : u8
+        {
+            //! Uses the default collapsible tree node behavior.
+            none = 0x00,
+            //! Renders a leaf node that cannot be expanded.
+            leaf = 0x01,
+            //! Keeps the node open and omits disclosure interaction.
+            always_open = 0x02,
+            //! Renders the node using the selected tree-item presentation.
+            selected = 0x04,
+            //! Toggles the open state only when the disclosure arrow is clicked.
+            open_on_arrow = 0x08
+        };
+
+        //! Controls how a tab bar handles headers that exceed its available width.
+        enum class TabBarFittingMode : u8
+        {
+            //! Keeps every header at its natural width. Overflow is clipped by the tab bar.
+            none,
+            //! Proportionally shrinks headers so the full strip fits the tab bar width.
+            shrink
+        };
+
+        //! Describes one tab item.
+        struct TabItemDesc
+        {
+            //! Requests this item as the selected tab during the current build.
+            //! @remark When multiple items request selection, the last submitted item wins.
+            bool selected = false;
+        };
+
+        //! Describes image rendering.
+        struct ImageDesc
+        {
+            //! Image sampling flags.
+            ImageFlag flags = ImageFlag::none;
+            //! Image tint color.
+            Float4U tint = Float4U(1.0f);
+            //! Minimum texture coordinate.
+            Float2U min_texcoord = Float2U(0.0f);
+            //! Maximum texture coordinate.
+            Float2U max_texcoord = Float2U(1.0f);
+        };
+
+        //! Describes a single-line text input.
+        struct TextInputDesc
+        {
+            //! Whether the input accepts interaction.
+            bool enabled = true;
+            //! Whether editing is disabled while focus and selection remain available.
+            bool read_only = false;
+            //! Optional placeholder displayed while the value is empty.
+            const c8* placeholder = nullptr;
+        };
+
+        //! Describes scalar slider interaction.
+        struct SliderDesc
+        {
+            //! Whether the slider accepts interaction.
+            bool enabled = true;
+            //! Smallest normalized change produced by keyboard navigation.
+            f32 navigation_step = 0.01f;
+        };
+
+        //! Describes progress bar presentation.
+        struct ProgressBarDesc
+        {
+            //! Optional overlay text. Passing `nullptr` formats the percentage automatically.
+            const c8* overlay = nullptr;
+            //! Whether overlay text is displayed.
+            bool show_overlay = true;
+        };
+
+        //! Describes a color-edit preview and its picker popup.
+        struct ColorEditDesc
+        {
+            //! Whether the preview and picker controls accept interaction.
+            bool enabled = true;
+            //! Popup width in logical units. Non-positive values use the editor default.
+            f32 popup_width = 0.0f;
+        };
+
+        //! Describes package-level scroll view behavior.
+        struct ScrollViewDesc
+        {
+            //! Scrollbar display mode.
+            ScrollBarMode scrollbar_mode = ScrollBarMode::dynamic_overlay;
+            //! Maximum expected per-frame scroll displacement used by GUI Core visible-range queries.
+            Float2U max_scroll_delta = Float2U(80.0f);
+            //! Logical units moved for one unit of wheel input.
+            f32 wheel_scale = 40.0f;
+            //! Whether horizontal scrolling is enabled.
+            bool horizontal = true;
+            //! Whether vertical scrolling is enabled.
+            bool vertical = true;
+        };
+
+        //! Describes a tab bar.
+        struct TabBarDesc
+        {
+            //! Whether tab headers accept interaction.
+            bool enabled = true;
+            //! Header fitting behavior when the natural tab strip is wider than the bar.
+            TabBarFittingMode fitting_mode = TabBarFittingMode::none;
+        };
+
+        //! Describes package-level table layout behavior.
+        struct TableDesc
+        {
+            //! Gap between adjacent columns and rows.
+            Float2U gap = Float2U(0.0f);
+            //! Padding applied inside every submitted cell.
+            Float4U cell_padding = Float4U(0.0f);
+            //! Whether table children are clipped to the table content rectangle.
+            //! @remark Disabled by default to match @ref GUICore::TableLayoutDesc::clip_children.
+            bool clip_children = false;
+            //! Whether all rows use @ref fixed_row_height instead of their submitted row track descriptors.
+            bool fixed_row_height_mode = false;
+            //! Row height used when @ref fixed_row_height_mode is enabled.
+            f32 fixed_row_height = 24.0f;
+            //! Whether fixed-height rows outside the previous-frame visible range may skip child submission.
+            //! @remark This option is ignored unless @ref fixed_row_height_mode is enabled. The table must be
+            //! rebuilt inside a clipped viewport for the optimization to reject off-screen rows.
+            bool virtualize_fixed_rows = false;
+            //! Whether separators between absolute-size columns can be dragged to resize the preceding column.
+            bool resizable_columns = false;
+            //! Interactive width of each resizable column separator.
+            f32 resize_handle_width = 8.0f;
+        };
+
+        //! Bit flags controlling popup lifetime and input behavior.
+        enum class PopupFlag : u8
+        {
+            //! Uses the default popup behavior.
+            none = 0x00,
+            //! Closes the popup when the primary pointer is pressed outside this popup and its descendants.
+            close_on_outside_click = 0x01,
+            //! Closes the popup when Escape is pressed.
+            close_on_escape = 0x02
+        };
+
+        //! Describes a popup layer.
+        struct PopupDesc
+        {
+            //! Popup top-left position in screen logical coordinates.
             Float2U position = Float2U(0.0f);
-            //! Wheel or trackpad scrolling delta in logical units.
-            Float2U wheel_delta = Float2U(0.0f);
-            //! The pointer button affected by pointer button events.
-            PointerButton button = PointerButton::left;
-            //! The key affected by keyboard events.
-            KeyCode key = KeyCode::unknown;
-            //! Keyboard modifiers active when this event was produced.
-            KeyModifierFlag modifiers = KeyModifierFlag::none;
-            //! UTF-8 text payload for @ref InputEventType::text_utf8 events.
-            String text;
+            //! Requested popup root layout.
+            GUICore::LayoutConfig layout;
+            //! Popup lifetime and input behavior.
+            PopupFlag flags = PopupFlag::close_on_outside_click | PopupFlag::close_on_escape;
         };
 
-        //! Reports the text editing widget that currently owns platform text input.
-        struct TextInputState
+        //! Describes a tooltip layer.
+        struct TooltipDesc
         {
-            //! Whether any text input widget is active.
-            bool active = false;
-            //! The active text input rectangle in screen logical coordinates.
-            RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-            //! The current UTF-8 byte cursor offset used by the active text input widget.
-            i32 cursor = 0;
+            //! Offset from the pointer position to the tooltip layer origin.
+            Float2U offset = Float2U(14.0f, 18.0f);
+            //! Requested tooltip root layout.
+            GUICore::LayoutConfig layout;
+            //! Continuous hover duration required before the tooltip appears.
+            f32 delay = 0.35f;
+            //! Maximum width used by simple text tooltips.
+            f32 max_width = 360.0f;
         };
 
-        //! Clipboard callbacks used by text editing widgets.
-        //! @remark The GUI module does not depend on Window. Window-backed and in-game hosts should provide platform
-        //! clipboard operations through this structure when clipboard shortcuts are desired.
-        struct ClipboardIO
+        //! Describes a combo box.
+        struct ComboDesc
         {
-            //! User data passed back to clipboard callbacks.
-            void* userdata = nullptr;
-            //! Reads clipboard text into `out_text`.
-            RV(*get_text)(String& out_text, void* userdata) = nullptr;
-            //! Writes UTF-8 clipboard text.
-            RV(*set_text)(const c8* text, usize size, void* userdata) = nullptr;
+            //! Whether the combo box accepts interaction.
+            bool enabled = true;
+            //! Popup width. Non-positive values use a package default.
+            f32 popup_width = 0.0f;
+            //! Maximum popup height.
+            f32 popup_max_height = 320.0f;
         };
 
-        //! Describes one font registered in a GUI context.
-        struct FontDesc
+        //! Describes a menu bar.
+        struct MenuBarDesc
         {
-            //! The font file object. The context keeps a reference to registered font files.
-            Font::IFontFile* font = nullptr;
-            //! The font face index inside @ref font.
-            u32 font_index = 0;
+            //! Gap between top-level menu items. A negative value uses the current Style value.
+            f32 gap = -1.0f;
         };
 
-        //! Handle returned by widget APIs for querying item state after building or submitting a frame.
-        struct ItemHandle
+        //! Describes a menu or menu item.
+        struct MenuItemDesc
         {
-            //! The context that created this handle.
-            object_t context = nullptr;
-            //! The stable item identifier.
-            id_t id = 0;
-            //! The context generation in which this handle was produced.
-            u64 generation = 0;
+            //! Whether the item accepts interaction.
+            bool enabled = true;
+            //! Optional shortcut text displayed at the trailing edge.
+            const c8* shortcut = nullptr;
         };
 
-        //! Controls automatic state cleanup in a GUI context.
-        enum class StateLifetime : u8
+        //! Reports package work performed after GUI Core input routing.
+        struct ResolveResult
         {
-            //! Clears the state at the next @ref IContext::begin_frame call.
-            current_frame,
-            //! Clears the state if it is not refreshed for the next frame.
-            next_frame,
-            //! Keeps the state until @ref IContext::clear_state is called or the process exits.
-            process,
-            //! Reserves persistent storage semantics for future implementation.
-            persistent
+            //! Whether one or more bound application values changed.
+            bool value_changed = false;
+            //! Whether layout must be applied again before drawing.
+            bool relayout_requested = false;
         };
 
-        //! Builds a stable state identifier from an owner ID and a state object type GUID.
-        //! @param[in] owner_id The widget, layer or subsystem ID that owns the state.
-        //! @param[in] state_type The GUID of the state object type.
-        //! @return Returns the generated state identifier.
-        LUNA_GUI_API id_t make_state_id(id_t owner_id, const Guid& state_type);
+        //! Gets the GUI package module object.
+        LUNA_GUI_API Module* module_gui();
 
-        //! Builds a stable state identifier from an owner ID and a boxed state object type.
-        //! @param[in] owner_id The widget, layer or subsystem ID that owns the state.
-        //! @return Returns the generated state identifier.
-        template <typename T>
-        id_t make_state_id(id_t owner_id)
-        {
-            return make_state_id(owner_id, Meta::StructMetaData<T>::__guid);
-        }
+        //! Resolves current-frame widget actions after @ref GUICore::IContext::route_input.
+        //! @param[in] context The GUI Core context containing the current element tree and routed input.
+        //! @return Returns value and relayout changes produced by package controls.
+        //! @remark Call this after input routing and before final draw command generation. If relayout is requested,
+        //! apply layout to the layer root again before generating draw commands.
+        //! Values bound to widgets by pointer or reference must remain valid through this call and the subsequent
+        //! GUI Core draw-command generation for the current frame.
+        LUNA_GUI_API ResolveResult resolve_interactions(GUICore::IContext* context);
 
-        //! Describes one typed item query key.
-        template <typename T>
-        struct StateKey
-        {
-            //! The key name used in the item query state bag.
-            Name name;
-            //! The value returned when the key is absent or the handle is no longer valid.
-            T default_value;
-        };
+        //! Applies layout to one GUI subtree.
+        //! @param[in] context The GUI Core context.
+        //! @param[in] root Root element to arrange.
+        //! @param[in] rect Root rectangle in layer coordinates.
+        //! @return Returns success or failure code.
+        LUNA_GUI_API RV layout_tree(GUICore::IContext* context, const GUICore::ElementHandle& root, const RectF& rect);
+
+        //! Checks whether an element handle is valid in the current frame.
+        LUNA_GUI_API bool is_item_valid(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element was clicked by the primary pointer.
+        LUNA_GUI_API bool is_item_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element received a secondary-pointer click during the current frame.
+        LUNA_GUI_API bool is_item_right_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element was double-clicked by the primary pointer during the current frame.
+        LUNA_GUI_API bool is_item_double_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element is hovered.
+        LUNA_GUI_API bool is_item_hovered(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element is active.
+        LUNA_GUI_API bool is_item_active(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Checks whether an element has keyboard focus.
+        LUNA_GUI_API bool is_item_focused(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Gets the arranged rectangle of an element in layer coordinates.
+        //! @return Returns an empty rectangle when @p item is invalid.
+        LUNA_GUI_API RectF get_item_rect(GUICore::IContext* context, const GUICore::ElementHandle& item);
+        //! Gets the effective clip rectangle of an element in layer coordinates.
+        //! @return Returns an empty rectangle when @p item is invalid.
+        LUNA_GUI_API RectF get_item_clip_rect(GUICore::IContext* context, const GUICore::ElementHandle& item);
 
         //! @}
     }

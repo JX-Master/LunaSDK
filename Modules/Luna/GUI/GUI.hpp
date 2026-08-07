@@ -5,32 +5,12 @@
 *
 * @file GUI.hpp
 * @author JXMaster
-* @date 2026/5/21
+* @date 2026/7/13
 */
 #pragma once
-#include "Base.hpp"
-#include "Layout.hpp"
 #include "Style.hpp"
-#include "RenderProxy.hpp"
-#include "Description.hpp"
-#ifdef LUNA_GUI_ENABLE_DEBUG
-#include "Debug.hpp"
-#endif
-#include "State.hpp"
-#include "DrawList.hpp"
-#include "DragDrop.hpp"
-#include "Context.hpp"
+#include "Icons.hpp"
 #include "Widgets.hpp"
-#include "Views.hpp"
-
-namespace Luna
-{
-    namespace GUI
-    {
-        //! @addtogroup GUI GUI
-        //! Immediate-mode style GUI module built from per-frame descriptions, explicit contexts, layered input routing,
-        //! typed state objects, style-bound render proxies and VG-backed vector drawing.
-        //! @{
-        //! @}
-    }
-}
+#include "Layouts.hpp"
+#include "Overlay.hpp"
+#include "Workspace.hpp"

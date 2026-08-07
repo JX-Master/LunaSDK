@@ -12,12 +12,26 @@
 #include "AssetBrowser.hpp"
 #include "MemoryProfiler.hpp"
 #include <Luna/Runtime/HashMap.hpp>
+#include <Luna/GUICore/GUICore.hpp>
+#include <Luna/VG/ShapeDrawList.hpp>
+#include <Luna/VG/ShapeRenderer.hpp>
 #include "Operation.hpp"
 #include <Luna/Runtime/RingDeque.hpp>
 #include <Luna/JobSystem/JobScheduler.hpp>
 #include "MainEditor.generated.hpp"
 namespace Luna
 {
+    namespace GUICore
+    {
+        struct IContext;
+        struct LayoutConfig;
+    }
+    namespace VG
+    {
+        struct IShapeDrawList;
+        struct IShapeRenderer;
+    }
+
     constexpr c8 APP_NAME[] = "Luna Studio";
     struct [[luna::struct("{CF004929-E981-4E1D-A4AE-96EEC79AD1EB}")]] MainEditor
     {
@@ -26,7 +40,8 @@ namespace Luna
         Ref<Window::IWindow> m_window;
         Ref<RHI::ISwapChain> m_swap_chain;
         Ref<RHI::ICommandBuffer> m_cmdbuf;
-        Ref<GUI::IContext> m_gui;
+        Ref<GUICore::IContext> m_gui;
+        Ref<GUICore::IRenderer> m_gui_renderer;
 
         Ref<AssetBrowser> m_asset_browsers[4];
         bool m_asset_browsers_enabled[4] = { true, false, false, false };
@@ -58,7 +73,8 @@ namespace Luna
         // `has_any_unsaved_changes`, `has_unsaved_changes`, `get_asset_edit_version` instead.
         HashMap<Asset::asset_t, AssetVersion> m_assets_version;
 
-        void draw_main_menu_bar();
+        void draw_main_menu_bar(GUICore::IContext* context, const RectF& rect);
+        bool draw_asset_editor(IAssetEditor* editor, GUICore::IContext* context, const GUICore::LayoutConfig& layout);
 
     public:
 
@@ -158,7 +174,8 @@ namespace Luna
 
     void run_main_editor(const Path& project_path);
 
-    void draw_asset_tile(GUI::IContext* context, Asset::asset_t asset, const RectF& draw_rect);
+    void draw_asset_tile(GUICore::IContext* context, Asset::asset_t asset, const RectF& draw_rect);
+    void draw_asset_tile_preview(GUICore::IContext* context, Asset::asset_t asset, const RectF& relative_rect);
 
     extern MainEditor* g_main_editor;
 }

@@ -384,11 +384,13 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             return $"self.{fieldName}";
         }
 
-        if (node.Kind == CppslShaderModelNodeKind.CStyleCastExpression &&
-            NormalizeShaderTypeName(node.Type ?? node.TypeInfo?.Spelling ?? string.Empty) == "void" &&
-            node.Children.Count == 1)
+        if (node.Kind == CppslShaderModelNodeKind.CStyleCastExpression && node.Children.Count == 1)
         {
-            return LowerExpression(node.Children[0]);
+            var type = node.Type ?? node.TypeInfo?.Spelling ?? string.Empty;
+            var expression = LowerExpression(node.Children[0]);
+            return NormalizeShaderTypeName(type) == "void"
+                ? expression
+                : $"{MapValueType(type)}({expression})";
         }
 
         if (node.Kind == CppslShaderModelNodeKind.BinaryOperator &&

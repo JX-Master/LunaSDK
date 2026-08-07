@@ -10,6 +10,6 @@ public sealed class GUIWindowTargetRules : TargetRules
     {
         Headers("*.hpp", "Source/**.hpp");
         Sources("Source/**.cpp");
-        DependsOn("Runtime", "GUI", "Window", "HID");
+        DependsOn("Runtime", "GUICore", "Window", "HID");
     }
 }

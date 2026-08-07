@@ -20,8 +20,8 @@ namespace Luna
 
         struct DrawCommand
         {
-            Ref<RHI::IBuffer> vertex_buffer;
-            Ref<RHI::IBuffer> index_buffer;
+            Ref<RHI::IBuffer> instance_buffer;
+            Ref<RHI::IBuffer> state_buffer;
             usize num_draw_calls;
             Float4x4U transform_matrix;
         };
@@ -36,6 +36,11 @@ namespace Luna
 
             Ref<RHI::IPipelineState> m_fill_pso;
             RHI::Format m_rt_format;
+            RHI::Format m_depth_stencil_format;
+            RHI::CompareFunction m_depth_compare_function;
+            RHI::CullMode m_cull_mode;
+            bool m_depth_test_enable;
+            bool m_depth_write_enable;
 
             Vector<DrawCommand> m_draw_commands; // One per `draw()`.
             Vector<ShapeDrawCall> m_draw_calls;
@@ -48,19 +53,25 @@ namespace Luna
                 m_screen_width(0),
                 m_screen_height(0),
                 m_cbs_capacity(0),
-                m_rt_format(RHI::Format::unknown) {}
+                m_rt_format(RHI::Format::unknown),
+                m_depth_stencil_format(RHI::Format::unknown),
+                m_depth_compare_function(RHI::CompareFunction::less_equal),
+                m_cull_mode(RHI::CullMode::none),
+                m_depth_test_enable(false),
+                m_depth_write_enable(false) {}
 
-            RV create_pso(RHI::Format rt_format);
+            RV create_pso(RHI::Format rt_format, const ShapeRendererPassDesc& desc);
 
-            virtual RV begin(RHI::ITexture* render_target) override;
+            virtual RV begin(const ShapeRendererPassDesc& desc) override;
             virtual void draw(
-                RHI::IBuffer* vertex_buffer,
-                RHI::IBuffer* index_buffer,
+                RHI::IBuffer* instance_buffer,
+                RHI::IBuffer* state_buffer,
                 Span<const ShapeDrawCall> draw_calls,
                 Float4x4U* transform_matrix
             ) override;
             virtual RV end() override;
-            virtual void submit(RHI::ICommandBuffer* cmdbuf) override;
+            virtual void prepare(RHI::ICommandBuffer* cmdbuf) override;
+            virtual void submit(RHI::ICommandBuffer* cmdbuf, u32 first_draw_call = 0, u32 num_draw_calls = U32_MAX) override;
         };
     }
 }

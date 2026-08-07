@@ -89,6 +89,7 @@ LunaSDK uses the following third party SDKs:
 1. [Lua](https://www.lua.org/about.html) for Lua scripting environment (MIT License).
 1. [.NET](https://dotnet.microsoft.com) for implementing CPPSL (Cpp Shader Language) compiler (MIT License).
 1. [LLVM](https://llvm.org) for implementing CPPSL (Cpp Shader Language) compiler (Apache-2.0 License).
+1. [Phosphor Icons](https://phosphoricons.com) for icons used by GUI module (MIT License).
 
 Run `setup.bat` on Windows or `setup.sh` on macOS to fetch the platform SDK archive into `SDKs`. The setup tool downloads LunaSDK's prebuilt third-party SDK bundle from the LunaSDK-ThirdPartySDKs release page.
 

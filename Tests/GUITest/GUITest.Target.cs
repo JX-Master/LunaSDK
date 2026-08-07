@@ -12,8 +12,8 @@ public sealed class GUITestTargetRules : TargetRules
         Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Headers("Source/*.hpp");
-        MetaHeaders("Source/DemoCustomNode.hpp");
         Sources("Source/**.cpp");
-        DependsOn("Runtime", "Window", "RHI", "Font", "VG", "GUI", "GUIWindow");
+        RuntimeFiles("Assets/*.png");
+        DependsOn("Runtime", "Window", "RHI", "RHIUtility", "Font", "Image", "VG", "GUICore", "GUI", "GUIWindow");
     }
 }

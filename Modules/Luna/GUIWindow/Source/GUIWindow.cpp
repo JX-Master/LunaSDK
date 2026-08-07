@@ -10,74 +10,53 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_WINDOW_API LUNA_EXPORT
 #include "../GUIWindow.hpp"
+#include "GUIWindowShared.hpp"
 #include <Luna/HID/HID.hpp>
 #include <Luna/HID/Keyboard.hpp>
-#include <Luna/HID/Mouse.hpp>
-#include <Luna/Window/Clipboard.hpp>
 #include <Luna/Window/Event.hpp>
 
 namespace Luna
 {
     namespace GUIWindow
     {
-        static GUI::PointerButton to_gui_button(HID::MouseButton button)
+        static GUICore::PointerButton to_core_button(HID::MouseButton button)
         {
             switch(button)
             {
-            case HID::MouseButton::left: return GUI::PointerButton::left;
-            case HID::MouseButton::right: return GUI::PointerButton::right;
-            case HID::MouseButton::middle: return GUI::PointerButton::middle;
-            case HID::MouseButton::function1: return GUI::PointerButton::extra1;
-            case HID::MouseButton::function2: return GUI::PointerButton::extra2;
-            default: return GUI::PointerButton::left;
+            case HID::MouseButton::left: return GUICore::PointerButton::left;
+            case HID::MouseButton::right: return GUICore::PointerButton::right;
+            case HID::MouseButton::middle: return GUICore::PointerButton::middle;
+            case HID::MouseButton::function1: return GUICore::PointerButton::extra1;
+            case HID::MouseButton::function2: return GUICore::PointerButton::extra2;
+            default: return GUICore::PointerButton::left;
             }
         }
 
-        static GUI::KeyModifierFlag get_gui_modifiers()
+        static GUICore::KeyModifierFlag get_core_modifiers()
         {
             u8 flags = 0;
-            if(HID::get_key_state(KeyCode::ctrl)) flags |= (u8)GUI::KeyModifierFlag::ctrl;
-            if(HID::get_key_state(KeyCode::shift)) flags |= (u8)GUI::KeyModifierFlag::shift;
-            if(HID::get_key_state(KeyCode::menu)) flags |= (u8)GUI::KeyModifierFlag::alt;
-            if(HID::get_key_state(KeyCode::system)) flags |= (u8)GUI::KeyModifierFlag::system;
-            return (GUI::KeyModifierFlag)flags;
+            if(HID::get_key_state(KeyCode::ctrl)) flags |= (u8)GUICore::KeyModifierFlag::ctrl;
+            if(HID::get_key_state(KeyCode::shift)) flags |= (u8)GUICore::KeyModifierFlag::shift;
+            if(HID::get_key_state(KeyCode::menu)) flags |= (u8)GUICore::KeyModifierFlag::alt;
+            if(HID::get_key_state(KeyCode::system)) flags |= (u8)GUICore::KeyModifierFlag::system;
+            return (GUICore::KeyModifierFlag)flags;
         }
 
-        static bool is_client_position_valid(Window::IWindow* window, const Float2U& position)
+        static bool translate_core_window_event(object_t event, Window::IWindow* window, GUICore::InputEvent& ge)
         {
-            UInt2U size = window->get_size();
-            return position.x >= 0.0f && position.y >= 0.0f &&
-                position.x < (f32)size.x && position.y < (f32)size.y;
-        }
-
-        static Float2U get_client_mouse_pos_unchecked(Window::IWindow* window)
-        {
-            Int2U screen_pos = HID::get_mouse_pos();
-            Int2U client_pos = window->screen_to_client(screen_pos);
-            return Float2U((f32)client_pos.x, (f32)client_pos.y);
-        }
-
-        static bool get_client_mouse_pos(Window::IWindow* window, Float2U& position)
-        {
-            position = get_client_mouse_pos_unchecked(window);
-            return is_client_position_valid(window, position);
-        }
-
-        LUNA_GUI_WINDOW_API bool handle_window_event(object_t event, Window::IWindow* window, GUI::IContext* gui)
-        {
-            if(!window || !gui) return false;
+            if(!window) return false;
             auto window_event = cast_object<Window::WindowEvent>(event);
             if(!window_event || window_event->window != window) return false;
 
-            GUI::InputEvent ge;
+            ge = GUICore::InputEvent();
             if(cast_object<Window::WindowMouseEnterEvent>(event))
             {
                 if(!get_client_mouse_pos(window, ge.position)) return false;
-                ge.type = GUI::InputEventType::pointer_enter;
+                ge.type = GUICore::InputEventType::pointer_enter;
             }
             else if(cast_object<Window::WindowMouseLeaveEvent>(event))
             {
-                ge.type = GUI::InputEventType::pointer_leave;
+                ge.type = GUICore::InputEventType::pointer_leave;
                 ge.position = get_client_mouse_pos_unchecked(window);
             }
             else if(auto e = cast_object<Window::WindowMouseMoveEvent>(event))
@@ -85,126 +64,197 @@ namespace Luna
                 ge.position = Float2U((f32)e->x, (f32)e->y);
                 if(is_client_position_valid(window, ge.position) || get_client_mouse_pos(window, ge.position))
                 {
-                    ge.type = GUI::InputEventType::pointer_move;
+                    ge.type = GUICore::InputEventType::pointer_move;
                 }
                 else
                 {
-                    ge.type = GUI::InputEventType::pointer_leave;
+                    ge.type = GUICore::InputEventType::pointer_leave;
                     ge.position = get_client_mouse_pos_unchecked(window);
                 }
             }
             else if(auto e = cast_object<Window::WindowMouseDownEvent>(event))
             {
                 if(!get_client_mouse_pos(window, ge.position)) return false;
-                ge.type = GUI::InputEventType::pointer_down;
-                ge.button = to_gui_button(e->button);
+                ge.type = GUICore::InputEventType::pointer_down;
+                ge.button = to_core_button(e->button);
             }
             else if(auto e = cast_object<Window::WindowMouseUpEvent>(event))
             {
-                ge.type = GUI::InputEventType::pointer_up;
+                ge.type = GUICore::InputEventType::pointer_up;
                 ge.position = get_client_mouse_pos_unchecked(window);
-                ge.button = to_gui_button(e->button);
+                ge.button = to_core_button(e->button);
             }
             else if(auto e = cast_object<Window::WindowScrollEvent>(event))
             {
                 if(!get_client_mouse_pos(window, ge.position)) return false;
-                ge.type = GUI::InputEventType::pointer_wheel;
+                ge.type = GUICore::InputEventType::pointer_wheel;
                 ge.wheel_delta = Float2U(e->scroll_x, e->scroll_y);
             }
             else if(auto e = cast_object<Window::WindowTouchDownEvent>(event))
             {
                 ge.position = Float2U(e->x, e->y);
                 if(!is_client_position_valid(window, ge.position)) return false;
-                ge.type = GUI::InputEventType::pointer_down;
+                ge.type = GUICore::InputEventType::pointer_down;
                 ge.device_id = 1;
                 ge.pointer_id = e->id;
-                ge.button = GUI::PointerButton::left;
+                ge.button = GUICore::PointerButton::left;
             }
             else if(auto e = cast_object<Window::WindowTouchMoveEvent>(event))
             {
                 ge.position = Float2U(e->x, e->y);
-                ge.type = GUI::InputEventType::pointer_move;
+                ge.type = GUICore::InputEventType::pointer_move;
                 ge.device_id = 1;
                 ge.pointer_id = e->id;
                 if(!is_client_position_valid(window, ge.position))
                 {
-                    ge.type = GUI::InputEventType::pointer_leave;
+                    ge.type = GUICore::InputEventType::pointer_leave;
                 }
             }
             else if(auto e = cast_object<Window::WindowTouchUpEvent>(event))
             {
                 ge.position = Float2U(e->x, e->y);
-                ge.type = GUI::InputEventType::pointer_up;
+                ge.type = GUICore::InputEventType::pointer_up;
                 ge.device_id = 1;
                 ge.pointer_id = e->id;
-                ge.button = GUI::PointerButton::left;
+                ge.button = GUICore::PointerButton::left;
             }
             else if(auto e = cast_object<Window::WindowKeyDownEvent>(event))
             {
-                ge.type = GUI::InputEventType::key_down;
+                ge.type = GUICore::InputEventType::key_down;
                 ge.key = e->key;
-                ge.modifiers = get_gui_modifiers();
+                ge.modifiers = get_core_modifiers();
             }
             else if(auto e = cast_object<Window::WindowKeyUpEvent>(event))
             {
-                ge.type = GUI::InputEventType::key_up;
+                ge.type = GUICore::InputEventType::key_up;
                 ge.key = e->key;
-                ge.modifiers = get_gui_modifiers();
+                ge.modifiers = get_core_modifiers();
             }
             else if(auto e = cast_object<Window::WindowInputTextEvent>(event))
             {
-                ge.type = GUI::InputEventType::text_utf8;
+                ge.type = GUICore::InputEventType::text_utf8;
                 ge.text = e->text;
             }
             else if(cast_object<Window::WindowInputFocusEvent>(event))
             {
-                ge.type = GUI::InputEventType::focus;
+                ge.type = GUICore::InputEventType::focus;
             }
             else if(cast_object<Window::WindowLoseInputFocusEvent>(event))
             {
-                ge.type = GUI::InputEventType::blur;
+                ge.type = GUICore::InputEventType::blur;
             }
             else
             {
                 return false;
             }
-            gui->add_input_event(ge);
             return true;
         }
 
-        static void gui_window_event_handler(object_t event, void* userdata)
+        static bool make_navigation_event(const GUICore::InputEvent& key_event, GUICore::InputEvent& nav_event)
         {
-            auto adapter = (GUIWindowInputAdapter*)userdata;
+            if(key_event.type != GUICore::InputEventType::key_down)
+            {
+                return false;
+            }
+            nav_event = GUICore::InputEvent();
+            nav_event.device_id = key_event.device_id;
+            nav_event.modifiers = key_event.modifiers;
+            switch(key_event.key)
+            {
+            case KeyCode::left:
+                nav_event.type = GUICore::InputEventType::navigation_dpad;
+                nav_event.navigation_direction = GUICore::NavigationDirection::left;
+                return true;
+            case KeyCode::right:
+                nav_event.type = GUICore::InputEventType::navigation_dpad;
+                nav_event.navigation_direction = GUICore::NavigationDirection::right;
+                return true;
+            case KeyCode::up:
+                nav_event.type = GUICore::InputEventType::navigation_dpad;
+                nav_event.navigation_direction = GUICore::NavigationDirection::up;
+                return true;
+            case KeyCode::down:
+                nav_event.type = GUICore::InputEventType::navigation_dpad;
+                nav_event.navigation_direction = GUICore::NavigationDirection::down;
+                return true;
+            case KeyCode::tab:
+                nav_event.type = GUICore::InputEventType::navigation_move;
+                nav_event.navigation_move = ((u8)key_event.modifiers & (u8)GUICore::KeyModifierFlag::shift) ?
+                    GUICore::NavigationMove::backward : GUICore::NavigationMove::forward;
+                return true;
+            case KeyCode::enter:
+                nav_event.type = GUICore::InputEventType::navigation_confirm;
+                return true;
+            case KeyCode::esc:
+                nav_event.type = GUICore::InputEventType::navigation_back;
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        static void append_translated_input_event(Vector<GUICore::InputEvent>& events, GUICore::InputEvent&& event)
+        {
+            GUICore::InputEvent nav_event;
+            bool has_nav_event = make_navigation_event(event, nav_event);
+            events.push_back(move(event));
+            if(has_nav_event)
+            {
+                events.push_back(move(nav_event));
+            }
+        }
+
+        LUNA_GUI_WINDOW_API bool handle_window_event(object_t event, Window::IWindow* window, GUICore::IContext* gui)
+        {
+            if(!window || !gui) return false;
+            GUICore::InputEvent ge;
+            if(!translate_core_window_event(event, window, ge)) return false;
+            gui->add_input_event(ge);
+            GUICore::InputEvent nav_event;
+            if(make_navigation_event(ge, nav_event))
+            {
+                gui->add_input_event(nav_event);
+            }
+            return true;
+        }
+
+        static void gui_core_window_event_handler(object_t event, void* userdata)
+        {
+            auto adapter = (GUICoreWindowInputAdapter*)userdata;
             if(!adapter) return;
-            handle_window_event(event, adapter->window, adapter->gui);
+            GUICore::InputEvent ge;
+            if(translate_core_window_event(event, adapter->window, ge))
+            {
+                append_translated_input_event(adapter->pending_events, move(ge));
+            }
             if(adapter->forward_events && adapter->next_event_handler)
             {
                 adapter->next_event_handler(event, adapter->next_event_userdata);
             }
         }
 
-        LUNA_GUI_WINDOW_API void install_window_event_handler(GUIWindowInputAdapter* adapter)
+        LUNA_GUI_WINDOW_API void install_window_event_handler(GUICoreWindowInputAdapter* adapter)
         {
             if(!adapter) return;
             void(*previous_handler)(object_t event, void* userdata) = nullptr;
             void* previous_userdata = nullptr;
             Window::get_event_handler(&previous_handler, &previous_userdata);
-            if(previous_handler == gui_window_event_handler && previous_userdata == adapter)
+            if(previous_handler == gui_core_window_event_handler && previous_userdata == adapter)
             {
                 return;
             }
             adapter->next_event_handler = previous_handler;
             adapter->next_event_userdata = previous_userdata;
-            Window::set_event_handler(gui_window_event_handler, adapter);
+            Window::set_event_handler(gui_core_window_event_handler, adapter);
         }
 
-        LUNA_GUI_WINDOW_API void uninstall_window_event_handler(GUIWindowInputAdapter* adapter)
+        LUNA_GUI_WINDOW_API void uninstall_window_event_handler(GUICoreWindowInputAdapter* adapter)
         {
             if(!adapter) return;
             void(*current_handler)(object_t event, void* userdata) = nullptr;
             void* current_userdata = nullptr;
             Window::get_event_handler(&current_handler, &current_userdata);
-            if(current_handler == gui_window_event_handler && current_userdata == adapter)
+            if(current_handler == gui_core_window_event_handler && current_userdata == adapter)
             {
                 Window::set_event_handler(adapter->next_event_handler, adapter->next_event_userdata);
             }
@@ -212,60 +262,49 @@ namespace Luna
             adapter->next_event_userdata = nullptr;
         }
 
-        static RectI to_window_text_input_rect(const GUI::TextInputState& state)
+        static void update_pointer_state(Window::IWindow* window, GUICore::IContext* gui)
         {
-            return RectI(
-                (i32)floor(state.rect.offset_x),
-                (i32)floor(state.rect.offset_y),
-                max((i32)ceil(state.rect.width), 1),
-                max((i32)ceil(state.rect.height), 1));
-        }
-
-        static RV get_window_clipboard_text(String& out_text, void*)
-        {
-            return Window::get_clipboard_text(out_text);
-        }
-
-        static RV set_window_clipboard_text(const c8* text, usize size, void*)
-        {
-            return Window::set_clipboard_text(text, size);
-        }
-
-        static void update_pointer_state(Window::IWindow* window, GUI::IContext* gui)
-        {
-            GUI::InputEvent event;
+            GUICore::InputEvent event;
             if(get_client_mouse_pos(window, event.position))
             {
-                event.type = GUI::InputEventType::pointer_move;
+                event.type = GUICore::InputEventType::pointer_move;
             }
             else
             {
-                event.type = GUI::InputEventType::pointer_leave;
+                event.type = GUICore::InputEventType::pointer_leave;
                 event.position = get_client_mouse_pos_unchecked(window);
             }
             gui->add_input_event(event);
         }
 
-        LUNA_GUI_WINDOW_API RV update_text_input(Window::IWindow* window, GUI::IContext* gui)
+        LUNA_GUI_WINDOW_API void update_input(Window::IWindow* window, GUICore::IContext* gui)
+        {
+            if(!window || !gui) return;
+            GUICore::ClipboardIO clipboard_io;
+            clipboard_io.get_text = get_window_clipboard_text;
+            clipboard_io.set_text = set_window_clipboard_text;
+            gui->set_clipboard_io(clipboard_io);
+            update_pointer_state(window, gui);
+        }
+
+        LUNA_GUI_WINDOW_API RV update_text_input(Window::IWindow* window, GUICore::IContext* gui)
         {
             if(!window || !gui) return ok;
             lutry
             {
-                update_pointer_state(window, gui);
-
-                GUI::ClipboardIO clipboard_io;
+                GUICore::ClipboardIO clipboard_io;
                 clipboard_io.get_text = get_window_clipboard_text;
                 clipboard_io.set_text = set_window_clipboard_text;
                 gui->set_clipboard_io(clipboard_io);
 
-                GUI::TextInputState state = gui->get_text_input_state();
+                GUICore::TextInputState state = gui->get_text_input_state();
                 if(state.active)
                 {
                     if(!window->is_text_input_active())
                     {
                         luexp(window->begin_text_input());
                     }
-                    luexp(window->set_text_input_area(to_window_text_input_rect(state), state.cursor));
+                    luexp(window->set_text_input_area(to_window_text_input_rect(state.rect), state.cursor));
                 }
                 else if(window->is_text_input_active())
                 {
@@ -276,26 +315,23 @@ namespace Luna
             return ok;
         }
 
-        LUNA_GUI_WINDOW_API RV update_text_input(GUIWindowInputAdapter* adapter)
+        LUNA_GUI_WINDOW_API RV update_text_input(GUICoreWindowInputAdapter* adapter)
         {
             return adapter ? update_text_input(adapter->window, adapter->gui) : ok;
         }
 
-        struct GUIWindowModule : public Module
+        LUNA_GUI_WINDOW_API void update_input(GUICoreWindowInputAdapter* adapter)
         {
-            virtual const c8* get_name() override { return "GUIWindow"; }
-            virtual RV on_register() override
+            if(adapter && adapter->gui)
             {
-                return add_dependency_modules(this, {GUI::module_gui(), module_window(), module_hid()});
+                if(!adapter->pending_events.empty())
+                {
+                    adapter->gui->add_input_events(Span<const GUICore::InputEvent>(
+                        adapter->pending_events.data(), adapter->pending_events.size()));
+                    adapter->pending_events.clear();
+                }
+                update_input(adapter->window, adapter->gui);
             }
-            virtual RV on_init() override { return ok; }
-            virtual void on_close() override {}
-        };
-
-        LUNA_GUI_WINDOW_API Module* module_gui_window()
-        {
-            static GUIWindowModule m;
-            return &m;
         }
     }
 }
