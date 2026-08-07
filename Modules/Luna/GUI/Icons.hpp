@@ -61,6 +61,10 @@ namespace Luna
             const GUICore::LayoutConfig& layout = GUICore::LayoutConfig(), const IconDesc& desc = IconDesc());
 
         //! Checks whether the requested icon weight is embedded in the built-in pack.
+        //! @param[in] value Icon name.
+        //! @param[in] weight Requested visual weight.
+        //! @return Returns `true` if the exact icon-weight pair is embedded. Rendering falls back to regular weight
+        //! when this function returns `false` for another valid weight.
         LUNA_GUI_API bool has_icon(IconName value, IconWeight weight);
     }
 }

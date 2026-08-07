@@ -68,7 +68,7 @@ namespace Luna
                 {
                     state = new_object<DockSpaceState>();
                 }
-                lupanic_if_failed(context->set_state(state_id, state.object(), GUICore::StateLifetime::process));
+                lupanic_if_failed(context->set_state(state_id, state.object(), GUICore::StateLifetime::context));
                 return state;
             }
 

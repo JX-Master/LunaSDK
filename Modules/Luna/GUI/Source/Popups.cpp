@@ -36,7 +36,7 @@ namespace Luna
                 }
                 if(!create) return nullptr;
                 Ref<PopupState> result = new_object<PopupState>();
-                lupanic_if_failed(context->set_state(state_id, result.object(), GUICore::StateLifetime::process));
+                lupanic_if_failed(context->set_state(state_id, result.object(), GUICore::StateLifetime::context));
                 return result;
             }
 
@@ -133,7 +133,7 @@ namespace Luna
             Ref<Internal::PopupState> state = Internal::popup_state(context, id, true);
             state->open = true;
             lupanic_if_failed(context->set_state(GUICore::make_state_id<Internal::PopupState>(id), state.object(),
-                GUICore::StateLifetime::process));
+                GUICore::StateLifetime::context));
         }
 
         LUNA_GUI_API void close_popup(GUICore::IContext* context, id_t id)

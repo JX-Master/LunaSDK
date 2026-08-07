@@ -8,6 +8,7 @@ Related pages:
 4. [[GUICore Drawing]]
 5. [[GUICore State and Style]]
 6. [[GUICore Performance and Inspection]]
+7. [[GUICore World-space GUI Surfaces]]
 
 ## Designed functionality
 GUI Core solves the part of GUI work that is common to multiple GUI packages:
@@ -16,7 +17,7 @@ GUI Core solves the part of GUI work that is common to multiple GUI packages:
 2. Route host-independent input through layers and interactable elements.
 3. Store reusable state objects and named styles.
 4. Run primitive layout algorithms on element data.
-5. Generate GUI-level draw commands after layout and input, then compile them to VG draw lists.
+5. Generate GUI-level draw commands after layout and input, then render them through the integrated SDF and VG backends.
 6. Expose performance counters and direct read-only frame inspection.
 
 GUI Core does not provide high-level widgets. Controls such as buttons, checkboxes, menus, sliders, color editors, dock panels and inspectors belong to a higher-level package such as `Luna::GUI`. Those packages build GUI Core elements, attach input data, run layout helpers and install package-owned draw callbacks or static draw commands.
@@ -32,7 +33,7 @@ A context is explicit. There is no global current GUI context. Pass the `IContex
 ### Frame
 Each frame starts with `IContext::begin_frame`. The host provides a `GUICore::FrameDesc` with logical screen size, framebuffer size, DPI scale and delta time.
 
-Logical screen coordinates use a top-left origin, X to the right and Y downward. They are the coordinates used by input, layers and layout. The renderer later maps the final VG draw list to the target render pass.
+Logical screen coordinates use a top-left origin, X to the right and Y downward. They are the coordinates used by input, layers and layout. The renderer later maps the ordered SDF and VG command batches to the supplied render target.
 
 ### Element tree
 The element tree is typeless. Every node is a `GUICore::Element` record with the same storage shape. Behavior is defined by data attached to the element:
@@ -79,6 +80,9 @@ Create a context with `GUICore::new_context`. Register fonts and any style schem
 Ref<GUICore::IContext> context = GUICore::new_context();
 luexp(context->register_font(Name("default"), Font::get_default_font()));
 GUI::register_style_schemas(context);
+
+Ref<GUICore::IRenderer> renderer;
+luset(renderer, GUICore::new_renderer());
 ```
 
 ### Build one frame
@@ -90,9 +94,10 @@ The usual frame order is:
 4. Build elements and attach layout, interaction and draw data.
 5. Run layout.
 6. Route input.
-7. Resolve higher-level package state and generate draw commands.
-8. Compile draw commands to VG.
-9. Render the VG draw list.
+7. Resolve higher-level package interactions and update bound application values.
+8. Reapply layout when the package reports that interaction changed layout-dependent state.
+9. Generate draw commands explicitly only when tooling needs to inspect the final stream.
+10. Ask the GUI Core renderer to compile and record the complete render plan.
 
 ```cpp
 GUICore::FrameDesc frame;
@@ -114,16 +119,36 @@ context->pop_layer();
 
 luexp(context->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
 context->route_input();
-luexp(context->generate_draw_commands());
-luexp(context->compile_draw_commands(vg_draw_list));
+GUI::ResolveResult resolved = GUI::resolve_interactions(context);
+if(resolved.relayout_requested)
+{
+    luexp(context->apply_layout(root,
+        RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+}
+
+GUICore::RenderTargetDesc target;
+target.color_texture = render_target;
+target.color_load_op = RHI::LoadOp::load;
+target.color_final_state = RHI::TextureStateFlag::present;
+luexp(renderer->render(context, command_buffer, target));
 ```
+
+`IRenderer::render` calls `generate_draw_commands` when the command stream is stale. Call
+`IContext::generate_draw_commands` directly only when inspection or other tooling needs the final ordered commands
+before rendering. Widget-bound values and package frame data must remain valid until interaction resolution and draw
+command generation have both finished.
 
 High-level packages attach dense `LayoutConfig` input and optional sparse `LayoutCallbackConfig` records while they build elements. `IContext::apply_layout` owns the top-down tree traversal and invokes those callbacks. GUI Core exposes the primitive helpers used by those callbacks in [[GUICore Layout]].
 
 ### Render
-GUI Core records static commands and delayed element draw callbacks. `IContext::generate_draw_commands` evaluates callbacks against final layout and interaction data, and `IContext::compile_draw_commands` translates the resulting command stream into a `VG::IShapeDrawList`.
+GUI Core records static commands and delayed element draw callbacks. `IContext::generate_draw_commands` evaluates
+callbacks against final layout and interaction data. `IRenderer::render` then compiles the ordered stream, interleaves
+the SDF and VG backends, performs required resource transitions, and begins and ends every required graphics or
+compute pass.
 
-The application still owns the RHI render pass, command buffer, swapchain or render target. See [[GUICore Drawing]] for details.
+The application owns the command buffer, final color and optional depth-stencil textures, submission,
+synchronization and presentation. Call `IRenderer::render` while the command buffer is recording and outside every
+pass. See [[GUICore Drawing]] for details.
 
 ## Examples
 ### A minimal raw element

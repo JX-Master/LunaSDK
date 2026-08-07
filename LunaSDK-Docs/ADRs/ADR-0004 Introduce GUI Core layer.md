@@ -365,7 +365,7 @@ after a pointer leaves the panel. Surface selection, occlusion and nearest-hit o
 
 3. **State store**
    - Keeps the existing typed state object model: state ID, boxed data object, and lifetime.
-   - Supports current-frame, next-frame, process, and future persistent lifetimes.
+   - Supports current-frame, next-frame, context, and future persistent lifetimes.
    - Does not know widget-specific state shapes.
 
 4. **Style system**

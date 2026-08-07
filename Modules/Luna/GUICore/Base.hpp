@@ -96,8 +96,8 @@ namespace Luna
             current_frame,
             //! Clears the state if it is not refreshed for the next frame.
             next_frame,
-            //! Keeps the state until @ref IContext::clear_state is called or the process exits.
-            process,
+            //! Keeps the state until @ref IContext::clear_state is called or the owning context is destroyed.
+            context,
             //! Reserves persistent storage semantics for future implementation.
             persistent
         };

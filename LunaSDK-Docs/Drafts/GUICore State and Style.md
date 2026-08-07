@@ -23,7 +23,7 @@ This combines the owner ID with the boxed state type GUID.
 
 1. `current_frame`: cleared at the next `begin_frame`.
 2. `next_frame`: cleared if it is not refreshed for the next frame.
-3. `process`: kept until `clear_state` or process exit.
+3. `context`: kept until `clear_state` or the owning context is destroyed.
 4. `persistent`: reserved for future persistent storage semantics.
 
 ### Style

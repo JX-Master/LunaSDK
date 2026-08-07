@@ -147,9 +147,11 @@ namespace Luna
             bool* open = nullptr, const DockPanelDesc& desc = DockPanelDesc());
 
         //! Ends the current visible dock panel.
+        //! @param[in] context GUI Core context containing the open dock-panel scope.
         LUNA_GUI_API void end_dock_panel(GUICore::IContext* context);
 
         //! Ends the current dock space and finalizes panel topology, layout and layer order.
+        //! @param[in] context GUI Core context containing the open dock-space scope.
         LUNA_GUI_API void end_dock_space(GUICore::IContext* context);
     }
 }

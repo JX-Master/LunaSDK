@@ -354,7 +354,9 @@ namespace Luna
         {
             //! Whether the item accepts interaction.
             bool enabled = true;
-            //! Optional shortcut text displayed at the trailing edge.
+            //! Optional shortcut text displayed at the trailing edge by the @ref menu_item overloads.
+            //! @remark @ref begin_menu_item treats all visible content as ordinary children and does not render
+            //! this string automatically.
             const c8* shortcut = nullptr;
         };
 
@@ -368,6 +370,7 @@ namespace Luna
         };
 
         //! Gets the GUI package module object.
+        //! @return Returns the GUI package module object.
         LUNA_GUI_API Module* module_gui();
 
         //! Resolves current-frame widget actions after @ref GUICore::IContext::route_input.
@@ -387,23 +390,48 @@ namespace Luna
         LUNA_GUI_API RV layout_tree(GUICore::IContext* context, const GUICore::ElementHandle& root, const RectF& rect);
 
         //! Checks whether an element handle is valid in the current frame.
+        //! @param[in] context The GUI Core context that owns @p item.
+        //! @param[in] item The frame-local element handle to validate.
+        //! @return Returns `true` if @p item identifies an element in the current context generation.
         LUNA_GUI_API bool is_item_valid(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Checks whether an element was clicked by the primary pointer.
+        //! @param[in] context The GUI Core context that owns @p item.
+        //! @param[in] item The element to query.
+        //! @return Returns `true` if @p item produced a primary click during the latest input routing pass.
         LUNA_GUI_API bool is_item_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Checks whether an element received a secondary-pointer click during the current frame.
+        //! @param[in] context The GUI Core context that owns @p item.
+        //! @param[in] item The element to query.
+        //! @return Returns `true` if @p item received a right-button release during the latest input routing pass.
         LUNA_GUI_API bool is_item_right_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Checks whether an element was double-clicked by the primary pointer during the current frame.
+        //! @param[in] context The GUI Core context that owns @p item.
+        //! @param[in] item The element to query.
+        //! @return Returns `true` if @p item produced a primary double-click during the latest input routing pass.
         LUNA_GUI_API bool is_item_double_clicked(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Checks whether an element is hovered.
+        //! @param[in] context The GUI Core context that owns @p item.
+        //! @param[in] item The element to query.
+        //! @return Returns `true` if @p item is hovered after the latest input routing pass.
         LUNA_GUI_API bool is_item_hovered(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Checks whether an element is active.
+        //! @param[in] context The GUI Core context that owns @p item.
+        //! @param[in] item The element to query.
+        //! @return Returns `true` if @p item is active for the current primary-pointer interaction.
         LUNA_GUI_API bool is_item_active(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Checks whether an element has keyboard focus.
+        //! @param[in] context The GUI Core context that owns @p item.
+        //! @param[in] item The element to query.
+        //! @return Returns `true` if @p item currently owns keyboard focus.
         LUNA_GUI_API bool is_item_focused(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Gets the arranged rectangle of an element in layer coordinates.
+        //! @param[in] context The GUI Core context that owns @p item.
+        //! @param[in] item The element to query.
         //! @return Returns an empty rectangle when @p item is invalid.
         LUNA_GUI_API RectF get_item_rect(GUICore::IContext* context, const GUICore::ElementHandle& item);
         //! Gets the effective clip rectangle of an element in layer coordinates.
+        //! @param[in] context The GUI Core context that owns @p item.
+        //! @param[in] item The element to query.
         //! @return Returns an empty rectangle when @p item is invalid.
         LUNA_GUI_API RectF get_item_clip_rect(GUICore::IContext* context, const GUICore::ElementHandle& item);
 

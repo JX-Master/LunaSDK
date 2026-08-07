@@ -41,13 +41,12 @@ Debug names and inspection views are not controlled by a build option. Keeping t
 ### Read performance counters
 ```cpp
 GUICore::PerformanceCounters counters = context->get_performance_counters();
-log_info("GUICore: elements=%u draw=%u callbacks=%u route=%.3f ms generate=%.3f ms compile=%.3f ms",
+log_info("GUICore: elements=%u draw=%u callbacks=%u route=%.3f ms generate=%.3f ms",
     counters.element_count,
     counters.draw_command_count,
     counters.draw_callback_count,
     counters.input_route_ms,
-    counters.draw_generate_ms,
-    counters.draw_compile_ms);
+    counters.draw_generate_ms);
 ```
 
 Counters reflect the most recent operations that updated them.
