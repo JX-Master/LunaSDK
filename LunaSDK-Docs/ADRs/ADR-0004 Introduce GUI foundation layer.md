@@ -297,13 +297,13 @@ rounded-rectangle, gradient-rectangle and shadow commands compile into the same 
 lines and arbitrary vector paths continue through VG.
 
 ### GUI surface rendering
-One GUI context describes one logical two-dimensional **GUI surface**. `FrameDesc::screen_size`, element layout
+One GUI context describes one logical two-dimensional **GUI surface**. `FrameDesc::logical_size`, element layout
 rectangles, layer positions, SDF programs, VG positions, GUI clips and input events remain in surface-local logical
 coordinates with a top-left origin and downward-positive Y axis.
 
 The host may supply a `surface_to_clip` matrix when rendering. It maps positions `(x, y, 0, 1)` from
 logical surface coordinates directly to clip space. Without a custom transform, the renderer derives the existing
-top-left orthographic projection from `FrameDesc::screen_size`. The matrix is stored once in frame data and does not
+top-left orthographic projection from `FrameDesc::logical_size`. The matrix is stored once in frame data and does not
 become part of `SDFInstance`, `SDFState` or the SDF batch key.
 
 SDF draw rectangles remain axis-aligned quads in surface-local coordinates. The vertex shader transforms their four
@@ -341,7 +341,7 @@ with its plane, transforms the hit into logical surface coordinates and submits 
 surface's context.
 
 GUI provides a math helper that maps a world-space ray through a host-provided `world_to_surface` affine matrix.
-It intentionally returns positions outside `FrameDesc::screen_size`, allowing captured sliders and drags to continue
+It intentionally returns positions outside `FrameDesc::logical_size`, allowing captured sliders and drags to continue
 after a pointer leaves the panel. Surface selection, occlusion and nearest-hit ordering remain host responsibilities.
 
 ### GUI responsibilities

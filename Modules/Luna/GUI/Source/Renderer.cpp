@@ -273,7 +273,7 @@ namespace Luna
             RectF to_vg_rect(const FrameDesc& frame_desc, const RectF& screen_rect)
             {
                 return RectF(screen_rect.offset_x,
-                    frame_desc.screen_size.y - screen_rect.offset_y - screen_rect.height,
+                    frame_desc.logical_size.y - screen_rect.offset_y - screen_rect.height,
                     screen_rect.width, screen_rect.height);
             }
 
@@ -611,7 +611,7 @@ namespace Luna
                     }
                 }
 
-                RectF screen_bounds(0.0f, 0.0f, m_screen_width, m_screen_height);
+                RectF screen_bounds(0.0f, 0.0f, m_logical_width, m_logical_height);
                 for(u32 capture_index = 0;
                     capture_index < m_num_backdrop_captures; ++capture_index)
                 {
@@ -624,8 +624,8 @@ namespace Luna
                     }
                     f32 halo = calculate_backdrop_capture_halo(
                         capture.desc,
-                        (f32)m_render_target_width / m_screen_width,
-                        (f32)m_render_target_height / m_screen_height);
+                        (f32)m_render_target_width / m_logical_width,
+                        (f32)m_render_target_height / m_logical_height);
                     capture.source_rect = intersect_rect(
                         expand_rect(capture.consumer_bounds, halo), screen_bounds);
                     if(!rect_visible(capture.source_rect))
@@ -1136,15 +1136,15 @@ namespace Luna
                         "backdrop-filtering intermediate format.");
                 }
 
-                f32 framebuffer_scale_x = (f32)m_render_target_width / m_screen_width;
-                f32 framebuffer_scale_y = (f32)m_render_target_height / m_screen_height;
+                f32 render_scale_x = (f32)m_render_target_width / m_logical_width;
+                f32 render_scale_y = (f32)m_render_target_height / m_logical_height;
                 u32 source_width = max<u32>((u32)ceil(
-                    capture.source_rect.width * framebuffer_scale_x), 1);
+                    capture.source_rect.width * render_scale_x), 1);
                 u32 source_height = max<u32>((u32)ceil(
-                    capture.source_rect.height * framebuffer_scale_y), 1);
+                    capture.source_rect.height * render_scale_y), 1);
                 u32 requested_downsample_passes =
                     calculate_backdrop_downsample_passes(capture.desc,
-                        framebuffer_scale_x, framebuffer_scale_y);
+                        render_scale_x, render_scale_y);
                 u32 width = source_width;
                 u32 height = source_height;
                 capture.downsample_pass_count = 0;
@@ -1159,12 +1159,12 @@ namespace Luna
                 f32 horizontal_sigma =
                     quantize_backdrop_gaussian_sigma(
                         max(capture.desc.softness, 0.0f) *
-                        framebuffer_scale_x /
+                        render_scale_x /
                         (f32)downsample_factor);
                 f32 vertical_sigma =
                     quantize_backdrop_gaussian_sigma(
                         max(capture.desc.softness, 0.0f) *
-                        framebuffer_scale_y /
+                        render_scale_y /
                         (f32)downsample_factor);
                 capture.horizontal_blur = width > 1 &&
                     horizontal_sigma > BACKDROP_GAUSSIAN_FAST_PATH_SIGMA;
@@ -1324,12 +1324,12 @@ namespace Luna
                             max(downsample_desc.height >> i, 1u));
                         parameters.source_uv_origin = i ?
                             Float2U(0.0f) : Float2U(
-                                capture.source_rect.offset_x / m_screen_width,
-                                capture.source_rect.offset_y / m_screen_height);
+                                capture.source_rect.offset_x / m_logical_width,
+                                capture.source_rect.offset_y / m_logical_height);
                         parameters.source_uv_size = i ?
                             Float2U(1.0f) : Float2U(
-                                capture.source_rect.width / m_screen_width,
-                                capture.source_rect.height / m_screen_height);
+                                capture.source_rect.width / m_logical_width,
+                                capture.source_rect.height / m_logical_height);
                         parameters.filter_mode = 1;
                         bool write_final_texture =
                             !gaussian_pass_count &&
@@ -1351,12 +1351,12 @@ namespace Luna
                     capture.downsample_pass_count - 1 : 0;
                 Float2U base_source_uv_origin = capture.downsample_pass_count ?
                     Float2U(0.0f) : Float2U(
-                        capture.source_rect.offset_x / m_screen_width,
-                        capture.source_rect.offset_y / m_screen_height);
+                        capture.source_rect.offset_x / m_logical_width,
+                        capture.source_rect.offset_y / m_logical_height);
                 Float2U base_source_uv_size = capture.downsample_pass_count ?
                     Float2U(1.0f) : Float2U(
-                        capture.source_rect.width / m_screen_width,
-                        capture.source_rect.height / m_screen_height);
+                        capture.source_rect.width / m_logical_width,
+                        capture.source_rect.height / m_logical_height);
 
                 if(!capture.downsample_pass_count && !gaussian_pass_count)
                 {
@@ -1632,11 +1632,11 @@ namespace Luna
             m_render_target_width = render_target_desc.width;
             m_render_target_height = render_target_desc.height;
             const FrameDesc frame_desc = context->get_frame_desc();
-            m_screen_width = max(frame_desc.screen_size.x, 1.0f);
-            m_screen_height = max(frame_desc.screen_size.y, 1.0f);
+            m_logical_width = max(frame_desc.logical_size.x, 1.0f);
+            m_logical_height = max(frame_desc.logical_size.y, 1.0f);
             m_surface_to_clip = surface.use_custom_transform ? surface.surface_to_clip :
                 Float4x4U(ProjectionMatrix::make_orthographic_off_center(
-                    0.0f, m_screen_width, m_screen_height, 0.0f, 0.0f, 1.0f));
+                    0.0f, m_logical_width, m_logical_height, 0.0f, 0.0f, 1.0f));
             m_counters = RendererPerformanceCounters();
             u64 render_begin = get_ticks();
             lutry
@@ -1663,7 +1663,7 @@ namespace Luna
                     1.0f, 0.0f, 0.0f, 0.0f,
                     0.0f, -1.0f, 0.0f, 0.0f,
                     0.0f, 0.0f, 1.0f, 0.0f,
-                    0.0f, m_screen_height, 0.0f, 1.0f);
+                    0.0f, m_logical_height, 0.0f, 1.0f);
                 Float4x4U vg_surface_to_clip = mul(vg_to_surface,
                     m_surface_to_clip.to_float4x4());
                 m_shape_renderer->draw(m_draw_list->get_instance_buffer(),

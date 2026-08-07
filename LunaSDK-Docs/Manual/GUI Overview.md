@@ -19,9 +19,12 @@ This split keeps GUI small and orthogonal. Applications can use only the systems
 A context is explicit. There is no global current GUI context. Pass the `IContext*` to the higher-level API or directly to GUI functions.
 
 ### Frame
-Each frame starts with `IContext::begin_frame`. The host provides a `GUI::FrameDesc` with logical screen size, framebuffer size, DPI scale and delta time.
+Each frame starts with `IContext::begin_frame`. The host provides a `GUI::FrameDesc` with logical surface size,
+render-target size and delta time.
 
-Logical screen coordinates use a top-left origin, X to the right and Y downward. They are the coordinates used by input, layers and layout. The renderer later maps the ordered SDF and VG command batches to the supplied render target.
+Logical surface coordinates use a top-left origin, X to the right and Y downward. They are the coordinates used by
+input, layers and layout. `FrameDesc::render_size` reports the corresponding render-target extent in physical pixels.
+The renderer later maps the ordered SDF and VG command batches to the supplied render target.
 
 ### Element tree
 The element tree is typeless. Every node is a `GUI::Element` record with the same storage shape. Behavior is defined by data attached to the element:
@@ -89,9 +92,8 @@ The usual frame order is:
 
 ```cpp
 GUI::FrameDesc frame;
-frame.screen_size = Float2U((f32)window_width, (f32)window_height);
-frame.framebuffer_size = UInt2U(framebuffer_width, framebuffer_height);
-frame.dpi_scale = dpi_scale;
+frame.logical_size = Float2U((f32)window_width, (f32)window_height);
+frame.render_size = UInt2U(render_width, render_height);
 frame.delta_time = delta_time;
 
 context->begin_frame(frame);
@@ -105,13 +107,13 @@ GUI::ElementHandle root = context->begin_element(1);
 context->end_element();
 context->pop_layer();
 
-luexp(context->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+luexp(context->apply_layout(root, RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
 context->route_input();
 EditorGUI::ResolveResult resolved = EditorGUI::resolve_interactions(context);
 if(resolved.relayout_requested)
 {
     luexp(context->apply_layout(root,
-        RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+        RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
 }
 
 GUI::RenderTargetDesc target;

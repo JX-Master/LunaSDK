@@ -1507,9 +1507,9 @@ namespace Luna
             GUI::LayoutConfig indicator_layout;
             GUI::FrameDesc frame_desc = context->get_frame_desc();
             indicator_layout.width.kind = GUI::SizeKind::fixed;
-            indicator_layout.width.value = frame_desc.screen_size.x;
+            indicator_layout.width.value = frame_desc.logical_size.x;
             indicator_layout.height.kind = GUI::SizeKind::fixed;
-            indicator_layout.height.value = frame_desc.screen_size.y;
+            indicator_layout.height.value = frame_desc.logical_size.y;
             GUI::ElementHandle indicator_root = Internal::begin_element(context,
                 Internal::derived_id(scope.id, "dock.indicator.root"), "Dock Indicators", indicator_layout);
             Internal::DockSpaceDrawData* indicator_draw_data =

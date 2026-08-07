@@ -410,25 +410,24 @@ namespace Luna
                 auto sz = window->get_size();
 
                 GUI::FrameDesc frame;
-                frame.screen_size = Float2U((f32)sz.x, (f32)sz.y);
-                frame.framebuffer_size = fb_sz;
-                frame.dpi_scale = window->get_dpi_scale_factor();
+                frame.logical_size = Float2U((f32)sz.x, (f32)sz.y);
+                frame.render_size = fb_sz;
                 frame.delta_time = 1.0f / 60.0f;
                 gui->begin_frame(frame);
                 GUIWindow::update_input(&input_adapter);
 
                 gui->push_layer(PROJECT_SELECTOR_LAYER_ID, Float2U(0.0f));
-                GUI::ElementHandle root = build_project_selector_gui(gui, frame.screen_size, new_solution_name, create_dir,
+                GUI::ElementHandle root = build_project_selector_gui(gui, frame.logical_size, new_solution_name, create_dir,
                     recents, recent_scroll);
                 gui->pop_layer();
                 luexp(EditorGUI::layout_tree(gui, root,
-                    RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                    RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
                 gui->route_input();
                 EditorGUI::ResolveResult resolved = EditorGUI::resolve_interactions(gui);
                 if(resolved.relayout_requested)
                 {
                     luexp(EditorGUI::layout_tree(gui, root,
-                        RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                        RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
                 }
                 luexp(GUIWindow::update_text_input(&input_adapter));
                 luexp(gui->generate_draw_commands());

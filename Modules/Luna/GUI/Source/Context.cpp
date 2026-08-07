@@ -1738,7 +1738,8 @@ namespace Luna
             auto update_pointer_inside = [&]()
             {
                 m_pointer_inside = m_pointer_position.x >= 0.0f && m_pointer_position.y >= 0.0f &&
-                    m_pointer_position.x < m_frame_desc.screen_size.x && m_pointer_position.y < m_frame_desc.screen_size.y;
+                    m_pointer_position.x < m_frame_desc.logical_size.x &&
+                    m_pointer_position.y < m_frame_desc.logical_size.y;
             };
 
             auto update_pointer_position = [&](const Float2U& position)

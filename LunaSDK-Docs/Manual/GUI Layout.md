@@ -88,7 +88,7 @@ context->set_layout_config(element, config);
 After building elements, call `IContext::apply_layout` once for each root that should be arranged.
 
 ```cpp
-RectF screen_rect(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y);
+RectF screen_rect(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y);
 luexp(context->apply_layout(root, screen_rect));
 ```
 
@@ -279,7 +279,7 @@ Explicit cell attachments make the primitive compatible with virtualized rows an
 ## Examples
 ### Full-screen root layout
 ```cpp
-RectF screen_rect(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y);
+RectF screen_rect(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y);
 luexp(context->apply_layout(root, screen_rect));
 ```
 

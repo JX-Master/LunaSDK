@@ -508,9 +508,8 @@ namespace Luna
                 auto sz = app.window->get_size();
 
                 GUI::FrameDesc frame;
-                frame.screen_size = Float2U((f32)sz.x, (f32)sz.y);
-                frame.framebuffer_size = fb_sz;
-                frame.dpi_scale = app.window->get_dpi_scale_factor();
+                frame.logical_size = Float2U((f32)sz.x, (f32)sz.y);
+                frame.render_size = fb_sz;
                 frame.delta_time = 1.0f / 60.0f;
                 app.gui->begin_frame(frame);
                 GUIWindow::update_input(&input_adapter);
@@ -518,10 +517,10 @@ namespace Luna
                 static i32 current_playback_adapter = 0;
                 static i32 current_capture_adapter = 0;
                 app.gui->push_layer(DEFAULT_LAYER_ID, Float2U(0.0f));
-                GUI::ElementHandle root = build_gui(app, frame.screen_size,
+                GUI::ElementHandle root = build_gui(app, frame.logical_size,
                     current_playback_adapter, current_capture_adapter);
                 app.gui->pop_layer();
-                RectF screen_rect(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y);
+                RectF screen_rect(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y);
                 luexp(EditorGUI::layout_tree(app.gui, root, screen_rect));
                 app.gui->route_input();
                 EditorGUI::ResolveResult resolved = EditorGUI::resolve_interactions(app.gui);

@@ -289,9 +289,8 @@ namespace Luna
             sz = m_window->get_size();
             UInt2U framebuffer_size = m_window->get_framebuffer_size();
             GUI::FrameDesc gui_frame;
-            gui_frame.screen_size = Float2U((f32)sz.x, (f32)sz.y);
-            gui_frame.framebuffer_size = framebuffer_size;
-            gui_frame.dpi_scale = m_window->get_dpi_scale_factor();
+            gui_frame.logical_size = Float2U((f32)sz.x, (f32)sz.y);
+            gui_frame.render_size = framebuffer_size;
             gui_frame.delta_time = 1.0f / 60.0f;
             m_gui->begin_frame(gui_frame);
             GUIWindow::update_input(m_window, m_gui);

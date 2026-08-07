@@ -235,24 +235,24 @@ namespace Luna
 
                     auto logical_sz = app.window->get_size();
                     GUI::FrameDesc frame;
-                    frame.screen_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
-                    frame.framebuffer_size = fb_sz;
-                    frame.dpi_scale = app.window->get_dpi_scale_factor();
+                    frame.logical_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
+                    frame.render_size = fb_sz;
                     frame.delta_time = 1.0f / 60.0f;
                     app.gui->begin_frame(frame);
                     GUIWindow::update_input(&input_adapter);
                     app.gui->push_layer(1, Float2U(0.0f));
                     GUI::ElementHandle root = app.gui->begin_element(1);
-                    desc.build(app.gui, root, frame.screen_size, desc.userdata);
+                    desc.build(app.gui, root, frame.logical_size, desc.userdata);
                     app.gui->end_element();
                     app.gui->pop_layer();
-                    luexp(EditorGUI::layout_tree(app.gui, root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                    luexp(EditorGUI::layout_tree(app.gui, root,
+                        RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
                     app.gui->route_input();
                     EditorGUI::ResolveResult resolved = EditorGUI::resolve_interactions(app.gui);
                     if(resolved.relayout_requested)
                     {
                         luexp(EditorGUI::layout_tree(app.gui, root,
-                            RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                            RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
                     }
                     luexp(GUIWindow::update_text_input(&input_adapter));
 

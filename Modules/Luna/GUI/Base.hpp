@@ -69,14 +69,13 @@ namespace Luna
         //! Describes one GUI frame.
         struct FrameDesc
         {
-            //! The logical GUI surface size used by layout and input positions.
-            //! @remark A window host normally treats this as screen size. A world-space host treats it as the
-            //! logical dimensions of one projected GUI surface.
-            Float2U screen_size = Float2U(0.0f);
-            //! The render target size in physical pixels.
-            UInt2U framebuffer_size = UInt2U(0, 0);
-            //! The host DPI scale for this frame.
-            f32 dpi_scale = 1.0f;
+            //! The logical GUI surface size used by layout, input positions and draw commands.
+            //! @remark A window host normally uses the window content size in logical coordinates. A world-space
+            //! host uses the logical dimensions of one projected GUI surface.
+            Float2U logical_size = Float2U(0.0f);
+            //! The size of the render target in physical pixels.
+            //! @remark This normally matches the extent of the color texture supplied to @ref IRenderer::render.
+            UInt2U render_size = UInt2U(0, 0);
             //! The elapsed time since the previous frame, in seconds.
             f32 delta_time = 1.0f / 60.0f;
         };

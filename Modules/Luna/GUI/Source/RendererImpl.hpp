@@ -165,8 +165,8 @@ namespace Luna
             bool m_depth_write_enable = false;
             u32 m_render_target_width = 0;
             u32 m_render_target_height = 0;
-            f32 m_screen_width = 0.0f;
-            f32 m_screen_height = 0.0f;
+            f32 m_logical_width = 0.0f;
+            f32 m_logical_height = 0.0f;
             Float4x4U m_surface_to_clip = Float4x4::identity();
             usize m_sdf_instance_capacity = 0;
             usize m_sdf_state_capacity = 0;

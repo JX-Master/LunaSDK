@@ -107,7 +107,7 @@ namespace Luna
 
         //! Describes one input event sent to a GUI context.
         //! @remark Positions use GUI surface logical coordinates whose origin is the top-left corner of
-        //! @ref FrameDesc::screen_size. Window hosts use screen coordinates; world-space hosts map pointer rays
+        //! @ref FrameDesc::logical_size. Window hosts use logical window coordinates; world-space hosts map pointer rays
         //! into the target surface before submitting events.
         struct InputEvent
         {

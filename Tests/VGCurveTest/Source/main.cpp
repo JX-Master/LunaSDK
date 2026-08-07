@@ -460,15 +460,14 @@ namespace Luna
 
                 auto logical_sz = app.window->get_size();
                 GUI::FrameDesc frame;
-                frame.screen_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
-                frame.framebuffer_size = fb_sz;
-                frame.dpi_scale = app.window->get_dpi_scale_factor();
+                frame.logical_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
+                frame.render_size = fb_sz;
                 frame.delta_time = 1.0f / 60.0f;
                 app.gui->begin_frame(frame);
                 GUIWindow::update_input(&input_adapter);
 
                 app.gui->push_layer(DEFAULT_LAYER_ID, Float2U(0.0f));
-                build_gui(app, frame.screen_size);
+                build_gui(app, frame.logical_size);
                 app.gui->pop_layer();
                 app.gui->route_input();
                 EditorGUI::resolve_interactions(app.gui);

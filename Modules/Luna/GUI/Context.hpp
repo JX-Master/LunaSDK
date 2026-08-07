@@ -44,7 +44,7 @@ namespace Luna
         struct [[Luna::interface("{B5B4D4D6-EFAB-4EB8-9D6B-DA10722CB5FD}")]] IContext : virtual Interface
         {
             //! Begins a new frame and resets per-frame element, layer, input and draw command storage.
-            //! @param[in] desc The frame description supplied by the host screen.
+            //! @param[in] desc The frame description supplied by the host.
             virtual void begin_frame(const FrameDesc& desc) = 0;
 
             //! Gets the current context generation.
@@ -56,15 +56,15 @@ namespace Luna
             virtual FrameDesc get_frame_desc() const = 0;
 
             //! Gets the latest pointer position seen by the shared GUI pointer routing stream.
-            //! @return Returns the pointer position in screen logical coordinates.
+            //! @return Returns the pointer position in logical surface coordinates.
             virtual Float2U get_pointer_position() const = 0;
 
             //! Gets the pointer movement accumulated while routing the latest input batch.
-            //! @return Returns the pointer delta in screen logical coordinates.
+            //! @return Returns the pointer delta in logical surface coordinates.
             virtual Float2U get_pointer_delta() const = 0;
 
-            //! Checks whether the latest pointer position is inside the GUI screen.
-            //! @return Returns `true` if the pointer is inside @ref FrameDesc::screen_size.
+            //! Checks whether the latest pointer position is inside the logical GUI surface.
+            //! @return Returns `true` if the pointer is inside @ref FrameDesc::logical_size.
             virtual bool is_pointer_inside() const = 0;
 
             //! Checks whether one pointer button is currently held down on the shared GUI pointer routing stream.

@@ -1186,8 +1186,8 @@ namespace Luna
             }
 
             FrameDesc frame_desc = context->get_frame_desc();
-            return RectF(0.0f, 0.0f, max(frame_desc.screen_size.x, 0.0f),
-                max(frame_desc.screen_size.y, 0.0f));
+            return RectF(0.0f, 0.0f, max(frame_desc.logical_size.x, 0.0f),
+                max(frame_desc.logical_size.y, 0.0f));
         }
 
         LUNA_GUI_API MeasureResult measure_table(IContext* context, const ElementHandle& element,

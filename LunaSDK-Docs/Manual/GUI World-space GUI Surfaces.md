@@ -9,7 +9,7 @@ The feature is intended for in-game displays, editor viewport overlays and other
 analytic resolution without first rendering the complete GUI to an intermediate texture.
 
 Screen-space GUI remains the default. Existing callers that do not provide a custom surface transform continue to
-use an orthographic projection derived from `FrameDesc::screen_size`.
+use an orthographic projection derived from `FrameDesc::logical_size`.
 
 ## Concepts
 ### Logical surface
@@ -41,14 +41,13 @@ ordinary `InputEvent` records to that surface's context. One context per indepen
 
 ## Programming guide
 ### 1. Build the context in logical coordinates
-Begin the frame exactly as for a window GUI. `screen_size` describes logical panel dimensions rather than physical
+Begin the frame exactly as for a window GUI. `logical_size` describes logical panel dimensions rather than physical
 world units.
 
 ```cpp
 GUI::FrameDesc frame;
-frame.screen_size = Float2U(1024.0f, 576.0f);
-frame.framebuffer_size = scene_framebuffer_size;
-frame.dpi_scale = 1.0f;
+frame.logical_size = Float2U(1024.0f, 576.0f);
+frame.render_size = scene_render_size;
 frame.delta_time = delta_time;
 context->begin_frame(frame);
 ```

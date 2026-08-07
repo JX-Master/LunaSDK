@@ -473,10 +473,9 @@ namespace Luna
 
             auto settings = m_renderer.get_settings();
             GUI::FrameDesc frame = context->get_frame_desc();
-            f32 dpi_scale = max(frame.dpi_scale, 1.0f);
             UInt2U target_size(
-                (u32)max(frame.screen_size.x * 0.5f * dpi_scale, 64.0f),
-                (u32)max(frame.screen_size.y * 0.55f * dpi_scale, 64.0f));
+                (u32)max((f32)frame.render_size.x * 0.5f, 64.0f),
+                (u32)max((f32)frame.render_size.y * 0.55f, 64.0f));
             settings.screen_size = target_size;
 
             if(settings != m_renderer.get_settings())

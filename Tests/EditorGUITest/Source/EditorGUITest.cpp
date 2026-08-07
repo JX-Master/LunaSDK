@@ -286,9 +286,8 @@ namespace
 
                 UInt2U logical_size = app.window->get_size();
                 GUI::FrameDesc frame;
-                frame.screen_size = Float2U((f32)logical_size.x, (f32)logical_size.y);
-                frame.framebuffer_size = framebuffer_size;
-                frame.dpi_scale = app.window->get_dpi_scale_factor();
+                frame.logical_size = Float2U((f32)logical_size.x, (f32)logical_size.y);
+                frame.render_size = framebuffer_size;
                 frame.delta_time = 1.0f / 60.0f;
                 app.gui->begin_frame(frame);
                 GUIWindow::update_input(&input_adapter);
@@ -303,7 +302,7 @@ namespace
                 EditorGUITest::ShowcaseHandles handles;
                 GUI::ElementHandle root = EditorGUITest::build_showcase(app.gui, app.state, handles);
                 luexp(EditorGUI::layout_tree(app.gui, root,
-                    RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                    RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
                 app.gui->route_input();
                 EditorGUI::ResolveResult resolved = EditorGUI::resolve_interactions(app.gui);
                 EditorGUITest::resolve_showcase(app.gui, app.state, handles);
@@ -313,7 +312,7 @@ namespace
                 if(resolved.relayout_requested || style_changed)
                 {
                     luexp(EditorGUI::layout_tree(app.gui, root,
-                        RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                        RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
                 }
                 luexp(GUIWindow::update_text_input(&input_adapter));
                 luexp(app.gui->generate_draw_commands());

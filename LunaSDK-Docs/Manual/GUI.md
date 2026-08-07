@@ -1,4 +1,4 @@
-GUI is the low-level, data-oriented foundation used by LunaSDK GUI packages. It sits between higher-level immediate GUI APIs and the vector graphics backend.
+Creates high-quality, highly-flexible and high-performance graphics user interface using LunaSDK.
 
 * [[GUI Overview]]
 - [[GUI Elements and Layers]]

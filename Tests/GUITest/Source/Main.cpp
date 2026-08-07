@@ -90,9 +90,8 @@ namespace
         {
             Ref<GUI::IContext> context = GUI::new_context();
             GUI::FrameDesc frame;
-            frame.screen_size = Float2U((f32)size);
-            frame.framebuffer_size = UInt2U(size);
-            frame.dpi_scale = 1.0f;
+            frame.logical_size = Float2U((f32)size);
+            frame.render_size = UInt2U(size);
             frame.delta_time = 1.0f / 60.0f;
             context->begin_frame(frame);
             context->push_layer(1, Float2U(0.0f));
@@ -368,8 +367,8 @@ namespace
             if(world_surface)
             {
                 GUI::FrameDesc frame = app.gui->get_frame_desc();
-                f32 width = max(frame.screen_size.x, 1.0f);
-                f32 height = max(frame.screen_size.y, 1.0f);
+                f32 width = max(frame.logical_size.x, 1.0f);
+                f32 height = max(frame.logical_size.y, 1.0f);
                 Float3 eye(width * 0.74f, height * 0.28f, height * 1.85f);
                 Float3 target(width * 0.5f, height * 0.5f, 0.0f);
                 Float4x4 view = AffineMatrix::make_look_at(eye, target, Float3(0.0f, -1.0f, 0.0f));
@@ -456,9 +455,8 @@ namespace
 
                 auto logical_sz = app.window->get_size();
                 GUI::FrameDesc frame;
-                frame.screen_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
-                frame.framebuffer_size = fb_sz;
-                frame.dpi_scale = app.window->get_dpi_scale_factor();
+                frame.logical_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
+                frame.render_size = fb_sz;
                 frame.delta_time = 1.0f / 60.0f;
                 app.sheet.animation_time += frame.delta_time;
                 app.gui->begin_frame(frame);
@@ -486,7 +484,8 @@ namespace
                 luassert(sheet_element && sheet_element->layout_callback_config != U32_MAX &&
                     sheet_element->draw_config != U32_MAX);
                 luassert(app.gui->get_layout_callback_config(root).algorithm == Name("gui.test.canvas"));
-                luexp(app.gui->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                luexp(app.gui->apply_layout(root,
+                    RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
                 app.gui->route_input();
                 bool layout_dirty = false;
                 if(app.sheet.slice_index >= GUITest::NUM_INPUT_SLICES &&
@@ -505,7 +504,8 @@ namespace
                 }
                 if(layout_dirty)
                 {
-                    luexp(app.gui->apply_layout(root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                    luexp(app.gui->apply_layout(root,
+                        RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
                 }
                 luexp(GUIWindow::update_text_input(&input_adapter));
                 luexp(app.gui->generate_draw_commands());

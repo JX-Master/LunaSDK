@@ -498,7 +498,7 @@ namespace Luna
                 f32 canvas_height = binding.value_count == 4 ? 454.0f : 416.0f;
                 f32 popup_width = desc.popup_width > 0.0f ? max(desc.popup_width, default_width) : default_width;
                 f32 popup_height = canvas_height + 14.0f;
-                Float2U screen = context->get_frame_desc().screen_size;
+                Float2U screen = context->get_frame_desc().logical_size;
                 PopupDesc popup_desc;
                 popup_desc.position.x = clamp(state->popup_position.x, 0.0f, max(screen.x - popup_width, 0.0f));
                 popup_desc.position.y = clamp(state->popup_position.y, 0.0f, max(screen.y - popup_height, 0.0f));
