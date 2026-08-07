@@ -3,8 +3,55 @@
 `*.Target.cs` files describe LunaBuild targets for a project. `*.Project.cs`
 files may describe project-level build properties and defaults. LunaBuild Core
 is project-agnostic: it scans the repository for rules files, compiles those
-files into a temporary rules assembly, and loads concrete `TargetRules` and
-`ProjectRules` types.
+files into a project-local rules assembly, and loads concrete `TargetRules` and
+`ProjectRules` types in an isolated load context. Each project root must have
+exactly one concrete, root-level `ProjectRules` type.
+
+## Project Imports
+
+Use `ConfigureProject(...)` in a root `*.Project.cs` rule to import another
+LunaBuild project. Imports form a tree: a project can reference its own targets
+and targets in its import subtree, but not ancestors or sibling subtrees.
+Canonical project roots and project names must both be unique in one build
+session; duplicate or cyclic imports report the complete import chain.
+
+```csharp
+protected override void ConfigureProject(Project project)
+{
+    var runtime = project.ImportProject("../RuntimeProject");
+    runtime.PrimaryOptions = runtime.DefaultBuildOptions with
+    {
+        Platform = Options.Platform,
+        Architecture = Options.Architecture,
+        Mode = Options.Mode,
+        Shared = Options.Shared,
+        RhiApi = Options.RhiApi,
+        Properties = runtime.ResolveProperties(new Dictionary<string, string?>
+        {
+            ["validation"] = "true",
+        }),
+    };
+
+    project.UseActionConfiguration(runtime, "cppsl.shader");
+}
+```
+
+The imported project's `PrimaryOptions` and `BuildDirectory` may be assigned
+only while its importer is running `ConfigureProject(...)`. Configuration is
+frozen before the imported project configures its own imports. A custom
+`BuildDirectory` must be absolute; otherwise imported outputs default to a
+canonical-root-hashed directory below the host build tree. Two projects cannot
+use the same build directory in one session.
+
+Target names are project-qualified across project boundaries:
+
+```csharp
+DependsOn("RuntimeProject.Runtime");
+```
+
+Bare dependency names stay local to the declaring project. On the command
+line, `--target Runtime` means the host project's `Runtime` target, while
+`--target RuntimeProject.Runtime` selects the imported target explicitly.
 
 ## Location
 
@@ -210,6 +257,42 @@ public sealed class ExampleProjectRules : ProjectRules
         }
     }
 }
+```
+
+Project rules can also define project-wide include directories and a library
+name prefix without adding project-specific policy to LunaBuild Core:
+
+```csharp
+protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+{
+    GlobalIncludeDirectories("Modules");
+    LibraryPrefix("Example");
+}
+```
+
+Named action configurations bind generic graph actions to project-owned tools
+and resources. File and directory values are resolved relative to the provider
+project; bound files and recursively enumerated directory contents become graph
+inputs for cache invalidation. An importer must explicitly adopt a configuration with
+`UseActionConfiguration(provider, name)` before its targets can use it.
+
+```csharp
+ActionConfiguration(
+    "cppsl.shader",
+    targets: new Dictionary<string, string>
+    {
+        ["compiler"] = "CPPSL",
+        ["native_extractor"] = "cppsl-native-extractor",
+    },
+    files: new Dictionary<string, string>
+    {
+        ["dxc"] = "SDKs/DirectXShaderCompiler/bin/dxc",
+        ["glslang"] = "SDKs/VulkanSDK/bin/glslangValidator",
+    },
+    directories: new Dictionary<string, string>
+    {
+        ["standard_library"] = "Tools/CPPSL/stdlib",
+    });
 ```
 
 Users can set project properties by using their declared aliases or the generic

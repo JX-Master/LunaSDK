@@ -9,7 +9,7 @@
 */
 #include "AssetBrowser.hpp"
 #include "MainEditor.hpp"
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Log.hpp>
@@ -128,51 +128,51 @@ namespace Luna
 
     namespace
     {
-        GUICore::LayoutConfig fixed_size(f32 width, f32 height)
+        GUI::LayoutConfig fixed_size(f32 width, f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::fixed;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::fixed;
             layout.width.value = width;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::LayoutConfig fixed_height(f32 height)
+        GUI::LayoutConfig fixed_height(f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::LayoutConfig fill_layout()
+        GUI::LayoutConfig fill_layout()
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.kind = GUI::SizeKind::percent;
             layout.height.value = 1.0f;
             layout.flex_grow = 1.0f;
             return layout;
         }
 
-        GUICore::FlexLayoutDesc linear_desc(GUICore::LayoutAxis axis, f32 gap = 0.0f)
+        GUI::FlexLayoutDesc linear_desc(GUI::LayoutAxis axis, f32 gap = 0.0f)
         {
-            GUICore::FlexLayoutDesc desc;
+            GUI::FlexLayoutDesc desc;
             desc.axis = axis;
             desc.main_axis_gap = gap;
             return desc;
         }
 
-        void core_draw_relative_rect(GUICore::IContext* context, const RectF& rect, const Float4U& color, f32 radius = 0.0f,
+        void gui_draw_relative_rect(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 radius = 0.0f,
             const Float4U& scale = Float4U(0.0f))
         {
-            GUICore::DrawCommand command;
-            command.type = radius > 0.0f ? GUICore::DrawCommandType::rounded_rect : GUICore::DrawCommandType::rect;
-            command.rect_reference = GUICore::DrawCommandRectReference::element;
+            GUI::DrawCommand command;
+            command.type = radius > 0.0f ? GUI::DrawCommandType::rounded_rect : GUI::DrawCommandType::rect;
+            command.rect_reference = GUI::DrawCommandRectReference::element;
             command.rect = rect;
             command.rect_layout_scale = scale;
             command.color = color;
@@ -180,13 +180,13 @@ namespace Luna
             context->draw(command);
         }
 
-        void core_draw_relative_text(GUICore::IContext* context, const RectF& rect, const c8* text,
+        void gui_draw_relative_text(GUI::IContext* context, const RectF& rect, const c8* text,
             const Float4U& color = Float4U(1.0f), f32 font_size = 16.0f,
             VG::TextAlignment alignment = VG::TextAlignment::center)
         {
-            GUICore::DrawCommand command;
-            command.type = GUICore::DrawCommandType::text;
-            command.rect_reference = GUICore::DrawCommandRectReference::element;
+            GUI::DrawCommand command;
+            command.type = GUI::DrawCommandType::text;
+            command.rect_reference = GUI::DrawCommandRectReference::element;
             command.rect = rect;
             command.color = color;
             command.font_size = font_size;
@@ -196,16 +196,16 @@ namespace Luna
             context->draw(command);
         }
 
-        void core_draw_folder_icon(GUICore::IContext* context, f32 tile_size)
+        void gui_draw_folder_icon(GUI::IContext* context, f32 tile_size)
         {
             Float4U folder_color(0.78f, 0.78f, 0.78f, 1.0f);
-            core_draw_relative_rect(context, RectF(
+            gui_draw_relative_rect(context, RectF(
                 5.0f + tile_size * 0.18f,
                 5.0f + tile_size * 0.18f,
                 tile_size * 0.44f,
                 tile_size * 0.18f),
                 folder_color, 5.0f);
-            core_draw_relative_rect(context, RectF(
+            gui_draw_relative_rect(context, RectF(
                 5.0f + tile_size * 0.08f,
                 5.0f + tile_size * 0.30f,
                 tile_size * 0.84f,
@@ -281,7 +281,7 @@ namespace Luna
         }
     }
 
-    void AssetBrowser::render(GUICore::IContext* context, bool* open)
+    void AssetBrowser::render(GUI::IContext* context, bool* open)
     {
         for(auto& asset : m_deleting_assets)
         {
@@ -299,43 +299,43 @@ namespace Luna
             return;
         }
 
-        context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
-        GUI::DockPanelDesc panel_desc;
+        context->push_data_scope(context->make_id((GUI::id_t)(usize)this));
+        EditorGUI::DockPanelDesc panel_desc;
         panel_desc.minimum_floating_size = Float2U(320.0f, 220.0f);
-        if(!GUI::begin_dock_panel(context, context->make_id("asset_browser_panel"), "Asset Browser", open, panel_desc))
+        if(!EditorGUI::begin_dock_panel(context, context->make_id("asset_browser_panel"), "Asset Browser", open, panel_desc))
         {
             context->pop_data_scope();
             return;
         }
         m_host_focused = true;
 
-        GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, context->make_id("menu_bar"),
+        GUI::ElementHandle menu_bar = EditorGUI::begin_menu_bar(context, context->make_id("menu_bar"),
             "Asset Browser Menu Bar", fixed_height(30.0f));
-        GUICore::ElementHandle folder_item;
-        Vector<Pair<Name, GUICore::ElementHandle>> asset_items;
-        if(GUI::begin_menu(context, context->make_id("new_menu"), "New"))
+        GUI::ElementHandle folder_item;
+        Vector<Pair<Name, GUI::ElementHandle>> asset_items;
+        if(EditorGUI::begin_menu(context, context->make_id("new_menu"), "New"))
         {
-            folder_item = GUI::menu_item(context, context->make_id("folder"), "Folder");
+            folder_item = EditorGUI::menu_item(context, context->make_id("folder"), "Folder");
             asset_items.reserve(g_env->new_asset_types.size());
             for(auto& i : g_env->new_asset_types)
             {
-                asset_items.push_back(make_pair(i, GUI::menu_item(context, context->make_id(i.c_str()), i.c_str())));
+                asset_items.push_back(make_pair(i, EditorGUI::menu_item(context, context->make_id(i.c_str()), i.c_str())));
             }
-            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 220.0f)));
+            lupanic_if_failed(EditorGUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 220.0f)));
         }
-        Vector<Pair<Name, GUICore::ElementHandle>> import_items;
-        if(GUI::begin_menu(context, context->make_id("import_menu"), "Import"))
+        Vector<Pair<Name, GUI::ElementHandle>> import_items;
+        if(EditorGUI::begin_menu(context, context->make_id("import_menu"), "Import"))
         {
             import_items.reserve(g_env->importer_types.size());
             for(auto& i : g_env->importer_types)
             {
-                import_items.push_back(make_pair(i.first, GUI::menu_item(context, context->make_id(i.first.c_str()), i.first.c_str())));
+                import_items.push_back(make_pair(i.first, EditorGUI::menu_item(context, context->make_id(i.first.c_str()), i.first.c_str())));
             }
-            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 220.0f)));
+            lupanic_if_failed(EditorGUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 220.0f)));
         }
-        GUI::end_menu_bar(context, menu_bar);
+        EditorGUI::end_menu_bar(context, menu_bar);
 
-        if(GUI::is_item_clicked(context, folder_item))
+        if(EditorGUI::is_item_clicked(context, folder_item))
         {
             Path new_folder_path = get_new_folder_path(m_path);
             auto r = VFS::create_dir(new_folder_path);
@@ -347,14 +347,14 @@ namespace Luna
         }
         for(auto& item : asset_items)
         {
-            if(GUI::is_item_clicked(context, item.second))
+            if(EditorGUI::is_item_clicked(context, item.second))
             {
                 create_new_asset_in_folder(m_path, item.first, m_editing_asset_name, m_asset_name_editing_buf);
             }
         }
         for(auto& item : import_items)
         {
-            if(GUI::is_item_clicked(context, item.second))
+            if(EditorGUI::is_item_clicked(context, item.second))
             {
                 auto iter = g_env->importer_types.find(item.first);
                 if(iter != g_env->importer_types.end())
@@ -368,46 +368,46 @@ namespace Luna
         navbar(context);
         tile_context(context);
 
-        GUI::end_dock_panel(context);
+        EditorGUI::end_dock_panel(context);
         context->pop_data_scope();
     }
 
-    void AssetBrowser::navbar(GUICore::IContext* context)
+    void AssetBrowser::navbar(GUI::IContext* context)
     {
         constexpr f32 button_size = 24.0f;
         constexpr f32 row_height = 30.0f;
         context->push_data_scope(context->make_id("navbar"));
-        GUICore::ElementHandle row = GUI::begin_h_layout(context, context->make_id("row"), "Asset Browser Navbar",
+        GUI::ElementHandle row = EditorGUI::begin_h_layout(context, context->make_id("row"), "Asset Browser Navbar",
             fixed_height(row_height));
 
         bool back_disabled = (m_current_location_in_histroy_path == 0);
-        GUI::ButtonDesc back_desc;
+        EditorGUI::ButtonDesc back_desc;
         back_desc.enabled = !back_disabled;
-        GUICore::ElementHandle back_button = GUI::text_button(context, context->make_id("back"), "<",
+        GUI::ElementHandle back_button = EditorGUI::text_button(context, context->make_id("back"), "<",
             fixed_size(button_size, button_size), back_desc);
-        if(GUI::is_item_clicked(context, back_button))
+        if(EditorGUI::is_item_clicked(context, back_button))
         {
             --m_current_location_in_histroy_path;
             m_path.assign(m_histroy_paths[m_current_location_in_histroy_path]);
         }
 
         bool forward_disabled = (m_current_location_in_histroy_path == m_histroy_paths.size() - 1);
-        GUI::ButtonDesc forward_desc;
+        EditorGUI::ButtonDesc forward_desc;
         forward_desc.enabled = !forward_disabled;
-        GUICore::ElementHandle forward_button = GUI::text_button(context, context->make_id("forward"), ">",
+        GUI::ElementHandle forward_button = EditorGUI::text_button(context, context->make_id("forward"), ">",
             fixed_size(button_size, button_size), forward_desc);
-        if(GUI::is_item_clicked(context, forward_button))
+        if(EditorGUI::is_item_clicked(context, forward_button))
         {
             ++m_current_location_in_histroy_path;
             m_path.assign(m_histroy_paths[m_current_location_in_histroy_path]);
         }
 
         bool pop_disabled = m_path.empty();
-        GUI::ButtonDesc pop_desc;
+        EditorGUI::ButtonDesc pop_desc;
         pop_desc.enabled = !pop_disabled;
-        GUICore::ElementHandle pop_button = GUI::text_button(context, context->make_id("up"), "^",
+        GUI::ElementHandle pop_button = EditorGUI::text_button(context, context->make_id("up"), "^",
             fixed_size(button_size, button_size), pop_desc);
-        if(GUI::is_item_clicked(context, pop_button))
+        if(EditorGUI::is_item_clicked(context, pop_button))
         {
             auto path = m_path;
             path.pop_back();
@@ -416,10 +416,10 @@ namespace Luna
 
         if(m_is_navbar_text_editing)
         {
-            GUI::input_text(context, context->make_id("path_text"), m_path_edit_text, fixed_height(button_size));
-            GUICore::ElementHandle go_button = GUI::text_button(context, context->make_id("go"), "Go",
+            EditorGUI::input_text(context, context->make_id("path_text"), m_path_edit_text, fixed_height(button_size));
+            GUI::ElementHandle go_button = EditorGUI::text_button(context, context->make_id("go"), "Go",
                 fixed_size(48.0f, button_size));
-            if(GUI::is_item_clicked(context, go_button))
+            if(EditorGUI::is_item_clicked(context, go_button))
             {
                 m_is_navbar_text_editing = false;
                 auto new_path = Path(m_path_edit_text.c_str());
@@ -433,16 +433,16 @@ namespace Luna
         else
         {
             String path_text = m_path.encode(PathSeparator::slash, true);
-            GUICore::ElementHandle path_button = GUI::text_button(context, context->make_id("path"), path_text.c_str(),
+            GUI::ElementHandle path_button = EditorGUI::text_button(context, context->make_id("path"), path_text.c_str(),
                 fixed_height(button_size));
-            if(GUI::is_item_clicked(context, path_button))
+            if(EditorGUI::is_item_clicked(context, path_button))
             {
                 m_is_navbar_text_editing = true;
                 m_path_edit_text = path_text;
             }
         }
 
-        GUI::end_h_layout(context, row, linear_desc(GUICore::LayoutAxis::x, 6.0f));
+        EditorGUI::end_h_layout(context, row, linear_desc(GUI::LayoutAxis::x, 6.0f));
         context->pop_data_scope();
     }
 
@@ -507,17 +507,17 @@ namespace Luna
         lucatchret;
         return ok;
     }
-    void AssetBrowser::tile_context(GUICore::IContext* context)
+    void AssetBrowser::tile_context(GUI::IContext* context)
     {
         context->push_data_scope(context->make_id("tile_context"));
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, context->make_id("scroll"), "Asset Tile Scroll",
+        GUI::ElementHandle scroll = EditorGUI::begin_scroll_view(context, context->make_id("scroll"), "Asset Tile Scroll",
             fill_layout());
         auto assets = get_assets_in_folder(m_path);
         if(succeeded(assets))
         {
             if(assets.get().empty())
             {
-                GUI::text(context, context->make_id("empty"), "Empty Directory", fixed_height(30.0f));
+                EditorGUI::text(context, context->make_id("empty"), "Empty Directory", fixed_height(30.0f));
             }
             else
             {
@@ -525,24 +525,24 @@ namespace Luna
                 constexpr f32 label_height = 24.0f;
                 f32 tile_width = m_tile_size + padding * 2.0f;
                 f32 tile_height = m_tile_size + padding * 2.0f + label_height;
-                GUICore::ElementHandle grid = GUI::begin_grid_layout(context, context->make_id("grid"), "Asset Tile Grid",
+                GUI::ElementHandle grid = EditorGUI::begin_grid_layout(context, context->make_id("grid"), "Asset Tile Grid",
                     fill_layout());
                 for(usize i = 0; i < assets.get().size(); ++i)
                 {
                     AssetThumbnail& thumbnail = assets.get()[i];
                     bool selected = m_selections.find(thumbnail.m_filename) != m_selections.end();
                     context->push_data_scope(context->make_id(thumbnail.m_filename.c_str()));
-                    GUICore::ElementHandle tile = GUI::begin_button(context, context->make_id("tile"), thumbnail.m_filename.c_str(),
+                    GUI::ElementHandle tile = EditorGUI::begin_button(context, context->make_id("tile"), thumbnail.m_filename.c_str(),
                         fixed_size(tile_width, tile_height));
                     if(selected)
                     {
-                        core_draw_relative_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f),
+                        gui_draw_relative_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f),
                             Float4U(0.18f, 0.28f, 0.45f, 0.90f), 5.0f);
                     }
 
                     if(thumbnail.m_is_dir)
                     {
-                        core_draw_folder_icon(context, m_tile_size);
+                        gui_draw_folder_icon(context, m_tile_size);
                     }
                     else
                     {
@@ -555,7 +555,7 @@ namespace Luna
                             draw_asset_tile_preview(context, asset.get(), RectF(padding, padding, m_tile_size, m_tile_size));
 
                             auto iter = g_env->editor_types.find(asset_type);
-                            if(iter != g_env->editor_types.end() && GUI::is_item_double_clicked(context, tile))
+                            if(iter != g_env->editor_types.end() && EditorGUI::is_item_double_clicked(context, tile))
                             {
                                 auto edit = iter->second.new_editor(iter->second.userdata.get(), asset.get());
                                 m_editor->m_editors.push_back(edit);
@@ -567,14 +567,14 @@ namespace Luna
                             }
                             Float4U state_color = Asset::get_asset_state(asset.get()) == Asset::AssetState::loaded ?
                                 Color::green() : Color::yellow();
-                            core_draw_relative_rect(context, RectF(padding + m_tile_size - 16.0f, padding + m_tile_size - 16.0f,
+                            gui_draw_relative_rect(context, RectF(padding + m_tile_size - 16.0f, padding + m_tile_size - 16.0f,
                                 12.0f, 12.0f), state_color, 6.0f);
                         }
                         else
                         {
-                            core_draw_relative_text(context, RectF(padding, padding, m_tile_size, m_tile_size), "Unknown",
+                            gui_draw_relative_text(context, RectF(padding, padding, m_tile_size, m_tile_size), "Unknown",
                                 Float4U(1.0f), 16.0f);
-                            core_draw_relative_rect(context, RectF(padding + m_tile_size - 16.0f, padding + m_tile_size - 16.0f,
+                            gui_draw_relative_rect(context, RectF(padding + m_tile_size - 16.0f, padding + m_tile_size - 16.0f,
                                 12.0f, 12.0f), Color::red(), 6.0f);
                         }
                     }
@@ -591,23 +591,23 @@ namespace Luna
                     {
                         display_text = display_name;
                     }
-                    core_draw_relative_text(context, RectF(padding, padding + m_tile_size, m_tile_size, label_height),
+                    gui_draw_relative_text(context, RectF(padding, padding + m_tile_size, m_tile_size, label_height),
                         display_text.c_str(), Float4U(1.0f), 16.0f);
-                    GUI::end_button(context);
+                    EditorGUI::end_button(context);
 
-                    if(GUI::is_item_clicked(context, tile) || GUI::is_item_right_clicked(context, tile))
+                    if(EditorGUI::is_item_clicked(context, tile) || EditorGUI::is_item_right_clicked(context, tile))
                     {
                         m_selections.clear();
                         m_selections.insert(thumbnail.m_filename);
                     }
-                    if(GUI::is_item_right_clicked(context, tile))
+                    if(EditorGUI::is_item_right_clicked(context, tile))
                     {
                         m_popup_asset = thumbnail.m_filename;
                         m_asset_popup_open = true;
                         m_asset_popup_position = context->get_pointer_position();
-                        GUI::open_popup(context, context->make_id("asset_popup"));
+                        EditorGUI::open_popup(context, context->make_id("asset_popup"));
                     }
-                    if(thumbnail.m_is_dir && GUI::is_item_double_clicked(context, tile))
+                    if(thumbnail.m_is_dir && EditorGUI::is_item_double_clicked(context, tile))
                     {
                         auto path = m_path;
                         path.push_back(thumbnail.m_filename);
@@ -615,64 +615,64 @@ namespace Luna
                     }
                     context->pop_data_scope();
                 }
-                GUICore::GridLayoutDesc grid_desc;
-                grid_desc.mode = GUICore::GridLayoutMode::fixed_cell_size;
+                GUI::GridLayoutDesc grid_desc;
+                grid_desc.mode = GUI::GridLayoutMode::fixed_cell_size;
                 grid_desc.cell_size = Float2U(tile_width, tile_height);
                 grid_desc.gap = Float2U(8.0f, 8.0f);
-                GUI::end_grid_layout(context, grid, grid_desc);
+                EditorGUI::end_grid_layout(context, grid, grid_desc);
             }
         }
         else
         {
-            GUI::text(context, context->make_id("failed"), "Failed to display assets in this directory.", fixed_height(24.0f));
-            GUI::text(context, context->make_id("reason"), explain(assets.errcode()), fixed_height(24.0f));
+            EditorGUI::text(context, context->make_id("failed"), "Failed to display assets in this directory.", fixed_height(24.0f));
+            EditorGUI::text(context, context->make_id("reason"), explain(assets.errcode()), fixed_height(24.0f));
         }
-        GUI::end_scroll_view(context);
+        EditorGUI::end_scroll_view(context);
 
-        GUICore::id_t popup_id = context->make_id("asset_popup");
+        GUI::id_t popup_id = context->make_id("asset_popup");
         bool rename_mode = m_editing_asset_name == m_popup_asset && !m_popup_asset.empty();
-        GUI::PopupDesc popup_desc;
+        EditorGUI::PopupDesc popup_desc;
         popup_desc.position = m_asset_popup_position;
         popup_desc.layout = fixed_size(rename_mode ? 260.0f : 170.0f, rename_mode ? 118.0f : 74.0f);
-        GUICore::ElementHandle popup;
-        if(GUI::begin_popup(context, popup_id, popup_desc, &popup))
+        GUI::ElementHandle popup;
+        if(EditorGUI::begin_popup(context, popup_id, popup_desc, &popup))
         {
             m_asset_popup_open = true;
             if(rename_mode)
             {
-                GUI::input_text(context, context->make_id("rename_text"), m_asset_name_editing_buf, fixed_height(30.0f));
-                GUICore::ElementHandle buttons = GUI::begin_h_layout(context, context->make_id("rename_buttons"),
+                EditorGUI::input_text(context, context->make_id("rename_text"), m_asset_name_editing_buf, fixed_height(30.0f));
+                GUI::ElementHandle buttons = EditorGUI::begin_h_layout(context, context->make_id("rename_buttons"),
                     "Rename Buttons", fixed_height(30.0f));
-                GUICore::ElementHandle ok_button = GUI::text_button(context, context->make_id("rename_ok"), "OK",
+                GUI::ElementHandle ok_button = EditorGUI::text_button(context, context->make_id("rename_ok"), "OK",
                     fixed_size(64.0f, 30.0f));
-                GUICore::ElementHandle cancel_button = GUI::text_button(context, context->make_id("rename_cancel"),
+                GUI::ElementHandle cancel_button = EditorGUI::text_button(context, context->make_id("rename_cancel"),
                     "Cancel", fixed_size(78.0f, 30.0f));
-                GUI::end_h_layout(context, buttons, linear_desc(GUICore::LayoutAxis::x, 6.0f));
-                if(GUI::is_item_clicked(context, ok_button))
+                EditorGUI::end_h_layout(context, buttons, linear_desc(GUI::LayoutAxis::x, 6.0f));
+                if(EditorGUI::is_item_clicked(context, ok_button))
                 {
                     commit_asset_rename(m_path, m_popup_asset, m_asset_name_editing_buf, m_editing_asset_name);
                     m_asset_popup_open = false;
-                    GUI::close_popup(context, popup_id);
+                    EditorGUI::close_popup(context, popup_id);
                 }
-                if(GUI::is_item_clicked(context, cancel_button))
+                if(EditorGUI::is_item_clicked(context, cancel_button))
                 {
                     m_editing_asset_name.reset();
                     m_asset_popup_open = false;
-                    GUI::close_popup(context, popup_id);
+                    EditorGUI::close_popup(context, popup_id);
                 }
             }
             else
             {
-                GUICore::ElementHandle rename_item = GUI::selectable(context, context->make_id("rename"), "Rename",
+                GUI::ElementHandle rename_item = EditorGUI::selectable(context, context->make_id("rename"), "Rename",
                     false, fixed_height(28.0f));
-                GUICore::ElementHandle delete_item = GUI::selectable(context, context->make_id("delete"), "Delete",
+                GUI::ElementHandle delete_item = EditorGUI::selectable(context, context->make_id("delete"), "Delete",
                     false, fixed_height(28.0f));
-                if(GUI::is_item_clicked(context, rename_item))
+                if(EditorGUI::is_item_clicked(context, rename_item))
                 {
                     m_editing_asset_name = m_popup_asset;
                     m_asset_name_editing_buf = m_popup_asset.c_str();
                 }
-                if(GUI::is_item_clicked(context, delete_item))
+                if(EditorGUI::is_item_clicked(context, delete_item))
                 {
                     Path path = m_path;
                     path.push_back(m_popup_asset);
@@ -706,13 +706,13 @@ namespace Luna
                         }
                     }
                     m_asset_popup_open = false;
-                    GUI::close_popup(context, popup_id);
+                    EditorGUI::close_popup(context, popup_id);
                 }
             }
-            lupanic_if_failed(GUI::end_popup(context, popup, RectF(0.0f, 0.0f, popup_desc.layout.width.value,
+            lupanic_if_failed(EditorGUI::end_popup(context, popup, RectF(0.0f, 0.0f, popup_desc.layout.width.value,
                 popup_desc.layout.height.value)));
         }
-        else if(m_asset_popup_open && !GUI::is_popup_open(context, popup_id))
+        else if(m_asset_popup_open && !EditorGUI::is_popup_open(context, popup_id))
         {
             m_asset_popup_open = false;
             m_editing_asset_name.reset();

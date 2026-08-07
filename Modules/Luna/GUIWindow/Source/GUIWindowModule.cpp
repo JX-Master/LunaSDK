@@ -22,7 +22,7 @@ namespace Luna
             virtual RV on_register() override
             {
                 return add_dependency_modules(this, {
-                    GUICore::module_gui_core(),
+                    GUI::module_gui(),
                     module_window(),
                     module_hid()});
             }

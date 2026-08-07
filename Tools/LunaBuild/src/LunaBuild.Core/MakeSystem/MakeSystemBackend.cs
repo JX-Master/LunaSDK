@@ -260,7 +260,7 @@ public sealed class MakeSystemBackend
 
     private static string FormatActionContext(MakeActionContext context)
     {
-        var options = context.Graph.Options;
+        var options = context.Options;
         var builder = new StringBuilder();
         builder.AppendLine("Make action context:");
         builder.AppendLine($"  action: {context.ActionKind}");
@@ -366,7 +366,7 @@ public sealed class MakeSystemBackend
 
     private static ValidatedGraph ValidateGraph(BuildGraph graph)
     {
-        if(graph.Version != 1)
+        if(graph.Version is not (1 or 2))
         {
             throw new MakeSystemException($"Unsupported build graph version: {graph.Version}");
         }

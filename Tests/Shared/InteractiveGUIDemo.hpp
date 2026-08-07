@@ -9,7 +9,7 @@
 */
 #pragma once
 #include <Luna/Font/Font.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/RHI/SwapChain.hpp>
@@ -32,15 +32,15 @@ namespace Luna
             Ref<Window::IWindow> window;
             Ref<RHI::ISwapChain> swap_chain;
             Ref<RHI::ICommandBuffer> cmdbuf;
-            Ref<GUICore::IContext> gui;
-            Ref<GUICore::IRenderer> renderer;
+            Ref<GUI::IContext> gui;
+            Ref<GUI::IRenderer> renderer;
             u32 queue = U32_MAX;
             u32 width = 0;
             u32 height = 0;
         };
 
         using DemoInitFunc = RV(*)(InteractiveGUIDemoApp& app, void* userdata);
-        using DemoBuildFunc = void(*)(GUICore::IContext* context, const GUICore::ElementHandle& root,
+        using DemoBuildFunc = void(*)(GUI::IContext* context, const GUI::ElementHandle& root,
             const Float2U& surface_size, void* userdata);
 
         struct InteractiveGUIDemoDesc
@@ -51,7 +51,7 @@ namespace Luna
             void* userdata = nullptr;
         };
 
-        inline GUICore::id_t hash_bytes(const void* data, usize size, u64 h = 14695981039346656037ull)
+        inline GUI::id_t hash_bytes(const void* data, usize size, u64 h = 14695981039346656037ull)
         {
             const byte_t* bytes = (const byte_t*)data;
             for(usize i = 0; i < size; ++i)
@@ -62,7 +62,7 @@ namespace Luna
             return h;
         }
 
-        inline GUICore::id_t hash_cstr(const c8* text, u64 h = 14695981039346656037ull)
+        inline GUI::id_t hash_cstr(const c8* text, u64 h = 14695981039346656037ull)
         {
             if(!text)
             {
@@ -77,62 +77,62 @@ namespace Luna
             return h;
         }
 
-        inline GUICore::id_t demo_id(const c8* scope, u64 value = 0)
+        inline GUI::id_t demo_id(const c8* scope, u64 value = 0)
         {
             u64 h = hash_cstr(scope);
             return hash_bytes(&value, sizeof(value), h);
         }
 
-        inline GUICore::LayoutConfig fixed_layout(f32 width, f32 height)
+        inline GUI::LayoutConfig fixed_layout(f32 width, f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::fixed;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::fixed;
             layout.width.value = width;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        inline GUICore::LayoutConfig fill_layout()
+        inline GUI::LayoutConfig fill_layout()
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.kind = GUI::SizeKind::percent;
             layout.height.value = 1.0f;
             layout.flex_grow = 1.0f;
             return layout;
         }
 
-        inline GUICore::LayoutConfig fill_width_layout(f32 height)
+        inline GUI::LayoutConfig fill_width_layout(f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        inline void set_rect(GUICore::IContext* context, const GUICore::ElementHandle& element, const RectF& rect)
+        inline void set_rect(GUI::IContext* context, const GUI::ElementHandle& element, const RectF& rect)
         {
-            GUICore::LayoutResult layout;
+            GUI::LayoutResult layout;
             layout.rect = rect;
             layout.clip_rect = rect;
             layout.content_size = Float2U(rect.width, rect.height);
             context->set_layout_result(element, layout);
         }
 
-        inline GUICore::ElementHandle label_value(GUICore::IContext* context, GUICore::id_t id,
+        inline GUI::ElementHandle label_value(GUI::IContext* context, GUI::id_t id,
             const c8* label, const c8* value)
         {
-            GUICore::ElementHandle row = GUI::begin_h_layout(context, id, label, fill_width_layout(28.0f));
-            GUI::text(context, id + 1, label, fixed_layout(180.0f, 24.0f));
-            GUI::text(context, id + 2, value, fill_width_layout(24.0f));
-            GUICore::FlexLayoutDesc desc;
-            desc.axis = GUICore::LayoutAxis::x;
+            GUI::ElementHandle row = EditorGUI::begin_h_layout(context, id, label, fill_width_layout(28.0f));
+            EditorGUI::text(context, id + 1, label, fixed_layout(180.0f, 24.0f));
+            EditorGUI::text(context, id + 2, value, fill_width_layout(24.0f));
+            GUI::FlexLayoutDesc desc;
+            desc.axis = GUI::LayoutAxis::x;
             desc.main_axis_gap = 8.0f;
-            GUI::end_h_layout(context, row, desc);
+            EditorGUI::end_h_layout(context, row, desc);
             return row;
         }
 
@@ -145,8 +145,8 @@ namespace Luna
                     module_rhi(),
                     module_font(),
                     module_vg(),
-                    GUICore::module_gui_core(),
                     GUI::module_gui(),
+                    EditorGUI::module_editor_gui(),
                     GUIWindow::module_gui_window()
                 }));
                 luexp(init_modules());
@@ -168,13 +168,13 @@ namespace Luna
                 luset(app.swap_chain, dev->new_swap_chain(app.queue, app.window,
                     RHI::SwapChainDesc({ sz.x, sz.y, 2, RHI::Format::bgra8_unorm, true })));
                 luset(app.cmdbuf, dev->new_command_buffer(app.queue));
-                luset(app.renderer, GUICore::new_renderer(dev));
-                app.gui = GUICore::new_context();
-                GUI::register_style_schemas(app.gui);
+                luset(app.renderer, GUI::new_renderer(dev));
+                app.gui = GUI::new_context();
+                EditorGUI::register_style_schemas(app.gui);
                 luexp(app.gui->register_font(Name("default"), Font::get_default_font()));
-                GUI::DefaultStyleDesc style_desc;
-                style_desc.input_mode = GUI::InputMode::pointer;
-                GUI::set_default_style(app.gui, style_desc);
+                EditorGUI::DefaultStyleDesc style_desc;
+                style_desc.input_mode = EditorGUI::InputMode::pointer;
+                EditorGUI::set_default_style(app.gui, style_desc);
             }
             lucatchret;
             return ok;
@@ -185,7 +185,7 @@ namespace Luna
         {
             lutry
             {
-                GUICore::RenderTargetDesc target(back_buffer);
+                GUI::RenderTargetDesc target(back_buffer);
                 target.color_load_op = RHI::LoadOp::clear;
                 target.color_clear_value = clear_color;
                 target.color_final_state = RHI::TextureStateFlag::present;
@@ -207,7 +207,7 @@ namespace Luna
                     luexp(desc.init(app, desc.userdata));
                 }
 
-                GUIWindow::GUICoreWindowInputAdapter input_adapter;
+                GUIWindow::GUIWindowInputAdapter input_adapter;
                 input_adapter.window = app.window;
                 input_adapter.gui = app.gui;
                 GUIWindow::install_window_event_handler(&input_adapter);
@@ -234,31 +234,31 @@ namespace Luna
                     }
 
                     auto logical_sz = app.window->get_size();
-                    GUICore::FrameDesc frame;
-                    frame.screen_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
-                    frame.framebuffer_size = fb_sz;
-                    frame.dpi_scale = app.window->get_dpi_scale_factor();
+                    GUI::FrameDesc frame;
+                    frame.logical_size = Float2U((f32)logical_sz.x, (f32)logical_sz.y);
+                    frame.render_size = fb_sz;
                     frame.delta_time = 1.0f / 60.0f;
                     app.gui->begin_frame(frame);
                     GUIWindow::update_input(&input_adapter);
                     app.gui->push_layer(1, Float2U(0.0f));
-                    GUICore::ElementHandle root = app.gui->begin_element(1);
-                    desc.build(app.gui, root, frame.screen_size, desc.userdata);
+                    GUI::ElementHandle root = app.gui->begin_element(1);
+                    desc.build(app.gui, root, frame.logical_size, desc.userdata);
                     app.gui->end_element();
                     app.gui->pop_layer();
-                    luexp(GUI::layout_tree(app.gui, root, RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                    luexp(EditorGUI::layout_tree(app.gui, root,
+                        RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
                     app.gui->route_input();
-                    GUI::ResolveResult resolved = GUI::resolve_interactions(app.gui);
+                    EditorGUI::ResolveResult resolved = EditorGUI::resolve_interactions(app.gui);
                     if(resolved.relayout_requested)
                     {
-                        luexp(GUI::layout_tree(app.gui, root,
-                            RectF(0.0f, 0.0f, frame.screen_size.x, frame.screen_size.y)));
+                        luexp(EditorGUI::layout_tree(app.gui, root,
+                            RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));
                     }
                     luexp(GUIWindow::update_text_input(&input_adapter));
 
                     lulet(back_buffer, app.swap_chain->get_current_back_buffer());
-                    Float4U clear_color = app.gui->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
-                        GUICore::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
+                    Float4U clear_color = app.gui->get_style_value(Name(EditorGUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
+                        GUI::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
                     luexp(render_interactive_gui_demo(app, back_buffer, clear_color));
                     luexp(app.cmdbuf->submit({}, {}, true));
                     app.cmdbuf->wait();

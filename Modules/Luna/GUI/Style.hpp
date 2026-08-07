@@ -5,7 +5,7 @@
 *
 * @file Style.hpp
 * @author JXMaster
-* @date 2026/7/13
+* @date 2026/6/17
 */
 #pragma once
 #include "Base.hpp"
@@ -14,60 +14,138 @@ namespace Luna
 {
     namespace GUI
     {
-        //! The built-in editor style used when an element does not bind an explicit style.
-        inline constexpr const c8* DEFAULT_STYLE_NAME = "gui.editor.default";
-
-        //! Selects the color palette of the built-in editor style.
-        enum class ColorTheme : u8
+        //! Identifies the payload type of one style entry value.
+        enum class StyleValueType : u8
         {
-            //! Uses the light editor palette.
-            light,
-            //! Uses the dark editor palette.
-            dark
+            //! No value.
+            none,
+            //! One 32-bit floating point value.
+            f32,
+            //! Two 32-bit floating point values.
+            f32x2,
+            //! Three 32-bit floating point values.
+            f32x3,
+            //! Four 32-bit floating point values.
+            f32x4,
+            //! One name value.
+            name
         };
 
-        //! Selects the input-density metrics of the built-in editor style.
-        enum class InputMode : u8
+        //! Stores one resolved style value.
+        struct StyleValue
         {
-            //! Uses compact controls intended for mouse and keyboard input.
-            pointer,
-            //! Uses larger controls and hit targets intended for touch input.
-            touch
+            //! The stored value type.
+            StyleValueType type = StyleValueType::none;
+            //! Numeric value storage. The first N components are used by f32/f32x2/f32x3/f32x4 entries.
+            Float4U number = Float4U(0.0f);
+            //! Name value storage for @ref StyleValueType::name.
+            Name name;
         };
 
-        //! Describes one configured instance of the built-in editor style.
-        struct DefaultStyleDesc
+        //! Identifies how a local style entry participates in inheritance.
+        enum class StyleEntryMode : u8
         {
-            //! Color palette used by the style.
-            ColorTheme color_theme = ColorTheme::light;
-            //! Input-density metrics used by the style.
-            InputMode input_mode = InputMode::touch;
-            //! Accent color used to derive hover, pressed, subtle, disabled and focus colors.
-            Float4U accent = Float4U(0.890f, 0.310f, 0.349f, 1.0f);
-            //! Registered font used by controls and text.
-            Name font = Name("default");
-            //! Registered monospaced font used by the code typography role.
-            Name monospace_font = Name("default");
+            //! This entry inherits from its parent.
+            inherit,
+            //! This entry provides a local value.
+            set,
+            //! This entry explicitly hides an inherited value.
+            unset
         };
 
-        //! Registers style schemas consumed by the editor GUI package.
-        //! @param[in] context The GUI Core context that stores schemas and styles.
-        //! @remark This also initializes @ref DEFAULT_STYLE_NAME with @ref DefaultStyleDesc defaults.
-        LUNA_GUI_API void register_style_schemas(GUICore::IContext* context);
+        //! One style entry record.
+        struct StyleEntry
+        {
+            //! Entry inheritance mode.
+            StyleEntryMode mode = StyleEntryMode::inherit;
+            //! Entry value used when @ref mode is @ref StyleEntryMode::set.
+            StyleValue value;
+        };
 
-        //! Configures one editor style from a color theme, input mode and accent color.
-        //! @param[in] context The GUI Core context that stores the style.
-        //! @param[in] style The style name to define or update.
-        //! @param[in] desc The style configuration.
-        LUNA_GUI_API void configure_style(GUICore::IContext* context, const Name& style,
-            const DefaultStyleDesc& desc = DefaultStyleDesc());
+        //! One named style record.
+        struct Style
+        {
+            //! Optional parent style.
+            Name parent;
+            //! Local style entries.
+            HashMap<Name, StyleEntry> entries;
+        };
 
-        //! Reconfigures the built-in editor style used by elements without an explicit style binding.
-        //! @param[in] context The GUI Core context that stores the style.
-        //! @param[in] desc The style configuration.
-        //! @remark Existing elements resolve the updated values during draw-command generation. Layout should be
-        //! recalculated when @ref DefaultStyleDesc::input_mode changes.
-        LUNA_GUI_API void set_default_style(GUICore::IContext* context,
-            const DefaultStyleDesc& desc = DefaultStyleDesc());
+        //! Describes one style entry that may be consumed by a high-level immediate API package.
+        //! @remark GUI stores this metadata for tools and debug views only. It does not interpret the entry
+        //! name as widget behavior.
+        struct StyleEntrySchema
+        {
+            //! Package or style family that declares this entry, such as `gui.editor`.
+            Name owner;
+            //! Style entry name.
+            Name entry;
+            //! Expected style value type.
+            StyleValueType type = StyleValueType::none;
+            //! Fallback value used by the declaring package when no style value is found.
+            StyleValue default_value;
+            //! Optional inspector/debug category.
+            String category;
+            //! Optional human-readable description.
+            String description;
+        };
+
+        //! Creates one f32 style value.
+        //! @param[in] value The value.
+        //! @return Returns the style value.
+        inline StyleValue style_f32(f32 value)
+        {
+            StyleValue r;
+            r.type = StyleValueType::f32;
+            r.number.x = value;
+            return r;
+        }
+
+        //! Creates one f32x2 style value.
+        //! @param[in] value The value.
+        //! @return Returns the style value.
+        inline StyleValue style_f32x2(const Float2U& value)
+        {
+            StyleValue r;
+            r.type = StyleValueType::f32x2;
+            r.number.x = value.x;
+            r.number.y = value.y;
+            return r;
+        }
+
+        //! Creates one f32x3 style value.
+        //! @param[in] value The value.
+        //! @return Returns the style value.
+        inline StyleValue style_f32x3(const Float3U& value)
+        {
+            StyleValue r;
+            r.type = StyleValueType::f32x3;
+            r.number.x = value.x;
+            r.number.y = value.y;
+            r.number.z = value.z;
+            return r;
+        }
+
+        //! Creates one f32x4 style value.
+        //! @param[in] value The value.
+        //! @return Returns the style value.
+        inline StyleValue style_f32x4(const Float4U& value)
+        {
+            StyleValue r;
+            r.type = StyleValueType::f32x4;
+            r.number = value;
+            return r;
+        }
+
+        //! Creates one name style value.
+        //! @param[in] value The value.
+        //! @return Returns the style value.
+        inline StyleValue style_name(const Name& value)
+        {
+            StyleValue r;
+            r.type = StyleValueType::name;
+            r.name = value;
+            return r;
+        }
     }
 }

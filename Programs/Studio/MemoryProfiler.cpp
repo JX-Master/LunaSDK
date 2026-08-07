@@ -8,7 +8,7 @@
 * @date 2023/11/3
 */
 #include "MemoryProfiler.hpp"
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 
 namespace Luna
 {
@@ -61,28 +61,28 @@ namespace Luna
             return heaps;
         }
 
-        GUICore::LayoutConfig fixed_height(f32 height)
+        GUI::LayoutConfig fixed_height(f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::TableTrackDesc table_column(f32 width)
+        GUI::TableTrackDesc table_column(f32 width)
         {
-            GUICore::TableTrackDesc track;
-            track.kind = GUICore::TableTrackSizeKind::pixels;
+            GUI::TableTrackDesc track;
+            track.kind = GUI::TableTrackSizeKind::pixels;
             track.value = width;
             return track;
         }
 
-        GUICore::TableTrackDesc table_row(f32 height)
+        GUI::TableTrackDesc table_row(f32 height)
         {
-            GUICore::TableTrackDesc track;
-            track.kind = GUICore::TableTrackSizeKind::pixels;
+            GUI::TableTrackDesc track;
+            track.kind = GUI::TableTrackSizeKind::pixels;
             track.value = height;
             return track;
         }
@@ -126,7 +126,7 @@ namespace Luna
         if(iter == m_memory_blocks.end()) return;
         iter->second.domain = move(d);
     }
-    void MemoryProfiler::render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    void MemoryProfiler::render(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
         luassert(context);
         LockGuard guard(m_lock);
@@ -136,62 +136,62 @@ namespace Luna
         guard.unlock();
 
         MemoryHeapSnapshot heaps = make_memory_heap_snapshot(blocks);
-        GUICore::id_t scope = context->make_id("memory_profiler");
+        GUI::id_t scope = context->make_id("memory_profiler");
         context->push_data_scope(scope);
-        GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("root"), "Memory Usages", layout);
-        GUI::text(context, context->make_id("title"), "Memory Usages", fixed_height(28.0f));
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, context->make_id("scroll"), "Memory Usage List", fixed_height(940.0f));
-        GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"), "Memory Usage Content");
+        GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("root"), "Memory Usages", layout);
+        EditorGUI::text(context, context->make_id("title"), "Memory Usages", fixed_height(28.0f));
+        GUI::ElementHandle scroll = EditorGUI::begin_scroll_view(context, context->make_id("scroll"), "Memory Usage List", fixed_height(940.0f));
+        GUI::ElementHandle content = EditorGUI::begin_v_layout(context, context->make_id("content"), "Memory Usage Content");
         for(auto& h : heaps)
         {
             context->push_data_scope(context->make_id(h.first.c_str()));
-            if(GUI::collapsing_header(context, context->make_id("heap"), h.first.c_str()))
+            if(EditorGUI::collapsing_header(context, context->make_id("heap"), h.first.c_str()))
             {
-                GUICore::LayoutConfig table_layout;
-                table_layout.width.kind = GUICore::SizeKind::fixed;
+                GUI::LayoutConfig table_layout;
+                table_layout.width.kind = GUI::SizeKind::fixed;
                 table_layout.width.value = 484.0f;
-                table_layout.height.kind = GUICore::SizeKind::fit;
+                table_layout.height.kind = GUI::SizeKind::fit;
                 table_layout.margin = Float4U(0.0f, 4.0f, 0.0f, 8.0f);
-                GUI::TableDesc table_desc;
+                EditorGUI::TableDesc table_desc;
                 table_desc.gap = Float2U(1.0f, 1.0f);
                 table_desc.cell_padding = Float4U(8.0f, 4.0f, 8.0f, 4.0f);
-                GUICore::ElementHandle table = GUI::begin_table_layout(context, context->make_id("table"),
+                GUI::ElementHandle table = EditorGUI::begin_table_layout(context, context->make_id("table"),
                     h.first.c_str(), table_layout, table_desc);
-                GUICore::TableTrackDesc columns[3] = {
+                GUI::TableTrackDesc columns[3] = {
                     table_column(240.0f),
                     table_column(110.0f),
                     table_column(120.0f)
                 };
-                GUI::set_table_columns(context, Span<const GUICore::TableTrackDesc>(columns, 3));
-                GUICore::TableTrackDesc row = table_row(28.0f);
-                if(GUI::begin_table_row(context, row))
+                EditorGUI::set_table_columns(context, Span<const GUI::TableTrackDesc>(columns, 3));
+                GUI::TableTrackDesc row = table_row(28.0f);
+                if(EditorGUI::begin_table_row(context, row))
                 {
-                    GUI::text(context, context->make_id("header_type"), "Type");
-                    GUI::text(context, context->make_id("header_size"), "Size");
-                    GUI::text(context, context->make_id("header_count"), "Allocation Count");
-                    GUI::end_table_row(context);
+                    EditorGUI::text(context, context->make_id("header_type"), "Type");
+                    EditorGUI::text(context, context->make_id("header_size"), "Size");
+                    EditorGUI::text(context, context->make_id("header_count"), "Allocation Count");
+                    EditorGUI::end_table_row(context);
                 }
                 for(auto& a : h.second)
                 {
                     context->push_data_scope(context->make_id(a.first.c_str()));
-                    if(GUI::begin_table_row(context, row))
+                    if(EditorGUI::begin_table_row(context, row))
                     {
                         String count_text;
                         strprintf(count_text, "%llu", (u64)a.second.second);
-                        GUI::text(context, context->make_id("type"), a.first.c_str());
-                        GUI::text(context, context->make_id("size"), memory_size_text(a.second.first).c_str());
-                        GUI::text(context, context->make_id("count"), count_text.c_str());
-                        GUI::end_table_row(context);
+                        EditorGUI::text(context, context->make_id("type"), a.first.c_str());
+                        EditorGUI::text(context, context->make_id("size"), memory_size_text(a.second.first).c_str());
+                        EditorGUI::text(context, context->make_id("count"), count_text.c_str());
+                        EditorGUI::end_table_row(context);
                     }
                     context->pop_data_scope();
                 }
-                GUI::end_table_layout(context, table);
+                EditorGUI::end_table_layout(context, table);
             }
             context->pop_data_scope();
         }
-        GUI::end_v_layout(context, content, GUICore::FlexLayoutDesc());
-        GUI::end_scroll_view(context);
-        GUI::end_v_layout(context, root, GUICore::FlexLayoutDesc());
+        EditorGUI::end_v_layout(context, content, GUI::FlexLayoutDesc());
+        EditorGUI::end_scroll_view(context);
+        EditorGUI::end_v_layout(context, root, GUI::FlexLayoutDesc());
         context->pop_data_scope();
     }
 

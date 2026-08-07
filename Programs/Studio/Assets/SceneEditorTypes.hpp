@@ -17,7 +17,7 @@
 #include <Luna/Image/RHIHelper.hpp>
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/Runtime/HashMap.hpp>
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include "SceneEditorTypes.generated.hpp"
 
 namespace Luna
@@ -96,12 +96,12 @@ namespace Luna
         void on_actor_remove_component(SceneActor& scene_actor, typeinfo_t component);
         void on_actor_edit_component(SceneActor& scene_actor, typeinfo_t component);
 
-        void draw_actor_list(GUICore::IContext* context, const GUICore::LayoutConfig& layout);
-        void draw_actor_tree_node(GUICore::IContext* context, Actor* actor, bool& open_actor_list_popup);
-        void draw_scene_settings(GUICore::IContext* context, const GUICore::LayoutConfig& layout);
-        void draw_scene(GUICore::IContext* context, const GUICore::LayoutConfig& layout);
-        void draw_components_grid(GUICore::IContext* context, const GUICore::LayoutConfig& layout);
-        virtual void on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout) override;
+        void draw_actor_list(GUI::IContext* context, const GUI::LayoutConfig& layout);
+        void draw_actor_tree_node(GUI::IContext* context, Actor* actor, bool& open_actor_list_popup);
+        void draw_scene_settings(GUI::IContext* context, const GUI::LayoutConfig& layout);
+        void draw_scene(GUI::IContext* context, const GUI::LayoutConfig& layout);
+        void draw_components_grid(GUI::IContext* context, const GUI::LayoutConfig& layout);
+        virtual void on_render(GUI::IContext* context, const GUI::LayoutConfig& layout) override;
         virtual bool closed() override
         {
             return !m_open;

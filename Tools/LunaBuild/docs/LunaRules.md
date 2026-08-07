@@ -1,4 +1,4 @@
-# LunaRules Debug Format v1
+# LunaRules Debug Format v2
 
 LunaRules is a textual dump of the LunaBuild build graph. It is meant for
 debugging, review, repro logs, and future protocol experiments. It is not the
@@ -35,8 +35,11 @@ asks for `generate` output or a `build --output` debug dump.
 ### Header
 
 ```text
-luna_make 1
+luna_make 2
 ```
+
+Readers accept v1 for compatibility. New multi-project graphs are emitted as
+v2.
 
 ### Options
 
@@ -47,10 +50,23 @@ option <json-name> <json-value>
 Options are metadata copied from `BuildOptions`. Project-defined build
 properties are written as `property.<name>` options.
 
+### Projects And Configurations
+
+```text
+project <json-name> <json-root> <json-build-directory> <is-host>
+configuration <json-id> <json-project-name> <json-options>
+```
+
+Every project has a canonical source root and a distinct build directory.
+Configuration IDs are stable hashes of the project configuration that owns the
+nodes. `json-options` is a JSON string containing the serialized `BuildOptions`
+record.
+
 ### Nodes
 
 ```text
 node <json-id> <kind> <json-path-or-null>
+node_config <json-id> <json-project-name> <json-configuration-id>
 ```
 
 `kind` is one of:
@@ -58,6 +74,9 @@ node <json-id> <kind> <json-path-or-null>
 - `file`
 - `phony`
 - `virtual`
+
+`node_config` records which project and configuration own a node. It is emitted
+for configured v2 nodes and omitted for compatibility-only nodes.
 
 ### Actions
 
@@ -91,15 +110,18 @@ At least one target is expected in a complete dump.
 ## Example
 
 ```text
-luna_make 1
+luna_make 2
 option "mode" "Debug"
-target "target://ObjLoader"
+project "Host" "/src/host" "/src/host/build/LunaBuild" true
+configuration "41a7d3194584" "Host" "{\"Platform\":\"MacOS\"}"
+target "target://Host.ObjLoader"
 
 node "file://Modules/Luna/ObjLoader/Source/ObjLoader.cpp" file "Modules/Luna/ObjLoader/Source/ObjLoader.cpp"
-node "file://build/LunaBuild/Windows/x64/Debug/obj/ObjLoader/ObjLoader.obj" file "build/LunaBuild/Windows/x64/Debug/obj/ObjLoader/ObjLoader.obj"
-node "target://ObjLoader" virtual "Modules/Luna/ObjLoader"
+node "file://build/LunaBuild/MacOS/arm64/Debug/obj/ObjLoader/ObjLoader.o" file "build/LunaBuild/MacOS/arm64/Debug/obj/ObjLoader/ObjLoader.o"
+node "target://Host.ObjLoader" virtual "Modules/Luna/ObjLoader"
+node_config "target://Host.ObjLoader" "Host" "41a7d3194584"
 
-action "file://build/LunaBuild/Windows/x64/Debug/obj/ObjLoader/ObjLoader.obj" "cpp.compile" "kind=cpp.compile\ntarget=ObjLoader"
-dep "file://build/LunaBuild/Windows/x64/Debug/obj/ObjLoader/ObjLoader.obj" "file://Modules/Luna/ObjLoader/Source/ObjLoader.cpp"
-dep "target://ObjLoader" "file://build/LunaBuild/Windows/x64/Debug/obj/ObjLoader/ObjLoader.obj"
+action "file://build/LunaBuild/MacOS/arm64/Debug/obj/ObjLoader/ObjLoader.o" "cpp.compile" "kind=cpp.compile\ntarget=Host.ObjLoader"
+dep "file://build/LunaBuild/MacOS/arm64/Debug/obj/ObjLoader/ObjLoader.o" "file://Modules/Luna/ObjLoader/Source/ObjLoader.cpp"
+dep "target://Host.ObjLoader" "file://build/LunaBuild/MacOS/arm64/Debug/obj/ObjLoader/ObjLoader.o"
 ```

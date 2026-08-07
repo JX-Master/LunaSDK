@@ -9,7 +9,7 @@
 */
 #include "Texture.hpp"
 #include "TextureImporter.hpp"
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/File.hpp>
@@ -26,31 +26,31 @@ namespace Luna
 {
     namespace
     {
-        GUICore::LayoutConfig fixed_height(f32 height)
+        GUI::LayoutConfig fixed_height(f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::LayoutConfig fill_layout()
+        GUI::LayoutConfig fill_layout()
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.kind = GUI::SizeKind::percent;
             layout.height.value = 1.0f;
             layout.flex_grow = 1.0f;
             return layout;
         }
 
-        GUICore::FlexLayoutDesc vertical_layout(f32 gap = 6.0f)
+        GUI::FlexLayoutDesc vertical_layout(f32 gap = 6.0f)
         {
-            GUICore::FlexLayoutDesc desc;
-            desc.axis = GUICore::LayoutAxis::y;
+            GUI::FlexLayoutDesc desc;
+            desc.axis = GUI::LayoutAxis::y;
             desc.main_axis_gap = gap;
             return desc;
         }
@@ -557,25 +557,25 @@ namespace Luna
         return "unknown";
     }
 
-    void TextureImporter::on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    void TextureImporter::on_render(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
         if(!m_open)
         {
             return;
         }
-        context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
-        GUI::DockPanelDesc panel_desc;
+        context->push_data_scope(context->make_id((GUI::id_t)(usize)this));
+        EditorGUI::DockPanelDesc panel_desc;
         panel_desc.minimum_floating_size = Float2U(520.0f, 420.0f);
-        if(!GUI::begin_dock_panel(context, context->make_id("texture_importer"), "Texture Importer", &m_open,
+        if(!EditorGUI::begin_dock_panel(context, context->make_id("texture_importer"), "Texture Importer", &m_open,
             panel_desc))
         {
             context->pop_data_scope();
             return;
         }
 
-        GUICore::ElementHandle select_source = GUI::text_button(context, context->make_id("select_source"),
+        GUI::ElementHandle select_source = EditorGUI::text_button(context, context->make_id("select_source"),
             "Select Source File", fixed_height(30.0f));
-        if(GUI::is_item_clicked(context, select_source))
+        if(EditorGUI::is_item_clicked(context, select_source))
         {
             RV r = select_texture_import_files(m_files);
             if(failed(r) && r.errcode() != BasicError::interrupted())
@@ -588,13 +588,13 @@ namespace Luna
 
         if(m_files.empty())
         {
-            GUI::text(context, context->make_id("empty"), "No image file selected.", fixed_height(26.0f));
+            EditorGUI::text(context, context->make_id("empty"), "No image file selected.", fixed_height(26.0f));
         }
         else
         {
-            GUICore::ElementHandle import_all = GUI::text_button(context, context->make_id("import_all"), "Import All",
+            GUI::ElementHandle import_all = EditorGUI::text_button(context, context->make_id("import_all"), "Import All",
                 fixed_height(30.0f));
-            if(GUI::is_item_clicked(context, import_all))
+            if(EditorGUI::is_item_clicked(context, import_all))
             {
                 for(auto& file : m_files)
                 {
@@ -605,16 +605,16 @@ namespace Luna
                 }
             }
 
-            GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, context->make_id("scroll"),
+            GUI::ElementHandle scroll = EditorGUI::begin_scroll_view(context, context->make_id("scroll"),
                 "Texture Importer Content", fill_layout());
-            GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"),
+            GUI::ElementHandle content = EditorGUI::begin_v_layout(context, context->make_id("content"),
                 "Texture Importer Content", fill_layout());
             for(usize i = 0; i < m_files.size(); ++i)
             {
                 auto& file = m_files[i];
-                context->push_data_scope(context->make_id((GUICore::id_t)i));
-                GUI::text(context, context->make_id("path"), file.m_path.encode().c_str(), fixed_height(24.0f));
-                GUI::text(context, context->make_id("info_label"), "Texture Information:", fixed_height(24.0f));
+                context->push_data_scope(context->make_id((GUI::id_t)i));
+                EditorGUI::text(context, context->make_id("path"), file.m_path.encode().c_str(), fixed_height(24.0f));
+                EditorGUI::text(context, context->make_id("info_label"), "Texture Information:", fixed_height(24.0f));
                 if(file.m_type == TextureFileType::image)
                 {
                     String width_text;
@@ -623,9 +623,9 @@ namespace Luna
                     strprintf(width_text, "Width: %u", file.m_desc.width);
                     strprintf(height_text, "Height: %u", file.m_desc.height);
                     strprintf(format_text, "Format: %s", print_image_format(file.m_desc.format));
-                    GUI::text(context, context->make_id("width"), width_text.c_str(), fixed_height(22.0f));
-                    GUI::text(context, context->make_id("height"), height_text.c_str(), fixed_height(22.0f));
-                    GUI::text(context, context->make_id("format"), format_text.c_str(), fixed_height(22.0f));
+                    EditorGUI::text(context, context->make_id("width"), width_text.c_str(), fixed_height(22.0f));
+                    EditorGUI::text(context, context->make_id("height"), height_text.c_str(), fixed_height(22.0f));
+                    EditorGUI::text(context, context->make_id("format"), format_text.c_str(), fixed_height(22.0f));
                 }
                 else if(file.m_type == TextureFileType::dds)
                 {
@@ -649,23 +649,23 @@ namespace Luna
                     strprintf(mips_text, "Mips: %u", file.m_dds_desc.mip_levels);
                     strprintf(array_text, "Array Size: %u", file.m_dds_desc.array_size);
                     strprintf(format_text, "Format: %s", print_dds_format(file.m_dds_desc.format));
-                    GUI::text(context, context->make_id("dimension"), dimension, fixed_height(22.0f));
-                    GUI::text(context, context->make_id("width"), width_text.c_str(), fixed_height(22.0f));
-                    GUI::text(context, context->make_id("height"), height_text.c_str(), fixed_height(22.0f));
-                    GUI::text(context, context->make_id("depth"), depth_text.c_str(), fixed_height(22.0f));
-                    GUI::text(context, context->make_id("mips"), mips_text.c_str(), fixed_height(22.0f));
-                    GUI::text(context, context->make_id("array"), array_text.c_str(), fixed_height(22.0f));
-                    GUI::text(context, context->make_id("format"), format_text.c_str(), fixed_height(22.0f));
+                    EditorGUI::text(context, context->make_id("dimension"), dimension, fixed_height(22.0f));
+                    EditorGUI::text(context, context->make_id("width"), width_text.c_str(), fixed_height(22.0f));
+                    EditorGUI::text(context, context->make_id("height"), height_text.c_str(), fixed_height(22.0f));
+                    EditorGUI::text(context, context->make_id("depth"), depth_text.c_str(), fixed_height(22.0f));
+                    EditorGUI::text(context, context->make_id("mips"), mips_text.c_str(), fixed_height(22.0f));
+                    EditorGUI::text(context, context->make_id("array"), array_text.c_str(), fixed_height(22.0f));
+                    EditorGUI::text(context, context->make_id("format"), format_text.c_str(), fixed_height(22.0f));
                 }
 
-                GUI::text(context, context->make_id("settings_label"), "Import Settings:", fixed_height(24.0f));
-                GUI::text(context, context->make_id("asset_name_label"), "Asset Name", fixed_height(20.0f));
-                GUI::input_text(context, context->make_id("asset_name"), file.m_asset_name, fixed_height(28.0f));
+                EditorGUI::text(context, context->make_id("settings_label"), "Import Settings:", fixed_height(24.0f));
+                EditorGUI::text(context, context->make_id("asset_name_label"), "Asset Name", fixed_height(20.0f));
+                EditorGUI::input_text(context, context->make_id("asset_name"), file.m_asset_name, fixed_height(28.0f));
                 if(file.m_type == TextureFileType::image)
                 {
                     i32 import_type = (i32)file.m_prefiler_type;
                     const c8* import_options[] = {"Texture", "Environment Map"};
-                    GUI::combo(context, context->make_id("import_type"), "Import Type", &import_type,
+                    EditorGUI::combo(context, context->make_id("import_type"), "Import Type", &import_type,
                         Span<const c8*>(import_options, 2), fixed_height(30.0f));
                     file.m_prefiler_type = (TexturePrefilerType)import_type;
                 }
@@ -674,21 +674,21 @@ namespace Luna
                     String import_path;
                     strprintf(import_path, "The texture will be imported as: %s%s", m_create_dir.encode().c_str(),
                         file.m_asset_name.c_str());
-                    GUI::text(context, context->make_id("import_path"), import_path.c_str(), fixed_height(24.0f));
-                    GUICore::ElementHandle import_button = GUI::text_button(context, context->make_id("import"),
+                    EditorGUI::text(context, context->make_id("import_path"), import_path.c_str(), fixed_height(24.0f));
+                    GUI::ElementHandle import_button = EditorGUI::text_button(context, context->make_id("import"),
                         "Import", fixed_height(30.0f));
-                    if(GUI::is_item_clicked(context, import_button))
+                    if(EditorGUI::is_item_clicked(context, import_button))
                     {
                         import_texture_asset(m_create_dir, file);
                     }
                 }
                 context->pop_data_scope();
             }
-            GUI::end_v_layout(context, content, vertical_layout(6.0f));
-            GUI::end_scroll_view(context);
+            EditorGUI::end_v_layout(context, content, vertical_layout(6.0f));
+            EditorGUI::end_scroll_view(context);
         }
 
-        GUI::end_dock_panel(context);
+        EditorGUI::end_dock_panel(context);
         context->pop_data_scope();
     }
 

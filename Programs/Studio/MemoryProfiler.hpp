@@ -16,7 +16,7 @@
 
 namespace Luna
 {
-    namespace GUICore
+    namespace GUI
     {
         struct IContext;
         struct LayoutConfig;
@@ -42,7 +42,7 @@ namespace Luna
         void on_set_memory_name(void* ptr, const c8* name);
         void on_set_memory_type(void* ptr, const c8* type);
         void on_set_memory_domain(void* ptr, const c8* domain);
-        void render(GUICore::IContext* context, const GUICore::LayoutConfig& layout);
+        void render(GUI::IContext* context, const GUI::LayoutConfig& layout);
     };
     struct MemoryProfilerCallback
     {

@@ -33,77 +33,77 @@ namespace Luna
 {
     namespace
     {
-        GUICore::LayoutConfig core_fixed_height(f32 height)
+        GUI::LayoutConfig gui_fixed_height(f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::LayoutConfig core_fixed_size(f32 width, f32 height)
+        GUI::LayoutConfig gui_fixed_size(f32 width, f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::fixed;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::fixed;
             layout.width.value = width;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::LayoutConfig core_fixed_width(f32 width)
+        GUI::LayoutConfig gui_fixed_width(f32 width)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::fixed;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::fixed;
             layout.width.value = width;
-            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.kind = GUI::SizeKind::percent;
             layout.height.value = 1.0f;
             return layout;
         }
 
-        GUICore::LayoutConfig core_fill()
+        GUI::LayoutConfig gui_fill()
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.kind = GUI::SizeKind::percent;
             layout.height.value = 1.0f;
             layout.flex_grow = 1.0f;
             return layout;
         }
 
-        GUICore::LayoutConfig core_ratio_height(f32 ratio)
+        GUI::LayoutConfig gui_ratio_height(f32 ratio)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
             layout.flex_grow = ratio;
             return layout;
         }
 
-        GUICore::FlexLayoutDesc core_linear(GUICore::LayoutAxis axis, f32 gap = 6.0f, bool clip_children = false)
+        GUI::FlexLayoutDesc gui_linear(GUI::LayoutAxis axis, f32 gap = 6.0f, bool clip_children = false)
         {
-            GUICore::FlexLayoutDesc desc;
+            GUI::FlexLayoutDesc desc;
             desc.axis = axis;
             desc.main_axis_gap = gap;
             desc.clip_children = clip_children;
             return desc;
         }
 
-        GUICore::ElementHandle core_property_row(GUICore::IContext* context, const c8* label, f32 height = 30.0f)
+        GUI::ElementHandle gui_property_row(GUI::IContext* context, const c8* label, f32 height = 30.0f)
         {
-            GUICore::id_t row_id = context->make_id(label ? label : "row");
-            GUICore::ElementHandle row = GUI::begin_h_layout(context, row_id, label, core_fixed_height(height));
+            GUI::id_t row_id = context->make_id(label ? label : "row");
+            GUI::ElementHandle row = EditorGUI::begin_h_layout(context, row_id, label, gui_fixed_height(height));
             context->push_data_scope(row_id);
-            GUI::text(context, context->make_id("label"), label, core_fixed_size(110.0f, height));
+            EditorGUI::text(context, context->make_id("label"), label, gui_fixed_size(110.0f, height));
             return row;
         }
 
-        void core_end_property_row(GUICore::IContext* context, const GUICore::ElementHandle& row)
+        void gui_end_property_row(GUI::IContext* context, const GUI::ElementHandle& row)
         {
-            GUI::end_h_layout(context, row, core_linear(GUICore::LayoutAxis::x, 6.0f));
+            EditorGUI::end_h_layout(context, row, gui_linear(GUI::LayoutAxis::x, 6.0f));
             context->pop_data_scope();
         }
 
@@ -136,49 +136,49 @@ namespace Luna
             return abs(lhs.x - rhs.x) < 0.00001f && abs(lhs.y - rhs.y) < 0.00001f && abs(lhs.z - rhs.z) < 0.00001f;
         }
 
-        GUI::DragDesc scene_drag_desc(f32 speed)
+        EditorGUI::DragDesc scene_drag_desc(f32 speed)
         {
-            GUI::DragDesc desc;
+            EditorGUI::DragDesc desc;
             desc.speed = speed;
             return desc;
         }
 
-        bool edit_transform_core(GUICore::IContext* context, Transform* transform)
+        bool edit_transform_gui(GUI::IContext* context, Transform* transform)
         {
             bool edited = false;
             {
                 Float3 old_position = transform->position;
-                GUICore::ElementHandle row = core_property_row(context, "Position");
-                GUI::drag_float3(context, context->make_id("value"), transform->position.m, 0.0f, 0.0f,
-                    core_fixed_height(30.0f), scene_drag_desc(0.01f));
-                core_end_property_row(context, row);
+                GUI::ElementHandle row = gui_property_row(context, "Position");
+                EditorGUI::drag_float3(context, context->make_id("value"), transform->position.m, 0.0f, 0.0f,
+                    gui_fixed_height(30.0f), scene_drag_desc(0.01f));
+                gui_end_property_row(context, row);
                 edited |= !scene_float3_equal(transform->position, old_position);
             }
             {
                 Float3& euler = get_scene_edit_buffer(g_transform_rotation_edit_buffers, (usize)transform,
                     transform_rotation_to_euler_degrees(transform));
                 Float3 old_euler = euler;
-                GUICore::ElementHandle row = core_property_row(context, "Rotation");
-                GUICore::ElementHandle item = GUI::drag_float3(context, context->make_id("value"), euler.m,
-                    0.0f, 0.0f, core_fixed_height(30.0f), scene_drag_desc(0.1f));
-                core_end_property_row(context, row);
+                GUI::ElementHandle row = gui_property_row(context, "Rotation");
+                GUI::ElementHandle item = EditorGUI::drag_float3(context, context->make_id("value"), euler.m,
+                    0.0f, 0.0f, gui_fixed_height(30.0f), scene_drag_desc(0.1f));
+                gui_end_property_row(context, row);
                 if(!scene_float3_equal(euler, old_euler))
                 {
                     Float3 radians = euler * (PI / 180.0f);
                     transform->rotation = Quaternion::from_euler_angles(radians);
                     edited = true;
                 }
-                else if(!GUI::is_item_active(context, item) && !GUI::is_item_focused(context, item))
+                else if(!EditorGUI::is_item_active(context, item) && !EditorGUI::is_item_focused(context, item))
                 {
                     euler = transform_rotation_to_euler_degrees(transform);
                 }
             }
             {
                 Float3 old_scale = transform->scale;
-                GUICore::ElementHandle row = core_property_row(context, "Scale");
-                GUI::drag_float3(context, context->make_id("value"), transform->scale.m, 0.0f, 0.0f,
-                    core_fixed_height(30.0f), scene_drag_desc(0.01f));
-                core_end_property_row(context, row);
+                GUI::ElementHandle row = gui_property_row(context, "Scale");
+                EditorGUI::drag_float3(context, context->make_id("value"), transform->scale.m, 0.0f, 0.0f,
+                    gui_fixed_height(30.0f), scene_drag_desc(0.01f));
+                gui_end_property_row(context, row);
                 edited |= !scene_float3_equal(transform->scale, old_scale);
             }
             return edited;
@@ -304,14 +304,14 @@ namespace Luna
 
     namespace
     {
-        void draw_actor_tree_node_core(SceneEditor* editor, GUICore::IContext* context, Actor* actor,
+        void draw_actor_tree_node_gui(SceneEditor* editor, GUI::IContext* context, Actor* actor,
             bool& open_popup, u32 indent_depth)
         {
             ActorInfo* info = actor->get_actor_info();
-            GUI::TreeNodeFlag flags = GUI::TreeNodeFlag::open_on_arrow;
+            EditorGUI::TreeNodeFlag flags = EditorGUI::TreeNodeFlag::open_on_arrow;
             if(info->get_guid() == editor->m_editing_actor_guid)
             {
-                flags |= GUI::TreeNodeFlag::selected;
+                flags |= EditorGUI::TreeNodeFlag::selected;
             }
             String name(info->name);
             Guid guid = info->get_guid();
@@ -320,20 +320,20 @@ namespace Luna
             info->get_children(children);
             if(children.empty())
             {
-                flags |= GUI::TreeNodeFlag::leaf;
+                flags |= EditorGUI::TreeNodeFlag::leaf;
             }
-            GUI::DisclosureDesc disclosure_desc;
+            EditorGUI::DisclosureDesc disclosure_desc;
             disclosure_desc.default_open = !children.empty();
 
-            context->push_data_scope(context->make_id((GUICore::id_t)hash));
-            GUICore::ElementHandle tree_node;
-            bool opened = GUI::tree_node(context, context->make_id("actor"), name.c_str(), flags, indent_depth,
-                core_fixed_height(26.0f), disclosure_desc, &tree_node);
-            if(GUI::is_item_clicked(context, tree_node))
+            context->push_data_scope(context->make_id((GUI::id_t)hash));
+            GUI::ElementHandle tree_node;
+            bool opened = EditorGUI::tree_node(context, context->make_id("actor"), name.c_str(), flags, indent_depth,
+                gui_fixed_height(26.0f), disclosure_desc, &tree_node);
+            if(EditorGUI::is_item_clicked(context, tree_node))
             {
                 editor->m_editing_actor_guid = guid;
             }
-            if(GUI::is_item_right_clicked(context, tree_node))
+            if(EditorGUI::is_item_right_clicked(context, tree_node))
             {
                 editor->m_editing_actor_guid = guid;
                 open_popup = true;
@@ -342,29 +342,29 @@ namespace Luna
             {
                 for(Actor* child : children)
                 {
-                    draw_actor_tree_node_core(editor, context, child, open_popup, indent_depth + 1);
+                    draw_actor_tree_node_gui(editor, context, child, open_popup, indent_depth + 1);
                 }
             }
             context->pop_data_scope();
         }
     }
 
-    void SceneEditor::draw_actor_tree_node(GUICore::IContext* context, Actor* actor, bool& open_popup)
+    void SceneEditor::draw_actor_tree_node(GUI::IContext* context, Actor* actor, bool& open_popup)
     {
-        draw_actor_tree_node_core(this, context, actor, open_popup, 0);
+        draw_actor_tree_node_gui(this, context, actor, open_popup, 0);
     }
 
-    void SceneEditor::draw_actor_list(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    void SceneEditor::draw_actor_list(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
-        GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("actor_list"), "Actor List", layout);
-        GUICore::ElementHandle header = GUI::begin_h_layout(context, context->make_id("header"), "Actor List Header",
-            core_fixed_height(30.0f));
-        GUI::text(context, context->make_id("title"), "Actor List", core_fixed_size(110.0f, 30.0f));
-        GUICore::ElementHandle new_actor_button = GUI::text_button(context, context->make_id("new_actor"), "New Actor",
-            core_fixed_size(110.0f, 30.0f));
-        GUI::end_h_layout(context, header, core_linear(GUICore::LayoutAxis::x, 6.0f));
-        if(s && GUI::is_item_clicked(context, new_actor_button))
+        GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("actor_list"), "Actor List", layout);
+        GUI::ElementHandle header = EditorGUI::begin_h_layout(context, context->make_id("header"), "Actor List Header",
+            gui_fixed_height(30.0f));
+        EditorGUI::text(context, context->make_id("title"), "Actor List", gui_fixed_size(110.0f, 30.0f));
+        GUI::ElementHandle new_actor_button = EditorGUI::text_button(context, context->make_id("new_actor"), "New Actor",
+            gui_fixed_size(110.0f, 30.0f));
+        EditorGUI::end_h_layout(context, header, gui_linear(GUI::LayoutAxis::x, 6.0f));
+        if(s && EditorGUI::is_item_clicked(context, new_actor_button))
         {
             auto iter = s->actors.emplace_back();
             iter->guid = random_guid();
@@ -372,13 +372,13 @@ namespace Luna
             on_add_actor(s->actors.size() - 1);
         }
 
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, context->make_id("scroll"), "Actor List Scroll",
-            core_fill());
-        GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"), "Actor List Content",
-            core_fill());
+        GUI::ElementHandle scroll = EditorGUI::begin_scroll_view(context, context->make_id("scroll"), "Actor List Scroll",
+            gui_fill());
+        GUI::ElementHandle content = EditorGUI::begin_v_layout(context, context->make_id("content"), "Actor List Content",
+            gui_fill());
         if(!s || s->actors.empty())
         {
-            GUI::text(context, context->make_id("empty"), "No actor in the scene.", core_fixed_height(24.0f));
+            EditorGUI::text(context, context->make_id("empty"), "No actor in the scene.", gui_fixed_height(24.0f));
         }
         else
         {
@@ -395,23 +395,23 @@ namespace Luna
             {
                 m_actor_popup_open = true;
                 m_actor_popup_position = context->get_pointer_position();
-                GUI::open_popup(context, context->make_id("actor_popup"));
+                EditorGUI::open_popup(context, context->make_id("actor_popup"));
             }
         }
-        GUI::end_v_layout(context, content, core_linear(GUICore::LayoutAxis::y, 0.0f));
-        GUI::end_scroll_view(context);
+        EditorGUI::end_v_layout(context, content, gui_linear(GUI::LayoutAxis::y, 0.0f));
+        EditorGUI::end_scroll_view(context);
 
-        GUICore::id_t popup_id = context->make_id("actor_popup");
-        GUI::PopupDesc popup_desc;
+        GUI::id_t popup_id = context->make_id("actor_popup");
+        EditorGUI::PopupDesc popup_desc;
         popup_desc.position = m_actor_popup_position;
-        popup_desc.layout = core_fixed_size(150.0f, 42.0f);
-        GUICore::ElementHandle popup;
-        if(GUI::begin_popup(context, popup_id, popup_desc, &popup))
+        popup_desc.layout = gui_fixed_size(150.0f, 42.0f);
+        GUI::ElementHandle popup;
+        if(EditorGUI::begin_popup(context, popup_id, popup_desc, &popup))
         {
             m_actor_popup_open = true;
-            GUICore::ElementHandle remove_item = GUI::selectable(context, context->make_id("remove"), "Remove",
-                false, core_fixed_height(28.0f));
-            if(s && GUI::is_item_clicked(context, remove_item))
+            GUI::ElementHandle remove_item = EditorGUI::selectable(context, context->make_id("remove"), "Remove",
+                false, gui_fixed_height(28.0f));
+            if(s && EditorGUI::is_item_clicked(context, remove_item))
             {
                 usize remove_index = USIZE_MAX;
                 for(usize i = 0; i < s->actors.size(); ++i)
@@ -428,55 +428,54 @@ namespace Luna
                     s->actors.erase(s->actors.begin() + remove_index);
                 }
                 m_actor_popup_open = false;
-                GUI::close_popup(context, popup_id);
+                EditorGUI::close_popup(context, popup_id);
             }
-            lupanic_if_failed(GUI::end_popup(context, popup, RectF(0.0f, 0.0f, 150.0f, 42.0f)));
+            lupanic_if_failed(EditorGUI::end_popup(context, popup, RectF(0.0f, 0.0f, 150.0f, 42.0f)));
         }
-        else if(m_actor_popup_open && !GUI::is_popup_open(context, popup_id))
+        else if(m_actor_popup_open && !EditorGUI::is_popup_open(context, popup_id))
         {
             m_actor_popup_open = false;
         }
 
-        GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f));
+        EditorGUI::end_v_layout(context, root, gui_linear(GUI::LayoutAxis::y, 6.0f));
     }
 
-    void SceneEditor::draw_scene_settings(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    void SceneEditor::draw_scene_settings(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
-        GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("scene_settings"), "Scene Settings",
+        GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("scene_settings"), "Scene Settings",
             layout);
-        GUI::text(context, context->make_id("title"), "Scene Settings", core_fixed_height(24.0f));
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, context->make_id("scroll"),
-            "Scene Settings Scroll", core_fill());
-        GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"),
-            "Scene Settings Content", core_fill());
+        EditorGUI::text(context, context->make_id("title"), "Scene Settings", gui_fixed_height(24.0f));
+        GUI::ElementHandle scroll = EditorGUI::begin_scroll_view(context, context->make_id("scroll"),
+            "Scene Settings Scroll", gui_fill());
+        GUI::ElementHandle content = EditorGUI::begin_v_layout(context, context->make_id("content"),
+            "Scene Settings Content", gui_fill());
         if(!s)
         {
-            GUI::text(context, context->make_id("loading"), "Scene Loading", core_fixed_height(24.0f));
+            EditorGUI::text(context, context->make_id("loading"), "Scene Loading", gui_fixed_height(24.0f));
         }
         else
         {
             edit_scene_object(context, &m_world, typeof<SceneSettings>(), &(s->settings));
         }
-        GUI::end_v_layout(context, content, core_linear(GUICore::LayoutAxis::y, 4.0f));
-        GUI::end_scroll_view(context);
-        GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f));
+        EditorGUI::end_v_layout(context, content, gui_linear(GUI::LayoutAxis::y, 4.0f));
+        EditorGUI::end_scroll_view(context);
+        EditorGUI::end_v_layout(context, root, gui_linear(GUI::LayoutAxis::y, 6.0f));
     }
 
-    void SceneEditor::draw_scene(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    void SceneEditor::draw_scene(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
         lutry
         {
             Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
-            GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("scene_view"), "Scene View", layout);
-            GUI::text(context, context->make_id("title"), "Scene", core_fixed_height(24.0f));
+            GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("scene_view"), "Scene View", layout);
+            EditorGUI::text(context, context->make_id("title"), "Scene", gui_fixed_height(24.0f));
 
             auto settings = m_renderer.get_settings();
-            GUICore::FrameDesc frame = context->get_frame_desc();
-            f32 dpi_scale = max(frame.dpi_scale, 1.0f);
+            GUI::FrameDesc frame = context->get_frame_desc();
             UInt2U target_size(
-                (u32)max(frame.screen_size.x * 0.5f * dpi_scale, 64.0f),
-                (u32)max(frame.screen_size.y * 0.55f * dpi_scale, 64.0f));
+                (u32)max((f32)frame.render_size.x * 0.5f, 64.0f),
+                (u32)max((f32)frame.render_size.y * 0.55f, 64.0f));
             settings.screen_size = target_size;
 
             if(settings != m_renderer.get_settings())
@@ -484,22 +483,22 @@ namespace Luna
                 luexp(m_renderer.reset(settings));
             }
 
-            GUICore::ElementHandle toolbar = GUI::begin_h_layout(context, context->make_id("toolbar"), "Scene Toolbar",
-                core_fixed_height(32.0f));
-            GUI::slider_float(context, context->make_id("camera_speed"), &m_camera_speed, 0.1f, 10.0f,
-                core_fixed_size(190.0f, 32.0f));
-            GUI::text(context, context->make_id("mode_label"), "Mode", core_fixed_size(48.0f, 32.0f));
-            GUICore::ElementHandle local_mode = GUI::selectable(context, context->make_id("local_mode"), "Local",
-                m_gizmo_mode == SceneGizmoMode::local, core_fixed_size(64.0f, 32.0f));
-            GUICore::ElementHandle world_mode = GUI::selectable(context, context->make_id("world_mode"), "World",
-                m_gizmo_mode == SceneGizmoMode::world, core_fixed_size(72.0f, 32.0f));
-            GUI::text(context, context->make_id("operation_label"), "Operation", core_fixed_size(78.0f, 32.0f));
-            GUICore::ElementHandle translate_op = GUI::selectable(context, context->make_id("translate"), "Translate",
-                m_gizmo_op == SceneGizmoOperation::translate, core_fixed_size(90.0f, 32.0f));
-            GUICore::ElementHandle rotate_op = GUI::selectable(context, context->make_id("rotate"), "Rotate",
-                m_gizmo_op == SceneGizmoOperation::rotate, core_fixed_size(72.0f, 32.0f));
-            GUICore::ElementHandle scale_op = GUI::selectable(context, context->make_id("scale"), "Scale",
-                m_gizmo_op == SceneGizmoOperation::scale, core_fixed_size(64.0f, 32.0f));
+            GUI::ElementHandle toolbar = EditorGUI::begin_h_layout(context, context->make_id("toolbar"), "Scene Toolbar",
+                gui_fixed_height(32.0f));
+            EditorGUI::slider_float(context, context->make_id("camera_speed"), &m_camera_speed, 0.1f, 10.0f,
+                gui_fixed_size(190.0f, 32.0f));
+            EditorGUI::text(context, context->make_id("mode_label"), "Mode", gui_fixed_size(48.0f, 32.0f));
+            GUI::ElementHandle local_mode = EditorGUI::selectable(context, context->make_id("local_mode"), "Local",
+                m_gizmo_mode == SceneGizmoMode::local, gui_fixed_size(64.0f, 32.0f));
+            GUI::ElementHandle world_mode = EditorGUI::selectable(context, context->make_id("world_mode"), "World",
+                m_gizmo_mode == SceneGizmoMode::world, gui_fixed_size(72.0f, 32.0f));
+            EditorGUI::text(context, context->make_id("operation_label"), "Operation", gui_fixed_size(78.0f, 32.0f));
+            GUI::ElementHandle translate_op = EditorGUI::selectable(context, context->make_id("translate"), "Translate",
+                m_gizmo_op == SceneGizmoOperation::translate, gui_fixed_size(90.0f, 32.0f));
+            GUI::ElementHandle rotate_op = EditorGUI::selectable(context, context->make_id("rotate"), "Rotate",
+                m_gizmo_op == SceneGizmoOperation::rotate, gui_fixed_size(72.0f, 32.0f));
+            GUI::ElementHandle scale_op = EditorGUI::selectable(context, context->make_id("scale"), "Scale",
+                m_gizmo_op == SceneGizmoOperation::scale, gui_fixed_size(64.0f, 32.0f));
 
             auto render_mode_type = typeof<SceneRendererMode>();
             auto options = get_enum_options(render_mode_type);
@@ -520,21 +519,21 @@ namespace Luna
             }
             String render_mode_label;
             strprintf(render_mode_label, "Render: %s", current_name.c_str());
-            GUICore::ElementHandle render_mode_button = GUI::text_button(context, context->make_id("render_mode"),
-                render_mode_label.c_str(), core_fixed_size(170.0f, 32.0f));
-            GUICore::ElementHandle profiling_button = GUI::selectable(context, context->make_id("profiling"),
-                "Time Profiling", settings.frame_profiling, core_fixed_size(140.0f, 32.0f));
-            GUI::end_h_layout(context, toolbar, core_linear(GUICore::LayoutAxis::x, 6.0f));
-            if(GUI::is_item_clicked(context, local_mode)) m_gizmo_mode = SceneGizmoMode::local;
-            if(GUI::is_item_clicked(context, world_mode)) m_gizmo_mode = SceneGizmoMode::world;
-            if(GUI::is_item_clicked(context, translate_op)) m_gizmo_op = SceneGizmoOperation::translate;
-            if(GUI::is_item_clicked(context, rotate_op)) m_gizmo_op = SceneGizmoOperation::rotate;
-            if(GUI::is_item_clicked(context, scale_op)) m_gizmo_op = SceneGizmoOperation::scale;
-            if(GUI::is_item_clicked(context, render_mode_button) && !options.empty())
+            GUI::ElementHandle render_mode_button = EditorGUI::text_button(context, context->make_id("render_mode"),
+                render_mode_label.c_str(), gui_fixed_size(170.0f, 32.0f));
+            GUI::ElementHandle profiling_button = EditorGUI::selectable(context, context->make_id("profiling"),
+                "Time Profiling", settings.frame_profiling, gui_fixed_size(140.0f, 32.0f));
+            EditorGUI::end_h_layout(context, toolbar, gui_linear(GUI::LayoutAxis::x, 6.0f));
+            if(EditorGUI::is_item_clicked(context, local_mode)) m_gizmo_mode = SceneGizmoMode::local;
+            if(EditorGUI::is_item_clicked(context, world_mode)) m_gizmo_mode = SceneGizmoMode::world;
+            if(EditorGUI::is_item_clicked(context, translate_op)) m_gizmo_op = SceneGizmoOperation::translate;
+            if(EditorGUI::is_item_clicked(context, rotate_op)) m_gizmo_op = SceneGizmoOperation::rotate;
+            if(EditorGUI::is_item_clicked(context, scale_op)) m_gizmo_op = SceneGizmoOperation::scale;
+            if(EditorGUI::is_item_clicked(context, render_mode_button) && !options.empty())
             {
                 settings.mode = (SceneRendererMode)options[(current_mode_index + 1) % options.size()].value;
             }
-            if(GUI::is_item_clicked(context, profiling_button))
+            if(EditorGUI::is_item_clicked(context, profiling_button))
             {
                 settings.frame_profiling = !settings.frame_profiling;
             }
@@ -543,20 +542,20 @@ namespace Luna
                 luexp(m_renderer.reset(settings));
             }
 
-            GUICore::ElementHandle viewport = GUI::begin_canvas_layout(context, context->make_id("viewport"), "Scene Viewport",
-                core_fill());
-            Vector<GUICore::CanvasLayoutItem> viewport_layout_items;
-            auto add_fill_viewport_item = [&](GUICore::id_t id)
+            GUI::ElementHandle viewport = EditorGUI::begin_canvas_layout(context, context->make_id("viewport"), "Scene Viewport",
+                gui_fill());
+            Vector<GUI::CanvasLayoutItem> viewport_layout_items;
+            auto add_fill_viewport_item = [&](GUI::id_t id)
             {
-                GUICore::CanvasLayoutItem item;
+                GUI::CanvasLayoutItem item;
                 item.element_id = id;
                 item.anchor_min = Float2U(0.0f);
                 item.anchor_max = Float2U(1.0f);
                 viewport_layout_items.push_back(item);
             };
-            auto add_top_viewport_item = [&](GUICore::id_t id, f32 y)
+            auto add_top_viewport_item = [&](GUI::id_t id, f32 y)
             {
-                GUICore::CanvasLayoutItem item;
+                GUI::CanvasLayoutItem item;
                 item.element_id = id;
                 item.anchor_min = Float2U(0.0f, 0.0f);
                 item.anchor_max = Float2U(1.0f, 0.0f);
@@ -564,15 +563,15 @@ namespace Luna
                 viewport_layout_items.push_back(item);
             };
 
-            GUICore::id_t viewport_hit_id = context->make_id("viewport_hit");
+            GUI::id_t viewport_hit_id = context->make_id("viewport_hit");
             add_fill_viewport_item(viewport_hit_id);
-            GUICore::ElementHandle viewport_hit = GUI::hit_box(context, viewport_hit_id, core_fill());
+            GUI::ElementHandle viewport_hit = EditorGUI::hit_box(context, viewport_hit_id, gui_fill());
 
             if(!s)
             {
-                GUICore::id_t loading_id = context->make_id("loading");
+                GUI::id_t loading_id = context->make_id("loading");
                 add_fill_viewport_item(loading_id);
-                GUI::text(context, loading_id, "Scene Loading", core_fill());
+                EditorGUI::text(context, loading_id, "Scene Loading", gui_fill());
             }
             else
             {
@@ -581,15 +580,15 @@ namespace Luna
                 Camera* camera_component = camera_actor ? camera_actor->get_component<Camera>() : nullptr;
                 if(!camera_actor)
                 {
-                    GUICore::id_t no_camera_id = context->make_id("no_camera");
+                    GUI::id_t no_camera_id = context->make_id("no_camera");
                     add_fill_viewport_item(no_camera_id);
-                    GUI::text(context, no_camera_id, "Set a camera in scene settings to start.", core_fill());
+                    EditorGUI::text(context, no_camera_id, "Set a camera in scene settings to start.", gui_fill());
                 }
                 else if(!camera_component)
                 {
-                    GUICore::id_t no_camera_component_id = context->make_id("no_camera_component");
+                    GUI::id_t no_camera_component_id = context->make_id("no_camera_component");
                     add_fill_viewport_item(no_camera_component_id);
-                    GUI::text(context, no_camera_component_id, "Actor camera actor does not have a camera component", core_fill());
+                    EditorGUI::text(context, no_camera_component_id, "Actor camera actor does not have a camera component", gui_fill());
                 }
                 else
                 {
@@ -618,14 +617,14 @@ namespace Luna
                     m_renderer.command_buffer->wait();
                     luassert_always(succeeded(m_renderer.command_buffer->reset()));
 
-                    GUICore::id_t scene_texture_id = context->make_id("scene_texture");
+                    GUI::id_t scene_texture_id = context->make_id("scene_texture");
                     add_fill_viewport_item(scene_texture_id);
-                    GUI::ImageDesc image_desc;
-                    image_desc.flags = GUI::ImageFlag::flip_y;
-                    GUI::image(context, scene_texture_id, m_renderer.render_texture.get(), core_fill(), image_desc);
+                    EditorGUI::ImageDesc image_desc;
+                    image_desc.flags = EditorGUI::ImageFlag::flip_y;
+                    EditorGUI::image(context, scene_texture_id, m_renderer.render_texture.get(), gui_fill(), image_desc);
 
-                    bool scene_pointer_hovered = GUI::is_item_hovered(context, viewport_hit);
-                    bool right_down = context->is_pointer_button_down(GUICore::PointerButton::right);
+                    bool scene_pointer_hovered = EditorGUI::is_item_hovered(context, viewport_hit);
+                    bool right_down = context->is_pointer_button_down(GUI::PointerButton::right);
                     if(!m_navigating && right_down && scene_pointer_hovered)
                     {
                         m_navigating = true;
@@ -655,7 +654,7 @@ namespace Luna
                         auto up = AffineMatrix::up(rot_mat);
 
                         f32 camera_speed = m_camera_speed;
-                        if(((u8)context->get_key_modifiers() & (u8)GUICore::KeyModifierFlag::shift) != 0)
+                        if(((u8)context->get_key_modifiers() & (u8)GUI::KeyModifierFlag::shift) != 0)
                         {
                             camera_speed *= 2.0f;
                         }
@@ -706,47 +705,47 @@ namespace Luna
                     {
                         String debug_text;
                         strprintf(debug_text, "Frame Size: %ux%u", renderer_settings.screen_size.x, renderer_settings.screen_size.y);
-                        GUICore::id_t frame_size_id = context->make_id("frame_size");
+                        GUI::id_t frame_size_id = context->make_id("frame_size");
                         add_top_viewport_item(frame_size_id, 8.0f);
-                        GUI::text(context, frame_size_id, debug_text.c_str(), core_fixed_height(22.0f));
+                        EditorGUI::text(context, frame_size_id, debug_text.c_str(), gui_fixed_height(22.0f));
                         f32 fps = frame.delta_time > 0.0f ? 1.0f / frame.delta_time : 0.0f;
                         strprintf(debug_text, "FPS: %f", fps);
-                        GUICore::id_t fps_id = context->make_id("fps");
+                        GUI::id_t fps_id = context->make_id("fps");
                         add_top_viewport_item(fps_id, 32.0f);
-                        GUI::text(context, fps_id, debug_text.c_str(), core_fixed_height(22.0f));
+                        EditorGUI::text(context, fps_id, debug_text.c_str(), gui_fixed_height(22.0f));
                     }
                 }
             }
 
-            GUICore::CanvasLayoutDesc viewport_layout;
-            viewport_layout.items = Span<const GUICore::CanvasLayoutItem>(viewport_layout_items.data(), viewport_layout_items.size());
+            GUI::CanvasLayoutDesc viewport_layout;
+            viewport_layout.items = Span<const GUI::CanvasLayoutItem>(viewport_layout_items.data(), viewport_layout_items.size());
             viewport_layout.clip_children = true;
-            GUI::end_canvas_layout(context, viewport, viewport_layout);
-            GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f));
+            EditorGUI::end_canvas_layout(context, viewport, viewport_layout);
+            EditorGUI::end_v_layout(context, root, gui_linear(GUI::LayoutAxis::y, 6.0f));
         }
         lucatch
         {
-            GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("scene_view_error"), "Scene View Error",
+            GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("scene_view_error"), "Scene View Error",
                 layout);
-            GUI::text(context, context->make_id("error"), explain(luerr), core_fixed_height(30.0f));
-            GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f));
+            EditorGUI::text(context, context->make_id("error"), explain(luerr), gui_fixed_height(30.0f));
+            EditorGUI::end_v_layout(context, root, gui_linear(GUI::LayoutAxis::y, 6.0f));
         }
     }
 
-    void SceneEditor::draw_components_grid(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    void SceneEditor::draw_components_grid(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
-        GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("components_grid"), "Components Grid",
+        GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("components_grid"), "Components Grid",
             layout);
-        GUI::text(context, context->make_id("title"), "Components Grid", core_fixed_height(24.0f));
-        GUICore::ElementHandle scroll = GUI::begin_scroll_view(context, context->make_id("scroll"),
-            "Components Grid Scroll", core_fill());
-        GUICore::ElementHandle content = GUI::begin_v_layout(context, context->make_id("content"),
-            "Components Grid Content", core_fill());
+        EditorGUI::text(context, context->make_id("title"), "Components Grid", gui_fixed_height(24.0f));
+        GUI::ElementHandle scroll = EditorGUI::begin_scroll_view(context, context->make_id("scroll"),
+            "Components Grid Scroll", gui_fill());
+        GUI::ElementHandle content = EditorGUI::begin_v_layout(context, context->make_id("content"),
+            "Components Grid Content", gui_fill());
 
         Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
         if(!s)
         {
-            GUI::text(context, context->make_id("loading"), "Scene Loading", core_fixed_height(24.0f));
+            EditorGUI::text(context, context->make_id("loading"), "Scene Loading", gui_fixed_height(24.0f));
         }
         else
         {
@@ -760,9 +759,9 @@ namespace Luna
                 }
                 {
                     String old_name = actor->name.c_str();
-                    GUICore::ElementHandle row = core_property_row(context, "Actor Name");
-                    GUI::input_text(context, context->make_id("name"), m_actor_name_editing_text, core_fixed_height(30.0f));
-                    core_end_property_row(context, row);
+                    GUI::ElementHandle row = gui_property_row(context, "Actor Name");
+                    EditorGUI::input_text(context, context->make_id("name"), m_actor_name_editing_text, gui_fixed_height(30.0f));
+                    gui_end_property_row(context, row);
                     if(strcmp(m_actor_name_editing_text.c_str(), old_name.c_str()) != 0)
                     {
                         actor->name = m_actor_name_editing_text;
@@ -770,7 +769,7 @@ namespace Luna
                     }
                 }
 
-                if(edit_transform_core(context, &actor->transform))
+                if(edit_transform_gui(context, &actor->transform))
                 {
                     on_edit_actor_transform(*actor);
                 }
@@ -778,7 +777,7 @@ namespace Luna
                 auto& components = actor->components;
                 if(components.empty())
                 {
-                    GUI::text(context, context->make_id("no_components"), "No components", core_fixed_height(24.0f));
+                    EditorGUI::text(context, context->make_id("no_components"), "No components", gui_fixed_height(24.0f));
                 }
                 else
                 {
@@ -787,12 +786,12 @@ namespace Luna
                     {
                         auto& obj = *iter;
                         Name type_name = get_type_name(obj.type());
-                        context->push_data_scope(context->make_id((GUICore::id_t)obj.type().handle));
-                        GUICore::ElementHandle header_handle;
-                        GUI::DisclosureDesc disclosure_desc;
+                        context->push_data_scope(context->make_id((GUI::id_t)obj.type().handle));
+                        GUI::ElementHandle header_handle;
+                        EditorGUI::DisclosureDesc disclosure_desc;
                         disclosure_desc.default_open = true;
-                        bool open = GUI::collapsing_header(context, context->make_id("component_header"),
-                            type_name.c_str(), core_fixed_height(30.0f), disclosure_desc, &header_handle);
+                        bool open = EditorGUI::collapsing_header(context, context->make_id("component_header"),
+                            type_name.c_str(), gui_fixed_height(30.0f), disclosure_desc, &header_handle);
                         bool remove_component = false;
                         if(open)
                         {
@@ -801,9 +800,9 @@ namespace Luna
                             {
                                 on_actor_edit_component(*actor, obj.type());
                             }
-                            GUICore::ElementHandle remove_button = GUI::text_button(context, context->make_id("remove"),
-                                "Remove", core_fixed_height(28.0f));
-                            remove_component = GUI::is_item_clicked(context, remove_button);
+                            GUI::ElementHandle remove_button = EditorGUI::text_button(context, context->make_id("remove"),
+                                "Remove", gui_fixed_height(28.0f));
+                            remove_component = EditorGUI::is_item_clicked(context, remove_button);
                         }
                         context->pop_data_scope();
 
@@ -819,22 +818,22 @@ namespace Luna
                     }
                 }
 
-                GUICore::ElementHandle new_component_button = GUI::text_button(context, context->make_id("new_component"),
-                    "New Component", core_fixed_height(30.0f));
-                GUICore::id_t popup_id = context->make_id("new_component_popup");
-                if(GUI::is_item_clicked(context, new_component_button))
+                GUI::ElementHandle new_component_button = EditorGUI::text_button(context, context->make_id("new_component"),
+                    "New Component", gui_fixed_height(30.0f));
+                GUI::id_t popup_id = context->make_id("new_component_popup");
+                if(EditorGUI::is_item_clicked(context, new_component_button))
                 {
                     m_new_component_popup_open = true;
                     m_new_component_popup_position = context->get_pointer_position();
-                    GUI::open_popup(context, popup_id);
+                    EditorGUI::open_popup(context, popup_id);
                 }
-                GUI::PopupDesc popup_desc;
+                EditorGUI::PopupDesc popup_desc;
                 popup_desc.position = m_new_component_popup_position;
-                popup_desc.layout = core_fixed_size(260.0f, max((f32)g_env->component_types.size() * 28.0f + 12.0f, 42.0f));
-                GUICore::ElementHandle popup;
-                if(GUI::begin_popup(context, popup_id, popup_desc, &popup))
+                popup_desc.layout = gui_fixed_size(260.0f, max((f32)g_env->component_types.size() * 28.0f + 12.0f, 42.0f));
+                GUI::ElementHandle popup;
+                if(EditorGUI::begin_popup(context, popup_id, popup_desc, &popup))
                 {
-                    Vector<Pair<typeinfo_t, GUICore::ElementHandle>> component_items;
+                    Vector<Pair<typeinfo_t, GUI::ElementHandle>> component_items;
                     component_items.reserve(g_env->component_types.size());
                     for(auto& component_type : g_env->component_types)
                     {
@@ -848,22 +847,22 @@ namespace Luna
                             }
                         }
                         Name comp_name = get_type_name(component_type);
-                        context->push_data_scope(context->make_id((GUICore::id_t)component_type.handle));
+                        context->push_data_scope(context->make_id((GUI::id_t)component_type.handle));
                         if(!exists)
                         {
                             component_items.push_back(make_pair(component_type,
-                                GUI::selectable(context, context->make_id("component"), comp_name.c_str(), false,
-                                    core_fixed_height(26.0f))));
+                                EditorGUI::selectable(context, context->make_id("component"), comp_name.c_str(), false,
+                                    gui_fixed_height(26.0f))));
                         }
                         else
                         {
-                            GUI::text(context, context->make_id("existing"), comp_name.c_str(), core_fixed_height(26.0f));
+                            EditorGUI::text(context, context->make_id("existing"), comp_name.c_str(), gui_fixed_height(26.0f));
                         }
                         context->pop_data_scope();
                     }
                     for(auto& item : component_items)
                     {
-                        if(GUI::is_item_clicked(context, item.second))
+                        if(EditorGUI::is_item_clicked(context, item.second))
                         {
                             object_t comp = object_alloc(item.first);
                             construct_type(item.first, comp);
@@ -872,45 +871,45 @@ namespace Luna
                             components.push_back(move(comp_obj));
                             on_actor_add_component(*actor, item.first);
                             m_new_component_popup_open = false;
-                            GUI::close_popup(context, popup_id);
+                            EditorGUI::close_popup(context, popup_id);
                         }
                     }
-                    lupanic_if_failed(GUI::end_popup(context, popup,
+                    lupanic_if_failed(EditorGUI::end_popup(context, popup,
                         RectF(0.0f, 0.0f, 260.0f, max((f32)g_env->component_types.size() * 28.0f + 12.0f, 42.0f))));
                 }
-                else if(m_new_component_popup_open && !GUI::is_popup_open(context, popup_id))
+                else if(m_new_component_popup_open && !EditorGUI::is_popup_open(context, popup_id))
                 {
                     m_new_component_popup_open = false;
                 }
             }
             else
             {
-                GUI::text(context, context->make_id("no_actor"), "Select an entity to see components.",
-                    core_fixed_height(24.0f));
+                EditorGUI::text(context, context->make_id("no_actor"), "Select an entity to see components.",
+                    gui_fixed_height(24.0f));
             }
         }
 
-        GUI::end_v_layout(context, content, core_linear(GUICore::LayoutAxis::y, 4.0f));
-        GUI::end_scroll_view(context);
-        GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f));
+        EditorGUI::end_v_layout(context, content, gui_linear(GUI::LayoutAxis::y, 4.0f));
+        EditorGUI::end_scroll_view(context);
+        EditorGUI::end_v_layout(context, root, gui_linear(GUI::LayoutAxis::y, 6.0f));
     }
 
-    void SceneEditor::on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    void SceneEditor::on_render(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
         if(!m_open)
         {
             return;
         }
 
-        context->push_data_scope(context->make_id((GUICore::id_t)(usize)this));
-        GUICore::ElementHandle root = GUI::begin_v_layout(context, context->make_id("scene_editor"), "Scene Editor",
+        context->push_data_scope(context->make_id((GUI::id_t)(usize)this));
+        GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("scene_editor"), "Scene Editor",
             layout);
 
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
         if(!s)
         {
-            GUI::text(context, context->make_id("asset_unloaded"), "Asset Unloaded", core_fixed_height(30.0f));
-            GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f));
+            EditorGUI::text(context, context->make_id("asset_unloaded"), "Asset Unloaded", gui_fixed_height(30.0f));
+            EditorGUI::end_v_layout(context, root, gui_linear(GUI::LayoutAxis::y, 6.0f));
             context->pop_data_scope();
             return;
         }
@@ -925,8 +924,8 @@ namespace Luna
         }
         if(Asset::get_asset_state(m_scene) != Asset::AssetState::loaded)
         {
-            GUI::text(context, context->make_id("scene_loading"), "Scene Loading", core_fixed_height(30.0f));
-            GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f));
+            EditorGUI::text(context, context->make_id("scene_loading"), "Scene Loading", gui_fixed_height(30.0f));
+            EditorGUI::end_v_layout(context, root, gui_linear(GUI::LayoutAxis::y, 6.0f));
             context->pop_data_scope();
             return;
         }
@@ -934,22 +933,22 @@ namespace Luna
         bool capture_scene = false;
         Path capture_save_path;
 
-        GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, context->make_id("menu_bar"),
-            "Scene Editor Menu Bar", core_fixed_height(30.0f));
-        GUICore::ElementHandle save_item;
-        if(GUI::begin_menu(context, context->make_id("file"), "File"))
+        GUI::ElementHandle menu_bar = EditorGUI::begin_menu_bar(context, context->make_id("menu_bar"),
+            "Scene Editor Menu Bar", gui_fixed_height(30.0f));
+        GUI::ElementHandle save_item;
+        if(EditorGUI::begin_menu(context, context->make_id("file"), "File"))
         {
-            save_item = GUI::menu_item(context, context->make_id("save"), "Save");
-            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 180.0f, 34.0f)));
+            save_item = EditorGUI::menu_item(context, context->make_id("save"), "Save");
+            lupanic_if_failed(EditorGUI::end_menu(context, RectF(0.0f, 0.0f, 180.0f, 34.0f)));
         }
-        GUICore::ElementHandle capture_item;
-        if(GUI::begin_menu(context, context->make_id("tools"), "Tools"))
+        GUI::ElementHandle capture_item;
+        if(EditorGUI::begin_menu(context, context->make_id("tools"), "Tools"))
         {
-            capture_item = GUI::menu_item(context, context->make_id("capture_scene"), "Capture scene");
-            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 220.0f, 34.0f)));
+            capture_item = EditorGUI::menu_item(context, context->make_id("capture_scene"), "Capture scene");
+            lupanic_if_failed(EditorGUI::end_menu(context, RectF(0.0f, 0.0f, 220.0f, 34.0f)));
         }
-        GUI::end_menu_bar(context, menu_bar);
-        if(GUI::is_item_clicked(context, save_item))
+        EditorGUI::end_menu_bar(context, menu_bar);
+        if(EditorGUI::is_item_clicked(context, save_item))
         {
             lutry
             {
@@ -961,7 +960,7 @@ namespace Luna
                     Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
             }
         }
-        if(GUI::is_item_clicked(context, capture_item))
+        if(EditorGUI::is_item_clicked(context, capture_item))
         {
             Window::FileDialogFilter filter;
             filter.name = "BMP File";
@@ -976,17 +975,17 @@ namespace Luna
             }
         }
 
-        GUICore::ElementHandle content = GUI::begin_h_layout(context, context->make_id("content"), "Scene Editor Content",
-            core_fill());
-        GUICore::ElementHandle left_column = GUI::begin_v_layout(context, context->make_id("left_column"),
-            "Scene Editor Left Column", core_fixed_width(320.0f));
-        draw_actor_list(context, core_ratio_height(1.0f));
-        draw_scene_settings(context, core_ratio_height(1.0f));
-        GUI::end_v_layout(context, left_column, core_linear(GUICore::LayoutAxis::y, 8.0f));
-        draw_scene(context, core_fill());
-        draw_components_grid(context, core_fixed_width(380.0f));
-        GUI::end_h_layout(context, content, core_linear(GUICore::LayoutAxis::x, 8.0f));
-        GUI::end_v_layout(context, root, core_linear(GUICore::LayoutAxis::y, 6.0f));
+        GUI::ElementHandle content = EditorGUI::begin_h_layout(context, context->make_id("content"), "Scene Editor Content",
+            gui_fill());
+        GUI::ElementHandle left_column = EditorGUI::begin_v_layout(context, context->make_id("left_column"),
+            "Scene Editor Left Column", gui_fixed_width(320.0f));
+        draw_actor_list(context, gui_ratio_height(1.0f));
+        draw_scene_settings(context, gui_ratio_height(1.0f));
+        EditorGUI::end_v_layout(context, left_column, gui_linear(GUI::LayoutAxis::y, 8.0f));
+        draw_scene(context, gui_fill());
+        draw_components_grid(context, gui_fixed_width(380.0f));
+        EditorGUI::end_h_layout(context, content, gui_linear(GUI::LayoutAxis::x, 8.0f));
+        EditorGUI::end_v_layout(context, root, gui_linear(GUI::LayoutAxis::y, 6.0f));
         context->pop_data_scope();
 
         if(capture_scene)

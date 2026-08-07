@@ -8,7 +8,10 @@ public sealed record MakeActionContext(
     string ActionPayload,
     IReadOnlyList<BuildGraphNode> Dependencies,
     IReadOnlyList<BuildGraphNode> Outputs,
-    IReadOnlyList<BuildGraphNode> Depfiles);
+    IReadOnlyList<BuildGraphNode> Depfiles)
+{
+    public BuildOptions Options => Node.Options ?? Graph.Options;
+}
 
 public interface IMakeActionExecutor
 {

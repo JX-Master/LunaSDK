@@ -31,8 +31,17 @@ public sealed record BuildOptions(
     RhiApi RhiApi,
     BuildProperties Properties,
     IReadOnlyList<string> GlobalDefines,
-    IReadOnlyList<string> GlobalUndefines)
+    IReadOnlyList<string> GlobalUndefines,
+    IReadOnlyList<string> GlobalIncludeDirectories,
+    IReadOnlyList<BuildActionConfigurationDefinition> ActionConfigurations,
+    string LibraryPrefix)
 {
+    public BuildActionConfigurationDefinition? FindActionConfiguration(string name)
+    {
+        return ActionConfigurations.FirstOrDefault(configuration =>
+            configuration.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    }
+
     public static BuildOptions HostDefault()
     {
         var platform = OperatingSystem.IsWindows()
@@ -56,7 +65,10 @@ public sealed record BuildOptions(
             RhiApi: rhiApi,
             Properties: BuildProperties.Empty,
             GlobalDefines: Array.Empty<string>(),
-            GlobalUndefines: Array.Empty<string>());
+            GlobalUndefines: Array.Empty<string>(),
+            GlobalIncludeDirectories: Array.Empty<string>(),
+            ActionConfigurations: Array.Empty<BuildActionConfigurationDefinition>(),
+            LibraryPrefix: string.Empty);
     }
 
     private static string HostArchitecture()
@@ -71,3 +83,14 @@ public sealed record BuildOptions(
         };
     }
 }
+
+public sealed record BuildActionConfigurationDefinition(
+    string Name,
+    string ProviderProjectName,
+    string ProviderProjectRootDirectory,
+    string ProviderProjectBuildDirectory,
+    BuildProperties ProviderProperties,
+    IReadOnlyDictionary<string, string> Targets,
+    IReadOnlyDictionary<string, string> Files,
+    IReadOnlyDictionary<string, string> Directories,
+    IReadOnlyDictionary<string, string> Values);

@@ -8,7 +8,7 @@ public sealed class BuildGraphGenerator
         IReadOnlyList<BuildTargetDefinition> targets)
     {
         var nodes = new List<BuildGraphNode>();
-        var targetNames = targets.Select(target => target.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var targetNames = targets.Select(target => target.QualifiedName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach(var target in targets)
         {
@@ -19,14 +19,19 @@ public sealed class BuildGraphGenerator
                 .ToArray();
 
             nodes.Add(new BuildGraphNode(
-                Id: BuildGraphIds.Target(target.Name),
+                Id: BuildGraphIds.Target(target.QualifiedName),
                 Kind: BuildGraphNodeKind.Virtual,
                 Path: workspace.ToRepositoryRelativePath(target.Directory),
-                Command: BuildTargetCommandDescription(workspace, options, target),
+                Command: BuildTargetCommandDescription(workspace, target),
                 Dependencies: dependencies,
                 OrderOnlyDependencies: Array.Empty<string>(),
                 Outputs: Array.Empty<string>(),
-                Depfiles: Array.Empty<string>()));
+                Depfiles: Array.Empty<string>())
+            {
+                ProjectName = target.ProjectName,
+                ConfigurationId = target.ConfigurationId,
+                Options = target.Options,
+            });
         }
 
         nodes.Add(new BuildGraphNode(
@@ -34,36 +39,35 @@ public sealed class BuildGraphGenerator
             Kind: BuildGraphNodeKind.Phony,
             Path: null,
             Command: null,
-            Dependencies: targets.Select(target => BuildGraphIds.Target(target.Name)).ToArray(),
+            Dependencies: targets.Where(target => target.IsHostProject).Select(target => BuildGraphIds.Target(target.QualifiedName)).ToArray(),
             OrderOnlyDependencies: Array.Empty<string>(),
             Outputs: Array.Empty<string>(),
             Depfiles: Array.Empty<string>()));
 
         return new BuildGraph(
-            Version: 1,
+            Version: 2,
             Options: options,
             Nodes: nodes,
-            Targets: new[] { BuildGraphIds.AllTargets });
+            Targets: new[] { BuildGraphIds.AllTargets }).AddMetadata(targets);
     }
 
     private static string BuildTargetCommandDescription(
         BuildWorkspace workspace,
-        BuildOptions options,
         BuildTargetDefinition target)
     {
         var lines = new List<string>
         {
             "kind=target.inspect",
-            $"name={target.Name}",
+            $"name={target.QualifiedName}",
             $"script={workspace.ToRepositoryRelativePath(target.ScriptPath)}",
-            $"mode={options.Mode}",
-            $"platform={options.Platform}",
-            $"arch={options.Architecture}",
-            $"shared={options.Shared}",
+            $"mode={target.Options.Mode}",
+            $"platform={target.Options.Platform}",
+            $"arch={target.Options.Architecture}",
+            $"shared={target.Options.Shared}",
             $"category={target.Category}",
-            $"rhi={options.RhiApi}",
+            $"rhi={target.Options.RhiApi}",
         };
-        foreach(var property in options.Properties.Values.OrderBy(property => property.Name, StringComparer.OrdinalIgnoreCase))
+        foreach(var property in target.Options.Properties.Values.OrderBy(property => property.Name, StringComparer.OrdinalIgnoreCase))
         {
             lines.Add($"project_property.{property.Name}={property.Value}");
         }

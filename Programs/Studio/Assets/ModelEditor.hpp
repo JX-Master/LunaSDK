@@ -26,7 +26,7 @@ namespace Luna
 
         ModelEditor() {}
 
-        virtual void on_render(GUICore::IContext* context, const GUICore::LayoutConfig& layout) override;
+        virtual void on_render(GUI::IContext* context, const GUI::LayoutConfig& layout) override;
         virtual bool closed() override
         {
             return !m_open;

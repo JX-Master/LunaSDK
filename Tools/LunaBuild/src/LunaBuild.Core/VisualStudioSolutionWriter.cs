@@ -17,15 +17,15 @@ public static class VisualStudioSolutionWriter
     {
         Directory.CreateDirectory(outputDirectory);
         CleanGeneratedFiles(outputDirectory);
-        var targetMap = targets.ToDictionary(target => target.Name, StringComparer.OrdinalIgnoreCase);
-        var orderedTargets = targets.OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+        var targetMap = targets.ToDictionary(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase);
+        var orderedTargets = targets.OrderBy(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase).ToArray();
         var projectInfos = orderedTargets
             .Select(target => new ProjectInfo(
                 target,
-                IdeProjectModel.StableGuid("LunaBuild.VS2022.Project:" + target.Name),
-                IdeProjectModel.SanitizeFileName(target.Name) + ".vcxproj"))
+                IdeProjectModel.StableGuid("LunaBuild.VS2022.Project:" + target.QualifiedName),
+                IdeProjectModel.SanitizeFileName(target.QualifiedName) + ".vcxproj"))
             .ToArray();
-        var projectGuidByName = projectInfos.ToDictionary(info => info.Target.Name, info => info.Guid, StringComparer.OrdinalIgnoreCase);
+        var projectGuidByName = projectInfos.ToDictionary(info => info.Target.QualifiedName, info => info.Guid, StringComparer.OrdinalIgnoreCase);
 
         foreach(var project in projectInfos)
         {
@@ -60,16 +60,16 @@ public static class VisualStudioSolutionWriter
     {
         var configuration = options.Mode.ToString();
         var platform = VisualStudioPlatform(options.Architecture);
-        var buildCommand = IdeProjectModel.LunaBuildCommand(workspace, "build", target.Name, options, all: false, force: false);
-        var rebuildCommand = IdeProjectModel.LunaBuildCommand(workspace, "build", target.Name, options, all: false, force: true);
-        var cleanCommand = IdeProjectModel.LunaBuildCommand(workspace, "clean", target.Name, options, all: false, force: false);
-        var output = IdeProjectModel.FindPrimaryOutput(workspace, graph, target.Name) ?? Path.Combine(workspace.BuildDirectory, "VS2022", target.Name + ".stamp");
+        var buildCommand = IdeProjectModel.LunaBuildCommand(workspace, "build", target.QualifiedName, options, all: false, force: false);
+        var rebuildCommand = IdeProjectModel.LunaBuildCommand(workspace, "build", target.QualifiedName, options, all: false, force: true);
+        var cleanCommand = IdeProjectModel.LunaBuildCommand(workspace, "clean", target.QualifiedName, options, all: false, force: false);
+        var output = IdeProjectModel.FindPrimaryOutput(workspace, graph, target.QualifiedName) ?? Path.Combine(workspace.BuildDirectory, "VS2022", target.ProjectName + "." + target.Name + ".stamp");
         var includeSearchPath = string.Join(';', target.IncludeDirectories
-            .Concat(new[] { workspace.ResolveRepositoryPath("Modules") })
+            .Concat(target.Options.GlobalIncludeDirectories)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order(StringComparer.OrdinalIgnoreCase));
         var defines = string.Join(';', target.Defines
-            .Concat(new[] { "LUNA_MANUAL_CONFIG_DEBUG_LEVEL" })
+            .Concat(target.Options.GlobalDefines)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal));
 
@@ -150,7 +150,7 @@ public static class VisualStudioSolutionWriter
         builder.AppendLine("MinimumVisualStudioVersion = 10.0.40219.1");
         foreach(var project in projects)
         {
-            builder.AppendLine($"Project(\"{VcProjectTypeGuid}\") = \"{project.Target.Name}\", \"{project.FileName}\", \"{project.Guid}\"");
+            builder.AppendLine($"Project(\"{VcProjectTypeGuid}\") = \"{project.Target.QualifiedName}\", \"{project.FileName}\", \"{project.Guid}\"");
             var dependencies = project.Target.Dependencies
                 .Where(targetMap.ContainsKey)
                 .Order(StringComparer.OrdinalIgnoreCase)

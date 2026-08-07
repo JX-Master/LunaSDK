@@ -9,7 +9,7 @@
 */
 #pragma once
 #include "StudioHeader.hpp"
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/Runtime/HashSet.hpp>
 #include "AssetBrowser.generated.hpp"
 namespace Luna
@@ -59,10 +59,10 @@ namespace Luna
 
         void change_path(const Path& path);
 
-        void render(GUICore::IContext* context, bool* open);
+        void render(GUI::IContext* context, bool* open);
 
     private:
-        void navbar(GUICore::IContext* context);
-        void tile_context(GUICore::IContext* context);
+        void navbar(GUI::IContext* context);
+        void tile_context(GUI::IContext* context);
     };
 }

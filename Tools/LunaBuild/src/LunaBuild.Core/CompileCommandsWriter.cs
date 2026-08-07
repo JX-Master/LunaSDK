@@ -20,10 +20,9 @@ public static class CompileCommandsWriter
             Directory.CreateDirectory(directory);
         }
 
-        var appleToolchain = LocateAppleToolchain(graph.Options);
         var entries = graph.Nodes
             .Where(node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.compile")
-            .Select(node => CreateEntry(workspace, graph, node, appleToolchain))
+            .Select(node => CreateEntry(workspace, graph, node))
             .Where(entry => entry is not null)
             .OrderBy(entry => entry!.File, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -40,8 +39,10 @@ public static class CompileCommandsWriter
         return AppleClangToolchainLocator.LocateMacOS();
     }
 
-    private static CompileCommandEntry? CreateEntry(BuildWorkspace workspace, BuildGraph graph, BuildGraphNode node, AppleClangToolchain? appleToolchain)
+    private static CompileCommandEntry? CreateEntry(BuildWorkspace workspace, BuildGraph graph, BuildGraphNode node)
     {
+        var options = node.Options ?? graph.Options;
+        var appleToolchain = LocateAppleToolchain(options);
         var payload = ActionPayload.Parse(node.Command!);
         var language = payload.Required("language");
         if(language.Equals("assembler", StringComparison.OrdinalIgnoreCase) ||
@@ -52,7 +53,7 @@ public static class CompileCommandsWriter
 
         var command = CppCommandLineBuilder.BuildCompileCommand(
             workspace,
-            graph.Options,
+            options,
             node.Command!,
             appleClangPath: appleToolchain?.Clang,
             appleClangCxxPath: appleToolchain?.ClangCxx,

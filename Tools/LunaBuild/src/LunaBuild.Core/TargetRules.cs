@@ -202,7 +202,12 @@ public abstract class TargetRules
     {
     }
 
-    public virtual BuildTargetDefinition ToDefinition(BuildWorkspace workspace, BuildOptions options)
+    public virtual BuildTargetDefinition ToDefinition(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        string? projectName = null,
+        string? configurationId = null,
+        bool isHostProject = true)
     {
         var state = CaptureState();
         _currentWorkspace = workspace;
@@ -301,7 +306,14 @@ public abstract class TargetRules
                     : workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, _dotNetProject.ProjectFile)),
                 DotNetOutputFile: _dotNetProject is null
                     ? null
-                    : workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, _dotNetProject.OutputFile)));
+                    : workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, _dotNetProject.OutputFile)),
+                ProjectName: projectName ?? string.Empty,
+                QualifiedName: projectName is null ? Name : projectName + "." + Name,
+                ProjectRootDirectory: workspace.RootDirectory,
+                ProjectBuildDirectory: workspace.BuildDirectory,
+                ConfigurationId: configurationId ?? ProjectConfigurationIdentity.Create(options),
+                Options: options,
+                IsHostProject: isHostProject);
         }
         finally
         {

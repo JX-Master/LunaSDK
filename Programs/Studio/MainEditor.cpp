@@ -9,7 +9,7 @@
 */
 #include "MainEditor.hpp"
 
-#include <Luna/GUI/GUI.hpp>
+#include <Luna/EditorGUI/EditorGUI.hpp>
 
 #include "Assets/Texture.hpp"
 #include "Assets/MeshAsset.hpp"
@@ -52,86 +52,86 @@ namespace Luna
 
     namespace
     {
-        GUICore::LayoutConfig fixed_height_layout(f32 height)
+        GUI::LayoutConfig fixed_height_layout(f32 height)
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::fixed;
+            layout.height.kind = GUI::SizeKind::fixed;
             layout.height.value = height;
             return layout;
         }
 
-        GUICore::LayoutConfig fill_layout()
+        GUI::LayoutConfig fill_layout()
         {
-            GUICore::LayoutConfig layout;
-            layout.width.kind = GUICore::SizeKind::percent;
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::percent;
             layout.width.value = 1.0f;
-            layout.height.kind = GUICore::SizeKind::percent;
+            layout.height.kind = GUI::SizeKind::percent;
             layout.height.value = 1.0f;
             layout.flex_grow = 1.0f;
             return layout;
         }
     }
 
-    void MainEditor::draw_main_menu_bar(GUICore::IContext* context, const RectF& rect)
+    void MainEditor::draw_main_menu_bar(GUI::IContext* context, const RectF& rect)
     {
         luassert(context);
         context->push_data_scope(context->make_id("studio_menu_bar"));
-        GUICore::ElementHandle menu_bar = GUI::begin_menu_bar(context, context->make_id("bar"), "Main Menu Bar",
+        GUI::ElementHandle menu_bar = EditorGUI::begin_menu_bar(context, context->make_id("bar"), "Main Menu Bar",
             fixed_height_layout(rect.height));
-        GUICore::ElementHandle save_all_item;
-        if(GUI::begin_menu(context, context->make_id("file"), "File"))
+        GUI::ElementHandle save_all_item;
+        if(EditorGUI::begin_menu(context, context->make_id("file"), "File"))
         {
-            save_all_item = GUI::menu_item(context, context->make_id("save_all"), "Save All");
-            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 40.0f)));
+            save_all_item = EditorGUI::menu_item(context, context->make_id("save_all"), "Save All");
+            lupanic_if_failed(EditorGUI::end_menu(context, RectF(0.0f, 0.0f, 190.0f, 40.0f)));
         }
 
-        GUICore::ElementHandle undo_item;
-        GUICore::ElementHandle redo_item;
-        if(GUI::begin_menu(context, context->make_id("edit"), "Edit"))
+        GUI::ElementHandle undo_item;
+        GUI::ElementHandle redo_item;
+        if(EditorGUI::begin_menu(context, context->make_id("edit"), "Edit"))
         {
-            GUI::MenuItemDesc undo_desc;
+            EditorGUI::MenuItemDesc undo_desc;
             undo_desc.shortcut = "Ctrl+Z";
             undo_desc.enabled = can_undo();
-            undo_item = GUI::menu_item(context, context->make_id("undo"), "Undo", false, undo_desc);
-            GUI::MenuItemDesc redo_desc;
+            undo_item = EditorGUI::menu_item(context, context->make_id("undo"), "Undo", false, undo_desc);
+            EditorGUI::MenuItemDesc redo_desc;
             redo_desc.shortcut = "Ctrl+Shift+Z";
             redo_desc.enabled = can_redo();
-            redo_item = GUI::menu_item(context, context->make_id("redo"), "Redo", false, redo_desc);
-            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 230.0f, 70.0f)));
+            redo_item = EditorGUI::menu_item(context, context->make_id("redo"), "Redo", false, redo_desc);
+            lupanic_if_failed(EditorGUI::end_menu(context, RectF(0.0f, 0.0f, 230.0f, 70.0f)));
         }
 
-        if(GUI::begin_menu(context, context->make_id("view"), "View"))
+        if(EditorGUI::begin_menu(context, context->make_id("view"), "View"))
         {
             for(usize i = 0; i < 4; ++i)
             {
                 c8 buf[32];
                 snprintf(buf, 32, "Asset Browser %u", (u32)i);
-                GUI::menu_item(context, context->make_id((GUICore::id_t)(100 + i)), buf,
+                EditorGUI::menu_item(context, context->make_id((GUI::id_t)(100 + i)), buf,
                     &m_asset_browsers_enabled[i]);
             }
-            GUI::menu_item(context, context->make_id("memory_profiler"), "Memory Profiler",
+            EditorGUI::menu_item(context, context->make_id("memory_profiler"), "Memory Profiler",
                 &m_memory_profiler_window_enabled);
-            lupanic_if_failed(GUI::end_menu(context, RectF(0.0f, 0.0f, 230.0f, 160.0f)));
+            lupanic_if_failed(EditorGUI::end_menu(context, RectF(0.0f, 0.0f, 230.0f, 160.0f)));
         }
-        GUI::end_menu_bar(context, menu_bar);
-        if(GUI::is_item_clicked(context, save_all_item))
+        EditorGUI::end_menu_bar(context, menu_bar);
+        if(EditorGUI::is_item_clicked(context, save_all_item))
         {
             auto _ = save_all();
         }
-        if(GUI::is_item_clicked(context, undo_item))
+        if(EditorGUI::is_item_clicked(context, undo_item))
         {
             undo();
         }
-        if(GUI::is_item_clicked(context, redo_item))
+        if(EditorGUI::is_item_clicked(context, redo_item))
         {
             redo();
         }
         context->pop_data_scope();
     }
 
-    bool MainEditor::draw_asset_editor(IAssetEditor* editor, GUICore::IContext* context, const GUICore::LayoutConfig& layout)
+    bool MainEditor::draw_asset_editor(IAssetEditor* editor, GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
         if(!editor || !context)
         {
@@ -202,13 +202,13 @@ namespace Luna
             luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window,
                 RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true, RHI::ColorSpace::srgb})));
             luset(m_cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
-            m_gui = GUICore::new_context();
-            GUI::register_style_schemas(m_gui);
+            m_gui = GUI::new_context();
+            EditorGUI::register_style_schemas(m_gui);
             luexp(m_gui->register_font(Name("default"), Font::get_default_font()));
-            GUI::DefaultStyleDesc style_desc;
-            style_desc.input_mode = GUI::InputMode::pointer;
-            GUI::set_default_style(m_gui, style_desc);
-            luset(m_gui_renderer, GUICore::new_renderer(g_env->device));
+            EditorGUI::DefaultStyleDesc style_desc;
+            style_desc.input_mode = EditorGUI::InputMode::pointer;
+            EditorGUI::set_default_style(m_gui, style_desc);
+            luset(m_gui_renderer, GUI::new_renderer(g_env->device));
 
             // Create asset browser instance.
             for (usize i = 0; i < 4; ++i)
@@ -288,10 +288,9 @@ namespace Luna
 
             sz = m_window->get_size();
             UInt2U framebuffer_size = m_window->get_framebuffer_size();
-            GUICore::FrameDesc gui_frame;
-            gui_frame.screen_size = Float2U((f32)sz.x, (f32)sz.y);
-            gui_frame.framebuffer_size = framebuffer_size;
-            gui_frame.dpi_scale = m_window->get_dpi_scale_factor();
+            GUI::FrameDesc gui_frame;
+            gui_frame.logical_size = Float2U((f32)sz.x, (f32)sz.y);
+            gui_frame.render_size = framebuffer_size;
             gui_frame.delta_time = 1.0f / 60.0f;
             m_gui->begin_frame(gui_frame);
             GUIWindow::update_input(m_window, m_gui);
@@ -302,10 +301,10 @@ namespace Luna
             RectF dock_rect(0.0f, menu_rect.height, (f32)sz.x, max((f32)sz.y - menu_rect.height, 0.0f));
 
             m_gui->push_layer(m_gui->make_id("studio_root_layer"), Float2U(0.0f));
-            GUICore::ElementHandle root = GUI::begin_v_layout(m_gui, m_gui->make_id("studio_root"), "Studio Root");
+            GUI::ElementHandle root = EditorGUI::begin_v_layout(m_gui, m_gui->make_id("studio_root"), "Studio Root");
             draw_main_menu_bar(m_gui, menu_rect);
 
-            GUICore::ElementHandle dock_space = GUI::begin_dock_space(m_gui, m_gui->make_id("studio_dock_space"),
+            GUI::ElementHandle dock_space = EditorGUI::begin_dock_space(m_gui, m_gui->make_id("studio_dock_space"),
                 "Studio DockSpace", fill_layout());
             for (usize i = 0; i < 4; ++i)
             {
@@ -334,22 +333,22 @@ namespace Luna
                     ++iter;
                 }
             }
-            GUI::end_dock_space(m_gui);
-            GUI::end_v_layout(m_gui, root, GUICore::FlexLayoutDesc());
+            EditorGUI::end_dock_space(m_gui);
+            EditorGUI::end_v_layout(m_gui, root, GUI::FlexLayoutDesc());
             m_gui->pop_layer();
-            luexp(GUI::layout_tree(m_gui, root, screen_rect));
+            luexp(EditorGUI::layout_tree(m_gui, root, screen_rect));
             m_gui->route_input();
-            GUI::ResolveResult resolved = GUI::resolve_interactions(m_gui);
+            EditorGUI::ResolveResult resolved = EditorGUI::resolve_interactions(m_gui);
             if(resolved.relayout_requested)
             {
-                luexp(GUI::layout_tree(m_gui, root, screen_rect));
+                luexp(EditorGUI::layout_tree(m_gui, root, screen_rect));
             }
             luexp(GUIWindow::update_text_input(m_window, m_gui));
             luexp(m_gui->generate_draw_commands());
             lulet(back_buffer, m_swap_chain->get_current_back_buffer());
-            Float4U clear_color = m_gui->get_style_value(Name(GUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
-                GUICore::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
-            GUICore::RenderTargetDesc target(back_buffer);
+            Float4U clear_color = m_gui->get_style_value(Name(EditorGUI::DEFAULT_STYLE_NAME), Name("gui.canvas"),
+                GUI::style_f32x4(Float4U(0.92f, 0.93f, 0.92f, 1.0f))).number;
+            GUI::RenderTargetDesc target(back_buffer);
             target.color_load_op = RHI::LoadOp::clear;
             target.color_clear_value = clear_color;
             target.color_final_state = RHI::TextureStateFlag::present;
@@ -500,7 +499,7 @@ namespace Luna
         Asset::close();
     }
 
-    void draw_asset_tile(GUICore::IContext* context, Asset::asset_t asset, const RectF& draw_rect)
+    void draw_asset_tile(GUI::IContext* context, Asset::asset_t asset, const RectF& draw_rect)
     {
         luassert(context);
         if(asset)
@@ -509,14 +508,14 @@ namespace Luna
             auto iter = g_env->editor_types.find(asset_type);
             if(iter != g_env->editor_types.end())
             {
-                if(iter->second.on_draw_tile_core)
+                if(iter->second.on_draw_tile_gui)
                 {
-                    iter->second.on_draw_tile_core(context, iter->second.userdata.get(), asset, draw_rect);
+                    iter->second.on_draw_tile_gui(context, iter->second.userdata.get(), asset, draw_rect);
                 }
                 else
                 {
-                    GUICore::DrawCommand command;
-                    command.type = GUICore::DrawCommandType::text;
+                    GUI::DrawCommand command;
+                    command.type = GUI::DrawCommandType::text;
                     command.rect = draw_rect;
                     command.color = Float4U(1.0f);
                     command.font_size = 16.0f;
@@ -527,8 +526,8 @@ namespace Luna
                 }
                 return;
             }
-            GUICore::DrawCommand command;
-            command.type = GUICore::DrawCommandType::text;
+            GUI::DrawCommand command;
+            command.type = GUI::DrawCommandType::text;
             command.rect = draw_rect;
             command.color = Float4U(1.0f);
             command.font_size = 16.0f;
@@ -541,11 +540,11 @@ namespace Luna
 
     namespace
     {
-        void draw_relative_tile_text(GUICore::IContext* context, const RectF& relative_rect, const c8* text)
+        void draw_relative_tile_text(GUI::IContext* context, const RectF& relative_rect, const c8* text)
         {
-            GUICore::DrawCommand command;
-            command.type = GUICore::DrawCommandType::text;
-            command.rect_reference = GUICore::DrawCommandRectReference::element;
+            GUI::DrawCommand command;
+            command.type = GUI::DrawCommandType::text;
+            command.rect_reference = GUI::DrawCommandRectReference::element;
             command.rect = relative_rect;
             command.color = Float4U(1.0f);
             command.font_size = 16.0f;
@@ -556,7 +555,7 @@ namespace Luna
         }
     }
 
-    void draw_asset_tile_preview(GUICore::IContext* context, Asset::asset_t asset, const RectF& relative_rect)
+    void draw_asset_tile_preview(GUI::IContext* context, Asset::asset_t asset, const RectF& relative_rect)
     {
         luassert(context);
         if(asset)
@@ -565,9 +564,9 @@ namespace Luna
             auto iter = g_env->editor_types.find(asset_type);
             if(iter != g_env->editor_types.end())
             {
-                if(iter->second.on_draw_tile_preview_core)
+                if(iter->second.on_draw_tile_preview_gui)
                 {
-                    iter->second.on_draw_tile_preview_core(context, iter->second.userdata.get(), asset, relative_rect);
+                    iter->second.on_draw_tile_preview_gui(context, iter->second.userdata.get(), asset, relative_rect);
                 }
                 else
                 {
