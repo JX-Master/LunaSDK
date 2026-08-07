@@ -30,6 +30,7 @@ var functionTemplateShader = Path.Combine(fixturesRoot, "valid", "function_templ
 var templateMemberFunctionShader = Path.Combine(fixturesRoot, "valid", "template_member_function", "TemplateMemberFunction.cxx");
 var templateStructShader = Path.Combine(fixturesRoot, "valid", "template_struct", "TemplateStruct.cxx");
 var localArrayShader = Path.Combine(fixturesRoot, "valid", "local_array", "LocalArray.cxx");
+var cStyleCastShader = Path.Combine(fixturesRoot, "valid", "c_style_cast", "CStyleCast.cxx");
 
 if (!ExpectSchemaV3Facts(schemaV3Shader, stdRoot))
 {
@@ -62,6 +63,39 @@ if (!AssertContainsAll(localArrayHlslText, new[] { "float values[4];" },
         "expected MSL local arrays to place dimensions after the variable name.") ||
     !AssertNotContainsAny(localArrayHlslText + localArrayGlslText + localArrayMslText,
         new[] { "float[4] values" }, "target sources must not use C++ array declarator order."))
+{
+    return 1;
+}
+
+var cStyleCastResult = compiler.Compile(new CppslCompileOptions(
+    cStyleCastShader,
+    Path.Combine(outputDir, "c-style-cast"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!cStyleCastResult.Succeeded || cStyleCastResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected c_style_cast fixture to compile.");
+    foreach (var diagnostic in cStyleCastResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+var cStyleCastGlslText = File.ReadAllText(cStyleCastResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+if (!AssertContainsAll(
+        cStyleCastGlslText,
+        new[]
+        {
+            "uint unsigned_value = uint(vertex_data.value);",
+            "int signed_value = int(unsigned_value);",
+            "float float_value = float(signed_value);"
+        },
+        "expected GLSL C-style casts to lower to constructor-style conversions.") ||
+    !AssertNotContainsAny(
+        cStyleCastGlslText,
+        new[] { "(uint)", "(int)", "(float)" },
+        "GLSL output must not contain C-style casts."))
 {
     return 1;
 }

@@ -20,9 +20,10 @@ public static class CompileCommandsWriter
             Directory.CreateDirectory(directory);
         }
 
+        var appleToolchain = LocateAppleToolchain(graph.Options);
         var entries = graph.Nodes
             .Where(node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.compile")
-            .Select(node => CreateEntry(workspace, graph, node))
+            .Select(node => CreateEntry(workspace, graph, node, appleToolchain))
             .Where(entry => entry is not null)
             .OrderBy(entry => entry!.File, StringComparer.OrdinalIgnoreCase)
             .ToArray();

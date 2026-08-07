@@ -7,6 +7,8 @@
 * @author JXMaster
 * @date 2026/7/17
 */
+#include <Luna/Runtime/PlatformDefines.hpp>
+#define LUNA_GUICORE_API LUNA_EXPORT
 #include <Luna/GUICore/SDF.hpp>
 #include <cmath>
 
