@@ -16,11 +16,14 @@ public sealed class DotNetBuildActionExecutor : KnownActionExecutor
         var project = context.Workspace.ResolveRepositoryPath(payload.Required("project"));
         var expectedOutput = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
         var artifactsDirectory = context.Workspace.ResolveRepositoryPath(payload.Required("artifacts_dir"));
+        var configuration = payload.Required("mode");
         var dotnet = LocateDotnet();
         var args = new[]
         {
             "build",
             project,
+            "--configuration",
+            configuration,
             "--artifacts-path",
             artifactsDirectory,
             "-m:1",

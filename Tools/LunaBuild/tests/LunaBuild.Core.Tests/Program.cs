@@ -1,4 +1,5 @@
 using LunaBuild.Core;
+using LunaBuild.Core.MakeSystem;
 
 namespace LunaBuild.Core.Tests;
 
@@ -21,6 +22,7 @@ internal static class Program
             ("rule edits invalidate the compiled rules cache", RulesCacheInvalidation),
             ("custom imported build roots own the final rules assembly", CustomImportedBuildRoot),
             ("projects cannot share one build root", DuplicateBuildRoot),
+            ("dotnet builds honor the requested configuration", DotNetBuildConfiguration),
         };
 
         foreach(var test in tests)
@@ -390,6 +392,68 @@ internal static class Program
             """);
         Write(host, "App.Target.cs", HeaderOnlyTarget("App", "Left.Core", "Right.Core"));
         Throws<InvalidOperationException>(() => CreateSession(host), "same build directory", "duplicate build root");
+    }
+
+    private static void DotNetBuildConfiguration()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("DotNetRelease");
+        Write(root, "global.json", """
+            {
+              "sdk": {
+                "version": "9.0.100",
+                "rollForward": "latestFeature"
+              }
+            }
+            """);
+        Write(root, "Probe.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <OutputType>Exe</OutputType>
+                <TargetFramework>net9.0</TargetFramework>
+                <AssemblyName>releaseprobe</AssemblyName>
+                <ImplicitUsings>enable</ImplicitUsings>
+                <NuGetAudit>false</NuGetAudit>
+              </PropertyGroup>
+            </Project>
+            """);
+        Write(root, "Program.cs", "Console.WriteLine(\"release probe\");");
+
+        var executable = OperatingSystem.IsWindows() ? "releaseprobe.exe" : "releaseprobe";
+        var expectedOutput = Path.Combine("artifacts", "bin", "Probe", "release", executable);
+        var options = BuildOptions.HostDefault() with { Mode = BuildMode.Release };
+        var payload = string.Join('\n',
+            "kind=dotnet.build",
+            "name=Probe",
+            "project=Probe.csproj",
+            $"output={expectedOutput.Replace('\\', '/')}",
+            "artifacts_dir=artifacts",
+            "mode=Release");
+        var node = new BuildGraphNode(
+            Id: "file://" + expectedOutput.Replace('\\', '/'),
+            Kind: BuildGraphNodeKind.File,
+            Path: expectedOutput,
+            Command: payload,
+            Dependencies: Array.Empty<string>(),
+            OrderOnlyDependencies: Array.Empty<string>(),
+            Outputs: Array.Empty<string>(),
+            Depfiles: Array.Empty<string>());
+        var graph = new BuildGraph(2, options, new[] { node }, new[] { node.Id });
+        var context = new MakeActionContext(
+            new BuildWorkspace(root),
+            graph,
+            node,
+            "dotnet.build",
+            payload,
+            Array.Empty<BuildGraphNode>(),
+            Array.Empty<BuildGraphNode>(),
+            Array.Empty<BuildGraphNode>());
+
+        new DotNetBuildActionExecutor(TimeSpan.FromMinutes(1))
+            .ExecuteAsync(context, CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        True(File.Exists(Path.Combine(root, expectedOutput)), "release .NET output exists");
     }
 
     private static BuildSession CreateSession(string root)

@@ -54,6 +54,20 @@ dotnet run --project LunaBuild.csproj -- clean --root . --all
 dotnet run --project LunaBuild.csproj -- install --root . --all --output ./install/debug
 ```
 
+Create a standalone project that imports the current LunaSDK checkout:
+
+```powershell
+./create_project.sh ../MyLunaApp
+create_project.bat ..\MyLunaApp
+```
+
+Pass `--name <name>` when the directory name should not be used as the project
+and target name. The destination must be absent or empty and cannot contain, or
+be contained by, the LunaSDK checkout. The generated project has its own
+`LunaBuild.csproj`, project rules, executable target, starter source file, and
+README. See `LunaSDK-Docs/Drafts/Creating an External LunaSDK Project.md` for
+the complete workflow.
+
 Project-specific build switches are declared in project `*.Project.cs` rules,
 not in LunaBuild Core. LunaSDK currently declares `--api-validation` (also
 accepted as `--contract-assertion`), `--thread-safe-assertion`,
