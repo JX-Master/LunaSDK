@@ -32,11 +32,11 @@ public static class CompileCommandsWriter
 
     private static AppleClangToolchain? LocateAppleToolchain(BuildOptions options)
     {
-        if(options.Platform != BuildPlatform.MacOS || !OperatingSystem.IsMacOS())
+        if(options.Platform is not (BuildPlatform.MacOS or BuildPlatform.IOS) || !OperatingSystem.IsMacOS())
         {
             return null;
         }
-        return AppleClangToolchainLocator.LocateMacOS();
+        return AppleClangToolchainLocator.Locate(CppCommandLineBuilder.AppleSdkName(options));
     }
 
     private static CompileCommandEntry? CreateEntry(BuildWorkspace workspace, BuildGraph graph, BuildGraphNode node)

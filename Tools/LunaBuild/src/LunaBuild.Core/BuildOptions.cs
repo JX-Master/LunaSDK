@@ -23,12 +23,21 @@ public enum RhiApi
     Metal,
 }
 
+public sealed record AppleBuildOptions(
+    string SdkName = "iphoneos",
+    string MacOSDeploymentTarget = "12.0",
+    string IOSDeploymentTarget = "13.0",
+    string IOSBundleIdentifier = "",
+    string IOSCodeSignIdentity = "-",
+    string IOSProvisioningProfile = "");
+
 public sealed record BuildOptions(
     BuildMode Mode,
     BuildPlatform Platform,
     string Architecture,
     bool Shared,
     RhiApi RhiApi,
+    AppleBuildOptions Apple,
     BuildProperties Properties,
     IReadOnlyList<string> GlobalDefines,
     IReadOnlyList<string> GlobalUndefines,
@@ -63,6 +72,7 @@ public sealed record BuildOptions(
             Architecture: HostArchitecture(),
             Shared: true,
             RhiApi: rhiApi,
+            Apple: new AppleBuildOptions(),
             Properties: BuildProperties.Empty,
             GlobalDefines: Array.Empty<string>(),
             GlobalUndefines: Array.Empty<string>(),

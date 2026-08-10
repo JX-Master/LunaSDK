@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Text;
+using System.Xml.Linq;
 using LunaBuild.Core;
 using LunaBuild.Core.MakeSystem;
 
@@ -63,7 +66,7 @@ public static class LunaBuildCli
             Console.WriteLine("Project properties:");
             foreach(var property in buildOptions.Properties.Values)
             {
-                Console.WriteLine($"  {property.Name}={property.Value}");
+                Console.WriteLine($"  {property.Name}={DisplayBuildPropertyValue(property)}");
             }
         }
         Console.WriteLine("Projects:");
@@ -171,16 +174,43 @@ public static class LunaBuildCli
         var workspace = context.Workspace;
         var target = ResolveSelectedTarget(context.Targets, options.TargetName)
             ?? throw new ArgumentException($"Unknown target: {options.TargetName}");
-        if(target.Kind is not (BuildTargetKind.Executable or BuildTargetKind.DotNetProject))
+        if(!(target.Kind.ProducesNativeExecutable() || target.Kind == BuildTargetKind.DotNetProject))
         {
             throw new ArgumentException($"Target `{target.Name}` is {target.Kind} and cannot be run.");
         }
 
-        var graph = GenerateGraph(workspace, context.BuildOptions, context.Targets, target.QualifiedName, allTargets: false);
+        var graph = GenerateGraph(workspace, target.Options, context.Targets, target.QualifiedName, allTargets: false);
         var result = ExecuteBuild(workspace, graph, options.ForceRebuild);
         Console.WriteLine(result.UpToDate
             ? $"Up to date. Nodes: {result.NodesVisited}"
             : $"Build finished. Nodes: {result.NodesVisited}, Actions: {result.ActionsExecuted}");
+
+        if(target.Kind == BuildTargetKind.Application)
+        {
+            if(target.Options.Platform == BuildPlatform.MacOS)
+            {
+                var package = PackageMacOS(workspace, target.Options, graph, target, outputPath: null);
+                Console.WriteLine($"Running {target.QualifiedName}: {package.AppPath}");
+                return RunMacOSApplication(package.AppPath, arguments);
+            }
+            if(target.Options.Platform == BuildPlatform.IOS)
+            {
+                if(BuildOutputLayout.AppleSdkName(target.Options) != "iphonesimulator")
+                {
+                    throw new InvalidOperationException(
+                        "Running an iOS Application target requires --apple-sdk iphonesimulator and a booted Simulator. " +
+                        "Use `package` for device builds.");
+                }
+                var package = PackageIOS(workspace, target.Options, graph, target, outputPath: null);
+                Console.WriteLine($"Running {target.QualifiedName}: {package.AppPath}");
+                return RunIOSSimulatorApplication(package.AppPath, arguments);
+            }
+            if(target.Options.Platform == BuildPlatform.Android)
+            {
+                throw new InvalidOperationException(
+                    "Running Android Application targets is not implemented yet. Use `package` and install the generated APK with adb.");
+            }
+        }
 
         var executable = BuildGraphQueries.FindRunnableOutput(workspace, graph, target.QualifiedName)
             ?? throw new InvalidOperationException($"Target `{target.QualifiedName}` did not produce a runnable output.");
@@ -235,24 +265,39 @@ public static class LunaBuildCli
         var context = CreateBuildContext(options);
         var target = ResolveSelectedTarget(context.Targets, options.TargetName)
             ?? throw new ArgumentException($"Unknown target: {options.TargetName}");
-        if(target.Options.Platform != BuildPlatform.Android)
+        if(target.Options.Platform is not (BuildPlatform.Android or BuildPlatform.IOS or BuildPlatform.MacOS))
         {
             throw new ArgumentException(
-                $"Target `{target.QualifiedName}` is configured for {target.Options.Platform}; package currently supports Android targets only.");
+                $"Target `{target.QualifiedName}` is configured for {target.Options.Platform}; package currently supports Android, IOS and MacOS targets.");
         }
-        if(target.Kind != BuildTargetKind.Executable)
+        if(target.Kind != BuildTargetKind.Application)
         {
-            throw new ArgumentException($"Target `{target.Name}` is {target.Kind} and cannot be packaged as an Android application.");
+            throw new ArgumentException($"Target `{target.QualifiedName}` is {target.Kind} and cannot be packaged as an application. Use BuildTargetKind.Application for app targets.");
         }
 
-        var graph = GenerateGraph(context.Workspace, context.BuildOptions, context.Targets, target.QualifiedName, allTargets: false);
+        var graph = GenerateGraph(context.Workspace, target.Options, context.Targets, target.QualifiedName, allTargets: false);
         var result = ExecuteBuild(context.Workspace, graph, options.ForceRebuild);
         Console.WriteLine(result.UpToDate
             ? $"Up to date. Nodes: {result.NodesVisited}"
             : $"Build finished. Nodes: {result.NodesVisited}, Actions: {result.ActionsExecuted}");
 
-        var packageResult = PackageAndroid(context.Workspace, target.Options, graph, target, options.OutputPath);
-        Console.WriteLine($"Android package finished. Native libraries: {packageResult.NativeLibrariesCopied}, APK: {packageResult.ApkPath}");
+        if(target.Options.Platform == BuildPlatform.Android)
+        {
+            var packageResult = PackageAndroid(context.Workspace, target.Options, graph, target, options.OutputPath);
+            Console.WriteLine($"Android package finished. Native libraries: {packageResult.NativeLibrariesCopied}, APK: {packageResult.ApkPath}");
+            return 0;
+        }
+        if(target.Options.Platform == BuildPlatform.MacOS)
+        {
+            var packageResult = PackageMacOS(context.Workspace, target.Options, graph, target, options.OutputPath);
+            Console.WriteLine($"macOS package finished. App: {packageResult.AppPath}, Signed: {packageResult.Signed}");
+            return 0;
+        }
+
+        var iosPackageResult = PackageIOS(context.Workspace, target.Options, graph, target, options.OutputPath);
+        Console.WriteLine($"iOS package finished. App: {iosPackageResult.AppPath}" +
+            (iosPackageResult.IpaPath is null ? string.Empty : $", IPA: {iosPackageResult.IpaPath}") +
+            $", Signed: {iosPackageResult.Signed}");
         return 0;
     }
 
@@ -545,6 +590,836 @@ public static class LunaBuildCli
         return process.ExitCode;
     }
 
+    private static int RunMacOSApplication(string appPath, IReadOnlyList<string> arguments)
+    {
+        var openArguments = new List<string> { "-W", "-n", appPath };
+        if(arguments.Count > 0)
+        {
+            openArguments.Add("--args");
+            openArguments.AddRange(arguments);
+        }
+        return RunProcess("/usr/bin/open", openArguments);
+    }
+
+    private static int RunIOSSimulatorApplication(string appPath, IReadOnlyList<string> arguments)
+    {
+        var infoPlistPath = Path.Combine(appPath, "Info.plist");
+        var bundleIdentifier = ReadPlistString(infoPlistPath, "CFBundleIdentifier")
+            ?? throw new InvalidOperationException($"Packaged iOS app does not contain CFBundleIdentifier: {infoPlistPath}");
+        var install = RunProcessCapture("/usr/bin/xcrun", new[] { "simctl", "install", "booted", appPath });
+        if(install.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Failed to install `{bundleIdentifier}` on the booted iOS Simulator.{Environment.NewLine}{install.Output}");
+        }
+
+        var launchArguments = new List<string> { "simctl", "launch", "--console-pty", "booted", bundleIdentifier };
+        launchArguments.AddRange(arguments);
+        return RunProcess("/usr/bin/xcrun", launchArguments);
+    }
+
+    private static CliProcessResult RunProcessCapture(string executable, IReadOnlyList<string> arguments)
+    {
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = executable,
+            WorkingDirectory = Path.GetDirectoryName(executable) ?? Environment.CurrentDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach(var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start();
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        return new CliProcessResult(process.ExitCode, output + error);
+    }
+
+    private static IOSPackageResult PackageIOS(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        BuildGraph graph,
+        BuildTargetDefinition target,
+        string? outputPath)
+    {
+        if(!OperatingSystem.IsMacOS())
+        {
+            throw new PlatformNotSupportedException("iOS packaging requires a macOS host with Xcode command line tools.");
+        }
+        if(string.IsNullOrWhiteSpace(target.AppleInfoPlistFile))
+        {
+            throw new ArgumentException($"Target `{target.Name}` does not declare AppleInfoPlist(...).");
+        }
+        if(!File.Exists(target.AppleInfoPlistFile))
+        {
+            throw new FileNotFoundException($"iOS Info.plist was not found for target `{target.Name}`: {target.AppleInfoPlistFile}");
+        }
+
+        var executable = FindLinkedExecutable(workspace, graph, target.QualifiedName)
+            ?? throw new FileNotFoundException($"Target `{target.Name}` did not produce an executable for iOS packaging.");
+        var packagePaths = ResolveIOSPackagePaths(workspace, options, target, outputPath);
+        if(Directory.Exists(packagePaths.AppPath))
+        {
+            Directory.Delete(packagePaths.AppPath, recursive: true);
+        }
+        Directory.CreateDirectory(packagePaths.AppPath);
+
+        var bundleExecutableName = target.Name;
+        var bundleExecutablePath = Path.Combine(packagePaths.AppPath, bundleExecutableName);
+        File.Copy(executable, bundleExecutablePath, overwrite: true);
+        if(!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(bundleExecutablePath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+                UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        }
+
+        var infoPlistPath = Path.Combine(packagePaths.AppPath, "Info.plist");
+        File.WriteAllText(infoPlistPath, ExpandAppleInfoPlistTemplate(options, target, bundleExecutableName, File.ReadAllText(target.AppleInfoPlistFile)));
+        CopyAppleSharedLibraries(workspace, options, graph, Path.Combine(packagePaths.AppPath, "Frameworks"));
+        CopyBundleInputs(target.AppleBundleResources, target.Directory, packagePaths.AppPath, preserveRelativePaths: true);
+        CopyBundleInputs(target.RuntimeFiles, target.Directory, packagePaths.AppPath, preserveRelativePaths: false);
+        var shouldSign = ShouldSignIOSBundle(options);
+        var provisioningProfile = CopyIOSProvisioningProfile(workspace, options, packagePaths.AppPath, requireValidProfile: shouldSign);
+
+        if(RunProcess("/usr/bin/plutil", new[] { "-lint", infoPlistPath }) != 0)
+        {
+            throw new InvalidOperationException($"Generated Info.plist failed validation: {infoPlistPath}");
+        }
+
+        var bundleIdentifier = ReadPlistString(infoPlistPath, "CFBundleIdentifier")
+            ?? throw new InvalidOperationException($"Generated Info.plist does not contain CFBundleIdentifier: {infoPlistPath}");
+        var signingEntitlementsFile = PrepareIOSEntitlements(workspace, options, target, packagePaths.AppPath, bundleIdentifier, provisioningProfile, shouldSign);
+        var signed = SignIOSBundle(options, packagePaths.AppPath, signingEntitlementsFile);
+        if(packagePaths.IpaPath is not null)
+        {
+            CreateIpa(workspace, options, target, packagePaths.AppPath, packagePaths.IpaPath);
+        }
+        return new IOSPackageResult(packagePaths.AppPath, packagePaths.IpaPath, signed);
+    }
+
+    private static IOSPackagePaths ResolveIOSPackagePaths(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        BuildTargetDefinition target,
+        string? outputPath)
+    {
+        var defaultDirectory = Path.Combine(
+            TargetConfigurationDirectory(target, options),
+            "package");
+        if(string.IsNullOrWhiteSpace(outputPath))
+        {
+            return new IOSPackagePaths(Path.Combine(defaultDirectory, target.Name + ".app"), null);
+        }
+
+        var fullOutput = Path.GetFullPath(outputPath);
+        var extension = Path.GetExtension(fullOutput);
+        if(extension.Equals(".app", StringComparison.OrdinalIgnoreCase))
+        {
+            return new IOSPackagePaths(fullOutput, null);
+        }
+        if(extension.Equals(".ipa", StringComparison.OrdinalIgnoreCase))
+        {
+            return new IOSPackagePaths(Path.Combine(defaultDirectory, target.Name + ".app"), fullOutput);
+        }
+        return new IOSPackagePaths(Path.Combine(fullOutput, target.Name + ".app"), null);
+    }
+
+    private static MacOSPackageResult PackageMacOS(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        BuildGraph graph,
+        BuildTargetDefinition target,
+        string? outputPath)
+    {
+        if(!OperatingSystem.IsMacOS())
+        {
+            throw new PlatformNotSupportedException("macOS packaging requires a macOS host with Xcode command line tools.");
+        }
+        if(string.IsNullOrWhiteSpace(target.AppleInfoPlistFile))
+        {
+            throw new ArgumentException($"Target `{target.Name}` does not declare AppleInfoPlist(...).");
+        }
+        if(!File.Exists(target.AppleInfoPlistFile))
+        {
+            throw new FileNotFoundException($"macOS Info.plist was not found for target `{target.Name}`: {target.AppleInfoPlistFile}");
+        }
+
+        var executable = FindLinkedExecutable(workspace, graph, target.QualifiedName)
+            ?? throw new FileNotFoundException($"Target `{target.Name}` did not produce an executable for macOS packaging.");
+        var appPath = ResolveMacOSPackagePath(workspace, options, target, outputPath);
+        if(Directory.Exists(appPath))
+        {
+            Directory.Delete(appPath, recursive: true);
+        }
+
+        var contentsPath = Path.Combine(appPath, "Contents");
+        var macOSPath = Path.Combine(contentsPath, "MacOS");
+        var frameworksPath = Path.Combine(contentsPath, "Frameworks");
+        var resourcesPath = Path.Combine(contentsPath, "Resources");
+        Directory.CreateDirectory(macOSPath);
+        Directory.CreateDirectory(resourcesPath);
+
+        var bundleExecutableName = target.Name;
+        var bundleExecutablePath = Path.Combine(macOSPath, bundleExecutableName);
+        File.Copy(executable, bundleExecutablePath, overwrite: true);
+        if(!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(bundleExecutablePath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+                UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        }
+
+        var infoPlistPath = Path.Combine(contentsPath, "Info.plist");
+        File.WriteAllText(infoPlistPath, ExpandAppleInfoPlistTemplate(options, target, bundleExecutableName, File.ReadAllText(target.AppleInfoPlistFile)));
+        CopyAppleSharedLibraries(workspace, options, graph, frameworksPath);
+        CopyBundleInputs(target.AppleBundleResources, target.Directory, resourcesPath, preserveRelativePaths: true);
+        CopyBundleInputs(target.RuntimeFiles, target.Directory, resourcesPath, preserveRelativePaths: false);
+
+        if(RunProcess("/usr/bin/plutil", new[] { "-lint", infoPlistPath }) != 0)
+        {
+            throw new InvalidOperationException($"Generated Info.plist failed validation: {infoPlistPath}");
+        }
+        ValidateMacOSDeploymentTarget(bundleExecutablePath, infoPlistPath, options.Apple.MacOSDeploymentTarget);
+
+        var signed = SignMacOSBundle(appPath);
+        return new MacOSPackageResult(appPath, signed);
+    }
+
+    private static string ResolveMacOSPackagePath(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        BuildTargetDefinition target,
+        string? outputPath)
+    {
+        var defaultDirectory = Path.Combine(
+            TargetConfigurationDirectory(target, options),
+            "package");
+        if(string.IsNullOrWhiteSpace(outputPath))
+        {
+            return Path.Combine(defaultDirectory, target.Name + ".app");
+        }
+
+        var fullOutput = Path.GetFullPath(outputPath);
+        if(Path.GetExtension(fullOutput).Equals(".app", StringComparison.OrdinalIgnoreCase))
+        {
+            return fullOutput;
+        }
+        return Path.Combine(fullOutput, target.Name + ".app");
+    }
+
+    private static string TargetConfigurationDirectory(BuildTargetDefinition target, BuildOptions options)
+    {
+        var directory = Path.Combine(
+            new[] { target.ProjectBuildDirectory }
+                .Concat(BuildOutputLayout.ConfigurationSegments(options))
+                .ToArray());
+        return target.IsHostProject ? directory : Path.Combine(directory, target.ConfigurationId);
+    }
+
+    private static bool IsSameTargetConfiguration(BuildOptions candidate, BuildOptions expected)
+    {
+        return candidate.Platform == expected.Platform &&
+            candidate.Architecture.Equals(expected.Architecture, StringComparison.OrdinalIgnoreCase) &&
+            candidate.Mode == expected.Mode &&
+            candidate.Shared == expected.Shared &&
+            (expected.Platform != BuildPlatform.IOS ||
+                BuildOutputLayout.AppleSdkName(candidate) == BuildOutputLayout.AppleSdkName(expected));
+    }
+
+    private static string ExpandAppleInfoPlistTemplate(BuildOptions options, BuildTargetDefinition target, string executableName, string template)
+    {
+        var productName = target.Name;
+        var displayName = string.IsNullOrWhiteSpace(target.AppleBundleDisplayName)
+            ? productName
+            : target.AppleBundleDisplayName!;
+        var bundleIdentifier = AppleBundleIdentifier(options, target);
+        var replacements = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["DEVELOPMENT_LANGUAGE"] = "en",
+            ["EXECUTABLE_NAME"] = executableName,
+            ["PRODUCT_BUNDLE_IDENTIFIER"] = bundleIdentifier,
+            ["PRODUCT_BUNDLE_PACKAGE_TYPE"] = "APPL",
+            ["PRODUCT_DISPLAY_NAME"] = displayName,
+            ["PRODUCT_NAME"] = productName,
+            ["MACOSX_DEPLOYMENT_TARGET"] = options.Apple.MacOSDeploymentTarget,
+            ["IPHONEOS_DEPLOYMENT_TARGET"] = options.Apple.IOSDeploymentTarget,
+        };
+
+        foreach(var (key, value) in replacements)
+        {
+            template = template.Replace("$(" + key + ")", value, StringComparison.Ordinal);
+        }
+        return template;
+    }
+
+    private static string AppleBundleIdentifier(BuildOptions options, BuildTargetDefinition target)
+    {
+        if(options.Platform == BuildPlatform.IOS && !string.IsNullOrWhiteSpace(options.Apple.IOSBundleIdentifier))
+        {
+            return options.Apple.IOSBundleIdentifier;
+        }
+        return string.IsNullOrWhiteSpace(target.AppleBundleIdentifier)
+            ? "com.lunasdk." + SanitizeBundleIdentifierComponent(target.Name)
+            : target.AppleBundleIdentifier!;
+    }
+
+    private static void ValidateMacOSDeploymentTarget(string executablePath, string infoPlistPath, string expectedTarget)
+    {
+        var plistTarget = ReadPlistString(infoPlistPath, "LSMinimumSystemVersion")
+            ?? throw new InvalidOperationException(
+                $"Generated macOS Info.plist does not contain LSMinimumSystemVersion: {infoPlistPath}");
+        if(!EquivalentVersion(plistTarget, expectedTarget))
+        {
+            throw new InvalidOperationException(
+                $"macOS deployment target mismatch: Info.plist declares {plistTarget}, but the build uses {expectedTarget}. " +
+                "Use $(MACOSX_DEPLOYMENT_TARGET) in LSMinimumSystemVersion or pass a matching --macos-deployment-target value.");
+        }
+
+        var result = RunProcessCapture("/usr/bin/vtool", new[] { "-show-build", executablePath });
+        if(result.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"Failed to inspect the macOS executable deployment target: {executablePath}{Environment.NewLine}{result.Output}");
+        }
+        var binaryTargets = result.Output
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => line.StartsWith("minos ", StringComparison.Ordinal))
+            .Select(line => line["minos ".Length..].Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if(binaryTargets.Length == 0)
+        {
+            throw new InvalidOperationException($"vtool did not report a minimum OS version for: {executablePath}");
+        }
+        if(binaryTargets.Any(target => !EquivalentVersion(target, expectedTarget)))
+        {
+            throw new InvalidOperationException(
+                $"macOS deployment target mismatch: executable declares {string.Join(", ", binaryTargets)}, but Info.plist/build options declare {expectedTarget}.");
+        }
+    }
+
+    private static bool EquivalentVersion(string left, string right)
+    {
+        return Version.TryParse(left, out var leftVersion) &&
+            Version.TryParse(right, out var rightVersion) &&
+            leftVersion == rightVersion;
+    }
+
+    private static string SanitizeBundleIdentifierComponent(string value)
+    {
+        var chars = value
+            .Select(ch => char.IsLetterOrDigit(ch) ? char.ToLowerInvariant(ch) : '-')
+            .ToArray();
+        var result = new string(chars).Trim('-');
+        return string.IsNullOrWhiteSpace(result) ? "app" : result;
+    }
+
+    private static void CopyBundleInputs(
+        IReadOnlyList<string> inputs,
+        string targetDirectory,
+        string appPath,
+        bool preserveRelativePaths)
+    {
+        foreach(var input in inputs.Order(StringComparer.OrdinalIgnoreCase))
+        {
+            if(!File.Exists(input))
+            {
+                throw new FileNotFoundException($"Bundle input is missing: {input}", input);
+            }
+            var relativePath = preserveRelativePaths
+                ? Path.GetRelativePath(targetDirectory, input)
+                : Path.GetFileName(input);
+            if(relativePath.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relativePath))
+            {
+                relativePath = Path.GetFileName(input);
+            }
+            var destination = Path.Combine(appPath, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(input, destination, overwrite: true);
+        }
+    }
+
+    private static void CopyAppleSharedLibraries(BuildWorkspace workspace, BuildOptions options, BuildGraph graph, string destinationDirectory)
+    {
+        var libraries = FindAppleSharedLibraries(workspace, options, graph).ToArray();
+        if(libraries.Length == 0)
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(destinationDirectory);
+        foreach(var library in libraries)
+        {
+            File.Copy(library, Path.Combine(destinationDirectory, Path.GetFileName(library)), overwrite: true);
+        }
+    }
+
+    private static IEnumerable<string> FindAppleSharedLibraries(BuildWorkspace workspace, BuildOptions options, BuildGraph graph)
+    {
+        return graph.Nodes
+            .Where(node => node.Kind == BuildGraphNodeKind.File &&
+                IsSameTargetConfiguration(node.Options ?? graph.Options, options) &&
+                node.Path is not null &&
+                node.Command is not null &&
+                node.Path.EndsWith(".dylib", StringComparison.OrdinalIgnoreCase) &&
+                BuildActionKind.Extract(node.Command) == "cpp.link.shared")
+            .Select(node => workspace.ResolveRepositoryPath(node.Path!))
+            .Where(File.Exists)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IOSProvisioningProfile? CopyIOSProvisioningProfile(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        string appPath,
+        bool requireValidProfile)
+    {
+        var configuredProfile = options.Apple.IOSProvisioningProfile;
+        if(string.IsNullOrWhiteSpace(configuredProfile) ||
+            configuredProfile.Equals("none", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var profilePath = Path.GetFullPath(configuredProfile, workspace.RootDirectory);
+        if(!File.Exists(profilePath))
+        {
+            throw new FileNotFoundException($"iOS provisioning profile was not found: {profilePath}", profilePath);
+        }
+        File.Copy(profilePath, Path.Combine(appPath, "embedded.mobileprovision"), overwrite: true);
+        if(TryDecodeIOSProvisioningProfile(profilePath, out var profile, out var error))
+        {
+            return profile;
+        }
+        if(requireValidProfile)
+        {
+            throw new InvalidOperationException($"iOS provisioning profile could not be decoded: {profilePath}{Environment.NewLine}{error}");
+        }
+        return null;
+    }
+
+    private static bool ShouldSignIOSBundle(BuildOptions options)
+    {
+        var identity = options.Apple.IOSCodeSignIdentity;
+        return !string.IsNullOrWhiteSpace(identity) && !identity.Equals("none", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? PrepareIOSEntitlements(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        BuildTargetDefinition target,
+        string appPath,
+        string bundleIdentifier,
+        IOSProvisioningProfile? provisioningProfile,
+        bool shouldSign)
+    {
+        if(!shouldSign)
+        {
+            return null;
+        }
+        if(BuildOutputLayout.AppleSdkName(options) == "iphonesimulator" && provisioningProfile is null)
+        {
+            return null;
+        }
+
+        XElement? entitlements;
+        if(!string.IsNullOrWhiteSpace(target.AppleEntitlementsFile))
+        {
+            if(!File.Exists(target.AppleEntitlementsFile))
+            {
+                throw new FileNotFoundException($"iOS entitlements file was not found for target `{target.Name}`: {target.AppleEntitlementsFile}", target.AppleEntitlementsFile);
+            }
+            var template = File.ReadAllText(target.AppleEntitlementsFile);
+            var expanded = ExpandAppleEntitlementsTemplate(target, bundleIdentifier, provisioningProfile, template);
+            entitlements = ReadPlistRootDict(expanded, target.AppleEntitlementsFile);
+        }
+        else if(provisioningProfile is not null)
+        {
+            entitlements = new XElement(provisioningProfile.Entitlements);
+        }
+        else
+        {
+            return null;
+        }
+
+        if(provisioningProfile is not null)
+        {
+            ValidateIOSProvisioningProfile(provisioningProfile, bundleIdentifier, entitlements);
+        }
+
+        var entitlementsPath = Path.Combine(Path.GetDirectoryName(appPath)!, target.Name + ".xcent");
+        WritePlist(entitlementsPath, entitlements);
+        return entitlementsPath;
+    }
+
+    private static string ExpandAppleEntitlementsTemplate(
+        BuildTargetDefinition target,
+        string bundleIdentifier,
+        IOSProvisioningProfile? provisioningProfile,
+        string template)
+    {
+        var productName = target.Name;
+        var displayName = string.IsNullOrWhiteSpace(target.AppleBundleDisplayName)
+            ? productName
+            : target.AppleBundleDisplayName!;
+        var appIdentifierPrefix = provisioningProfile is null
+            ? string.Empty
+            : AppIdentifierPrefix(provisioningProfile);
+        var replacements = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["AppIdentifierPrefix"] = appIdentifierPrefix,
+            ["CFBundleIdentifier"] = bundleIdentifier,
+            ["DEVELOPMENT_TEAM"] = provisioningProfile?.TeamIdentifier ?? string.Empty,
+            ["EXECUTABLE_NAME"] = productName,
+            ["PRODUCT_BUNDLE_IDENTIFIER"] = bundleIdentifier,
+            ["PRODUCT_DISPLAY_NAME"] = displayName,
+            ["PRODUCT_NAME"] = productName,
+            ["TeamIdentifierPrefix"] = appIdentifierPrefix,
+        };
+
+        foreach(var (key, value) in replacements)
+        {
+            template = template.Replace("$(" + key + ")", value, StringComparison.Ordinal);
+        }
+        return template;
+    }
+
+    private static string AppIdentifierPrefix(IOSProvisioningProfile profile)
+    {
+        if(!string.IsNullOrWhiteSpace(profile.ApplicationIdentifier))
+        {
+            var separator = profile.ApplicationIdentifier!.IndexOf('.');
+            if(separator > 0)
+            {
+                return profile.ApplicationIdentifier[..(separator + 1)];
+            }
+        }
+        return string.IsNullOrWhiteSpace(profile.TeamIdentifier)
+            ? string.Empty
+            : profile.TeamIdentifier + ".";
+    }
+
+    private static bool TryDecodeIOSProvisioningProfile(string profilePath, out IOSProvisioningProfile? profile, out string error)
+    {
+        profile = null;
+        var result = RunProcessCapture("/usr/bin/security", new[] { "cms", "-D", "-i", profilePath });
+        if(result.ExitCode != 0)
+        {
+            error = result.Output;
+            return false;
+        }
+
+        try
+        {
+            profile = ParseIOSProvisioningProfile(profilePath, result.Output);
+            error = string.Empty;
+            return true;
+        }
+        catch(Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    private static IOSProvisioningProfile ParseIOSProvisioningProfile(string profilePath, string plistXml)
+    {
+        var profileDict = ReadPlistRootDict(plistXml, profilePath);
+        var entries = PlistDictionary(profileDict);
+        if(!entries.TryGetValue("Entitlements", out var entitlements) || entitlements.Name.LocalName != "dict")
+        {
+            throw new InvalidOperationException("Provisioning profile does not contain an Entitlements dictionary.");
+        }
+
+        var entitlementEntries = PlistDictionary(entitlements);
+        var applicationIdentifier = PlistString(entitlementEntries, "application-identifier");
+        var teamIdentifier = PlistString(entitlementEntries, "com.apple.developer.team-identifier") ??
+            FirstPlistArrayString(entries, "TeamIdentifier");
+        return new IOSProvisioningProfile(
+            Path: profilePath,
+            Name: PlistString(entries, "Name"),
+            Uuid: PlistString(entries, "UUID"),
+            TeamIdentifier: teamIdentifier,
+            ApplicationIdentifier: applicationIdentifier,
+            Entitlements: new XElement(entitlements));
+    }
+
+    private static void ValidateIOSProvisioningProfile(
+        IOSProvisioningProfile profile,
+        string bundleIdentifier,
+        XElement signingEntitlements)
+    {
+        if(string.IsNullOrWhiteSpace(profile.ApplicationIdentifier))
+        {
+            throw new InvalidOperationException($"Provisioning profile `{profile.Path}` does not declare an application-identifier entitlement.");
+        }
+        if(!ApplicationIdentifierAllowsBundle(profile.ApplicationIdentifier!, bundleIdentifier))
+        {
+            throw new InvalidOperationException(
+                $"Provisioning profile `{profile.Name ?? profile.Path}` allows `{profile.ApplicationIdentifier}`, which does not match bundle id `{bundleIdentifier}`.");
+        }
+
+        var allowedEntitlements = PlistDictionary(profile.Entitlements);
+        var requestedEntitlements = PlistDictionary(signingEntitlements);
+        foreach(var (key, requestedValue) in requestedEntitlements)
+        {
+            if(!allowedEntitlements.TryGetValue(key, out var allowedValue))
+            {
+                throw new InvalidOperationException($"Entitlement `{key}` is requested by the app but is not allowed by provisioning profile `{profile.Name ?? profile.Path}`.");
+            }
+            if(!EntitlementValueAllowed(key, requestedValue, allowedValue))
+            {
+                throw new InvalidOperationException($"Entitlement `{key}` requested by the app is not allowed by provisioning profile `{profile.Name ?? profile.Path}`.");
+            }
+        }
+    }
+
+    private static bool ApplicationIdentifierAllowsBundle(string applicationIdentifier, string bundleIdentifier)
+    {
+        var separator = applicationIdentifier.IndexOf('.');
+        if(separator < 0 || separator == applicationIdentifier.Length - 1)
+        {
+            return false;
+        }
+        return WildcardStringAllows(applicationIdentifier[(separator + 1)..], bundleIdentifier);
+    }
+
+    private static bool EntitlementValueAllowed(string key, XElement requestedValue, XElement allowedValue)
+    {
+        if(requestedValue.Name.LocalName == "array" && allowedValue.Name.LocalName == "array")
+        {
+            return requestedValue.Elements().All(requestedItem =>
+                allowedValue.Elements().Any(allowedItem => EntitlementValueAllowed(key, requestedItem, allowedItem)));
+        }
+        if(requestedValue.Name.LocalName == "string" && allowedValue.Name.LocalName == "string")
+        {
+            return key is "application-identifier" or "keychain-access-groups"
+                ? WildcardStringAllows(allowedValue.Value, requestedValue.Value)
+                : string.Equals(requestedValue.Value, allowedValue.Value, StringComparison.Ordinal);
+        }
+        return string.Equals(
+            requestedValue.ToString(SaveOptions.DisableFormatting),
+            allowedValue.ToString(SaveOptions.DisableFormatting),
+            StringComparison.Ordinal);
+    }
+
+    private static bool WildcardStringAllows(string allowedPattern, string requestedValue)
+    {
+        if(string.Equals(allowedPattern, requestedValue, StringComparison.Ordinal))
+        {
+            return true;
+        }
+        if(allowedPattern == "*")
+        {
+            return true;
+        }
+        return allowedPattern.EndsWith("*", StringComparison.Ordinal) &&
+            requestedValue.StartsWith(allowedPattern[..^1], StringComparison.Ordinal);
+    }
+
+    private static string? ReadPlistString(string plistPath, string key)
+    {
+        var root = ReadPlistRootDict(File.ReadAllText(plistPath), plistPath);
+        return PlistString(PlistDictionary(root), key);
+    }
+
+    private static XElement ReadPlistRootDict(string plistXml, string sourceDescription)
+    {
+        var document = XDocument.Parse(plistXml, LoadOptions.PreserveWhitespace);
+        var rootDict = document.Root?.Name.LocalName == "plist"
+            ? document.Root.Elements().FirstOrDefault(element => element.Name.LocalName == "dict")
+            : document.Root;
+        if(rootDict is null || rootDict.Name.LocalName != "dict")
+        {
+            throw new InvalidOperationException($"Plist does not contain a root dictionary: {sourceDescription}");
+        }
+        return rootDict;
+    }
+
+    private static IReadOnlyDictionary<string, XElement> PlistDictionary(XElement dict)
+    {
+        var children = dict.Elements().ToArray();
+        var result = new Dictionary<string, XElement>(StringComparer.Ordinal);
+        for(var i = 0; i < children.Length - 1; ++i)
+        {
+            if(children[i].Name.LocalName != "key")
+            {
+                continue;
+            }
+            result[children[i].Value] = children[i + 1];
+            ++i;
+        }
+        return result;
+    }
+
+    private static string? PlistString(IReadOnlyDictionary<string, XElement> dict, string key)
+    {
+        return dict.TryGetValue(key, out var value) && value.Name.LocalName == "string"
+            ? value.Value
+            : null;
+    }
+
+    private static string? FirstPlistArrayString(IReadOnlyDictionary<string, XElement> dict, string key)
+    {
+        return dict.TryGetValue(key, out var value) && value.Name.LocalName == "array"
+            ? value.Elements().FirstOrDefault(element => element.Name.LocalName == "string")?.Value
+            : null;
+    }
+
+    private static void WritePlist(string path, XElement rootDict)
+    {
+        var document = new XDocument(
+            new XDeclaration("1.0", "UTF-8", null),
+            new XDocumentType("plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd", null),
+            new XElement("plist",
+                new XAttribute("version", "1.0"),
+                new XElement(rootDict)));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var xml = document.ToString(SaveOptions.None)
+            .Replace(" />", "/>", StringComparison.Ordinal);
+        File.WriteAllText(path, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" + Environment.NewLine + xml, new UTF8Encoding(false));
+    }
+
+    private static bool SignIOSBundle(BuildOptions options, string appPath, string? entitlementsFile)
+    {
+        var identity = options.Apple.IOSCodeSignIdentity;
+        if(string.IsNullOrWhiteSpace(identity) || identity.Equals("none", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var frameworksPath = Path.Combine(appPath, "Frameworks");
+        if(Directory.Exists(frameworksPath))
+        {
+            foreach(var nestedCode in Directory.EnumerateFiles(frameworksPath, "*", SearchOption.AllDirectories)
+                .Where(IsAppleCodeBundleInput)
+                .Order(StringComparer.OrdinalIgnoreCase))
+            {
+                SignPath(identity, nestedCode, entitlementsFile: null);
+            }
+        }
+        SignPath(identity, appPath, entitlementsFile);
+        return true;
+    }
+
+    private static bool SignMacOSBundle(string appPath)
+    {
+        var frameworksPath = Path.Combine(appPath, "Contents", "Frameworks");
+        if(Directory.Exists(frameworksPath))
+        {
+            foreach(var nestedCode in Directory.EnumerateFiles(frameworksPath, "*", SearchOption.AllDirectories)
+                .Where(IsAppleCodeBundleInput)
+                .Order(StringComparer.OrdinalIgnoreCase))
+            {
+                SignPath("-", nestedCode, entitlementsFile: null);
+            }
+        }
+        SignPath("-", appPath, entitlementsFile: null);
+        return true;
+    }
+
+    private static bool IsAppleCodeBundleInput(string path)
+    {
+        return path.EndsWith(".dylib", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".framework", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void SignPath(string identity, string path, string? entitlementsFile)
+    {
+        var args = new List<string>
+        {
+            "--force",
+            "--sign",
+            identity,
+        };
+        if(!string.IsNullOrWhiteSpace(entitlementsFile))
+        {
+            args.Add("--entitlements");
+            args.Add(entitlementsFile);
+        }
+        args.Add(path);
+        if(RunProcess("/usr/bin/codesign", args) != 0)
+        {
+            throw new InvalidOperationException($"codesign failed for bundle item: {path}");
+        }
+    }
+
+    private static void CreateIpa(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target, string appPath, string ipaPath)
+    {
+        var stagingRoot = Path.Combine(TargetConfigurationDirectory(target, options), "IpaStaging", target.Name);
+        if(Directory.Exists(stagingRoot))
+        {
+            Directory.Delete(stagingRoot, recursive: true);
+        }
+        var payloadDirectory = Path.Combine(stagingRoot, "Payload");
+        var stagedAppPath = Path.Combine(payloadDirectory, Path.GetFileName(appPath));
+        CopyDirectory(appPath, stagedAppPath);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(ipaPath)!);
+        if(File.Exists(ipaPath))
+        {
+            File.Delete(ipaPath);
+        }
+        ZipFile.CreateFromDirectory(stagingRoot, ipaPath, CompressionLevel.Optimal, includeBaseDirectory: false);
+    }
+
+    private static void CopyDirectory(string sourceDirectory, string destinationDirectory)
+    {
+        foreach(var directory in Directory.EnumerateDirectories(sourceDirectory, "*", SearchOption.AllDirectories))
+        {
+            Directory.CreateDirectory(Path.Combine(destinationDirectory, Path.GetRelativePath(sourceDirectory, directory)));
+        }
+        Directory.CreateDirectory(destinationDirectory);
+        foreach(var file in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories))
+        {
+            var destination = Path.Combine(destinationDirectory, Path.GetRelativePath(sourceDirectory, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(file, destination, overwrite: true);
+        }
+    }
+
+    private static string? FindLinkedExecutable(BuildWorkspace workspace, BuildGraph graph, string targetName)
+    {
+        foreach(var node in graph.Nodes)
+        {
+            if(node.Command is null || node.Path is null || BuildActionKind.Extract(node.Command) != "cpp.link.executable")
+            {
+                continue;
+            }
+            if(string.Equals(PayloadValue(node.Command, "target"), targetName, StringComparison.OrdinalIgnoreCase))
+            {
+                return workspace.ResolveRepositoryPath(node.Path);
+            }
+        }
+        return null;
+    }
+
+    private static string? PayloadValue(string payload, string key)
+    {
+        using var reader = new StringReader(payload);
+        string? line;
+        while((line = reader.ReadLine()) is not null)
+        {
+            var separator = line.IndexOf('=');
+            if(separator <= 0)
+            {
+                continue;
+            }
+            if(string.Equals(line[..separator], key, StringComparison.Ordinal))
+            {
+                return line[(separator + 1)..];
+            }
+        }
+        return null;
+    }
+
     private static AndroidPackageResult PackageAndroid(
         BuildWorkspace workspace,
         BuildOptions options,
@@ -558,21 +1433,13 @@ public static class LunaBuildCli
             throw new DirectoryNotFoundException($"Android project was not found for target `{target.QualifiedName}`: {sourceAndroidProject}");
         }
 
-        var packageRoot = Path.Combine(
-            target.ProjectBuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString());
-        if(!target.IsHostProject)
-        {
-            packageRoot = Path.Combine(packageRoot, target.ConfigurationId);
-        }
+        var packageRoot = TargetConfigurationDirectory(target, options);
         var androidProject = Path.Combine(packageRoot, "package", target.Name, "AndroidProject");
         if(Directory.Exists(androidProject))
         {
             Directory.Delete(androidProject, recursive: true);
         }
-        CopyDirectory(sourceAndroidProject, androidProject);
+        CopyAndroidProjectDirectory(sourceAndroidProject, androidProject);
 
         var abi = AndroidAbi(options.Architecture);
         var jniLibsDirectory = Path.Combine(androidProject, "app", "src", "main", "jniLibs", abi);
@@ -582,7 +1449,7 @@ public static class LunaBuildCli
         }
         Directory.CreateDirectory(jniLibsDirectory);
 
-        var sharedLibraries = FindAndroidSharedLibraries(workspace, graph).ToArray();
+        var sharedLibraries = FindAndroidSharedLibraries(workspace, options, graph).ToArray();
         var targetLibraryName = $"lib{target.Name}.so";
         if(!sharedLibraries.Any(path => Path.GetFileName(path).Equals(targetLibraryName, StringComparison.OrdinalIgnoreCase)))
         {
@@ -631,7 +1498,7 @@ public static class LunaBuildCli
         return new AndroidPackageResult(sharedLibraries.Length + 1, apk);
     }
 
-    private static void CopyDirectory(string source, string destination)
+    private static void CopyAndroidProjectDirectory(string source, string destination)
     {
         Directory.CreateDirectory(destination);
         foreach(var file in Directory.EnumerateFiles(source))
@@ -646,14 +1513,15 @@ public static class LunaBuildCli
             {
                 continue;
             }
-            CopyDirectory(directory, Path.Combine(destination, name));
+            CopyAndroidProjectDirectory(directory, Path.Combine(destination, name));
         }
     }
 
-    private static IEnumerable<string> FindAndroidSharedLibraries(BuildWorkspace workspace, BuildGraph graph)
+    private static IEnumerable<string> FindAndroidSharedLibraries(BuildWorkspace workspace, BuildOptions options, BuildGraph graph)
     {
         return graph.Nodes
             .Where(node => node.Kind == BuildGraphNodeKind.File &&
+                IsSameTargetConfiguration(node.Options ?? graph.Options, options) &&
                 node.Path is not null &&
                 node.Command is not null &&
                 node.Path.EndsWith(".so", StringComparison.OrdinalIgnoreCase) &&
@@ -970,6 +1838,17 @@ public static class LunaBuildCli
         Console.WriteLine("  --arch <name>       Architecture string. Default: host architecture.");
         Console.WriteLine("  --rhi <name>        D3D12, Vulkan, or Metal. Default: platform default.");
         Console.WriteLine("  --static            Generate static target configuration.");
+        Console.WriteLine("  --apple-sdk <name>  Apple SDK name for iOS builds: iphoneos or iphonesimulator.");
+        Console.WriteLine("  --macos-deployment-target <version>");
+        Console.WriteLine("                      Minimum macOS deployment target version. Default: 12.0.");
+        Console.WriteLine("  --ios-deployment-target <version>");
+        Console.WriteLine("                      Minimum iOS deployment target version. Default: 13.0.");
+        Console.WriteLine("  --ios-bundle-identifier <id>");
+        Console.WriteLine("                      Override the target-declared iOS bundle identifier while packaging.");
+        Console.WriteLine("  --ios-codesign-identity <identity>");
+        Console.WriteLine("                      Code signing identity for iOS app bundles. Use none to skip signing.");
+        Console.WriteLine("  --ios-provisioning-profile <file>");
+        Console.WriteLine("                      Provisioning profile to embed in iOS app bundles.");
         Console.WriteLine("  --property <k=v>    Set one project-defined build property.");
         Console.WriteLine("  --<property>        Set one project-defined boolean property to true.");
         Console.WriteLine();
@@ -978,10 +1857,40 @@ public static class LunaBuildCli
         Console.WriteLine("  lunabuild run <name> -- [program arguments]");
         Console.WriteLine();
         Console.WriteLine("Package:");
+        Console.WriteLine("  lunabuild package <name> --platform MacOS --arch arm64 [--output <app-or-dir>]");
         Console.WriteLine("  lunabuild package <name> --platform Android --arch arm64-v8a [--output <apk-or-dir>]");
+        Console.WriteLine("  lunabuild package <name> --platform IOS --arch arm64 [--static] [--output <app-ipa-or-dir>]");
     }
 
     private sealed record AndroidPackageResult(int NativeLibrariesCopied, string ApkPath);
+
+    private sealed record MacOSPackageResult(string AppPath, bool Signed);
+
+    private sealed record CliProcessResult(int ExitCode, string Output);
+
+    private sealed record IOSPackagePaths(string AppPath, string? IpaPath);
+
+    private sealed record IOSPackageResult(string AppPath, string? IpaPath, bool Signed);
+
+    private sealed record IOSProvisioningProfile(
+        string Path,
+        string? Name,
+        string? Uuid,
+        string? TeamIdentifier,
+        string? ApplicationIdentifier,
+        XElement Entitlements);
+
+    private static string DisplayBuildPropertyValue(BuildPropertyValue property)
+    {
+        return IsSensitiveBuildProperty(property.Name) ? "<redacted>" : property.Value;
+    }
+
+    private static bool IsSensitiveBuildProperty(string name)
+    {
+        return name.Contains("codesign", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("provisioning_profile", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("bundle_identifier", StringComparison.OrdinalIgnoreCase);
+    }
 
     private sealed record BuildContext(
         BuildWorkspace Workspace,
@@ -1020,6 +1929,18 @@ internal sealed class CommandLineOptions
     public bool? Shared { get; private init; }
 
     public IReadOnlyList<VSCodeDebuggerType> VSCodeDebuggerTypes { get; private init; } = Array.Empty<VSCodeDebuggerType>();
+
+    public string? AppleSdkName { get; private init; }
+
+    public string? MacOSDeploymentTarget { get; private init; }
+
+    public string? IOSDeploymentTarget { get; private init; }
+
+    public string? IOSBundleIdentifier { get; private init; }
+
+    public string? IOSCodeSignIdentity { get; private init; }
+
+    public string? IOSProvisioningProfile { get; private init; }
 
     public IReadOnlyDictionary<string, string?> ProjectPropertyOverrides { get; private init; } = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
@@ -1083,6 +2004,24 @@ internal sealed class CommandLineOptions
                 case "--shared":
                     options.Shared = true;
                     break;
+                case "--apple-sdk":
+                    options.AppleSdkName = RequireValue(args, ref i, "--apple-sdk");
+                    break;
+                case "--macos-deployment-target":
+                    options.MacOSDeploymentTarget = RequireValue(args, ref i, "--macos-deployment-target");
+                    break;
+                case "--ios-deployment-target":
+                    options.IOSDeploymentTarget = RequireValue(args, ref i, "--ios-deployment-target");
+                    break;
+                case "--ios-bundle-identifier":
+                    options.IOSBundleIdentifier = RequireValue(args, ref i, "--ios-bundle-identifier");
+                    break;
+                case "--ios-codesign-identity":
+                    options.IOSCodeSignIdentity = RequireValue(args, ref i, "--ios-codesign-identity");
+                    break;
+                case "--ios-provisioning-profile":
+                    options.IOSProvisioningProfile = RequireValue(args, ref i, "--ios-provisioning-profile");
+                    break;
                 case "--property":
                     AddProjectProperty(options.ProjectPropertyOverrides, RequireValue(args, ref i, "--property"));
                     break;
@@ -1113,6 +2052,15 @@ internal sealed class CommandLineOptions
         var architecture = Architecture ?? defaults.Architecture;
         ValidatePlatformArchitecture(platform, architecture);
         var properties = projectDefinition.ResolveProperties(ProjectPropertyOverrides);
+        var appleOptions = defaults.Apple with
+        {
+            SdkName = AppleSdkName ?? defaults.Apple.SdkName,
+            MacOSDeploymentTarget = MacOSDeploymentTarget ?? defaults.Apple.MacOSDeploymentTarget,
+            IOSDeploymentTarget = IOSDeploymentTarget ?? defaults.Apple.IOSDeploymentTarget,
+            IOSBundleIdentifier = IOSBundleIdentifier ?? defaults.Apple.IOSBundleIdentifier,
+            IOSCodeSignIdentity = IOSCodeSignIdentity ?? defaults.Apple.IOSCodeSignIdentity,
+            IOSProvisioningProfile = IOSProvisioningProfile ?? defaults.Apple.IOSProvisioningProfile,
+        };
         return defaults with
         {
             Mode = Mode ?? defaults.Mode,
@@ -1120,6 +2068,7 @@ internal sealed class CommandLineOptions
             Architecture = architecture,
             Shared = Shared ?? defaults.Shared,
             RhiApi = RhiApi ?? DefaultRhiApi(platform),
+            Apple = appleOptions,
             Properties = properties,
         };
     }
@@ -1249,6 +2198,13 @@ internal sealed class CommandLineOptions
         public RhiApi? RhiApi { get; set; }
         public bool? Shared { get; set; }
         public List<VSCodeDebuggerType> VSCodeDebuggerTypes { get; } = new();
+
+        public string? AppleSdkName { get; set; }
+        public string? MacOSDeploymentTarget { get; set; }
+        public string? IOSDeploymentTarget { get; set; }
+        public string? IOSBundleIdentifier { get; set; }
+        public string? IOSCodeSignIdentity { get; set; }
+        public string? IOSProvisioningProfile { get; set; }
         public Dictionary<string, string?> ProjectPropertyOverrides { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         public CommandLineOptions ToImmutable()
@@ -1269,6 +2225,12 @@ internal sealed class CommandLineOptions
                 RhiApi = RhiApi,
                 Shared = Shared,
                 VSCodeDebuggerTypes = VSCodeDebuggerTypes.Distinct().ToArray(),
+                AppleSdkName = AppleSdkName,
+                MacOSDeploymentTarget = MacOSDeploymentTarget,
+                IOSDeploymentTarget = IOSDeploymentTarget,
+                IOSBundleIdentifier = IOSBundleIdentifier,
+                IOSCodeSignIdentity = IOSCodeSignIdentity,
+                IOSProvisioningProfile = IOSProvisioningProfile,
                 ProjectPropertyOverrides = new Dictionary<string, string?>(ProjectPropertyOverrides, StringComparer.OrdinalIgnoreCase),
             };
         }

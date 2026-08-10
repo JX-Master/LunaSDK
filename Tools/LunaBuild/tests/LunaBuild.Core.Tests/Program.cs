@@ -23,6 +23,8 @@ internal static class Program
             ("custom imported build roots own the final rules assembly", CustomImportedBuildRoot),
             ("projects cannot share one build root", DuplicateBuildRoot),
             ("dotnet builds honor the requested configuration", DotNetBuildConfiguration),
+            ("application targets produce native executable graphs", ApplicationTargetGraph),
+            ("apple deployment settings affect layout and commands", AppleDeploymentSettings),
         };
 
         foreach(var test in tests)
@@ -468,6 +470,73 @@ internal static class Program
         });
     }
 
+    private static void ApplicationTargetGraph()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("ApplicationGraph");
+        Write(root, "app.cpp", "int main() { return 0; }");
+        Write(root, "App.Target.cs", string.Empty);
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault() with
+        {
+            Platform = BuildPlatform.MacOS,
+            Architecture = "arm64",
+            RhiApi = RhiApi.Metal,
+            Apple = BuildOptions.HostDefault().Apple with { MacOSDeploymentTarget = "12.0" },
+        };
+        var target = new ApplicationTargetRules().ToDefinition(workspace, options, "Host", "host", isHostProject: true);
+        var graph = new CppTargetGraphGenerator().Generate(workspace, options, new[] { target }, target.QualifiedName);
+        var link = graph.Nodes.Single(node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.link.executable");
+        True(link.Command!.Contains("application=true", StringComparison.Ordinal), "application link marker");
+        True(link.Command.Contains("target=Host.App", StringComparison.Ordinal), "qualified application target name");
+        True(target.Kind.ProducesNativeExecutable(), "application is a native executable producer");
+
+        var windowsOptions = options with
+        {
+            Platform = BuildPlatform.Windows,
+            Architecture = "x64",
+            RhiApi = RhiApi.D3D12,
+        };
+        var windowsTarget = new ApplicationTargetRules().ToDefinition(workspace, windowsOptions, "Host", "windows", isHostProject: true);
+        var windowsGraph = new CppTargetGraphGenerator().Generate(workspace, windowsOptions, new[] { windowsTarget }, windowsTarget.QualifiedName);
+        var windowsLink = windowsGraph.Nodes.Single(node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.link.executable");
+        True(windowsLink.Path!.EndsWith("App.exe", StringComparison.OrdinalIgnoreCase), "Windows application executable extension");
+        True(windowsLink.Command!.Contains("application=true", StringComparison.Ordinal), "Windows application link marker");
+    }
+
+    private static void AppleDeploymentSettings()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("AppleOptions");
+        Write(root, "app.cpp", "int main() { return 0; }");
+        Write(root, "App.Target.cs", string.Empty);
+        var workspace = new BuildWorkspace(root);
+        var macOptions = BuildOptions.HostDefault() with
+        {
+            Platform = BuildPlatform.MacOS,
+            Architecture = "arm64",
+            RhiApi = RhiApi.Metal,
+            Apple = BuildOptions.HostDefault().Apple with { MacOSDeploymentTarget = "12.0" },
+        };
+        var macTarget = new ApplicationTargetRules().ToDefinition(workspace, macOptions, "Host", "mac", isHostProject: true);
+        var macGraph = new CppTargetGraphGenerator().Generate(workspace, macOptions, new[] { macTarget }, macTarget.QualifiedName);
+        var macCompile = macGraph.Nodes.Single(node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.compile");
+        True(macCompile.Command!.Contains("macos_deployment_target=12.0", StringComparison.Ordinal), "macOS deployment target in action identity");
+
+        var iosOptions = macOptions with
+        {
+            Platform = BuildPlatform.IOS,
+            Apple = macOptions.Apple with { SdkName = "iphonesimulator", IOSDeploymentTarget = "14.0" },
+        };
+        var segments = BuildOutputLayout.ConfigurationSegments(iosOptions);
+        True(segments.Contains("iphonesimulator"), "iOS SDK isolates output directory");
+        var iosTarget = new ApplicationTargetRules().ToDefinition(workspace, iosOptions, "Host", "ios", isHostProject: true);
+        var iosGraph = new CppTargetGraphGenerator().Generate(workspace, iosOptions, new[] { iosTarget }, iosTarget.QualifiedName);
+        var iosCompile = iosGraph.Nodes.Single(node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.compile");
+        True(iosCompile.Path!.Replace('\\', '/').Contains("/IOS/iphonesimulator/arm64/Debug/", StringComparison.Ordinal), "iOS simulator object layout");
+        True(iosCompile.Command!.Contains("ios_deployment_target=14.0", StringComparison.Ordinal), "iOS deployment target in action identity");
+    }
+
     private static string SimpleProject(
         TestScope scope,
         string directory,
@@ -602,6 +671,16 @@ internal static class Program
             {
                 // Best-effort cleanup of temporary test fixtures.
             }
+        }
+    }
+
+    private sealed class ApplicationTargetRules : TargetRules
+    {
+        public ApplicationTargetRules()
+            : base("App", ".", "App.Target.cs")
+        {
+            Kind = BuildTargetKind.Application;
+            Sources("app.cpp");
         }
     }
 }

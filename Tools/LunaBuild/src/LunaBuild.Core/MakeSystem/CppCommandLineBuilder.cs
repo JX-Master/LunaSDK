@@ -28,7 +28,10 @@ internal static class CppCommandLineBuilder
                 BuildMsvcCompileArguments(workspace, options, payload)),
             BuildPlatform.MacOS => new CppCommandLine(
                 UsesCxxCompiler(payload.Required("language")) ? appleClangCxxPath ?? "clang++" : appleClangPath ?? "clang",
-                BuildAppleCompileArguments(workspace, payload, appleSdkPath)),
+                BuildAppleCompileArguments(workspace, options, payload, appleSdkPath)),
+            BuildPlatform.IOS => new CppCommandLine(
+                UsesCxxCompiler(payload.Required("language")) ? appleClangCxxPath ?? "clang++" : appleClangPath ?? "clang",
+                BuildAppleCompileArguments(workspace, options, payload, appleSdkPath)),
             BuildPlatform.Android => new CppCommandLine(
                 UsesCxxCompiler(payload.Required("language")) ? androidClangCxxPath ?? "clang++" : androidClangPath ?? "clang",
                 BuildAndroidCompileArguments(workspace, payload, androidSysroot, androidApiLevel)),
@@ -96,6 +99,7 @@ internal static class CppCommandLineBuilder
 
     public static IReadOnlyList<string> BuildAppleCompileArguments(
         BuildWorkspace workspace,
+        BuildOptions options,
         ActionPayload payload,
         string? sdkPath)
     {
@@ -115,12 +119,21 @@ internal static class CppCommandLineBuilder
             "-fPIC",
             "-fno-exceptions",
         };
+        if(AppleTargetTriple(options, payload.Required("arch")) is { } targetTriple)
+        {
+            args.Add("-target");
+            args.Add(targetTriple);
+        }
         if(!string.IsNullOrWhiteSpace(sdkPath))
         {
             args.Add("-isysroot");
             args.Add(sdkPath);
         }
         AddRttiArgs(args, payload);
+        if(AppleDeploymentTargetArgument(options) is { } deploymentTargetArgument)
+        {
+            args.Add(deploymentTargetArgument);
+        }
         AddAppleLanguageArgs(args, payload.Required("language"));
         AddAppleModeArgs(args, payload.Required("mode"));
         AddCommonClangArgs(workspace, payload, args);
@@ -179,6 +192,58 @@ internal static class CppCommandLineBuilder
     {
         return language.Equals("c++20", StringComparison.OrdinalIgnoreCase) ||
             language.Equals("objective-c++20", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static string AppleSdkName(BuildOptions options)
+    {
+        return BuildOutputLayout.AppleSdkName(options);
+    }
+
+    public static string? AppleTargetTriple(BuildOptions options, string architecture)
+    {
+        if(options.Platform == BuildPlatform.MacOS)
+        {
+            return null;
+        }
+        if(options.Platform != BuildPlatform.IOS)
+        {
+            throw new MakeSystemException($"Apple target triple is not defined for platform {options.Platform}.");
+        }
+
+        var arch = AppleArchitecture(architecture);
+        var deploymentTarget = AppleDeploymentTarget(options);
+        return AppleSdkName(options) == "iphonesimulator"
+            ? $"{arch}-apple-ios{deploymentTarget}-simulator"
+            : $"{arch}-apple-ios{deploymentTarget}";
+    }
+
+    public static string? AppleDeploymentTargetArgument(BuildOptions options)
+    {
+        if(options.Platform == BuildPlatform.MacOS)
+        {
+            return "-mmacosx-version-min=" + AppleDeploymentTarget(options);
+        }
+        if(options.Platform != BuildPlatform.IOS)
+        {
+            return null;
+        }
+
+        return AppleSdkName(options) == "iphonesimulator"
+            ? "-mios-simulator-version-min=" + AppleDeploymentTarget(options)
+            : "-miphoneos-version-min=" + AppleDeploymentTarget(options);
+    }
+
+    private static string AppleDeploymentTarget(BuildOptions options)
+    {
+        if(options.Platform == BuildPlatform.MacOS)
+        {
+            return string.IsNullOrWhiteSpace(options.Apple.MacOSDeploymentTarget)
+                ? "12.0"
+                : options.Apple.MacOSDeploymentTarget;
+        }
+        return string.IsNullOrWhiteSpace(options.Apple.IOSDeploymentTarget)
+            ? "13.0"
+            : options.Apple.IOSDeploymentTarget;
     }
 
     private static void AddCommonClangArgs(BuildWorkspace workspace, ActionPayload payload, List<string> args)

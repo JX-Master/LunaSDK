@@ -17,6 +17,9 @@ internal static class IdeProjectModel
         Add(files, target.HeaderFiles);
         Add(files, target.MetaHeaderFiles);
         Add(files, target.RuntimeFiles);
+        Add(files, target.AppleInfoPlistFile);
+        Add(files, target.AppleEntitlementsFile);
+        Add(files, target.AppleBundleResources);
         Add(files, target.EmbeddedHeaders.Select(header => header.SourceFile));
         Add(files, target.Shaders.Select(shader => shader.SourceFile));
         if(target.DotNetProjectFile is not null)
@@ -175,6 +178,18 @@ internal static class IdeProjectModel
             options.RhiApi.ToString(),
             options.Shared ? "--shared" : "--static",
         };
+        if(options.Platform == BuildPlatform.MacOS)
+        {
+            args.Add("--macos-deployment-target");
+            args.Add(options.Apple.MacOSDeploymentTarget);
+        }
+        else if(options.Platform == BuildPlatform.IOS)
+        {
+            args.Add("--apple-sdk");
+            args.Add(BuildOutputLayout.AppleSdkName(options));
+            args.Add("--ios-deployment-target");
+            args.Add(options.Apple.IOSDeploymentTarget);
+        }
         foreach(var property in options.Properties.NonDefaultValues())
         {
             args.Add("--property");

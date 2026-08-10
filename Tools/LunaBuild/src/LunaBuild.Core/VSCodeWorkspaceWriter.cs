@@ -58,7 +58,7 @@ public static class VSCodeWorkspaceWriter
             tasks.Add(CreateTask($"LunaBuild: build {target.QualifiedName}", CommandArgs(workspace, options, "build", target.QualifiedName, all: false, force: false)));
             tasks.Add(CreateTask($"LunaBuild: rebuild {target.QualifiedName}", CommandArgs(workspace, options, "build", target.QualifiedName, all: false, force: true)));
             tasks.Add(CreateTask($"LunaBuild: clean {target.QualifiedName}", CommandArgs(workspace, options, "clean", target.QualifiedName, all: false, force: false)));
-            if(target.Kind is BuildTargetKind.Executable or BuildTargetKind.DotNetProject)
+            if(target.Kind.ProducesNativeExecutable() || target.Kind == BuildTargetKind.DotNetProject)
             {
                 tasks.Add(CreateTask($"LunaBuild: run {target.QualifiedName}", CommandArgs(workspace, options, "run", target.QualifiedName, all: false, force: false)));
             }
@@ -83,7 +83,7 @@ public static class VSCodeWorkspaceWriter
             .ToDictionary(pair => pair.TargetName, pair => pair.OutputPath, StringComparer.OrdinalIgnoreCase);
 
         foreach(var target in targets
-            .Where(target => target.Kind == BuildTargetKind.Executable && executableOutputs.ContainsKey(target.QualifiedName))
+            .Where(target => target.Kind.ProducesNativeExecutable() && executableOutputs.ContainsKey(target.QualifiedName))
             .OrderBy(target => target.QualifiedName, StringComparer.OrdinalIgnoreCase))
         {
             var program = executableOutputs[target.QualifiedName];

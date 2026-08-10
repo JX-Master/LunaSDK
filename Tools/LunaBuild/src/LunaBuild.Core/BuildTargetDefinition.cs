@@ -2,13 +2,21 @@ namespace LunaBuild.Core;
 
 public enum BuildTargetKind
 {
-    Runtime,
     StaticLibrary,
     SharedLibrary,
     Executable,
+    Application,
     HeaderOnly,
     DotNetProject,
     External,
+}
+
+public static class BuildTargetKindExtensions
+{
+    public static bool ProducesNativeExecutable(this BuildTargetKind kind)
+    {
+        return kind is BuildTargetKind.Executable or BuildTargetKind.Application;
+    }
 }
 
 public enum BuildTargetCategory
@@ -51,6 +59,11 @@ public sealed record BuildTargetDefinition(
     IReadOnlyList<string> Frameworks,
     IReadOnlyList<string> RuntimeFiles,
     IReadOnlyList<string> RequiredFiles,
+    string? AppleBundleIdentifier,
+    string? AppleBundleDisplayName,
+    string? AppleInfoPlistFile,
+    string? AppleEntitlementsFile,
+    IReadOnlyList<string> AppleBundleResources,
     IReadOnlyList<BuildEmbeddedHeaderDefinition> EmbeddedHeaders,
     IReadOnlyList<BuildShaderDefinition> Shaders,
     BuildTargetKind Kind,

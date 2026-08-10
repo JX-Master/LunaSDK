@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 
@@ -6,6 +7,7 @@ namespace LunaBuild.Core.MakeSystem;
 public sealed class CppslShaderActionExecutor : KnownActionExecutor
 {
     private readonly TimeSpan _actionTimeout;
+    private readonly ConcurrentDictionary<string, Lazy<AppleClangToolchain>> _appleToolchains = new(StringComparer.OrdinalIgnoreCase);
 
     public CppslShaderActionExecutor(TimeSpan? actionTimeout = null)
         : base("cppsl.shader")
@@ -75,7 +77,9 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
                 throw new MakeSystemException($"CPPSL did not produce expected Metal output: {metal}");
             }
 
-            var metallib = await RunMetalAsync(context.Workspace, metal, intermediateDirectory, sourceName, IsDebug(payload.Required("mode")), cancellationToken);
+            var appleSdk = payload.Contains("apple_sdk") ? payload.Required("apple_sdk") : null;
+            var iosDeploymentTarget = payload.Contains("ios_deployment_target") ? payload.Required("ios_deployment_target") : null;
+            var metallib = await RunMetalAsync(context.Workspace, metal, intermediateDirectory, sourceName, IsDebug(payload.Required("mode")), appleSdk, iosDeploymentTarget, cancellationToken);
             var (x, y, z) = ReadMetalNumthreads(Path.Combine(intermediateDirectory, sourceName + ".reflection.json"));
             WriteShaderHeader(header, sourceName, metallib, "metallib", entry, helperHeader, outputNamespace, x, y, z);
             return;
@@ -154,6 +158,8 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         string intermediateDirectory,
         string sourceName,
         bool debug,
+        string? appleSdk,
+        string? iosDeploymentTarget,
         CancellationToken cancellationToken)
     {
         var moduleCache = Path.Combine(workspace.BuildDirectory, ".metal-module-cache");
@@ -165,7 +171,6 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         {
             "metal",
             "-std=metal3.2",
-            "-fmodules-cache-path=" + moduleCache,
             "-x",
             "metal",
             "-c",
@@ -173,6 +178,17 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
             "-o",
             air,
         };
+        if(!string.IsNullOrWhiteSpace(appleSdk))
+        {
+            var toolchain = AppleToolchain(appleSdk);
+            metalArgs.InsertRange(2, new[]
+            {
+                "--target=" + MetalAppleTargetTriple(appleSdk, iosDeploymentTarget ?? "13.0"),
+                "-isysroot",
+                toolchain.SdkPath,
+            });
+        }
+        metalArgs.Insert(2, "-fmodules-cache-path=" + moduleCache);
         if(debug)
         {
             metalArgs.Add("-gline-tables-only");
@@ -206,6 +222,19 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
                 metallibResult.Output));
         }
         return metallib;
+    }
+
+    private AppleClangToolchain AppleToolchain(string sdkName)
+    {
+        return _appleToolchains.GetOrAdd(sdkName, name => new Lazy<AppleClangToolchain>(() => AppleClangToolchainLocator.Locate(name))).Value;
+    }
+
+    private static string MetalAppleTargetTriple(string appleSdk, string deploymentTarget)
+    {
+        var suffix = appleSdk.Equals("iphonesimulator", StringComparison.OrdinalIgnoreCase)
+            ? "-simulator"
+            : string.Empty;
+        return $"air64-apple-ios{deploymentTarget}{suffix}";
     }
 
     private async Task<string> RunGlslangAsync(

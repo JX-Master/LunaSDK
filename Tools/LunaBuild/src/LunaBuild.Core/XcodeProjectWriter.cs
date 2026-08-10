@@ -1,5 +1,6 @@
 using System.Text;
 using System.Xml.Linq;
+using LunaBuild.Core.MakeSystem;
 
 namespace LunaBuild.Core;
 
@@ -317,7 +318,7 @@ public static class XcodeProjectWriter
                 "\t\t\tbuildSettings = {",
                 $"\t\t\t\tARCHS = {PbxString(XcodeArchitecture(options.Architecture))};",
                 "\t\t\t\tONLY_ACTIVE_ARCH = YES;",
-                "\t\t\t\tSDKROOT = macosx;",
+                $"\t\t\t\tSDKROOT = {PbxString(XcodeSdkRoot(options))};",
                 "\t\t\t};",
                 $"\t\t\tname = {PbxString(options.Mode.ToString())};"));
     }
@@ -349,7 +350,7 @@ public static class XcodeProjectWriter
                 $"\t\t\t\tHEADER_SEARCH_PATHS = ({string.Join(", ", includePaths)});",
                 "\t\t\t\tONLY_ACTIVE_ARCH = YES;",
                 $"\t\t\t\tPRODUCT_NAME = {PbxString(target.Name)};",
-                "\t\t\t\tSDKROOT = macosx;",
+                $"\t\t\t\tSDKROOT = {PbxString(XcodeSdkRoot(options))};",
                 "\t\t\t};",
                 $"\t\t\tname = {PbxString(options.Mode.ToString())};"));
     }
@@ -365,7 +366,7 @@ public static class XcodeProjectWriter
                 $"\t\t\t\tARCHS = {PbxString(XcodeArchitecture(options.Architecture))};",
                 "\t\t\t\tONLY_ACTIVE_ARCH = YES;",
                 $"\t\t\t\tPRODUCT_NAME = {PbxString(name)};",
-                "\t\t\t\tSDKROOT = macosx;",
+                $"\t\t\t\tSDKROOT = {PbxString(XcodeSdkRoot(options))};",
                 "\t\t\t};",
                 $"\t\t\tname = {PbxString(options.Mode.ToString())};"));
     }
@@ -539,7 +540,7 @@ public static class XcodeProjectWriter
 
     private static string ProductFileType(BuildTargetKind kind, string path)
     {
-        if(kind == BuildTargetKind.Executable)
+        if(kind.ProducesNativeExecutable())
         {
             return "compiled.mach-o.executable";
         }
@@ -576,6 +577,13 @@ public static class XcodeProjectWriter
             "arm64" or "aarch64" => "arm64",
             _ => throw new ArgumentException($"Unsupported Xcode architecture: {architecture}"),
         };
+    }
+
+    private static string XcodeSdkRoot(BuildOptions options)
+    {
+        return options.Platform is BuildPlatform.MacOS or BuildPlatform.IOS
+            ? CppCommandLineBuilder.AppleSdkName(options)
+            : options.Platform.ToString().ToLowerInvariant();
     }
 
     private static string Id(string value) => IdeProjectModel.StableXcodeId("LunaBuild.Xcode:" + value);

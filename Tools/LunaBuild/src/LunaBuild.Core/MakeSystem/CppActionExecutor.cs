@@ -1,12 +1,13 @@
 namespace LunaBuild.Core.MakeSystem;
 
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 
 public sealed class CppActionExecutor : IMakeActionExecutor
 {
     private readonly Lazy<MsvcToolchain> _msvcToolchain = new(MsvcToolchainLocator.Locate);
-    private readonly Lazy<AppleClangToolchain> _appleToolchain = new(AppleClangToolchainLocator.LocateMacOS);
+    private readonly ConcurrentDictionary<string, Lazy<AppleClangToolchain>> _appleToolchains = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lazy<AndroidNdkToolchain> _androidToolchain = new(() => AndroidNdkToolchainLocator.Locate());
     private readonly TimeSpan _actionTimeout;
 
@@ -39,6 +40,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         {
             BuildPlatform.Windows => CompileMsvcAsync(context, cancellationToken),
             BuildPlatform.MacOS => CompileAppleAsync(context, cancellationToken),
+            BuildPlatform.IOS => CompileAppleAsync(context, cancellationToken),
             BuildPlatform.Android => CompileAndroidAsync(context, cancellationToken),
             _ => throw new MakeSystemException($"C++ compile is not implemented for platform {context.Options.Platform}."),
         };
@@ -50,6 +52,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         {
             BuildPlatform.Windows => LinkMsvcSharedAsync(context, cancellationToken),
             BuildPlatform.MacOS => LinkAppleSharedAsync(context, cancellationToken),
+            BuildPlatform.IOS => LinkAppleSharedAsync(context, cancellationToken),
             BuildPlatform.Android => LinkAndroidSharedAsync(context, cancellationToken),
             _ => throw new MakeSystemException($"C++ shared linking is not implemented for platform {context.Options.Platform}."),
         };
@@ -61,6 +64,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         {
             BuildPlatform.Windows => LinkMsvcStaticAsync(context, cancellationToken),
             BuildPlatform.MacOS => LinkAppleStaticAsync(context, cancellationToken),
+            BuildPlatform.IOS => LinkAppleStaticAsync(context, cancellationToken),
             BuildPlatform.Android => LinkAndroidStaticAsync(context, cancellationToken),
             _ => throw new MakeSystemException($"C++ static linking is not implemented for platform {context.Options.Platform}."),
         };
@@ -72,6 +76,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         {
             BuildPlatform.Windows => LinkMsvcExecutableAsync(context, cancellationToken),
             BuildPlatform.MacOS => LinkAppleExecutableAsync(context, cancellationToken),
+            BuildPlatform.IOS => LinkAppleExecutableAsync(context, cancellationToken),
             _ => throw new MakeSystemException($"C++ executable linking is not implemented for platform {context.Options.Platform}."),
         };
     }
@@ -122,8 +127,9 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         Directory.CreateDirectory(Path.GetDirectoryName(depfile)!);
 
         var language = payload.Required("language");
-        var args = CppCommandLineBuilder.BuildAppleCompileArguments(context.Workspace, payload, _appleToolchain.Value.SdkPath);
-        var compiler = CppCommandLineBuilder.UsesCxxCompiler(language) ? _appleToolchain.Value.ClangCxx : _appleToolchain.Value.Clang;
+        var toolchain = AppleToolchain(context.Options);
+        var args = CppCommandLineBuilder.BuildAppleCompileArguments(context.Workspace, context.Options, payload, toolchain.SdkPath);
+        var compiler = CppCommandLineBuilder.UsesCxxCompiler(language) ? toolchain.ClangCxx : toolchain.Clang;
         var result = await ProcessRunner.RunAsync(compiler, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
@@ -297,18 +303,19 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
 
-        var args = AppleLinkArgs(context, payload, output);
+        var toolchain = AppleToolchain(context.Options);
+        var args = AppleLinkArgs(context, payload, output, toolchain);
         args.Insert(0, "-dynamiclib");
         args.Add("-install_name");
         args.Add("@rpath/" + Path.GetFileName(output));
 
-        var result = await ProcessRunner.RunAsync(_appleToolchain.Value.ClangCxx, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
+        var result = await ProcessRunner.RunAsync(toolchain.ClangCxx, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException(FormatArgumentListFailure(
                 $"C++ link failed for {output}",
                 context.Workspace.RootDirectory,
-                _appleToolchain.Value.ClangCxx,
+                toolchain.ClangCxx,
                 args,
                 result.Output));
         }
@@ -328,13 +335,14 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         };
         args.AddRange(LinkInputPaths(context).Where(path => path.EndsWith(".o", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".a", StringComparison.OrdinalIgnoreCase)));
 
-        var result = await ProcessRunner.RunAsync(_appleToolchain.Value.Libtool, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
+        var toolchain = AppleToolchain(context.Options);
+        var result = await ProcessRunner.RunAsync(toolchain.Libtool, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException(FormatArgumentListFailure(
                 $"C++ static link failed for {output}",
                 context.Workspace.RootDirectory,
-                _appleToolchain.Value.Libtool,
+                toolchain.Libtool,
                 args,
                 result.Output));
         }
@@ -346,14 +354,15 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
 
-        var args = AppleLinkArgs(context, payload, output);
-        var result = await ProcessRunner.RunAsync(_appleToolchain.Value.ClangCxx, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
+        var toolchain = AppleToolchain(context.Options);
+        var args = AppleLinkArgs(context, payload, output, toolchain);
+        var result = await ProcessRunner.RunAsync(toolchain.ClangCxx, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException(FormatArgumentListFailure(
                 $"C++ executable link failed for {output}",
                 context.Workspace.RootDirectory,
-                _appleToolchain.Value.ClangCxx,
+                toolchain.ClangCxx,
                 args,
                 result.Output));
         }
@@ -406,18 +415,35 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         }
     }
 
-    private List<string> AppleLinkArgs(MakeActionContext context, ActionPayload payload, string output)
+    private List<string> AppleLinkArgs(MakeActionContext context, ActionPayload payload, string output, AppleClangToolchain toolchain)
     {
         var args = new List<string>
         {
             "-arch",
             AppleArchitecture(payload.Required("arch")),
             "-isysroot",
-            _appleToolchain.Value.SdkPath,
+            toolchain.SdkPath,
             "-o",
             output,
+            "-fobjc-link-runtime",
             "-Wl,-rpath,@loader_path",
         };
+        if(context.Options.Platform == BuildPlatform.IOS)
+        {
+            args.Add("-Wl,-rpath,@executable_path/Frameworks");
+        }
+        if(context.Options.Platform == BuildPlatform.MacOS && payload.Contains("application"))
+        {
+            args.Add("-Wl,-rpath,@executable_path/../Frameworks");
+        }
+        if(CppCommandLineBuilder.AppleTargetTriple(context.Options, payload.Required("arch")) is { } targetTriple)
+        {
+            args.InsertRange(0, new[] { "-target", targetTriple });
+        }
+        if(CppCommandLineBuilder.AppleDeploymentTargetArgument(context.Options) is { } deploymentTargetArgument)
+        {
+            args.Add(deploymentTargetArgument);
+        }
         args.AddRange(LinkInputPaths(context));
         foreach(var library in payload.All("library"))
         {
@@ -429,6 +455,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             args.Add(framework);
         }
         return args;
+    }
+
+    private AppleClangToolchain AppleToolchain(BuildOptions options)
+    {
+        var sdkName = CppCommandLineBuilder.AppleSdkName(options);
+        return _appleToolchains.GetOrAdd(sdkName, name => new Lazy<AppleClangToolchain>(() => AppleClangToolchainLocator.Locate(name))).Value;
     }
 
     private List<string> AndroidLinkArgs(MakeActionContext context, ActionPayload payload, string output, AndroidNdkToolchain toolchain)
@@ -769,16 +801,21 @@ internal static class AppleClangToolchainLocator
 {
     public static AppleClangToolchain LocateMacOS()
     {
+        return Locate("macosx");
+    }
+
+    public static AppleClangToolchain Locate(string sdkName)
+    {
         if(!OperatingSystem.IsMacOS())
         {
             throw new MakeSystemException("Apple clang toolchain lookup requires a macOS host.");
         }
 
         return new AppleClangToolchain(
-            Clang: Xcrun("-sdk", "macosx", "-find", "clang"),
-            ClangCxx: Xcrun("-sdk", "macosx", "-find", "clang++"),
-            Libtool: Xcrun("-sdk", "macosx", "-find", "libtool"),
-            SdkPath: Xcrun("-sdk", "macosx", "--show-sdk-path"));
+            Clang: Xcrun("-sdk", sdkName, "-find", "clang"),
+            ClangCxx: Xcrun("-sdk", sdkName, "-find", "clang++"),
+            Libtool: Xcrun("-sdk", sdkName, "-find", "libtool"),
+            SdkPath: Xcrun("-sdk", sdkName, "--show-sdk-path"));
     }
 
     private static string Xcrun(params string[] arguments)

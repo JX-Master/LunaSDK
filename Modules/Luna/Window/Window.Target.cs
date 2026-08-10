@@ -38,7 +38,7 @@ public sealed class WindowTargetRules : TargetRules
             Headers("UIKit/*.hpp", "Source/Backend/UIKit/*.h");
             MetaHeaders("UIKit/UIKitWindow.hpp", "Source/Backend/UIKit/UIKitWindowImpl.h");
             Sources("Source/Backend/UIKit/*.mm", "Source/UIKit/*.mm");
-            Frameworks("UIKit", "CoreGraphics", "QuartzCore");
+            Frameworks("Foundation", "UIKit", "CoreGraphics", "QuartzCore");
         }
         else if(Platform == BuildPlatform.Android)
         {

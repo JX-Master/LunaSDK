@@ -79,7 +79,11 @@ namespace Luna
 
             case Format::d16_unorm:             return MTLPixelFormatDepth16Unorm;
             case Format::d32_float:             return MTLPixelFormatDepth32Float;
+#ifdef LUNA_PLATFORM_MACOS
             case Format::d24_unorm_s8_uint:     return MTLPixelFormatDepth24Unorm_Stencil8;
+#else
+            case Format::d24_unorm_s8_uint:     return MTLPixelFormatInvalid;
+#endif
             case Format::d32_float_s8_uint_x24: return MTLPixelFormatDepth32Float_Stencil8;
 
             case Format::bc1_rgba_unorm:         return MTLPixelFormatBC1_RGBA;
@@ -158,7 +162,9 @@ namespace Luna
 
             case MTLPixelFormatDepth16Unorm: return Format::d16_unorm;
             case MTLPixelFormatDepth32Float: return Format::d32_float;
+#ifdef LUNA_PLATFORM_MACOS
             case MTLPixelFormatDepth24Unorm_Stencil8: return Format::d24_unorm_s8_uint;
+#endif
             case MTLPixelFormatDepth32Float_Stencil8: return Format::d32_float_s8_uint_x24;
 
             case MTLPixelFormatBC1_RGBA: return Format::bc1_rgba_unorm;
@@ -189,7 +195,11 @@ namespace Luna
                 case TextureViewType::texcube: return MTLTextureTypeCube;
                 case TextureViewType::tex1darray: return MTLTextureType1DArray;
                 case TextureViewType::tex2darray: return MTLTextureType2DArray;
+#ifdef LUNA_PLATFORM_IOS
+                case TextureViewType::tex2dmsarray: lupanic(); return MTLTextureType2DMultisample;
+#else
                 case TextureViewType::tex2dmsarray: return MTLTextureType2DMultisampleArray;
+#endif
                 case TextureViewType::texcubearray: return MTLTextureTypeCubeArray;
                 default: lupanic(); return MTLTextureType2D;
             }
@@ -362,7 +372,15 @@ namespace Luna
                 }
                 else
                 {
+#ifdef LUNA_PLATFORM_IOS
+                    if(desc.array_size != 1)
+                    {
+                        lupanic();
+                    }
+                    ret.textureType = MTLTextureType2DMultisample;
+#else
                     ret.textureType = desc.array_size == 1 ? MTLTextureType2DMultisample : MTLTextureType2DMultisampleArray;
+#endif
                 }
             }
             else if(desc.type == TextureType::tex3d)

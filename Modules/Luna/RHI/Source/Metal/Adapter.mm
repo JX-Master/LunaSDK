@@ -31,6 +31,7 @@ namespace Luna
             @autoreleasepool
             {
                 g_adapters.clear();
+#ifdef LUNA_PLATFORM_MACOS
                 NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
                 u32 num_devices = [devices count];
                 for(u32 i = 0; i < num_devices; ++i)
@@ -41,6 +42,16 @@ namespace Luna
                     adapter->init();
                     g_adapters.push_back(Ref<IAdapter>(adapter));
                 }
+#else
+                id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
+                if(dev)
+                {
+                    Ref<Adapter> adapter = new_object<Adapter>();
+                    adapter->m_device = dev;
+                    adapter->init();
+                    g_adapters.push_back(Ref<IAdapter>(adapter));
+                }
+#endif
             }
         }
         LUNA_RHI_API Vector<Ref<IAdapter>> get_adapters()

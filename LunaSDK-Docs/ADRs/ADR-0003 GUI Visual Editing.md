@@ -1,5 +1,5 @@
 ## Status
-Approved
+Proposed
 
 ## Last updated
 2026/6/9
@@ -46,4 +46,4 @@ In CLI mode, the editor behaves like a server process, and MCP is the only way t
 	2. GUI design data and runtime data will not be 100% match at most cases, the runtime data structure version will change rapidly, but the design data is much slower. Use one schema to describe both design data and runtime data will be troublesome.
 
 ## Version history
-* **2026/6/9** Proposed and approved.
+* **2026/6/9** Proposed.

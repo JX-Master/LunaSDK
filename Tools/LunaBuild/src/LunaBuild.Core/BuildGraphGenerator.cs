@@ -71,6 +71,15 @@ public sealed class BuildGraphGenerator
         {
             lines.Add($"project_property.{property.Name}={property.Value}");
         }
+        if(target.Options.Platform == BuildPlatform.MacOS)
+        {
+            lines.Add($"macos_deployment_target={target.Options.Apple.MacOSDeploymentTarget}");
+        }
+        else if(target.Options.Platform == BuildPlatform.IOS)
+        {
+            lines.Add($"apple_sdk={BuildOutputLayout.AppleSdkName(target.Options)}");
+            lines.Add($"ios_deployment_target={target.Options.Apple.IOSDeploymentTarget}");
+        }
         return string.Join('\n', lines);
     }
 }

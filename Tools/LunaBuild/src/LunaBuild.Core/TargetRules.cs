@@ -18,6 +18,7 @@ public abstract class TargetRules
     private readonly List<string> _frameworks = new();
     private readonly List<string> _runtimeFilePatterns = new();
     private readonly List<string> _requiredFiles = new();
+    private readonly List<string> _appleBundleResourcePatterns = new();
     private readonly List<EmbeddedHeaderRule> _embeddedHeaders = new();
     private readonly List<ShaderRule> _shaders = new();
     private readonly HashSet<BuildPlatform> _supportedPlatforms = new();
@@ -25,6 +26,10 @@ public abstract class TargetRules
     private BuildOptions? _currentOptions;
     private string? _msvcRuntimeLibrary;
     private bool _enableRtti = true;
+    private string? _appleBundleIdentifier;
+    private string? _appleBundleDisplayName;
+    private string? _appleInfoPlistFile;
+    private string? _appleEntitlementsFile;
     private DotNetProjectRule? _dotNetProject;
 
     protected TargetRules(string name, string targetDirectory, string rulesPath)
@@ -188,6 +193,27 @@ public abstract class TargetRules
         _requiredFiles.AddRange(files);
     }
 
+    protected void AppleBundle(string bundleIdentifier, string? displayName = null)
+    {
+        _appleBundleIdentifier = bundleIdentifier;
+        _appleBundleDisplayName = displayName;
+    }
+
+    protected void AppleInfoPlist(string file)
+    {
+        _appleInfoPlistFile = file;
+    }
+
+    protected void AppleEntitlements(string file)
+    {
+        _appleEntitlementsFile = file;
+    }
+
+    protected void AppleBundleResources(params string[] patterns)
+    {
+        _appleBundleResourcePatterns.AddRange(patterns);
+    }
+
     protected void EmbeddedHeader(string sourceFile, string headerFile, string dataSymbol, string sizeSymbol)
     {
         _embeddedHeaders.Add(new EmbeddedHeaderRule(sourceFile, headerFile, dataSymbol, sizeSymbol));
@@ -280,6 +306,15 @@ public abstract class TargetRules
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Order(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
+                AppleBundleIdentifier: _appleBundleIdentifier,
+                AppleBundleDisplayName: _appleBundleDisplayName,
+                AppleInfoPlistFile: _appleInfoPlistFile is null
+                    ? null
+                    : ResolveTargetPath(workspace, TargetDirectory, _appleInfoPlistFile),
+                AppleEntitlementsFile: _appleEntitlementsFile is null
+                    ? null
+                    : ResolveTargetPath(workspace, TargetDirectory, _appleEntitlementsFile),
+                AppleBundleResources: TargetPatternExpander.ExpandPatterns(directory, _appleBundleResourcePatterns),
                 EmbeddedHeaders: _embeddedHeaders
                     .Select(header => new BuildEmbeddedHeaderDefinition(
                         workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, header.SourceFile)),
@@ -349,12 +384,17 @@ public abstract class TargetRules
             Frameworks: _frameworks.Count,
             RuntimeFilePatterns: _runtimeFilePatterns.Count,
             RequiredFiles: _requiredFiles.Count,
+            AppleBundleResourcePatterns: _appleBundleResourcePatterns.Count,
             EmbeddedHeaders: _embeddedHeaders.Count,
             Shaders: _shaders.Count,
             SupportedPlatforms: _supportedPlatforms.ToArray(),
             Category: Category,
             MsvcRuntimeLibrary: _msvcRuntimeLibrary,
             EnableRtti: _enableRtti,
+            AppleBundleIdentifier: _appleBundleIdentifier,
+            AppleBundleDisplayName: _appleBundleDisplayName,
+            AppleInfoPlistFile: _appleInfoPlistFile,
+            AppleEntitlementsFile: _appleEntitlementsFile,
             DotNetProject: _dotNetProject);
     }
 
@@ -376,6 +416,7 @@ public abstract class TargetRules
         Truncate(_frameworks, state.Frameworks);
         Truncate(_runtimeFilePatterns, state.RuntimeFilePatterns);
         Truncate(_requiredFiles, state.RequiredFiles);
+        Truncate(_appleBundleResourcePatterns, state.AppleBundleResourcePatterns);
         Truncate(_embeddedHeaders, state.EmbeddedHeaders);
         Truncate(_shaders, state.Shaders);
         _supportedPlatforms.Clear();
@@ -386,6 +427,10 @@ public abstract class TargetRules
         Category = state.Category;
         _msvcRuntimeLibrary = state.MsvcRuntimeLibrary;
         _enableRtti = state.EnableRtti;
+        _appleBundleIdentifier = state.AppleBundleIdentifier;
+        _appleBundleDisplayName = state.AppleBundleDisplayName;
+        _appleInfoPlistFile = state.AppleInfoPlistFile;
+        _appleEntitlementsFile = state.AppleEntitlementsFile;
         _dotNetProject = state.DotNetProject;
     }
 
@@ -420,12 +465,17 @@ public abstract class TargetRules
         int Frameworks,
         int RuntimeFilePatterns,
         int RequiredFiles,
+        int AppleBundleResourcePatterns,
         int EmbeddedHeaders,
         int Shaders,
         BuildPlatform[] SupportedPlatforms,
         BuildTargetCategory Category,
         string? MsvcRuntimeLibrary,
         bool EnableRtti,
+        string? AppleBundleIdentifier,
+        string? AppleBundleDisplayName,
+        string? AppleInfoPlistFile,
+        string? AppleEntitlementsFile,
         DotNetProjectRule? DotNetProject);
 }
 

@@ -54,9 +54,9 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
             args.Add("--header-language");
             args.Add(language);
         }
-        if(context.Options.Platform == BuildPlatform.MacOS && OperatingSystem.IsMacOS())
+        if((context.Options.Platform is BuildPlatform.MacOS or BuildPlatform.IOS) && OperatingSystem.IsMacOS())
         {
-            var appleToolchain = AppleClangToolchainLocator.LocateMacOS();
+            var appleToolchain = AppleClangToolchainLocator.Locate(CppCommandLineBuilder.AppleSdkName(context.Options));
             args.Add("--isysroot");
             args.Add(appleToolchain.SdkPath);
             args.Add("--resource-dir");

@@ -284,7 +284,7 @@ public sealed class CppTargetGraphGenerator
                 Depfiles: Array.Empty<string>()));
 
             var runtimeFileIds = AddRuntimeFileNodes(target, dependencyOutputs.SelectMany(output => output.RuntimeFiles), binaryPath);
-            var linkInputId = target.Kind != BuildTargetKind.Executable && _options.Shared && _options.Platform == BuildPlatform.Windows
+            var linkInputId = !target.Kind.ProducesNativeExecutable() && _options.Shared && _options.Platform == BuildPlatform.Windows
                 ? BuildGraphIds.File(_workspace.ToRepositoryRelativePath(Path.ChangeExtension(binaryPath, ".lib")))
                 : binaryId;
             var targetId = BuildGraphIds.Target(target.QualifiedName);
@@ -327,7 +327,7 @@ public sealed class CppTargetGraphGenerator
                     .Concat(dependencyFrameworks)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
-                (target.Kind != BuildTargetKind.Executable && _options.Shared
+                (!target.Kind.ProducesNativeExecutable() && _options.Shared
                     ? new[] { binaryPath }
                     : Array.Empty<string>())
                     .Concat(target.RuntimeFiles)
@@ -1190,7 +1190,7 @@ public sealed class CppTargetGraphGenerator
     {
         var fileName = IsAndroidNativeActivityLibrary(options, target)
             ? $"lib{target.Name}.so"
-            : target.Kind == BuildTargetKind.Executable
+            : target.Kind.ProducesNativeExecutable()
             ? $"{target.Name}{ExecutableExtension(options.Platform)}"
             : $"{options.LibraryPrefix}{target.Name}{(options.Shared ? SharedLibraryExtension(options.Platform) : StaticLibraryExtension(options.Platform))}";
         return Path.Combine(
@@ -1256,10 +1256,9 @@ public sealed class CppTargetGraphGenerator
     private static string GetTargetConfigurationDirectory(BuildTargetDefinition target, BuildOptions options)
     {
         var directory = Path.Combine(
-            target.ProjectBuildDirectory,
-            options.Platform.ToString(),
-            options.Architecture,
-            options.Mode.ToString());
+            new[] { target.ProjectBuildDirectory }
+                .Concat(BuildOutputLayout.ConfigurationSegments(options))
+                .ToArray());
         return target.IsHostProject ? directory : Path.Combine(directory, target.ConfigurationId);
     }
 
@@ -1321,6 +1320,7 @@ public sealed class CppTargetGraphGenerator
             $"define=LUNA_DEBUG_LEVEL={DebugLevel(options.Mode)}",
             options.Shared ? "define=LUNA_BUILD_SHARED_LIB" : "linkage=static",
         };
+        AddAppleBuildOptions(lines, options);
         lines.AddRange(options.GlobalDefines.Select(define => $"define={define}"));
         lines.AddRange(options.GlobalIncludeDirectories.Select(path => $"include={workspace.ToRepositoryRelativePath(path)}"));
         if(!target.EnableRtti)
@@ -1455,6 +1455,11 @@ public sealed class CppTargetGraphGenerator
             $"platform={options.Platform}",
             $"arch={options.Architecture}",
         };
+        if(options.Platform == BuildPlatform.IOS)
+        {
+            lines.Add($"apple_sdk={BuildOutputLayout.AppleSdkName(options)}");
+            lines.Add($"ios_deployment_target={IOSDeploymentTarget(options)}");
+        }
         if(cppslToolOutputs is not null)
         {
             lines.Add($"cppslc={FileIdToRepositoryRelativePath(cppslToolOutputs.CppslcId)}");
@@ -1523,6 +1528,13 @@ public sealed class CppTargetGraphGenerator
             RhiApi.Metal => "msl",
             _ => throw new ArgumentOutOfRangeException(nameof(rhiApi), rhiApi, null),
         };
+    }
+
+    private static string IOSDeploymentTarget(BuildOptions options)
+    {
+        return string.IsNullOrWhiteSpace(options.Apple.IOSDeploymentTarget)
+            ? "13.0"
+            : options.Apple.IOSDeploymentTarget;
     }
 
     private static string SourceLanguage(string path)
@@ -1608,28 +1620,50 @@ public sealed class CppTargetGraphGenerator
         string binaryPath,
         IReadOnlyList<string> inputIds)
     {
-        var actionKind = target.Kind == BuildTargetKind.Executable
+        var actionKind = target.Kind.ProducesNativeExecutable()
             ? IsAndroidNativeActivityLibrary(options, target) ? "cpp.link.shared" : "cpp.link.executable"
             : options.Shared ? "cpp.link.shared" : "cpp.link.static";
-        return string.Join('\n',
+        var lines = new List<string>
+        {
             $"kind={actionKind}",
             $"target={target.QualifiedName}",
             $"output={workspace.ToRepositoryRelativePath(binaryPath)}",
             $"mode={options.Mode}",
             $"platform={options.Platform}",
-            $"arch={options.Architecture}")
-            + string.Concat(inputIds.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(id => $"\ninput={id}"))
-            + string.Concat(target.SystemLibraries.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(library => $"\nlibrary={library}"))
-            + string.Concat(target.Frameworks
+            $"arch={options.Architecture}",
+        };
+        AddAppleBuildOptions(lines, options);
+        if(target.Kind == BuildTargetKind.Application)
+        {
+            lines.Add("application=true");
+        }
+        lines.AddRange(inputIds.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(id => $"input={id}"));
+        lines.AddRange(target.SystemLibraries.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(library => $"library={library}"));
+        lines.AddRange(target.Frameworks
                 .Concat(dependencyFrameworks)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Order(StringComparer.OrdinalIgnoreCase)
-                .Select(framework => $"\nframework={framework}"));
+                .Select(framework => $"framework={framework}"));
+        return string.Join('\n', lines);
+    }
+
+    private static void AddAppleBuildOptions(ICollection<string> lines, BuildOptions options)
+    {
+        if(options.Platform == BuildPlatform.MacOS)
+        {
+            lines.Add("apple_sdk=macosx");
+            lines.Add($"macos_deployment_target={options.Apple.MacOSDeploymentTarget}");
+        }
+        else if(options.Platform == BuildPlatform.IOS)
+        {
+            lines.Add($"apple_sdk={BuildOutputLayout.AppleSdkName(options)}");
+            lines.Add($"ios_deployment_target={IOSDeploymentTarget(options)}");
+        }
     }
 
     private static bool IsAndroidNativeActivityLibrary(BuildOptions options, BuildTargetDefinition target)
     {
-        return options.Platform == BuildPlatform.Android && target.Kind == BuildTargetKind.Executable;
+        return options.Platform == BuildPlatform.Android && target.Kind == BuildTargetKind.Application;
     }
 
     private static string BuildTargetCommandDescription(

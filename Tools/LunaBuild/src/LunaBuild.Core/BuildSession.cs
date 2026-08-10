@@ -464,6 +464,7 @@ internal static class ProjectConfigurationIdentity
             options.Shared.ToString(),
             options.RhiApi.ToString(),
         }
+        .Concat(AppleConfigurationIdentity(options))
         .Concat(options.Properties.Values.Select(property => $"property:{property.Name}={property.Value}"))
         .Concat(options.GlobalDefines.Select(define => "define:" + define))
         .Concat(options.GlobalUndefines.Select(undefine => "undefine:" + undefine))
@@ -480,5 +481,22 @@ internal static class ProjectConfigurationIdentity
             string.Join(',', configuration.Directories.OrderBy(pair => pair.Key).Select(pair => pair.Key + "=" + pair.Value)) + ":" +
             string.Join(',', configuration.Values.OrderBy(pair => pair.Key).Select(pair => pair.Key + "=" + pair.Value)))));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant()[..12];
+    }
+
+    private static IEnumerable<string> AppleConfigurationIdentity(BuildOptions options)
+    {
+        if(options.Platform == BuildPlatform.MacOS)
+        {
+            yield return "apple_sdk:macosx";
+            yield return "macos_deployment_target:" + options.Apple.MacOSDeploymentTarget;
+        }
+        else if(options.Platform == BuildPlatform.IOS)
+        {
+            yield return "apple_sdk:" + BuildOutputLayout.AppleSdkName(options);
+            yield return "ios_deployment_target:" + options.Apple.IOSDeploymentTarget;
+            yield return "ios_bundle_identifier:" + options.Apple.IOSBundleIdentifier;
+            yield return "ios_codesign_identity:" + options.Apple.IOSCodeSignIdentity;
+            yield return "ios_provisioning_profile:" + options.Apple.IOSProvisioningProfile;
+        }
     }
 }
