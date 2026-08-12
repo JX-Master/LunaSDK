@@ -272,6 +272,7 @@ namespace Luna
             action->item_ids = item_ids;
             action->item_count = items.size();
             action->enabled = desc.enabled;
+            action->animation_duration = desc.animation_duration;
             action->state = state.get();
             Internal::add_action(context, Internal::ActionType::button_group, id, action);
             return group;

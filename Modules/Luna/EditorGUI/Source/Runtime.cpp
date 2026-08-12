@@ -8,6 +8,7 @@
 * @date 2026/7/13
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
+#include <Luna/Runtime/Math/Math.hpp>
 #define LUNA_EDITOR_GUI_API LUNA_EXPORT
 #include "Internal.hpp"
 
@@ -126,12 +127,35 @@ namespace Luna
                     if(!action->state->initialized)
                     {
                         action->state->animated_index = (f32)*action->selected_index;
+                        action->state->animation_start_index = action->state->animated_index;
+                        action->state->animation_target_index = action->state->animated_index;
+                        action->state->animation_elapsed = 0.0f;
                         action->state->initialized = true;
                     }
                     else
                     {
-                        action->state->animated_index = Internal::smooth_step(action->state->animated_index,
-                            (f32)*action->selected_index, 10.0f, delta_time);
+                        f32 target = (f32)*action->selected_index;
+                        if(action->state->animation_target_index != target)
+                        {
+                            action->state->animation_start_index =
+                                action->state->animated_index;
+                            action->state->animation_target_index = target;
+                            action->state->animation_elapsed = 0.0f;
+                        }
+                        f32 duration = max(action->animation_duration, 0.0f);
+                        if(duration == 0.0f)
+                        {
+                            action->state->animated_index = target;
+                        }
+                        else
+                        {
+                            action->state->animation_elapsed = min(
+                                action->state->animation_elapsed + delta_time, duration);
+                            f32 t = action->state->animation_elapsed / duration;
+                            action->state->animated_index = smoothstep(
+                                action->state->animation_start_index,
+                                action->state->animation_target_index, t);
+                        }
                     }
                     break;
                 }

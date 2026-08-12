@@ -114,6 +114,9 @@ namespace Luna
             bool enabled = true;
             //! Minimum width assigned to every item.
             f32 item_min_width = 64.0f;
+            //! Duration of the selection indicator animation in seconds.
+            //! @remark Values less than or equal to zero disable the animation.
+            f32 animation_duration = 0.25f;
         };
 
         //! Describes a shape element.

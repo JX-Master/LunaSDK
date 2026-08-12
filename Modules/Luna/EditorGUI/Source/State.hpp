@@ -67,6 +67,7 @@ namespace Luna
                 GUI::id_t* item_ids = nullptr;
                 usize item_count = 0;
                 bool enabled = true;
+                f32 animation_duration = 0.25f;
                 struct ButtonGroupState* state = nullptr;
             };
 
@@ -400,6 +401,9 @@ namespace Luna
             struct [[Luna::struct("{66221FD7-35D2-4A64-816B-A9838E47621E}")]] ButtonGroupState
             {
                 f32 animated_index = 0.0f;
+                f32 animation_start_index = 0.0f;
+                f32 animation_target_index = 0.0f;
+                f32 animation_elapsed = 0.0f;
                 bool initialized = false;
             };
 
