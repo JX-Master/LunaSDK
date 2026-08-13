@@ -857,7 +857,7 @@ namespace Luna
             deter = mul_f4(deter, indexv);
             deter = negmuladd_f4(deter, indexv, one);
             // Check negative.
-            int4 zero_mask = cmpgt_f4(deter, setzero_f4());
+            int4 zero_mask = cmpge_f4(deter, setzero_f4());
             if (maskint_i4(zero_mask) == 0) return dup_f4(0.0f);
             // dst := index * i - n * (index * PROJ + SQRT(DETER))
             float4 res = sqrt_f4(deter);
@@ -876,7 +876,7 @@ namespace Luna
             deter = mul_f4(deter, indexv);
             deter = negmuladd_f4(deter, indexv, one);
             // Check negative.
-            int4 zero_mask = cmpgt_f4(deter, setzero_f4());
+            int4 zero_mask = cmpge_f4(deter, setzero_f4());
             if (maskint_i4(zero_mask) == 0) return dup_f4(0.0f);
             // dst := index * i - n * (index * PROJ + SQRT(DETER))
             float4 res = sqrt_f4(deter);
@@ -895,7 +895,7 @@ namespace Luna
             deter = mul_f4(deter, indexv);
             deter = negmuladd_f4(deter, indexv, one);
             // Check negative.
-            int4 zero_mask = cmpgt_f4(deter, setzero_f4());
+            int4 zero_mask = cmpge_f4(deter, setzero_f4());
             if (maskint_i4(zero_mask) == 0) return dup_f4(0.0f);
             // dst := index * i - n * (index * PROJ + SQRT(DETER))
             float4 res = sqrt_f4(deter);

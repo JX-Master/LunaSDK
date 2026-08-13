@@ -210,6 +210,18 @@ namespace Luna
         // Transform test
         {
             {
+                Float3x3 mat = AffineMatrix::make(Float2(10.0f, 20.0f), PI / 2.0f, Float2(2.0f, 3.0f));
+                luasset_eq_float(mat.r[0].x, 2.0f * cos(PI / 2.0f));
+                luasset_eq_float(mat.r[0].y, 2.0f * sin(PI / 2.0f));
+                luasset_eq_float(mat.r[0].z, 0.0f);
+                luasset_eq_float(mat.r[1].x, 3.0f * -sin(PI / 2.0f));
+                luasset_eq_float(mat.r[1].y, 3.0f * cos(PI / 2.0f));
+                luasset_eq_float(mat.r[1].z, 0.0f);
+                luasset_eq_float(mat.r[2].x, 10.0f);
+                luasset_eq_float(mat.r[2].y, 20.0f);
+                luasset_eq_float(mat.r[2].z, 1.0f);
+            }
+            {
                 Float4x4 mat = AffineMatrix::make_scaling(0.5f, 0.75f, 1.0f);
                 lutest(mat == Float4x4(
                     0.5f, 0.0f, 0.0f, 0.0f,
@@ -285,6 +297,25 @@ namespace Luna
                 luasset_eq_float(mat.r[3].y, -270.727905f);
                 luasset_eq_float(mat.r[3].z, 100.000000f);
                 luasset_eq_float(mat.r[3].w, 1.000000f);
+            }
+            {
+                // Quaternion multiplication.
+                Quaternion r = mul(Quaternion(1.0f, 2.0f, 3.0f, 4.0f), Quaternion(5.0f, 6.0f, 7.0f, 8.0f));
+                luasset_eq_float(r.x, 32.0f);
+                luasset_eq_float(r.y, 32.0f);
+                luasset_eq_float(r.z, 56.0f);
+                luasset_eq_float(r.w, -6.0f);
+            }
+            {
+                // Quaternion spherical interpolation with negative dot product should stay on the unit sphere.
+                Quaternion a = Quaternion::identity();
+                Quaternion b = Quaternion(0.0f, 0.0f, sin(2.0f * PI / 3.0f), cos(2.0f * PI / 3.0f));
+                Quaternion r = slerp(a, b, 0.5f);
+                luasset_eq_float(length_squared(r), 1.0f);
+                luasset_eq_float(r.x, 0.0f);
+                luasset_eq_float(r.y, 0.0f);
+                luasset_eq_float(r.z, sin(PI / 3.0f));
+                luasset_eq_float(r.w, cos(PI / 3.0f));
             }
         }
     }
