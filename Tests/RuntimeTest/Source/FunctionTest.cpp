@@ -30,6 +30,17 @@ namespace Luna
 
     };
 
+    //! One callable object that contains one `TestObject`, used to test `Function` with non-trivially-copyable
+    //! callable objects.
+    struct TestCallable
+    {
+        TestObject m_obj;
+        i32 operator()(i32 n1, i32 n2)
+        {
+            return n1 + n2 + m_obj.m_value;
+        }
+    };
+
     void function_test()
     {
         usize allocated = get_allocated_memory();
@@ -153,12 +164,13 @@ namespace Luna
         {
             TestObject::reset();
             {
-                TestObject obj(42);
-                Function<i32(i32, i32)> func1(obj);
-                Function<i32(i32, i32)> func2(func1);
+                TestCallable callable;
+                callable.m_obj.m_value = 42;
+                Function<i32(i32, i32)> func1(callable);       // Copies the callable, +1 TestObject copy.
+                Function<i32(i32, i32)> func2(func1);          // Copies the callable, +1 TestObject copy.
                 lutest(func1(1, 2) == 45);
                 lutest(func2(3, 4) == 49);
-                Function<i32(i32, i32)> func3(move(func1));
+                Function<i32(i32, i32)> func3(move(func1));    // Moves the callable, +1 TestObject move.
                 lutest(!func1);
                 lutest(func3(5, 6) == 53);
                 lutest(TestObject::g_copy_ctor_count == 2);
