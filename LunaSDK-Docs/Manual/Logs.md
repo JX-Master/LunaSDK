@@ -27,8 +27,10 @@ The log system includes two built-in log handlers: the STD log handler and the f
 
 ### STD log handler
 
-STD log handler outputs log messages to the standard output (`stdout`) of the program using `printf`. The STD log handler is disabled by default, the user can call `set_log_std_enabled` to enable/disable it at any time. The verbosity level of STD log handler can be configured by `set_log_std_verbosity`.
+The platform log handler outputs log messages to the platform's default logging device. On desktop platforms this is normally the process console or standard output. The handler is disabled by default; call `set_log_to_platform_enabled` to enable or disable it and `set_log_to_platform_verbosity` to configure its verbosity.
+
+Keep the platform log handler disabled when standard output is reserved for a framed protocol such as MCP stdio, because log messages written to standard output corrupt the protocol stream. Use the file log handler or a custom handler that writes diagnostics to standard error instead. See [[Standard IO]] for the raw standard-stream APIs.
 
 ### File log handler
 
-File log handler outputs log messages to the file specified by the user. The file log handler is disabled by default, the user can call `set_log_file_enabled` to enable/disable it at any time. The user can call `set_log_file` to set the destination file of the log messages. If no file is set by the user, the handler will output logs to `Log.txt`file on the current working directory. For performance reasons, log messages will not be written to file immediately when being handled, but will be buffered internally and written to the file only when the buffer is full. You can also call `flush_log_to_file` manually if you want the buffer to be flushed immediately.
+File log handler outputs log messages to the file specified by the user. The file log handler is disabled by default, the user can call `set_log_to_file_enabled` to enable/disable it at any time. The user can call `set_log_file` to set the destination file of the log messages. If no file is set by the user, the handler will output logs to `Log.txt`file on the current working directory. For performance reasons, log messages will not be written to file immediately when being handled, but will be buffered internally and written to the file only when the buffer is full. You can also call `flush_log_to_file` manually if you want the buffer to be flushed immediately.

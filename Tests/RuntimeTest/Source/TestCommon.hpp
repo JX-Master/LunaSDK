@@ -34,6 +34,7 @@ namespace Luna
     void invoke_test();
     void function_test();
     void unicode_test();
+    void std_io_test();
     void thread_test();
     void fiber_test();
 

@@ -35,6 +35,7 @@ void run()
     invoke_test();
     function_test();
     unicode_test();
+    std_io_test();
     thread_test();
     fiber_test();
     

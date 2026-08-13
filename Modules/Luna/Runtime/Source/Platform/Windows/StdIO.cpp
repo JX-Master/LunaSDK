@@ -9,105 +9,67 @@
 */
 #include "../StdIO.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
-#include "../../../Unicode.hpp"
+#include "ErrCode.hpp"
 
 namespace Luna
 {
     namespace Platform
     {
-        c32 g_input_buffer = 0;
-        CRITICAL_SECTION g_std_io_mtx;
-
-        UINT g_oldcp;
-        UINT g_old_outputcp;
-
-        void std_io_init()
+        static HANDLE get_standard_handle(DWORD handle_id)
         {
-            InitializeCriticalSection(&g_std_io_mtx);
-            g_oldcp = GetConsoleCP();
-            g_old_outputcp = GetConsoleOutputCP();
-            SetConsoleCP(CP_UTF8);
-            SetConsoleOutputCP(CP_UTF8);
+            HANDLE handle = GetStdHandle(handle_id);
+            return handle == INVALID_HANDLE_VALUE ? nullptr : handle;
         }
 
-        void std_io_close()
+        static DWORD clamp_io_size(usize size)
         {
-            SetConsoleCP(g_oldcp);
-            SetConsoleOutputCP(g_old_outputcp);
-            DeleteCriticalSection(&g_std_io_mtx);
+            return size > (usize)MAXDWORD ? MAXDWORD : (DWORD)size;
         }
 
-        Result std_input(c8* buffer, usize size, usize* read_bytes)
+        Result read_standard_input(void* buffer, usize size, usize* read_bytes)
         {
-            EnterCriticalSection(&g_std_io_mtx);
-            c8* cur = buffer;
-            if(g_input_buffer)
+            if (read_bytes) *read_bytes = 0;
+            if (!size) return Result::success;
+            HANDLE handle = get_standard_handle(STD_INPUT_HANDLE);
+            if (!handle) return Result::bad_file;
+            DWORD actual_bytes = 0;
+            if (!ReadFile(handle, buffer, clamp_io_size(size), &actual_bytes, nullptr))
             {
-                c8 buf[6];
-                usize len = utf8_encode_char(buf, g_input_buffer);
-                if(cur + len <= buffer + size)
-                {
-                    memcpy(cur, buf, len);
-                    cur += len;
-                    g_input_buffer = 0;
-                }
-                else
-                {
-                    LeaveCriticalSection(&g_std_io_mtx);
-                    if(read_bytes) *read_bytes = 0;
-                    return Result::success;
-                }
+                DWORD error = GetLastError();
+                if (error == ERROR_BROKEN_PIPE || error == ERROR_HANDLE_EOF) return Result::success;
+                if (error == ERROR_INVALID_HANDLE) return Result::bad_file;
+                return translate_last_error(error);
             }
-            c8 ch[6];
-            while(cur < buffer + size - 1)
-            {
-                ch[0] = getchar();
-                if(ch[0] == '\n' || ch[0] == EOF)
-                {
-                    break;
-                }
-                usize len = utf8_charlen(ch[0]);
-                for(usize i = 1; i < len; ++i)
-                {
-                    ch[i] = getchar();
-                }
-                // Encode this character.
-                if(cur + len < buffer + size)
-                {
-                    memcpy(cur, ch, len);
-                    cur += len;
-                }
-                else
-                {
-                    g_input_buffer = utf8_decode_char(ch);
-                    break;
-                }
-            }
-            LeaveCriticalSection(&g_std_io_mtx);
-            *cur = 0;
-            if(read_bytes) *read_bytes = cur - buffer;
-            if(ch[0] == EOF) return feof(stdin) ? Result::success : Result::bad_platform_call;
+            if (read_bytes) *read_bytes = (usize)actual_bytes;
             return Result::success;
         }
 
-        Result std_output(const c8* buffer, usize size, usize* write_bytes)
+        static Result write_standard_stream(DWORD handle_id, const void* buffer, usize size, usize* write_bytes)
         {
-            EnterCriticalSection(&g_std_io_mtx);
-            const c8* cur = buffer;
-            while(cur < buffer + size)
+            if (write_bytes) *write_bytes = 0;
+            if (!size) return Result::success;
+            HANDLE handle = get_standard_handle(handle_id);
+            if (!handle) return Result::bad_file;
+            DWORD actual_bytes = 0;
+            if (!WriteFile(handle, buffer, clamp_io_size(size), &actual_bytes, nullptr))
             {
-                if(*cur == '\0') break;
-                usize len = utf8_charlen(*cur);
-                if(cur + len > buffer + size) break;
-                for(usize i = 0; i < len; ++i)
-                {
-                    putchar(cur[i]);
-                }
-                cur += len;
+                DWORD error = GetLastError();
+                if (error == ERROR_BROKEN_PIPE || error == ERROR_NO_DATA) return Result::bad_pipe;
+                if (error == ERROR_INVALID_HANDLE) return Result::bad_file;
+                return translate_last_error(error);
             }
-            LeaveCriticalSection(&g_std_io_mtx);
-            if(write_bytes) *write_bytes = cur - buffer;
+            if (write_bytes) *write_bytes = (usize)actual_bytes;
             return Result::success;
+        }
+
+        Result write_standard_output(const void* buffer, usize size, usize* write_bytes)
+        {
+            return write_standard_stream(STD_OUTPUT_HANDLE, buffer, size, write_bytes);
+        }
+
+        Result write_standard_error(const void* buffer, usize size, usize* write_bytes)
+        {
+            return write_standard_stream(STD_ERROR_HANDLE, buffer, size, write_bytes);
         }
     }
 }

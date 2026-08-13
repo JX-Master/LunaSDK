@@ -26,7 +26,6 @@
 #include "InterfaceImpl.hpp"
 #include "RandomImpl.hpp"
 #include "ReadWriteLockImpl.hpp"
-#include "StdIOImpl.hpp"
 #include "ProfilerImpl.hpp"
 #include "Runtime.meta.generated.hpp"
 namespace Luna
@@ -103,7 +102,6 @@ namespace Luna
         }
         random_init();
         log_init();
-        std_io_init();
         module_init();
         g_profiler_ready = true;
         g_initialized = true;
@@ -118,7 +116,6 @@ namespace Luna
         if (!g_initialized) return;
         module_close();
         g_profiler_ready = false;
-        std_io_close();
         log_close();
         random_close();
         stack_allocator_close();
