@@ -16,13 +16,22 @@ namespace Luna
 {
     namespace Frontend
     {
+        //! Reference-counted storage for one function handler.
+        struct [[luna::struct("{01F6C18D-6D67-4D34-ABB2-731841169B0E}")]] FunctionResource
+        {
+            FunctionHandler handler;
+
+            FunctionResource() = default;
+            FunctionResource(FunctionHandler&& handler) : handler(move(handler)) {}
+        };
+
         //! Internal storage entry for a single resource.
         struct ResourceEntry
         {
             ResourceType type = ResourceType::null;
 
             // Valid when type == ResourceType::function
-            FunctionHandler function;
+            Ref<FunctionResource> function;
 
             // Valid when type == ResourceType::data
             Variant data;
@@ -33,76 +42,52 @@ namespace Luna
 
             ResourceEntry() = default;
             ResourceEntry(const ResourceEntry&) = delete;
-            ResourceEntry(ResourceEntry&& rhs) :
-                type(rhs.type)
+            ResourceEntry(ResourceEntry&& rhs)
             {
-                switch(type)
-                {
-                    case ResourceType::data:
-                        data = move(rhs.data);
-                    case ResourceType::function:
-                        function = move(rhs.function);
-                        break;
-                    case ResourceType::userdata:
-                        userdata_ptr = rhs.userdata_ptr;
-                        userdata_dtor = rhs.userdata_dtor;
-                        rhs.userdata_ptr = nullptr;
-                        rhs.userdata_dtor = nullptr;
-                        break;
-                    default:
-                        break;
-                }
-                rhs.type = ResourceType::null;
+                move_from(rhs);
             }
             ResourceEntry& operator=(const ResourceEntry&) = delete;
             ResourceEntry& operator=(ResourceEntry&& rhs)
             {
-                type = rhs.type;
-                switch(type)
+                if(this != &rhs)
                 {
-                    case ResourceType::data:
-                        data = move(rhs.data);
-                    case ResourceType::function:
-                        function = move(rhs.function);
-                        break;
-                    case ResourceType::userdata:
-                        userdata_ptr = rhs.userdata_ptr;
-                        userdata_dtor = rhs.userdata_dtor;
-                        rhs.userdata_ptr = nullptr;
-                        rhs.userdata_dtor = nullptr;
-                        break;
-                    default:
-                        break;
+                    reset();
+                    move_from(rhs);
                 }
-                rhs.type = ResourceType::null;
                 return *this;
             }
 
             ~ResourceEntry()
             {
-                switch(type)
+                reset();
+            }
+
+        private:
+
+            void reset()
+            {
+                if(type == ResourceType::userdata && userdata_ptr && userdata_dtor)
                 {
-                    case ResourceType::data:
-                    data = Variant();
-                    break;
-                    case ResourceType::function:
-                    function.reset();
-                    break;
-                    case ResourceType::userdata:
-                    if(userdata_ptr)
-                    {
-                        if (userdata_dtor)
-                        {
-                            userdata_dtor(userdata_ptr);
-                        }
-                        userdata_ptr = nullptr;
-                    }
-                    userdata_dtor = nullptr;
-                    break;
-                    default:
-                    break;
+                    userdata_dtor(userdata_ptr);
                 }
+                function.reset();
+                data = Variant();
+                userdata_ptr = nullptr;
+                userdata_dtor = nullptr;
                 type = ResourceType::null;
+            }
+
+            void move_from(ResourceEntry& rhs)
+            {
+                type = rhs.type;
+                function = move(rhs.function);
+                data = move(rhs.data);
+                userdata_ptr = rhs.userdata_ptr;
+                userdata_dtor = rhs.userdata_dtor;
+
+                rhs.type = ResourceType::null;
+                rhs.userdata_ptr = nullptr;
+                rhs.userdata_dtor = nullptr;
             }
         };
 
@@ -113,7 +98,7 @@ namespace Luna
 
             HashMap<Name, ResourceEntry> m_registry;
 
-            virtual Variant invoke(const Name& url, const Variant& params) override;
+            virtual R<Variant> invoke(const Name& url, const Variant& params) override;
             virtual RV set_resource_function(const Name& url, FunctionHandler&& handler, bool overwrite = false) override;
             virtual RV set_resource_data(const Name& url, Variant&& data, bool overwrite = false) override;
             virtual RV set_resource_userdata(
@@ -124,11 +109,8 @@ namespace Luna
             ) override;
             virtual ResourceType get_resource_type(const Name& url) override;
             virtual R<Variant> get_resource_data(const Name& url) override;
-            virtual void remove_resource(const Name& url) override;
-
-        private:
-
-            R<Variant> invoke_impl(const Name& url, const Variant& params);
+            virtual R<void*> get_resource_userdata(const Name& url) override;
+            virtual RV remove_resource(const Name& url) override;
         };
     }
 }
