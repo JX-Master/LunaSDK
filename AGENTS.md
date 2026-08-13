@@ -16,6 +16,7 @@
 - All public headers in LunaSDK must be well documented using Doxygen syntax.
 - Use English to write codes and docs in LunaSDK, unless the user explicitly asked you to use another language.
 - Use tools to generate GUID when needed, do not guess one. Always check for duplication after generating GUID and make sure every GUID is unique.
+- Prefer using existing features provided by LunaSDK rather than reinventing the wheel, if using such features will introduce unnecessary module dependency, ask the user.
 
 ## ADR (Architecture Decision Record)
 - Always ask for the user whether to draft a new ADR if new features are introduced or big feature changes are made. Bugfixes generally do not require a new ADR.
@@ -23,7 +24,7 @@
 - If a new ADR is required, write ADR and refer to it before writing real codes.
 
 ## Documentation
-- Always ask for the user whether to draft new docs if new modules or features are implemented.
+- Always ask the user whether to draft new docs if new modules or features are implemented.
 - New docs are placed in LunaSDK-Docs/Drafts. Resource files referred by docs are placed in LunaSDK-Docs/Res. Docs are in Obsidian-specific markdown format.
 - One module can have multiple doc pages (markdown files), one page per feature. Prevent writing one big page for all features of one module. See docs of RHI module as an example.
 - The documentation should include the following contents, in order:
