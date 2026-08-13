@@ -42,6 +42,10 @@ namespace Luna
     constexpr u32 MAGIC_VALUE = 0x01f1cbe8;
 
     usize get_allocated_memory();
+    //! Gets the total number of memory allocation events emitted since the memory profiler callback is registered.
+    usize get_memory_allocate_count();
+    //! Gets the total number of memory deallocation events emitted since the memory profiler callback is registered.
+    usize get_memory_deallocate_count();
     void memory_profiler_callback(const ProfilerEvent& event);
 
     struct TestObject
