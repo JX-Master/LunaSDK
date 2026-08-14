@@ -8,8 +8,9 @@
 * @date 2022/6/1
 */
 #pragma once
-#include <Luna/Runtime/Stream.hpp>
+#include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Ref.hpp>
+#include <Luna/Runtime/Result.hpp>
 #include "Network.generated.hpp"
 
 #ifndef LUNA_NETWORK_API
@@ -123,12 +124,18 @@ namespace Luna
         //! @interface ISocket
         //! Represents one socket, which is a network communication endpoint.
         //! @details Each socket is associated with a socket address, which consists of an IP address and a port number.
-        struct [[Luna::interface("{36233BD3-54A0-4E67-B01E-C79E8115F548}")]] ISocket : virtual Interface
+        //! All sockets are non-blocking and are not thread-safe. The caller must synchronize access or
+        //! assign each socket to one thread.
+        struct [[Luna::interface("{94DED89A-5B5E-4165-8970-0074B5DB03D6}")]] ISocket : virtual Interface
         {
+            //! Closes this socket and releases its native socket handle.
+            //! @details This operation is idempotent. Socket destruction closes the socket automatically.
+            virtual void close() = 0;
+
             //! Gets the native handle of this socket.
             //! @details On Windows platforms, the returned handle can be reinterpreted to `SOCKET` type.
             //! On POSIX platforms, the returned handle can be reinterpreted to `int`, which is the file
-            //! descriptor of the socket.
+            //! descriptor of the socket. The returned handle is invalid after @ref close is called.
             //! @return Returns the native handle of this socket.
             virtual opaque_t get_native_handle() = 0;
 
@@ -141,14 +148,68 @@ namespace Luna
             virtual RV bind(const SocketAddress& address) = 0;
         };
 
+        //! Specifies the current state of one TCP socket.
+        enum class TCPConnectionState : u8
+        {
+            //! The socket has not started a connection and is not listening.
+            not_connected,
+            //! A non-blocking connection attempt is in progress.
+            connecting,
+            //! The socket is connected to one peer.
+            connected,
+            //! The socket is listening for incoming connections.
+            listening,
+            //! The peer has performed an orderly shutdown of its sending direction.
+            //! The socket may remain writable until it is closed locally or encounters an error.
+            peer_closed,
+            //! The connection or a platform status query has failed.
+            //! Use @ref ITCPSocket::get_error to retrieve the error code.
+            error,
+            //! The native socket handle has been closed locally.
+            closed,
+        };
+
         //! @interface ITCPSocket
         //! Represents one TCP socket.
-        //! @details TCP sockets provide reliable byte-stream communication.
-        struct [[Luna::interface("{FE548F0C-F3E6-49EE-B729-36B0B7C6CE2E}")]] ITCPSocket : virtual ISocket, virtual IStream
+        //! @details TCP sockets provide reliable non-blocking byte-stream communication. Every transfer
+        //! operation performs at most one native socket operation.
+        struct [[Luna::interface("{5F0E6DFB-B9BE-4F31-B08D-75C132B2C903}")]] ITCPSocket : virtual ISocket
         {
+            //! Gets the current connection state without blocking.
+            //! @details If a connection attempt is in progress, this call refreshes its completion state.
+            //! Platform failures are recorded as @ref TCPConnectionState::error and can be retrieved with
+            //! @ref get_error; this function itself does not return an error.
+            //! @return Returns the current TCP connection state.
+            virtual TCPConnectionState get_status() = 0;
+
+            //! Gets the last cached connection error.
+            //! @return Returns the translated error code, or `ErrCode(0)` if this socket has not encountered
+            //! an error. Closing the socket does not clear the cached error.
+            virtual ErrCode get_error() = 0;
+
             //! Gets the remote address connected to this socket.
             //! @param[out] address Returns the remote address.
             virtual RV get_remote_address(SocketAddress& address) = 0;
+
+            //! Receives bytes from this socket without blocking.
+            //! @param[in] buffer The buffer to receive data into.
+            //! @param[in] size The maximum number of bytes to receive.
+            //! @param[out] out_received_bytes If not `nullptr`, returns the number of bytes received.
+            //! @return Returns @ref BasicError::not_ready if no data is currently available, or
+            //! @ref BasicError::bad_calling_time if the socket is not connected. A successful non-zero-size
+            //! operation that receives zero bytes indicates an orderly peer shutdown.
+            //! @details A zero-size operation succeeds with zero bytes without probing the connection.
+            virtual RV receive(void* buffer, usize size, usize* out_received_bytes = nullptr) = 0;
+
+            //! Sends bytes through this socket without blocking.
+            //! @param[in] buffer The buffer that holds the bytes to send.
+            //! @param[in] size The number of bytes available to send.
+            //! @param[out] out_sent_bytes If not `nullptr`, returns the number of bytes sent.
+            //! @return Returns @ref BasicError::not_ready if the socket cannot currently accept data, or
+            //! @ref BasicError::bad_calling_time if the socket is not connected.
+            //! @details This operation may successfully send fewer bytes than requested. A zero-size
+            //! operation succeeds with zero bytes without probing the connection.
+            virtual RV send(const void* buffer, usize size, usize* out_sent_bytes = nullptr) = 0;
 
             //! Starts listening for incoming connections.
             //! @param[in] len The maximum number of connections that can be queued to be accepted.
@@ -156,32 +217,38 @@ namespace Luna
 
             //! Connects to the specified host.
             //! @param[in] address The target address to connect.
+            //! @return Returns `ok` if the connection completes immediately or is successfully started.
+            //! Use @ref get_status to distinguish @ref TCPConnectionState::connected from
+            //! @ref TCPConnectionState::connecting.
             virtual RV connect(const SocketAddress& address) = 0;
 
             //! Accepts incoming connection attempt on this socket.
             //! @param[out] address The assigned address for the accepted connection.
-            //! @return Returns the socket that represents the accepted connection.
+            //! @return Returns the non-blocking socket that represents the accepted connection, or
+            //! @ref BasicError::not_ready if no connection is waiting to be accepted.
             virtual R<Ref<ITCPSocket>> accept(SocketAddress& address) = 0;
         };
 
         //! @interface IUDPSocket
         //! Represents one UDP socket.
-        //! @details UDP sockets provide connectionless datagram communication.
-        struct [[Luna::interface("{560F8D2B-F29F-481E-B7DC-226F16336972}")]] IUDPSocket : virtual ISocket
+        //! @details UDP sockets provide non-blocking connectionless datagram communication.
+        struct [[Luna::interface("{FAEF4C6F-F387-488E-8DAD-73F09ED81B0E}")]] IUDPSocket : virtual ISocket
         {
             //! Sends one datagram to the specified address.
             //! @param[in] buffer The buffer that holds data to send.
             //! @param[in] size The size, in bytes, to send from the buffer.
             //! @param[in] address The destination address.
-            //! @param[out] sent_bytes If not `nullptr`, returns the actual number of bytes sent.
-            virtual RV send_to(const void* buffer, usize size, const SocketAddress& address, usize* sent_bytes = nullptr) = 0;
+            //! @param[out] out_sent_bytes If not `nullptr`, returns the actual number of bytes sent.
+            //! @return Returns @ref BasicError::not_ready if the datagram cannot currently be sent.
+            virtual RV send_to(const void* buffer, usize size, const SocketAddress& address, usize* out_sent_bytes = nullptr) = 0;
 
             //! Receives one datagram and optionally reports the source address.
             //! @param[in] buffer The buffer to accept received data.
             //! @param[in] size The size, in bytes, of `buffer`.
             //! @param[out] address If not `nullptr`, returns the source address of the datagram.
-            //! @param[out] received_bytes If not `nullptr`, returns the actual number of bytes received.
-            virtual RV receive_from(void* buffer, usize size, SocketAddress* address = nullptr, usize* received_bytes = nullptr) = 0;
+            //! @param[out] out_received_bytes If not `nullptr`, returns the actual number of bytes received.
+            //! @return Returns @ref BasicError::not_ready if no datagram is currently available.
+            virtual RV receive_from(void* buffer, usize size, SocketAddress* address = nullptr, usize* out_received_bytes = nullptr) = 0;
         };
 
         //! Specifies the socket type.
@@ -216,12 +283,12 @@ namespace Luna
 
         //! Creates one new TCP socket.
         //! @param[in] af The address family for the new socket.
-        //! @return Returns the created socket.
+        //! @return Returns the created non-blocking socket.
         LUNA_NETWORK_API R<Ref<ITCPSocket>> new_tcp_socket(AddressFamily af);
 
         //! Creates one new UDP socket.
         //! @param[in] af The address family for the new socket.
-        //! @return Returns the created socket.
+        //! @return Returns the created non-blocking socket.
         LUNA_NETWORK_API R<Ref<IUDPSocket>> new_udp_socket(AddressFamily af);
 
         //! Specifies flag attributes of one address.
