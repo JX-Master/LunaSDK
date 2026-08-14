@@ -84,32 +84,19 @@ namespace Luna
     LUNA_RUNTIME_API const c8* intern_name(const c8* name, usize count)
     {
         lucheck_msg(g_name_inited, "intern_name must be called after Luna::init()!");
-        if (!name || (*name == '\0')) return nullptr;
+        if (!name || !count) return nullptr;
         name_id_t h = memhash<name_id_t>(name, count);
         LockGuard guard(g_name_mtx);
         auto range = g_name_map.get().equal_range(h);
-        if (range.first != g_name_map.get().end())
+        for (auto iter = range.first; iter != range.second; ++iter)
         {
-            auto iter = range.first;
-            // Skip comparison for single-string case.
-            ++iter;
-            if(iter == range.second)
+            NameEntry* entry = *iter;
+            const c8* entry_string = get_name_string(entry);
+            if (entry->m_str_size == count &&
+                (entry_string == name || !memcmp(name, entry_string, count * sizeof(c8))))
             {
-                iter = range.first;
-                NameEntry* entry = *iter;
                 atom_inc_u32(&(entry->m_ref_count));
-                return get_name_string(entry);
-            }
-            // Compare each string to find the right one.
-            for (iter = range.first; iter != range.second; ++iter)
-            {
-                NameEntry* entry = *iter;
-                const c8* entry_string = get_name_string(entry);
-                if (!memcmp(name, entry_string, count * sizeof(c8)))
-                {
-                    atom_inc_u32(&(entry->m_ref_count));
-                    return entry_string;
-                }
+                return entry_string;
             }
         }
         // Create new entry.
@@ -134,10 +121,20 @@ namespace Luna
         if(!g_name_inited) return;
         if (!name) return;
         NameEntry* entry = get_name_entry(name);
+        // Keep shared releases lock-free, but perform the transition to zero while holding
+        // the registry lock so that intern_name cannot retain an entry pending deletion.
+        u32 ref_count = atom_add_u32(&(entry->m_ref_count), 0);
+        while (ref_count > 1)
+        {
+            u32 old_ref_count = atom_compare_exchange_u32(
+                &(entry->m_ref_count), ref_count - 1, ref_count);
+            if (old_ref_count == ref_count) return;
+            ref_count = old_ref_count;
+        }
+        LockGuard guard(g_name_mtx);
         u32 r = atom_dec_u32(&(entry->m_ref_count));
         if (!r)
         {
-            LockGuard guard(g_name_mtx);
             erase_entry(entry);
         }
     }
