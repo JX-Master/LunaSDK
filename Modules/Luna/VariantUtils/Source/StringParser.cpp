@@ -67,7 +67,7 @@ namespace Luna
             }
             return utf16_decode_char(buf);
         }
-        c32 BufferReadContext::next_char(usize index)
+        R<c32> BufferReadContext::next_char(usize index)
         {
             if(encoding == Encoding::utf_8)
             {
@@ -77,16 +77,19 @@ namespace Luna
                 while(index)
                 {
                     // advance characters.
-                    if(next_cur >= end) return 0;
+                    if(next_cur >= end) return (c32)0;
                     usize num_bytes;
                     R<c32> ch = utf8_decode_char(next_cur, (usize)(end - next_cur), &num_bytes);
-                    if(failed(ch)) return 0;
+                    if(failed(ch)) return ch.errcode();
+                    if(!ch.get()) return BasicError::bad_data();
                     next_cur += num_bytes;
                     --index;
                 }
-                if(next_cur >= end) return 0;
+                if(next_cur >= end) return (c32)0;
                 R<c32> ch = utf8_decode_char(next_cur, (usize)(end - next_cur));
-                return succeeded(ch) ? ch.get() : 0;
+                if(failed(ch)) return ch.errcode();
+                if(!ch.get()) return BasicError::bad_data();
+                return ch.get();
             }
             else if(encoding == Encoding::utf_16_le || encoding == Encoding::utf_16_be)
             {
@@ -96,16 +99,18 @@ namespace Luna
                 {
                     // advance characters.
                     c32 ch = utf16_decode_char_encoding(next_cur, encoding);
-                    if (!ch) return 0;
+                    if (!ch) return BasicError::bad_data();
                     next_cur += utf16_charspan(ch);
-                    if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return 0;
+                    if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return (c32)0;
                     --index;
                 }
-                if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return 0;
-                return utf16_decode_char_encoding(next_cur, encoding);
+                if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return (c32)0;
+                c32 ch = utf16_decode_char_encoding(next_cur, encoding);
+                if(!ch) return BasicError::bad_data();
+                return ch;
             }
             lupanic();
-            return 0;
+            return BasicError::bad_data();
         }
         void BufferReadContext::skip_utf16_bom()
         {
@@ -188,11 +193,12 @@ namespace Luna
                     if (charspan > 1)
                     {
                         luexp(stream_read((buf + 1), sizeof(c8) * (charspan - 1), &read_bytes));
-                        if (read_bytes != sizeof(c8) * (charspan - 1)) return 0;
+                        if (read_bytes != sizeof(c8) * (charspan - 1)) return BasicError::end_of_file();
                     }
                     R<c32> ch = utf8_decode_char(buf, charspan);
                     if(failed(ch)) return ch.errcode();
                     ret = ch.get();
+                    if(!ret) return BasicError::bad_data();
                 }
                 else
                 {
@@ -205,37 +211,40 @@ namespace Luna
                     if (charspan > 1)
                     {
                         luexp(stream_read((buf + 1), sizeof(c16) * (charspan - 1), &read_bytes));
-                        if (read_bytes != sizeof(c16) * (charspan - 1)) return 0;
+                        if (read_bytes != sizeof(c16) * (charspan - 1)) return BasicError::end_of_file();
                         buf[1] = utf16_read_char(buf[1], encoding);
                     }
                     ret = utf16_decode_char(buf);
+                    if(!ret) return BasicError::bad_data();
                 }
             }
             lucatchret;
             return ret;
         }
-        c32 StreamReadContext::next_char(usize index)
+        R<c32> StreamReadContext::next_char(usize index)
         {
             while (index >= buffer.size())
             {
                 auto ch = read_one_char_from_stream();
-                if (failed(ch) || !ch.get()) return 0;
+                if (failed(ch)) return ch.errcode();
+                if (!ch.get()) return (c32)0;
                 buffer.push_back(ch.get());
             }
             return buffer[index];
         }
-        void StreamReadContext::skip_utf16_bom()
+        RV StreamReadContext::skip_utf16_bom()
         {
             u8 ch[2];
             usize read_bytes;
             auto r = stream->read(ch, 2, &read_bytes);
-            if(failed(r) || read_bytes != 2)
+            if(failed(r)) return r.errcode();
+            if(read_bytes != 2)
             {
                 if(read_bytes)
                 {
                     stream_buffer.push_back(ch[0]);
                 }
-                return;
+                return ok;
             }
             if(ch[0] == 0xFE && ch[1] == 0xFF)
             {
@@ -250,6 +259,7 @@ namespace Luna
                 stream_buffer.push_back(ch[0]);
                 stream_buffer.push_back(ch[1]);
             }
+            return ok;
         }
     }
 }

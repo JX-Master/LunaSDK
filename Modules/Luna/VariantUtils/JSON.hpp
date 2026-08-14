@@ -40,7 +40,8 @@ namespace Luna
             //! Allows UTF-16 input with a byte-order mark. JSON without a UTF-16 byte-order mark
             //! is always interpreted as UTF-8.
             bool allow_utf16 = true;
-            //! Allows numbers outside the finite `f64` range to be represented as infinity.
+            //! Allows numbers outside the finite `f64` range to be represented as infinity,
+            //! and accepts the non-standard `nan`, `inf` and `-inf` tokens.
             bool allow_non_finite_numbers = true;
 
             //! Returns options that accept only the JSON data model and syntax used by RFC 8259.
@@ -67,7 +68,7 @@ namespace Luna
             //! Encodes BLOB variants as strings using the LunaSDK `@base64@` or `@base85@` format.
             //! If disabled, writing a BLOB variant fails with @ref BasicError::not_supported.
             bool encode_blobs = true;
-            //! Writes non-finite floating-point values using the platform `nan` and `inf` tokens.
+            //! Writes non-finite floating-point values using the non-standard `nan`, `inf` and `-inf` tokens.
             //! If disabled, writing a non-finite number fails with @ref BasicError::not_supported.
             bool allow_non_finite_numbers = true;
 
@@ -84,17 +85,15 @@ namespace Luna
 
         //! Parses one JSON string.
         //! @param[in] src The JSON string to read.
-        //! @param[in] src_size The maximum number of characters to read in `src`.
-        //! The actual read chacaters may be small than this if the JSON string ends early.
-        //! 
-        //! If this value is greater than `strlen(src)`, `strlen(src)` will be used as the maximum number of characters to read
-        //! instead of this value. So specifing @ref USIZE_MAX will let the system detects the string length automatically.
+        //! @param[in] src_size The exact number of bytes available in `src`. Embedded null bytes are treated as
+        //! invalid input. Specify @ref USIZE_MAX to determine the size with `strlen(src)`.
         //! @return Returns one variant that contains the data read from the JSON string.
         LUNA_VARIANT_UTILS_API R<Variant> read_json(const c8* src, usize src_size = USIZE_MAX);
 
         //! Parses one JSON string with the specified options.
         //! @param[in] src The JSON string to read.
-        //! @param[in] src_size The maximum number of bytes to read in `src`.
+        //! @param[in] src_size The exact number of bytes available in `src`. Embedded null bytes are treated as
+        //! invalid input. Specify @ref USIZE_MAX to determine the size with `strlen(src)`.
         //! @param[in] options Parsing options.
         //! @return Returns one variant that contains the data read from the JSON string.
         LUNA_VARIANT_UTILS_API R<Variant> read_json(

@@ -103,9 +103,13 @@ R<String> json = write_json(value.get(), write_options);
 5. `allow_trailing_content`: Stops after the first root value and ignores remaining content.
 6. `decode_blobs`: Converts strings using the LunaSDK `@base64@` or `@base85@` format to BLOB variants.
 7. `allow_utf16`: Accepts UTF-16 input with a byte-order mark.
-8. `allow_non_finite_numbers`: Allows a number outside the finite `f64` range to become infinity.
+8. `allow_non_finite_numbers`: Allows a number outside the finite `f64` range to become infinity and accepts the non-standard `nan`, `inf`, and `-inf` tokens.
 
-The strict preset disables all of these behaviors. Both presets still reject malformed numbers, unescaped control characters, unterminated strings and comments, missing separators, and invalid Unicode surrogate sequences.
+The strict preset disables all of these behaviors. Both presets still reject malformed numbers, unescaped control characters, unterminated strings and comments, missing separators, invalid UTF-8, invalid Unicode surrogate sequences, and duplicate object names. Duplicate names are rejected after escape sequences are decoded, because a `Variant` object cannot represent multiple values under one `Name` key.
+
+The buffer overload treats an explicit `json_size` as the exact number of available bytes. Embedded null bytes are invalid input; use the null-terminated overload, or pass `USIZE_MAX`, when the size should be determined with `strlen`.
+
+JSON number parsing and writing always use JSON's dot decimal notation and are independent of the process locale.
 
 ### Write options
 
@@ -113,6 +117,6 @@ The strict preset disables all of these behaviors. Both presets still reject mal
 
 1. `indent`: Adds indentation and line breaks.
 2. `encode_blobs`: Encodes a BLOB as a LunaSDK Tagged BLOB string. Writing fails if a BLOB is encountered while this option is disabled.
-3. `allow_non_finite_numbers`: Writes platform `nan` and `inf` tokens. Writing fails when this option is disabled and a non-finite number is encountered.
+3. `allow_non_finite_numbers`: Writes the non-standard `nan`, `inf`, and `-inf` tokens. Writing fails when this option is disabled and a non-finite number is encountered.
 
-The strict preset disables all three options, producing compact JSON and rejecting values that do not belong to the JSON data model. The options-based string overload returns `R<String>` so representation errors can be reported. The legacy `write_json(const Variant&, bool indent)` overload remains available with relaxed behavior.
+The strict preset disables all three options, producing compact JSON and rejecting values that do not belong to the JSON data model. JSON writing always validates UTF-8 in string values and object names, independently of these options. The options-based string overload returns `R<String>` so representation errors can be reported. The legacy `write_json(const Variant&, bool indent)` overload remains available with relaxed behavior.
