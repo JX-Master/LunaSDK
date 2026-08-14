@@ -196,7 +196,9 @@ RV result = socket->receive_from(buffer, sizeof(buffer), &sender, &received);
 
 ## Native handles and lifetime
 
-`get_native_handle` exposes the platform socket handle for integration with native readiness mechanisms. On Windows, reinterpret it as `SOCKET`; on POSIX platforms, reinterpret it as an `int` file descriptor. The handle is owned by the socket object and becomes invalid immediately after `close`.
+Use `ISocketPoller` for ordinary cross-platform readiness handling. See [[Socket Polling]] for the poller concepts, registration lifecycle, and event-loop examples.
+
+`get_native_handle` remains available for integration with platform facilities that are not represented by the Network module. On Windows, reinterpret it as `SOCKET`; on POSIX platforms, reinterpret it as an `int` file descriptor. The handle is owned by the socket object and becomes invalid immediately after `close`.
 
 ```c++
 socket->close();

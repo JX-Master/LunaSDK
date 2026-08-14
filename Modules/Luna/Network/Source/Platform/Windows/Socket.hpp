@@ -4,7 +4,8 @@
 * and license in LICENSE.txt
 */
 #pragma once
-#include "../../../Network.hpp"
+#include "../../../SocketPoller.hpp"
+#include <Luna/Runtime/Vector.hpp>
 #include <WinSock2.h>
 #include "Socket.generated.hpp"
 
@@ -55,6 +56,38 @@ namespace Luna
 
             virtual RV send_to(const void* buffer, usize size, const SocketAddress& address, usize* out_sent_bytes) override;
             virtual RV receive_from(void* buffer, usize size, SocketAddress* address, usize* out_received_bytes) override;
+        };
+
+        struct SocketPollRegistration
+        {
+            Ref<ISocket> socket;
+            SocketEventFlag interests = SocketEventFlag::none;
+            opaque_t user_data = nullptr;
+            u32 generation = 1;
+            bool active = false;
+        };
+
+        struct [[luna::struct("{1E9AC64A-CFAB-4895-813C-8F935E011CD6}")]] SocketPoller : ISocketPoller
+        {
+            luiimpl();
+
+            SOCKET m_wake_receiver = INVALID_SOCKET;
+            SOCKET m_wake_sender = INVALID_SOCKET;
+            Vector<SocketPollRegistration> m_registrations;
+            Vector<u32> m_free_slots;
+            Vector<WSAPOLLFD> m_poll_descriptors;
+            Vector<socket_poll_token_t> m_poll_tokens;
+
+            ~SocketPoller();
+            RV init();
+            virtual R<socket_poll_token_t> add(
+                ISocket* socket,
+                SocketEventFlag interests,
+                opaque_t user_data) override;
+            virtual RV modify(socket_poll_token_t token, SocketEventFlag interests) override;
+            virtual RV remove(socket_poll_token_t token) override;
+            virtual R<usize> poll(Span<SocketPollEvent> events, u32 timeout_ms) override;
+            virtual void wake() override;
         };
     }
 }

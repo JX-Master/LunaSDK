@@ -4,8 +4,15 @@
 * and license in LICENSE.txt
 */
 #pragma once
-#include "../../../Network.hpp"
+#include "../../../SocketPoller.hpp"
+#include <Luna/Runtime/PlatformDefines.hpp>
+#include <Luna/Runtime/Vector.hpp>
 #include <unistd.h>
+#if defined(LUNA_PLATFORM_LINUX)
+#include <sys/epoll.h>
+#elif defined(LUNA_PLATFORM_MACOS) || defined(LUNA_PLATFORM_IOS)
+#include <sys/event.h>
+#endif
 #include "Socket.generated.hpp"
 
 namespace Luna
@@ -55,6 +62,42 @@ namespace Luna
 
             virtual RV send_to(const void* buffer, usize size, const SocketAddress& address, usize* out_sent_bytes) override;
             virtual RV receive_from(void* buffer, usize size, SocketAddress* address, usize* out_received_bytes) override;
+        };
+
+        struct SocketPollRegistration
+        {
+            Ref<ISocket> socket;
+            SocketEventFlag interests = SocketEventFlag::none;
+            opaque_t user_data = nullptr;
+            u32 generation = 1;
+            bool active = false;
+        };
+
+        struct [[luna::struct("{F111FF54-3AD5-4D91-A911-01CD68AF3AC0}")]] SocketPoller : ISocketPoller
+        {
+            luiimpl();
+
+            int m_poller = -1;
+            int m_wake_read = -1;
+            int m_wake_write = -1;
+            Vector<SocketPollRegistration> m_registrations;
+            Vector<u32> m_free_slots;
+#if defined(LUNA_PLATFORM_LINUX)
+            Vector<epoll_event> m_native_events;
+#elif defined(LUNA_PLATFORM_MACOS) || defined(LUNA_PLATFORM_IOS)
+            Vector<struct kevent> m_native_events;
+#endif
+
+            ~SocketPoller();
+            RV init();
+            virtual R<socket_poll_token_t> add(
+                ISocket* socket,
+                SocketEventFlag interests,
+                opaque_t user_data) override;
+            virtual RV modify(socket_poll_token_t token, SocketEventFlag interests) override;
+            virtual RV remove(socket_poll_token_t token) override;
+            virtual R<usize> poll(Span<SocketPollEvent> events, u32 timeout_ms) override;
+            virtual void wake() override;
         };
     }
 }

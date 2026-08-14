@@ -60,7 +60,7 @@ A newly created or merely bound TCP socket is `not_connected`. A successfully in
 
 If `connect` fails before an attempt can be started, it returns that error, stores the same error, and changes the state to `error`. Fatal connection errors observed by `receive`, `send`, or connection completion are cached in the same way. Calling `close` after an error transitions the public state to `closed` and releases the native platform resources, but retains the cached error so diagnostics may still retrieve it with `get_error`.
 
-While a connection is `connecting`, `get_status` performs only a non-blocking platform query. It reports `connecting` while completion is still pending, `connected` after successful completion, or `error` after failure. A future socket poller may report that a connecting socket is writable or has an error, but callers must use `get_status` as the authoritative completion result and `get_error` to retrieve the failure reason.
+While a connection is `connecting`, `get_status` performs only a non-blocking platform query. It reports `connecting` while completion is still pending, `connected` after successful completion, or `error` after failure. The socket poller may report that a connecting socket is writable or has an error, but callers must use `get_status` as the authoritative completion result and `get_error` to retrieve the failure reason.
 
 The socket lifetime operation is named `close` rather than `shutdown` and is placed on `ISocket` so TCP listeners, TCP connections, and UDP sockets share the same lifetime operation:
 
@@ -70,7 +70,7 @@ virtual void close() = 0;
 
 `close` performs a full local close, is idempotent, and releases the native socket handle immediately. Socket destruction calls `close` automatically. Network does not expose TCP half-close in this API; a future feature that has a concrete half-close use case may introduce a separately named operation.
 
-Socket objects remain non-thread-safe. An application must synchronize access or assign each socket to one reactor thread. The future readiness API will provide a thread-safe wake operation for cross-thread reactor commands rather than making individual sockets concurrently callable.
+Socket objects remain non-thread-safe. An application must synchronize access or assign each socket to one reactor thread. The socket poller provides a thread-safe wake operation for cross-thread reactor commands rather than making individual sockets concurrently callable.
 
 The implementation maps POSIX `EAGAIN` and `EWOULDBLOCK`, and Windows `WSAEWOULDBLOCK`, to `BasicError::not_ready`. Platform results that mean an asynchronous connection attempt has started are consumed by `connect` and exposed as the `connecting` state rather than returned to the caller as `BasicError::in_progress`.
 
@@ -108,3 +108,4 @@ Native socket APIs commonly use shutdown to mean disabling only one direction of
 * **2026/8/14** Proposed and approved.
 * **2026/8/14** Made `get_status` infallible and separated the connection error code into `get_error`.
 * **2026/8/14** Implemented the redesigned APIs for POSIX and Windows, and updated Network tests and documentation.
+* **2026/8/14** Updated readiness references after ADR-0009 introduced the Network socket poller.

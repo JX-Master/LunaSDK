@@ -8,6 +8,7 @@
 * @date 2026/6/10
 */
 #include <Luna/Network/Network.hpp>
+#include <Luna/Network/SocketPoller.hpp>
 #include <Luna/Runtime/Assert.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Module.hpp>
@@ -177,6 +178,49 @@ namespace
             retry_delay();
         }
         return BasicError::timeout();
+    }
+
+    usize poll_events(
+        ISocketPoller* poller,
+        SocketPollEvent* events,
+        usize event_capacity,
+        u32 timeout_ms)
+    {
+        for(u32 i = 0; i < RETRY_LIMIT; ++i)
+        {
+            auto result = poller->poll(
+                Span<SocketPollEvent>(events, event_capacity),
+                timeout_ms);
+            if(result.valid()) return result.get();
+            lutest(result.errcode() == BasicError::interrupted());
+        }
+        lutest(false);
+        return 0;
+    }
+
+    const SocketPollEvent* find_poll_event(
+        const SocketPollEvent* events,
+        usize event_count,
+        socket_poll_token_t token)
+    {
+        for(usize i = 0; i < event_count; ++i)
+        {
+            if(events[i].token == token) return events + i;
+        }
+        return nullptr;
+    }
+
+    usize count_poll_events(
+        const SocketPollEvent* events,
+        usize event_count,
+        socket_poll_token_t token)
+    {
+        usize count = 0;
+        for(usize i = 0; i < event_count; ++i)
+        {
+            if(events[i].token == token) ++count;
+        }
+        return count;
     }
 
     void expect_socket_create_not_supported()
@@ -422,6 +466,303 @@ namespace
         lutest(received == 0);
     }
 
+    struct PollWakeContext
+    {
+        Ref<ISocketPoller> poller;
+        ErrCode error = ErrCode(0);
+        usize event_count = USIZE_MAX;
+    };
+
+    void poll_wake_thread(void* parameters)
+    {
+        PollWakeContext* context = (PollWakeContext*)parameters;
+        SocketPollEvent event = {};
+        auto result = context->poller->poll(Span<SocketPollEvent>(&event, 1));
+        if(result.valid()) context->event_count = result.get();
+        else context->error = result.errcode();
+    }
+
+    void socket_poller_wake_test()
+    {
+        auto poller_result = new_socket_poller();
+        lutest(poller_result.valid());
+        Ref<ISocketPoller> poller = poller_result.get();
+        SocketPollEvent event = {};
+        lutest(poll_events(poller.get(), &event, 1, 0) == 0);
+
+        poller->wake();
+        poller->wake();
+        lutest(poll_events(poller.get(), &event, 1, 1000) == 0);
+
+        PollWakeContext context;
+        context.poller = poller;
+        auto thread_result = new_thread(poll_wake_thread, &context, "NetworkTestPollWake");
+        lutest(thread_result.valid());
+        Ref<IThread> thread = thread_result.get();
+        sleep(10);
+        poller->wake();
+        thread->wait();
+        lutest(context.error == ErrCode(0));
+        lutest(context.event_count == 0);
+
+        auto socket_result = new_udp_socket(AddressFamily::ipv4);
+        lutest(socket_result.valid());
+        Ref<IUDPSocket> socket = move(socket_result.get());
+        WeakRef<IUDPSocket> weak_socket(socket);
+        auto token_result = poller->add(socket.get(), SocketEventFlag::none);
+        lutest(token_result.valid());
+        socket.reset();
+        lutest(weak_socket.valid());
+        Ref<IUDPSocket> retained_socket = weak_socket.pin();
+        lutest(retained_socket.valid());
+        weak_socket.reset();
+        lupanic_if_failed(poller->remove(token_result.get()));
+        retained_socket->close();
+        retained_socket.reset();
+    }
+
+    void socket_poller_tcp_test()
+    {
+        auto poller_result = new_socket_poller();
+        lutest(poller_result.valid());
+        Ref<ISocketPoller> poller = poller_result.get();
+        SocketPollEvent events[8] = {};
+
+        auto empty_poll_result = poller->poll(Span<SocketPollEvent>());
+        lutest(!empty_poll_result.valid());
+        lutest(empty_poll_result.errcode() == BasicError::bad_arguments());
+        lutest(poll_events(poller.get(), events, 8, 0) == 0);
+
+        auto listener_result = new_tcp_socket(AddressFamily::ipv4);
+        lutest(listener_result.valid());
+        Ref<ITCPSocket> listener = listener_result.get();
+        lupanic_if_failed(listener->bind(ipv4_loopback(0)));
+        SocketAddress listener_address = {};
+        lupanic_if_failed(listener->get_local_address(listener_address));
+        lupanic_if_failed(listener->listen(I32_MAX));
+
+        auto invalid_add_result = poller->add(listener.get(), SocketEventFlag::error);
+        lutest(!invalid_add_result.valid());
+        lutest(invalid_add_result.errcode() == BasicError::bad_arguments());
+        auto listener_token_result = poller->add(
+            listener.get(),
+            SocketEventFlag::readable,
+            (opaque_t)(usize)0x11);
+        lutest(listener_token_result.valid());
+        socket_poll_token_t listener_token = listener_token_result.get();
+        lutest(listener_token);
+        auto duplicate_result = poller->add(listener.get(), SocketEventFlag::readable);
+        lutest(!duplicate_result.valid());
+        lutest(duplicate_result.errcode() == BasicError::already_exists());
+        lutest(poll_events(poller.get(), events, 8, 0) == 0);
+
+        auto client_result = new_tcp_socket(AddressFamily::ipv4);
+        lutest(client_result.valid());
+        Ref<ITCPSocket> client = client_result.get();
+        lupanic_if_failed(client->connect(listener_address));
+        auto client_token_result = poller->add(
+            client.get(),
+            SocketEventFlag::writable,
+            (opaque_t)(usize)0x22);
+        lutest(client_token_result.valid());
+        socket_poll_token_t client_token = client_token_result.get();
+
+        bool listener_ready = false;
+        bool client_connected = false;
+        for(u32 i = 0; i < RETRY_LIMIT && (!listener_ready || !client_connected); ++i)
+        {
+            usize event_count = poll_events(poller.get(), events, 8, 1);
+            for(usize event_index = 0; event_index < event_count; ++event_index)
+            {
+                const SocketPollEvent& event = events[event_index];
+                if(event.token == listener_token)
+                {
+                    lutest(event.user_data == (opaque_t)(usize)0x11);
+                    lutest(test_flags(event.events, SocketEventFlag::readable));
+                    listener_ready = true;
+                }
+                else if(event.token == client_token)
+                {
+                    lutest(event.user_data == (opaque_t)(usize)0x22);
+                    lutest(test_flags(event.events, SocketEventFlag::writable) ||
+                        test_flags(event.events, SocketEventFlag::error) ||
+                        test_flags(event.events, SocketEventFlag::hang_up));
+                    TCPConnectionState state = client->get_status();
+                    lutest(state == TCPConnectionState::connected || state == TCPConnectionState::connecting);
+                    client_connected = state == TCPConnectionState::connected;
+                }
+            }
+        }
+        lutest(listener_ready);
+        lutest(client_connected);
+
+        SocketAddress remote_address = {};
+        auto accepted_result = listener->accept(remote_address);
+        lutest(accepted_result.valid());
+        Ref<ITCPSocket> accepted = accepted_result.get();
+        lupanic_if_failed(poller->modify(client_token, SocketEventFlag::none));
+
+        lupanic_if_failed(poller->modify(
+            client_token,
+            SocketEventFlag::readable | SocketEventFlag::writable));
+        const c8 combined_marker = 'c';
+        lupanic_if_failed(send_all(accepted.get(), &combined_marker, 1));
+        bool combined_event_received = false;
+        for(u32 i = 0; i < RETRY_LIMIT; ++i)
+        {
+            usize event_count = poll_events(poller.get(), events, 8, 1);
+            const SocketPollEvent* event = find_poll_event(events, event_count, client_token);
+            if(event && test_flags(event->events, SocketEventFlag::readable))
+            {
+                lutest(test_flags(event->events, SocketEventFlag::writable));
+                lutest(count_poll_events(events, event_count, client_token) == 1);
+                combined_event_received = true;
+                break;
+            }
+            retry_delay();
+        }
+        lutest(combined_event_received);
+        c8 combined_input = 0;
+        lupanic_if_failed(receive_exact(client.get(), &combined_input, 1));
+        lutest(combined_input == combined_marker);
+        lupanic_if_failed(poller->modify(client_token, SocketEventFlag::none));
+
+        auto accepted_token_result = poller->add(
+            accepted.get(),
+            SocketEventFlag::readable,
+            (opaque_t)(usize)0x33);
+        lutest(accepted_token_result.valid());
+        socket_poll_token_t accepted_token = accepted_token_result.get();
+        RV invalid_modify_result = poller->modify(accepted_token, SocketEventFlag::hang_up);
+        lutest(failed(invalid_modify_result));
+        lutest(invalid_modify_result.errcode() == BasicError::bad_arguments());
+        lutest(poll_events(poller.get(), events, 8, 0) == 0);
+
+        const c8 ping[] = {'p', 'i', 'n', 'g'};
+        lupanic_if_failed(send_all(client.get(), ping, sizeof(ping)));
+        bool accepted_readable = false;
+        for(u32 i = 0; i < RETRY_LIMIT && !accepted_readable; ++i)
+        {
+            usize event_count = poll_events(poller.get(), events, 8, 1);
+            const SocketPollEvent* event = find_poll_event(events, event_count, accepted_token);
+            if(event)
+            {
+                lutest(event->user_data == (opaque_t)(usize)0x33);
+                accepted_readable = test_flags(event->events, SocketEventFlag::readable);
+            }
+        }
+        lutest(accepted_readable);
+        c8 input[sizeof(ping)] = {};
+        lupanic_if_failed(receive_exact(accepted.get(), input, sizeof(input)));
+        lutest(input[0] == 'p' && input[1] == 'i' && input[2] == 'n' && input[3] == 'g');
+
+        lupanic_if_failed(poller->modify(accepted_token, SocketEventFlag::writable));
+        bool accepted_writable = false;
+        for(u32 i = 0; i < RETRY_LIMIT && !accepted_writable; ++i)
+        {
+            usize event_count = poll_events(poller.get(), events, 8, 1);
+            const SocketPollEvent* event = find_poll_event(events, event_count, accepted_token);
+            if(event) accepted_writable = test_flags(event->events, SocketEventFlag::writable);
+        }
+        lutest(accepted_writable);
+        lupanic_if_failed(poller->modify(accepted_token, SocketEventFlag::readable));
+
+        lupanic_if_failed(poller->remove(client_token));
+        RV stale_remove_result = poller->remove(client_token);
+        lutest(failed(stale_remove_result));
+        lutest(stale_remove_result.errcode() == BasicError::not_found());
+        client->close();
+
+        bool accepted_hang_up = false;
+        for(u32 i = 0; i < RETRY_LIMIT && !accepted_hang_up; ++i)
+        {
+            usize event_count = poll_events(poller.get(), events, 8, 1);
+            const SocketPollEvent* event = find_poll_event(events, event_count, accepted_token);
+            if(event)
+            {
+                accepted_hang_up = test_flags(event->events, SocketEventFlag::readable) ||
+                    test_flags(event->events, SocketEventFlag::hang_up);
+            }
+        }
+        lutest(accepted_hang_up);
+        lupanic_if_failed(wait_for_peer_closed(accepted.get()));
+
+        lupanic_if_failed(poller->remove(accepted_token));
+        lupanic_if_failed(poller->remove(listener_token));
+        auto reused_token_result = poller->add(listener.get(), SocketEventFlag::none);
+        lutest(reused_token_result.valid());
+        socket_poll_token_t reused_token = reused_token_result.get();
+        lutest(reused_token != listener_token);
+        RV stale_modify_result = poller->modify(listener_token, SocketEventFlag::readable);
+        lutest(failed(stale_modify_result));
+        lutest(stale_modify_result.errcode() == BasicError::not_found());
+        duplicate_result = poller->add(listener.get(), SocketEventFlag::readable);
+        lutest(!duplicate_result.valid());
+        lutest(duplicate_result.errcode() == BasicError::already_exists());
+        lupanic_if_failed(poller->remove(reused_token));
+
+        accepted->close();
+        listener->close();
+    }
+
+    void socket_poller_udp_test()
+    {
+        auto poller_result = new_socket_poller();
+        lutest(poller_result.valid());
+        Ref<ISocketPoller> poller = poller_result.get();
+        auto receiver_result = new_udp_socket(AddressFamily::ipv4);
+        lutest(receiver_result.valid());
+        Ref<IUDPSocket> receiver = receiver_result.get();
+        lupanic_if_failed(receiver->bind(ipv4_loopback(0)));
+        SocketAddress receiver_address = {};
+        lupanic_if_failed(receiver->get_local_address(receiver_address));
+        auto sender_result = new_udp_socket(AddressFamily::ipv4);
+        lutest(sender_result.valid());
+        Ref<IUDPSocket> sender = sender_result.get();
+
+        auto token_result = poller->add(
+            receiver.get(),
+            SocketEventFlag::none,
+            (opaque_t)(usize)0x44);
+        lutest(token_result.valid());
+        socket_poll_token_t token = token_result.get();
+        const c8 first_datagram = '1';
+        usize sent = 0;
+        lupanic_if_failed(sender->send_to(&first_datagram, 1, receiver_address, &sent));
+        lutest(sent == 1);
+        SocketPollEvent events[2] = {};
+        lutest(poll_events(poller.get(), events, 2, 0) == 0);
+
+        lupanic_if_failed(poller->modify(token, SocketEventFlag::readable));
+        usize event_count = poll_events(poller.get(), events, 2, 1000);
+        const SocketPollEvent* event = find_poll_event(events, event_count, token);
+        lutest(event);
+        lutest(event->user_data == (opaque_t)(usize)0x44);
+        lutest(test_flags(event->events, SocketEventFlag::readable));
+        c8 input = 0;
+        usize received = 0;
+        lupanic_if_failed(receiver->receive_from(&input, 1, nullptr, &received));
+        lutest(received == 1 && input == first_datagram);
+
+        lupanic_if_failed(poller->modify(token, SocketEventFlag::none));
+        const c8 second_datagram = '2';
+        lupanic_if_failed(sender->send_to(&second_datagram, 1, receiver_address, &sent));
+        lutest(poll_events(poller.get(), events, 2, 0) == 0);
+        lupanic_if_failed(poller->modify(token, SocketEventFlag::readable));
+        event_count = poll_events(poller.get(), events, 2, 1000);
+        event = find_poll_event(events, event_count, token);
+        lutest(event && test_flags(event->events, SocketEventFlag::readable));
+        lupanic_if_failed(receiver->receive_from(&input, 1, nullptr, &received));
+        lutest(received == 1 && input == second_datagram);
+
+        lupanic_if_failed(poller->remove(token));
+        RV stale_modify_result = poller->modify(token, SocketEventFlag::readable);
+        lutest(failed(stale_modify_result));
+        lutest(stale_modify_result.errcode() == BasicError::not_found());
+        sender->close();
+        receiver->close();
+    }
+
     void socket_error_path_test()
     {
         expect_socket_create_not_supported();
@@ -503,6 +844,9 @@ int main()
     tcp_loopback_test(AddressFamily::ipv6);
     udp_loopback_test(AddressFamily::ipv4);
     udp_loopback_test(AddressFamily::ipv6);
+    socket_poller_wake_test();
+    socket_poller_tcp_test();
+    socket_poller_udp_test();
     socket_error_path_test();
     close();
     return 0;
