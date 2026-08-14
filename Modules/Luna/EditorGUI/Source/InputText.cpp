@@ -66,7 +66,8 @@ namespace Luna
             {
                 cursor = clamp_cursor(value, cursor);
                 if(cursor >= value.size()) return value.size();
-                return min(cursor + utf8_charlen(value.c_str() + cursor), value.size());
+                usize char_len = utf8_charlen(value.c_str() + cursor);
+                return min(cursor + (char_len ? char_len : 1), value.size());
             }
 
             static GUI::FontDesc resolve_font(GUI::IContext* context,
@@ -139,13 +140,20 @@ namespace Luna
                 usize offset = 0;
                 while(offset < value.size())
                 {
-                    usize length = min(utf8_charlen(value.c_str() + offset), value.size() - offset);
-                    c32 character = utf8_decode_char(value.c_str() + offset);
-                    if(character >= 0x20 && character != 0x7F)
+                    usize num_bytes;
+                    R<c32> character = utf8_decode_char(
+                        value.c_str() + offset, value.size() - offset, &num_bytes);
+                    if(failed(character))
                     {
-                        result.append(value.c_str() + offset, length);
+                        result.push_back(value[offset]);
+                        ++offset;
+                        continue;
                     }
-                    offset += length;
+                    if(character.get() >= 0x20 && character.get() != 0x7F)
+                    {
+                        result.append(value.c_str() + offset, num_bytes);
+                    }
+                    offset += num_bytes;
                 }
                 return result;
             }

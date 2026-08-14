@@ -230,25 +230,28 @@ namespace Luna
                 (ch >= 0x0300 && ch <= 0x036F) ||
                 (ch >= 0x203F && ch <= 0x2040);
         }
-        static void read_xml_name(IReadContext& ctx, String& dst)
+        static RV read_xml_name(IReadContext& ctx, String& dst)
         {
             c32 ch = ctx.next_char();
             if(!is_name_start_char((u32)ch))
             {
-                return;
+                return ok;
             }
-            c8 utf8_buf[8];
-            usize size = utf8_encode_char(utf8_buf, ch);
-            dst.append(utf8_buf, size);
+            c8 utf8_buf[4];
+            R<usize> size = utf8_encode_char(utf8_buf, sizeof(utf8_buf), ch);
+            if(failed(size)) return size.errcode();
+            dst.append(utf8_buf, size.get());
             ctx.consume(ch);
             ch = ctx.next_char();
             while(is_name_char(ch))
             {
-                size = utf8_encode_char(utf8_buf, ch);
-                dst.append(utf8_buf, size);
+                size = utf8_encode_char(utf8_buf, sizeof(utf8_buf), ch);
+                if(failed(size)) return size.errcode();
+                dst.append(utf8_buf, size.get());
                 ctx.consume(ch);
                 ch = ctx.next_char();
             }
+            return ok;
         }
         inline bool is_hex(c32 ch)
         {
@@ -319,9 +322,10 @@ namespace Luna
                     }
                 }
                 ctx.consume(ch); // ;
-                c8 buf[6];
-                usize char_size = utf8_encode_char(buf, (c32)read_ch);
-                s.append(buf, char_size);
+                c8 buf[4];
+                R<usize> char_size = utf8_encode_char(buf, sizeof(buf), (c32)read_ch);
+                if(failed(char_size)) return char_size.errcode();
+                s.append(buf, char_size.get());
             }
             else
             {
@@ -401,8 +405,8 @@ namespace Luna
                         ctx.consume(ch);
                         break;
                     }
-                    c8 buf[6];
-                    usize buf_count = utf8_encode_char(buf, ch);
+                    c8 buf[4];
+                    lulet(buf_count, utf8_encode_char(buf, sizeof(buf), ch));
                     s.append(buf, buf_count);
                     ctx.consume(ch);
                     ch = ctx.next_char();
@@ -434,8 +438,8 @@ namespace Luna
                     }
                     else
                     {
-                        c8 buf[6];
-                        usize buf_count = utf8_encode_char(buf, ch);
+                        c8 buf[4];
+                        lulet(buf_count, utf8_encode_char(buf, sizeof(buf), ch));
                         s.append(buf, buf_count);
                         ctx.consume(ch);
                     }
@@ -451,7 +455,7 @@ namespace Luna
             lutry
             {
                 String name;
-                read_xml_name(ctx, name);
+                luexp(read_xml_name(ctx, name));
                 if(name.empty()) return set_error(BasicError::format_error(), "Valid name character expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 attribute_name = name;
                 skip_whitespaces_and_comments(ctx);
@@ -479,7 +483,7 @@ namespace Luna
                 }
                 ctx.consume(ch);
                 String name;
-                read_xml_name(ctx, name);
+                luexp(read_xml_name(ctx, name));
                 if(name.empty()) return set_error(BasicError::format_error(), "Valid name character expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 element_name = name;
                 element = new_xml_element(element_name);
@@ -559,9 +563,10 @@ namespace Luna
                         break;
                     }
                 }
-                c8 buf[6];
-                usize buf_sz = utf8_encode_char(buf, ch[0]);
-                r.append(buf, buf_sz);
+                c8 buf[4];
+                R<usize> buf_sz = utf8_encode_char(buf, sizeof(buf), ch[0]);
+                if(failed(buf_sz)) return buf_sz.errcode();
+                r.append(buf, buf_sz.get());
                 ctx.consume(ch[0]);
                 ch[0] = ctx.next_char(0);
             }
@@ -645,7 +650,8 @@ namespace Luna
             ctx.consume(ch);
             ctx.consume(ch2);
             String name;
-            read_xml_name(ctx, name);
+            RV name_result = read_xml_name(ctx, name);
+            if(failed(name_result)) return name_result.errcode();
             if(Name(name) != element_name) 
                 return set_error(BasicError::format_error(), "The name of the end tag (%s) does not match the name of the start tag (%s). (line %d pos %d)", name.c_str(), element_name.c_str(), ctx.get_line(), ctx.get_pos());
             skip_whitespaces_and_comments(ctx);
@@ -683,6 +689,7 @@ namespace Luna
         LUNA_VARIANT_UTILS_API R<Variant> read_xml(const void* src, usize src_size)
         {
             lucheck(src);
+            if(src_size == USIZE_MAX) src_size = strlen((const c8*)src);
             BufferReadContext ctx;
             ctx.src = src;
             ctx.cur = src;
@@ -716,7 +723,15 @@ namespace Luna
             const c8* end = str.c_str() + str.size();
             while (cur < end)
             {
-                c32 ch = utf8_decode_char(cur);
+                usize num_bytes;
+                R<c32> decode_result = utf8_decode_char(cur, (usize)(end - cur), &num_bytes);
+                if(failed(decode_result))
+                {
+                    dst.push_back(*cur);
+                    ++cur;
+                    continue;
+                }
+                c32 ch = decode_result.get();
                 switch (ch)
                 {
                 case '<':
@@ -744,10 +759,10 @@ namespace Luna
                     dst.append("&#9;");
                     break;
                 default:
-                    dst.append(cur, utf8_charspan(ch));
+                    dst.append(cur, num_bytes);
                     break;
                 }
-                cur += utf8_charspan(ch);
+                cur += num_bytes;
             }
         }
         void write_xml_element(const Variant& v, String& s, bool indent, u32 base_indent)

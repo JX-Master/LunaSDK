@@ -73,17 +73,20 @@ namespace Luna
             {
                 const c8* cur_utf8 = (const c8*)cur;
                 const c8* next_cur = cur_utf8;
-                while (index)
+                const c8* end = (const c8*)src + src_size;
+                while(index)
                 {
                     // advance characters.
-                    c32 ch = utf8_decode_char(next_cur);
-                    if (!ch) return 0;
-                    next_cur += utf8_charspan(ch);
-                    if ((usize)(next_cur - (const c8*)src) >= src_size) return 0;
+                    if(next_cur >= end) return 0;
+                    usize num_bytes;
+                    R<c32> ch = utf8_decode_char(next_cur, (usize)(end - next_cur), &num_bytes);
+                    if(failed(ch)) return 0;
+                    next_cur += num_bytes;
                     --index;
                 }
-                if ((usize)(next_cur - (const c8*)src) >= src_size) return 0;
-                return utf8_decode_char(next_cur);
+                if(next_cur >= end) return 0;
+                R<c32> ch = utf8_decode_char(next_cur, (usize)(end - next_cur));
+                return succeeded(ch) ? ch.get() : 0;
             }
             else if(encoding == Encoding::utf_16_le || encoding == Encoding::utf_16_be)
             {
@@ -171,17 +174,25 @@ namespace Luna
             {
                 if(encoding == Encoding::utf_8)
                 {
-                    c8 buf[6];
+                    c8 buf[4];
                     usize read_bytes;
                     luexp(stream_read(buf, sizeof(c8), &read_bytes));
                     if (read_bytes != sizeof(c8)) return 0;
-                    usize charspan = utf8_charlen(buf[0]);
+                    const u8 first = (u8)buf[0];
+                    usize charspan;
+                    if(first <= 0x7F) charspan = 1;
+                    else if(first >= 0xC2 && first <= 0xDF) charspan = 2;
+                    else if(first >= 0xE0 && first <= 0xEF) charspan = 3;
+                    else if(first >= 0xF0 && first <= 0xF4) charspan = 4;
+                    else return BasicError::bad_data();
                     if (charspan > 1)
                     {
                         luexp(stream_read((buf + 1), sizeof(c8) * (charspan - 1), &read_bytes));
                         if (read_bytes != sizeof(c8) * (charspan - 1)) return 0;
                     }
-                    ret = utf8_decode_char(buf);
+                    R<c32> ch = utf8_decode_char(buf, charspan);
+                    if(failed(ch)) return ch.errcode();
+                    ret = ch.get();
                 }
                 else
                 {

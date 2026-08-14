@@ -214,12 +214,10 @@ namespace Luna
                             "Invalid character appeared after \"\\\" at line %d, pos %d.",
                             ctx.get_line(), ctx.get_pos());
                     }
-                    c8 buf[6];
-                    usize buf_count = utf8_encode_char(buf, ch2);
-                    for (usize i = 0; i < buf_count; ++i)
-                    {
-                        s.push_back(buf[i]);
-                    }
+                    c8 buf[4];
+                    R<usize> buf_count = utf8_encode_char(buf, sizeof(buf), ch2);
+                    if(failed(buf_count)) return buf_count.errcode();
+                    s.append(buf, buf_count.get());
                     ch = ctx.next_char();
                     continue;
                 }
@@ -234,9 +232,10 @@ namespace Luna
                         "Unescaped control character at line %u, pos %u.",
                         ctx.get_line(), ctx.get_pos());
                 }
-                c8 buf[6];
-                usize buf_count = utf8_encode_char(buf, ch);
-                s.append(buf, buf_count);
+                c8 buf[4];
+                R<usize> buf_count = utf8_encode_char(buf, sizeof(buf), ch);
+                if(failed(buf_count)) return buf_count.errcode();
+                s.append(buf, buf_count.get());
                 ctx.consume(ch);
                 ch = ctx.next_char();
             }
@@ -647,7 +646,15 @@ namespace Luna
             const c8* end = v + len;
             while (cur < end)
             {
-                c32 ch = utf8_decode_char(cur);
+                usize num_bytes;
+                R<c32> decode_result = utf8_decode_char(cur, (usize)(end - cur), &num_bytes);
+                if(failed(decode_result))
+                {
+                    s.push_back(*cur);
+                    ++cur;
+                    continue;
+                }
+                c32 ch = decode_result.get();
                 switch (ch)
                 {
                 case '\"':
@@ -683,11 +690,11 @@ namespace Luna
                     }
                     else
                     {
-                        s.append(cur, utf8_charspan(ch));
+                        s.append(cur, num_bytes);
                     }
                     break;
                 }
-                cur += utf8_charspan(ch);
+                cur += num_bytes;
             }
             s.push_back('"');
         }

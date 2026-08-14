@@ -55,22 +55,20 @@ The string utility library provides functions for processing characters and stri
 ## Unicode encoding library
 
 ```c++
-#include <Luna/Runtime/UTF8.hpp>
+#include <Luna/Runtime/Unicode.hpp>
 ```
 
-[Unicode](https://home.unicode.org/) is a text encoding standard that is widely used in modern computers, programs and websites. LunaSDK comes with a built-in Unicode library for processing strings encoded in commonly-used Unicode formats, including UTF-8, UTF-16 (LE and GE) and UTF-32.
+[Unicode](https://home.unicode.org/) is a text encoding standard that is widely used in modern computers, programs and websites. LunaSDK comes with a built-in Unicode library for processing strings encoded in commonly-used Unicode formats, including UTF-8, UTF-16 (LE and BE) and UTF-32.
 
-LunaSDK uses 32-bit character type (`c32`) to represent one Unicode character, the value of the character object represents the codepoint of the character in Unicode character table. One Unicode character can be encoded to 1 `c32` character in UTF-32, 1 to 2 `c16` characters in UTF-16, and 1 to 6 `c8` characters in UTF-8.
+LunaSDK uses the 32-bit character type `c32` to represent one Unicode codepoint. A Unicode scalar value ranges from U+0000 to U+10FFFF, excluding the UTF-16 surrogate range U+D800 to U+DFFF. One Unicode scalar value is encoded as one `c32` character in UTF-32, one or two `c16` characters in UTF-16, and one to four `c8` characters in RFC 3629 UTF-8.
 
-> By definition, one Unicode character represented by `c32` differs from one Unicode character encoded using UTF-32 (the first bit of one UTF-32 character must be 0, so only 2^32 Unicode codepoints can be represented in UTF-32). But in practice, all existing Unicode characters can be converted to their UTF-32 representation without any modification, so we do not differ one Unicode character from one UTF-32 character in this manual.
+`utf8_charspan` and `utf16_charspan` take one Unicode character and return the number of `c8` or `c16` characters required to represent it. `utf8_charspan` returns `0` if the input is not a Unicode scalar value. `utf8_charlen` examines one UTF-8 leading byte and returns the expected sequence length from one to four, or `0` if the byte cannot begin an RFC 3629 UTF-8 sequence. It does not validate continuation bytes; use `utf8_decode_char` to validate a complete sequence.
 
-`utf8_charspan` and `utf16_charspan` take one Unicode character, and return the number of `c8`  or `c16` characters required to represent that character in UTF-8 or UTF-16 encoding. `utf8_charlen` and `utf16_charlen` take the first `c8`  or `c16`  character of one UTF-8 or UTF-16 encoded Unicode character, and return the number of bytes used for that character. These functions can be used to measure the size of one UTF-32 character in UTF-8 and UTF-16 encoding.
+`utf8_strlen` and `utf16_strlen` calculate the number of Unicode characters contained by a UTF-8 or UTF-16 encoded string. `utf8_index` and `utf16_index` return the index of the first `c8` or `c16` character of the `n`th Unicode character in a UTF-8 or UTF-16 encoded string. These functions can be used to calculate the length of Unicode-encoded strings.
 
-`utf8_strlen` and `utf16_strlen` calculate the number of Unicode characters contained by a UTF-8 or UTF-16 encoded string, `utf8_index` and `utf16_index` return the index of the first `c8` or `c16` character of the `n`th Unicode character in a UTF-8 or UTF-16 ebcided string. These functions can be used to calculate the length of Unicode-encoded strings.
+`utf8_encode_char` encodes one Unicode scalar value into a sized output buffer and returns `R<usize>` containing the number of bytes written. It rejects invalid scalar values and insufficient output buffers without producing partial output. `utf8_decode_char` decodes and validates one RFC 3629 sequence from a sized input buffer, returning the codepoint and optionally the number of consumed bytes.
 
-`utf8_encode_char` and `utf16_encode_char` encode one Unicode character into multiple `c8` or `c16` characters using UTF-8 or UTF-16 encoding, write the encoded characters to the user-provided buffer, and return the number of characters written.  `utf8_decode_char` and `utf16_decode_char`, on the other side, read multiple `c8` or `c16` characters from the user-provided buffer, and returns the Unicode character represented by these characters.
-
-`utf16_to_utf8` converts a UTF-8 encoded string to a UTF-16 encoded string, and `utf8_to_utf16` converts a UTF-16 encoded string to a UTF-8 encoded string. Both functions write result strings in a user-provided buffer, `utf16_to_utf8_len` and `utf8_to_utf16_len` can be used to calculate the minimum size (measured in number of `c8` or `c16` characters, not including the null terminator) required for the buffer to hold the result string.
+`utf16_to_utf8` converts a UTF-16 encoded string to a UTF-8 encoded string, and `utf8_to_utf16` converts a UTF-8 encoded string to a UTF-16 encoded string. Both functions write result strings in a user-provided buffer. `utf16_to_utf8_len` and `utf8_to_utf16_len` calculate the minimum size, excluding the null terminator, required for the output buffer.
 
 ## Base64 encoding library
 
@@ -83,4 +81,3 @@ LunaSDK uses 32-bit character type (`c32`) to represent one Unicode character, t
 `base64_encode` encodes the binary data in the user-provided source buffer to a Base64 encoded string, and writes the string to the user-provided destination buffer. To determine the size of the destination buffer required, call `base64_get_encoded_size` with the size of the row binary data.
 
 `base64_decode` decodes the Base64 string in the user-provided source buffer to original binary data, and writes the binary data to the user-provided destination buffer. To determine the size of the destination buffer required, call `base64_get_decoded_size` with the size of the Base64 string, excluding the null terminator.
-

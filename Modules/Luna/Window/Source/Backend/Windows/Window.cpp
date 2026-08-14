@@ -293,6 +293,7 @@ namespace Luna
         {
             lutsassert_main_thread();
             m_text_input_active = true;
+            m_text_input_high_surrogate = 0;
             return ok;
         }
         RV Window::set_text_input_area(const RectI& input_rect, i32 cursor)
@@ -327,6 +328,7 @@ namespace Luna
         {
             lutsassert_main_thread();
             m_text_input_active = false;
+            m_text_input_high_surrogate = 0;
             return ok;
         }
         bool Window::is_text_input_active()
