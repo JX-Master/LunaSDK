@@ -23,6 +23,7 @@ void run()
     string_test();
     list_test();
     robin_hood_hash_test();
+    hash_test();
     tuple_test();
     name_test();
     path_test();

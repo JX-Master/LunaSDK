@@ -18,6 +18,7 @@ namespace Luna
     void vector_test();
     void open_hash_test();
     void robin_hood_hash_test();
+    void hash_test();
     void name_test();
     void ring_deque_test();
     void string_test();
