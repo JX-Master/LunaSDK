@@ -20,7 +20,17 @@ namespace Luna
         struct ToolEntry
         {
             ToolDesc desc;
-            Variant definition;
+            Variant modern_definition;
+            Variant legacy_definition;
+        };
+
+        enum class ProtocolFacility : u8
+        {
+            undetermined,
+            modern,
+            legacy_uninitialized,
+            legacy_wait_initialized,
+            legacy_initialized,
         };
 
         struct [[luna::struct("{F10F753F-734B-4DF1-86D0-594FD296C4C4}")]] MCPServer : public IMCPServer
@@ -30,7 +40,9 @@ namespace Luna
             Ref<Frontend::IFrontend> m_frontend;
             ServerDesc m_desc;
             Variant m_server_info;
+            Variant m_legacy_server_info;
             HashMap<Name, ToolEntry> m_tools;
+            ProtocolFacility m_protocol_facility = ProtocolFacility::undetermined;
 
             virtual RV set_tool(ToolDesc&& desc, bool overwrite = false) override;
             virtual RV remove_tool(const Name& name) override;

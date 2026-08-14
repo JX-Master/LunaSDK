@@ -297,58 +297,200 @@ namespace Luna
                 return true;
             }
 
-            MessageResult process_valid_message(MCPServer* server, const Variant& message)
+            bool validate_legacy_client_capabilities(const Variant& capabilities)
             {
-                if(message.type() != VariantType::object)
+                if(capabilities.type() != VariantType::object) return false;
+                if(!validate_object_map(capabilities.find("experimental"), false)) return false;
+                const Variant& roots = capabilities.find("roots");
+                if(roots.valid())
                 {
-                    return error_result(nullptr, INVALID_REQUEST, "Invalid Request");
+                    if(roots.type() != VariantType::object) return false;
+                    if(!is_optional_type(roots, "listChanged", VariantType::boolean)) return false;
+                }
+                if(!is_optional_type(capabilities, "sampling", VariantType::object)) return false;
+                if(!is_optional_type(capabilities, "elicitation", VariantType::object)) return false;
+                return true;
+            }
+
+            bool validate_legacy_client_info(const Variant& client_info)
+            {
+                if(client_info.type() != VariantType::object) return false;
+                if(client_info.find("name").type() != VariantType::string ||
+                    !client_info.find("name").str()) return false;
+                if(client_info.find("version").type() != VariantType::string ||
+                    !client_info.find("version").str()) return false;
+                return is_optional_type(client_info, "title", VariantType::string);
+            }
+
+            bool validate_legacy_request_meta(const Variant& params)
+            {
+                const Variant& meta = params.find("_meta");
+                if(!meta.valid()) return true;
+                if(meta.type() != VariantType::object) return false;
+                const Variant& progress_token = meta.find("progressToken");
+                return !progress_token.valid() || is_request_id(progress_token);
+            }
+
+            MessageResult process_tools_list(
+                MCPServer* server,
+                const Variant& id,
+                const Variant& params,
+                bool modern)
+            {
+                const Variant& cursor = params.find("cursor");
+                if(cursor.valid())
+                {
+                    if(cursor.type() != VariantType::string)
+                    {
+                        return error_result(&id, INVALID_PARAMS, "Cursor must be a string");
+                    }
+                    return error_result(&id, INVALID_PARAMS, "Pagination cursor is not valid");
                 }
 
-                const bool has_id = message.contains("id");
-                const Variant& id = message.find("id");
-                if(has_id && !is_request_id(id))
+                Vector<const ToolEntry*> sorted_tools;
+                sorted_tools.reserve(server->m_tools.size());
+                for(const auto& tool : server->m_tools)
                 {
-                    return error_result(nullptr, INVALID_REQUEST, "Invalid Request");
+                    sorted_tools.push_back(&tool.second);
                 }
-                const Variant* response_id = has_id ? &id : nullptr;
+                sort(sorted_tools.begin(), sorted_tools.end(),
+                    [](const ToolEntry* lhs, const ToolEntry* rhs)
+                    {
+                        return strcmp(lhs->desc.name.c_str(), rhs->desc.name.c_str()) < 0;
+                    });
 
-                if(message.find("jsonrpc").type() != VariantType::string ||
-                    message.find("jsonrpc").str() != Name("2.0") ||
-                    message.find("method").type() != VariantType::string ||
-                    message.contains("result") || message.contains("error"))
+                Variant result(VariantType::object);
+                if(modern)
                 {
-                    return error_result(response_id, INVALID_REQUEST, "Invalid Request");
+                    add_result_fields(result, server->m_server_info);
+                    add_cache_fields(
+                        result,
+                        server->m_desc.tools_ttl_ms,
+                        server->m_desc.cache_scope);
+                }
+                result["tools"] = Variant(VariantType::array);
+                for(const ToolEntry* tool : sorted_tools)
+                {
+                    result["tools"].push_back(
+                        modern ? tool->modern_definition : tool->legacy_definition);
+                }
+                return response_result(id, move(result));
+            }
+
+            MessageResult process_tool_call(
+                MCPServer* server,
+                const Variant& id,
+                const Variant& params,
+                bool modern)
+            {
+                const Variant& tool_name = params.find("name");
+                if(tool_name.type() != VariantType::string || !tool_name.str())
+                {
+                    return error_result(
+                        &id, INVALID_PARAMS, "Tool name must be a non-empty string");
+                }
+                if(params.contains("inputResponses") || params.contains("requestState"))
+                {
+                    return error_result(
+                        &id,
+                        INVALID_PARAMS,
+                        "Multi Round-Trip Request fields are not supported");
                 }
 
-                // JSON-RPC notifications never receive a response. The first MCP implementation
-                // does not advertise or act on any client-to-server notification.
-                if(!has_id) return MessageResult();
+                Variant empty_arguments(VariantType::object);
+                const Variant* arguments = &empty_arguments;
+                const Variant& specified_arguments = params.find("arguments");
+                if(specified_arguments.valid())
+                {
+                    if(specified_arguments.type() != VariantType::object)
+                    {
+                        return error_result(
+                            &id, INVALID_PARAMS, "Tool arguments must be an object");
+                    }
+                    arguments = &specified_arguments;
+                }
 
-                const Name method = message.find("method").str();
+                auto tool_iter = server->m_tools.find(tool_name.str());
+                if(tool_iter == server->m_tools.end())
+                {
+                    return error_result(&id, INVALID_PARAMS, "Unknown tool");
+                }
+                Name frontend_url = tool_iter->second.desc.frontend_url;
+                if(server->m_frontend->get_resource_type(frontend_url) !=
+                    Frontend::ResourceType::function)
+                {
+                    return error_result(
+                        &id, INTERNAL_ERROR, "Mapped Frontend function is unavailable");
+                }
+
+                R<Variant> invocation = server->m_frontend->invoke(frontend_url, *arguments);
+                Variant result(VariantType::object);
+                if(modern) add_result_fields(result, server->m_server_info);
+                result["content"] = Variant(VariantType::array);
+                if(!invocation.valid())
+                {
+                    Name error_message(explain(invocation.errcode()));
+                    R<String> encoded_error = VariantUtils::write_json(
+                        Variant(error_message), VariantUtils::JSONWriteOptions::strict());
+                    if(!encoded_error.valid()) error_message = "Tool execution failed";
+                    Variant content(VariantType::object);
+                    content["type"] = "text";
+                    content["text"] = error_message;
+                    result["content"].push_back(move(content));
+                    result["isError"] = true;
+                    return response_result(id, move(result));
+                }
+
+                R<String> text = VariantUtils::write_json(
+                    invocation.get(), VariantUtils::JSONWriteOptions::strict());
+                if(!text.valid())
+                {
+                    return error_result(
+                        &id,
+                        INTERNAL_ERROR,
+                        "Tool result cannot be represented as strict JSON");
+                }
+                Variant content(VariantType::object);
+                content["type"] = "text";
+                content["text"] = Name(text.get());
+                result["content"].push_back(move(content));
+                result["structuredContent"] = invocation.get();
+                result["isError"] = false;
+                return response_result(id, move(result));
+            }
+
+            MessageResult process_modern_request(
+                MCPServer* server,
+                const Variant& id,
+                const Name& method,
+                const Variant& message)
+            {
                 if(method != Name("server/discover") && method != Name("tools/list") &&
                     method != Name("tools/call"))
                 {
-                    return error_result(response_id, METHOD_NOT_FOUND, "Method not found");
+                    return error_result(&id, METHOD_NOT_FOUND, "Method not found");
                 }
 
                 const Variant& params = message.find("params");
                 if(params.type() != VariantType::object)
                 {
-                    return error_result(response_id, INVALID_PARAMS, "Request params must be an object");
+                    return error_result(
+                        &id, INVALID_PARAMS, "Request params must be an object");
                 }
                 Name requested_version;
                 if(!validate_request_meta(params, requested_version))
                 {
-                    return error_result(response_id, INVALID_PARAMS, "Invalid MCP request metadata");
+                    return error_result(
+                        &id, INVALID_PARAMS, "Invalid MCP request metadata");
                 }
-                if(requested_version != Name(PROTOCOL_VERSION))
+                if(requested_version != Name(MODERN_PROTOCOL_VERSION))
                 {
                     Variant data(VariantType::object);
                     data["supported"] = Variant(VariantType::array);
-                    data["supported"].push_back(PROTOCOL_VERSION);
+                    data["supported"].push_back(MODERN_PROTOCOL_VERSION);
                     data["requested"] = requested_version;
                     return error_result(
-                        response_id,
+                        &id,
                         UNSUPPORTED_PROTOCOL_VERSION,
                         "Unsupported protocol version",
                         &data);
@@ -363,7 +505,7 @@ namespace Luna
                         server->m_desc.discovery_ttl_ms,
                         server->m_desc.cache_scope);
                     result["supportedVersions"] = Variant(VariantType::array);
-                    result["supportedVersions"].push_back(PROTOCOL_VERSION);
+                    result["supportedVersions"].push_back(MODERN_PROTOCOL_VERSION);
                     result["capabilities"] = Variant(VariantType::object);
                     result["capabilities"]["tools"] = Variant(VariantType::object);
                     if(server->m_desc.instructions)
@@ -372,119 +514,145 @@ namespace Luna
                     }
                     return response_result(id, move(result));
                 }
-
                 if(method == Name("tools/list"))
                 {
-                    const Variant& cursor = params.find("cursor");
-                    if(cursor.valid())
-                    {
-                        if(cursor.type() != VariantType::string)
-                        {
-                            return error_result(response_id, INVALID_PARAMS, "Cursor must be a string");
-                        }
-                        return error_result(response_id, INVALID_PARAMS, "Pagination cursor is not valid");
-                    }
-
-                    Vector<const ToolEntry*> sorted_tools;
-                    sorted_tools.reserve(server->m_tools.size());
-                    for(const auto& tool : server->m_tools)
-                    {
-                        sorted_tools.push_back(&tool.second);
-                    }
-                    sort(sorted_tools.begin(), sorted_tools.end(),
-                        [](const ToolEntry* lhs, const ToolEntry* rhs)
-                        {
-                            return strcmp(lhs->desc.name.c_str(), rhs->desc.name.c_str()) < 0;
-                        });
-
-                    Variant result(VariantType::object);
-                    add_result_fields(result, server->m_server_info);
-                    add_cache_fields(result, server->m_desc.tools_ttl_ms, server->m_desc.cache_scope);
-                    result["tools"] = Variant(VariantType::array);
-                    for(const ToolEntry* tool : sorted_tools)
-                    {
-                        result["tools"].push_back(tool->definition);
-                    }
-                    return response_result(id, move(result));
+                    return process_tools_list(server, id, params, true);
                 }
+                return process_tool_call(server, id, params, true);
+            }
 
-                if(method == Name("tools/call"))
+            MessageResult process_legacy_initialize(
+                MCPServer* server,
+                const Variant& id,
+                const Variant& message)
+            {
+                if(server->m_protocol_facility != ProtocolFacility::legacy_uninitialized)
                 {
-                    const Variant& tool_name = params.find("name");
-                    if(tool_name.type() != VariantType::string || !tool_name.str())
-                    {
-                        return error_result(response_id, INVALID_PARAMS, "Tool name must be a non-empty string");
-                    }
-                    const Variant& input_responses = params.find("inputResponses");
-                    const Variant& request_state = params.find("requestState");
-                    if(input_responses.valid() || request_state.valid())
-                    {
-                        return error_result(
-                            response_id,
-                            INVALID_PARAMS,
-                            "Multi Round-Trip Request fields are not supported");
-                    }
-
-                    Variant empty_arguments(VariantType::object);
-                    const Variant* arguments = &empty_arguments;
-                    const Variant& specified_arguments = params.find("arguments");
-                    if(specified_arguments.valid())
-                    {
-                        if(specified_arguments.type() != VariantType::object)
-                        {
-                            return error_result(response_id, INVALID_PARAMS, "Tool arguments must be an object");
-                        }
-                        arguments = &specified_arguments;
-                    }
-
-                    auto tool_iter = server->m_tools.find(tool_name.str());
-                    if(tool_iter == server->m_tools.end())
-                    {
-                        return error_result(response_id, INVALID_PARAMS, "Unknown tool");
-                    }
-                    Name frontend_url = tool_iter->second.desc.frontend_url;
-                    if(server->m_frontend->get_resource_type(frontend_url) !=
-                        Frontend::ResourceType::function)
-                    {
-                        return error_result(response_id, INTERNAL_ERROR, "Mapped Frontend function is unavailable");
-                    }
-
-                    R<Variant> invocation = server->m_frontend->invoke(frontend_url, *arguments);
-                    Variant result(VariantType::object);
-                    add_result_fields(result, server->m_server_info);
-                    result["content"] = Variant(VariantType::array);
-                    if(!invocation.valid())
-                    {
-                        Name error_message(explain(invocation.errcode()));
-                        R<String> encoded_error = VariantUtils::write_json(
-                            Variant(error_message), VariantUtils::JSONWriteOptions::strict());
-                        if(!encoded_error.valid()) error_message = "Tool execution failed";
-                        Variant content(VariantType::object);
-                        content["type"] = "text";
-                        content["text"] = error_message;
-                        result["content"].push_back(move(content));
-                        result["isError"] = true;
-                        return response_result(id, move(result));
-                    }
-
-                    R<String> text = VariantUtils::write_json(
-                        invocation.get(), VariantUtils::JSONWriteOptions::strict());
-                    if(!text.valid())
-                    {
-                        return error_result(
-                            response_id,
-                            INTERNAL_ERROR,
-                            "Tool result cannot be represented as strict JSON");
-                    }
-                    Variant content(VariantType::object);
-                    content["type"] = "text";
-                    content["text"] = Name(text.get());
-                    result["content"].push_back(move(content));
-                    result["structuredContent"] = invocation.get();
-                    result["isError"] = false;
-                    return response_result(id, move(result));
+                    return error_result(&id, INVALID_REQUEST, "Server is already initialized");
                 }
-                return error_result(response_id, INTERNAL_ERROR, "Internal error");
+                const Variant& params = message.find("params");
+                if(params.type() != VariantType::object ||
+                    params.find("protocolVersion").type() != VariantType::string ||
+                    !params.find("protocolVersion").str() ||
+                    !validate_legacy_client_capabilities(params.find("capabilities")) ||
+                    !validate_legacy_client_info(params.find("clientInfo")) ||
+                    !validate_legacy_request_meta(params))
+                {
+                    return error_result(&id, INVALID_PARAMS, "Invalid initialize parameters");
+                }
+
+                Variant result(VariantType::object);
+                result["protocolVersion"] = LEGACY_PROTOCOL_VERSION;
+                result["capabilities"] = Variant(VariantType::object);
+                result["capabilities"]["tools"] = Variant(VariantType::object);
+                result["serverInfo"] = server->m_legacy_server_info;
+                if(server->m_desc.instructions)
+                {
+                    result["instructions"] = server->m_desc.instructions;
+                }
+                server->m_protocol_facility = ProtocolFacility::legacy_wait_initialized;
+                return response_result(id, move(result));
+            }
+
+            MessageResult process_legacy_request(
+                MCPServer* server,
+                const Variant& id,
+                const Name& method,
+                const Variant& message)
+            {
+                if(method == Name("initialize"))
+                {
+                    return process_legacy_initialize(server, id, message);
+                }
+                if(method == Name("ping"))
+                {
+                    const Variant& params = message.find("params");
+                    if(params.valid() && params.type() != VariantType::object)
+                    {
+                        return error_result(&id, INVALID_PARAMS, "Ping params must be an object");
+                    }
+                    return response_result(id, Variant(VariantType::object));
+                }
+                if(server->m_protocol_facility != ProtocolFacility::legacy_initialized)
+                {
+                    return error_result(&id, INVALID_REQUEST, "Server is not initialized");
+                }
+                if(method != Name("tools/list") && method != Name("tools/call"))
+                {
+                    return error_result(&id, METHOD_NOT_FOUND, "Method not found");
+                }
+
+                Variant empty_params(VariantType::object);
+                const Variant* params = &empty_params;
+                const Variant& specified_params = message.find("params");
+                if(specified_params.valid())
+                {
+                    if(specified_params.type() != VariantType::object)
+                    {
+                        return error_result(
+                            &id, INVALID_PARAMS, "Request params must be an object");
+                    }
+                    params = &specified_params;
+                }
+                if(!validate_legacy_request_meta(*params))
+                {
+                    return error_result(&id, INVALID_PARAMS, "Invalid legacy request metadata");
+                }
+                if(method == Name("tools/list"))
+                {
+                    return process_tools_list(server, id, *params, false);
+                }
+                if(!specified_params.valid())
+                {
+                    return error_result(
+                        &id, INVALID_PARAMS, "Tool call params must be an object");
+                }
+                return process_tool_call(server, id, *params, false);
+            }
+
+            MessageResult process_valid_message(MCPServer* server, const Variant& message)
+            {
+                if(message.type() != VariantType::object)
+                {
+                    return error_result(nullptr, INVALID_REQUEST, "Invalid Request");
+                }
+
+                const bool has_id = message.contains("id");
+                const Variant& id = message.find("id");
+                if(has_id && !is_request_id(id))
+                {
+                    return error_result(nullptr, INVALID_REQUEST, "Invalid Request");
+                }
+                const Variant* response_id = has_id ? &id : nullptr;
+                if(message.find("jsonrpc").type() != VariantType::string ||
+                    message.find("jsonrpc").str() != Name("2.0") ||
+                    message.find("method").type() != VariantType::string ||
+                    message.contains("result") || message.contains("error"))
+                {
+                    return error_result(response_id, INVALID_REQUEST, "Invalid Request");
+                }
+
+                const Name method = message.find("method").str();
+                if(!has_id)
+                {
+                    if(method == Name("notifications/initialized") &&
+                        server->m_protocol_facility == ProtocolFacility::legacy_wait_initialized)
+                    {
+                        server->m_protocol_facility = ProtocolFacility::legacy_initialized;
+                    }
+                    return MessageResult();
+                }
+
+                if(server->m_protocol_facility == ProtocolFacility::undetermined)
+                {
+                    server->m_protocol_facility = method == Name("initialize") ?
+                        ProtocolFacility::legacy_uninitialized : ProtocolFacility::modern;
+                }
+                if(server->m_protocol_facility == ProtocolFacility::modern)
+                {
+                    return process_modern_request(server, id, method, message);
+                }
+                return process_legacy_request(server, id, method, message);
             }
         }
 
@@ -530,18 +698,24 @@ namespace Luna
             if(existing != m_tools.end() && !overwrite) return BasicError::already_exists();
 
             ToolEntry entry;
-            entry.definition = Variant(VariantType::object);
-            entry.definition["name"] = desc.name;
-            if(desc.title) entry.definition["title"] = desc.title;
-            if(desc.description) entry.definition["description"] = desc.description;
-            entry.definition["inputSchema"] = desc.input_schema;
-            if(desc.output_schema.valid()) entry.definition["outputSchema"] = desc.output_schema;
-            if(desc.annotations.valid()) entry.definition["annotations"] = desc.annotations;
-            if(desc.icons.valid()) entry.definition["icons"] = desc.icons;
-            if(desc.metadata.valid()) entry.definition["_meta"] = desc.metadata;
+            entry.modern_definition = Variant(VariantType::object);
+            entry.modern_definition["name"] = desc.name;
+            if(desc.title) entry.modern_definition["title"] = desc.title;
+            if(desc.description) entry.modern_definition["description"] = desc.description;
+            entry.modern_definition["inputSchema"] = desc.input_schema;
+            if(desc.output_schema.valid())
+            {
+                entry.modern_definition["outputSchema"] = desc.output_schema;
+            }
+            if(desc.annotations.valid()) entry.modern_definition["annotations"] = desc.annotations;
+            if(desc.icons.valid()) entry.modern_definition["icons"] = desc.icons;
+            if(desc.metadata.valid()) entry.modern_definition["_meta"] = desc.metadata;
+
+            entry.legacy_definition = entry.modern_definition;
+            entry.legacy_definition.erase("icons");
 
             R<String> encoded = VariantUtils::write_json(
-                entry.definition, VariantUtils::JSONWriteOptions::strict());
+                entry.modern_definition, VariantUtils::JSONWriteOptions::strict());
             if(!encoded.valid())
             {
                 return set_error(
@@ -625,6 +799,11 @@ namespace Luna
             if(desc.description) server->m_server_info["description"] = desc.description;
             if(desc.website_url) server->m_server_info["websiteUrl"] = desc.website_url;
             if(desc.icons.valid()) server->m_server_info["icons"] = desc.icons;
+
+            server->m_legacy_server_info = Variant(VariantType::object);
+            server->m_legacy_server_info["name"] = desc.name;
+            server->m_legacy_server_info["version"] = desc.version;
+            if(desc.title) server->m_legacy_server_info["title"] = desc.title;
 
             R<String> encoded = VariantUtils::write_json(
                 server->m_server_info, VariantUtils::JSONWriteOptions::strict());

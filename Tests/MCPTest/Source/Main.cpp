@@ -21,6 +21,7 @@ using namespace Luna::MCP;
 #define lutest luassert_always
 
 void stdio_test(IMCPServer* server);
+void stdio_legacy_test(IMCPServer* server);
 
 namespace
 {
@@ -47,6 +48,30 @@ namespace
         request["method"] = method;
         request["params"] = move(params);
         return request;
+    }
+
+    Variant make_legacy_initialize_request(
+        const Variant& id,
+        const c8* version = LEGACY_PROTOCOL_VERSION)
+    {
+        Variant params(VariantType::object);
+        params["protocolVersion"] = version;
+        params["capabilities"]["roots"]["listChanged"] = true;
+        params["capabilities"]["sampling"] = Variant(VariantType::object);
+        params["capabilities"]["elicitation"]["form"] = Variant(VariantType::object);
+        params["capabilities"]["elicitation"]["url"] = Variant(VariantType::object);
+        params["clientInfo"]["name"] = "legacy-client";
+        params["clientInfo"]["title"] = "Legacy Client";
+        params["clientInfo"]["version"] = "1.0.0";
+        return make_request(id, "initialize", move(params));
+    }
+
+    Variant make_notification(const c8* method)
+    {
+        Variant notification(VariantType::object);
+        notification["jsonrpc"] = "2.0";
+        notification["method"] = method;
+        return notification;
     }
 
     Variant process(IMCPServer* server, const Variant& request)
@@ -436,6 +461,146 @@ namespace
         expect_error(bad_result_response, -32603);
     }
 
+    void legacy_protocol_test()
+    {
+        lutest(Name(MODERN_PROTOCOL_VERSION) == Name("2026-07-28"));
+        lutest(Name(LEGACY_PROTOCOL_VERSION) == Name("2025-06-18"));
+
+        Fixture fixture = make_fixture();
+        ToolDesc tool = make_tool("legacy_echo", "/echo");
+        tool.title = "Legacy echo";
+        tool.description = "Returns its arguments.";
+        tool.output_schema = Variant(VariantType::object);
+        tool.output_schema["type"] = "object";
+        tool.annotations = Variant(VariantType::object);
+        tool.annotations["readOnlyHint"] = true;
+        tool.icons = Variant(VariantType::array);
+        Variant icon(VariantType::object);
+        icon["src"] = "https://example.com/tool.png";
+        tool.icons.push_back(move(icon));
+        tool.metadata = Variant(VariantType::object);
+        tool.metadata["com.example/legacy"] = true;
+        lupanic_if_failed(fixture.server->set_tool(move(tool)));
+
+        Variant initialize_response = process(
+            fixture.server,
+            make_legacy_initialize_request(Variant((i64)50)));
+        const Variant& initialize_result = initialize_response.find("result");
+        lutest(initialize_result.find("protocolVersion").str() ==
+            Name(LEGACY_PROTOCOL_VERSION));
+        lutest(initialize_result.find("capabilities").find("tools").type() ==
+            VariantType::object);
+        lutest(initialize_result.find("instructions").str() ==
+            Name("Use the exported tools for tests."));
+        const Variant& server_info = initialize_result.find("serverInfo");
+        lutest(server_info.find("name").str() == Name("luna-mcp-test"));
+        lutest(server_info.find("title").str() == Name("Luna MCP Test"));
+        lutest(server_info.find("version").str() == Name("1.2.3"));
+        lutest(!server_info.contains("description"));
+        lutest(!server_info.contains("websiteUrl"));
+        lutest(!server_info.contains("icons"));
+        lutest(!initialize_result.contains("resultType"));
+        lutest(!initialize_result.contains("ttlMs"));
+        lutest(!initialize_result.contains("cacheScope"));
+        lutest(!initialize_result.contains("_meta"));
+
+        Variant list_before_initialized(VariantType::object);
+        expect_error(process(
+            fixture.server,
+            make_request(
+                Variant((i64)51), "tools/list", move(list_before_initialized))), -32600);
+
+        Variant ping_params(VariantType::object);
+        Variant ping_response = process(
+            fixture.server,
+            make_request(Variant((i64)52), "ping", move(ping_params)));
+        lutest(ping_response.find("result").type() == VariantType::object);
+
+        expect_error(process(
+            fixture.server,
+            make_legacy_initialize_request(Variant((i64)53))), -32600);
+
+        MessageResult initialized = fixture.server->process_message(
+            make_notification("notifications/initialized"));
+        lutest(!initialized.has_response);
+
+        Variant list_response = process(
+            fixture.server,
+            make_request(
+                Variant((i64)54), "tools/list", Variant(VariantType::object)));
+        const Variant& list_result = list_response.find("result");
+        lutest(!list_result.contains("resultType"));
+        lutest(!list_result.contains("ttlMs"));
+        lutest(!list_result.contains("cacheScope"));
+        lutest(!list_result.contains("_meta"));
+        lutest(list_result.find("tools").size() == 1);
+        const Variant& listed_tool = list_result.find("tools")[0];
+        lutest(listed_tool.find("name").str() == Name("legacy_echo"));
+        lutest(listed_tool.find("title").str() == Name("Legacy echo"));
+        lutest(listed_tool.find("outputSchema").find("type").str() == Name("object"));
+        lutest(listed_tool.find("annotations").find("readOnlyHint").boolean());
+        lutest(listed_tool.find("_meta").find("com.example/legacy").boolean());
+        lutest(!listed_tool.contains("icons"));
+
+        Variant call_params(VariantType::object);
+        call_params["name"] = "legacy_echo";
+        call_params["arguments"]["value"] = (i64)55;
+        Variant call_response = process(
+            fixture.server,
+            make_request(Variant((i64)55), "tools/call", move(call_params)));
+        const Variant& call_result = call_response.find("result");
+        lutest(!call_result.contains("resultType"));
+        lutest(!call_result.contains("_meta"));
+        lutest(!call_result.find("isError").boolean(true));
+        lutest(call_result.find("structuredContent").find("value").inum() == 55);
+        lutest(call_result.find("content")[0].find("type").str() == Name("text"));
+
+        Variant discover_params = make_request_params();
+        expect_error(process(
+            fixture.server,
+            make_request(
+                Variant((i64)56), "server/discover", move(discover_params))), -32601);
+
+        Variant bad_meta(VariantType::object);
+        bad_meta["_meta"]["progressToken"] = true;
+        expect_error(process(
+            fixture.server,
+            make_request(Variant((i64)57), "tools/list", move(bad_meta))), -32602);
+
+        Fixture negotiation_fixture = make_fixture();
+        Variant negotiation_response = process(
+            negotiation_fixture.server,
+            make_legacy_initialize_request(Variant((i64)58), "2099-01-01"));
+        lutest(negotiation_response.find("result").find("protocolVersion").str() ==
+            Name(LEGACY_PROTOCOL_VERSION));
+
+        Fixture retry_fixture = make_fixture();
+        Variant invalid_initialize = make_legacy_initialize_request(Variant((i64)59));
+        invalid_initialize["params"]["capabilities"] = true;
+        expect_error(process(retry_fixture.server, invalid_initialize), -32602);
+        Variant retry_response = process(
+            retry_fixture.server,
+            make_legacy_initialize_request(Variant((i64)60)));
+        lutest(retry_response.find("result").find("protocolVersion").str() ==
+            Name(LEGACY_PROTOCOL_VERSION));
+
+        Fixture notification_fixture = make_fixture();
+        MessageResult early_notification = notification_fixture.server->process_message(
+            make_notification("notifications/initialized"));
+        lutest(!early_notification.has_response);
+        Variant modern_response = process(
+            notification_fixture.server,
+            make_request(
+                Variant((i64)61), "server/discover", make_request_params()));
+        lutest(modern_response.find("result").find("supportedVersions")[0].str() ==
+            Name(MODERN_PROTOCOL_VERSION));
+
+        Fixture stdio_fixture = make_fixture();
+        lupanic_if_failed(stdio_fixture.server->set_tool(
+            make_tool("legacy_echo", "/echo")));
+        stdio_legacy_test(stdio_fixture.server);
+    }
+
     void protocol_error_test(Fixture& fixture)
     {
         Variant invalid_object(VariantType::object);
@@ -654,6 +819,7 @@ int main()
     lupanic_if_failed(add_modules({module_mcp()}));
     lupanic_if_failed(init_modules());
     server_descriptor_test();
+    legacy_protocol_test();
     {
         Fixture fixture = make_fixture();
         tool_registry_test(fixture);

@@ -169,6 +169,47 @@ namespace
         lupanic_if_failed(json);
         return move(json.get());
     }
+
+    String legacy_initialize_json(i64 id)
+    {
+        Variant request(VariantType::object);
+        request["jsonrpc"] = "2.0";
+        request["id"] = id;
+        request["method"] = "initialize";
+        request["params"]["protocolVersion"] = LEGACY_PROTOCOL_VERSION;
+        request["params"]["capabilities"]["elicitation"]["form"] =
+            Variant(VariantType::object);
+        request["params"]["clientInfo"]["name"] = "stdio-legacy-client";
+        request["params"]["clientInfo"]["version"] = "1.0.0";
+        R<String> json = VariantUtils::write_json(
+            request, VariantUtils::JSONWriteOptions::strict());
+        lupanic_if_failed(json);
+        return move(json.get());
+    }
+
+    String legacy_initialized_json()
+    {
+        Variant notification(VariantType::object);
+        notification["jsonrpc"] = "2.0";
+        notification["method"] = "notifications/initialized";
+        R<String> json = VariantUtils::write_json(
+            notification, VariantUtils::JSONWriteOptions::strict());
+        lupanic_if_failed(json);
+        return move(json.get());
+    }
+
+    String legacy_list_json(i64 id)
+    {
+        Variant request(VariantType::object);
+        request["jsonrpc"] = "2.0";
+        request["id"] = id;
+        request["method"] = "tools/list";
+        request["params"] = Variant(VariantType::object);
+        R<String> json = VariantUtils::write_json(
+            request, VariantUtils::JSONWriteOptions::strict());
+        lupanic_if_failed(json);
+        return move(json.get());
+    }
 }
 
 void stdio_test(IMCPServer* server)
@@ -232,4 +273,44 @@ void stdio_test(IMCPServer* server)
     RV null_result = run_stdio_server(nullptr, options);
     lutest(!null_result.valid());
     lutest(null_result.errcode() == BasicError::bad_arguments());
+}
+
+void stdio_legacy_test(IMCPServer* server)
+{
+    StdioServerOptions options;
+    RV run_result;
+    String input = legacy_initialize_json(200);
+    input.push_back('\n');
+    input.append(legacy_initialized_json());
+    input.push_back('\n');
+    input.append(legacy_list_json(201));
+    input.push_back('\n');
+    String output = run_redirected_stdio(server, input, options, run_result);
+    lupanic_if_failed(run_result);
+
+    usize response_count = 0;
+    usize line_start = 0;
+    for(usize i = 0; i < output.size(); ++i)
+    {
+        if(output[i] != '\n') continue;
+        R<Variant> response = VariantUtils::read_json(
+            output.data() + line_start,
+            i - line_start,
+            VariantUtils::JSONReadOptions::strict());
+        lupanic_if_failed(response);
+        lutest(response.get().find("id").inum() == (i64)(200 + response_count));
+        if(!response_count)
+        {
+            lutest(response.get().find("result").find("protocolVersion").str() ==
+                Name(LEGACY_PROTOCOL_VERSION));
+        }
+        else
+        {
+            lutest(response.get().find("result").find("tools").size() == 1);
+        }
+        ++response_count;
+        line_start = i + 1;
+    }
+    lutest(response_count == 2);
+    lutest(line_start == output.size());
 }

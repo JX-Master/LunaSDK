@@ -31,8 +31,12 @@ namespace Luna
 
     namespace MCP
     {
-        //! The MCP protocol revision implemented by this module.
-        constexpr const c8* PROTOCOL_VERSION = "2026-07-28";
+        //! The modern MCP protocol revision implemented by this module.
+        constexpr const c8* MODERN_PROTOCOL_VERSION = "2026-07-28";
+        //! The legacy MCP protocol revision implemented by this module.
+        constexpr const c8* LEGACY_PROTOCOL_VERSION = "2025-06-18";
+        //! The preferred MCP protocol revision implemented by this module.
+        constexpr const c8* PROTOCOL_VERSION = MODERN_PROTOCOL_VERSION;
 
         //! Specifies where an MCP response may be cached.
         enum class CacheScope : u8
@@ -108,9 +112,12 @@ namespace Luna
         };
 
         //! @interface IMCPServer
-        //! Processes MCP `2026-07-28` messages and exposes selected Frontend functions as tools.
+        //! Processes MCP `2026-07-28` or `2025-06-18` messages and exposes selected Frontend
+        //! functions as tools.
         //! @details The server retains its Frontend object. Neither object is thread-safe; callers
-        //! must synchronize all access when sharing them between threads.
+        //! must synchronize all access when sharing them between threads. The first valid JSON-RPC
+        //! request selects the protocol facility for the lifetime of this object: `initialize`
+        //! selects `2025-06-18`, and any other request selects `2026-07-28`.
         struct [[Luna::interface("{2CCFD788-B394-473C-AFEF-6826E67B15D3}")]] IMCPServer : virtual Interface
         {
             //! Registers or replaces one exported MCP tool.
@@ -134,6 +141,7 @@ namespace Luna
             //! @param[in] message One JSON-compatible JSON-RPC request or notification object.
             //! @return A response object for a request, or no response for a valid notification.
             //! @details JSON-RPC batch arrays are rejected. Notifications produce no response.
+            //! Legacy tool requests are rejected until `notifications/initialized` is received.
             virtual MessageResult process_message(const Variant& message) = 0;
 
             //! Strictly decodes, processes, and strictly encodes one complete MCP JSON message.
@@ -144,7 +152,7 @@ namespace Luna
             virtual R<String> process_json(const c8* json, usize json_size = USIZE_MAX) = 0;
         };
 
-        //! Creates a modern MCP tools server backed by `frontend`.
+        //! Creates a dual-protocol MCP tools server backed by `frontend`.
         //! @param[in] frontend The Frontend instance to retain and invoke.
         //! @param[in] desc The implementation identity and cache configuration to copy.
         //! @return Returns @ref BasicError::bad_arguments if `frontend` or `desc` is invalid.
@@ -158,7 +166,9 @@ namespace Luna
         //! @return Returns `ok` after a complete-frame input EOF, or an IO, framing, or
         //! serialization error.
         //! @details Standard output must be reserved exclusively for MCP response frames while this
-        //! function is running. The function returns successfully after a complete-frame EOF.
+        //! function is running. The function returns successfully after a complete-frame EOF. One
+        //! server object represents one standard IO connection and retains its selected protocol
+        //! facility and legacy initialization state.
         LUNA_MCP_API RV run_stdio_server(
             IMCPServer* server,
             const StdioServerOptions& options = StdioServerOptions());
