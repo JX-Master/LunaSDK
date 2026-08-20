@@ -24,7 +24,7 @@ namespace Luna
         RV Frontend::set_resource_function(const Name& url, FunctionHandler&& handler, bool overwrite)
         {
             auto res = m_registry.emplace(make_pair(url, ResourceEntry()));
-            if(!res.second && !overwrite) return BasicError::already_exists();
+            if(!res.second && !overwrite) return E_ALREADY_EXISTS;
             auto& iter = res.first;
             iter->second.type = ResourceType::function;
             iter->second.function = move(handler);
@@ -34,7 +34,7 @@ namespace Luna
         RV Frontend::set_resource_data(const Name& url, Variant&& data, bool overwrite)
         {
             auto res = m_registry.emplace(make_pair(url, ResourceEntry()));
-            if(!res.second && !overwrite) return BasicError::already_exists();
+            if(!res.second && !overwrite) return E_ALREADY_EXISTS;
             auto& iter = res.first;
             iter->second.type = ResourceType::data;
             iter->second.data = move(data);
@@ -48,7 +48,7 @@ namespace Luna
             bool overwrite)
         {
             auto res = m_registry.emplace(make_pair(url, ResourceEntry()));
-            if(!res.second && !overwrite) return BasicError::already_exists();
+            if(!res.second && !overwrite) return E_ALREADY_EXISTS;
             auto& iter = res.first;
             iter->second.type = ResourceType::userdata;
             iter->second.userdata_ptr = data;
@@ -71,11 +71,11 @@ namespace Luna
             auto iter = m_registry.find(url);
             if (iter == m_registry.end())
             {
-                return FrontendError::resource_not_found();
+                return E_RESOURCE_NOT_FOUND;
             }
             if (iter->second.type != ResourceType::data)
             {
-                return FrontendError::type_mismatch();
+                return E_TYPE_MISMATCH;
             }
             return iter->second.data;
         }
@@ -91,9 +91,9 @@ namespace Luna
 
             if (failed(result))
             {
-                ErrCode code = result.errcode();
+                ResultCode code = result.errcode();
                 Error err;
-                if(code == BasicError::error_object())
+                if(code == E_ERROR_OBJECT)
                 {
                     err = get_error();
                 }
@@ -104,7 +104,7 @@ namespace Luna
                 Name cat_name  = get_error_category_name(get_error_code_category(err.code));
                 Name code_name = get_error_code_name(err.code);
                 Name message = err.message.c_str();
-                return make_error_response(make_frontend_error(cat_name, code_name, message, err.info));
+                return make_error_response(make_frontend_error(err.code, cat_name, code_name, message, err.info));
             }
             return make_response(result.get());
         }
@@ -114,7 +114,7 @@ namespace Luna
             auto iter = m_registry.find(url);
             if (iter == m_registry.end() || iter->second.type != ResourceType::function)
             {
-                return FrontendError::method_not_found();
+                return E_METHOD_NOT_FOUND;
             }
             return iter->second.function(this, params);
         }
@@ -158,12 +158,16 @@ namespace Luna
         }
 
         LUNA_FRONTEND_API Variant make_frontend_error(
+            ResultCode result_code,
             const Name& category,
             const Name& code,
             const Name& message,
             const Variant& data)
         {
             Variant err(VariantType::object);
+            c8 result_code_string[17];
+            snprintf(result_code_string, sizeof(result_code_string), "%016llX", static_cast<unsigned long long>(result_code.code));
+            err["result_code"] = Variant(result_code_string);
             err["category"] = Variant(category);
             err["code"]     = Variant(code);
             if (message.size() > 0)
@@ -187,31 +191,16 @@ namespace Luna
         // Error codes
         // -----------------------------------------------------------------------
 
-        namespace FrontendError
+        static RV register_error_codes()
         {
-            LUNA_FRONTEND_API errcat_t errtype()
+            if (!register_error_category(ERROR_CATEGORY, "Frontend") ||
+                !register_error_code(E_RESOURCE_NOT_FOUND, "resource_not_found", "The requested frontend resource was not found.") ||
+                !register_error_code(E_TYPE_MISMATCH, "type_mismatch", "The frontend resource type does not match the requested type.") ||
+                !register_error_code(E_METHOD_NOT_FOUND, "method_not_found", "The requested frontend method was not found."))
             {
-                static errcat_t e = get_error_category_by_name("FrontendError");
-                return e;
+                return set_error(E_ALREADY_EXISTS, "Frontend error metadata conflicts with an existing registration.");
             }
-
-            LUNA_FRONTEND_API ErrCode resource_not_found()
-            {
-                static ErrCode e = get_error_code_by_name("FrontendError", "resource_not_found");
-                return e;
-            }
-
-            LUNA_FRONTEND_API ErrCode type_mismatch()
-            {
-                static ErrCode e = get_error_code_by_name("FrontendError", "type_mismatch");
-                return e;
-            }
-
-            LUNA_FRONTEND_API ErrCode method_not_found()
-            {
-                static ErrCode e = get_error_code_by_name("FrontendError", "method_not_found");
-                return e;
-            }
+            return ok;
         }
 
         // -----------------------------------------------------------------------
@@ -224,6 +213,8 @@ namespace Luna
 
             virtual RV on_register() override
             {
+                RV result = register_error_codes();
+                if (failed(result.errcode())) return result;
                 Meta::register_Frontend_types();
                 return ok;
             }

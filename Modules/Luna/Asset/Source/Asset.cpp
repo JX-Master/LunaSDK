@@ -24,6 +24,22 @@
 
 namespace Luna
 {
+    static RV register_asset_error_codes()
+    {
+        if (!register_error_category(Asset::ERROR_CATEGORY, "Asset") ||
+            !register_error_code(Asset::E_META_FILE_NOT_FOUND, "meta_file_not_found", "The asset metadata file was not found.") ||
+            !register_error_code(Asset::E_UNKNOWN_ASSET_TYPE, "unknown_asset_type", "The asset type is not registered.") ||
+            !register_error_code(Asset::E_ASSET_NOT_REGISTERED, "asset_not_registered", "The asset is not registered.") ||
+            !register_error_code(Asset::E_ASSET_ALREADY_REGISTERED, "asset_already_registered", "The asset is already registered.") ||
+            !register_error_code(Asset::E_EMPTY_ASSET_PATH, "empty_asset_path", "The asset path is empty.") ||
+            !register_error_code(Asset::E_ASSET_DATA_NOT_LOADED, "asset_data_not_loaded", "The asset data has not been loaded.") ||
+            !register_error_code(Asset::E_ASSET_DATA_LOADING, "asset_data_loading", "The asset data is being loaded by another thread."))
+        {
+            return set_error(E_ALREADY_EXISTS, "Asset error metadata conflicts with an existing registration.");
+        }
+        return ok;
+    }
+
     namespace Asset
     {
         struct AssetEntryExtractKey
@@ -68,9 +84,9 @@ namespace Luna
             }
             lucatch
             {
-                if (luerr == BasicError::not_found())
+                if (luerr == E_NOT_FOUND)
                 {
-                    return set_error(AssetError::meta_file_not_found(), "Asset meta file %s is not found.", meta_path.encode().c_str());
+                    return set_error(Asset::E_META_FILE_NOT_FOUND, "Asset meta file %s is not found.", meta_path.encode().c_str());
                 }
                 return luerr;
             }
@@ -111,7 +127,7 @@ namespace Luna
         {
             AssetEntry* entry = (AssetEntry*)asset.handle;
             LockGuard lock(entry->lock);
-            if(internal_get_asset_state(entry) != AssetState::unregistered) return AssetError::asset_already_registered();
+            if(internal_get_asset_state(entry) != AssetState::unregistered) return Asset::E_ASSET_ALREADY_REGISTERED;
             entry->type = type;
             return ok;
         }
@@ -126,7 +142,7 @@ namespace Luna
             asset_t ret = get_asset();
             if(save_meta_to_file)
             {
-                if(path.empty()) return AssetError::empty_asset_path();
+                if(path.empty()) return Asset::E_EMPTY_ASSET_PATH;
                 AssetMetaFile file;
                 file.type = type;
                 file.guid = get_asset_guid(ret);
@@ -235,14 +251,14 @@ namespace Luna
             lutry
             {
                 Path meta_path = get_asset_path(asset);
-                if(meta_path.empty()) return set_error(BasicError::bad_arguments(), "Asset::load_asset_meta: Asset path is not valid");
+                if(meta_path.empty()) return set_error(E_BAD_ARGUMENTS, "Asset::load_asset_meta: Asset path is not valid");
                 meta_path.append_extension("meta");
                 lulet(meta_file, internal_load_asset_meta(meta_path));
                 AssetEntry* entry = (AssetEntry*)asset.handle;
                 LockGuard lock(entry->lock);
                 if(entry->guid != meta_file.guid)
                 {
-                    return set_error(BasicError::bad_data(), "Asset::load_asset_meta: The asset GUID loaded from metadata file does not match the asset GUID in system.");
+                    return set_error(E_BAD_DATA, "Asset::load_asset_meta: The asset GUID loaded from metadata file does not match the asset GUID in system.");
                 }
                 entry->type = meta_file.type;
             }
@@ -255,7 +271,7 @@ namespace Luna
             lutry
             {
                 Path meta_path = get_asset_path(asset);
-                if(meta_path.empty()) return set_error(BasicError::bad_arguments(), "Asset::load_asset_meta: Asset path is not valid");
+                if(meta_path.empty()) return set_error(E_BAD_ARGUMENTS, "Asset::load_asset_meta: Asset path is not valid");
                 meta_path.append_extension("meta");
                 AssetEntry* entry = (AssetEntry*)asset.handle;
                 LockGuard lock(entry->lock);
@@ -273,7 +289,7 @@ namespace Luna
             MutexGuard g1(g_assets_mutex);
             auto iter = g_asset_path_mapping.find(path);
             if (iter != g_asset_path_mapping.end()) return iter->second;
-            return BasicError::not_found();
+            return E_NOT_FOUND;
         }
         LUNA_ASSET_API Guid get_asset_guid(asset_t asset)
         {
@@ -295,7 +311,7 @@ namespace Luna
             MutexGuard g1(g_assets_mutex);
             LockGuard guard(entry->lock);
             auto iter = g_asset_path_mapping.insert(make_pair(path, asset));
-            if(!iter.second) return BasicError::already_exists();
+            if(!iter.second) return E_ALREADY_EXISTS;
             g_asset_path_mapping.erase(entry->path);
             entry->path = path;
             return ok;
@@ -327,7 +343,7 @@ namespace Luna
             lucheck_msg(asset.handle, "Asset handle must not be null!");
             AssetEntry* entry = (AssetEntry*)asset.handle;
             LockGuard guard(entry->lock);
-            if (entry->path.empty()) return AssetError::asset_not_registered();
+            if (entry->path.empty()) return Asset::E_ASSET_NOT_REGISTERED;
             Path path = entry->path;
             guard.unlock();
             Name filename = path.back();
@@ -390,7 +406,7 @@ namespace Luna
             MutexGuard g1(g_assets_mutex);
             {
                 auto iter = g_asset_path_mapping.find(new_path);
-                if (iter != g_asset_path_mapping.end()) return BasicError::already_exists();
+                if (iter != g_asset_path_mapping.end()) return E_ALREADY_EXISTS;
             }
             lutry
             {
@@ -416,7 +432,7 @@ namespace Luna
                     auto attr = VFS::get_file_attribute(to_path);
                     if(succeeded(attr))
                     {
-                        luthrow(set_error(BasicError::already_exists(), "Cannot move asset file %s to %s: file already exists.", from_path.encode().c_str(), to_path.encode().c_str()));
+                        luthrow(set_error(E_ALREADY_EXISTS, "Cannot move asset file %s to %s: file already exists.", from_path.encode().c_str(), to_path.encode().c_str()));
                     }
                     from_path.pop_back();
                     to_path.pop_back();
@@ -456,7 +472,7 @@ namespace Luna
             MutexGuard g1(g_assets_mutex);
             {
                 auto iter = g_asset_path_mapping.find(new_path);
-                if (iter != g_asset_path_mapping.end()) return BasicError::already_exists();
+                if (iter != g_asset_path_mapping.end()) return E_ALREADY_EXISTS;
             }
             asset_t ret;
             lutry
@@ -483,7 +499,7 @@ namespace Luna
                     auto attr = VFS::get_file_attribute(to_path);
                     if(succeeded(attr))
                     {
-                        luthrow(set_error(BasicError::already_exists(), "Cannot copy asset file %s to %s: file already exists.", from_path.encode().c_str(), to_path.encode().c_str()));
+                        luthrow(set_error(E_ALREADY_EXISTS, "Cannot copy asset file %s to %s: file already exists.", from_path.encode().c_str(), to_path.encode().c_str()));
                     }
                     from_path.pop_back();
                     to_path.pop_back();
@@ -554,7 +570,7 @@ namespace Luna
             AssetEntry* entry = (AssetEntry*)asset.handle;
             LockGuard g(entry->lock);
             if((entry->data.valid() || entry->loading) && !force_reload) return ok;
-            if(entry->loading) return AssetError::asset_data_loading();
+            if(entry->loading) return Asset::E_ASSET_DATA_LOADING;
             // Load asset data from this thread.
             Path path = entry->path;
             Name type = entry->type;
@@ -564,11 +580,11 @@ namespace Luna
             {
                 if (type.empty())
                 {
-                    luthrow(AssetError::asset_not_registered());
+                    luthrow(Asset::E_ASSET_NOT_REGISTERED);
                 }
                 if (path.empty())
                 {
-                    luthrow(AssetError::empty_asset_path());
+                    luthrow(Asset::E_EMPTY_ASSET_PATH);
                 }
                 lulet(desc, get_asset_type_desc(type));
                 ObjRef data;
@@ -578,7 +594,7 @@ namespace Luna
                 }
                 else
                 {
-                    luthrow(set_error(BasicError::not_supported(), "Asset loading is not implemented by asset %s", type.c_str()));
+                    luthrow(set_error(E_NOT_SUPPORTED, "Asset loading is not implemented by asset %s", type.c_str()));
                 }
                 g = entry->lock;
                 entry->data = data;
@@ -600,7 +616,7 @@ namespace Luna
             AssetEntry* entry = (AssetEntry*)asset.handle;
             LockGuard g(entry->lock);
             if((entry->data.valid() || entry->loading) && !force_reload) return ok;
-            if(entry->loading) return AssetError::asset_data_loading();
+            if(entry->loading) return Asset::E_ASSET_DATA_LOADING;
             // Load asset data from this thread.
             Name type = entry->type;
             entry->loading = true;
@@ -609,7 +625,7 @@ namespace Luna
             {
                 if (type.empty())
                 {
-                    luthrow(AssetError::asset_not_registered());
+                    luthrow(Asset::E_ASSET_NOT_REGISTERED);
                 }
                 lulet(desc, get_asset_type_desc(entry->type));
                 ObjRef data;
@@ -619,7 +635,7 @@ namespace Luna
                 }
                 else
                 {
-                    luthrow(set_error(BasicError::not_supported(), "Asset default data loading is not implemented by asset %s", entry->type.c_str()));
+                    luthrow(set_error(E_NOT_SUPPORTED, "Asset default data loading is not implemented by asset %s", entry->type.c_str()));
                 }
                 g = entry->lock;
                 entry->data = data;
@@ -647,8 +663,8 @@ namespace Luna
             lucheck_msg(asset.handle, "Asset handle must not be null!");
             AssetEntry* entry = (AssetEntry*)asset.handle;
             LockGuard g(entry->lock);
-            if (entry->type.empty() || entry->path.empty()) return AssetError::asset_not_registered();
-            if (!entry->data.valid()) return AssetError::asset_data_not_loaded();
+            if (entry->type.empty() || entry->path.empty()) return Asset::E_ASSET_NOT_REGISTERED;
+            if (!entry->data.valid()) return Asset::E_ASSET_DATA_NOT_LOADED;
             // Save asset.
             lutry
             {
@@ -662,7 +678,7 @@ namespace Luna
                 }
                 else
                 {
-                    luthrow(set_error(BasicError::not_supported(), "Asset Saving is not Implemented by Asset %s", entry->type.c_str()));
+                    luthrow(set_error(E_NOT_SUPPORTED, "Asset Saving is not Implemented by Asset %s", entry->type.c_str()));
                 }
             }
             lucatchret;
@@ -694,6 +710,8 @@ namespace Luna
             virtual const c8* get_name() override { return "Asset"; }
             virtual RV on_register() override
             {
+                RV result = register_asset_error_codes();
+                if (failed(result.errcode())) return result;
                 return add_dependency_modules(this, {module_variant_utils(), module_vfs()});
             }
             virtual RV on_init() override
@@ -747,47 +765,4 @@ namespace Luna
         return &m;
     }
 
-    namespace AssetError
-    {
-        LUNA_ASSET_API errcat_t errtype()
-        {
-            static errcat_t v = get_error_category_by_name("AssetError");
-            return v;
-        }
-        LUNA_ASSET_API ErrCode meta_file_not_found()
-        {
-            static ErrCode v = get_error_code_by_name("AssetError", "meta_file_not_found");
-            return v;
-        }
-        LUNA_ASSET_API ErrCode unknown_asset_type()
-        {
-            static ErrCode v = get_error_code_by_name("AssetError", "unknown_asset_type");
-            return v;
-        }
-        LUNA_ASSET_API ErrCode asset_not_registered()
-        {
-            static ErrCode v = get_error_code_by_name("AssetError", "asset_not_registered");
-            return v;
-        }
-        LUNA_ASSET_API ErrCode asset_already_registered()
-        {
-            static ErrCode v = get_error_code_by_name("AssetError", "asset_already_registered");
-            return v;
-        }
-        LUNA_ASSET_API ErrCode empty_asset_path()
-        {
-            static ErrCode v = get_error_code_by_name("AssetError", "empty_asset_path");
-            return v;
-        }
-        LUNA_ASSET_API ErrCode asset_data_not_loaded()
-        {
-            static ErrCode v = get_error_code_by_name("AssetError", "asset_data_not_loaded");
-            return v;
-        }
-        LUNA_ASSET_API ErrCode asset_data_loading()
-        {
-            static ErrCode v = get_error_code_by_name("AssetError", "asset_data_loading");
-            return v;
-        }
-    }
 }

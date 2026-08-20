@@ -14,6 +14,17 @@
 #include <Luna/Runtime/Module.hpp>
 namespace Luna
 {
+    static RV register_ecs_error_codes()
+    {
+        if (!register_error_category(ECS::ERROR_CATEGORY, "ECS") ||
+            !register_error_code(ECS::E_ENTITY_NOT_FOUND, "entity_not_found", "The specified entity was not found.") ||
+            !register_error_code(ECS::E_COMPONENT_NOT_FOUND, "component_not_found", "The specified component was not found."))
+        {
+            return set_error(E_ALREADY_EXISTS, "ECS error metadata conflicts with an existing registration.");
+        }
+        return ok;
+    }
+
     namespace ECS
     {
         struct ECSModule : public Module
@@ -21,6 +32,8 @@ namespace Luna
             virtual const c8* get_name() override { return "ECS"; }
             virtual RV on_register() override
             {
+                RV result = register_ecs_error_codes();
+                if (failed(result.errcode())) return result;
                 return add_dependency_module(this, module_job_system());
             }
             virtual RV on_init() override
@@ -34,23 +47,5 @@ namespace Luna
     {
         static ECS::ECSModule m;
         return &m;
-    }
-    namespace ECSError
-    {
-        LUNA_ECS_API errcat_t errtype()
-        {
-            static errcat_t v = get_error_category_by_name("ECSError");
-            return v;
-        }
-        LUNA_ECS_API ErrCode entity_not_found()
-        {
-            static ErrCode v = get_error_code_by_name("ECSError", "entity_not_found");
-            return v;
-        }
-        LUNA_ECS_API ErrCode component_not_found()
-        {
-            static ErrCode v = get_error_code_by_name("ECSError", "component_not_found");
-            return v;
-        }
     }
 }

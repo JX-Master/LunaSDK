@@ -106,7 +106,7 @@ namespace Luna
             if(visiting.contains(m))
             {
                 // Cycle reference detected.
-                return set_error(BasicError::loop(), "Cycling module dependencies detected.");
+                return set_error(E_LOOP, "Cycling module dependencies detected.");
             }
             if(!visited.insert(m).second)
             {
@@ -173,7 +173,7 @@ namespace Luna
             auto iter = g_modules.find(handle);
             if (iter == g_modules.end())
             {
-                return set_error(BasicError::not_found(), "Module %s is not registered.", handle->get_name());
+                return set_error(E_NOT_FOUND, "Module %s is not registered.", handle->get_name());
             }
             if (iter->second.m_initialized) return ok;
             lulet(queue, get_module_init_queue());
@@ -202,7 +202,7 @@ namespace Luna
             auto iter = g_modules.find(handle);
             if (iter == g_modules.end())
             {
-                return set_error(BasicError::not_found(), "Module %s is not found.", handle->get_name());
+                return set_error(E_NOT_FOUND, "Module %s is not found.", handle->get_name());
             }
             if (iter->second.m_initialized) return ok;
             lulet(queue, get_module_init_queue());

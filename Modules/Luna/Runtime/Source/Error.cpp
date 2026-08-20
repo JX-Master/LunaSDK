@@ -2,7 +2,7 @@
 * This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
-* 
+*
 * @file Error.cpp
 * @author JXMaster
 * @date 2020/11/24
@@ -14,237 +14,218 @@
 #include <Luna/Runtime/HashMap.hpp>
 #include "Platform/Fiber.hpp"
 #include "../SpinLock.hpp"
+
 namespace Luna
 {
     SpinLock g_error_mtx;
     opaque_t g_error_tls;
+    bool g_error_ready = false;
 
-    struct ErrCodeRegistry
+    struct ResultCodeRegistry
     {
-        c8* name;
-        errcat_t belonging_error_category;
-
-        ErrCodeRegistry(const c8* name) :
-            belonging_error_category(0)
-        {
-            usize l = strlen(name);
-            c8* str = (c8*)memalloc((l + 1) * sizeof(c8));
-            memcpy(str, name, (l + 1) * sizeof(c8));
-
-            this->name = str;
-        }
-        ErrCodeRegistry(const ErrCodeRegistry&) = delete;
-        ErrCodeRegistry(ErrCodeRegistry&& rhs) :
-            name(rhs.name),
-            belonging_error_category(rhs.belonging_error_category)
-        {
-            rhs.name = nullptr;
-        }
-        ~ErrCodeRegistry()
-        {
-            if (name)
-            {
-                memdelete(name);
-                name = nullptr;
-            }
-        }
+        String name;
+        String description;
+        errcat_t category;
     };
 
-    struct ErrCategroyRegistry
+    struct ErrCategoryRegistry
     {
-        c8* name;
-        errcat_t belonging_error_category;
-        Vector<ErrCode> codes;
-        Vector<errcat_t> subcategories;
-
-        ErrCategroyRegistry(const c8* name, usize name_sz) :
-            belonging_error_category(0)
-        {
-            c8* str = (c8*)memalloc((name_sz + 1) * sizeof(c8));
-            memcpy(str, name, name_sz * sizeof(c8));
-            str[name_sz] = '\0';
-            this->name = str;
-        }
-        ErrCategroyRegistry(const ErrCategroyRegistry&) = delete;
-        ErrCategroyRegistry(ErrCategroyRegistry&& rhs) :
-            name(rhs.name),
-            belonging_error_category(rhs.belonging_error_category),
-            codes(move(rhs.codes)),
-            subcategories(move(rhs.subcategories))
-        {
-            rhs.name = nullptr;
-        }
-        ~ErrCategroyRegistry()
-        {
-            if (name)
-            {
-                memdelete(name);
-                name = nullptr;
-            }
-        }
+        String name;
+        Vector<ResultCode> codes;
     };
 
-    Unconstructed<HashMap<ErrCode, ErrCodeRegistry>> g_errcode_registry;
-    Unconstructed<HashMap<errcat_t, ErrCategroyRegistry>> g_errcat_registry;
+    Unconstructed<HashMap<ResultCode, ResultCodeRegistry>> g_result_code_registry;
+    Unconstructed<HashMap<errcat_t, ErrCategoryRegistry>> g_errcat_registry;
 
     void error_destructor(void* cookie)
     {
-        Error* err = (Error*)cookie;
+        Error* err = static_cast<Error*>(cookie);
         memdelete(err);
+    }
+
+    LUNA_RUNTIME_API bool register_error_category(errcat_t category, const c8* name)
+    {
+        if(!g_error_ready || !name || !name[0] || (category >> 48)) return false;
+        LockGuard guard(g_error_mtx);
+        auto& categories = g_errcat_registry.get();
+        auto existing = categories.find(category);
+        if(existing != categories.end())
+        {
+            return !strcmp(existing->second.name.c_str(), name);
+        }
+        for(auto& entry : categories)
+        {
+            if(!strcmp(entry.second.name.c_str(), name)) return false;
+        }
+        categories.insert(make_pair(category, ErrCategoryRegistry{String(name), Vector<ResultCode>()}));
+        return true;
+    }
+
+    LUNA_RUNTIME_API bool register_error_code(ResultCode code, const c8* name, const c8* description)
+    {
+        if(!g_error_ready || !code.code || !name || !name[0]) return false;
+        if(!description) description = "";
+        LockGuard guard(g_error_mtx);
+        auto& categories = g_errcat_registry.get();
+        const errcat_t category = get_error_code_category(code);
+        auto category_iter = categories.find(category);
+        if(category_iter == categories.end()) return false;
+
+        auto& codes = g_result_code_registry.get();
+        auto existing = codes.find(code);
+        if(existing != codes.end())
+        {
+            return existing->second.category == category &&
+                !strcmp(existing->second.name.c_str(), name) &&
+                !strcmp(existing->second.description.c_str(), description);
+        }
+        for(ResultCode registered_code : category_iter->second.codes)
+        {
+            auto registered = codes.find(registered_code);
+            if(registered != codes.end() && !strcmp(registered->second.name.c_str(), name)) return false;
+        }
+        codes.insert(make_pair(code, ResultCodeRegistry{String(name), String(description), category}));
+        category_iter->second.codes.push_back(code);
+        return true;
+    }
+
+    static bool register_runtime_error_codes()
+    {
+        if(!register_error_category(ERROR_CATEGORY, "Runtime")) return false;
+        struct Info
+        {
+            ResultCode code;
+            const c8* name;
+            const c8* description;
+        };
+        constexpr Info infos[] =
+        {
+            {E_FAILURE, "failure", "General failure."},
+            {E_ERROR_OBJECT, "error_object", "Detailed failure information is stored in the current thread's Error object."},
+            {E_NOT_FOUND, "not_found", "The specified item does not exist."},
+            {E_ALREADY_EXISTS, "already_exists", "The specified item already exists."},
+            {E_NOT_UNIQUE, "not_unique", "The specified item is not unique."},
+            {E_BAD_ARGUMENTS, "bad_arguments", "Invalid arguments were specified."},
+            {E_BAD_CALLING_TIME, "bad_calling_time", "The function was called at an invalid time."},
+            {E_OUT_OF_MEMORY, "out_of_memory", "The system cannot allocate enough memory."},
+            {E_NOT_SUPPORTED, "not_supported", "The requested operation is not supported."},
+            {E_BAD_PLATFORM_CALL, "bad_platform_call", "An underlying platform call failed."},
+            {E_ACCESS_DENIED, "access_denied", "Access to the file or resource is denied."},
+            {E_NOT_DIRECTORY, "not_directory", "The specified path is not a directory."},
+            {E_IS_DIRECTORY, "is_directory", "The specified path is a directory."},
+            {E_DIRECTORY_NOT_EMPTY, "directory_not_empty", "The directory is not empty."},
+            {E_BAD_FILE, "bad_file", "The file format is invalid or unsupported."},
+            {E_IO_ERROR, "io_error", "A system I/O operation failed."},
+            {E_TIMEOUT, "timeout", "The operation did not complete before its deadline."},
+            {E_DATA_TOO_BIG, "data_too_big", "The provided data or string is too large."},
+            {E_INSUFFICIENT_USER_BUFFER, "insufficient_user_buffer", "The user-provided buffer is not large enough."},
+            {E_NOT_READY, "not_ready", "The service provider is not ready."},
+            {E_OUT_OF_RANGE, "out_of_range", "The provided value is outside its valid range."},
+            {E_OUT_OF_RESOURCE, "out_of_resource", "The system has exhausted an internal resource."},
+            {E_INSUFFICIENT_SYSTEM_BUFFER, "insufficient_system_buffer", "The system has exhausted an internal buffer."},
+            {E_FORMAT_ERROR, "format_error", "A format error was detected."},
+            {E_INTERRUPTED, "interrupted", "The operation was interrupted."},
+            {E_END_OF_FILE, "end_of_file", "The end of a file or stream was reached."},
+            {E_NULL_VALUE, "null_value", "An expected value is absent."},
+            {E_BAD_CAST, "bad_cast", "A value does not conform to the requested type."},
+            {E_IN_PROGRESS, "in_progress", "The operation is still in progress."},
+            {E_VERSION_DISMATCH, "version_dismatch", "Library or platform versions do not match."},
+            {E_NO_DATA, "no_data", "No data is available."},
+            {E_BAD_DATA, "bad_data", "Data validation failed."},
+            {E_BAD_MEMORY_ADDRESS, "bad_memory_address", "A memory address is invalid."},
+            {E_DEADLOCK, "deadlock", "A deadlock was detected."},
+            {E_NOT_PERMITTED, "not_permitted", "The requested operation is not permitted."},
+            {E_BUSY, "busy", "The target device or service is busy."},
+            {E_FILE_TOO_BIG, "file_too_big", "The file is too large."},
+            {E_NOT_CONFIGURED, "not_configured", "The device or service is not configured."},
+            {E_BAD_PIPE, "bad_pipe", "A POSIX pipe operation failed."},
+            {E_PATH_TOO_LONG, "path_too_long", "The path is too long."},
+            {E_LOOP, "loop", "A loop or circular reference was detected."},
+        };
+        for(const Info& info : infos)
+        {
+            if(!register_error_code(info.code, info.name, info.description)) return false;
+        }
+        return true;
     }
 
     bool error_init()
     {
         g_errcat_registry.construct();
-        g_errcode_registry.construct();
-        auto r =  Platform::fls_alloc(error_destructor, g_error_tls);
-        return r == Platform::Result::success;
+        g_result_code_registry.construct();
+        g_error_ready = true;
+        auto result = Platform::fls_alloc(error_destructor, g_error_tls);
+        if(result != Platform::Result::success || !register_runtime_error_codes())
+        {
+            if(result == Platform::Result::success) Platform::fls_free(g_error_tls);
+            g_error_ready = false;
+            g_result_code_registry.destruct();
+            g_errcat_registry.destruct();
+            return false;
+        }
+        return true;
     }
 
     void error_close()
     {
-        Error* err = (Error*)Platform::fls_get(g_error_tls);
-        if (err)
+        Error* err = static_cast<Error*>(Platform::fls_get(g_error_tls));
+        if(err)
         {
             memdelete(err);
             Platform::fls_set(g_error_tls, nullptr);
         }
         Platform::fls_free(g_error_tls);
-        g_errcode_registry.destruct();
+        g_error_ready = false;
+        g_result_code_registry.destruct();
         g_errcat_registry.destruct();
     }
 
-    static errcat_t interal_get_error_category_by_name(const c8* errcat_name_begin, const c8* errcat_name_end, ErrCategroyRegistry** out_errtype_registry)
+    LUNA_RUNTIME_API const c8* get_error_code_name(ResultCode err_code)
     {
-        lucheck(errcat_name_begin && *errcat_name_begin != '\0');
-        usize errcat_name_sz = errcat_name_end - errcat_name_begin;
-        usize h = memhash<usize>(errcat_name_begin, errcat_name_sz * sizeof(c8));
-        auto& r = g_errcat_registry.get();
-        auto iter = r.find(h);
-        ErrCategroyRegistry* errtype_registry;
-        if (iter == r.end())
-        {
-            auto it2 = r.insert(make_pair(h, ErrCategroyRegistry(errcat_name_begin, errcat_name_sz)));
-            errtype_registry = &(it2.first->second);
-            // Set parent error category if needed.
-            const c8* pattern = "::";
-            auto iter = find_end(errcat_name_begin, errcat_name_end, pattern, pattern + 2);
-            if(iter != errcat_name_end)
-            {
-                ErrCategroyRegistry* parent_registry;
-                errtype_registry->belonging_error_category = interal_get_error_category_by_name(errcat_name_begin, iter, &parent_registry);
-                parent_registry->subcategories.push_back(h);
-            }
-        }
-        else
-        {
-            errtype_registry = &(iter->second);
-        }
-        if (out_errtype_registry)
-        {
-            *out_errtype_registry = errtype_registry;
-        }
-        return h;
+        if(!g_error_ready) return "";
+        LockGuard guard(g_error_mtx);
+        auto iter = g_result_code_registry.get().find(err_code);
+        return iter == g_result_code_registry.get().end() ? "" : iter->second.name.c_str();
     }
 
-    LUNA_RUNTIME_API ErrCode get_error_code_by_name(const c8* errcat_name, const c8* errcode_name)
+    LUNA_RUNTIME_API const c8* get_error_code_description(ResultCode err_code)
     {
-        lucheck(errcode_name && errcat_name && *errcode_name != '\0' && *errcat_name != '\0');
-        usize errcat_name_sz = strlen(errcat_name);
-        usize h = memhash<u64>(errcat_name, errcat_name_sz * sizeof(c8));
-        h = strhash<u64>(errcode_name, h);
-        auto& r = g_errcode_registry.get();
-        LockGuard g(g_error_mtx);
-        auto iter = r.find(ErrCode(h));
-        if (iter == r.end())
-        {
-            auto it2 = r.insert(make_pair(h, ErrCodeRegistry(errcode_name)));
-            ErrCategroyRegistry* errcat;
-            it2.first->second.belonging_error_category = interal_get_error_category_by_name(errcat_name, errcat_name + errcat_name_sz, &errcat);
-            errcat->codes.push_back(ErrCode(h));
-        }
-        return ErrCode(h);
-    }
-
-    LUNA_RUNTIME_API errcat_t get_error_category_by_name(const c8* errcat_name)
-    {
-        LockGuard g(g_error_mtx);
-        usize errcat_name_sz = strlen(errcat_name);
-        errcat_t r = interal_get_error_category_by_name(errcat_name, errcat_name + errcat_name_sz, nullptr);
-        return r;
-    }
-
-    LUNA_RUNTIME_API const c8* get_error_code_name(ErrCode err_code)
-    {
-        LockGuard g(g_error_mtx);
-        auto iter = g_errcode_registry.get().find(err_code);
-        if (iter == g_errcode_registry.get().end())
-        {
-            return "";
-        }
-        return iter->second.name;
+        if(!g_error_ready) return "";
+        LockGuard guard(g_error_mtx);
+        auto iter = g_result_code_registry.get().find(err_code);
+        return iter == g_result_code_registry.get().end() ? "" : iter->second.description.c_str();
     }
 
     LUNA_RUNTIME_API const c8* get_error_category_name(errcat_t err_category)
     {
-        LockGuard g(g_error_mtx);
+        if(!g_error_ready) return "";
+        LockGuard guard(g_error_mtx);
         auto iter = g_errcat_registry.get().find(err_category);
-        if (iter == g_errcat_registry.get().end())
-        {
-            return "";
-        }
-        return iter->second.name;
-    }
-
-    LUNA_RUNTIME_API errcat_t get_error_code_category(ErrCode err_code)
-    {
-        LockGuard g(g_error_mtx);
-        auto iter = g_errcode_registry.get().find(err_code);
-        if (iter == g_errcode_registry.get().end())
-        {
-            return 0;
-        }
-        return iter->second.belonging_error_category;
+        return iter == g_errcat_registry.get().end() ? "" : iter->second.name.c_str();
     }
 
     LUNA_RUNTIME_API Vector<errcat_t> get_all_error_categories()
     {
-        LockGuard g(g_error_mtx);
-        Vector<errcat_t> r;
-        r.reserve(g_errcat_registry.get().size());
-        for (auto& i : g_errcat_registry.get())
-        {
-            r.push_back(i.first);
-        }
-        return r;
+        Vector<errcat_t> result;
+        if(!g_error_ready) return result;
+        LockGuard guard(g_error_mtx);
+        result.reserve(g_errcat_registry.get().size());
+        for(auto& entry : g_errcat_registry.get()) result.push_back(entry.first);
+        return result;
     }
 
-    LUNA_RUNTIME_API Vector<ErrCode> get_all_error_codes_of_category(errcat_t err_category)
+    LUNA_RUNTIME_API Vector<ResultCode> get_all_error_codes_of_category(errcat_t err_category)
     {
-        LockGuard g(g_error_mtx);
+        if(!g_error_ready) return Vector<ResultCode>();
+        LockGuard guard(g_error_mtx);
         auto iter = g_errcat_registry.get().find(err_category);
-        if (iter == g_errcat_registry.get().end())
-        {
-            return Vector<ErrCode>();
-        }
-        return iter->second.codes;
-    }
-
-    LUNA_RUNTIME_API Vector<errcat_t> get_all_error_subcategories_of_category(errcat_t err_category)
-    {
-        LockGuard g(g_error_mtx);
-        auto iter = g_errcat_registry.get().find(err_category);
-        if (iter == g_errcat_registry.get().end())
-        {
-            return Vector<errcat_t>();
-        }
-        return iter->second.subcategories;
+        return iter == g_errcat_registry.get().end() ? Vector<ResultCode>() : iter->second.codes;
     }
 
     LUNA_RUNTIME_API Error& get_error()
     {
-        Error* err = (Error*)Platform::fls_get(g_error_tls);
-        if (!err)
+        Error* err = static_cast<Error*>(Platform::fls_get(g_error_tls));
+        if(!err)
         {
             err = memnew<Error>();
             Platform::fls_set(g_error_tls, err);
@@ -252,227 +233,4 @@ namespace Luna
         return *err;
     }
 
-    namespace BasicError
-    {
-        LUNA_RUNTIME_API errcat_t errtype()
-        {
-            static errcat_t e = get_error_category_by_name("BasicError");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode failure()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "failure");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode error_object()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "error_object");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode not_found()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "not_found");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode already_exists()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "already_exists");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode not_unique()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "not_unique");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode bad_arguments()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "bad_arguments");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode bad_calling_time()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "bad_calling_time");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode out_of_memory()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "out_of_memory");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode not_supported()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "not_supported");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode bad_platform_call()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "bad_platform_call");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode access_denied()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "access_denied");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode not_directory()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "not_directory");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode is_directory()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "is_directory");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode directory_not_empty()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "directory_not_empty");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode bad_file()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "bad_file");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode io_error()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "io_error");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode timeout()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "timeout");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode data_too_big()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "data_too_big");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode insufficient_user_buffer()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "insufficient_user_buffer");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode insufficient_buffer()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "insufficient_buffer");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode not_ready()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "not_ready");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode out_of_range()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "out_of_range");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode out_of_resource()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "out_of_resource");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode insufficient_system_buffer()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "insufficient_system_buffer");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode overflow()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "overflow");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode format_error()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "format_error");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode interrupted()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "interrupted");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode end_of_file()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "end_of_file");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode null_value()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "null_value");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode bad_cast()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "bad_cast");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode in_progress()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "in_progress");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode version_dismatch()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "version_dismatch");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode no_data()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "no_data");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode bad_data()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "bad_data");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode bad_memory_address()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "bad_memory_address");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode deadlock()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "deadlock");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode not_permitted()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "not_permitted");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode busy()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "busy");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode file_to_big()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "file_to_big");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode not_configured()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "not_configured");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode bad_pipe()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "bad_pipe");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode path_too_long()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "path_too_long");
-            return e;
-        }
-        LUNA_RUNTIME_API ErrCode loop()
-        {
-            static ErrCode e = get_error_code_by_name("BasicError", "loop");
-            return e;
-        }
-    }
 }

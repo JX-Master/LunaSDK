@@ -229,7 +229,7 @@ namespace Luna
             m_event = ::CreateEventA(NULL, TRUE, TRUE, NULL);
             if (m_event == NULL)
             {
-                return BasicError::bad_platform_call();
+                return E_BAD_PLATFORM_CALL;
             }
             m_wait_value = 1;    // The fist wait value.
             return ok;
@@ -1009,7 +1009,7 @@ namespace Luna
                 BOOL b = ::ResetEvent(m_event);
                 if (!b)
                 {
-                    return BasicError::bad_platform_call();
+                    return E_BAD_PLATFORM_CALL;
                 }
                 ++m_wait_value;
                 hr = m_fence->SetEventOnCompletion(m_wait_value, m_event);

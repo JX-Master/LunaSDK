@@ -74,7 +74,7 @@ namespace Luna
                         options:encode_resource_options(MemoryType::upload)];
                     if(!m_buffer)
                     {
-                        return BasicError::bad_platform_call();
+                        return E_BAD_PLATFORM_CALL;
                     }
                 }
                 else
@@ -82,14 +82,14 @@ namespace Luna
                     m_encoder = [m_device->m_device newArgumentEncoderWithArguments:m_layout->m_argument_descriptors];
                     if(!m_encoder)
                     {
-                        return BasicError::bad_platform_call();
+                        return E_BAD_PLATFORM_CALL;
                     }
                     NSUInteger length = [m_encoder encodedLength];
                     m_buffer = [m_device->m_device newBufferWithLength:length 
                         options:encode_resource_options(MemoryType::upload)];
                     if(!m_buffer)
                     {
-                        return BasicError::bad_platform_call();
+                        return E_BAD_PLATFORM_CALL;
                     }
                     [m_encoder setArgumentBuffer:m_buffer offset:0];
                 }
@@ -195,7 +195,7 @@ namespace Luna
                     usize binding_index = calc_binding_index(write.binding_slot);
                     if(binding_index == m_layout->m_bindings.size())
                     {
-                        return set_error(BasicError::bad_arguments(), "The specified binding number %d is not specified in the descriptor set layout.", write.binding_slot);
+                        return set_error(E_BAD_ARGUMENTS, "The specified binding number %d is not specified in the descriptor set layout.", write.binding_slot);
                     }
                     auto& binding = m_bindings[binding_index];
                     u64 argument_offset = m_layout->m_argument_offsets[binding_index] + write.first_array_index;
@@ -250,7 +250,7 @@ namespace Luna
                             {
                                 const SamplerDesc& view = write.samplers[i];
                                 id<MTLSamplerState> sampler = new_sampler_state(m_device->m_device, view);
-                                if(!sampler) return BasicError::bad_platform_call();
+                                if(!sampler) return E_BAD_PLATFORM_CALL;
                                 u32 key = write.binding_slot + write.first_array_index + (u32)i;
                                 m_samplers[@(key)] = sampler;
                                 ((MTLResourceID*)data)[argument_offset + i] = sampler.gpuResourceID;
@@ -365,7 +365,7 @@ namespace Luna
                             {
                                 const SamplerDesc& view = write.samplers[0];
                                 id<MTLSamplerState> sampler = new_sampler_state(m_device->m_device, view);
-                                if(!sampler) return BasicError::bad_platform_call();
+                                if(!sampler) return E_BAD_PLATFORM_CALL;
                                 u32 key = write.binding_slot + write.first_array_index;
                                 m_samplers[@(key)] = sampler;
                                 [m_encoder setSamplerState:sampler atIndex:argument_offset];
@@ -377,7 +377,7 @@ namespace Luna
                                 {
                                     const SamplerDesc& view = write.samplers[i];
                                     id<MTLSamplerState> sampler = new_sampler_state(m_device->m_device, view);
-                                    if(!sampler) return BasicError::bad_platform_call();
+                                    if(!sampler) return E_BAD_PLATFORM_CALL;
                                     u32 key = write.binding_slot + write.first_array_index + (u32)i;
                                     m_samplers[@(key)] = sampler;
                                     samplers[i] = sampler;

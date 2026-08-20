@@ -19,7 +19,7 @@ namespace Luna
         auto r = Platform::open_file(filename, flags, creation, file->m_file);
         if(r != Platform::Result::success)
         {
-            ErrCode err = encode_platform_result(r).errcode();
+            ResultCode err = encode_platform_result(r).errcode();
 #ifdef LUNA_DEBUG
             return set_error(err, "Failed to open file %s: %s", filename, explain(err));
 #else

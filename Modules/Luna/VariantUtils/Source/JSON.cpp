@@ -133,7 +133,7 @@ namespace Luna
                         {
                             if (!(ch >= '0' && ch <= '9') && !(ch >= 'a' && ch <= 'f') && !(ch >= 'A' && ch <= 'F'))
                             {
-                                return set_error(BasicError::format_error(), "Invalid Unicode number at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+                                return set_error(E_FORMAT_ERROR, "Invalid Unicode number at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
                             }
                             unicode_i <<= 4;
                             if (ch >= '0' && ch <= '9')
@@ -155,7 +155,7 @@ namespace Luna
                     }
                     break;
                     default:
-                        return set_error(BasicError::format_error(), "Invalid character appeared after \"\\\" at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+                        return set_error(E_FORMAT_ERROR, "Invalid character appeared after \"\\\" at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
                     }
                     c8 buf[6];
                     usize buf_count = utf8_encode_char(buf, ch2);
@@ -189,12 +189,12 @@ namespace Luna
             c32 ch = ctx.next_char();
             while (ch && ch != '}')
             {
-                if (ch != '"') return set_error(BasicError::format_error(), "The object field must start with a string name (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                if (ch != '"') return set_error(E_FORMAT_ERROR, "The object field must start with a string name (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 R<String> name_str = read_string_literal(ctx);
                 if (failed(name_str)) return name_str.errcode();
                 skip_whitespaces_and_comments(ctx);
                 ch = ctx.next_char();
-                if (ch != ':') return set_error(BasicError::format_error(), "':' expected at the end of the field name (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                if (ch != ':') return set_error(E_FORMAT_ERROR, "':' expected at the end of the field name (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 ctx.consume(ch);
                 R<Variant> val = read_value(ctx);
                 if (failed(val)) return val.errcode();
@@ -202,12 +202,12 @@ namespace Luna
                 skip_whitespaces_and_comments(ctx);
                 ch = ctx.next_char();
                 if (ch == '}') break;
-                if (ch != ',') set_error(BasicError::format_error(), "',' expected at the end of the field (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                if (ch != ',') set_error(E_FORMAT_ERROR, "',' expected at the end of the field (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 ctx.consume(ch);
                 skip_whitespaces_and_comments(ctx);
                 ch = ctx.next_char();
             }
-            if (!ch) return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+            if (!ch) return set_error(E_FORMAT_ERROR, "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
             ctx.consume('}');
             return v;
         }
@@ -227,12 +227,12 @@ namespace Luna
                 skip_whitespaces_and_comments(ctx);
                 ch = ctx.next_char();
                 if (ch == ']') break;
-                if (ch != ',') set_error(BasicError::format_error(), "',' expected at the end of every array item (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                if (ch != ',') set_error(E_FORMAT_ERROR, "',' expected at the end of every array item (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 ctx.consume(ch);
                 skip_whitespaces_and_comments(ctx);
                 ch = ctx.next_char();
             }
-            if (!ch) return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+            if (!ch) return set_error(E_FORMAT_ERROR, "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
             ctx.consume(']');
             return v;
         }
@@ -240,14 +240,14 @@ namespace Luna
         static R<Variant> read_blob(const String& str)
         {
             // Check if this is a blob.
-            if(str.size() < 8) return BasicError::failure();
+            if(str.size() < 8) return E_FAILURE;
             if (!memcmp(str.c_str(), "@base85@", 8 * sizeof(c8)))
             {
                 c8* end_chr;
                 u64 size = strtoll(str.c_str() + 8, &end_chr, 10);
-                if (*end_chr != '@') return BasicError::failure();
+                if (*end_chr != '@') return E_FAILURE;
                 u64 alignment = strtoll(end_chr + 1, &end_chr, 10);
-                if (*end_chr != '@') return BasicError::failure();
+                if (*end_chr != '@') return E_FAILURE;
                 Blob data(size, alignment);
                 ++end_chr;
                 base85_decode(data.data(), data.size(), end_chr, (str.c_str() + str.size()) - end_chr);
@@ -257,15 +257,15 @@ namespace Luna
             {
                 c8* end_chr;
                 u64 size = strtoll(str.c_str() + 8, &end_chr, 10);
-                if (*end_chr != '@') return BasicError::failure();
+                if (*end_chr != '@') return E_FAILURE;
                 u64 alignment = strtoll(end_chr + 1, &end_chr, 10);
-                if (*end_chr != '@') return BasicError::failure();
+                if (*end_chr != '@') return E_FAILURE;
                 Blob data(size, alignment);
                 ++end_chr;
                 base64_decode(data.data(), data.size(), end_chr, (str.c_str() + str.size()) - end_chr);
                 return Variant(move(data));
             }
-            return BasicError::failure();
+            return E_FAILURE;
         }
 
         static R<Variant> read_string_or_blob(IReadContext& ctx)
@@ -419,7 +419,7 @@ namespace Luna
             c32 ch = ctx.next_char();
             if (ch == '\0')
             {
-                return set_error(BasicError::format_error(), "Unexpected EOF reached at at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
+                return set_error(E_FORMAT_ERROR, "Unexpected EOF reached at at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
             }
             else if (ch == '{')
             {
@@ -466,7 +466,7 @@ namespace Luna
             }
             else
             {
-                return set_error(BasicError::format_error(), "Unrecognized token: %c(0x%0x) at line %n, pos %n.", (c8)ch, (u32)ch, ctx.get_line(), ctx.get_pos());
+                return set_error(E_FORMAT_ERROR, "Unrecognized token: %c(0x%0x) at line %n, pos %n.", (c8)ch, (u32)ch, ctx.get_line(), ctx.get_pos());
             }
         }
 

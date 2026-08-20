@@ -294,7 +294,7 @@ namespace Luna
         if(EditorGUI::is_item_clicked(context, select_source))
         {
             RV r = select_obj_mesh_file(m_source_file_path, m_obj_file, m_import_names);
-            if(failed(r) && r.errcode() != BasicError::interrupted())
+            if(failed(r) && r.errcode() != E_INTERRUPTED)
             {
                 auto _ = Window::message_box(explain(r.errcode()), "Failed to import obj file",
                     Window::MessageBoxType::ok, Window::MessageBoxIcon::error);

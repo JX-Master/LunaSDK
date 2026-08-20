@@ -29,56 +29,56 @@ namespace Luna
 {
     namespace Network
     {
-        inline ErrCode translate_error(int err)
+        inline ResultCode translate_error(int err)
         {
             switch (err)
             {
-            case EACCES: return BasicError::access_denied();
-            case EAFNOSUPPORT: return NetworkError::address_not_supported();
-            case EINVAL: return BasicError::bad_arguments();
-            case EMFILE: return BasicError::out_of_resource();
-            case ENFILE: return BasicError::out_of_resource();
-            case ENOBUFS: return BasicError::insufficient_system_buffer();
-            case ENETDOWN: return NetworkError::network_down();
-            case EPROTONOSUPPORT: return NetworkError::protocol_not_supported();
-            case EINTR: return BasicError::interrupted();
-            case ENOTCONN: return NetworkError::not_connected();
-            case EDESTADDRREQ: return NetworkError::not_connected();
-            case EADDRINUSE: return NetworkError::address_in_use();
-            case EADDRNOTAVAIL: return NetworkError::address_not_available();
-            case EOPNOTSUPP: return BasicError::not_supported();
-            case EALREADY: return BasicError::not_ready();
-            case ECONNREFUSED: return NetworkError::connection_refused();
-            case ECONNABORTED: return NetworkError::connection_aborted();
-            case ECONNRESET: return NetworkError::connection_reset();
-            case EINPROGRESS: return BasicError::in_progress();
-            case EISCONN: return NetworkError::already_connected();
-            case ENETRESET: return NetworkError::network_reset();
-            case ENETUNREACH: return NetworkError::network_unreachable();
-            case EHOSTUNREACH: return NetworkError::host_unreachable();
-            case EPROTOTYPE: return NetworkError::protocol_not_supported();
-            case ETIMEDOUT: return BasicError::timeout();
-            case EPIPE: return NetworkError::connection_reset();
-            default: return BasicError::bad_platform_call();
+            case EACCES: return E_ACCESS_DENIED;
+            case EAFNOSUPPORT: return Network::E_ADDRESS_NOT_SUPPORTED;
+            case EINVAL: return E_BAD_ARGUMENTS;
+            case EMFILE: return E_OUT_OF_RESOURCE;
+            case ENFILE: return E_OUT_OF_RESOURCE;
+            case ENOBUFS: return E_INSUFFICIENT_SYSTEM_BUFFER;
+            case ENETDOWN: return Network::E_NETWORK_DOWN;
+            case EPROTONOSUPPORT: return Network::E_PROTOCOL_NOT_SUPPORTED;
+            case EINTR: return E_INTERRUPTED;
+            case ENOTCONN: return Network::E_NOT_CONNECTED;
+            case EDESTADDRREQ: return Network::E_NOT_CONNECTED;
+            case EADDRINUSE: return Network::E_ADDRESS_IN_USE;
+            case EADDRNOTAVAIL: return Network::E_ADDRESS_NOT_AVAILABLE;
+            case EOPNOTSUPP: return E_NOT_SUPPORTED;
+            case EALREADY: return E_NOT_READY;
+            case ECONNREFUSED: return Network::E_CONNECTION_REFUSED;
+            case ECONNABORTED: return Network::E_CONNECTION_ABORTED;
+            case ECONNRESET: return Network::E_CONNECTION_RESET;
+            case EINPROGRESS: return E_IN_PROGRESS;
+            case EISCONN: return Network::E_ALREADY_CONNECTED;
+            case ENETRESET: return Network::E_NETWORK_RESET;
+            case ENETUNREACH: return Network::E_NETWORK_UNREACHABLE;
+            case EHOSTUNREACH: return Network::E_HOST_UNREACHABLE;
+            case EPROTOTYPE: return Network::E_PROTOCOL_NOT_SUPPORTED;
+            case ETIMEDOUT: return E_TIMEOUT;
+            case EPIPE: return Network::E_CONNECTION_RESET;
+            default: return E_BAD_PLATFORM_CALL;
             }
         }
 
-        inline ErrCode translate_addrinfo_error(int err)
+        inline ResultCode translate_addrinfo_error(int err)
         {
             switch (err)
             {
-            case EAI_AGAIN: return BasicError::not_ready();
-            case EAI_BADFLAGS: return BasicError::bad_arguments();
-            case EAI_FAIL: return BasicError::bad_platform_call();
-            case EAI_FAMILY: return NetworkError::address_not_supported();
-            case EAI_MEMORY: return BasicError::out_of_memory();
-            case EAI_NONAME: return NetworkError::host_not_found();
-            case EAI_SERVICE: return NetworkError::service_not_found();
-            case EAI_SOCKTYPE: return NetworkError::protocol_not_supported();
+            case EAI_AGAIN: return E_NOT_READY;
+            case EAI_BADFLAGS: return E_BAD_ARGUMENTS;
+            case EAI_FAIL: return E_BAD_PLATFORM_CALL;
+            case EAI_FAMILY: return Network::E_ADDRESS_NOT_SUPPORTED;
+            case EAI_MEMORY: return E_OUT_OF_MEMORY;
+            case EAI_NONAME: return Network::E_HOST_NOT_FOUND;
+            case EAI_SERVICE: return Network::E_SERVICE_NOT_FOUND;
+            case EAI_SOCKTYPE: return Network::E_PROTOCOL_NOT_SUPPORTED;
 #ifdef EAI_SYSTEM
             case EAI_SYSTEM: return translate_error(errno);
 #endif
-            default: return BasicError::bad_platform_call();
+            default: return E_BAD_PLATFORM_CALL;
             }
         }
 
@@ -192,7 +192,7 @@ namespace Luna
                 return (socklen_t)sizeof(sockaddr_in6);
             }
             default:
-                return NetworkError::address_not_supported();
+                return Network::E_ADDRESS_NOT_SUPPORTED;
             }
         }
 
@@ -242,7 +242,7 @@ namespace Luna
             {
                 return translate_error(errno);
             }
-            return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(NetworkError::address_not_supported());
+            return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(Network::E_ADDRESS_NOT_SUPPORTED);
         }
 
         RV TCPSocket::get_remote_address(SocketAddress& address)
@@ -254,7 +254,7 @@ namespace Luna
             {
                 return translate_error(errno);
             }
-            return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(NetworkError::address_not_supported());
+            return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(Network::E_ADDRESS_NOT_SUPPORTED);
         }
 
         RV TCPSocket::read(void* buffer, usize size, usize* read_bytes)
@@ -286,7 +286,7 @@ namespace Luna
                 if(write_sz == 0)
                 {
                     if (write_bytes) *write_bytes = total_written;
-                    return BasicError::no_data();
+                    return E_NO_DATA;
                 }
                 total_written += (usize)write_sz;
                 if(m_type != SocketType::stream)
@@ -346,7 +346,7 @@ namespace Luna
             if(!decode_socket_address(address, (sockaddr*)&addr))
             {
                 ::close(r);
-                return NetworkError::address_not_supported();
+                return Network::E_ADDRESS_NOT_SUPPORTED;
             }
             Ref<TCPSocket> s = new_object<TCPSocket>();
             s->m_af = address.family;
@@ -359,7 +359,7 @@ namespace Luna
             if(size > (usize)ISIZE_MAX)
             {
                 if(sent_bytes) *sent_bytes = 0;
-                return BasicError::data_too_big();
+                return E_DATA_TOO_BIG;
             }
             sockaddr_storage addr;
             auto addr_size = encode_socket_address(addr, address);
@@ -391,7 +391,7 @@ namespace Luna
             if(address && !decode_socket_address(*address, (sockaddr*)&addr))
             {
                 if(received_bytes) *received_bytes = 0;
-                return NetworkError::address_not_supported();
+                return Network::E_ADDRESS_NOT_SUPPORTED;
             }
             if(received_bytes) *received_bytes = (usize)received;
             return ok;
@@ -424,11 +424,11 @@ namespace Luna
         inline R<int> new_native_socket(AddressFamily af, SocketType type, Protocol protocol)
         {
             int iaf;
-            if(!encode_af(af, iaf, false)) return NetworkError::address_not_supported();
+            if(!encode_af(af, iaf, false)) return Network::E_ADDRESS_NOT_SUPPORTED;
             int itype;
-            if(!encode_type(type, itype, false)) return BasicError::bad_arguments();
+            if(!encode_type(type, itype, false)) return E_BAD_ARGUMENTS;
             int iprotocol;
-            if(!encode_protocol(protocol, iprotocol)) return NetworkError::protocol_not_supported();
+            if(!encode_protocol(protocol, iprotocol)) return Network::E_PROTOCOL_NOT_SUPPORTED;
             int r = ::socket(iaf, itype, iprotocol);
             if(r == -1)
             {
@@ -468,9 +468,9 @@ namespace Luna
             memzero(&d_hints, sizeof(d_hints));
             if(hints)
             {
-                if(!encode_af(hints->family, d_hints.ai_family, true)) return NetworkError::address_not_supported();
-                if(!encode_type(hints->socktype, d_hints.ai_socktype, true)) return BasicError::bad_arguments();
-                if(!encode_protocol(hints->protocol, d_hints.ai_protocol)) return NetworkError::protocol_not_supported();
+                if(!encode_af(hints->family, d_hints.ai_family, true)) return Network::E_ADDRESS_NOT_SUPPORTED;
+                if(!encode_type(hints->socktype, d_hints.ai_socktype, true)) return E_BAD_ARGUMENTS;
+                if(!encode_protocol(hints->protocol, d_hints.ai_protocol)) return Network::E_PROTOCOL_NOT_SUPPORTED;
                 if(test_flags(hints->flags, AddressInfoFlag::passive))
                 {
                     d_hints.ai_flags |= AI_PASSIVE;

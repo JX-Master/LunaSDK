@@ -77,7 +77,7 @@ namespace Luna
                 }
                 if(response == NSModalResponseStop || response == NSModalResponseAbort)
                 {
-                    return BasicError::interrupted();
+                    return E_INTERRUPTED;
                 }
                 switch(type)
                 {
@@ -132,7 +132,7 @@ namespace Luna
                         }
                         break;
                 }
-                return BasicError::bad_platform_call();
+                return E_BAD_PLATFORM_CALL;
             }
         }
         LUNA_WINDOW_API R<Vector<Path>> open_file_dialog(const c8* title, Span<const FileDialogFilter> filters, const Path& initial_dir, FileDialogFlag flags)
@@ -189,7 +189,7 @@ namespace Luna
                     }
                     return ret;
                 }
-                return BasicError::interrupted();
+                return E_INTERRUPTED;
             }
         }
         LUNA_WINDOW_API R<Path> save_file_dialog(const c8* title, Span<const FileDialogFilter> filters, const Path& initial_file_path, FileDialogFlag flags)
@@ -237,7 +237,7 @@ namespace Luna
                     ret.assign([path UTF8String]);
                     return ret;
                 }
-                return BasicError::interrupted();
+                return E_INTERRUPTED;
             }
         }
         LUNA_WINDOW_API R<Path> open_dir_dialog(const c8* title, const Path& initial_dir)
@@ -263,7 +263,7 @@ namespace Luna
                     ret.assign([path UTF8String]);
                     return ret;
                 }
-                return BasicError::interrupted();
+                return E_INTERRUPTED;
             }
         }
     }

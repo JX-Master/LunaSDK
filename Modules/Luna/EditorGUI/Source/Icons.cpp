@@ -68,7 +68,7 @@ namespace Luna
                 if(PHOSPHOR_CORE_SIZE < ICON_HEADER_SIZE ||
                     memcmp(PHOSPHOR_CORE_DATA, "LGUIICON", 8) != 0)
                 {
-                    return set_error(BasicError::bad_data(), "The built-in GUI icon data header is invalid.");
+                    return set_error(E_BAD_DATA, "The built-in GUI icon data header is invalid.");
                 }
                 const u8* data = PHOSPHOR_CORE_DATA;
                 u32 version = read_u32(data + 8);
@@ -78,7 +78,7 @@ namespace Luna
                 if(version != ICON_DATA_VERSION || num_variants !=
                     (u32)IconName::count * (u32)IconWeight::count)
                 {
-                    return set_error(BasicError::bad_data(), "The built-in GUI icon data version or table size is invalid.");
+                    return set_error(E_BAD_DATA, "The built-in GUI icon data version or table size is invalid.");
                 }
                 usize layer_offset = ICON_HEADER_SIZE;
                 usize variant_offset = layer_offset + (usize)num_layers * ICON_LAYER_SIZE;
@@ -86,7 +86,7 @@ namespace Luna
                 usize required_size = float_offset + (usize)num_floats * sizeof(f32);
                 if(required_size != PHOSPHOR_CORE_SIZE)
                 {
-                    return set_error(BasicError::bad_data(), "The built-in GUI icon data size is invalid.");
+                    return set_error(E_BAD_DATA, "The built-in GUI icon data size is invalid.");
                 }
 
                 g_icon_layers.resize(num_layers);
@@ -99,7 +99,7 @@ namespace Luna
                     layer.opacity = read_f32(source + 8);
                     if(layer.first_float > num_floats || layer.num_floats > num_floats - layer.first_float)
                     {
-                        return set_error(BasicError::bad_data(), "A built-in GUI icon layer is out of bounds.");
+                        return set_error(E_BAD_DATA, "A built-in GUI icon layer is out of bounds.");
                     }
                 }
 
@@ -113,7 +113,7 @@ namespace Luna
                     if(variant.first_layer != INVALID_ICON_LAYER &&
                         (variant.first_layer > num_layers || variant.num_layers > num_layers - variant.first_layer))
                     {
-                        return set_error(BasicError::bad_data(), "A built-in GUI icon variant is out of bounds.");
+                        return set_error(E_BAD_DATA, "A built-in GUI icon variant is out of bounds.");
                     }
                 }
 

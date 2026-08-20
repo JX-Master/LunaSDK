@@ -63,7 +63,7 @@ namespace Luna
                                                             encoding:NSUTF8StringEncoding];
                 if (!nsString)
                 {
-                    return BasicError::out_of_memory();
+                    return E_OUT_OF_MEMORY;
                 }
                 
                 NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
@@ -72,7 +72,7 @@ namespace Luna
                 
                 if (!success)
                 {
-                    return BasicError::bad_platform_call();
+                    return E_BAD_PLATFORM_CALL;
                 }
                 
                 return ok;

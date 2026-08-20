@@ -76,7 +76,7 @@ namespace Luna
             auto glyph = font->find_glyph(font_index, codepoint);
             if(glyph == Font::INVALID_GLYPH)
             {
-                return BasicError::not_found();
+                return E_NOT_FOUND;
             }
             if(out_shape_points)
             {

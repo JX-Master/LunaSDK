@@ -253,27 +253,27 @@ namespace Luna
             {
             case S_OK: return ok;
             case D3D12_ERROR_ADAPTER_NOT_FOUND: 
-            case DXGI_ERROR_NOT_FOUND: return BasicError::not_found();
-            case D3D12_ERROR_DRIVER_VERSION_MISMATCH: return BasicError::version_dismatch();
+            case DXGI_ERROR_NOT_FOUND: return E_NOT_FOUND;
+            case D3D12_ERROR_DRIVER_VERSION_MISMATCH: return E_VERSION_DISMATCH;
             case DXGI_ERROR_INVALID_CALL:
-            case E_INVALIDARG: return BasicError::bad_arguments();
+            case E_INVALIDARG: return E_BAD_ARGUMENTS;
             case DXGI_ERROR_NONEXCLUSIVE:
             case DXGI_ERROR_WAS_STILL_DRAWING: 
-            case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE: return BasicError::not_ready();
-            case E_OUTOFMEMORY: return BasicError::out_of_memory();
+            case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE: return E_NOT_READY;
+            case E_OUTOFMEMORY: return E_OUT_OF_MEMORY;
             case E_NOTIMPL: 
-            case DXGI_ERROR_UNSUPPORTED: return BasicError::not_supported();
-            case DXGI_ERROR_ACCESS_DENIED: return BasicError::access_denied();
+            case DXGI_ERROR_UNSUPPORTED: return E_NOT_SUPPORTED;
+            case DXGI_ERROR_ACCESS_DENIED: return E_ACCESS_DENIED;
             case DXGI_ERROR_NAME_ALREADY_EXISTS:
-            case DXGI_ERROR_ALREADY_EXISTS: return BasicError::already_exists();
-            case DXGI_ERROR_DEVICE_HUNG: return RHIError::device_hung();
-            case DXGI_ERROR_DEVICE_REMOVED: return RHIError::device_removed();
-            case DXGI_ERROR_DEVICE_RESET: return RHIError::device_reset();
-            case DXGI_ERROR_DRIVER_INTERNAL_ERROR: return RHIError::driver_internal_error();
-            case DXGI_ERROR_FRAME_STATISTICS_DISJOINT: return RHIError::frame_statistics_disjoint();
-            case DXGI_ERROR_MORE_DATA: return BasicError::insufficient_user_buffer();
-            case DXGI_ERROR_WAIT_TIMEOUT: return BasicError::timeout();
-            default: return BasicError::bad_platform_call();
+            case DXGI_ERROR_ALREADY_EXISTS: return E_ALREADY_EXISTS;
+            case DXGI_ERROR_DEVICE_HUNG: return RHI::E_DEVICE_HUNG;
+            case DXGI_ERROR_DEVICE_REMOVED: return RHI::E_DEVICE_REMOVED;
+            case DXGI_ERROR_DEVICE_RESET: return RHI::E_DEVICE_RESET;
+            case DXGI_ERROR_DRIVER_INTERNAL_ERROR: return RHI::E_DRIVER_INTERNAL_ERROR;
+            case DXGI_ERROR_FRAME_STATISTICS_DISJOINT: return RHI::E_FRAME_STATISTICS_DISJOINT;
+            case DXGI_ERROR_MORE_DATA: return E_INSUFFICIENT_USER_BUFFER;
+            case DXGI_ERROR_WAIT_TIMEOUT: return E_TIMEOUT;
+            default: return E_BAD_PLATFORM_CALL;
             }
         }
         extern ComPtr<IDXGIFactory5> g_dxgi;

@@ -28,7 +28,7 @@ namespace Luna
         {
             this->desc = desc;
             this->queue = [dev newCommandQueue];
-            if(!this->queue) return BasicError::bad_platform_call();
+            if(!this->queue) return E_BAD_PLATFORM_CALL;
             return ok;
         }
         RV Device::init()
@@ -91,12 +91,12 @@ namespace Luna
             auto tex_desc = encode_texture_desc(memory_type, desc);
             return [m_device heapTextureSizeAndAlignWithDescriptor:tex_desc];
         }
-        MTLHeapDescriptor* Device::get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures, ErrCode& err)
+        MTLHeapDescriptor* Device::get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures, ResultCode& err)
         {
-            err = ErrCode(0);
+            err = ResultCode(0);
             if (!is_resources_aliasing_compatible(memory_type, buffers, textures))
             {
-                err = BasicError::not_supported();
+                err = E_NOT_SUPPORTED;
                 return nil;
             }
             MTLHeapDescriptor* ret = [[MTLHeapDescriptor alloc]init];
@@ -198,7 +198,7 @@ namespace Luna
                 Ref<IDeviceMemory> ret;
                 lutry
                 {
-                    ErrCode err(0);
+                    ResultCode err(0);
                     MTLHeapDescriptor* desc = get_heap_desc(memory_type, buffers, textures, err);
                     if(desc == nil)
                     {
@@ -413,7 +413,7 @@ namespace Luna
             {
                 Ref<Device> dev = new_object<Device>();
                 dev->m_device = MTLCreateSystemDefaultDevice();
-                if(!dev->m_device) return BasicError::bad_platform_call();
+                if(!dev->m_device) return E_BAD_PLATFORM_CALL;
                 auto r = dev->init();
                 if(failed(r)) return r;
                 g_main_device = dev;

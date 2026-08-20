@@ -38,7 +38,7 @@ void ecs_test()
         world->delete_entity(id);
         r = world->get_entity_address(id);
         lutest(failed(r));
-        lutest(r.errcode() == ECSError::entity_not_found());
+        lutest(r.errcode() == ECS::E_ENTITY_NOT_FOUND);
     }
     {
         // Reuse the same index will not cause former entity being relived.
@@ -50,7 +50,7 @@ void ecs_test()
         lutest(id != id2);
         auto r = world->get_entity_address(id);
         lutest(failed(r));
-        lutest(r.errcode() == ECSError::entity_not_found());
+        lutest(r.errcode() == ECS::E_ENTITY_NOT_FOUND);
         r = world->get_entity_address(id2);
         lutest(succeeded(r));
     }

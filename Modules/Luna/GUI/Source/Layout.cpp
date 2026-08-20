@@ -745,16 +745,16 @@ namespace Luna
         {
             if(!context)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             const Element* parent = context->get_element(element.index);
             if(!parent || parent->id != element.id)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             if(!userdata)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             const FlexLayoutDesc& desc = *reinterpret_cast<const FlexLayoutDesc*>(userdata);
             LayoutAxis main_axis = desc.axis;
@@ -939,16 +939,16 @@ namespace Luna
         {
             if(!context)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             const Element* parent = context->get_element(element.index);
             if(!parent || parent->id != element.id)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             if(!userdata)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             const GridLayoutDesc& desc = *reinterpret_cast<const GridLayoutDesc*>(userdata);
             RectF content_rect = inset_rect(rect, parent->layout.padding);
@@ -1014,16 +1014,16 @@ namespace Luna
         {
             if(!context)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             const Element* parent = context->get_element(element.index);
             if(!parent || parent->id != element.id)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             if(!userdata)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             const CanvasLayoutDesc& desc = *reinterpret_cast<const CanvasLayoutDesc*>(userdata);
             RectF content_rect = inset_rect(rect, parent->layout.padding);
@@ -1096,16 +1096,16 @@ namespace Luna
         {
             if(!context)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             const Element* parent = context->get_element(element.index);
             if(!parent || parent->id != element.id)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             if(!userdata)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             const ScrollViewportLayoutDesc& desc = *reinterpret_cast<const ScrollViewportLayoutDesc*>(userdata);
             RectF content_rect = inset_rect(rect, parent->layout.padding);
@@ -1242,16 +1242,16 @@ namespace Luna
         {
             if(!context)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             const Element* parent = context->get_element(element.index);
             if(!parent || parent->id != element.id)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             if(!userdata)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             const TableLayoutDesc& desc = *reinterpret_cast<const TableLayoutDesc*>(userdata);
             RectF content_rect = inset_rect(rect, parent->layout.padding);

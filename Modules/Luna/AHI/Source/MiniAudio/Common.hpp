@@ -21,59 +21,59 @@ namespace Luna
 {
     namespace AHI
     {
-        inline ErrCode translate_ma_result(ma_result result)
+        inline ResultCode translate_ma_result(ma_result result)
         {
             switch(result)
             {
-                case MA_SUCCESS: return ErrCode(0);
-                case MA_INVALID_ARGS: return BasicError::bad_arguments();
-                case MA_INVALID_OPERATION: return BasicError::not_supported();
-                case MA_OUT_OF_MEMORY: return BasicError::out_of_memory();
-                case MA_OUT_OF_RANGE: return BasicError::out_of_range();
-                case MA_ACCESS_DENIED: return BasicError::access_denied();
-                case MA_DOES_NOT_EXIST: return BasicError::not_found();
-                case MA_ALREADY_EXISTS: return BasicError::already_exists();
-                case MA_TOO_MANY_OPEN_FILES: return BasicError::out_of_resource();
-                case MA_INVALID_FILE: return BasicError::bad_file();
-                case MA_TOO_BIG: return BasicError::data_too_big();
-                case MA_PATH_TOO_LONG: return BasicError::data_too_big();
-                case MA_NAME_TOO_LONG: return BasicError::data_too_big();
-                case MA_NOT_DIRECTORY: return BasicError::not_directory();
-                case MA_IS_DIRECTORY: return BasicError::is_directory();
-                case MA_DIRECTORY_NOT_EMPTY: return BasicError::directory_not_empty();
-                case MA_AT_END: return BasicError::end_of_file();
-                case MA_NO_SPACE: return BasicError::insufficient_system_buffer();
-                case MA_BUSY: return BasicError::not_ready();
-                case MA_IO_ERROR: return BasicError::io_error();
-                case MA_INTERRUPT: return BasicError::interrupted();
-                case MA_UNAVAILABLE: return BasicError::not_supported();
-                case MA_BAD_ADDRESS: return BasicError::bad_memory_address();
-                case MA_DEADLOCK: return BasicError::deadlock();
-                case MA_TOO_MANY_LINKS: return BasicError::out_of_resource();
-                case MA_NOT_IMPLEMENTED: return BasicError::not_supported();
-                case MA_NO_DATA_AVAILABLE: return BasicError::no_data();
-                case MA_INVALID_DATA: return BasicError::bad_data();
-                case MA_TIMEOUT: return BasicError::timeout();
-                case MA_NOT_UNIQUE: return BasicError::not_unique();
-                case MA_IN_PROGRESS: return BasicError::not_ready();
-                case MA_CANCELLED: return BasicError::interrupted();
-                case MA_FORMAT_NOT_SUPPORTED: return AHIError::format_not_supported();
-                case MA_DEVICE_TYPE_NOT_SUPPORTED: return AHIError::device_type_not_supported();
-                case MA_SHARE_MODE_NOT_SUPPORTED: return AHIError::share_mode_not_supported();
-                case MA_NO_BACKEND: return AHIError::no_backend();
-                case MA_NO_DEVICE: return AHIError::no_device();
-                case MA_API_NOT_FOUND: return AHIError::api_not_found();
-                case MA_INVALID_DEVICE_CONFIG: return AHIError::bad_device_config();
-                case MA_LOOP: return AHIError::loop();
-                case MA_DEVICE_NOT_INITIALIZED: return BasicError::bad_calling_time();
-                case MA_DEVICE_ALREADY_INITIALIZED: return BasicError::bad_calling_time();
-                case MA_DEVICE_NOT_STARTED: return AHIError::device_not_started();
-                case MA_DEVICE_NOT_STOPPED: return AHIError::device_not_stopped();
-                case MA_FAILED_TO_INIT_BACKEND: return AHIError::failed_to_init_backend();
-                case MA_FAILED_TO_OPEN_BACKEND_DEVICE: return AHIError::failed_to_open_backend_device();
-                case MA_FAILED_TO_START_BACKEND_DEVICE: return AHIError::failed_to_start_backend_device();
-                case MA_FAILED_TO_STOP_BACKEND_DEVICE: return AHIError::failed_to_stop_backend_device();
-                default: return BasicError::failure();
+                case MA_SUCCESS: return ResultCode(0);
+                case MA_INVALID_ARGS: return E_BAD_ARGUMENTS;
+                case MA_INVALID_OPERATION: return E_NOT_SUPPORTED;
+                case MA_OUT_OF_MEMORY: return E_OUT_OF_MEMORY;
+                case MA_OUT_OF_RANGE: return E_OUT_OF_RANGE;
+                case MA_ACCESS_DENIED: return E_ACCESS_DENIED;
+                case MA_DOES_NOT_EXIST: return E_NOT_FOUND;
+                case MA_ALREADY_EXISTS: return E_ALREADY_EXISTS;
+                case MA_TOO_MANY_OPEN_FILES: return E_OUT_OF_RESOURCE;
+                case MA_INVALID_FILE: return E_BAD_FILE;
+                case MA_TOO_BIG: return E_DATA_TOO_BIG;
+                case MA_PATH_TOO_LONG: return E_DATA_TOO_BIG;
+                case MA_NAME_TOO_LONG: return E_DATA_TOO_BIG;
+                case MA_NOT_DIRECTORY: return E_NOT_DIRECTORY;
+                case MA_IS_DIRECTORY: return E_IS_DIRECTORY;
+                case MA_DIRECTORY_NOT_EMPTY: return E_DIRECTORY_NOT_EMPTY;
+                case MA_AT_END: return E_END_OF_FILE;
+                case MA_NO_SPACE: return E_INSUFFICIENT_SYSTEM_BUFFER;
+                case MA_BUSY: return E_NOT_READY;
+                case MA_IO_ERROR: return E_IO_ERROR;
+                case MA_INTERRUPT: return E_INTERRUPTED;
+                case MA_UNAVAILABLE: return E_NOT_SUPPORTED;
+                case MA_BAD_ADDRESS: return E_BAD_MEMORY_ADDRESS;
+                case MA_DEADLOCK: return E_DEADLOCK;
+                case MA_TOO_MANY_LINKS: return E_OUT_OF_RESOURCE;
+                case MA_NOT_IMPLEMENTED: return E_NOT_SUPPORTED;
+                case MA_NO_DATA_AVAILABLE: return E_NO_DATA;
+                case MA_INVALID_DATA: return E_BAD_DATA;
+                case MA_TIMEOUT: return E_TIMEOUT;
+                case MA_NOT_UNIQUE: return E_NOT_UNIQUE;
+                case MA_IN_PROGRESS: return E_NOT_READY;
+                case MA_CANCELLED: return E_INTERRUPTED;
+                case MA_FORMAT_NOT_SUPPORTED: return AHI::E_FORMAT_NOT_SUPPORTED;
+                case MA_DEVICE_TYPE_NOT_SUPPORTED: return AHI::E_DEVICE_TYPE_NOT_SUPPORTED;
+                case MA_SHARE_MODE_NOT_SUPPORTED: return AHI::E_SHARE_MODE_NOT_SUPPORTED;
+                case MA_NO_BACKEND: return AHI::E_NO_BACKEND;
+                case MA_NO_DEVICE: return AHI::E_NO_DEVICE;
+                case MA_API_NOT_FOUND: return AHI::E_API_NOT_FOUND;
+                case MA_INVALID_DEVICE_CONFIG: return AHI::E_BAD_DEVICE_CONFIG;
+                case MA_LOOP: return AHI::E_LOOP;
+                case MA_DEVICE_NOT_INITIALIZED: return E_BAD_CALLING_TIME;
+                case MA_DEVICE_ALREADY_INITIALIZED: return E_BAD_CALLING_TIME;
+                case MA_DEVICE_NOT_STARTED: return AHI::E_DEVICE_NOT_STARTED;
+                case MA_DEVICE_NOT_STOPPED: return AHI::E_DEVICE_NOT_STOPPED;
+                case MA_FAILED_TO_INIT_BACKEND: return AHI::E_FAILED_TO_INIT_BACKEND;
+                case MA_FAILED_TO_OPEN_BACKEND_DEVICE: return AHI::E_FAILED_TO_OPEN_BACKEND_DEVICE;
+                case MA_FAILED_TO_START_BACKEND_DEVICE: return AHI::E_FAILED_TO_START_BACKEND_DEVICE;
+                case MA_FAILED_TO_STOP_BACKEND_DEVICE: return AHI::E_FAILED_TO_STOP_BACKEND_DEVICE;
+                default: return E_FAILURE;
             }
         }
 

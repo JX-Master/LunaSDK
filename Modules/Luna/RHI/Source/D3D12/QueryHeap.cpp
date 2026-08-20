@@ -53,7 +53,7 @@ namespace Luna
         RV QueryHeap::get_timestamp_values(u32 index, u32 count, u64* values)
         {
             lutsassert();
-            if (m_desc.type != QueryType::timestamp) return BasicError::not_supported();
+            if (m_desc.type != QueryType::timestamp) return E_NOT_SUPPORTED;
             lutry
             {
                 u64* mapped = nullptr;
@@ -67,7 +67,7 @@ namespace Luna
         RV QueryHeap::get_occlusion_values(u32 index, u32 count, u64* values)
         {
             lutsassert();
-            if (m_desc.type != QueryType::occlusion) return BasicError::not_supported();
+            if (m_desc.type != QueryType::occlusion) return E_NOT_SUPPORTED;
             lutry
             {
                 u64* mapped = nullptr;
@@ -81,7 +81,7 @@ namespace Luna
         RV QueryHeap::get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values)
         {
             lutsassert();
-            if (m_desc.type != QueryType::pipeline_statistics) return BasicError::not_supported();
+            if (m_desc.type != QueryType::pipeline_statistics) return E_NOT_SUPPORTED;
             lutry
             {
                 D3D12_QUERY_DATA_PIPELINE_STATISTICS* mapped = nullptr;

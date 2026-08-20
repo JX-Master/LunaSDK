@@ -290,13 +290,13 @@ namespace Luna
         {
             GeometryPassGlobalData* data = (GeometryPassGlobalData*)userdata;
             auto depth_texture = compiler->get_output_resource("depth_texture");
-            if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"depth_texture\" is not specified.");
+            if(depth_texture == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "GeometryPass: Output \"depth_texture\" is not specified.");
             auto base_color_roughness_tex = compiler->get_output_resource("base_color_roughness_texture");
             auto normal_metallic_tex = compiler->get_output_resource("normal_metallic_texture");
             auto emissive_tex = compiler->get_output_resource("emissive_texture");
-            if(base_color_roughness_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"base_color_roughness_texture\" is not specified.");
-            if(normal_metallic_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"normal_metallic_tex\" is not specified.");
-            if(emissive_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"emissive_tex\" is not specified.");
+            if(base_color_roughness_tex == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "GeometryPass: Output \"base_color_roughness_texture\" is not specified.");
+            if(normal_metallic_tex == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "GeometryPass: Output \"normal_metallic_tex\" is not specified.");
+            if(emissive_tex == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "GeometryPass: Output \"emissive_tex\" is not specified.");
             RG::ResourceDesc desc = compiler->get_resource_desc(depth_texture);
             if(desc.type == RG::ResourceType::texture && desc.texture.type == RHI::TextureType::tex2d && desc.texture.format == RHI::Format::unknown)
             {
@@ -304,7 +304,7 @@ namespace Luna
             }
             if (desc.type != RG::ResourceType::texture || desc.texture.type != RHI::TextureType::tex2d || desc.texture.format != RHI::Format::d32_float)
             {
-                return set_error(BasicError::bad_arguments(), "GeometryPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be 2D texture with Format::d32_float.");
+                return set_error(E_BAD_ARGUMENTS, "GeometryPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be 2D texture with Format::d32_float.");
             }
             desc.texture.usages |= RHI::TextureUsageFlag::depth_stencil_attachment;
             compiler->set_resource_desc(depth_texture, desc);

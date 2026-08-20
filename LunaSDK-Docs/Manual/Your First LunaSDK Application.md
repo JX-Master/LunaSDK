@@ -114,7 +114,7 @@ The program starts with the `luna_main` function, this is a special entry functi
 
 In the main function, we firstly call `Luna::init` to initialize LunaSDK. This function should be called before any other LunaSDK function. `Luna::init` returns one Boolean value to indicate whether the SDK initialization is succeeded, if the return value is `false`, we then return `-1` and exit the program to indicate one runtime error. If `Luna::init` returns `true`, then one `Luna::close` call is need before the program exit to let LunaSDK clean up all internal resources.
 
-We then wrap the real program logic in one `run_app` function. The return type of `run_app` is `RV`, which is a shortcut for `R<void>`, this is part of the error handling mechanism of LunaSDK. `R<T>` is a structure that encapsulates one return value with type `T` and one error code with type `ErrCode`, which is simply an alias of `usize` (or `std::size_t`). If the function succeeds, the returned value will be one `T` -typed value and one error code `0`; if the function fails, the returned value will be one non-zero error code, and the `T` -typed value will be uninitialized and inaccessible, you may call `errcode()` to fetch the error code from `R<T>`, and may call `explain` to get a brief description of the error. In our `main` function, we check whether our `run_app` function is failed by using `failed` helper function (there is also one `succeeded` helper function available), then we print the error description and exits the program if any error occurs.
+We then wrap the real program logic in one `run_app` function. The return type of `run_app` is `RV`, which is a shortcut for `R<void>` and is part of LunaSDK's error handling mechanism. `R<T>` encapsulates a return value of type `T` and a stable result code of type `ResultCode`, which wraps a `u64`. A negative local result value indicates failure; a non-negative local result value indicates success. The all-zero code is plain success, while other successful codes may carry status information. If the function fails, the `T` value is uninitialized and inaccessible. Call `errcode()` to fetch the result code and `explain` to get a brief description. In `main`, we use `failed` to detect failure (the corresponding `succeeded` helper is also available), print the description, and exit if an error occurred.
 
 In our `run_app` function, the first thing to do is calling `add_modules`, which will add all modules we need to use into the module system, so that we can initialize such modules by calling `init_modules`. The program only needs to add modules that are directly used by the program, if such modules have dependent modules, they will be added to the module system automatically when such modules are added. In our example, the following modules are added:
 1. `Window`: Provides functions for managing windows.
@@ -175,15 +175,15 @@ RV DemoApp::init()
     }
     lucatch
     {
-        return lures;
+        return luerr;
     }
     return ok;
 }
 ```
 
-Besides the `new_window` function that creates the window, there are four new keywords in our code: `lutry`, `lucatch`, `luset` and `lures`. These four keywords are macros that enables us to write error handling using a simpler try-catch style, rather than fetching and checking error codes once and once again for every function call that may fail. `lutry` and `lucatch` must be used in pairs, next to each other. In the `lutry` block, the user may define multiple `lulet` , `luset` or `luexp` statements, `lulet` statement creates a new local variable to hold the  return value of the function, and jumps to `lucatch` if the function fails; `luset` assigns the return value to one existing variable, and jumps to `lucatch` if the function fails; `luexp` is used if the function does not return any value, it simply checks whether the function succeeds, and jumps to `lucatch` if not. The user may also call `luthrow` manually in `lutry` block to jump to `lucatch` directly.
+Besides the `new_window` function that creates the window, there are four new keywords in our code: `lutry`, `lucatch`, `luset` and `luerr`. These four keywords are macros that enable us to write error handling using a simpler try-catch style rather than repeatedly fetching and checking result codes. `lutry` and `lucatch` must be used in pairs, next to each other. In the `lutry` block, the user may define multiple `lulet`, `luset` or `luexp` statements. `lulet` creates a new local variable to hold a returned value and jumps to `lucatch` if the function fails; `luset` assigns a returned value to an existing variable and jumps to `lucatch` if the function fails; `luexp` checks an `RV` operation and jumps to `lucatch` on failure. The user may also call `luthrow` with a failure code to jump to `lucatch` directly.
 
-In the `lucatch` block, `lures` is provided as the error code that causes the failure. You may use one `switch` statement on the `lures` to handle specific errors, or you can propagate the error directly to parent function by `return lures`. Since error propagating is so commonly used, we create another macro `lucatchret` to replace `lucatch { return lures; }`, so the code above can be written as:
+In the `lucatch` block, `luerr` is the result code that caused the failure. You may inspect `luerr` to handle specific errors or propagate it directly to the parent function with `return luerr`. Since propagation is common, `lucatchret` replaces `lucatch { return luerr; }`, so the code above can be written as:
 
 ```c++
 RV DemoApp::init()
@@ -197,7 +197,7 @@ RV DemoApp::init()
 }
 ```
 
-Since we use `goto` statement to implement `lutry` and `lucatch`, it you needs multiple lutry-lucatch pairs in one function, you should use a numbered version for every pair (like `lutry2`, `lucatch2`, `luset` 2, `lures2`, etc.). In most cases, only one lutry-lucatch pair is sufficient.
+Because `lutry` and `lucatch` use one internal label, a function can contain only one pair. Wrap additional error-handling regions in dedicated helper functions.
 
 Now let's get back to `Window::new_window` function that does the actual work:
 
@@ -423,7 +423,7 @@ for (u32 i = 0; i < num_queues; ++i)
 		break;
 	}
 }
-if(queue == U32_MAX) return BasicError::not_supported();
+if(queue == U32_MAX) return E_NOT_SUPPORTED;
 ```
 
 After we fetched the command queue, we need to create one command buffer to record commands that will be submitted to that queue. We firstly need to add one new property to `DemoApp` to hold the command buffer:

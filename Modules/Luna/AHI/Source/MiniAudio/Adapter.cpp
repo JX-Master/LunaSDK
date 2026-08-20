@@ -22,7 +22,7 @@ namespace Luna
                 if(num_formats) *num_formats = m_info.nativeDataFormatCount;
                 return ok;
             }
-            if(!num_formats) return BasicError::bad_arguments();
+            if(!num_formats) return E_BAD_ARGUMENTS;
             usize num_formats_to_write = min<usize>(*num_formats, m_info.nativeDataFormatCount);
             for(usize i = 0; i < num_formats_to_write; ++i)
             {
@@ -40,7 +40,7 @@ namespace Luna
                 }
             }
             *num_formats = num_formats_to_write;
-            return num_formats_to_write == m_info.nativeDataFormatCount ? ok : BasicError::insufficient_user_buffer();
+            return num_formats_to_write == m_info.nativeDataFormatCount ? ok : E_INSUFFICIENT_USER_BUFFER;
         }
         LUNA_AHI_API RV get_adapters(Vector<Ref<IAdapter>>* playback_adapters, Vector<Ref<IAdapter>>* capture_adapters)
         {

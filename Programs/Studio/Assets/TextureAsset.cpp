@@ -74,7 +74,7 @@ namespace Luna
                 default: lupanic();
                 }
                 desc.format = Image::dds_to_rhi_format(dds_image.desc.format);
-                if (desc.format == RHI::Format::unknown) luthrow(set_error(BasicError::not_supported(), "Unsupported DDS formats."));
+                if (desc.format == RHI::Format::unknown) luthrow(set_error(E_NOT_SUPPORTED, "Unsupported DDS formats."));
                 desc.width = dds_image.desc.width;
                 desc.height = dds_image.desc.height;
                 desc.depth = dds_image.desc.depth;

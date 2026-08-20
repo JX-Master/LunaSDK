@@ -21,7 +21,7 @@ namespace Luna
             i32 i = stbtt_GetNumberOfFonts((const unsigned char*)data);
             if (i <= 0)
             {
-                return set_error(BasicError::bad_arguments(), "Create TTF font file failed because there is no font in the specified font file data.");
+                return set_error(E_BAD_ARGUMENTS, "Create TTF font file failed because there is no font in the specified font file data.");
             }
             m_data = Blob(data, data_size);
             m_infos.reserve((u32)i);

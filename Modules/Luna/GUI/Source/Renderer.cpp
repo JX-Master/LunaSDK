@@ -555,7 +555,7 @@ namespace Luna
                             if(command.element == INVALID_ELEMENT ||
                                 command.element >= elements.size())
                             {
-                                return set_error(BasicError::bad_data(),
+                                return set_error(E_BAD_DATA,
                                     "A backdrop capture marker must belong to an element.");
                             }
                             if(m_num_backdrop_captures >= m_backdrop_captures.size())
@@ -576,7 +576,7 @@ namespace Luna
                         if(command.type != DrawCommandType::backdrop_blur) continue;
                         if(command.element == INVALID_ELEMENT || command.element >= elements.size())
                         {
-                            return set_error(BasicError::bad_data(),
+                            return set_error(E_BAD_DATA,
                                 "A backdrop blur draw command must belong to an element.");
                         }
                         u32 source_element = command.element;
@@ -589,7 +589,7 @@ namespace Luna
                         }
                         if(capture_index == U32_MAX)
                         {
-                            return set_error(BasicError::bad_data(),
+                            return set_error(E_BAD_DATA,
                                 "A backdrop blur draw command has no preceding self-or-ancestor capture.");
                         }
                         command_capture_indices[command_index] = capture_index;
@@ -619,7 +619,7 @@ namespace Luna
                     if(!capture.used) continue;
                     if(!std::isfinite(capture.desc.softness))
                     {
-                        return set_error(BasicError::bad_data(),
+                        return set_error(E_BAD_DATA,
                             "Backdrop blur softness must be finite.");
                     }
                     f32 halo = calculate_backdrop_capture_halo(
@@ -1124,14 +1124,14 @@ namespace Luna
                 TextureDesc target_desc = render_target->get_desc();
                 if(!test_flags(target_desc.usages, TextureUsageFlag::read_texture))
                 {
-                    return set_error(BasicError::not_supported(),
+                    return set_error(E_NOT_SUPPORTED,
                         "Backdrop capture requires a color target with read_texture usage.");
                 }
                 Format intermediate_format =
                     select_backdrop_intermediate_format(target_desc.format);
                 if(intermediate_format == Format::unknown)
                 {
-                    return set_error(BasicError::not_supported(),
+                    return set_error(E_NOT_SUPPORTED,
                         "The GUI color-target format does not have a supported "
                         "backdrop-filtering intermediate format.");
                 }
@@ -1453,7 +1453,7 @@ namespace Luna
             using namespace RHI;
             if(m_sdf_instances.empty()) return ok;
             if(m_sdf_states.empty())
-                return set_error(BasicError::bad_data(), "SDF instances were compiled without raster states.");
+                return set_error(E_BAD_DATA, "SDF instances were compiled without raster states.");
             lutry
             {
                 SDFFrameBuffer frame_data;
@@ -1523,7 +1523,7 @@ namespace Luna
                     if(pair.shape_page >= m_sdf_shape_pages.size() ||
                         pair.color_page >= m_sdf_color_pages.size())
                     {
-                        return set_error(BasicError::bad_data(), "SDF draw references an unavailable program page.");
+                        return set_error(E_BAD_DATA, "SDF draw references an unavailable program page.");
                     }
                     lulet(descriptor_set, m_device->new_descriptor_set(
                         RHI::DescriptorSetDesc(m_sdf_descriptor_set_layout)));
@@ -1576,23 +1576,23 @@ namespace Luna
         {
             using namespace RHI;
             RHI::ITexture* render_target = target.color_texture;
-            if(!context || !cmdbuf || !render_target) return BasicError::bad_arguments();
+            if(!context || !cmdbuf || !render_target) return E_BAD_ARGUMENTS;
             if(surface.depth_write_enable && !surface.depth_test_enable)
             {
-                return set_error(BasicError::bad_arguments(),
+                return set_error(E_BAD_ARGUMENTS,
                     "GUI depth writes require depth testing to be enabled.");
             }
             if((surface.depth_test_enable || surface.depth_write_enable) &&
                 !target.depth_stencil_texture)
             {
-                return set_error(BasicError::bad_arguments(),
+                return set_error(E_BAD_ARGUMENTS,
                     "GUI depth testing requires a depth-stencil texture.");
             }
             auto render_target_desc = render_target->get_desc();
             if(render_target_desc.type != RHI::TextureType::tex2d || render_target_desc.sample_count != 1 ||
                 !test_flags(render_target_desc.usages, RHI::TextureUsageFlag::color_attachment))
             {
-                return set_error(BasicError::bad_arguments(),
+                return set_error(E_BAD_ARGUMENTS,
                     "The GUI color target must be a single-sample 2D color attachment.");
             }
             RHI::Format depth_stencil_format = RHI::Format::unknown;
@@ -1603,7 +1603,7 @@ namespace Luna
                     depth_desc.width != render_target_desc.width || depth_desc.height != render_target_desc.height ||
                     !test_flags(depth_desc.usages, RHI::TextureUsageFlag::depth_stencil_attachment))
                 {
-                    return set_error(BasicError::bad_arguments(),
+                    return set_error(E_BAD_ARGUMENTS,
                         "The GUI depth-stencil target must match the color target extent and sample count.");
                 }
                 depth_stencil_format = depth_desc.format;
@@ -1616,7 +1616,7 @@ namespace Luna
                         RHI::TextureStateFlag::automatic) ||
                     target.depth_stencil_final_state == RHI::TextureStateFlag::none)))
             {
-                return set_error(BasicError::bad_arguments(),
+                return set_error(E_BAD_ARGUMENTS,
                     "GUI attachment final states must be concrete resource states.");
             }
             if(render_target_desc.format != m_render_target_format ||
@@ -1645,7 +1645,7 @@ namespace Luna
                 if(surface.use_custom_transform &&
                     m_counters.backdrop_capture_count)
                 {
-                    return set_error(BasicError::not_supported(),
+                    return set_error(E_NOT_SUPPORTED,
                         "Backdrop capture is only supported for the default orthographic GUI surface.");
                 }
                 VG::ShapeRendererPassDesc vg_pass;

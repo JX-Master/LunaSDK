@@ -37,7 +37,7 @@ namespace Luna
                 textureType:encode_texture_view_type(validated_desc.type) 
                 levels:mip_range 
                 slices:array_range];
-            if(!m_texture) return BasicError::bad_platform_call();
+            if(!m_texture) return E_BAD_PLATFORM_CALL;
             return ok;
         }
     }

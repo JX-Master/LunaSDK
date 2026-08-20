@@ -164,7 +164,7 @@ namespace Luna
             auto record = get_entity_record(entity);
             if (!record)
             {
-                return ECSError::entity_not_found();
+                return ECS::E_ENTITY_NOT_FOUND;
             }
             EntityAddress r;
             r.cluster = record->m_cluster;
@@ -240,7 +240,7 @@ namespace Luna
             auto record = get_entity_record(entity);
             if (!record)
             {
-                return ECSError::entity_not_found();
+                return ECS::E_ENTITY_NOT_FOUND;
             }
             usize new_index = relocate_entity(this, record->m_cluster, record->m_index, new_cluster);
             record->m_cluster = new_cluster;

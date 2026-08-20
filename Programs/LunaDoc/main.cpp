@@ -51,14 +51,14 @@ RV gen_markdown(int argc, const char* argv[])
                 if(Name(argv[argi]) == "-o")
                 {
                     ++argi;
-                    if(argi >= argc) return set_error(BasicError::bad_arguments(), "Output path expected for -o");
+                    if(argi >= argc) return set_error(E_BAD_ARGUMENTS, "Output path expected for -o");
                     output_dir = argv[argi];
                     ++argi;
                 }
                 else if(Name(argv[argi]) == "-i")
                 {
                     ++argi;
-                    if(argi >= argc) return set_error(BasicError::bad_arguments(), "Input path expected for -i");
+                    if(argi >= argc) return set_error(E_BAD_ARGUMENTS, "Input path expected for -i");
                     input_dir = argv[argi];
                     ++argi;
                 }
@@ -69,7 +69,7 @@ RV gen_markdown(int argc, const char* argv[])
                 }
                 else
                 {
-                    return set_error(BasicError::bad_arguments(), "Unknown parameter: %s", argv[argi]);
+                    return set_error(E_BAD_ARGUMENTS, "Unknown parameter: %s", argv[argi]);
                 }
             }
         }
@@ -228,7 +228,7 @@ RV run(int argc, const char* argv[])
         }
         else
         {
-            return set_error(BasicError::bad_arguments(), "Invalid task: %s", argv[1]);
+            return set_error(E_BAD_ARGUMENTS, "Invalid task: %s", argv[1]);
         }
     }
     lucatchret;

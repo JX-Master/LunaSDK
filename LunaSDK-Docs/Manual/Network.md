@@ -110,14 +110,14 @@ lupanic_if_failed(socket->receive_from(buffer, sizeof(buffer), &sender, &receive
 
 ## Error handling
 
-Network operations return LunaSDK `RV` or `R<T>` values. Platform socket errors are translated to `NetworkError` where possible, such as `not_connected`, `address_not_supported`, `address_in_use`, `connection_refused`, and `host_not_found`.
+Network operations return LunaSDK `RV` or `R<T>` values. Platform socket errors are translated to result constants in the `Network` module namespace where possible, such as `Network::E_NOT_CONNECTED`, `Network::E_ADDRESS_NOT_SUPPORTED`, `Network::E_ADDRESS_IN_USE`, `Network::E_CONNECTION_REFUSED`, and `Network::E_HOST_NOT_FOUND`.
 
 ```c++
 auto socket_result = new_tcp_socket(AddressFamily::unspecified);
 if(!socket_result.valid())
 {
-    luassert(socket_result.errcode() == NetworkError::address_not_supported());
+    luassert(socket_result.errcode() == Network::E_ADDRESS_NOT_SUPPORTED);
 }
 ```
 
-Some invalid operation combinations can be reported as generic `BasicError` values by the host platform, such as `bad_arguments` or `not_supported`. Code should check for failure before using output values unless it specifically needs one exact error code documented by the API.
+Some invalid operation combinations can be reported as generic values by the host platform, such as `E_BAD_ARGUMENTS` or `E_NOT_SUPPORTED`. Code should check for failure before using output values unless it specifically needs one exact result code documented by the API.

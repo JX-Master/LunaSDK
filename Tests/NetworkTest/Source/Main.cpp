@@ -80,11 +80,11 @@ namespace
     {
         auto tcp_result = new_tcp_socket(AddressFamily::unspecified);
         lutest(!tcp_result.valid());
-        lutest(tcp_result.errcode() == NetworkError::address_not_supported());
+        lutest(tcp_result.errcode() == Network::E_ADDRESS_NOT_SUPPORTED);
 
         auto udp_result = new_udp_socket(AddressFamily::unspecified);
         lutest(!udp_result.valid());
-        lutest(udp_result.errcode() == NetworkError::address_not_supported());
+        lutest(udp_result.errcode() == Network::E_ADDRESS_NOT_SUPPORTED);
     }
 
     RV read_exact(IStream* stream, void* buffer, usize size)
@@ -95,7 +95,7 @@ namespace
             usize read_bytes = 0;
             RV r = stream->read((u8*)buffer + total_read, size - total_read, &read_bytes);
             if(failed(r)) return r;
-            if(!read_bytes) return BasicError::no_data();
+            if(!read_bytes) return E_NO_DATA;
             total_read += read_bytes;
         }
         return ok;
@@ -105,7 +105,7 @@ namespace
     {
         Ref<ITCPSocket> listener;
         AddressFamily family = AddressFamily::unspecified;
-        ErrCode error = ErrCode(0);
+        ResultCode error = ResultCode(0);
     };
 
     void tcp_server_main(void* params)
@@ -137,7 +137,7 @@ namespace
             local_address.family != ctx->family ||
             peer_address.family != ctx->family)
         {
-            ctx->error = BasicError::bad_data();
+            ctx->error = E_BAD_DATA;
             return;
         }
 
@@ -150,7 +150,7 @@ namespace
         }
         if(input[0] != 'p' || input[1] != 'i' || input[2] != 'n' || input[3] != 'g')
         {
-            ctx->error = BasicError::bad_data();
+            ctx->error = E_BAD_DATA;
             return;
         }
         const c8 output[] = {'p', 'o', 'n', 'g'};
@@ -163,7 +163,7 @@ namespace
         }
         if(written != sizeof(output))
         {
-            ctx->error = BasicError::bad_data();
+            ctx->error = E_BAD_DATA;
         }
     }
 
@@ -269,7 +269,7 @@ namespace
         lutest(input[0] == 'p' && input[1] == 'o' && input[2] == 'n' && input[3] == 'g');
 
         thread->wait();
-        lutest(ctx.error == ErrCode(0));
+        lutest(ctx.error == ResultCode(0));
     }
 
     void udp_loopback_test(AddressFamily family)
@@ -311,7 +311,7 @@ namespace
         SocketAddress address = {};
         RV r = tcp->get_remote_address(address);
         lutest(failed(r));
-        lutest(r.errcode() == NetworkError::not_connected());
+        lutest(r.errcode() == Network::E_NOT_CONNECTED);
 
         r = tcp->connect(ipv6_loopback(9));
         lutest(failed(r));
@@ -332,6 +332,7 @@ int main()
     init();
     lupanic_if_failed(add_modules({module_network()}));
     lupanic_if_failed(init_modules());
+    lutest(!strcmp(get_error_category_name(Network::ERROR_CATEGORY), "Network"));
     set_log_to_platform_enabled(true);
     set_log_to_platform_verbosity(LogVerbosity::warning);
     address_info_test();

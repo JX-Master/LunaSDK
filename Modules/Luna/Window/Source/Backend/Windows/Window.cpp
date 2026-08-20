@@ -31,7 +31,7 @@ namespace Luna
             {
                 if(!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
                 {
-                    luthrow(set_error(BasicError::bad_platform_call(), "SetProcessDpiAwarenessContext failed"));
+                    luthrow(set_error(E_BAD_PLATFORM_CALL, "SetProcessDpiAwarenessContext failed"));
                 }
                 if (g_startup_params.hInstance == NULL)
                 {
@@ -52,7 +52,7 @@ namespace Luna
                 wcex.lpszClassName = WIN32_CLASS_NAME;
                 if (!RegisterClassExW(&wcex))
                 {
-                    luthrow(set_error(BasicError::bad_platform_call(), "RegisterClassExW failed."));
+                    luthrow(set_error(E_BAD_PLATFORM_CALL, "RegisterClassExW failed."));
                 }
             }
             lucatchret;
@@ -101,7 +101,7 @@ namespace Luna
         RV Window::set_foreground()
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             SetForegroundWindow(m_hwnd);
             return ok;
         }
@@ -120,21 +120,21 @@ namespace Luna
         RV Window::set_minimized()
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             ShowWindow(m_hwnd, SW_MINIMIZE);
             return ok;
         }
         RV Window::set_maximized()
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             ShowWindow(m_hwnd, SW_MAXIMIZE);
             return ok;
         }
         RV Window::set_restored()
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             ShowWindow(m_hwnd, SW_RESTORE);
             return ok;
         }
@@ -155,7 +155,7 @@ namespace Luna
         RV Window::set_visible(bool visible)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             ShowWindow(m_hwnd, visible ? SW_SHOW : SW_HIDE);
             return ok;
         }
@@ -184,7 +184,7 @@ namespace Luna
         RV Window::set_style(WindowStyleFlag style)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             m_style = style;
             LONG wstyle = GetWindowLongW(m_hwnd, GWL_STYLE);
             // Reset all window style bits.
@@ -195,7 +195,7 @@ namespace Luna
                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED))
             {
                 DWORD err = GetLastError();
-                return set_error(BasicError::bad_platform_call(), "SetWindowPos failed. Error code: %u", err);
+                return set_error(E_BAD_PLATFORM_CALL, "SetWindowPos failed. Error code: %u", err);
             }
             return ok;
         }
@@ -218,7 +218,7 @@ namespace Luna
         RV Window::set_position(i32 x, i32 y)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             
             RectI rect(x, y, 100, 100);
             rect = client_rect_to_window_rect(this, rect);
@@ -238,7 +238,7 @@ namespace Luna
         RV Window::set_size(u32 width, u32 height)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             
             RectI rect(0, 0, width, height);
             rect = client_rect_to_window_rect(this, rect);
@@ -262,7 +262,7 @@ namespace Luna
         RV Window::set_title(const c8* title)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             
             usize title_len = utf8_to_utf16_len(title);
             StackAllocator alloc;
@@ -271,7 +271,7 @@ namespace Luna
             
             if (!SetWindowTextW(m_hwnd, (LPCWSTR)buf))
             {
-                return set_error(BasicError::bad_platform_call(), "SetWindowTextW failed");
+                return set_error(E_BAD_PLATFORM_CALL, "SetWindowTextW failed");
             }
             return ok;
         }
@@ -298,7 +298,7 @@ namespace Luna
         RV Window::set_text_input_area(const RectI& input_rect, i32 cursor)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             
             // Get IME context
             HIMC himc = ImmGetContext(m_hwnd);
@@ -392,7 +392,7 @@ namespace Luna
                 if (!hwnd)
                 {
                     DWORD err = GetLastError();
-                    return set_error(BasicError::bad_platform_call(), "CreateWindowExW failed. Error code: %u", err);
+                    return set_error(E_BAD_PLATFORM_CALL, "CreateWindowExW failed. Error code: %u", err);
                 }
                 Ref<Window> window = new_object<Window>();
                 window->m_hwnd = hwnd;
@@ -410,7 +410,7 @@ namespace Luna
                     if(!TrackMouseEvent(&track_mouse))
                     {
                         DWORD err = GetLastError();
-                        return set_error(BasicError::bad_platform_call(), "TrackMouseEvent failed. Error code: %u", err);
+                        return set_error(E_BAD_PLATFORM_CALL, "TrackMouseEvent failed. Error code: %u", err);
                     }
                 }
                 // Show window if not hidden

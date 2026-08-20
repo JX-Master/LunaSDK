@@ -63,7 +63,7 @@ namespace Luna
             memzero(&info);
             info.cbSize = sizeof(MONITORINFOEXW);
             BOOL r = ::GetMonitorInfoW((HMONITOR)display, &info);
-            if(!r) return BasicError::bad_platform_call();
+            if(!r) return E_BAD_PLATFORM_CALL;
             DEVMODEW dev_mode;
             dev_mode.dmSize = sizeof(DEVMODEW);
             for (DWORD i = 0; EnumDisplaySettingsW(info.szDevice, i, &dev_mode); ++i)
@@ -83,12 +83,12 @@ namespace Luna
             memzero(&info);
             info.cbSize = sizeof(MONITORINFOEXW);
             BOOL r = ::GetMonitorInfoW((HMONITOR)display, &info);
-            if(!r) return BasicError::bad_platform_call();
+            if(!r) return E_BAD_PLATFORM_CALL;
             DEVMODEW dev_mode;
             dev_mode.dmSize = sizeof(DEVMODEW);
             if (!EnumDisplaySettingsW(info.szDevice, ENUM_CURRENT_SETTINGS, &dev_mode))
             {
-                return set_error(BasicError::bad_platform_call(), "EnumDisplaySettingsW failed");
+                return set_error(E_BAD_PLATFORM_CALL, "EnumDisplaySettingsW failed");
             }
             VideoMode mode;
             mode.width = dev_mode.dmPelsWidth;
@@ -103,7 +103,7 @@ namespace Luna
             memzero(&info);
             info.cbSize = sizeof(MONITORINFO);
             BOOL r = ::GetMonitorInfoW((HMONITOR)display, &info);
-            if(!r) return BasicError::bad_platform_call();
+            if(!r) return E_BAD_PLATFORM_CALL;
             return Int2U(info.rcMonitor.left, info.rcMonitor.top);
         }
         LUNA_WINDOW_API R<RectI> get_display_working_area(display_t display)
@@ -112,7 +112,7 @@ namespace Luna
             memzero(&info);
             info.cbSize = sizeof(MONITORINFO);
             BOOL r = ::GetMonitorInfoW((HMONITOR)display, &info);
-            if(!r) return BasicError::bad_platform_call();
+            if(!r) return E_BAD_PLATFORM_CALL;
             return RectI(info.rcWork.left,
                 info.rcWork.top,
                 info.rcWork.right - info.rcWork.left,
@@ -124,7 +124,7 @@ namespace Luna
             memzero(&info);
             info.cbSize = sizeof(MONITORINFOEXW);
             BOOL r = ::GetMonitorInfoW((HMONITOR)display, &info);
-            if(!r) return BasicError::bad_platform_call();
+            if(!r) return E_BAD_PLATFORM_CALL;
             usize len = utf16_to_utf8_len((c16*)info.szDevice);
             StackAllocator alloc;
             c8* buf = (c8*)alloc.allocate(len + 1);

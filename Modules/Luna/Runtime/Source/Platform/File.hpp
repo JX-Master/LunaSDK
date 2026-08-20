@@ -137,8 +137,8 @@ namespace Luna
         Result get_file_attribute(const c8* path, FileAttribute& out_attribute);
 
         //! Copies the file from the source path to the destination path. This function cannot copy directories.
-        //! @param[in] from_path Source file path. If `from_path` does not existm this operation failed with @ref BasicError::not_found.
-        //! @param[in] to_path Destination file or path. If `to_path` already exists, this operation fails with @ref BasicError::already_exists
+        //! @param[in] from_path Source file path. If `from_path` does not existm this operation failed with @ref E_NOT_FOUND.
+        //! @param[in] to_path Destination file or path. If `to_path` already exists, this operation fails with @ref E_ALREADY_EXISTS
         //! and the existing file will not be modified.
         //! @par Possible Errors
         //! * @ref Result::bad_arguments
@@ -150,8 +150,8 @@ namespace Luna
         Result copy_file(const c8* from_path, const c8* to_path);
 
         //! Moves the file or directory from the source path to the destination path. This call can also be used to rename a file.
-        //! @param[in] from_path Source file or directory path. If `from_path` does not existm this operation failed with @ref BasicError::not_found.
-        //! @param[in] to_path Destination file or directory path. If `to_path` already exists, this operation fails with @ref BasicError::already_exists
+        //! @param[in] from_path Source file or directory path. If `from_path` does not existm this operation failed with @ref E_NOT_FOUND.
+        //! @param[in] to_path Destination file or directory path. If `to_path` already exists, this operation fails with @ref E_ALREADY_EXISTS
         //! and the existing file will not be modified.
         //! @par Possible Errors
         //! * @ref Result::bad_arguments
@@ -195,9 +195,9 @@ namespace Luna
         //! @param[in] path The directory path to open.
         //! @param[out] out_dir_iter Returns a file iterator handle if succeeded.
         //! @par Possible Errors
-        //! * BasicError::access_denied
-        //! * BasicError::not_found
-        //! * BasicError::bad_platform_call for all errors that cannot be identified.
+        //! * E_ACCESS_DENIED
+        //! * E_NOT_FOUND
+        //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
         Result open_dir(const c8* path, FileIterator& out_dir_iter);
 
         //! Closes the file iterator handle.
@@ -228,9 +228,9 @@ namespace Luna
         //! Creates one directory.
         //! @param[in] path The path of the directory to create.
         //! @return Returns on of the following error codes on error:
-        //! * BasicError::already_exists
-        //! * BasicError::not_found
-        //! * BasicError::bad_platform_call for all errors that cannot be identified.
+        //! * E_ALREADY_EXISTS
+        //! * E_NOT_FOUND
+        //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
         Result create_dir(const c8* path);
 
         //! Get the current working directory path for the underlying system.
@@ -243,7 +243,7 @@ namespace Luna
         //! Set the current working directory path for the underlying system. The current directory will be set for the process scope.
         //! @param[in] path The path to set. This must be a null-terminated string.
         //! @return Returns `s_ok` on success, returns one of the following error codes on failure:
-        //! * BasicError::bad_platform_call
+        //! * E_BAD_PLATFORM_CALL
         Result set_current_dir(const c8* path);
 
         //! Get the application executable file's absolute path.

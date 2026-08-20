@@ -145,14 +145,14 @@ namespace Luna
             SkyBoxPassGlobalData* data = (SkyBoxPassGlobalData*)userdata;
             auto texture_resource = compiler->get_output_resource(data->m_texture_name);
             auto depth_texture_resource = compiler->get_input_resource(data->m_depth_texture_name);
-            if(texture_resource == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "SkyBoxPass: Output \"texture\" is not specified.");
-            if(depth_texture_resource == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "SkyBoxPass: Input \"depth_texture\" is not specified.");
+            if(texture_resource == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "SkyBoxPass: Output \"texture\" is not specified.");
+            if(depth_texture_resource == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "SkyBoxPass: Input \"depth_texture\" is not specified.");
             
             RG::ResourceDesc depth_desc = compiler->get_resource_desc(depth_texture_resource);
             if (depth_desc.type != RG::ResourceType::texture || depth_desc.texture.type != RHI::TextureType::tex2d ||
                 !depth_desc.texture.width || !depth_desc.texture.height)
             {
-                return set_error(BasicError::bad_arguments(), "SkyBoxPass: The resource format for input \"depth_texture\" is not specified or invalid.");
+                return set_error(E_BAD_ARGUMENTS, "SkyBoxPass: The resource format for input \"depth_texture\" is not specified or invalid.");
             }
             depth_desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
             compiler->set_resource_desc(depth_texture_resource, depth_desc);

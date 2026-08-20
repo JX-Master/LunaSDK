@@ -51,65 +51,65 @@ namespace Luna
         //! @param[in] creation Specify whether to create a file if the file does not exist.
         //! @return Returns the new opened file object.
         //! @par Possible Errors:
-        //! * BasicError::bad_arguments
-        //! * BasicError::access_denied
-        //! * BasicError::not_found
-        //! * BasicError::not_directory
-        //! * BasicError::bad_platform_call for all errors that cannot be identified.
+        //! * E_BAD_ARGUMENTS
+        //! * E_ACCESS_DENIED
+        //! * E_NOT_FOUND
+        //! * E_NOT_DIRECTORY
+        //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
         LUNA_VFS_API R<Ref<IFile>> open_file(const Path& path, FileOpenFlag flags, FileCreationMode creation);
         //! Gets the file or directory attribute.
         //! @param[in] path The path of the file to check.
         //! @return Returns the file attribute structure.
         //! @par Possible Errors:
-        //! * BasicError::access_denied
-        //! * BasicError::not_found
-        //! * BasicError::not_directory
-        //! * BasicError::bad_platform_call for all errors that cannot be identified.
+        //! * E_ACCESS_DENIED
+        //! * E_NOT_FOUND
+        //! * E_NOT_DIRECTORY
+        //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
         LUNA_VFS_API R<FileAttribute> get_file_attribute(const Path& path);
         //! Copies the file from the source path to the destination path.
         //! This function cannot copy directories.
         //! @param[in] from_path Source file path.
         //! @param[in] to_path Destination file path.
         //! @par Possible Errors:
-        //! * BasicError::bad_arguments
-        //! * BasicError::already_exists
-        //! * BasicError::access_denied
-        //! * BasicError::not_found
-        //! * BasicError::bad_platform_call for all errors that cannot be identified.
+        //! * E_BAD_ARGUMENTS
+        //! * E_ALREADY_EXISTS
+        //! * E_ACCESS_DENIED
+        //! * E_NOT_FOUND
+        //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
         LUNA_VFS_API RV copy_file(const Path& from_path, const Path& to_path);
         //! Moves the file or directory from the source path to the destination path. This call can also be used to rename a file.
         //! @param[in] from_path Source file path.
         //! @param[in] to_path Destination file path.
         //! @par Possible Errors:
-        //! * BasicError::bad_arguments
-        //! * BasicError::already_exists
-        //! * BasicError::access_denied
-        //! * BasicError::not_found
-        //! * BasicError::bad_platform_call for all errors that cannot be identified.
+        //! * E_BAD_ARGUMENTS
+        //! * E_ALREADY_EXISTS
+        //! * E_ACCESS_DENIED
+        //! * E_NOT_FOUND
+        //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
         LUNA_VFS_API RV move_file(const Path& from_path, const Path& to_path);
         //! Deletes the specified file or directory
         //! @param[in] path The file to delete.
         //! If this specifies one directory, the directory must be empty.
         //! @par Possible Errors:
-        //! * BasicError::bad_arguments
-        //! * BasicError::not_found
-        //! * BasicError::access_denied
-        //! * BasicError::directory_not_empty
-        //! * BasicError::bad_platform_call for all errors that cannot be identified.
+        //! * E_BAD_ARGUMENTS
+        //! * E_NOT_FOUND
+        //! * E_ACCESS_DENIED
+        //! * E_DIRECTORY_NOT_EMPTY
+        //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
         LUNA_VFS_API RV delete_file(const Path& path);
         //! Creates a file iterator that can be used to iterate all files in the specified directory.
         //! @param[in] path The directory path to open.
         //! @return Returns a file iterator object.
         //! @par Possible Errors:
-        //! * BasicError::not_found
-        //! * BasicError::bad_platform_call for all errors that cannot be identified.
+        //! * E_NOT_FOUND
+        //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
         LUNA_VFS_API R<Ref<IFileIterator>> open_dir(const Path& path);
         //! Creates one directory.
         //! @param[in] path The path of the directory.
         //! @par Possible Errors:
-        //! * BasicError::already_exists
-        //! * BasicError::not_found
-        //! * BasicError::bad_platform_call for all errors that cannot be identified.
+        //! * E_ALREADY_EXISTS
+        //! * E_NOT_FOUND
+        //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
         LUNA_VFS_API RV create_dir(const Path& path);
 
         //! Translates one VFS path to one native driver path.
@@ -126,18 +126,19 @@ namespace Luna
 
     //! @addtogroup VFS
     //! @{
-    //! @defgroup VFSError VFS Errors
+    //! @defgroup VFSResultCodes VFS Result Codes
     //! @}
 
-    namespace VFSError
+    namespace VFS
     {
-        //! @addtogroup VFSError
+        //! @addtogroup VFSResultCodes
         //! @{
         
-        LUNA_VFS_API errcat_t errtype();
+        //! The VFS error category identifier.
+        inline constexpr errcat_t ERROR_CATEGORY = make_error_category(ErrorDomain::LUNA_SDK, LunaErrorCategory::VFS);
 
         //! The specified VFS driver is not found.
-        LUNA_VFS_API ErrCode driver_not_found();
+        inline constexpr ResultCode E_DRIVER_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::VFS, -1);
 
         //! @}
     }

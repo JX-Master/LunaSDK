@@ -165,19 +165,19 @@ namespace Luna
             {
                 if(first_float >= floats.size())
                 {
-                    return set_error(BasicError::bad_data(), "SDF color instruction is truncated.");
+                    return set_error(E_BAD_DATA, "SDF color instruction is truncated.");
                 }
                 u32 encoded_opcode = 0;
                 if(!decode_u32(floats[first_float], encoded_opcode) ||
                     (encoded_opcode & ~(SDF_COLOR_OPCODE_MASK | SDF_COLOR_CLIP_MASK)))
                 {
-                    return set_error(BasicError::bad_data(), "SDF color opcode is invalid.");
+                    return set_error(E_BAD_DATA, "SDF color opcode is invalid.");
                 }
                 u32 base_opcode = encoded_opcode & SDF_COLOR_OPCODE_MASK;
                 if(base_opcode < (u32)SDFColorInstruction::solid ||
                     base_opcode > (u32)SDFColorInstruction::shadow)
                 {
-                    return set_error(BasicError::bad_data(), "Unknown SDF color instruction %u.", base_opcode);
+                    return set_error(E_BAD_DATA, "Unknown SDF color instruction %u.", base_opcode);
                 }
                 output.instruction = (SDFColorInstruction)base_opcode;
                 output.clip_mode = (SDFClipMode)(encoded_opcode & SDF_COLOR_CLIP_MASK);
@@ -189,7 +189,7 @@ namespace Luna
                     if(output.payload_float >= floats.size() ||
                         !std::isfinite(floats[output.payload_float]) || floats[output.payload_float] < 0.0f)
                     {
-                        return set_error(BasicError::bad_data(), "SDF inner clip distance is invalid.");
+                        return set_error(E_BAD_DATA, "SDF inner clip distance is invalid.");
                     }
                     output.inner_distance = floats[output.payload_float++];
                 }
@@ -198,7 +198,7 @@ namespace Luna
                     if(output.payload_float >= floats.size() ||
                         !std::isfinite(floats[output.payload_float]) || floats[output.payload_float] < 0.0f)
                     {
-                        return set_error(BasicError::bad_data(), "SDF outer clip distance is invalid.");
+                        return set_error(E_BAD_DATA, "SDF outer clip distance is invalid.");
                     }
                     output.outer_distance = floats[output.payload_float++];
                 }
@@ -216,7 +216,7 @@ namespace Luna
                 case SDFColorInstruction::solid:
                     if(cursor + 4 > floats.size() || !finite4(read_color(floats, cursor)))
                     {
-                        return set_error(BasicError::bad_data(), "Invalid SDF solid color instruction.");
+                        return set_error(E_BAD_DATA, "Invalid SDF solid color instruction.");
                     }
                     output.next_float = cursor + 4;
                     break;
@@ -225,13 +225,13 @@ namespace Luna
                 {
                     if(cursor + 6 > floats.size())
                     {
-                        return set_error(BasicError::bad_data(), "SDF gradient instruction is truncated.");
+                        return set_error(E_BAD_DATA, "SDF gradient instruction is truncated.");
                     }
                     for(u32 i = 0; i < 4; ++i)
                     {
                         if(!std::isfinite(floats[cursor + i]))
                         {
-                            return set_error(BasicError::bad_data(), "SDF gradient geometry is invalid.");
+                            return set_error(E_BAD_DATA, "SDF gradient geometry is invalid.");
                         }
                     }
                     u32 spread = 0;
@@ -239,13 +239,13 @@ namespace Luna
                         spread > (u32)SDFGradientSpread::repeat ||
                         !decode_u32(floats[cursor + 5], output.num_stops))
                     {
-                        return set_error(BasicError::bad_data(), "SDF gradient settings are invalid.");
+                        return set_error(E_BAD_DATA, "SDF gradient settings are invalid.");
                     }
                     cursor += 6;
                     if(output.header.instruction == SDFColorInstruction::radial_gradient &&
                         (floats[cursor - 4] <= 0.0f || floats[cursor - 3] <= 0.0f))
                     {
-                        return set_error(BasicError::bad_data(),
+                        return set_error(E_BAD_DATA,
                             "SDF radial gradient radii must be positive.");
                     }
                     break;
@@ -254,13 +254,13 @@ namespace Luna
                 {
                     if(cursor + 5 > floats.size())
                     {
-                        return set_error(BasicError::bad_data(),
+                        return set_error(E_BAD_DATA,
                             "SDF conic gradient instruction is truncated.");
                     }
                     if(!std::isfinite(floats[cursor]) || !std::isfinite(floats[cursor + 1]) ||
                         !std::isfinite(floats[cursor + 2]))
                     {
-                        return set_error(BasicError::bad_data(),
+                        return set_error(E_BAD_DATA,
                             "SDF conic gradient geometry is invalid.");
                     }
                     u32 spread = 0;
@@ -268,7 +268,7 @@ namespace Luna
                         spread > (u32)SDFGradientSpread::repeat ||
                         !decode_u32(floats[cursor + 4], output.num_stops))
                     {
-                        return set_error(BasicError::bad_data(), "SDF conic gradient settings are invalid.");
+                        return set_error(E_BAD_DATA, "SDF conic gradient settings are invalid.");
                     }
                     cursor += 5;
                     break;
@@ -276,14 +276,14 @@ namespace Luna
                 case SDFColorInstruction::bilinear_gradient:
                     if(cursor + 20 > floats.size())
                     {
-                        return set_error(BasicError::bad_data(),
+                        return set_error(E_BAD_DATA,
                             "Invalid SDF bilinear gradient instruction size.");
                     }
                     for(u32 i = 0; i < 20; ++i)
                     {
                         if(!std::isfinite(floats[cursor + i]))
                         {
-                            return set_error(BasicError::bad_data(),
+                            return set_error(E_BAD_DATA,
                                 "SDF bilinear gradient contains a non-finite parameter.");
                         }
                     }
@@ -292,7 +292,7 @@ namespace Luna
                 case SDFColorInstruction::shadow:
                     if(cursor + 8 > floats.size() || !finite4(read_color(floats, cursor)))
                     {
-                        return set_error(BasicError::bad_data(),
+                        return set_error(E_BAD_DATA,
                             "Invalid SDF shadow instruction size or color.");
                     }
                     output.shadow_offset = Float2U(floats[cursor + 4], floats[cursor + 5]);
@@ -301,12 +301,12 @@ namespace Luna
                     if(!finite2(output.shadow_offset) || !std::isfinite(output.shadow_softness) ||
                         output.shadow_softness < 0.0f || !std::isfinite(output.shadow_spread))
                     {
-                        return set_error(BasicError::bad_data(), "SDF shadow parameters are invalid.");
+                        return set_error(E_BAD_DATA, "SDF shadow parameters are invalid.");
                     }
                     output.next_float = cursor + 8;
                     break;
                 default:
-                    return set_error(BasicError::bad_data(), "Unknown SDF color instruction.");
+                    return set_error(E_BAD_DATA, "Unknown SDF color instruction.");
                 }
 
                 if(output.header.instruction == SDFColorInstruction::linear_gradient ||
@@ -316,7 +316,7 @@ namespace Luna
                     if(output.num_stops < 2 || output.num_stops > SDF_MAX_COLOR_STOPS ||
                         cursor + output.num_stops * 6 > floats.size())
                     {
-                        return set_error(BasicError::bad_data(), "SDF gradient stop count is invalid.");
+                        return set_error(E_BAD_DATA, "SDF gradient stop count is invalid.");
                     }
                     f32 former_position = -F32_INFINITY;
                     for(u32 i = 0; i < output.num_stops; ++i)
@@ -325,7 +325,7 @@ namespace Luna
                         if(!std::isfinite(floats[stop]) || floats[stop] < former_position ||
                             !std::isfinite(floats[stop + 1]) || !finite4(read_color(floats, stop + 2)))
                         {
-                            return set_error(BasicError::bad_data(),
+                            return set_error(E_BAD_DATA,
                                 "SDF gradient stops are invalid or unsorted.");
                         }
                         former_position = floats[stop];
@@ -340,13 +340,13 @@ namespace Luna
             {
                 if(recursion_depth > SDF_MAX_SHAPE_STACK_DEPTH || float_index >= floats.size())
                 {
-                    return set_error(BasicError::bad_data(),
+                    return set_error(E_BAD_DATA,
                         "SDF shape expression is truncated or too deeply nested.");
                 }
                 u32 instruction = 0;
                 if(!decode_u32(floats[float_index], instruction))
                 {
-                    return set_error(BasicError::bad_data(), "SDF shape opcode is invalid.");
+                    return set_error(E_BAD_DATA, "SDF shape opcode is invalid.");
                 }
                 SDFShapeInstruction opcode = (SDFShapeInstruction)instruction;
                 output.num_instructions = 1;
@@ -356,14 +356,14 @@ namespace Luna
                 case SDFShapeInstruction::rectangle:
                     if(float_index + 5 > floats.size())
                     {
-                        return set_error(BasicError::bad_data(), "SDF rectangle instruction is truncated.");
+                        return set_error(E_BAD_DATA, "SDF rectangle instruction is truncated.");
                     }
                     if(!std::isfinite(floats[float_index + 1]) || !std::isfinite(floats[float_index + 2]) ||
                         !std::isfinite(floats[float_index + 3]) || !std::isfinite(floats[float_index + 4]) ||
                         floats[float_index + 3] < floats[float_index + 1] ||
                         floats[float_index + 4] < floats[float_index + 2])
                     {
-                        return set_error(BasicError::bad_data(), "SDF rectangle has invalid bounds.");
+                        return set_error(E_BAD_DATA, "SDF rectangle has invalid bounds.");
                     }
                     output.bounds = bounds_from_min_max(floats[float_index + 1], floats[float_index + 2],
                         floats[float_index + 3], floats[float_index + 4]);
@@ -372,14 +372,14 @@ namespace Luna
                 case SDFShapeInstruction::rounded_rectangle:
                     if(float_index + 9 > floats.size())
                     {
-                        return set_error(BasicError::bad_data(),
+                        return set_error(E_BAD_DATA,
                             "SDF rounded rectangle instruction is truncated.");
                     }
                     for(u32 i = 1; i < 9; ++i)
                     {
                         if(!std::isfinite(floats[float_index + i]))
                         {
-                            return set_error(BasicError::bad_data(),
+                            return set_error(E_BAD_DATA,
                                 "SDF rounded rectangle contains a non-finite parameter.");
                         }
                     }
@@ -388,7 +388,7 @@ namespace Luna
                         floats[float_index + 5] < 0.0f || floats[float_index + 6] < 0.0f ||
                         floats[float_index + 7] < 0.0f || floats[float_index + 8] < 0.0f)
                     {
-                        return set_error(BasicError::bad_data(),
+                        return set_error(E_BAD_DATA,
                             "SDF rounded rectangle has invalid bounds or radii.");
                     }
                     output.bounds = bounds_from_min_max(floats[float_index + 1], floats[float_index + 2],
@@ -400,7 +400,7 @@ namespace Luna
                         !std::isfinite(floats[float_index + 2]) || !std::isfinite(floats[float_index + 3]) ||
                         floats[float_index + 3] < 0.0f)
                     {
-                        return set_error(BasicError::bad_data(), "Invalid SDF circle instruction.");
+                        return set_error(E_BAD_DATA, "Invalid SDF circle instruction.");
                     }
                     output.bounds = RectF(floats[float_index + 1] - floats[float_index + 3],
                         floats[float_index + 2] - floats[float_index + 3], floats[float_index + 3] * 2.0f,
@@ -413,7 +413,7 @@ namespace Luna
                         !std::isfinite(floats[float_index + 4]) || floats[float_index + 3] <= 0.0f ||
                         floats[float_index + 4] <= 0.0f)
                     {
-                        return set_error(BasicError::bad_data(), "Invalid SDF ellipse instruction.");
+                        return set_error(E_BAD_DATA, "Invalid SDF ellipse instruction.");
                     }
                     output.bounds = RectF(floats[float_index + 1] - floats[float_index + 3],
                         floats[float_index + 2] - floats[float_index + 4], floats[float_index + 3] * 2.0f,
@@ -423,19 +423,19 @@ namespace Luna
                 case SDFShapeInstruction::capsule:
                     if(float_index + 6 > floats.size())
                     {
-                        return set_error(BasicError::bad_data(), "SDF capsule instruction is truncated.");
+                        return set_error(E_BAD_DATA, "SDF capsule instruction is truncated.");
                     }
                     for(u32 i = 1; i < 6; ++i)
                     {
                         if(!std::isfinite(floats[float_index + i]))
                         {
-                            return set_error(BasicError::bad_data(),
+                            return set_error(E_BAD_DATA,
                                 "SDF capsule contains a non-finite parameter.");
                         }
                     }
                     if(floats[float_index + 5] < 0.0f)
                     {
-                        return set_error(BasicError::bad_data(), "SDF capsule radius is negative.");
+                        return set_error(E_BAD_DATA, "SDF capsule radius is negative.");
                     }
                     output.bounds = bounds_from_min_max(
                         min(floats[float_index + 1], floats[float_index + 3]) - floats[float_index + 5],
@@ -450,7 +450,7 @@ namespace Luna
                 case SDFShapeInstruction::xor_op:
                     break;
                 default:
-                    return set_error(BasicError::bad_data(), "Unknown SDF shape instruction %u.", instruction);
+                    return set_error(E_BAD_DATA, "Unknown SDF shape instruction %u.", instruction);
                 }
 
                 ShapeNodeInfo lhs;
@@ -793,24 +793,24 @@ namespace Luna
         {
             if(floats.empty())
             {
-                return set_error(BasicError::bad_data(), "SDF shape program is empty.");
+                return set_error(E_BAD_DATA, "SDF shape program is empty.");
             }
             if(floats.size() > SDF_MAX_SHAPE_FLOATS)
             {
-                return set_error(BasicError::bad_data(), "SDF shape program exceeds the float limit.");
+                return set_error(E_BAD_DATA, "SDF shape program exceeds the float limit.");
             }
             ShapeNodeInfo root;
             RV parse_result = parse_shape_node(floats, 0, 1, root);
             if(failed(parse_result)) return parse_result;
             if(root.next_float != floats.size())
             {
-                return set_error(BasicError::bad_data(),
+                return set_error(E_BAD_DATA,
                     "SDF shape program contains trailing instructions or parameters.");
             }
             if(root.num_instructions > SDF_MAX_SHAPE_INSTRUCTIONS ||
                 root.max_stack_depth > SDF_MAX_SHAPE_STACK_DEPTH)
             {
-                return set_error(BasicError::bad_data(), "SDF shape program exceeds interpreter limits.");
+                return set_error(E_BAD_DATA, "SDF shape program exceeds interpreter limits.");
             }
             if(out_program)
             {
@@ -826,11 +826,11 @@ namespace Luna
         {
             if(floats.empty())
             {
-                return set_error(BasicError::bad_data(), "SDF color program is empty.");
+                return set_error(E_BAD_DATA, "SDF color program is empty.");
             }
             if(floats.size() > SDF_MAX_COLOR_FLOATS)
             {
-                return set_error(BasicError::bad_data(), "SDF color program exceeds the float limit.");
+                return set_error(E_BAD_DATA, "SDF color program exceeds the float limit.");
             }
 
             u32 cursor = 0;
@@ -844,7 +844,7 @@ namespace Luna
             {
                 if(num_instructions >= SDF_MAX_COLOR_INSTRUCTIONS)
                 {
-                    return set_error(BasicError::bad_data(),
+                    return set_error(E_BAD_DATA,
                         "SDF color program exceeds the instruction limit.");
                 }
                 ColorInstructionInfo instruction;
@@ -852,7 +852,7 @@ namespace Luna
                 if(failed(parse_result)) return parse_result;
                 if(instruction.next_float <= cursor)
                 {
-                    return set_error(BasicError::bad_data(), "SDF color instruction has invalid length.");
+                    return set_error(E_BAD_DATA, "SDF color instruction has invalid length.");
                 }
 
                 u32 clip_mode = (u32)instruction.header.clip_mode;
@@ -895,7 +895,7 @@ namespace Luna
             }
             if(num_instructions > 1 && has_unbounded_non_shadow)
             {
-                return set_error(BasicError::bad_data(),
+                return set_error(E_BAD_DATA,
                     "Multi-instruction SDF color programs require outer clipping on non-shadow paints.");
             }
 
@@ -923,9 +923,9 @@ namespace Luna
             while(float_index < floats.size())
             {
                 u32 instruction = 0;
-                if(!decode_u32(floats[float_index], instruction)) return BasicError::bad_data();
+                if(!decode_u32(floats[float_index], instruction)) return E_BAD_DATA;
                 u32 num_floats = shape_instruction_length((SDFShapeInstruction)instruction);
-                if(!num_floats) return BasicError::bad_data();
+                if(!num_floats) return E_BAD_DATA;
                 instruction_offsets[instruction_count++] = float_index;
                 float_index += num_floats;
             }
@@ -974,7 +974,7 @@ namespace Luna
                     break;
                 }
                 default:
-                    return BasicError::bad_data();
+                    return E_BAD_DATA;
                 }
                 stack[stack_size++] = distance;
             }
@@ -983,11 +983,11 @@ namespace Luna
 
         R<f32> evaluate_sdf_clip(Span<const f32> floats, f32 distance)
         {
-            if(!std::isfinite(distance)) return BasicError::bad_data();
+            if(!std::isfinite(distance)) return E_BAD_DATA;
             SDFColorProgram program;
             RV validation = validate_sdf_color_program(floats, &program);
             if(failed(validation)) return validation.errcode();
-            if(program.num_instructions != 1) return BasicError::bad_data();
+            if(program.num_instructions != 1) return E_BAD_DATA;
             ColorInstructionInfo instruction;
             RV parse_result = parse_color_instruction(floats, 0, instruction);
             if(failed(parse_result)) return parse_result.errcode();
@@ -1008,7 +1008,7 @@ namespace Luna
             SDFColorProgram program;
             RV validation = validate_sdf_color_program(floats, &program);
             if(failed(validation)) return validation.errcode();
-            if(program.num_instructions != 1) return BasicError::bad_data();
+            if(program.num_instructions != 1) return E_BAD_DATA;
             ColorInstructionInfo instruction;
             RV parse_result = parse_color_instruction(floats, 0, instruction);
             if(failed(parse_result)) return parse_result.errcode();

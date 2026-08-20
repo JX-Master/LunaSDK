@@ -24,45 +24,45 @@ namespace Luna
 {
     namespace Network
     {
-        inline ErrCode translate_error(int err)
+        inline ResultCode translate_error(int err)
         {
             switch (err)
             {
-            case WSANOTINITIALISED: return BasicError::bad_calling_time();
-            case WSAENETDOWN: return NetworkError::network_down();
-            case WSAENOBUFS: return BasicError::insufficient_system_buffer();
-            case WSAENOTCONN: return NetworkError::not_connected();
-            case WSAEINTR: return BasicError::interrupted();
-            case WSAEINPROGRESS: return BasicError::in_progress();
-            case WSAENETRESET: return NetworkError::network_reset();
-            case WSAEMSGSIZE: return BasicError::data_too_big();
-            case WSAEINVAL: return BasicError::bad_arguments();
-            case WSAECONNABORTED: return NetworkError::connection_aborted();
-            case WSAETIMEDOUT: return BasicError::timeout();
-            case WSAECONNRESET: return NetworkError::connection_reset();
-            case WSAEADDRINUSE: return NetworkError::address_in_use();
-            case WSAEADDRNOTAVAIL: return NetworkError::address_not_available();
-            case WSAEISCONN: return NetworkError::already_connected();
-            case WSAEMFILE: return BasicError::out_of_resource();
-            case WSAEOPNOTSUPP: return BasicError::not_supported();
-            case WSAEALREADY: return NetworkError::already_connected();
-            case WSAEAFNOSUPPORT: return NetworkError::address_not_supported();
-            case WSAECONNREFUSED: return NetworkError::connection_refused();
-            case WSAENETUNREACH: return NetworkError::network_unreachable();
-            case WSAEHOSTUNREACH: return NetworkError::host_unreachable();
-            case WSASYSNOTREADY: return BasicError::bad_calling_time();
-            case WSAVERNOTSUPPORTED: return BasicError::not_supported();
-            case WSAEPROCLIM: return BasicError::out_of_resource();
-            case WSAEPROTOTYPE: return NetworkError::protocol_not_supported();
-            case WSAESOCKTNOSUPPORT: return BasicError::bad_arguments();
-            case WSAEPROTONOSUPPORT: return NetworkError::protocol_not_supported();
-            case WSATRY_AGAIN: return BasicError::not_ready();
-            case WSANO_RECOVERY: return BasicError::bad_arguments();
-            case WSA_NOT_ENOUGH_MEMORY: return BasicError::out_of_memory();
-            case WSAHOST_NOT_FOUND: return NetworkError::host_not_found();
-            case WSATYPE_NOT_FOUND: return NetworkError::service_not_found();
+            case WSANOTINITIALISED: return E_BAD_CALLING_TIME;
+            case WSAENETDOWN: return Network::E_NETWORK_DOWN;
+            case WSAENOBUFS: return E_INSUFFICIENT_SYSTEM_BUFFER;
+            case WSAENOTCONN: return Network::E_NOT_CONNECTED;
+            case WSAEINTR: return E_INTERRUPTED;
+            case WSAEINPROGRESS: return E_IN_PROGRESS;
+            case WSAENETRESET: return Network::E_NETWORK_RESET;
+            case WSAEMSGSIZE: return E_DATA_TOO_BIG;
+            case WSAEINVAL: return E_BAD_ARGUMENTS;
+            case WSAECONNABORTED: return Network::E_CONNECTION_ABORTED;
+            case WSAETIMEDOUT: return E_TIMEOUT;
+            case WSAECONNRESET: return Network::E_CONNECTION_RESET;
+            case WSAEADDRINUSE: return Network::E_ADDRESS_IN_USE;
+            case WSAEADDRNOTAVAIL: return Network::E_ADDRESS_NOT_AVAILABLE;
+            case WSAEISCONN: return Network::E_ALREADY_CONNECTED;
+            case WSAEMFILE: return E_OUT_OF_RESOURCE;
+            case WSAEOPNOTSUPP: return E_NOT_SUPPORTED;
+            case WSAEALREADY: return Network::E_ALREADY_CONNECTED;
+            case WSAEAFNOSUPPORT: return Network::E_ADDRESS_NOT_SUPPORTED;
+            case WSAECONNREFUSED: return Network::E_CONNECTION_REFUSED;
+            case WSAENETUNREACH: return Network::E_NETWORK_UNREACHABLE;
+            case WSAEHOSTUNREACH: return Network::E_HOST_UNREACHABLE;
+            case WSASYSNOTREADY: return E_BAD_CALLING_TIME;
+            case WSAVERNOTSUPPORTED: return E_NOT_SUPPORTED;
+            case WSAEPROCLIM: return E_OUT_OF_RESOURCE;
+            case WSAEPROTOTYPE: return Network::E_PROTOCOL_NOT_SUPPORTED;
+            case WSAESOCKTNOSUPPORT: return E_BAD_ARGUMENTS;
+            case WSAEPROTONOSUPPORT: return Network::E_PROTOCOL_NOT_SUPPORTED;
+            case WSATRY_AGAIN: return E_NOT_READY;
+            case WSANO_RECOVERY: return E_BAD_ARGUMENTS;
+            case WSA_NOT_ENOUGH_MEMORY: return E_OUT_OF_MEMORY;
+            case WSAHOST_NOT_FOUND: return Network::E_HOST_NOT_FOUND;
+            case WSATYPE_NOT_FOUND: return Network::E_SERVICE_NOT_FOUND;
 
-            default: return BasicError::bad_platform_call();
+            default: return E_BAD_PLATFORM_CALL;
             }
         }
 
@@ -90,7 +90,7 @@ namespace Luna
                 return (int)sizeof(sockaddr_in6);
             }
             default:
-                return NetworkError::address_not_supported();
+                return Network::E_ADDRESS_NOT_SUPPORTED;
             }
         }
 
@@ -132,7 +132,7 @@ namespace Luna
                 int err = WSAGetLastError();
                 return translate_error(err);
             }
-            return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(NetworkError::address_not_supported());
+            return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(Network::E_ADDRESS_NOT_SUPPORTED);
         }
 
         RV TCPSocket::get_remote_address(SocketAddress& address)
@@ -145,7 +145,7 @@ namespace Luna
                 int err = WSAGetLastError();
                 return translate_error(err);
             }
-            return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(NetworkError::address_not_supported());
+            return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(Network::E_ADDRESS_NOT_SUPPORTED);
         }
 
         RV TCPSocket::read(void* buffer, usize size, usize* read_bytes)
@@ -178,7 +178,7 @@ namespace Luna
                 if(r == 0)
                 {
                     if(write_bytes) *write_bytes = total_written;
-                    return BasicError::no_data();
+                    return E_NO_DATA;
                 }
                 total_written += (usize)r;
                 if(m_type != SocketType::stream)
@@ -242,7 +242,7 @@ namespace Luna
             if(!decode_socket_address(address, (sockaddr*)&addr))
             {
                 closesocket(r);
-                return NetworkError::address_not_supported();
+                return Network::E_ADDRESS_NOT_SUPPORTED;
             }
             Ref<TCPSocket> s = new_object<TCPSocket>();
             s->m_af = address.family;
@@ -255,7 +255,7 @@ namespace Luna
             if(size > (usize)I32_MAX)
             {
                 if(sent_bytes) *sent_bytes = 0;
-                return BasicError::data_too_big();
+                return E_DATA_TOO_BIG;
             }
             sockaddr_storage addr;
             auto addr_size = encode_socket_address(addr, address);
@@ -289,7 +289,7 @@ namespace Luna
             if(address && !decode_socket_address(*address, (sockaddr*)&addr))
             {
                 if(received_bytes) *received_bytes = 0;
-                return NetworkError::address_not_supported();
+                return Network::E_ADDRESS_NOT_SUPPORTED;
             }
             if(received_bytes) *received_bytes = (usize)r;
             return ok;
@@ -396,8 +396,8 @@ namespace Luna
 
         inline R<SOCKET> new_native_socket(AddressFamily af, SocketType type, Protocol protocol)
         {
-            if(af == AddressFamily::unspecified) return NetworkError::address_not_supported();
-            if(type == SocketType::unspecified) return BasicError::bad_arguments();
+            if(af == AddressFamily::unspecified) return Network::E_ADDRESS_NOT_SUPPORTED;
+            if(type == SocketType::unspecified) return E_BAD_ARGUMENTS;
             int iaf = encode_af(af);
             int itype = encode_type(type);
             int iprotocol = encode_protocol(protocol);

@@ -72,7 +72,7 @@ RV DemoApp::init()
                 break;
             }
         }
-        if(queue == U32_MAX) return BasicError::not_supported();
+        if(queue == U32_MAX) return E_NOT_SUPPORTED;
         luset(cmdbuf, dev->new_command_buffer(queue));
         luset(swap_chain, dev->new_swap_chain(queue, window, SwapChainDesc(0, 0, 2, Format::bgra8_unorm, true)));
         luset(dlayout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc({

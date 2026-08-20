@@ -58,7 +58,7 @@ namespace Luna
             CFArrayRef modes = CGDisplayCopyAllDisplayModes(id, nullptr);
             if(!modes)
             {
-                return set_error(BasicError::bad_platform_call(), "CGDisplayCopyAllDisplayModes failed");
+                return set_error(E_BAD_PLATFORM_CALL, "CGDisplayCopyAllDisplayModes failed");
             }
             CFIndex count = CFArrayGetCount(modes);
             for(CFIndex i = 0; i < count; ++i)
@@ -76,7 +76,7 @@ namespace Luna
             CGDisplayModeRef mode = CGDisplayCopyDisplayMode(id);
             if (!mode)
             {
-                return set_error(BasicError::bad_platform_call(), "CGDisplayCopyDisplayMode failed");
+                return set_error(E_BAD_PLATFORM_CALL, "CGDisplayCopyDisplayMode failed");
             }
             VideoMode vm = encode_video_mode(mode);
             CGDisplayModeRelease(mode);
@@ -90,7 +90,7 @@ namespace Luna
             if(bounds.origin.x == CGRectZero.origin.x && bounds.origin.y == CGRectZero.origin.y &&
                 bounds.size.width == CGRectZero.size.width && bounds.size.height == CGRectZero.size.height)
             {
-                return set_error(BasicError::bad_platform_call(), "CGDisplayBounds failed");
+                return set_error(E_BAD_PLATFORM_CALL, "CGDisplayBounds failed");
             }
             return Int2U((i32)bounds.origin.x, (i32)bounds.origin.y);
         }
@@ -114,7 +114,7 @@ namespace Luna
                 
                 if (!screen)
                 {
-                    return set_error(BasicError::bad_platform_call(), "Failed to find NSScreen for display");
+                    return set_error(E_BAD_PLATFORM_CALL, "Failed to find NSScreen for display");
                 }
                 
                 NSRect visible = [screen visibleFrame];
@@ -152,7 +152,7 @@ namespace Luna
                 }
                 else
                 {
-                    return set_error(BasicError::bad_platform_call(), "Failed to find NSScreen for display");
+                    return set_error(E_BAD_PLATFORM_CALL, "Failed to find NSScreen for display");
                 }
             }
             return display_name;

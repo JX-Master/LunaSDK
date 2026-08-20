@@ -47,7 +47,7 @@ namespace
             return String((const c8*)data.data(), data.size());
         }
         lucatchret;
-        return BasicError::failure();
+        return E_FAILURE;
     }
 
     static Ref<IMakeSystem> checked_new_make_system(const Path& build_dir, u32 max_num_parallel_tasks)
@@ -72,7 +72,7 @@ RV Luna::WriteFileCommand::execute(Luna::LogHandler&)
     }
     if(fail)
     {
-        return BasicError::failure();
+        return E_FAILURE;
     }
     lutry
     {

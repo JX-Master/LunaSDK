@@ -14,6 +14,22 @@
 #include "../DescriptorSet.hpp"
 namespace Luna
 {
+    static RV register_rhi_error_codes()
+    {
+        if (!register_error_category(RHI::ERROR_CATEGORY, "RHI") ||
+            !register_error_code(RHI::E_DEVICE_HUNG, "device_hung", "The device failed because the application submitted invalid commands.") ||
+            !register_error_code(RHI::E_DEVICE_RESET, "device_reset", "The device was reset and must be recreated.") ||
+            !register_error_code(RHI::E_DEVICE_REMOVED, "device_removed", "The graphics device was removed or became unavailable.") ||
+            !register_error_code(RHI::E_DRIVER_INTERNAL_ERROR, "driver_internal_error", "The graphics driver reported an internal error.") ||
+            !register_error_code(RHI::E_FRAME_STATISTICS_DISJOINT, "frame_statistics_disjoint", "Presentation statistics were interrupted and are disjoint.") ||
+            !register_error_code(RHI::E_SWAP_CHAIN_OUT_OF_DATE, "swap_chain_out_of_date", "The swap chain is no longer compatible with its surface.") ||
+            !register_error_code(RHI::E_COLOR_SPACE_NOT_SUPPORTED, "color_space_not_supported", "The requested color space is not supported."))
+        {
+            return set_error(E_ALREADY_EXISTS, "RHI error metadata conflicts with an existing registration.");
+        }
+        return ok;
+    }
+
     namespace RHI
     {
         struct RHIModule : public Module
@@ -21,6 +37,8 @@ namespace Luna
             virtual const c8* get_name() override { return "RHI"; }
             virtual RV on_register() override
             {
+                RV result = register_rhi_error_codes();
+                if (failed(result.errcode())) return result;
                 return add_dependency_module(this, module_window());
             }
             virtual RV on_init() override
@@ -37,49 +55,5 @@ namespace Luna
     {
         static RHI::RHIModule m;
         return &m;
-    }
-    namespace RHIError
-    {
-        LUNA_RHI_API errcat_t errtype()
-        {
-            static errcat_t e = get_error_category_by_name("RHIError");
-            return e;
-        }
-
-        LUNA_RHI_API ErrCode device_hung()
-        {
-            static ErrCode e = get_error_code_by_name("RHIError", "device_hung");
-            return e;
-        }
-        LUNA_RHI_API ErrCode device_reset()
-        {
-            static ErrCode e = get_error_code_by_name("RHIError", "device_reset");
-            return e;
-        }
-        LUNA_RHI_API ErrCode device_removed()
-        {
-            static ErrCode e = get_error_code_by_name("RHIError", "device_removed");
-            return e;
-        }
-        LUNA_RHI_API ErrCode driver_internal_error()
-        {
-            static ErrCode e = get_error_code_by_name("RHIError", "driver_internal_error");
-            return e;
-        }
-        LUNA_RHI_API ErrCode frame_statistics_disjoint()
-        {
-            static ErrCode e = get_error_code_by_name("RHIError", "frame_statistics_disjoint");
-            return e;
-        }
-        LUNA_RHI_API ErrCode swap_chain_out_of_date()
-        {
-            static ErrCode e = get_error_code_by_name("RHIError", "swap_chain_out_of_date");
-            return e;
-        }
-        LUNA_RHI_API ErrCode color_space_not_supported()
-        {
-            static ErrCode e = get_error_code_by_name("RHIError", "color_space_not_supported");
-            return e;
-        }
     }
 }

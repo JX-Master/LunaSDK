@@ -147,7 +147,7 @@ namespace Luna
                     wants_extended_dynamic_range = YES;
                     break;
                     default: 
-                    return RHIError::color_space_not_supported();
+                    return RHI::E_COLOR_SPACE_NOT_SUPPORTED;
                 }
                 layer.colorspace = cs;
                 CGColorSpaceRelease(cs);
@@ -188,7 +188,7 @@ namespace Luna
                 UIView* uiview = uikitwindow->get_uiview();
                 if(![uiview.layer isKindOfClass:[CAMetalLayer class]])
                 {
-                    return BasicError::not_supported();
+                    return E_NOT_SUPPORTED;
                 }
                 CAMetalLayer* layer = (CAMetalLayer*)uiview.layer;
                 m_metal_layer = layer;

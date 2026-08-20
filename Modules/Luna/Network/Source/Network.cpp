@@ -15,11 +15,16 @@ namespace Luna
 {
     namespace Network
     {
+        RV register_error_codes();
         RV platform_init();
         void platform_close();
         struct NetworkModule : public Module
         {
             virtual const c8* get_name() override { return "Network"; }
+            virtual RV on_register() override
+            {
+                return register_error_codes();
+            }
             virtual RV on_init() override
             {
                 return platform_init();

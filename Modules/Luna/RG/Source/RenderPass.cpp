@@ -37,7 +37,7 @@ namespace Luna
         {
             MutexGuard guard(g_render_pass_types_mtx);
             auto iter = g_render_pass_types.find(render_pass);
-            if(iter == g_render_pass_types.end()) return BasicError::not_found();
+            if(iter == g_render_pass_types.end()) return E_NOT_FOUND;
             return *iter;
         }
     }

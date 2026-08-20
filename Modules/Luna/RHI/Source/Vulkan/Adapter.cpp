@@ -169,7 +169,7 @@ namespace Luna
                     vkEnumeratePhysicalDevices(g_vk_instance, &device_count, nullptr);
                     if (device_count == 0)
                     {
-                        return set_error(BasicError::not_supported(), "Failed to find GPUs with Vulkan support!");
+                        return set_error(E_NOT_SUPPORTED, "Failed to find GPUs with Vulkan support!");
                     }
                     g_physical_devices.resize(device_count);
                     vkEnumeratePhysicalDevices(g_vk_instance, &device_count, g_physical_devices.data());
@@ -275,7 +275,7 @@ namespace Luna
                 }
             }
             lucatchret;
-            return set_error(BasicError::not_supported(), "Failed to find a suitable GPU for Vulkan!");
+            return set_error(E_NOT_SUPPORTED, "Failed to find a suitable GPU for Vulkan!");
         }
         void Adapter::init(const Vector<QueueFamily>& queue_families)
         {

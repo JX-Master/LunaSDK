@@ -256,6 +256,15 @@ constexpr f32 PI = 3.141592654f;
 constexpr entity_id_t NULL_ENTITY(0);
 ```
 
+Static `ResultCode` result constants additionally encode their result class in the name. Use the `E_` prefix for a negative failure result and the `S_` prefix for a non-negative successful result. The `S_` rule includes a local result value of 0 when the complete code is a non-zero informative success. The prefix prevents collisions with common system macros, so do not add an `_ERROR` suffix solely for macro avoidance.
+
+```c++
+inline constexpr ResultCode E_NOT_FOUND = make_error_code(DOMAIN, CATEGORY_ID, -1);
+inline constexpr ResultCode S_CACHE_HIT = make_error_code(DOMAIN, CATEGORY_ID, 1);
+```
+
+Declare result constants and the module's `ERROR_CATEGORY` constant directly in the module root namespace. Do not create a separate namespace only for result codes.
+
 Prevent defining global constants using macros.
 
 ### Namespace

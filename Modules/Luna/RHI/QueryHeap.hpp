@@ -73,7 +73,7 @@ namespace Luna
             //! @param[in] count The number of queries to copy.
             //! @param[out] values The user-provided buffer used to store the results.
             //! @remark The user must ensure that all queries being copied are initialized, or the behavior is undefined.
-            //! If this query heap is not `QueryHeapType::timestamp`, this function fails with `BasicError::not_supported`.
+            //! If this query heap is not `QueryHeapType::timestamp`, this function fails with `E_NOT_SUPPORTED`.
             virtual RV get_timestamp_values(u32 index, u32 count, u64* values) = 0;
 
             //! Copies occlusion query results from query heap to the user-provided buffer.
@@ -81,7 +81,7 @@ namespace Luna
             //! @param[in] count The number of queries to copy.
             //! @param[out] values The user-provided buffer used to store the results.
             //! @remark The user must ensure that all queries being copied are initialized, or the behavior is undefined.
-            //! If this query heap is not `QueryHeapType::occlusion`, this function fails with `BasicError::not_supported`.
+            //! If this query heap is not `QueryHeapType::occlusion`, this function fails with `E_NOT_SUPPORTED`.
             virtual RV get_occlusion_values(u32 index, u32 count, u64* values) = 0;
 
             //! Copies pipeline statistics query results from query heap to the user-provided buffer.
@@ -89,7 +89,7 @@ namespace Luna
             //! @param[in] count The number of queries to copy.
             //! @param[out] values The user-provided buffer used to store the results.
             //! @remark The user must ensure that all queries being copied are initialized, or the behavior is undefined.
-            //! If this query heap is not `QueryHeapType::pipeline_statistics`, this function fails with `BasicError::not_supported`.
+            //! If this query heap is not `QueryHeapType::pipeline_statistics`, this function fails with `E_NOT_SUPPORTED`.
             virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) = 0;
         };
 

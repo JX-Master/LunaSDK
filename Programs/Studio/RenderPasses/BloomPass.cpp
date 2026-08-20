@@ -320,8 +320,8 @@ namespace Luna
             BloomPassGlobalData* data = (BloomPassGlobalData*)userdata;
             auto src_texture = compiler->get_input_resource("scene_texture");
             auto dst_texture = compiler->get_output_resource("bloom_texture");
-            if(src_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BloomPass: Input \"scene_texture\" is not specified.");
-            if(dst_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BloomPass: Output \"bloom_texture\" is not specified.");
+            if(src_texture == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "BloomPass: Input \"scene_texture\" is not specified.");
+            if(dst_texture == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "BloomPass: Output \"bloom_texture\" is not specified.");
             RG::ResourceDesc src_desc = compiler->get_resource_desc(src_texture);
             luassert(src_desc.type == RG::ResourceType::texture);
             src_desc.texture.usages |= RHI::TextureUsageFlag::read_texture | RHI::TextureUsageFlag::read_write_texture;

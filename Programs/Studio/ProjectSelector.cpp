@@ -30,7 +30,7 @@ namespace Luna
     {
         if (project_name.size() == 0)
         {
-            return set_error(BasicError::bad_arguments(), "Project name is empty.");
+            return set_error(E_BAD_ARGUMENTS, "Project name is empty.");
         }
         Path ret_path;
         lutry
@@ -514,7 +514,7 @@ namespace Luna
             GUIWindow::uninstall_window_event_handler(&input_adapter);
             if (path.empty())
             {
-                return BasicError::failure();
+                return E_FAILURE;
             }
 
             // Write to the recents.

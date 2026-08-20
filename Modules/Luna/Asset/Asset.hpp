@@ -93,7 +93,7 @@ namespace Luna
             //! Called when one asset data object with data loaded from the specified file is being requested. The 
             //! user should create a new asset data object and load asset data from the specified file to the object.
             //! @details This function can be `nullptr`. If this function is `nullptr`, this asset type does not support 
-            //! loading asset data from file, and such requests failed with @ref BasicError::not_supported.
+            //! loading asset data from file, and such requests failed with @ref E_NOT_SUPPORTED.
             //! @param[in] userdata The userdata.
             //! @param[in] asset The asset handle of the asset being loaded.
             //! @param[in] path The VFS path to load asset data from.
@@ -102,7 +102,7 @@ namespace Luna
             //! Called when one asset data object with default asset data is being requested. The user should create a 
             //! new asset data object and load default asset data to the object.
             //! @details This function can be `nullptr`. If this function is `nullptr`, this asset type does not support 
-            //! loading default asset data, and such requests failed with @ref BasicError::not_supported.
+            //! loading default asset data, and such requests failed with @ref E_NOT_SUPPORTED.
             //! @param[in] userdata The userdata.
             //! @param[in] asset The asset handle of the asset being loaded.
             //! @return Returns the created asset data object with default asset data.
@@ -357,30 +357,31 @@ namespace Luna
 
     //! @addtogroup Asset
     //! @{
-    //! @defgroup AssetError Asset Errors
+    //! @defgroup AssetResultCodes Asset Result Codes
     //! @}
 
-    namespace AssetError
+    namespace Asset
     {
-        //! @addtogroup AssetError
+        //! @addtogroup AssetResultCodes
         //! @{
 
-        LUNA_ASSET_API errcat_t errtype();
+        //! The Asset error category identifier.
+        inline constexpr errcat_t ERROR_CATEGORY = make_error_category(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET);
 
-        //! The metadata file of the specified asset is not found.
-        LUNA_ASSET_API ErrCode meta_file_not_found();
-        //! The asset type is not registered to the asset system.
-        LUNA_ASSET_API ErrCode unknown_asset_type();
-        //! The asset handle is not registered to the system (asset state is @ref AssetState::unregistered). 
-        LUNA_ASSET_API ErrCode asset_not_registered();
-        //! The asset handle is already registered to the system.
-        LUNA_ASSET_API ErrCode asset_already_registered();
+        //! The asset metadata file was not found.
+        inline constexpr ResultCode E_META_FILE_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -1);
+        //! The asset type is not registered.
+        inline constexpr ResultCode E_UNKNOWN_ASSET_TYPE = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -2);
+        //! The asset is not registered.
+        inline constexpr ResultCode E_ASSET_NOT_REGISTERED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -3);
+        //! The asset is already registered.
+        inline constexpr ResultCode E_ASSET_ALREADY_REGISTERED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -4);
         //! The asset path is empty.
-        LUNA_ASSET_API ErrCode empty_asset_path();
-        //! The asset data is not loaded yet.
-        LUNA_ASSET_API ErrCode asset_data_not_loaded();
-        //! The asset data is currently loading by another thread.
-        LUNA_ASSET_API ErrCode asset_data_loading();
+        inline constexpr ResultCode E_EMPTY_ASSET_PATH = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -5);
+        //! The asset data has not been loaded.
+        inline constexpr ResultCode E_ASSET_DATA_NOT_LOADED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -6);
+        //! The asset data is being loaded by another thread.
+        inline constexpr ResultCode E_ASSET_DATA_LOADING = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -7);
 
         //! @}
     }

@@ -29,7 +29,7 @@ Every request message will only have one response message.
 
 ### Error object
 The error object is a `object` typed `Variant` with the following attributes:
-1. `category`: One string that identifies the category of the error, for example `BasicError`.
+1. `category`: One string that identifies the owning module of the result code, for example `Runtime`.
 2. `code`: One string that identifies the name of the error, for example `bad_platform_call`.
 3. `message`: Optional message that describes the error.
 4. `data`: Optional additional information of the error.
@@ -48,4 +48,3 @@ The Frontend provides a **resource registry**, which can be used to store URL-to
 4. Null: A special type that infers one resource does not exist.
 
 Resource registry does not have any reference tracking mechanism, it behaves like a file on the file system: once the user removes one resource, it is gone, and all references to that resource is invalidated.
-

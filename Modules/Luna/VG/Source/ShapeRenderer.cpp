@@ -158,13 +158,13 @@ namespace Luna
                 {
                     if(pass_desc.depth_write_enable && !pass_desc.depth_test_enable)
                     {
-                        return set_error(BasicError::bad_arguments(),
+                        return set_error(E_BAD_ARGUMENTS,
                             "VG depth writes require depth testing to be enabled.");
                     }
                     if((pass_desc.depth_test_enable || pass_desc.depth_write_enable) &&
                         pass_desc.depth_stencil_format == RHI::Format::unknown)
                     {
-                        return set_error(BasicError::bad_arguments(),
+                        return set_error(E_BAD_ARGUMENTS,
                             "VG depth testing requires a depth-stencil attachment format.");
                     }
                     if(m_rt_format != desc.format ||

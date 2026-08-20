@@ -386,11 +386,11 @@ namespace Luna
                 const RectF& rect, void* userdata)
             {
                 DockSpaceLayoutData* data = (DockSpaceLayoutData*)userdata;
-                if(!context || !data || !data->action || !data->action->state) return BasicError::bad_arguments();
+                if(!context || !data || !data->action || !data->action->state) return E_BAD_ARGUMENTS;
                 DockSpaceAction& action = *data->action;
                 DockSpaceState& state = *action.state;
                 const GUI::Element* root = context->get_element(element.index);
-                if(!root) return BasicError::bad_arguments();
+                if(!root) return E_BAD_ARGUMENTS;
                 RectF content(rect.offset_x + root->layout.padding.x, rect.offset_y + root->layout.padding.y,
                     max(rect.width - root->layout.padding.x - root->layout.padding.z, 0.0f),
                     max(rect.height - root->layout.padding.y - root->layout.padding.w, 0.0f));

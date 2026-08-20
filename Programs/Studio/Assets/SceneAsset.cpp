@@ -59,7 +59,7 @@ namespace Luna
                 Guid type_guid;
                 luexp(deserialize(type_guid, comp[(usize)0]));
                 typeinfo_t type = get_type_by_guid(type_guid);
-                if (!type) return BasicError::bad_data();
+                if (!type) return E_BAD_DATA;
                 object_t obj = object_alloc(type);
                 construct_type(type, obj);
                 ObjRef ref;

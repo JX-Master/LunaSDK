@@ -26,7 +26,7 @@ namespace Luna
                 {
                     m_desc = desc;
                     m_buffer = [m_device->m_device newBufferWithLength:desc.size options:encode_resource_options(memory_type)];
-                    if(!m_buffer) return BasicError::bad_platform_call();
+                    if(!m_buffer) return E_BAD_PLATFORM_CALL;
                     m_memory = new_object<DeviceMemory>();
                     m_memory->m_device = m_device;
                     m_memory->m_memory_type = memory_type;
@@ -44,10 +44,10 @@ namespace Luna
         RV Buffer::init_as_aliasing(IDeviceMemory* memory, const BufferDesc& desc)
         {
             DeviceMemory* m = cast_object<DeviceMemory>(memory->get_object());
-            if(!m->m_heap) return BasicError::not_supported();
+            if(!m->m_heap) return E_NOT_SUPPORTED;
             m_desc = desc;
             m_buffer = [m->m_heap newBufferWithLength:desc.size options:encode_resource_options(m->m_memory_type)];
-            if(!m_buffer) return BasicError::bad_platform_call();
+            if(!m_buffer) return E_BAD_PLATFORM_CALL;
             m_memory = m;
             [m_buffer makeAliasable];
             return ok;
@@ -71,7 +71,7 @@ namespace Luna
         {
             void* d = [m_buffer contents];
             if(data) *data = d;
-            return d ? ok : BasicError::not_supported();
+            return d ? ok : E_NOT_SUPPORTED;
         }
         RV Texture::init_as_committed(MemoryType memory_type, const TextureDesc& desc)
         {
@@ -88,7 +88,7 @@ namespace Luna
                     luexp(validate_texture_desc(m_desc));
                     auto d = encode_texture_desc(memory_type, m_desc);
                     m_texture = [m_device->m_device newTextureWithDescriptor:d];
-                    if(!m_texture) return BasicError::bad_platform_call();
+                    if(!m_texture) return E_BAD_PLATFORM_CALL;
                     m_memory = new_object<DeviceMemory>();
                     m_memory->m_device = m_device;
                     m_memory->m_memory_type = memory_type;
@@ -108,12 +108,12 @@ namespace Luna
             lutry
             {
                 DeviceMemory* m = cast_object<DeviceMemory>(memory->get_object());
-                if(!m->m_heap) return BasicError::not_supported();
+                if(!m->m_heap) return E_NOT_SUPPORTED;
                 m_desc = desc;
                 luexp(validate_texture_desc(m_desc));
                 auto d = encode_texture_desc(m->m_memory_type, m_desc);
                 m_texture = [m->m_heap newTextureWithDescriptor:d];
-                if(!m_texture) return BasicError::bad_platform_call();
+                if(!m_texture) return E_BAD_PLATFORM_CALL;
                 m_memory = m;
                 [m_texture makeAliasable];
             }

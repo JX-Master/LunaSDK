@@ -88,7 +88,7 @@ namespace Luna
             int ret = ::MessageBoxW(NULL, wtext, wcap, f);
             if (!ret)
             {
-                return BasicError::bad_platform_call();
+                return E_BAD_PLATFORM_CALL;
             }
             switch (ret)
             {
@@ -228,13 +228,13 @@ namespace Luna
                 DWORD err_code = CommDlgExtendedError();
                 if (err_code == 0)
                 {
-                    return BasicError::interrupted();
+                    return E_INTERRUPTED;
                 }
                 else if(err_code == 0x3003) // FNERR_BUFFERTOOSMALL
                 {
-                    return set_error(BasicError::data_too_big(), "Too many files are selected.");
+                    return set_error(E_DATA_TOO_BIG, "Too many files are selected.");
                 }
-                return set_error(BasicError::bad_platform_call(), "Open File Dialog (common dialog box) reports failure, error code: %u", err_code);
+                return set_error(E_BAD_PLATFORM_CALL, "Open File Dialog (common dialog box) reports failure, error code: %u", err_code);
             }
 
             return paths;
@@ -326,9 +326,9 @@ namespace Luna
                 DWORD err_code = CommDlgExtendedError();
                 if (err_code == 0)
                 {
-                    return BasicError::interrupted();
+                    return E_INTERRUPTED;
                 }
-                return set_error(BasicError::bad_platform_call(), "Save File Dialog (common dialog box) reports failure, error code: %u", err_code);
+                return set_error(E_BAD_PLATFORM_CALL, "Save File Dialog (common dialog box) reports failure, error code: %u", err_code);
             }
 
             usize ret_sz = utf16_to_utf8_len((char16_t*)ofn.lpstrFile);
@@ -345,7 +345,7 @@ namespace Luna
             ComPtr<IFileDialog> pfd;
             if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pfd))))
             {
-                return BasicError::bad_platform_call();
+                return E_BAD_PLATFORM_CALL;
             }
 
             if (title)
@@ -366,7 +366,7 @@ namespace Luna
                 HRESULT hresult = ::SHParseDisplayName(wstarting_dir, 0, &pidl, SFGAO_FOLDER, 0);
                 if (FAILED(hresult))
                 {
-                    return BasicError::bad_platform_call();
+                    return E_BAD_PLATFORM_CALL;
                 }
                 ComPtr<IShellItem> psi;
                 hresult = ::SHCreateShellItem(NULL, NULL, pidl, &psi);
@@ -403,7 +403,7 @@ namespace Luna
             }
             if (path == Path())
             {
-                return BasicError::bad_platform_call();
+                return E_BAD_PLATFORM_CALL;
             }
             return path;
         }

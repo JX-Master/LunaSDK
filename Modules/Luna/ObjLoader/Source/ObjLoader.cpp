@@ -94,9 +94,9 @@ namespace Luna
                 auto& err = reader.Error();
                 if (!err.empty())
                 {
-                    return set_error(BasicError::format_error(), err.c_str());
+                    return set_error(E_FORMAT_ERROR, err.c_str());
                 }
-                return BasicError::format_error();
+                return E_FORMAT_ERROR;
             }
 
             const tinyobj::attrib_t& attrib = reader.GetAttrib();
