@@ -117,6 +117,17 @@ namespace Luna
                 DispatchMessageW(&msg);
             }
         }
+
+        static void dispatch_text_input(Window* window, c32 character)
+        {
+            c8 buf[4];
+            R<usize> size = utf8_encode_char(buf, sizeof(buf), character);
+            if(failed(size)) return;
+            auto event = new_object<WindowInputTextEvent>();
+            event->window = window;
+            event->text.append(buf, size.get());
+            dispatch_event_to_handler(event.object());
+        }
     }
 }
 
@@ -260,13 +271,22 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
     {
         if(pw->m_text_input_active)
         {
-            auto character = (c32)wParam;
-            auto event = new_object<WindowInputTextEvent>();
-            event->window = pw;
-            c8 buf[6];
-            usize size = utf8_encode_char(buf, character);
-            event->text.append(buf, size);
-            dispatch_event_to_handler(event.object());
+            u16 code_unit = (u16)wParam;
+            if(code_unit >= 0xD800 && code_unit <= 0xDBFF)
+            {
+                pw->m_text_input_high_surrogate = (c16)code_unit;
+                return 0;
+            }
+            c32 character = (c32)code_unit;
+            if(code_unit >= 0xDC00 && code_unit <= 0xDFFF)
+            {
+                if(!pw->m_text_input_high_surrogate) return 0;
+                character = (c32)(0x10000 +
+                    (((u32)pw->m_text_input_high_surrogate - 0xD800) << 10) +
+                    ((u32)code_unit - 0xDC00));
+            }
+            pw->m_text_input_high_surrogate = 0;
+            dispatch_text_input(pw, character);
         }
         return 0;
     }
@@ -279,12 +299,8 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         if (pw->m_text_input_active)
         {
             c32 character = (c32)wParam;
-            auto event = new_object<WindowInputTextEvent>();
-            event->window = pw;
-            c8 buf[6];
-            usize size = utf8_encode_char(buf, character);
-            event->text.append(buf, size);
-            dispatch_event_to_handler(event.object());
+            pw->m_text_input_high_surrogate = 0;
+            dispatch_text_input(pw, character);
             return FALSE;
         }
         return FALSE;

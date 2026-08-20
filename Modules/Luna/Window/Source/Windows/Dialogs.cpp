@@ -31,6 +31,28 @@ namespace Luna
 {
     namespace Window
     {
+        static void append_utf8_to_utf16(Vector<wchar_t>& dst, const c8* src)
+        {
+            const c8* cur = src;
+            const c8* end = src + strlen(src);
+            while(cur < end)
+            {
+                usize num_bytes;
+                R<c32> ch = utf8_decode_char(cur, (usize)(end - cur), &num_bytes);
+                c32 codepoint;
+                if(succeeded(ch)) codepoint = ch.get();
+                else
+                {
+                    codepoint = 0xFFFD;
+                    num_bytes = 1;
+                }
+                wchar_t wch[2];
+                usize wsz = utf16_encode_char((c16*)wch, codepoint);
+                dst.insert(dst.end(), Span<wchar_t>(wch, wsz));
+                cur += num_bytes;
+            }
+        }
+
         LUNA_WINDOW_API R<MessageBoxButton> message_box(const c8* text, const c8* caption, MessageBoxType type, MessageBoxIcon icon)
         {
             StackAllocator salloc;
@@ -137,30 +159,14 @@ namespace Luna
             Vector<wchar_t> wfilter;
             for (const FileDialogFilter& f : filters)
             {
-                const c8* cur = f.name;
-                while (*cur)
-                {
-                    c32 ch = utf8_decode_char(cur);
-                    wchar_t wch[2];
-                    usize wsz = utf16_encode_char((c16*)wch, ch);
-                    wfilter.insert(wfilter.end(), Span<wchar_t>(wch, wsz));
-                    cur += utf8_charspan(ch);
-                }
+                append_utf8_to_utf16(wfilter, f.name);
                 wfilter.push_back('\0');
 
                 for (const c8* ext : f.extensions)
                 {
-                    cur = ext;
                     wfilter.push_back('*');
                     wfilter.push_back('.');
-                    while (*cur)
-                    {
-                        c32 ch = utf8_decode_char(cur);
-                        wchar_t wch[2];
-                        usize wsz = utf16_encode_char((c16*)wch, ch);
-                        wfilter.insert(wfilter.end(), Span<wchar_t>(wch, wsz));
-                        cur += utf8_charspan(ch);
-                    }
+                    append_utf8_to_utf16(wfilter, ext);
                     wfilter.push_back(';');
                 }
                 if (wfilter.back() == ';')
@@ -255,30 +261,14 @@ namespace Luna
             Vector<wchar_t> wfilter;
             for (const FileDialogFilter& f : filters)
             {
-                const c8* cur = f.name;
-                while (*cur)
-                {
-                    c32 ch = utf8_decode_char(cur);
-                    wchar_t wch[2];
-                    usize wsz = utf16_encode_char((c16*)wch, ch);
-                    wfilter.insert(wfilter.end(), Span<wchar_t>(wch, wsz));
-                    cur += utf8_charspan(ch);
-                }
+                append_utf8_to_utf16(wfilter, f.name);
                 wfilter.push_back('\0');
 
                 for (const c8* ext : f.extensions)
                 {
-                    cur = ext;
                     wfilter.push_back('*');
                     wfilter.push_back('.');
-                    while (*cur)
-                    {
-                        c32 ch = utf8_decode_char(cur);
-                        wchar_t wch[2];
-                        usize wsz = utf16_encode_char((c16*)wch, ch);
-                        wfilter.insert(wfilter.end(), Span<wchar_t>(wch, wsz));
-                        cur += utf8_charspan(ch);
-                    }
+                    append_utf8_to_utf16(wfilter, ext);
                     wfilter.push_back(';');
                 }
                 if (wfilter.back() == ';')

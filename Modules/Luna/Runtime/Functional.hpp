@@ -339,194 +339,350 @@ namespace Luna
 
     //! A function wrapper that can store one callable object, and enable coping, moving and invoking of such callable object.
     //! @details The callable object can be a function pointer or a function object (types that overloads `operator()`).
+    //! 
+    //! The function wrapper stores one inline buffer with the size of `4 * sizeof(void*)` bytes. If the size and alignment
+    //! requirement of the callable object is no greater than the size and alignment requirement of the inline buffer, the
+    //! callable object is stored in the inline buffer directly without allocating heap memory. Otherwise, the callable
+    //! object is allocated on heap, and the function wrapper stores one pointer to such object. Function pointers are also
+    //! stored in the inline buffer directly, without allocating heap memory.
     template <typename _R, typename... _Args>
     struct Function<_R(_Args...)>
     {
     private:
-        enum class Type : u8
+        //! The operation kind that can be performed by one manager function.
+        enum class Op : u8
         {
-            // The function is empty.
-            empty = 0,
-            // The function contains one function pointer.
-            function = 1,
-            // The function contains one function object.
-            object = 2,
+            //! Copy-constructs the object in the source buffer to the destination buffer.
+            copy_construct = 0,
+            //! Move-constructs the object in the source buffer to the destination buffer, then destroys
+            //! the object in the source buffer.
+            move_construct = 1,
+            //! Destroys the object in the destination buffer.
+            destroy = 2,
         };
-        struct ICallable
-        {
-            virtual ~ICallable() {}
-            virtual _R invoke(_Args... args) = 0;
-            virtual ICallable* clone() const = 0;
-        };
-        template <typename _Ty>
-        struct Callable : ICallable
-        {
-            Callable(const _Ty& obj) :
-                m_obj(obj) {}
-            Callable(_Ty&& obj) :
-                m_obj(move(obj)) {}
-            virtual _R invoke(_Args... args) override
-            {
-                return m_obj(forward<_Args>(args)...);
-            }
-            virtual ICallable* clone() const override
-            {
-                return memnew<Callable>(m_obj);
-            }
-            _Ty m_obj;
-        };
+        //! The function that manages the lifecycle of the object stored in the buffer of the function wrapper.
+        using manager_t = void(*)(void* dst, const void* src, Op op);
+        //! The function that invokes the object stored in the buffer of the function wrapper.
+        using invoke_t = _R(*)(void* obj, _Args... args);
         using function_t = _R(_Args...);
-        Type m_type;
-        union
+        //! The size of the inline buffer, in bytes. The buffer stores at most 4 pointers.
+        static constexpr usize buffer_size = 4 * sizeof(void*);
+        //! Tests whether the specified callable type can be stored in the inline buffer directly.
+        template <typename _Ty>
+        static constexpr bool is_small_v = (sizeof(_Ty) <= buffer_size) && (alignof(_Ty) <= MAX_ALIGN);
+        //! The inline buffer that stores the callable object. If the callable object is stored on heap, the buffer stores
+        //! the pointer to the object. If the function wrapper stores one function pointer, the buffer stores the function pointer.
+        alignas(MAX_ALIGN) u8 m_buffer[buffer_size];
+        //! The invoke function used to invoke the object stored in `m_buffer`. This is `nullptr` if the function wrapper is empty.
+        invoke_t m_invoke;
+        //! The manager function used to copy, move and destroy the object stored in `m_buffer`. This is `nullptr` if the
+        //! function wrapper is empty.
+        manager_t m_manager;
+        //! Invokes the function pointer stored in the buffer.
+        static _R function_pointer_invoke(void* obj, _Args... args)
         {
-            // Used if this is a normal function.
-            function_t* m_func;
-            // Used if this is a function object.
-            ICallable* m_callable;
-        };
+            return (*(function_t**)obj)(forward<_Args>(args)...);
+        }
+        //! Manages the lifecycle of the function pointer stored in the buffer. Function pointers are trivially copyable, so
+        //! this function only performs bitwise copy for copy and move operations, and performs no operation for destruction.
+        static void function_pointer_manage(void* dst, const void* src, Op op)
+        {
+            if (op != Op::destroy)
+            {
+                memcpy(dst, src, sizeof(function_t*));
+            }
+        }
+        //! Invokes the callable object stored in the inline buffer.
+        template <typename _Ty>
+        static _R small_callable_invoke(void* obj, _Args... args)
+        {
+            return (*(_Ty*)obj)(forward<_Args>(args)...);
+        }
+        //! Manages the lifecycle of the callable object stored in the inline buffer.
+        template <typename _Ty>
+        static void small_callable_manage(void* dst, const void* src, Op op)
+        {
+            if constexpr (is_trivially_copyable_v<_Ty>)
+            {
+                // Trivially copyable objects can be copied and moved by bitwise copy, and no destruction operation
+                // needs to be performed.
+                if (op != Op::destroy)
+                {
+                    memcpy(dst, src, sizeof(_Ty));
+                }
+            }
+            else
+            {
+                switch (op)
+                {
+                case Op::copy_construct:
+                    new (dst) _Ty(*(const _Ty*)src);
+                    break;
+                case Op::move_construct:
+                    new (dst) _Ty(move(*(_Ty*)src));
+                    ((_Ty*)src)->~_Ty();
+                    break;
+                case Op::destroy:
+                    ((_Ty*)dst)->~_Ty();
+                    break;
+                }
+            }
+        }
+        //! Invokes the callable object stored on heap.
+        template <typename _Ty>
+        static _R big_callable_invoke(void* obj, _Args... args)
+        {
+            return (**(_Ty**)obj)(forward<_Args>(args)...);
+        }
+        //! Manages the lifecycle of the callable object stored on heap.
+        template <typename _Ty>
+        static void big_callable_manage(void* dst, const void* src, Op op)
+        {
+            _Ty*& dst_ptr = *(_Ty**)dst;
+            _Ty* const& src_ptr = *(_Ty* const*)src;
+            switch (op)
+            {
+            case Op::copy_construct:
+                dst_ptr = memnew<_Ty>(*src_ptr);
+                break;
+            case Op::move_construct:
+                dst_ptr = src_ptr;
+                break;
+            case Op::destroy:
+                if (dst_ptr)
+                {
+                    memdelete(dst_ptr);
+                    dst_ptr = nullptr;
+                }
+                break;
+            }
+        }
+        //! Destroys the object stored in the function wrapper and resets the function wrapper to empty state.
         void internal_clear()
         {
-            if (m_type == Type::object) memdelete(m_callable);
+            if (m_manager)
+            {
+                m_manager(m_buffer, m_buffer, Op::destroy);
+            }
+            m_invoke = nullptr;
+            m_manager = nullptr;
+        }
+        //! Assigns one callable object to this function wrapper. The function wrapper must be empty when calling this function.
+        template <typename _Ty>
+        void assign_callable(_Ty&& value)
+        {
+            using _Decay = remove_cv_t<remove_reference_t<_Ty>>;
+            if constexpr (is_same_v<_Decay, function_t>)
+            {
+                // Stores one function (not function pointer) as one function pointer. This branch exists for the case where
+                // the template constructor or assignment operator is selected when the user passes one function (not function
+                // pointer) to this function wrapper.
+                *(function_t**)m_buffer = value;
+                m_invoke = &function_pointer_invoke;
+                m_manager = &function_pointer_manage;
+            }
+            else if constexpr (is_small_v<_Decay>)
+            {
+                new (m_buffer) _Decay(forward<_Ty>(value));
+                m_invoke = &small_callable_invoke<_Decay>;
+                m_manager = &small_callable_manage<_Decay>;
+            }
+            else
+            {
+                *(_Decay**)m_buffer = memnew<_Decay>(forward<_Ty>(value));
+                m_invoke = &big_callable_invoke<_Decay>;
+                m_manager = &big_callable_manage<_Decay>;
+            }
         }
     public:
         using result_type = _R;
         //! Constructs an empty function wrapper.
         Function() :
-            m_type(Type::empty),
-            m_func(nullptr) {}
+            m_invoke(nullptr),
+            m_manager(nullptr) {}
         //! Constructs an empty function wrapper with `nullptr`.
-        Function(nullptr_t ) :
-            m_type(Type::empty),
-            m_func(nullptr) {}
+        Function(nullptr_t) :
+            m_invoke(nullptr),
+            m_manager(nullptr) {}
         //! Constructs an function wrapper by coping from another function object.
         //! @param[in] rhs The function object to copy from.
         Function(const Function& rhs) :
-            m_type(rhs.m_type)
+            m_invoke(rhs.m_invoke),
+            m_manager(rhs.m_manager)
         {
-            if (m_type == Type::object) m_callable = rhs.m_callable->clone();
-            else m_func = rhs.m_func;
+            if (m_manager)
+            {
+                m_manager(m_buffer, rhs.m_buffer, Op::copy_construct);
+            }
         }
         //! Constructs an function wrapper by moving from another function object.
-        //! @param[in] rhs The function object to move from.
+        //! @param[in] rhs The function object to move from. The function wrapper `rhs` is empty after this call.
         Function(Function&& rhs) :
-            m_type(rhs.m_type)
+            m_invoke(rhs.m_invoke),
+            m_manager(rhs.m_manager)
         {
-            if (m_type == Type::object)
+            if (m_manager)
             {
-                m_callable = rhs.m_callable;
-                rhs.m_callable = nullptr;
+                m_manager(m_buffer, rhs.m_buffer, Op::move_construct);
             }
-            else
-            {
-                m_func = rhs.m_func;
-                rhs.m_func = nullptr;
-            }
-            rhs.m_type = Type::empty;
+            rhs.m_invoke = nullptr;
+            rhs.m_manager = nullptr;
         }
         //! Constructs an function wrapper using one function pointer.
         //! @param[in] func The function pointer to assign.
+        //! @remark If `func` is `nullptr`, the function wrapper is empty.
         Function(function_t* func) :
-            m_type(Type::function),
-            m_func(func) {}
+            m_invoke(nullptr),
+            m_manager(nullptr)
+        {
+            if (func)
+            {
+                *(function_t**)m_buffer = func;
+                m_invoke = &function_pointer_invoke;
+                m_manager = &function_pointer_manage;
+            }
+        }
         //! Constructs an function wrapper using one function object.
-        //! @param[in] value The function object to assign. The function object will be copy-constructed into the wrapper.
-        template <typename _Ty>
+        //! @param[in] value The function object to assign. The function object will be copy-constructed or move-constructed
+        //! into the function wrapper.
+        //! @remark If the size and alignment requirement of the function object is no greater than the size and alignment
+        //! requirement of the inline buffer of the function wrapper, the function object will be stored in the inline buffer
+        //! directly without allocating heap memory, otherwise the function object will be allocated on heap.
+        //! @remark This constructor is disabled if `value` is `Function` itself, so the copy constructor and move constructor
+        //! are always used to copy or move one `Function`.
+        template <typename _Ty, typename = enable_if_t<!is_same_v<remove_cv_t<remove_reference_t<_Ty>>, Function>>>
         Function(_Ty&& value) :
-            m_type(Type::object),
-            m_callable(memnew<Callable<remove_cv_t<remove_reference_t<_Ty>>>>(forward<_Ty>(value))) {}
+            m_invoke(nullptr),
+            m_manager(nullptr)
+        {
+            assign_callable(forward<_Ty>(value));
+        }
         ~Function()
         {
             internal_clear();
         }
         Function& operator=(const Function& rhs)
         {
+            if (this == &rhs)
+            {
+                return *this;
+            }
             internal_clear();
-            m_type = rhs.m_type;
-            if (m_type == Type::object) m_callable = rhs.m_callable->clone();
-            else m_func = rhs.m_func;
+            m_invoke = rhs.m_invoke;
+            m_manager = rhs.m_manager;
+            if (m_manager)
+            {
+                m_manager(m_buffer, rhs.m_buffer, Op::copy_construct);
+            }
             return *this;
         }
         Function& operator=(Function&& rhs)
         {
+            if (this == &rhs)
+            {
+                return *this;
+            }
             internal_clear();
-            m_type = rhs.m_type;
-            if (m_type == Type::object)
+            m_invoke = rhs.m_invoke;
+            m_manager = rhs.m_manager;
+            if (m_manager)
             {
-                m_callable = rhs.m_callable;
-                rhs.m_callable = nullptr;
+                m_manager(m_buffer, rhs.m_buffer, Op::move_construct);
             }
-            else
-            {
-                m_func = rhs.m_func;
-                rhs.m_func = nullptr;
-            }
-            rhs.m_type = Type::empty;
+            rhs.m_invoke = nullptr;
+            rhs.m_manager = nullptr;
             return *this;
         }
         Function& operator=(function_t* func)
         {
             internal_clear();
-            m_type = Type::function;
-            m_func = func;
+            if (func)
+            {
+                *(function_t**)m_buffer = func;
+                m_invoke = &function_pointer_invoke;
+                m_manager = &function_pointer_manage;
+            }
             return *this;
         }
-        template <typename _Ty>
+        //! @remark This operator is disabled if `value` is `Function` itself, so the copy assignment operator and move
+        //! assignment operator are always used to copy or move one `Function`.
+        template <typename _Ty, typename = enable_if_t<!is_same_v<remove_cv_t<remove_reference_t<_Ty>>, Function>>>
         Function& operator=(_Ty&& value)
         {
             internal_clear();
-            m_type = Type::object;
-            m_callable = memnew<Callable<remove_cv_t<remove_reference_t<_Ty>>>>(forward<_Ty>(value));
+            assign_callable(forward<_Ty>(value));
             return *this;
         }
         //! Swaps the data of this function wrapper with another function wrapper.
         //! @param[in] rhs The function wrapper to swap with.
         void swap(Function& rhs)
         {
-            auto type = m_type;
-            void* data;
-            if (type == Type::function) data = m_func;
-            else if (type == Type::object) data = m_callable;
-            else data = nullptr;
-
-            m_type = rhs.m_type;
-            if (m_type == Type::function) m_func = rhs.m_func;
-            else if (m_type == Type::object) m_callable = rhs.m_callable;
-            else m_func = nullptr;
-
-            rhs.m_type = type;
-            if (rhs.m_type == Type::function) rhs.m_func = (function_t*)data;
-            else if (rhs.m_type == Type::object) rhs.m_callable = (ICallable*)data;
-            else rhs.m_func = nullptr;
+            if (this == &rhs)
+            {
+                return;
+            }
+            if (!m_manager && !rhs.m_manager)
+            {
+                return;
+            }
+            if (!m_manager)
+            {
+                // `this` is empty, moves the object stored in `rhs` to `this`.
+                m_invoke = rhs.m_invoke;
+                m_manager = rhs.m_manager;
+                m_manager(m_buffer, rhs.m_buffer, Op::move_construct);
+                rhs.m_invoke = nullptr;
+                rhs.m_manager = nullptr;
+                return;
+            }
+            if (!rhs.m_manager)
+            {
+                // `rhs` is empty, moves the object stored in `this` to `rhs`.
+                rhs.m_invoke = m_invoke;
+                rhs.m_manager = m_manager;
+                m_manager(rhs.m_buffer, m_buffer, Op::move_construct);
+                m_invoke = nullptr;
+                m_manager = nullptr;
+                return;
+            }
+            // Both function wrappers are non-empty, moves the objects through one temporary buffer.
+            alignas(MAX_ALIGN) u8 tmp[buffer_size];
+            m_manager(tmp, m_buffer, Op::move_construct);
+            rhs.m_manager(m_buffer, rhs.m_buffer, Op::move_construct);
+            m_manager(rhs.m_buffer, tmp, Op::move_construct);
+            auto invoke = m_invoke;
+            m_invoke = rhs.m_invoke;
+            rhs.m_invoke = invoke;
+            auto manager = m_manager;
+            m_manager = rhs.m_manager;
+            rhs.m_manager = manager;
         }
         //! Tests whether this function wrapper is valid.
         //! @return Return `true` if this function wrapper is valid, that is, contains one callable object. 
         //! Return `false` otherwise.
         bool valid() const
         {
-            return m_type != Type::empty;
+            return m_invoke != nullptr;
         }
         //! Tests whether this function wrapper is valid.
         //! @return Return `true` if this function wrapper is valid, that is, contains one callable object. 
         //! Return `false` otherwise.
         operator bool() const
         {
-            return m_type != Type::empty;
+            return m_invoke != nullptr;
         }
         //! Clears the function wrapper. The function wrapper contains no callable object after this operation.
         void reset()
         {
             internal_clear();
-            m_type = Type::empty;
-            m_func = nullptr;
         }
         //! Invokes the function wrapper. This will invoke the callable object that is stored in the function.
         //! @param[in] args The arguments passed to the callable object.
         //! @return Returns the return value of the callable object if `_R` is not `void`. Returns nothing otherwise.
         _R operator()(_Args... args) const
         {
-            lucheck_msg(m_type != Type::empty, "Try to invoke one empty Function.");
-            if (m_type == Type::function) return m_func(forward<_Args>(args)...);
-            else return m_callable->invoke(forward<_Args>(args)...);
+            lucheck_msg(m_invoke, "Try to invoke one empty Function.");
+            return m_invoke((void*)m_buffer, forward<_Args>(args)...);
         }
     };
 

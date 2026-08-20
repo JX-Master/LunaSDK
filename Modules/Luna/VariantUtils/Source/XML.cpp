@@ -79,19 +79,19 @@ namespace Luna
         }
         static void skip_single_line_comment(IReadContext& ctx)
         {
-            lucheck(ctx.next_char() == '<' && ctx.next_char(1) == '!' && ctx.next_char(2) == '-' && ctx.next_char(3) == '-');
+            lucheck(ctx.next_char_or_eof() == '<' && ctx.next_char_or_eof(1) == '!' && ctx.next_char_or_eof(2) == '-' && ctx.next_char_or_eof(3) == '-');
             ctx.consume('<');
             ctx.consume('!');
             ctx.consume('-');
             ctx.consume('-');
-            c32 ch = ctx.next_char();
+            c32 ch = ctx.next_char_or_eof();
             while(ch)
             {
                 if(ch == '-')
                 {
                     c32 chs[2];
-                    chs[0] = ctx.next_char(1);
-                    chs[1] = ctx.next_char(2);
+                    chs[0] = ctx.next_char_or_eof(1);
+                    chs[1] = ctx.next_char_or_eof(2);
                     if(chs[0] == '-' && chs[1] == '>')
                     {
                         ctx.consume('-');
@@ -101,12 +101,12 @@ namespace Luna
                     }
                 }
                 ctx.consume(ch);
-                ch = ctx.next_char();
+                ch = ctx.next_char_or_eof();
             }
         }
         static void skip_whitespaces_and_comments(IReadContext& ctx)
         {
-            c32 ch = ctx.next_char();
+            c32 ch = ctx.next_char_or_eof();
             while (ch)
             {
                 if (is_whitespace(ch))
@@ -116,9 +116,9 @@ namespace Luna
                 else if (ch == '<')
                 {
                     c32 chs[3];
-                    chs[0] = ctx.next_char(1);
-                    chs[1] = ctx.next_char(2);
-                    chs[2] = ctx.next_char(3);
+                    chs[0] = ctx.next_char_or_eof(1);
+                    chs[1] = ctx.next_char_or_eof(2);
+                    chs[2] = ctx.next_char_or_eof(3);
                     if(chs[0] == '!' && chs[1] == '-' && chs[2] == '-')
                     {
                         skip_single_line_comment(ctx);
@@ -129,20 +129,20 @@ namespace Luna
                     }
                 }
                 else break;
-                ch = ctx.next_char();
+                ch = ctx.next_char_or_eof();
             }
         }
         static void skip_comments(IReadContext& ctx)
         {
-            c32 ch = ctx.next_char();
+            c32 ch = ctx.next_char_or_eof();
             while (ch)
             {
                 if (ch == '<')
                 {
                     c32 chs[3];
-                    chs[0] = ctx.next_char(1);
-                    chs[1] = ctx.next_char(2);
-                    chs[2] = ctx.next_char(3);
+                    chs[0] = ctx.next_char_or_eof(1);
+                    chs[1] = ctx.next_char_or_eof(2);
+                    chs[2] = ctx.next_char_or_eof(3);
                     if(chs[0] == '!' && chs[1] == '-' && chs[2] == '-')
                     {
                         skip_single_line_comment(ctx);
@@ -153,7 +153,7 @@ namespace Luna
                     }
                 }
                 else break;
-                ch = ctx.next_char();
+                ch = ctx.next_char_or_eof();
             }
         }
         static RV skip_xml_header(IReadContext& ctx)
@@ -161,11 +161,11 @@ namespace Luna
             // <?xml version="1.0" encoding="UTF-8"?>
             skip_whitespaces_and_comments(ctx);
             c32 chs[5];
-            chs[0] = ctx.next_char(0);
-            chs[1] = ctx.next_char(1);
-            chs[2] = ctx.next_char(2);
-            chs[3] = ctx.next_char(3);
-            chs[4] = ctx.next_char(4);
+            chs[0] = ctx.next_char_or_eof(0);
+            chs[1] = ctx.next_char_or_eof(1);
+            chs[2] = ctx.next_char_or_eof(2);
+            chs[3] = ctx.next_char_or_eof(3);
+            chs[4] = ctx.next_char_or_eof(4);
             if(!(
                 chs[0] == '<' &&
                 chs[1] == '?' &&
@@ -183,12 +183,12 @@ namespace Luna
             ctx.consume(chs[4]);
             skip_whitespaces_and_comments(ctx);
             // Currently we don't handle xml header data.
-            chs[0] = ctx.next_char(0);
+            chs[0] = ctx.next_char_or_eof(0);
             while(chs[0])
             {
                 if(chs[0] == '?')
                 {
-                    chs[1] = ctx.next_char(1);
+                    chs[1] = ctx.next_char_or_eof(1);
                     if(chs[1] == '>')
                     {
                         ctx.consume(chs[0]);
@@ -197,7 +197,7 @@ namespace Luna
                     }
                 }
                 ctx.consume(chs[0]);
-                chs[0] = ctx.next_char(0);
+                chs[0] = ctx.next_char_or_eof(0);
             }
             return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
         }
@@ -230,25 +230,28 @@ namespace Luna
                 (ch >= 0x0300 && ch <= 0x036F) ||
                 (ch >= 0x203F && ch <= 0x2040);
         }
-        static void read_xml_name(IReadContext& ctx, String& dst)
+        static RV read_xml_name(IReadContext& ctx, String& dst)
         {
-            c32 ch = ctx.next_char();
+            c32 ch = ctx.next_char_or_eof();
             if(!is_name_start_char((u32)ch))
             {
-                return;
+                return ok;
             }
-            c8 utf8_buf[8];
-            usize size = utf8_encode_char(utf8_buf, ch);
-            dst.append(utf8_buf, size);
+            c8 utf8_buf[4];
+            R<usize> size = utf8_encode_char(utf8_buf, sizeof(utf8_buf), ch);
+            if(failed(size)) return size.errcode();
+            dst.append(utf8_buf, size.get());
             ctx.consume(ch);
-            ch = ctx.next_char();
+            ch = ctx.next_char_or_eof();
             while(is_name_char(ch))
             {
-                size = utf8_encode_char(utf8_buf, ch);
-                dst.append(utf8_buf, size);
+                size = utf8_encode_char(utf8_buf, sizeof(utf8_buf), ch);
+                if(failed(size)) return size.errcode();
+                dst.append(utf8_buf, size.get());
                 ctx.consume(ch);
-                ch = ctx.next_char();
+                ch = ctx.next_char_or_eof();
             }
+            return ok;
         }
         inline bool is_hex(c32 ch)
         {
@@ -264,28 +267,28 @@ namespace Luna
         }
         static RV read_reference(IReadContext& ctx, String& s)
         {
-            c32 ch = ctx.next_char();
+            c32 ch = ctx.next_char_or_eof();
             lucheck(ch == '&');
             ctx.consume(ch);
-            ch = ctx.next_char();
+            ch = ctx.next_char_or_eof();
             if(ch == '#')
             {
                 // character reference.
                 ctx.consume(ch);
-                ch = ctx.next_char();
+                ch = ctx.next_char_or_eof();
                 u32 read_ch;
                 if(ch == 'x')
                 {
                     // hex
                     ctx.consume(ch);
-                    ch = ctx.next_char();
+                    ch = ctx.next_char_or_eof();
                     if(!is_hex(ch))
                     {
                         return set_error(BasicError::format_error(), "Unexpected character. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                     }
                     read_ch = atohex(ch);
                     ctx.consume(ch);
-                    ch = ctx.next_char();
+                    ch = ctx.next_char_or_eof();
                     while(ch != ';')
                     {
                         if(!is_hex(ch))
@@ -294,7 +297,7 @@ namespace Luna
                         }
                         read_ch = (read_ch << 4) + atohex(ch);
                         ctx.consume(ch);
-                        ch = ctx.next_char();
+                        ch = ctx.next_char_or_eof();
                     }
                 }
                 else
@@ -306,7 +309,7 @@ namespace Luna
                     }
                     read_ch = (u32)ch - '0';
                     ctx.consume(ch);
-                    ch = ctx.next_char();
+                    ch = ctx.next_char_or_eof();
                     while(ch != ';')
                     {
                         if((u32)ch < '0' || (u32)ch > '9')
@@ -315,23 +318,24 @@ namespace Luna
                         }
                         read_ch = read_ch * 10 + ((u32)ch - '0');
                         ctx.consume(ch);
-                        ch = ctx.next_char();
+                        ch = ctx.next_char_or_eof();
                     }
                 }
                 ctx.consume(ch); // ;
-                c8 buf[6];
-                usize char_size = utf8_encode_char(buf, (c32)read_ch);
-                s.append(buf, char_size);
+                c8 buf[4];
+                R<usize> char_size = utf8_encode_char(buf, sizeof(buf), (c32)read_ch);
+                if(failed(char_size)) return char_size.errcode();
+                s.append(buf, char_size.get());
             }
             else
             {
                 // entity reference.
                 c32 buf[5];
-                buf[0] = ctx.next_char(0);
-                buf[1] = ctx.next_char(1);
-                buf[2] = ctx.next_char(2);
-                buf[3] = ctx.next_char(3);
-                buf[4] = ctx.next_char(4);
+                buf[0] = ctx.next_char_or_eof(0);
+                buf[1] = ctx.next_char_or_eof(1);
+                buf[2] = ctx.next_char_or_eof(2);
+                buf[3] = ctx.next_char_or_eof(3);
+                buf[4] = ctx.next_char_or_eof(4);
                 if(buf[0] == 'a' && buf[1] == 'm' && buf[2] == 'p' && buf[3] == ';')
                 {
                     s.push_back('&');
@@ -385,27 +389,27 @@ namespace Luna
             String s;
             lutry
             {
-                c32 ch = ctx.next_char();
+                c32 ch = ctx.next_char_or_eof();
                 lucheck(ch == '"' || ch == '\'');
                 ctx.consume(ch);
-                ch = ctx.next_char();
+                ch = ctx.next_char_or_eof();
                 while (ch)
                 {
                     if(ch == '&')
                     {
                         luexp(read_reference(ctx, s));
-                        ch = ctx.next_char();
+                        ch = ctx.next_char_or_eof();
                     }
                     if (ch == '"' || ch == '\'')
                     {
                         ctx.consume(ch);
                         break;
                     }
-                    c8 buf[6];
-                    usize buf_count = utf8_encode_char(buf, ch);
+                    c8 buf[4];
+                    lulet(buf_count, utf8_encode_char(buf, sizeof(buf), ch));
                     s.append(buf, buf_count);
                     ctx.consume(ch);
-                    ch = ctx.next_char();
+                    ch = ctx.next_char_or_eof();
                 }
             }
             lucatchret;
@@ -416,13 +420,13 @@ namespace Luna
             String s;
             lutry
             {
-                c32 ch = ctx.next_char();
+                c32 ch = ctx.next_char_or_eof();
                 while (ch)
                 {
                     if(ch == '<')
                     {
                         skip_comments(ctx);
-                        ch = ctx.next_char();
+                        ch = ctx.next_char_or_eof();
                         if(ch == '<')
                         {
                             break;
@@ -434,12 +438,12 @@ namespace Luna
                     }
                     else
                     {
-                        c8 buf[6];
-                        usize buf_count = utf8_encode_char(buf, ch);
+                        c8 buf[4];
+                        lulet(buf_count, utf8_encode_char(buf, sizeof(buf), ch));
                         s.append(buf, buf_count);
                         ctx.consume(ch);
                     }
-                    ch = ctx.next_char();
+                    ch = ctx.next_char_or_eof();
                 }
             }
             lucatchret;
@@ -451,15 +455,15 @@ namespace Luna
             lutry
             {
                 String name;
-                read_xml_name(ctx, name);
+                luexp(read_xml_name(ctx, name));
                 if(name.empty()) return set_error(BasicError::format_error(), "Valid name character expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 attribute_name = name;
                 skip_whitespaces_and_comments(ctx);
-                c32 ch = ctx.next_char();
+                c32 ch = ctx.next_char_or_eof();
                 if(ch != '=') return set_error(BasicError::format_error(), "'=' expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 ctx.consume(ch);
                 skip_whitespaces_and_comments(ctx);
-                ch = ctx.next_char();
+                ch = ctx.next_char_or_eof();
                 if(ch != '"' && ch != '\'') return set_error(BasicError::format_error(), "'\"' expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 lulet(data, read_xml_string_literal(ctx));
                 ret = Name(data);
@@ -472,20 +476,20 @@ namespace Luna
             lutry
             {
                 skip_whitespaces_and_comments(ctx);
-                c32 ch = ctx.next_char();
+                c32 ch = ctx.next_char_or_eof();
                 if(ch != '<')
                 {
                     return set_error(BasicError::format_error(), "'<' expected at the beginning of one element (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 }
                 ctx.consume(ch);
                 String name;
-                read_xml_name(ctx, name);
+                luexp(read_xml_name(ctx, name));
                 if(name.empty()) return set_error(BasicError::format_error(), "Valid name character expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 element_name = name;
                 element = new_xml_element(element_name);
                 skip_whitespaces_and_comments(ctx);
-                ch = ctx.next_char();
-                c32 ch2 = ctx.next_char(1);
+                ch = ctx.next_char_or_eof();
+                c32 ch2 = ctx.next_char_or_eof(1);
                 Variant& attributes = get_xml_attributes(element);
                 while(ch != '>' && !(ch == '/' && ch2 == '>'))
                 {
@@ -493,8 +497,8 @@ namespace Luna
                     lulet(attribute, read_xml_attribute(ctx, attribute_name));
                     attributes[attribute_name] = move(attribute);
                     skip_whitespaces_and_comments(ctx);
-                    ch = ctx.next_char();
-                    ch2 = ctx.next_char(1);
+                    ch = ctx.next_char_or_eof();
+                    ch2 = ctx.next_char_or_eof(1);
                 }
                 if(ch == '>')
                 {
@@ -514,15 +518,15 @@ namespace Luna
         static R<String> read_xml_cdata(IReadContext& ctx)
         {
             c32 ch[9];
-            ch[0] = ctx.next_char(0);
-            ch[1] = ctx.next_char(1);
-            ch[2] = ctx.next_char(2);
-            ch[3] = ctx.next_char(3);
-            ch[4] = ctx.next_char(4);
-            ch[5] = ctx.next_char(5);
-            ch[6] = ctx.next_char(6);
-            ch[7] = ctx.next_char(7);
-            ch[8] = ctx.next_char(8);
+            ch[0] = ctx.next_char_or_eof(0);
+            ch[1] = ctx.next_char_or_eof(1);
+            ch[2] = ctx.next_char_or_eof(2);
+            ch[3] = ctx.next_char_or_eof(3);
+            ch[4] = ctx.next_char_or_eof(4);
+            ch[5] = ctx.next_char_or_eof(5);
+            ch[6] = ctx.next_char_or_eof(6);
+            ch[7] = ctx.next_char_or_eof(7);
+            ch[8] = ctx.next_char_or_eof(8);
             luassert(
                 ch[0] == '<' &&
                 ch[1] == '!' &&
@@ -542,15 +546,15 @@ namespace Luna
             ctx.consume(ch[6]);
             ctx.consume(ch[7]);
             ctx.consume(ch[8]);
-            ch[0] = ctx.next_char(0);
+            ch[0] = ctx.next_char_or_eof(0);
             String r;
             while (true)
             {
                 if(!ch[0]) return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
                 if (ch[0] == ']')
                 {
-                    ch[1] = ctx.next_char(1);
-                    ch[2] = ctx.next_char(2);
+                    ch[1] = ctx.next_char_or_eof(1);
+                    ch[2] = ctx.next_char_or_eof(2);
                     if (ch[1] == ']' && ch[2] == '>')
                     {
                         ctx.consume(ch[0]);
@@ -559,11 +563,12 @@ namespace Luna
                         break;
                     }
                 }
-                c8 buf[6];
-                usize buf_sz = utf8_encode_char(buf, ch[0]);
-                r.append(buf, buf_sz);
+                c8 buf[4];
+                R<usize> buf_sz = utf8_encode_char(buf, sizeof(buf), ch[0]);
+                if(failed(buf_sz)) return buf_sz.errcode();
+                r.append(buf, buf_sz.get());
                 ctx.consume(ch[0]);
-                ch[0] = ctx.next_char(0);
+                ch[0] = ctx.next_char_or_eof(0);
             }
             return r;
         }
@@ -573,31 +578,31 @@ namespace Luna
             lutry
             {
                 Variant& content = get_xml_content(element);
-                c32 ch = ctx.next_char();
+                c32 ch = ctx.next_char_or_eof();
                 while(true)
                 {
                     if(!ch) return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
                     if(ch == '<')
                     {
                         skip_comments(ctx);
-                        ch = ctx.next_char();
+                        ch = ctx.next_char_or_eof();
                     }
                     if(ch == '<')
                     {
-                        c32 ch2 = ctx.next_char(1);
+                        c32 ch2 = ctx.next_char_or_eof(1);
                         if(ch2 == '/')
                         {
                             // end tag.
                             break;
                         }
                         else if (ch2 == '!' && 
-                            ctx.next_char(2) == '[' &&
-                            ctx.next_char(3) == 'C'&&
-                            ctx.next_char(4) == 'D'&&
-                            ctx.next_char(5) == 'A'&&
-                            ctx.next_char(6) == 'T'&&
-                            ctx.next_char(7) == 'A'&&
-                            ctx.next_char(8) == '[')
+                            ctx.next_char_or_eof(2) == '[' &&
+                            ctx.next_char_or_eof(3) == 'C'&&
+                            ctx.next_char_or_eof(4) == 'D'&&
+                            ctx.next_char_or_eof(5) == 'A'&&
+                            ctx.next_char_or_eof(6) == 'T'&&
+                            ctx.next_char_or_eof(7) == 'A'&&
+                            ctx.next_char_or_eof(8) == '[')
                         {
                             // read CDATA.
                             lulet(cdata, read_xml_cdata(ctx));
@@ -631,7 +636,7 @@ namespace Luna
                             content.push_back(Variant(Name(chardata)));
                         }
                     }
-                    ch = ctx.next_char();
+                    ch = ctx.next_char_or_eof();
                 }
             }
             lucatchret;
@@ -639,17 +644,18 @@ namespace Luna
         }
         static RV read_xml_end_tag(IReadContext& ctx, const Name& element_name)
         {
-            c32 ch = ctx.next_char();
-            c32 ch2 = ctx.next_char(1);
+            c32 ch = ctx.next_char_or_eof();
+            c32 ch2 = ctx.next_char_or_eof(1);
             luassert(ch == '<' && ch2 == '/');
             ctx.consume(ch);
             ctx.consume(ch2);
             String name;
-            read_xml_name(ctx, name);
+            RV name_result = read_xml_name(ctx, name);
+            if(failed(name_result)) return name_result.errcode();
             if(Name(name) != element_name) 
                 return set_error(BasicError::format_error(), "The name of the end tag (%s) does not match the name of the start tag (%s). (line %d pos %d)", name.c_str(), element_name.c_str(), ctx.get_line(), ctx.get_pos());
             skip_whitespaces_and_comments(ctx);
-            ch = ctx.next_char();
+            ch = ctx.next_char_or_eof();
             if(ch != '>') return set_error(BasicError::format_error(), "'>' expected at the end of one one tag (line %d pos %d).", ctx.get_line(), ctx.get_pos());
             ctx.consume(ch);
             return ok;
@@ -673,16 +679,17 @@ namespace Luna
         }
         static R<Variant> read_xml_document(IReadContext& ctx)
         {
-            lutry
-            {
-                luexp(skip_xml_header(ctx));
-            }
-            lucatchret;
-            return read_xml_element(ctx);
+            RV header_result = skip_xml_header(ctx);
+            if(ctx.get_read_error().code) return ctx.get_read_error();
+            if(failed(header_result)) return header_result.errcode();
+            R<Variant> result = read_xml_element(ctx);
+            if(ctx.get_read_error().code) return ctx.get_read_error();
+            return result;
         }
         LUNA_VARIANT_UTILS_API R<Variant> read_xml(const void* src, usize src_size)
         {
             lucheck(src);
+            if(src_size == USIZE_MAX) src_size = strlen((const c8*)src);
             BufferReadContext ctx;
             ctx.src = src;
             ctx.cur = src;
@@ -700,7 +707,8 @@ namespace Luna
             ctx.stream = stream;
             ctx.line = 1;
             ctx.pos = 1;
-            ctx.skip_utf16_bom();
+            RV bom_result = ctx.skip_utf16_bom();
+            if(failed(bom_result)) return bom_result.errcode();
             return read_xml_document(ctx);
         }
         inline void write_indents(String& s, u32 num_indents)
@@ -716,7 +724,15 @@ namespace Luna
             const c8* end = str.c_str() + str.size();
             while (cur < end)
             {
-                c32 ch = utf8_decode_char(cur);
+                usize num_bytes;
+                R<c32> decode_result = utf8_decode_char(cur, (usize)(end - cur), &num_bytes);
+                if(failed(decode_result))
+                {
+                    dst.push_back(*cur);
+                    ++cur;
+                    continue;
+                }
+                c32 ch = decode_result.get();
                 switch (ch)
                 {
                 case '<':
@@ -744,10 +760,10 @@ namespace Luna
                     dst.append("&#9;");
                     break;
                 default:
-                    dst.append(cur, utf8_charspan(ch));
+                    dst.append(cur, num_bytes);
                     break;
                 }
-                cur += utf8_charspan(ch);
+                cur += num_bytes;
             }
         }
         void write_xml_element(const Variant& v, String& s, bool indent, u32 base_indent)

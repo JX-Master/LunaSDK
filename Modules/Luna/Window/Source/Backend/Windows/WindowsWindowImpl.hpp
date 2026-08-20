@@ -21,6 +21,7 @@ namespace Luna
             HWND m_hwnd;
             WindowStyleFlag m_style;
             bool m_text_input_active = false;
+            c16 m_text_input_high_surrogate = 0;
             bool m_destructing = false; // If `true`, close is called inside of ~Window, and we should not dispatch close message.
             Window() :
                 m_hwnd(nullptr) {}

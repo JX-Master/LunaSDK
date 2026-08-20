@@ -45,6 +45,8 @@ namespace Luna
             
             //! Current character.
             c32 m_char;
+            //! The number of bytes occupied by the current character.
+            usize m_char_size;
             //! The scaled width from this character's origin point to next character's origin point.
             f32 m_char_advance_length;
             //! The scaled width between the x axis of the origin point to the x of the leftest pixel.
@@ -55,7 +57,7 @@ namespace Luna
             void load_current_char();
             void next_char()
             {
-                m_cursor += utf8_charspan(m_char);
+                m_cursor += m_char_size;
                 if (m_section_cursor < (m_sections.size() - 1) && m_next_section_begin <= m_cursor)
                 {
                     ++m_section_cursor;
@@ -101,7 +103,14 @@ namespace Luna
         {
             if (m_cursor < m_text_size)
             {
-                m_char = utf8_decode_char(m_text + m_cursor);
+                R<c32> ch = utf8_decode_char(
+                    m_text + m_cursor, m_text_size - m_cursor, &m_char_size);
+                if(succeeded(ch)) m_char = ch.get();
+                else
+                {
+                    m_char = 0xFFFD;
+                    m_char_size = 1;
+                }
                 i32 advance_width, left_side_bearing;
                 u32 font_index = m_font_index;
                 auto font_file = m_font;
@@ -117,7 +126,7 @@ namespace Luna
 
         Pair<Font::IFontFile*, u32> TextStream::get_next_char_font_file(f32& font_scale)
         {
-            usize next_cursor = m_cursor + utf8_charspan(m_char);
+            usize next_cursor = m_cursor + m_char_size;
             if (m_section_cursor < (m_sections.size() - 1) && m_next_section_begin <= m_cursor)
             {
                 usize section_cursor = m_section_cursor + 1;
@@ -196,7 +205,14 @@ namespace Luna
                     glyph.bounding_rect = s.m_char_bounding_rect;
                     current_line.glyphs.push_back(glyph);
                     f32 kern;
-                    c32 next_char = utf8_decode_char(s.m_text + s.m_cursor + utf8_charspan(s.m_char));
+                    c32 next_char = 0;
+                    usize next_cursor = s.m_cursor + s.m_char_size;
+                    if(next_cursor < s.m_text_size)
+                    {
+                        R<c32> next_char_result = utf8_decode_char(
+                            s.m_text + next_cursor, s.m_text_size - next_cursor);
+                        next_char = succeeded(next_char_result) ? next_char_result.get() : 0xFFFD;
+                    }
                     if (next_char)
                     {
                         f32 next_font_scale;

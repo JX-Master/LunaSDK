@@ -74,9 +74,49 @@ LunaSDK comes with one variant differential library that computes and patches va
 ## JSON encoding
 
 ```c++
-#include <Luna/Runtime/VariantJSON.hpp>
+#include <Luna/VariantUtils/JSON.hpp>
 ```
 
-LunaSDK comes with one JSON encoding/decoding library for `Variant` objects. `json_write` encodes one `Variant` to one JSON text stream, while `json_read` decodes one JSON text stream to one `Variant` object.
+The VariantUtils module provides JSON encoding and decoding for `Variant` objects. `write_json` encodes a `Variant` to JSON text, while `read_json` decodes JSON text to a `Variant`.
 
-When performing JSON encoding, `Variant` of `VariantType::pointer`will be ignored, and `Variant` with `VariantType::blob` will be encoded using [Base64](https://en.wikipedia.org/wiki/Base64) encoding format.
+The default options preserve LunaSDK's relaxed JSON behavior. This includes comments, trailing commas, non-standard whitespace and escapes, UTF-16 input, Tagged BLOB strings, trailing content, and non-finite floating-point values. Applications consuming data from a strict protocol should pass `JSONReadOptions::strict()` and `JSONWriteOptions::strict()` explicitly:
+
+```cpp
+using namespace Luna;
+using namespace Luna::VariantUtils;
+
+JSONReadOptions read_options = JSONReadOptions::strict();
+R<Variant> value = read_json(json_data, json_size, read_options);
+
+JSONWriteOptions write_options = JSONWriteOptions::strict();
+R<String> json = write_json(value.get(), write_options);
+```
+
+### Read options
+
+`JSONReadOptions` contains these independently configurable behaviors:
+
+1. `allow_comments`: Accepts `//` and `/* ... */` comments between tokens.
+2. `allow_trailing_commas`: Accepts a comma before the closing token of an object or array.
+3. `allow_nonstandard_escapes`: Accepts `\0` and `\'` in strings.
+4. `allow_nonstandard_whitespace`: Accepts Unicode whitespace in addition to the four JSON whitespace characters.
+5. `allow_trailing_content`: Stops after the first root value and ignores remaining content.
+6. `decode_blobs`: Converts strings using the LunaSDK `@base64@` or `@base85@` format to BLOB variants.
+7. `allow_utf16`: Accepts UTF-16 input with a byte-order mark.
+8. `allow_non_finite_numbers`: Allows a number outside the finite `f64` range to become infinity and accepts the non-standard `nan`, `inf`, and `-inf` tokens.
+
+The strict preset disables all of these behaviors. Both presets still reject malformed numbers, unescaped control characters, unterminated strings and comments, missing separators, invalid UTF-8, invalid Unicode surrogate sequences, and duplicate object names. Duplicate names are rejected after escape sequences are decoded, because a `Variant` object cannot represent multiple values under one `Name` key.
+
+The buffer overload treats an explicit `json_size` as the exact number of available bytes. Embedded null bytes are invalid input; use the null-terminated overload, or pass `USIZE_MAX`, when the size should be determined with `strlen`.
+
+JSON number parsing and writing always use JSON's dot decimal notation and are independent of the process locale.
+
+### Write options
+
+`JSONWriteOptions` contains these independently configurable behaviors:
+
+1. `indent`: Adds indentation and line breaks.
+2. `encode_blobs`: Encodes a BLOB as a LunaSDK Tagged BLOB string. Writing fails if a BLOB is encountered while this option is disabled.
+3. `allow_non_finite_numbers`: Writes the non-standard `nan`, `inf`, and `-inf` tokens. Writing fails when this option is disabled and a non-finite number is encountered.
+
+The strict preset disables all three options, producing compact JSON and rejecting values that do not belong to the JSON data model. JSON writing always validates UTF-8 in string values and object names, independently of these options. The options-based string overload returns `R<String>` so representation errors can be reported. The legacy `write_json(const Variant&, bool indent)` overload remains available with relaxed behavior.

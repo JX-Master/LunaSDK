@@ -20,10 +20,10 @@ namespace Luna
         {
             f32 sine = sinf(rotation);
             f32 cosine = cosf(rotation);
-            float4 R0 = dupx_f4(translation);
+            float4 R0 = dupx_f4(scaling);
             R0 = casti_f4(and_i4(castf_i4(R0), set_i4(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)));
             R0 = mul_f4(R0, set_f4(cosine, sine, 1.0f, 1.0f));
-            float4 R1 = dupy_f4(translation);
+            float4 R1 = dupy_f4(scaling);
             R1 = casti_f4(and_i4(castf_i4(R1), set_i4(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)));
             R1 = mul_f4(R1, set_f4(-sine, cosine, 1.0f, 1.0f));
             float4 R2 = select_f4<0, 0, 1, 1>(translation, set_f4(0.0f, 0.0f, 1.0f, 0.0f));

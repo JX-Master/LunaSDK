@@ -17,8 +17,6 @@ namespace Luna
         void time_init();
         Result thread_init();
         void thread_close();
-        void std_io_init();
-        void std_io_close();
         void debug_init();
         void debug_close();
 
@@ -33,13 +31,11 @@ namespace Luna
                 debug_close();
                 return r;
             }
-            std_io_init();
             return Result::success;
         }
 
         void close() 
         {
-            std_io_close();
             thread_close();
             debug_close();
         }

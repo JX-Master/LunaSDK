@@ -13,8 +13,12 @@
 
 namespace Luna
 {
-    LUNA_RUNTIME_API usize utf8_encode_char(c8* dst, c32 ch)
+    LUNA_RUNTIME_API R<usize> utf8_encode_char(c8* dst, usize dst_size, c32 ch)
     {
+        usize num_bytes = utf8_charspan(ch);
+        if(!num_bytes) return BasicError::bad_data();
+        if(dst_size < num_bytes) return BasicError::insufficient_user_buffer();
+        lucheck(dst);
         if (ch <= UnicodeImpl::UTF8_ONE_END)
         {
             dst[0] = (c8)ch;
@@ -33,7 +37,7 @@ namespace Luna
             dst[2] = (c8)(ch & 0x3F) + 0x80;
             return 3;
         }
-        if (ch <= UnicodeImpl::UTF8_FOUR_END)
+        else
         {
             dst[0] = (c8)(ch >> 18) + 0xF0;
             dst[1] = ((c8)(ch >> 12) & 0x3F) + 0x80;
@@ -41,52 +45,61 @@ namespace Luna
             dst[3] = (c8)(ch & 0x3F) + 0x80;
             return 4;
         }
-        if (ch <= UnicodeImpl::UTF8_FIVE_END)
-        {
-            dst[0] = (c8)(ch >> 24) + 0xF8;
-            dst[1] = ((c8)(ch >> 18) & 0x3F) + 0x80;
-            dst[2] = ((c8)(ch >> 12) & 0x3F) + 0x80;
-            dst[3] = ((c8)(ch >> 6) & 0x3F) + 0x80;
-            dst[4] = (c8)(ch & 0x3F) + 0x80;
-            return 5;
-        }
-        // if (ch <= l_utf8_six_end)
-        {
-            dst[0] = (c8)(ch >> 30) + 0xFC;
-            dst[1] = ((c8)(ch >> 24) & 0x3F) + 0x80;
-            dst[2] = ((c8)(ch >> 18) & 0x3F) + 0x80;
-            dst[3] = ((c8)(ch >> 12) & 0x3F) + 0x80;
-            dst[4] = ((c8)(ch >> 6) & 0x3F) + 0x80;
-            dst[5] = (c8)(ch & 0x3F) + 0x80;
-            return 6;
-        }
     }
-    LUNA_RUNTIME_API c32 utf8_decode_char(const c8* str)
+    LUNA_RUNTIME_API R<c32> utf8_decode_char(const c8* src, usize src_size, usize* out_num_bytes)
     {
+        if(out_num_bytes) *out_num_bytes = 0;
+        if(!src_size) return BasicError::end_of_file();
+        lucheck(src);
+
+        const u8 first = (u8)src[0];
+        usize num_bytes;
+        if(first <= 0x7F)
         {
-            u8 fc = (u8)str[0];
-            if (fc <= 127)
-            {
-                return (c32)str[0];
-            }
-            if (fc <= 223)
-            {
-                return ((str[0] & 0x1F) << 6) + (str[1] & 0x3F);
-            }
-            if (fc <= 239)
-            {
-                return ((str[0] & 0x0F) << 12) + ((str[1] & 0x3F) << 6) + (str[2] & 0x3F);
-            }
-            if (fc <= 247)
-            {
-                return ((str[0] & 0x07) << 18) + ((str[1] & 0x3F) << 12) + ((str[2] & 0x3F) << 6) + (str[3] & 0x3F);
-            }
-            if (fc <= 251)
-            {
-                return ((str[0] & 0x03) << 24) + ((str[1] & 0x3F) << 18) + ((str[2] & 0x3F) << 12) + ((str[3] & 0x3F) << 6) + (str[4] & 0x3F);
-            }
-            return ((str[0] & 0x01) << 30) + ((str[1] & 0x3F) << 24) + ((str[2] & 0x3F) << 18) + ((str[3] & 0x3F) << 12) + ((str[4] & 0x3F) << 6) + (str[5] & 0x3F);
+            num_bytes = 1;
         }
+        else if(first >= 0xC2 && first <= 0xDF) num_bytes = 2;
+        else if(first >= 0xE0 && first <= 0xEF) num_bytes = 3;
+        else if(first >= 0xF0 && first <= 0xF4) num_bytes = 4;
+        else return BasicError::bad_data();
+
+        for(usize i = 1; i < min(src_size, num_bytes); ++i)
+        {
+            const u8 continuation = (u8)src[i];
+            if(continuation < 0x80 || continuation > 0xBF) return BasicError::bad_data();
+        }
+
+        if(src_size > 1 &&
+            ((first == 0xE0 && (u8)src[1] < 0xA0) ||
+            (first == 0xED && (u8)src[1] > 0x9F) ||
+            (first == 0xF0 && (u8)src[1] < 0x90) ||
+            (first == 0xF4 && (u8)src[1] > 0x8F)))
+        {
+            return BasicError::bad_data();
+        }
+        if(src_size < num_bytes) return BasicError::end_of_file();
+
+        c32 codepoint;
+        if(num_bytes == 1) codepoint = (c32)first;
+        else if(num_bytes == 2)
+        {
+            codepoint = (c32)(((first & 0x1F) << 6) | ((u8)src[1] & 0x3F));
+        }
+        else if(num_bytes == 3)
+        {
+            codepoint = (c32)(((first & 0x0F) << 12) |
+                (((u8)src[1] & 0x3F) << 6) |
+                ((u8)src[2] & 0x3F));
+        }
+        else
+        {
+            codepoint = (c32)(((first & 0x07) << 18) |
+                (((u8)src[1] & 0x3F) << 12) |
+                (((u8)src[2] & 0x3F) << 6) |
+                ((u8)src[3] & 0x3F));
+        }
+        if(out_num_bytes) *out_num_bytes = num_bytes;
+        return codepoint;
     }
 
     LUNA_RUNTIME_API usize utf16_encode_char(c16* dst, c32 ch)
@@ -120,18 +133,20 @@ namespace Luna
     {
         usize ri{ 0 };
         usize wi{ 0 };
-        while ((src[ri]) && (ri < src_chars))
+        while(ri < src_chars && src[ri])
         {
             c32 ch = utf16_decode_char(src + ri);
             usize num_chars = utf8_charspan(ch);
-            if (wi + num_chars > dst_max_chars - 1)
+            if(!num_chars || !dst_max_chars || wi + num_chars >= dst_max_chars)
             {
                 break;
             }
             ri += utf16_charspan(ch);
-            wi += utf8_encode_char(dst + wi, ch);
+            R<usize> encode_result = utf8_encode_char(dst + wi, dst_max_chars - wi, ch);
+            if(failed(encode_result)) break;
+            wi += encode_result.get();
         }
-        dst[wi] = '\0';
+        if(dst_max_chars) dst[wi] = '\0';
         return wi;
     }
 
@@ -156,31 +171,37 @@ namespace Luna
     {
         usize ri{ 0 };
         usize wi{ 0 };
-        while (src[ri] && (ri < src_chars))
+        while(ri < src_chars && src[ri])
         {
             c32 ch = utf16_decode_char(src + ri);
+            usize num_chars = utf8_charspan(ch);
+            if(!num_chars) break;
             ri += utf16_charspan(ch);
-            wi += utf8_charspan(ch);
+            wi += num_chars;
         }
         return wi;
     }
 
     LUNA_RUNTIME_API usize utf8_to_utf16(c16* dst, usize dst_max_chars, const c8* src, usize src_chars)
     {
+        usize src_size = 0;
+        while(src_size < src_chars && src[src_size]) ++src_size;
         usize ri{ 0 };
         usize wi{ 0 };
-        while ((src[ri]) && (ri < src_chars))
+        while(ri < src_size)
         {
-            c32 ch = utf8_decode_char(src + ri);
-            usize num_chars = utf16_charspan(ch);
+            usize num_bytes;
+            R<c32> ch = utf8_decode_char(src + ri, src_size - ri, &num_bytes);
+            if(failed(ch)) break;
+            usize num_chars = utf16_charspan(ch.get());
             if (wi + num_chars >= dst_max_chars)
             {
                 break;
             }
-            ri += utf8_charspan(ch);
-            wi += utf16_encode_char(dst + wi, ch);
+            ri += num_bytes;
+            wi += utf16_encode_char(dst + wi, ch.get());
         }
-        dst[wi] = '\0';
+        if(dst_max_chars) dst[wi] = '\0';
         return wi;
     }
 
@@ -203,13 +224,17 @@ namespace Luna
 
     LUNA_RUNTIME_API usize utf8_to_utf16_len(const c8* src, usize src_max_chars)
     {
+        usize src_size = 0;
+        while(src_size < src_max_chars && src[src_size]) ++src_size;
         usize ri{ 0 };
         usize wi{ 0 };
-        while (src[ri] && (ri < src_max_chars))
+        while(ri < src_size)
         {
-            c32 ch = utf8_decode_char(src + ri);
-            ri += utf8_charspan(ch);
-            wi += utf16_charspan(ch);
+            usize num_bytes;
+            R<c32> ch = utf8_decode_char(src + ri, src_size - ri, &num_bytes);
+            if(failed(ch)) break;
+            ri += num_bytes;
+            wi += utf16_charspan(ch.get());
         }
         return wi;
     }

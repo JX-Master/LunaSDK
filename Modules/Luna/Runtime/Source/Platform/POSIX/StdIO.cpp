@@ -8,107 +8,87 @@
 * @date 2023/2/28
 */
 #include "../StdIO.hpp"
-#include "../../../Unicode.hpp"
-#include <cstdio>
+#include "Errno.hpp"
+
+#include <errno.h>
+#include <limits.h>
 #include <pthread.h>
+#include <signal.h>
+#include <unistd.h>
 
 namespace Luna
 {
     namespace Platform
     {
-        c32 g_input_buffer = 0;
-        pthread_mutex_t g_std_io_mtx;
-
-        void std_io_init()
+        static usize clamp_io_size(usize size)
         {
-            luassert_msg_always(pthread_mutex_init(&g_std_io_mtx, NULL) == 0, "pthread_mutex_init failed.");
+            return size > (usize)SSIZE_MAX ? (usize)SSIZE_MAX : size;
         }
 
-        void std_io_close()
+        Result read_standard_input(void* buffer, usize size, usize* read_bytes)
         {
-            pthread_mutex_destroy(&g_std_io_mtx);
-        }
-
-        Result std_input(c8* buffer, usize size, usize* read_bytes)
-        {
-            luassert_msg_always(pthread_mutex_lock(&g_std_io_mtx) == 0, "pthread_mutex_lock failed.");
-            if (size == 0)
-            {
-                if (read_bytes) *read_bytes = 0;
-                return Result::success;
-            }
-            c8* cur = buffer;
-            if(g_input_buffer)
-            {
-                c8 buf[6];
-                usize len = utf8_encode_char(buf, g_input_buffer);
-                if(cur + len < buffer + size)
-                {
-                    memcpy(cur, buf, len);
-                    cur += len;
-                    g_input_buffer = 0;
-                }
-                else
-                {
-                    luassert_msg_always(pthread_mutex_unlock(&g_std_io_mtx) == 0, "pthread_mutex_unlock failed.");
-                    if(read_bytes) *read_bytes = 0;
-                    return Result::success;
-                }
-            }
-            c8 ch[6];
-            int input_ch = EOF;
-            while(cur < buffer + size - 1)
-            {
-                input_ch = getchar();
-                if (input_ch == '\n' || input_ch == EOF)
-                {
-                    break;
-                }
-                ch[0] = (c8)input_ch;
-                usize len = utf8_charlen(ch[0]);
-                for(usize i = 1; i < len; ++i)
-                {
-                    input_ch = getchar();
-                    if (input_ch == '\n' || input_ch == EOF) break;
-                    ch[i] = (c8)input_ch;
-                }
-                // Encode this character.
-                if(cur + len < buffer + size)
-                {
-                    memcpy(cur, ch, len);
-                    cur += len;
-                }
-                else
-                {
-                    g_input_buffer = utf8_decode_char(ch);
-                    break;
-                }
-            }
-            luassert_msg_always(pthread_mutex_unlock(&g_std_io_mtx) == 0, "pthread_mutex_unlock failed.");
-            *cur = 0;
-            if(read_bytes) *read_bytes = cur - buffer;
-            if(input_ch == EOF) return feof(stdin) ? Result::success : Result::bad_platform_call;
+            if (read_bytes) *read_bytes = 0;
+            if (!size) return Result::success;
+            ssize_t result = ::read(STDIN_FILENO, buffer, clamp_io_size(size));
+            if (result < 0) return encode_errno(errno);
+            if (read_bytes) *read_bytes = (usize)result;
             return Result::success;
         }
 
-        Result std_output(const c8* buffer, usize size, usize* write_bytes)
+        static Result write_standard_stream(int file_descriptor, const void* buffer, usize size, usize* write_bytes)
         {
-            luassert_msg_always(pthread_mutex_lock(&g_std_io_mtx) == 0, "pthread_mutex_lock failed.");
-            const c8* cur = buffer;
-            while(cur < buffer + size)
+            if (write_bytes) *write_bytes = 0;
+            if (!size) return Result::success;
+
+            sigset_t signal_set;
+            sigemptyset(&signal_set);
+            sigaddset(&signal_set, SIGPIPE);
+
+            sigset_t old_signal_set;
+            int mask_result = pthread_sigmask(SIG_BLOCK, &signal_set, &old_signal_set);
+            if (mask_result) return encode_errno(mask_result);
+
+            sigset_t pending_signals;
+            if (sigpending(&pending_signals) != 0)
             {
-                if(*cur == '\0') break;
-                usize len = utf8_charlen(*cur);
-                if(cur + len > buffer + size) break;
-                for(usize i = 0; i < len; ++i)
-                {
-                    putchar(cur[i]);
-                }
-                cur += len;
+                int pending_error = errno;
+                pthread_sigmask(SIG_SETMASK, &old_signal_set, nullptr);
+                return encode_errno(pending_error);
             }
-            luassert_msg_always(pthread_mutex_unlock(&g_std_io_mtx) == 0, "pthread_mutex_unlock failed.");
-            if(write_bytes) *write_bytes = cur - buffer;
+            bool sigpipe_was_pending = sigismember(&pending_signals, SIGPIPE) == 1;
+
+            ssize_t result = ::write(file_descriptor, buffer, clamp_io_size(size));
+            int write_error = result < 0 ? errno : 0;
+            int signal_error = 0;
+            if (write_error == EPIPE && !sigpipe_was_pending)
+            {
+                if (sigpending(&pending_signals) != 0)
+                {
+                    signal_error = errno;
+                }
+                else if (sigismember(&pending_signals, SIGPIPE) == 1)
+                {
+                    int received_signal = 0;
+                    signal_error = sigwait(&signal_set, &received_signal);
+                }
+            }
+
+            int restore_result = pthread_sigmask(SIG_SETMASK, &old_signal_set, nullptr);
+            if (result >= 0 && write_bytes) *write_bytes = (usize)result;
+            if (signal_error) return encode_errno(signal_error);
+            if (restore_result) return encode_errno(restore_result);
+            if (result < 0) return encode_errno(write_error);
             return Result::success;
+        }
+
+        Result write_standard_output(const void* buffer, usize size, usize* write_bytes)
+        {
+            return write_standard_stream(STDOUT_FILENO, buffer, size, write_bytes);
+        }
+
+        Result write_standard_error(const void* buffer, usize size, usize* write_bytes)
+        {
+            return write_standard_stream(STDERR_FILENO, buffer, size, write_bytes);
         }
     }
 }

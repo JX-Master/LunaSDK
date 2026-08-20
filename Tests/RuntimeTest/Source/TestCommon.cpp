@@ -22,10 +22,20 @@ namespace Luna
     i64 TestObject::g_move_assign_count = 0;
     i32 TestObject::g_magic_error_count = 0;
     usize g_allocated_memory = 0;
+    usize g_memory_allocate_count = 0;
+    usize g_memory_deallocate_count = 0;
 
     usize get_allocated_memory()
     {
         return g_allocated_memory;
+    }
+    usize get_memory_allocate_count()
+    {
+        return g_memory_allocate_count;
+    }
+    usize get_memory_deallocate_count()
+    {
+        return g_memory_deallocate_count;
     }
     void memory_profiler_callback(const ProfilerEvent& event)
     {
@@ -35,6 +45,7 @@ namespace Luna
             {
                 ProfilerEventData::MemoryAllocate* data = (ProfilerEventData::MemoryAllocate*)event.data;
                 g_allocated_memory += data->size;
+                ++g_memory_allocate_count;
                 break;
             }
             case ProfilerEventId::MEMORY_DEALLOCATE:
@@ -42,6 +53,7 @@ namespace Luna
                 ProfilerEventData::MemoryDeallocate* data = (ProfilerEventData::MemoryDeallocate*)event.data;
                 usize allocated = memsize(data->ptr);
                 g_allocated_memory -= allocated;
+                ++g_memory_deallocate_count;
                 break;
             }
             default: break;

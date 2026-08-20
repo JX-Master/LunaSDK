@@ -9,6 +9,7 @@
  */
 #pragma once
 #include "Array.hpp"
+#include "Result.hpp"
 #include "String.hpp"
 
 #ifndef LUNA_RUNTIME_API
@@ -23,11 +24,9 @@ namespace Luna
         UTF8 Encoding:
 
         U+00000000~U+0000007F    7    0    0XXXXXXX
-        U+00000080~U+000007FF    11    C0    110XXXXX 10XXXXXX
-        U+00000800~U+0000FFFF    16    E0    1110XXXX 10XXXXXX 10XXXXXX
-        U+00010000~U+001FFFFF    21    F0    11110XXX 10XXXXXX 10XXXXXX 10XXXXXX
-        U+00200000~U+03FFFFFF    26    F8    111110XX 10XXXXXX 10XXXXXX 10XXXXXX 10XXXXXX
-        U+04000000~U+7FFFFFFF    31    FC    1111110X 10XXXXXX 10XXXXXX 10XXXXXX 10XXXXXX 10XXXXXX
+        U+00000080~U+000007FF    11   C2   110XXXXX 10XXXXXX
+        U+00000800~U+0000FFFF    16   E0   1110XXXX 10XXXXXX 10XXXXXX
+        U+00010000~U+0010FFFF    21   F0   11110XXX 10XXXXXX 10XXXXXX 10XXXXXX
         */
 
         // Unicode range.
@@ -38,11 +37,7 @@ namespace Luna
         constexpr c32 UTF8_THREE_START = 0x0800;
         constexpr c32 UTF8_THREE_END = 0xFFFF;
         constexpr c32 UTF8_FOUR_START = 0x00010000;
-        constexpr c32 UTF8_FOUR_END = 0x001FFFFF;
-        constexpr c32 UTF8_FIVE_START = 0x00200000;
-        constexpr c32 UTF8_FIVE_END = 0x03FFFFFF;
-        constexpr c32 UTF8_SIX_START = 0x04000000;
-        constexpr c32 UTF8_SIX_END = 0x7FFFFFFF;
+        constexpr c32 UTF8_FOUR_END = 0x0010FFFF;
     }
 
     //! @addtogroup Runtime
@@ -56,6 +51,7 @@ namespace Luna
     //! Gets the number of UTF-8 characters needed to store the Unicode char in UTF-8 encoding.
     //! @param[in] ch The Unicode codepoint of the character.
     //! @return Returns the number of UTF-8 characters needed to store the Unicode char in UTF-8 encoding.
+    //! Returns `0` if @p ch is not a Unicode scalar value.
     inline constexpr usize utf8_charspan(c32 ch)
     {
         if (ch <= UnicodeImpl::UTF8_ONE_END)
@@ -66,6 +62,10 @@ namespace Luna
         {
             return 2;
         }
+        if (ch >= 0xD800 && ch <= 0xDFFF)
+        {
+            return 0;
+        }
         if (ch <= UnicodeImpl::UTF8_THREE_END)
         {
             return 3;
@@ -74,43 +74,34 @@ namespace Luna
         {
             return 4;
         }
-        if (ch <= UnicodeImpl::UTF8_FIVE_END)
-        {
-            return 5;
-        }
-        // The maximum number is 0x7FFFFFFF.
-        return 6;
+        return 0;
     }
 
     //! Gets the number of UTF-8 characters the Unicode character takes from the first UTF-8 character.
     //! @param[in] ch The first UTF-8 character of the Unicode character.
-    //! @return Returns the number of UTF-8 characters the Unicode character takes.
+    //! @return Returns the expected number of UTF-8 characters indicated by the leading byte.
+    //! Returns `0` if @p ch is not a valid RFC 3629 leading byte. This function does not validate
+    //! continuation bytes.
     inline constexpr usize utf8_charlen(c8 ch)
     {
-        if ((u8)ch <= 127)    // 0XXXXXXXb
+        const u8 first = (u8)ch;
+        if (first <= 0x7F)    // 0XXXXXXXb
         {
             return 1;
         }
-        if ((u8)ch <= 223)    // 110XXXXXb
+        if (first >= 0xC2 && first <= 0xDF)    // 110XXXXXb
         {
             return 2;
         }
-        if ((u8)ch <= 239)    // 1110XXXXb
+        if (first >= 0xE0 && first <= 0xEF)    // 1110XXXXb
         {
             return 3;
         }
-        if ((u8)ch <= 247)    // 11110XXXb
+        if (first >= 0xF0 && first <= 0xF4)    // 11110XXXb
         {
             return 4;
         }
-        if ((u8)ch <= 251)    // 111110XXb
-        {
-            return 5;
-        }
-        // 1111110Xb
-        // The maximum number that may occur is 253(11111101b)
-        // FE and FF never appear.
-        return 6;
+        return 0;
     }
 
     //! Gets the number of UTF-8 characters the Unicode character takes from the first UTF-8 character.
@@ -131,7 +122,9 @@ namespace Luna
         usize l{ 0 };
         while (*src)
         {
-            src += utf8_charlen(src);
+            usize char_len = utf8_charlen(src);
+            if(!char_len) return l;
+            src += char_len;
             ++l;
         }
         return l;
@@ -150,27 +143,39 @@ namespace Luna
         usize p{ 0 };
         while (str[p] && i < n)
         {
-            p += utf8_charlen(str + p);
+            usize char_len = utf8_charlen(str + p);
+            if(!char_len) return p;
+            p += char_len;
             ++i;
         }
         return p;
     }
 
-    //! Encodes the Unicode character into 1~6 UTF-8 characters.
+    //! Encodes one Unicode scalar value into 1~4 RFC 3629 UTF-8 characters.
     //! @param[in] dst The buffer for writing encoded UTF-8 characters.
+    //! @param[in] dst_size The number of bytes available in @p dst.
     //! @param[in] ch The Unicode character to encode.
-    //! @return Returns the number of UTF-8 characters written to `dst`.
+    //! @return Returns the number of UTF-8 characters written to @p dst. Returns
+    //! @ref BasicError::bad_data if @p ch is not a Unicode scalar value. Returns
+    //! @ref BasicError::insufficient_user_buffer if @p dst does not have enough space.
     //! @par Valid Usage
-    //! * `dst` must be large enough to hold all UTF-8 characters written. 
-    //! The user can use @ref utf8_charspan to check the required space in advance.
-    LUNA_RUNTIME_API usize utf8_encode_char(c8* dst, c32 ch);
+    //! * `dst` must not be `nullptr` when `dst_size` is not `0`.
+    LUNA_RUNTIME_API R<usize> utf8_encode_char(c8* dst, usize dst_size, c32 ch);
 
-    //! Decodes one Unicode character from 1~6 UTF-8 characters.
-    //! @param[in] str The pointer that points to UTF-8 characters to decode.
-    //! @return Returns the decoded Unicode character.
+    //! Decodes one Unicode character from one RFC 3629 UTF-8 encoded character sequence.
+    //! @param[in] src The buffer containing the UTF-8 character sequence to decode.
+    //! @param[in] src_size The number of available bytes in @p src.
+    //! @param[out] out_num_bytes If this is not `nullptr`, returns the number of bytes consumed on success.
+    //! This is set to `0` if the operation fails.
+    //! @return Returns the decoded Unicode codepoint on success. Returns @ref BasicError::end_of_file if
+    //! the input does not contain enough bytes for one complete character sequence. Returns
+    //! @ref BasicError::bad_data if the input is not a valid RFC 3629 UTF-8 character sequence.
     //! @par Valid Usage
-    //! * `str` must points to a valid UTF-8 character string.
-    LUNA_RUNTIME_API c32 utf8_decode_char(const c8* str);
+    //! * `src` must not be `nullptr` when `src_size` is not `0`.
+    LUNA_RUNTIME_API R<c32> utf8_decode_char(
+        const c8* src,
+        usize src_size,
+        usize* out_num_bytes = nullptr);
 
     //! Gets the number of UTF-16 characters needed to store the Unicode char in UTF-16 encoding.
     //! @param[in] ch The Unicode codepoint of the character.

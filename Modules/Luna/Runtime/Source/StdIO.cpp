@@ -9,22 +9,24 @@
 */
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "StdIOImpl.hpp"
-#include "../Ref.hpp"
+#include "../StdIO.hpp"
+#include "Platform/StdIO.hpp"
+#include "ErrorImpl.hpp"
 
 namespace Luna
 {
-    Ref<StdIOStream> g_std_io_stream;
-    void std_io_init()
+    LUNA_RUNTIME_API RV read_standard_input(void* buffer, usize size, usize* read_bytes)
     {
-        g_std_io_stream = new_object<StdIOStream>();
+        return encode_platform_result(Platform::read_standard_input(buffer, size, read_bytes));
     }
-    void std_io_close()
+
+    LUNA_RUNTIME_API RV write_standard_output(const void* buffer, usize size, usize* write_bytes)
     {
-        g_std_io_stream.reset();
+        return encode_platform_result(Platform::write_standard_output(buffer, size, write_bytes));
     }
-    LUNA_RUNTIME_API IStream* get_std_io_stream()
+
+    LUNA_RUNTIME_API RV write_standard_error(const void* buffer, usize size, usize* write_bytes)
     {
-        return g_std_io_stream.get();
+        return encode_platform_result(Platform::write_standard_error(buffer, size, write_bytes));
     }
 }

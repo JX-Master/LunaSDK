@@ -18,6 +18,7 @@ namespace Luna
     void vector_test();
     void open_hash_test();
     void robin_hood_hash_test();
+    void hash_test();
     void name_test();
     void ring_deque_test();
     void string_test();
@@ -34,6 +35,7 @@ namespace Luna
     void invoke_test();
     void function_test();
     void unicode_test();
+    void std_io_test();
     void thread_test();
     void fiber_test();
 
@@ -42,6 +44,10 @@ namespace Luna
     constexpr u32 MAGIC_VALUE = 0x01f1cbe8;
 
     usize get_allocated_memory();
+    //! Gets the total number of memory allocation events emitted since the memory profiler callback is registered.
+    usize get_memory_allocate_count();
+    //! Gets the total number of memory deallocation events emitted since the memory profiler callback is registered.
+    usize get_memory_deallocate_count();
     void memory_profiler_callback(const ProfilerEvent& event);
 
     struct TestObject

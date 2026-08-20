@@ -41,19 +41,19 @@ namespace Luna
             // axbw, aybw, azbw, awbw
             float32x4_t res = vmulq_lane_f32(a, bh, 1);
 
+            // aw, az, ay, ax
             float32x4_t temp = vrev64q_f32(a);
             temp = vcombine_f32(vget_high_f32(temp), vget_low_f32(temp));
-            temp = vmulq_f32(bx, temp);
-            res = vmlaq_f32(res, temp, set_f4(1.0f, -1.0f, 1.0f, -1.0f));
+            res = vmlaq_f32(res, vmulq_f32(bx, temp), set_f4(1.0f, -1.0f, 1.0f, -1.0f));
 
-            temp = vreinterpretq_f32_u32(vrev64q_u32(vreinterpretq_u32_f32(temp)));
-            temp = vmulq_f32(by, temp);
-            res = vmlaq_f32(res, temp, set_f4(1.0f, 1.0f, -1.0f, -1.0f));
+            // az, aw, ax, ay
+            temp = vrev64q_f32(temp);
+            res = vmlaq_f32(res, vmulq_f32(by, temp), set_f4(1.0f, 1.0f, -1.0f, -1.0f));
 
-            temp = vreinterpretq_f32_u32(vrev64q_u32(vreinterpretq_u32_f32(temp)));
+            // ay, ax, aw, az
+            temp = vrev64q_f32(temp);
             temp = vcombine_f32(vget_high_f32(temp), vget_low_f32(temp));
-            temp = vmulq_f32(bz, temp);
-            res = vmlaq_f32(res, temp, set_f4(-1.0f, 1.0f, 1.0f, -1.0f));
+            res = vmlaq_f32(res, vmulq_f32(bz, temp), set_f4(-1.0f, 1.0f, 1.0f, -1.0f));
             return res;
 #else 
 #error "Not implemented."
@@ -112,7 +112,12 @@ namespace Luna
         inline float4 LUNA_SIMD_CALL quatslerp_f4(float4 a, float4 b, f32 t)
         {
             f32 cos_omega = dot4_f4(a, b);
-            cos_omega = cos_omega < 0.0f ? -cos_omega : cos_omega;
+            // If `a` and `b` are nearly parallel or antipodal, SIN(OMEGA) is close to zero and dividing
+            // by it is numerically unstable, so falls back to normalized linear interpolation.
+            if (fabsf(cos_omega) >= 0.99995f)
+            {
+                return quatlerp_f4(a, b, t);
+            }
             f32 sin_omega = sqrtf(1.0f - cos_omega * cos_omega);
             f32 omega = atan2f(sin_omega, cos_omega);
             f32 wa = sinf((1.0f - t) * omega) / sin_omega;
