@@ -3,14 +3,5 @@ Documents in this directory are drafts awaiting review and promotion into the us
 ## Runtime
 - [[Standard IO]]
 
-## GUI
-- [[GUI]]
-- [[GUI Elements and Layers]]
-- [[GUI Layout]]
-- [[GUI Input and Interaction]]
-- [[GUI Drawing]]
-- [[GUI State and Style]]
-- [[GUI Performance and Inspection]]
-
 ## LunaBuild
 - [[Creating an External LunaSDK Project]]

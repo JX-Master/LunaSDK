@@ -2,7 +2,7 @@
 #include <Luna/Runtime/StdIO.hpp>
 ```
 
-The Runtime standard IO feature exposes the process standard input, standard output, and standard error as blocking raw-byte operations. It is intended for command-line programs, redirected files, pipes, and framed transports such as MCP stdio. The design is specified by [[ADR-0006 Expose standard IO as raw byte functions]].
+The Runtime standard IO feature exposes the process standard input, standard output, and standard error as blocking raw-byte operations. It is intended for command-line programs, redirected files, pipes, and framed transports such as MCP stdio.
 
 Unlike text-oriented console APIs, standard IO does not decode UTF-8, detect C string terminators, or add and remove newlines. Every byte in the requested range, including `0`, `\r`, and `\n`, is data. Runtime also does not change the Windows console code page or mode.
 

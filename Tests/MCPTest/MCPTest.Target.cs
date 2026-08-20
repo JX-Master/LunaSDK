@@ -12,6 +12,6 @@ public sealed class MCPTestTargetRules : TargetRules
         Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("Source/**.cpp");
-        DependsOn("Runtime", "VariantUtils", "Frontend", "MCP");
+        DependsOn("Runtime", "VariantUtils", "Frontend", "Network", "HTTP", "MCP");
     }
 }

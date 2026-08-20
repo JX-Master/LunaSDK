@@ -207,6 +207,110 @@ namespace Luna
                 return true;
             }
 
+            bool is_http_token_char(c8 ch)
+            {
+                return is_ascii_alphanumeric(ch) || ch == '!' || ch == '#' || ch == '$' ||
+                    ch == '%' || ch == '&' || ch == '\'' || ch == '*' || ch == '+' ||
+                    ch == '-' || ch == '.' || ch == '^' || ch == '_' || ch == '`' ||
+                    ch == '|' || ch == '~';
+            }
+
+            bool contains_mcp_header_annotation(const Variant& value)
+            {
+                if(value.type() == VariantType::object)
+                {
+                    for(const auto& field : value.key_values())
+                    {
+                        if(field.first == Name("x-mcp-header") ||
+                            contains_mcp_header_annotation(field.second))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else if(value.type() == VariantType::array)
+                {
+                    for(const Variant& element : value.values())
+                    {
+                        if(contains_mcp_header_annotation(element)) return true;
+                    }
+                }
+                return false;
+            }
+
+            bool collect_tool_header_bindings(
+                const Variant& schema,
+                bool is_property,
+                Vector<Name>& property_path,
+                Vector<Name>& used_header_names,
+                Vector<ToolHeaderBinding>& bindings)
+            {
+                if(schema.type() != VariantType::object)
+                {
+                    return !contains_mcp_header_annotation(schema);
+                }
+
+                const Variant& annotation = schema.find("x-mcp-header");
+                if(annotation.valid())
+                {
+                    if(!is_property || annotation.type() != VariantType::string ||
+                        !annotation.str()) return false;
+                    const Variant& type = schema.find("type");
+                    if(type.type() != VariantType::string ||
+                        (type.str() != Name("string") && type.str() != Name("integer") &&
+                        type.str() != Name("boolean"))) return false;
+
+                    String header_name("mcp-param-");
+                    const Name suffix = annotation.str();
+                    for(usize i = 0; i < suffix.size(); ++i)
+                    {
+                        c8 ch = suffix.c_str()[i];
+                        if(!is_http_token_char(ch)) return false;
+                        if(ch >= 'A' && ch <= 'Z') ch = ch - 'A' + 'a';
+                        header_name.push_back(ch);
+                    }
+                    Name normalized_name(header_name);
+                    for(const Name& used : used_header_names)
+                    {
+                        if(used == normalized_name) return false;
+                    }
+                    used_header_names.push_back(normalized_name);
+
+                    ToolHeaderBinding binding;
+                    binding.property_path = property_path;
+                    binding.header_name = move(normalized_name);
+                    binding.value_type = type.str();
+                    bindings.push_back(move(binding));
+                }
+
+                for(const auto& field : schema.key_values())
+                {
+                    if(field.first == Name("x-mcp-header") ||
+                        field.first == Name("properties")) continue;
+                    if(contains_mcp_header_annotation(field.second)) return false;
+                }
+
+                const Variant& properties = schema.find("properties");
+                if(!properties.valid()) return true;
+                if(properties.type() != VariantType::object)
+                {
+                    return !contains_mcp_header_annotation(properties);
+                }
+                for(const auto& property : properties.key_values())
+                {
+                    property_path.push_back(property.first);
+                    bool valid = collect_tool_header_bindings(
+                        property.second,
+                        true,
+                        property_path,
+                        used_header_names,
+                        bindings);
+                    property_path.pop_back();
+                    if(!valid) return false;
+                }
+                return true;
+            }
+
             Variant make_error_response(
                 const Variant* id,
                 i64 code,
@@ -522,11 +626,12 @@ namespace Luna
             }
 
             MessageResult process_legacy_initialize(
-                MCPServer* server,
+                MCPMessageProcessor* processor,
                 const Variant& id,
                 const Variant& message)
             {
-                if(server->m_protocol_facility != ProtocolFacility::legacy_uninitialized)
+                MCPServer* server = processor->m_server;
+                if(processor->m_legacy_lifecycle != LegacyLifecycle::uninitialized)
                 {
                     return error_result(&id, INVALID_REQUEST, "Server is already initialized");
                 }
@@ -550,19 +655,20 @@ namespace Luna
                 {
                     result["instructions"] = server->m_desc.instructions;
                 }
-                server->m_protocol_facility = ProtocolFacility::legacy_wait_initialized;
+                processor->m_legacy_lifecycle = LegacyLifecycle::wait_initialized;
                 return response_result(id, move(result));
             }
 
             MessageResult process_legacy_request(
-                MCPServer* server,
+                MCPMessageProcessor* processor,
                 const Variant& id,
                 const Name& method,
                 const Variant& message)
             {
+                MCPServer* server = processor->m_server;
                 if(method == Name("initialize"))
                 {
-                    return process_legacy_initialize(server, id, message);
+                    return process_legacy_initialize(processor, id, message);
                 }
                 if(method == Name("ping"))
                 {
@@ -573,7 +679,7 @@ namespace Luna
                     }
                     return response_result(id, Variant(VariantType::object));
                 }
-                if(server->m_protocol_facility != ProtocolFacility::legacy_initialized)
+                if(processor->m_legacy_lifecycle != LegacyLifecycle::initialized)
                 {
                     return error_result(&id, INVALID_REQUEST, "Server is not initialized");
                 }
@@ -610,8 +716,11 @@ namespace Luna
                 return process_tool_call(server, id, *params, false);
             }
 
-            MessageResult process_valid_message(MCPServer* server, const Variant& message)
+            MessageResult process_valid_message(
+                MCPMessageProcessor* processor,
+                const Variant& message)
             {
+                MCPServer* server = processor->m_server;
                 if(message.type() != VariantType::object)
                 {
                     return error_result(nullptr, INVALID_REQUEST, "Invalid Request");
@@ -636,23 +745,19 @@ namespace Luna
                 if(!has_id)
                 {
                     if(method == Name("notifications/initialized") &&
-                        server->m_protocol_facility == ProtocolFacility::legacy_wait_initialized)
+                        processor->m_protocol_version == ProtocolVersion::v2025_06_18 &&
+                        processor->m_legacy_lifecycle == LegacyLifecycle::wait_initialized)
                     {
-                        server->m_protocol_facility = ProtocolFacility::legacy_initialized;
+                        processor->m_legacy_lifecycle = LegacyLifecycle::initialized;
                     }
                     return MessageResult();
                 }
 
-                if(server->m_protocol_facility == ProtocolFacility::undetermined)
-                {
-                    server->m_protocol_facility = method == Name("initialize") ?
-                        ProtocolFacility::legacy_uninitialized : ProtocolFacility::modern;
-                }
-                if(server->m_protocol_facility == ProtocolFacility::modern)
+                if(processor->m_protocol_version == ProtocolVersion::v2026_07_28)
                 {
                     return process_modern_request(server, id, method, message);
                 }
-                return process_legacy_request(server, id, method, message);
+                return process_legacy_request(processor, id, method, message);
             }
         }
 
@@ -694,6 +799,21 @@ namespace Luna
                 return set_error(BasicError::bad_arguments(), "Invalid MCP tool metadata");
             }
 
+            Vector<ToolHeaderBinding> header_bindings;
+            Vector<Name> property_path;
+            Vector<Name> used_header_names;
+            if(!collect_tool_header_bindings(
+                desc.input_schema,
+                false,
+                property_path,
+                used_header_names,
+                header_bindings))
+            {
+                return set_error(
+                    BasicError::bad_arguments(),
+                    "Invalid x-mcp-header annotation in MCP tool input schema");
+            }
+
             auto existing = m_tools.find(desc.name);
             if(existing != m_tools.end() && !overwrite) return BasicError::already_exists();
 
@@ -713,6 +833,7 @@ namespace Luna
 
             entry.legacy_definition = entry.modern_definition;
             entry.legacy_definition.erase("icons");
+            entry.header_bindings = move(header_bindings);
 
             R<String> encoded = VariantUtils::write_json(
                 entry.modern_definition, VariantUtils::JSONWriteOptions::strict());
@@ -739,7 +860,26 @@ namespace Luna
             return m_tools.size();
         }
 
-        MessageResult MCPServer::process_message(const Variant& message)
+        R<Ref<IMCPMessageProcessor>> MCPServer::new_message_processor(
+            ProtocolVersion version)
+        {
+            if(version != ProtocolVersion::v2025_06_18 &&
+                version != ProtocolVersion::v2026_07_28)
+            {
+                return BasicError::bad_arguments();
+            }
+            Ref<MCPMessageProcessor> processor = new_object<MCPMessageProcessor>();
+            processor->m_server = Ref<MCPServer>(this);
+            processor->m_protocol_version = version;
+            return Ref<IMCPMessageProcessor>(processor);
+        }
+
+        ProtocolVersion MCPMessageProcessor::get_protocol_version()
+        {
+            return m_protocol_version;
+        }
+
+        MessageResult MCPMessageProcessor::process_message(const Variant& message)
         {
             R<String> validation = VariantUtils::write_json(
                 message, VariantUtils::JSONWriteOptions::strict());
@@ -750,7 +890,7 @@ namespace Luna
             return process_valid_message(this, message);
         }
 
-        R<String> MCPServer::process_json(const c8* json, usize json_size)
+        R<String> MCPMessageProcessor::process_json(const c8* json, usize json_size)
         {
             R<Variant> parsed = json ?
                 VariantUtils::read_json(json, json_size, VariantUtils::JSONReadOptions::strict()) :
@@ -836,7 +976,7 @@ namespace Luna
                 Meta::register_MCP_types();
                 return add_dependency_modules(
                     this,
-                    {module_variant_utils(), Frontend::module_frontend()});
+                    {module_variant_utils(), Frontend::module_frontend(), HTTP::module_http()});
             }
         };
 

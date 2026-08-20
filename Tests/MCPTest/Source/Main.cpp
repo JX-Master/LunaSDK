@@ -22,6 +22,7 @@ using namespace Luna::MCP;
 
 void stdio_test(IMCPServer* server);
 void stdio_legacy_test(IMCPServer* server);
+void streamable_http_test(IMCPServer* server);
 
 namespace
 {
@@ -29,6 +30,7 @@ namespace
     {
         Ref<IFrontend> frontend;
         Ref<IMCPServer> server;
+        Ref<IMCPMessageProcessor> processor;
     };
 
     Variant make_request_params(const c8* version = PROTOCOL_VERSION)
@@ -74,17 +76,20 @@ namespace
         return notification;
     }
 
-    Variant process(IMCPServer* server, const Variant& request)
+    Variant process(IMCPMessageProcessor* processor, const Variant& request)
     {
-        MessageResult result = server->process_message(request);
+        MessageResult result = processor->process_message(request);
         lutest(result.has_response);
         lutest(result.response.type() == VariantType::object);
         return move(result.response);
     }
 
-    Variant process_json(IMCPServer* server, const c8* json, usize size = USIZE_MAX)
+    Variant process_json(
+        IMCPMessageProcessor* processor,
+        const c8* json,
+        usize size = USIZE_MAX)
     {
-        R<String> output = server->process_json(json, size);
+        R<String> output = processor->process_json(json, size);
         lupanic_if_failed(output);
         lutest(!output.get().empty());
         R<Variant> response = VariantUtils::read_json(
@@ -111,7 +116,8 @@ namespace
         return desc;
     }
 
-    Fixture make_fixture()
+    Fixture make_fixture(
+        ProtocolVersion version = ProtocolVersion::v2026_07_28)
     {
         Fixture fixture;
         fixture.frontend = new_frontend();
@@ -157,6 +163,10 @@ namespace
         R<Ref<IMCPServer>> server = new_server(fixture.frontend, desc);
         lupanic_if_failed(server);
         fixture.server = server.get();
+        R<Ref<IMCPMessageProcessor>> processor =
+            fixture.server->new_message_processor(version);
+        lupanic_if_failed(processor);
+        fixture.processor = move(processor.get());
         return fixture;
     }
 
@@ -214,8 +224,11 @@ namespace
 
         R<Ref<IMCPServer>> default_server = new_server(frontend, desc);
         lupanic_if_failed(default_server);
+        R<Ref<IMCPMessageProcessor>> default_processor =
+            default_server.get()->new_message_processor(ProtocolVersion::v2026_07_28);
+        lupanic_if_failed(default_processor);
         Variant default_response = process(
-            default_server.get(),
+            default_processor.get(),
             make_request(Variant((i64)1), "server/discover", make_request_params()));
         lutest(default_response.find("result").find("ttlMs").unum() == 0);
         lutest(default_response.find("result").find("cacheScope").str() == Name("private"));
@@ -339,6 +352,46 @@ namespace
         lutest(!bad_utf8_result.valid());
         lutest(unwrap_errcode(bad_utf8_result.errcode()) == BasicError::bad_arguments());
 
+        ToolDesc empty_header = make_tool("empty_header", "/echo");
+        empty_header.input_schema["properties"]["value"]["type"] = "string";
+        empty_header.input_schema["properties"]["value"]["x-mcp-header"] = "";
+        RV empty_header_result = fixture.server->set_tool(move(empty_header));
+        lutest(!empty_header_result.valid());
+
+        ToolDesc invalid_header = make_tool("invalid_header", "/echo");
+        invalid_header.input_schema["properties"]["value"]["type"] = "string";
+        invalid_header.input_schema["properties"]["value"]["x-mcp-header"] = "Bad Header";
+        RV invalid_header_result = fixture.server->set_tool(move(invalid_header));
+        lutest(!invalid_header_result.valid());
+
+        ToolDesc duplicate_header = make_tool("duplicate_header", "/echo");
+        duplicate_header.input_schema["properties"]["first"]["type"] = "string";
+        duplicate_header.input_schema["properties"]["first"]["x-mcp-header"] = "Tenant";
+        duplicate_header.input_schema["properties"]["second"]["type"] = "boolean";
+        duplicate_header.input_schema["properties"]["second"]["x-mcp-header"] = "tenant";
+        RV duplicate_header_result = fixture.server->set_tool(move(duplicate_header));
+        lutest(!duplicate_header_result.valid());
+
+        ToolDesc number_header = make_tool("number_header", "/echo");
+        number_header.input_schema["properties"]["value"]["type"] = "number";
+        number_header.input_schema["properties"]["value"]["x-mcp-header"] = "Value";
+        RV number_header_result = fixture.server->set_tool(move(number_header));
+        lutest(!number_header_result.valid());
+
+        ToolDesc root_header = make_tool("root_header", "/echo");
+        root_header.input_schema["x-mcp-header"] = "Root";
+        RV root_header_result = fixture.server->set_tool(move(root_header));
+        lutest(!root_header_result.valid());
+
+        ToolDesc composed_header = make_tool("composed_header", "/echo");
+        composed_header.input_schema["allOf"] = Variant(VariantType::array);
+        Variant composed_schema(VariantType::object);
+        composed_schema["properties"]["value"]["type"] = "string";
+        composed_schema["properties"]["value"]["x-mcp-header"] = "Value";
+        composed_header.input_schema["allOf"].push_back(move(composed_schema));
+        RV composed_header_result = fixture.server->set_tool(move(composed_header));
+        lutest(!composed_header_result.valid());
+
         RV empty_remove = fixture.server->remove_tool(Name());
         lutest(!empty_remove.valid());
         lutest(empty_remove.errcode() == BasicError::bad_arguments());
@@ -364,7 +417,7 @@ namespace
         capabilities["elicitation"]["form"] = Variant(VariantType::object);
         capabilities["extensions"]["com.example/feature"] = Variant(VariantType::object);
         Variant response = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)7), "server/discover", move(params)));
         lutest(response.find("id").inum() == 7);
         const Variant& result = response.find("result");
@@ -388,7 +441,7 @@ namespace
     void tools_list_test(Fixture& fixture)
     {
         Variant response = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant("list-id"), "tools/list", make_request_params()));
         lutest(response.find("id").str() == Name("list-id"));
         const Variant& result = response.find("result");
@@ -420,7 +473,7 @@ namespace
         params["name"] = "alpha";
         params["arguments"]["value"] = (i64)42;
         Variant response = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)8), "tools/call", move(params)));
         const Variant& result = response.find("result");
         lutest(result.find("resultType").str() == Name("complete"));
@@ -438,7 +491,7 @@ namespace
         Variant no_arguments = make_request_params();
         no_arguments["name"] = "alpha";
         Variant no_arguments_response = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)9), "tools/call", move(no_arguments)));
         lutest(no_arguments_response.find("result").find("structuredContent").type() ==
             VariantType::object);
@@ -447,7 +500,7 @@ namespace
         Variant failure_params = make_request_params();
         failure_params["name"] = "failure";
         Variant failure_response = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)10), "tools/call", move(failure_params)));
         lutest(failure_response.find("result").find("isError").boolean());
         lutest(failure_response.find("result").find("content")[0].find("text").str() ==
@@ -456,7 +509,7 @@ namespace
         Variant bad_result_params = make_request_params();
         bad_result_params["name"] = "bad_result";
         Variant bad_result_response = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)11), "tools/call", move(bad_result_params)));
         expect_error(bad_result_response, -32603);
     }
@@ -466,7 +519,7 @@ namespace
         lutest(Name(MODERN_PROTOCOL_VERSION) == Name("2026-07-28"));
         lutest(Name(LEGACY_PROTOCOL_VERSION) == Name("2025-06-18"));
 
-        Fixture fixture = make_fixture();
+        Fixture fixture = make_fixture(ProtocolVersion::v2025_06_18);
         ToolDesc tool = make_tool("legacy_echo", "/echo");
         tool.title = "Legacy echo";
         tool.description = "Returns its arguments.";
@@ -483,7 +536,7 @@ namespace
         lupanic_if_failed(fixture.server->set_tool(move(tool)));
 
         Variant initialize_response = process(
-            fixture.server,
+            fixture.processor,
             make_legacy_initialize_request(Variant((i64)50)));
         const Variant& initialize_result = initialize_response.find("result");
         lutest(initialize_result.find("protocolVersion").str() ==
@@ -506,26 +559,26 @@ namespace
 
         Variant list_before_initialized(VariantType::object);
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(
                 Variant((i64)51), "tools/list", move(list_before_initialized))), -32600);
 
         Variant ping_params(VariantType::object);
         Variant ping_response = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)52), "ping", move(ping_params)));
         lutest(ping_response.find("result").type() == VariantType::object);
 
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_legacy_initialize_request(Variant((i64)53))), -32600);
 
-        MessageResult initialized = fixture.server->process_message(
+        MessageResult initialized = fixture.processor->process_message(
             make_notification("notifications/initialized"));
         lutest(!initialized.has_response);
 
         Variant list_response = process(
-            fixture.server,
+            fixture.processor,
             make_request(
                 Variant((i64)54), "tools/list", Variant(VariantType::object)));
         const Variant& list_result = list_response.find("result");
@@ -546,7 +599,7 @@ namespace
         call_params["name"] = "legacy_echo";
         call_params["arguments"]["value"] = (i64)55;
         Variant call_response = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)55), "tools/call", move(call_params)));
         const Variant& call_result = call_response.find("result");
         lutest(!call_result.contains("resultType"));
@@ -557,39 +610,39 @@ namespace
 
         Variant discover_params = make_request_params();
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(
                 Variant((i64)56), "server/discover", move(discover_params))), -32601);
 
         Variant bad_meta(VariantType::object);
         bad_meta["_meta"]["progressToken"] = true;
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)57), "tools/list", move(bad_meta))), -32602);
 
-        Fixture negotiation_fixture = make_fixture();
+        Fixture negotiation_fixture = make_fixture(ProtocolVersion::v2025_06_18);
         Variant negotiation_response = process(
-            negotiation_fixture.server,
+            negotiation_fixture.processor,
             make_legacy_initialize_request(Variant((i64)58), "2099-01-01"));
         lutest(negotiation_response.find("result").find("protocolVersion").str() ==
             Name(LEGACY_PROTOCOL_VERSION));
 
-        Fixture retry_fixture = make_fixture();
+        Fixture retry_fixture = make_fixture(ProtocolVersion::v2025_06_18);
         Variant invalid_initialize = make_legacy_initialize_request(Variant((i64)59));
         invalid_initialize["params"]["capabilities"] = true;
-        expect_error(process(retry_fixture.server, invalid_initialize), -32602);
+        expect_error(process(retry_fixture.processor, invalid_initialize), -32602);
         Variant retry_response = process(
-            retry_fixture.server,
+            retry_fixture.processor,
             make_legacy_initialize_request(Variant((i64)60)));
         lutest(retry_response.find("result").find("protocolVersion").str() ==
             Name(LEGACY_PROTOCOL_VERSION));
 
         Fixture notification_fixture = make_fixture();
-        MessageResult early_notification = notification_fixture.server->process_message(
+        MessageResult early_notification = notification_fixture.processor->process_message(
             make_notification("notifications/initialized"));
         lutest(!early_notification.has_response);
         Variant modern_response = process(
-            notification_fixture.server,
+            notification_fixture.processor,
             make_request(
                 Variant((i64)61), "server/discover", make_request_params()));
         lutest(modern_response.find("result").find("supportedVersions")[0].str() ==
@@ -604,15 +657,15 @@ namespace
     void protocol_error_test(Fixture& fixture)
     {
         Variant invalid_object(VariantType::object);
-        expect_error(process(fixture.server, invalid_object), -32600);
+        expect_error(process(fixture.processor, invalid_object), -32600);
 
         Variant batch(VariantType::array);
         batch.push_back(Variant(VariantType::object));
-        expect_error(process(fixture.server, batch), -32600);
+        expect_error(process(fixture.processor, batch), -32600);
 
         Variant wrong_version = make_request_params("2099-01-01");
         Variant wrong_version_response = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)20), "server/discover", move(wrong_version)));
         expect_error(wrong_version_response, -32022);
         lutest(wrong_version_response.find("error").find("data").find("requested").str() ==
@@ -622,24 +675,24 @@ namespace
 
         Variant no_meta(VariantType::object);
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)21), "server/discover", move(no_meta))), -32602);
 
         Variant no_capabilities = make_request_params();
         no_capabilities["_meta"].erase("io.modelcontextprotocol/clientCapabilities");
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)22), "server/discover", move(no_capabilities))), -32602);
 
         Variant bad_client_info = make_request_params();
         bad_client_info["_meta"]["io.modelcontextprotocol/clientInfo"] =
             Variant(VariantType::object);
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)23), "server/discover", move(bad_client_info))), -32602);
 
         Variant unknown_method = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)24), "unknown/method", make_request_params()));
         expect_error(unknown_method, -32601);
 
@@ -647,76 +700,76 @@ namespace
         legacy_initialize["jsonrpc"] = "2.0";
         legacy_initialize["id"] = (i64)241;
         legacy_initialize["method"] = "initialize";
-        expect_error(process(fixture.server, legacy_initialize), -32601);
+        expect_error(process(fixture.processor, legacy_initialize), -32601);
 
         Variant bad_meta_key = make_request_params();
         bad_meta_key["_meta"]["bad key"] = true;
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)242), "server/discover", move(bad_meta_key))), -32602);
 
         Variant bad_log_level = make_request_params();
         bad_log_level["_meta"]["io.modelcontextprotocol/logLevel"] = "verbose";
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)243), "server/discover", move(bad_log_level))), -32602);
 
         Variant bad_capability = make_request_params();
         bad_capability["_meta"]["io.modelcontextprotocol/clientCapabilities"]["sampling"]
             ["tools"] = true;
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)244), "server/discover", move(bad_capability))), -32602);
 
         Variant cursor_params = make_request_params();
         cursor_params["cursor"] = "unknown";
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)25), "tools/list", move(cursor_params))), -32602);
 
         Variant cursor_type = make_request_params();
         cursor_type["cursor"] = (i64)1;
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)26), "tools/list", move(cursor_type))), -32602);
 
         Variant unknown_tool = make_request_params();
         unknown_tool["name"] = "does_not_exist";
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)27), "tools/call", move(unknown_tool))), -32602);
 
         Variant missing_name = make_request_params();
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)28), "tools/call", move(missing_name))), -32602);
 
         Variant bad_arguments = make_request_params();
         bad_arguments["name"] = "alpha";
         bad_arguments["arguments"] = Variant(VariantType::array);
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)29), "tools/call", move(bad_arguments))), -32602);
 
         Variant bad_input_responses = make_request_params();
         bad_input_responses["name"] = "alpha";
         bad_input_responses["inputResponses"] = Variant(VariantType::array);
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)30), "tools/call", move(bad_input_responses))), -32602);
 
         Variant bad_request_state = make_request_params();
         bad_request_state["name"] = "alpha";
         bad_request_state["requestState"] = true;
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)31), "tools/call", move(bad_request_state))), -32602);
 
         Variant unsupported_mrtr = make_request_params();
         unsupported_mrtr["name"] = "alpha";
         unsupported_mrtr["inputResponses"] = Variant(VariantType::object);
         expect_error(process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)311), "tools/call", move(unsupported_mrtr))), -32602);
 
         Variant null_id = make_request_params();
@@ -725,27 +778,27 @@ namespace
         null_id_request["id"] = Variant();
         null_id_request["method"] = "server/discover";
         null_id_request["params"] = move(null_id);
-        Variant null_id_response = process(fixture.server, null_id_request);
+        Variant null_id_response = process(fixture.processor, null_id_request);
         expect_error(null_id_response, -32600);
         lutest(!null_id_response.contains("id"));
 
         Variant wrong_jsonrpc = make_request(
             Variant((i64)32), "server/discover", make_request_params());
         wrong_jsonrpc["jsonrpc"] = "1.0";
-        expect_error(process(fixture.server, wrong_jsonrpc), -32600);
+        expect_error(process(fixture.processor, wrong_jsonrpc), -32600);
 
         Variant client_response(VariantType::object);
         client_response["jsonrpc"] = "2.0";
         client_response["id"] = (i64)33;
         client_response["result"] = Variant(VariantType::object);
-        expect_error(process(fixture.server, client_response), -32600);
+        expect_error(process(fixture.processor, client_response), -32600);
 
         Variant non_json_message = make_request(
             Variant((i64)34), "server/discover", make_request_params());
         const c8 invalid_message_utf8[] = {(c8)0xC1, (c8)0xBF};
         non_json_message["extension"] = Name(
             invalid_message_utf8, sizeof(invalid_message_utf8));
-        Variant non_json_response = process(fixture.server, non_json_message);
+        Variant non_json_response = process(fixture.processor, non_json_message);
         expect_error(non_json_response, -32600);
         lutest(!non_json_response.contains("id"));
 
@@ -753,12 +806,12 @@ namespace
         notification["jsonrpc"] = "2.0";
         notification["method"] = "notifications/cancelled";
         notification["params"] = Variant(VariantType::object);
-        MessageResult notification_result = fixture.server->process_message(notification);
+        MessageResult notification_result = fixture.processor->process_message(notification);
         lutest(!notification_result.has_response);
         R<String> notification_json = VariantUtils::write_json(
             notification, VariantUtils::JSONWriteOptions::strict());
         lupanic_if_failed(notification_json);
-        R<String> notification_output = fixture.server->process_json(
+        R<String> notification_output = fixture.processor->process_json(
             notification_json.get().data(), notification_json.get().size());
         lupanic_if_failed(notification_output);
         lutest(notification_output.get().empty());
@@ -766,26 +819,26 @@ namespace
 
     void strict_json_test(Fixture& fixture)
     {
-        Variant parse_error = process_json(fixture.server, "{invalid");
+        Variant parse_error = process_json(fixture.processor, "{invalid");
         expect_error(parse_error, -32700);
         lutest(!parse_error.contains("id"));
 
         Variant comment_error = process_json(
-            fixture.server,
+            fixture.processor,
             "{/*comment*/\"jsonrpc\":\"2.0\"}");
         expect_error(comment_error, -32700);
 
-        Variant duplicate_key_error = process_json(fixture.server, "{\"a\":1,\"a\":2}");
+        Variant duplicate_key_error = process_json(fixture.processor, "{\"a\":1,\"a\":2}");
         expect_error(duplicate_key_error, -32700);
 
         const c8 invalid_utf8[] = {'{', '"', 'x', '"', ':', '"', (c8)0xC0, (c8)0x80, '"', '}'};
-        Variant utf8_error = process_json(fixture.server, invalid_utf8, sizeof(invalid_utf8));
+        Variant utf8_error = process_json(fixture.processor, invalid_utf8, sizeof(invalid_utf8));
         expect_error(utf8_error, -32700);
 
-        Variant batch_error = process_json(fixture.server, "[]");
+        Variant batch_error = process_json(fixture.processor, "[]");
         expect_error(batch_error, -32600);
 
-        R<String> compact = fixture.server->process_json(
+        R<String> compact = fixture.processor->process_json(
             "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"server/discover\","
             "\"params\":{\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":"
             "\"2026-07-28\",\"io.modelcontextprotocol/clientCapabilities\":{}}}}}");
@@ -806,10 +859,65 @@ namespace
         Variant params = make_request_params();
         params["name"] = "temporary";
         Variant response = process(
-            fixture.server,
+            fixture.processor,
             make_request(Variant((i64)40), "tools/call", move(params)));
         expect_error(response, -32603);
         lupanic_if_failed(fixture.server->remove_tool("temporary"));
+    }
+
+    void message_processor_isolation_test()
+    {
+        Fixture fixture = make_fixture();
+        R<Ref<IMCPMessageProcessor>> invalid = fixture.server->new_message_processor(
+            (ProtocolVersion)99);
+        lutest(!invalid.valid());
+        lutest(invalid.errcode() == BasicError::bad_arguments());
+
+        R<Ref<IMCPMessageProcessor>> first_result =
+            fixture.server->new_message_processor(ProtocolVersion::v2025_06_18);
+        R<Ref<IMCPMessageProcessor>> second_result =
+            fixture.server->new_message_processor(ProtocolVersion::v2025_06_18);
+        lupanic_if_failed(first_result);
+        lupanic_if_failed(second_result);
+        Ref<IMCPMessageProcessor> first = move(first_result.get());
+        Ref<IMCPMessageProcessor> second = move(second_result.get());
+        lutest(first->get_protocol_version() == ProtocolVersion::v2025_06_18);
+        lutest(fixture.processor->get_protocol_version() ==
+            ProtocolVersion::v2026_07_28);
+
+        process(first, make_legacy_initialize_request(Variant((i64)70)));
+        first->process_message(make_notification("notifications/initialized"));
+        Variant empty_params(VariantType::object);
+        Variant first_list = process(
+            first,
+            make_request(Variant((i64)71), "tools/list", move(empty_params)));
+        lutest(first_list.find("result").find("tools").type() == VariantType::array);
+
+        Variant second_params(VariantType::object);
+        expect_error(process(
+            second,
+            make_request(Variant((i64)72), "tools/list", move(second_params))), -32600);
+        Variant modern = process(
+            fixture.processor,
+            make_request(
+                Variant((i64)73), "server/discover", make_request_params()));
+        lutest(modern.find("result").find("supportedVersions")[0].str() ==
+            Name(MODERN_PROTOCOL_VERSION));
+    }
+
+    ToolDesc make_http_header_tool()
+    {
+        ToolDesc tool = make_tool("header_echo", "/echo");
+        tool.input_schema["properties"]["region"]["type"] = "string";
+        tool.input_schema["properties"]["region"]["x-mcp-header"] = "Region";
+        tool.input_schema["properties"]["count"]["type"] = "integer";
+        tool.input_schema["properties"]["count"]["x-mcp-header"] = "Count";
+        tool.input_schema["properties"]["context"]["type"] = "object";
+        tool.input_schema["properties"]["context"]["properties"]["enabled"]["type"] =
+            "boolean";
+        tool.input_schema["properties"]["context"]["properties"]["enabled"]
+            ["x-mcp-header"] = "Enabled";
+        return tool;
     }
 }
 
@@ -820,6 +928,7 @@ int main()
     lupanic_if_failed(init_modules());
     server_descriptor_test();
     legacy_protocol_test();
+    message_processor_isolation_test();
     {
         Fixture fixture = make_fixture();
         tool_registry_test(fixture);
@@ -829,6 +938,8 @@ int main()
         protocol_error_test(fixture);
         strict_json_test(fixture);
         unavailable_mapping_test(fixture);
+        lupanic_if_failed(fixture.server->set_tool(make_http_header_tool()));
+        streamable_http_test(fixture.server);
         stdio_test(fixture.server);
     }
     close();

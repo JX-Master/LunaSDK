@@ -1,5 +1,5 @@
 ## Status
-Proposed.
+Approved.
 
 ## Last updated
 2026/8/4

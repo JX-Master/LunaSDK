@@ -6,14 +6,17 @@
 * @file Main.cpp
 * @author JXMaster
 * @date 2026/8/14
-* @brief Standalone MCP standard IO test server that exports one addition tool.
+* @brief Standalone MCP standard IO and HTTP test server that exports one addition tool.
 */
-#include <Luna/MCP/MCP.hpp>
+#include <Luna/MCP/StreamableHTTP.hpp>
+#include <Luna/Network/Network.hpp>
 #include <Luna/Runtime/Error.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/StdIO.hpp>
 #include <Luna/Runtime/String.hpp>
+#include <Luna/Runtime/StringUtils.hpp>
+#include <stdio.h>
 
 using namespace Luna;
 
@@ -39,6 +42,12 @@ namespace
         message.append(explain(error));
         message.push_back('\n');
         write_all_standard_error(message.data(), message.size());
+    }
+
+    ErrCode wrap_error(ErrCode error, const c8* context)
+    {
+        String cause(explain(error));
+        return set_error(unwrap_errcode(error), "%s: %s", context, cause.c_str());
     }
 
     R<Variant> add(Frontend::IFrontend*, const Variant& arguments)
@@ -93,7 +102,16 @@ namespace
         return tool;
     }
 
-    RV run_test_server()
+    Network::SocketAddress loopback_address(u16 port)
+    {
+        Network::SocketAddress address = {};
+        address.family = Network::AddressFamily::ipv4;
+        address.ipv4.address = {127, 0, 0, 1};
+        address.ipv4.port = port;
+        return address;
+    }
+
+    RV run_test_server(bool use_http, u16 port)
     {
         Ref<Frontend::IFrontend> frontend = Frontend::new_frontend();
         RV result = frontend->set_resource_function(
@@ -115,16 +133,80 @@ namespace
 
         result = server->set_tool(make_add_tool());
         if(failed(result)) return result.errcode();
-        return MCP::run_stdio_server(server);
+        if(!use_http) return MCP::run_stdio_server(server);
+
+        R<Ref<HTTP::IServer>> http_result = MCP::new_streamable_http_server(
+            server, loopback_address(port));
+        if(!http_result.valid())
+        {
+            return wrap_error(http_result.errcode(), "Failed to create the HTTP server");
+        }
+        Ref<HTTP::IServer> http_server = move(http_result.get());
+        Network::SocketAddress local_address = {};
+        result = http_server->get_local_address(local_address);
+        if(failed(result))
+        {
+            return wrap_error(result.errcode(), "Failed to query the HTTP listener address");
+        }
+        c8 endpoint[128];
+        int endpoint_size = snprintf(
+            endpoint,
+            sizeof(endpoint),
+            "MCPTestServer listening at http://127.0.0.1:%u/mcp\n",
+            (u32)local_address.ipv4.port);
+        if(endpoint_size <= 0 || (usize)endpoint_size >= sizeof(endpoint))
+        {
+            return BasicError::failure();
+        }
+        result = write_all_standard_error(endpoint, (usize)endpoint_size);
+        if(failed(result))
+        {
+            return wrap_error(result.errcode(), "Failed to report the HTTP endpoint");
+        }
+        while(!http_server->is_closed())
+        {
+            R<usize> poll_result = http_server->poll(U32_MAX);
+            if(!poll_result.valid())
+            {
+                return wrap_error(poll_result.errcode(), "Failed to poll the HTTP server");
+            }
+        }
+        return ok;
     }
 }
 
-int main()
+int main(int argc, char** argv)
 {
     init();
-    RV result = add_modules({MCP::module_mcp()});
+    bool use_http = false;
+    u16 port = 0;
+    RV result = ok;
+    if(argc == 2 && !strcmp(argv[1], "--stdio"))
+    {
+    }
+    else if(argc == 3 && !strcmp(argv[1], "--http"))
+    {
+        c8* end = nullptr;
+        i64 specified_port = strtoi64(argv[2], &end, 10);
+        if(end != argv[2] + strlen(argv[2]) || specified_port < 0 || specified_port > 65535)
+        {
+            result = set_error(BasicError::bad_arguments(), "Invalid HTTP port");
+        }
+        else
+        {
+            use_http = true;
+            port = (u16)specified_port;
+        }
+    }
+    else if(argc != 1)
+    {
+        result = set_error(
+            BasicError::bad_arguments(),
+            "Usage: MCPTestServer [--stdio | --http <port>]");
+    }
+    if(succeeded(result)) result = add_modules({MCP::module_mcp()});
     if(succeeded(result)) result = init_modules();
-    if(succeeded(result)) result = run_test_server();
+    if(succeeded(result)) result = run_test_server(use_http, port);
     if(failed(result)) report_error(result.errcode());
     i32 exit_code = failed(result) ? 1 : 0;
     close();

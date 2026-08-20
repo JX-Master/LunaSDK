@@ -13,6 +13,7 @@
 #include "../MCP.hpp"
 #include <Luna/Runtime/Error.hpp>
 #include <Luna/Runtime/StdIO.hpp>
+#include <Luna/VariantUtils/JSON.hpp>
 
 namespace Luna
 {
@@ -43,12 +44,75 @@ namespace Luna
                 return ok;
             }
 
-            RV process_stdio_frame(IMCPServer* server, const String& frame)
+            bool is_selecting_request(const Variant& message, Name& method)
             {
-                R<String> output = server->process_json(frame.data(), frame.size());
-                if(!output.valid()) return output.errcode();
-                if(output.get().empty()) return ok;
-                RV result = write_all_standard_output(output.get().data(), output.get().size());
+                if(message.type() != VariantType::object || !message.contains("id") ||
+                    message.find("jsonrpc").type() != VariantType::string ||
+                    message.find("jsonrpc").str() != Name("2.0") ||
+                    message.find("method").type() != VariantType::string ||
+                    message.contains("result") || message.contains("error"))
+                {
+                    return false;
+                }
+                const Variant& id = message.find("id");
+                if(id.type() != VariantType::string && id.type() != VariantType::number)
+                {
+                    return false;
+                }
+                method = message.find("method").str();
+                return true;
+            }
+
+            RV process_stdio_frame(
+                IMCPServer* server,
+                Ref<IMCPMessageProcessor>& processor,
+                const String& frame)
+            {
+                R<Variant> parsed = VariantUtils::read_json(
+                    frame.data(), frame.size(), VariantUtils::JSONReadOptions::strict());
+                if(parsed.valid() && !processor)
+                {
+                    Name method;
+                    if(is_selecting_request(parsed.get(), method))
+                    {
+                        ProtocolVersion version = method == Name("initialize") ?
+                            ProtocolVersion::v2025_06_18 : ProtocolVersion::v2026_07_28;
+                        R<Ref<IMCPMessageProcessor>> created =
+                            server->new_message_processor(version);
+                        if(!created.valid()) return created.errcode();
+                        processor = move(created.get());
+                    }
+                }
+
+                Ref<IMCPMessageProcessor> temporary_processor;
+                IMCPMessageProcessor* target = processor;
+                if(!target)
+                {
+                    R<Ref<IMCPMessageProcessor>> created = server->new_message_processor(
+                        ProtocolVersion::v2026_07_28);
+                    if(!created.valid()) return created.errcode();
+                    temporary_processor = move(created.get());
+                    target = temporary_processor;
+                }
+
+                String output;
+                if(parsed.valid())
+                {
+                    MessageResult message_result = target->process_message(parsed.get());
+                    if(!message_result.has_response) return ok;
+                    R<String> encoded = VariantUtils::write_json(
+                        message_result.response, VariantUtils::JSONWriteOptions::strict());
+                    if(!encoded.valid()) return encoded.errcode();
+                    output = move(encoded.get());
+                }
+                else
+                {
+                    R<String> encoded = target->process_json(frame.data(), frame.size());
+                    if(!encoded.valid()) return encoded.errcode();
+                    output = move(encoded.get());
+                }
+                if(output.empty()) return ok;
+                RV result = write_all_standard_output(output.data(), output.size());
                 if(failed(result)) return result.errcode();
                 return write_all_standard_output("\n", 1);
             }
@@ -62,6 +126,7 @@ namespace Luna
 
             c8 read_buffer[4096];
             String frame;
+            Ref<IMCPMessageProcessor> processor;
             while(true)
             {
                 usize read_bytes = 0;
@@ -83,7 +148,7 @@ namespace Luna
                 {
                     if(read_buffer[i] == '\n')
                     {
-                        result = process_stdio_frame(server, frame);
+                        result = process_stdio_frame(server, processor, frame);
                         if(failed(result)) return result.errcode();
                         frame.clear();
                     }

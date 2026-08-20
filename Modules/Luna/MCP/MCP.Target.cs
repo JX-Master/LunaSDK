@@ -11,6 +11,6 @@ public sealed class MCPTargetRules : TargetRules
         Headers("*.hpp", "Source/**.hpp");
         MetaHeaders("MCP.hpp", "Source/MCPImpl.hpp");
         Sources("Source/**.cpp");
-        DependsOn("Runtime", "VariantUtils", "Frontend");
+        DependsOn("Runtime", "VariantUtils", "Frontend", "HTTP");
     }
 }
