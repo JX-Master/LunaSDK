@@ -13,7 +13,7 @@ The basic concepts and features of LunaSDK.
 * [[Error Handling]]
 * [[Assertions]]
 * [[File Management]]
-* [[Network]]
+* [[Sockets]]
 * [[Thread and Synchronization Objects]]
 * [[Time]]
 * [[Logs]]

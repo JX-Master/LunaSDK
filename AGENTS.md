@@ -32,3 +32,4 @@
     2. The concepts used by the feature. Concepts are used to describe parts that compose the feature, this may map to concrete types, functions, etc, and may also refer to higher level concepts.
     3. The programming guide of every component of the feature, from feature initialization to shutdown.
     4. When needed, provide code examples that describe the feature.
+- The documentation should not mention ADR pages, they are kept in separate sites.
