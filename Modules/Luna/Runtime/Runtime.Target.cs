@@ -38,7 +38,6 @@ public sealed class RuntimeTargetRules : TargetRules
             "Source/ReadWriteLockImpl.hpp",
             "Source/SemaphoreImpl.hpp",
             "Source/SignalImpl.hpp",
-            "Source/StdIOImpl.hpp",
             "Source/ThreadImpl.hpp");
 
         Sources("Source/*.cpp");

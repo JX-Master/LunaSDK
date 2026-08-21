@@ -30,6 +30,9 @@ namespace Luna
                 case ERROR_CRC: return Result::bad_data;
                 case ERROR_NOT_READY: return Result::not_ready;
                 case ERROR_DIR_NOT_EMPTY: return Result::directory_not_empty;
+                case ERROR_BROKEN_PIPE: return Result::bad_pipe;
+                case ERROR_HANDLE_EOF: return Result::end_of_file;
+                case ERROR_NO_DATA: return Result::no_data;
                 default: return Result::bad_platform_call;
             }
         }

@@ -9,7 +9,7 @@ public sealed class NetworkTargetRules : TargetRules
             rulesPath: "Modules/Luna/Network/Network.Target.cs")
     {
         Headers("*.hpp");
-        MetaHeaders("Network.hpp");
+        MetaHeaders("Network.hpp", "SocketPoller.hpp");
         Sources("Source/*.cpp");
         DependsOn("Runtime");
     }

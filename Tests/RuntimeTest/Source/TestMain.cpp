@@ -23,6 +23,7 @@ void run()
     string_test();
     list_test();
     robin_hood_hash_test();
+    hash_test();
     tuple_test();
     name_test();
     path_test();
@@ -35,6 +36,7 @@ void run()
     invoke_test();
     function_test();
     unicode_test();
+    std_io_test();
     thread_test();
     fiber_test();
     

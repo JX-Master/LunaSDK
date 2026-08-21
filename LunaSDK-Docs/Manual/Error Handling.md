@@ -1,6 +1,6 @@
 LunaSDK does not use C++ exceptions. Operations that can fail return stable result codes, usually through `R<T>` or `RV`. A result code can be constructed, compared, returned, and transferred between processes without initializing LunaSDK. The runtime error information system is optional and only adds diagnostic metadata.
 
-The architecture and allocation policy are recorded in [[ADR-0006 Introduce static result codes]].
+The architecture and allocation policy are recorded in [[ADR-0011 Introduce static result codes]].
 
 ## Functionality
 
@@ -342,7 +342,7 @@ Parse the string back to `u64`, construct `ResultCode`, and use the field helper
 
 When migrating older code:
 
-1. Replace the legacy `ErrCode` type with `ResultCode`; no compatibility alias is provided.
+1. Replace the legacy `ResultCode` type with `ResultCode`; no compatibility alias is provided.
 2. Allocate permanent domain, category, and local result values.
 3. Replace calls to the removed name-based result lookup API with public `inline constexpr ResultCode` constants.
 4. Replace `code.code == 0` and `code.code != 0` control-flow checks with `succeeded`, `failed`, `is_plain_success`, or `is_informative_success` as appropriate.

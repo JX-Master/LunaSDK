@@ -8,7 +8,7 @@
 * @date 2023/2/28
 */
 #pragma once
-#include "Stream.hpp"
+#include "Result.hpp"
 #ifndef LUNA_RUNTIME_API
 #define LUNA_RUNTIME_API
 #endif
@@ -21,21 +21,47 @@ namespace Luna
     //! @name Standard input/output
     //! @{
 
-    //! Gets the stream object that is connected to the system standard input/output device.
-    //! @details All read operation from the stream reads input from the standard input device; 
-    //! all write operations to the stream outputs data to the standard output device.
-    //! 
-    //! @remark The `read` method of the standard IO stream reads data from the standard input until the 
-    //! provided buffer is full, or one new line or EOF is reached. The data being read is one UTF-8
-    //! (array of `c8`) string. One null terminator is always added to the read string. The new line character
-    //! `\n` will not be read. If `read_bytes` is not `nullptr`, it stores the number of `c8` characters written
-    //! to the buffer.
-    //! 
-    //! The `write` method of the standard IO stream writes data to the standard output until the buffer size
-    //! or one null terminator is reached. The data to be written is interpreted as one UTF-8 
-    //! (array of `c8`) string. If `write_bytes` is not `nullptr`, it stores the numbder of `c8` characters outputted
-    //! to the stream.
-    LUNA_RUNTIME_API IStream* get_std_io_stream();
+    //! Reads bytes from the standard input of the process.
+    //! @details This function performs one blocking platform read operation on the standard input handle current
+    //! at the time of the call. The data is transferred without text encoding, null-terminator, or newline processing.
+    //! A successful call may read fewer bytes than requested. Reaching the end of the input succeeds with `0` bytes read.
+    //! @param[out] buffer The buffer that receives the bytes. The buffer is not accessed if `size` is `0`.
+    //! @param[in] size The maximum number of bytes to read.
+    //! @param[out] read_bytes If not `nullptr`, receives the number of bytes read. This is set to `0` if `size` is `0`,
+    //! the end of input is reached, or the operation fails before reading any byte.
+    //! @return Returns `ok` if the operation succeeds, or an error code if the operation fails.
+    //! @remark Concurrent calls are not serialized. The application must synchronize replacement of the process
+    //! standard input handle against calls to this function.
+    LUNA_RUNTIME_API RV read_standard_input(void* buffer, usize size, usize* read_bytes = nullptr);
+
+    //! Writes bytes to the standard output of the process.
+    //! @details This function performs one blocking platform write operation on the standard output handle current
+    //! at the time of the call. The data is transferred without text encoding, null-terminator, or newline processing.
+    //! A successful call may write fewer bytes than requested; callers that require a complete write must repeat the
+    //! operation for the remaining bytes.
+    //! @param[in] buffer The buffer that contains the bytes. The buffer is not accessed if `size` is `0`.
+    //! @param[in] size The maximum number of bytes to write.
+    //! @param[out] write_bytes If not `nullptr`, receives the number of bytes written. This is set to `0` if `size` is
+    //! `0` or the operation fails before writing any byte.
+    //! @return Returns `ok` if the operation succeeds, or an error code if the operation fails. Writing to a closed
+    //! pipe returns @ref E_BAD_PIPE.
+    //! @remark Concurrent calls are not serialized and their byte ordering is unspecified. The application must
+    //! synchronize replacement of the process standard output handle against calls to this function.
+    LUNA_RUNTIME_API RV write_standard_output(const void* buffer, usize size, usize* write_bytes = nullptr);
+
+    //! Writes bytes to the standard error of the process.
+    //! @details This function behaves like @ref write_standard_output, but writes to the standard error handle current
+    //! at the time of the call. Standard error is independent from standard output so that diagnostics can be separated
+    //! from protocol data written to standard output.
+    //! @param[in] buffer The buffer that contains the bytes. The buffer is not accessed if `size` is `0`.
+    //! @param[in] size The maximum number of bytes to write.
+    //! @param[out] write_bytes If not `nullptr`, receives the number of bytes written. This is set to `0` if `size` is
+    //! `0` or the operation fails before writing any byte.
+    //! @return Returns `ok` if the operation succeeds, or an error code if the operation fails. Writing to a closed
+    //! pipe returns @ref E_BAD_PIPE.
+    //! @remark Concurrent calls are not serialized and their byte ordering is unspecified. The application must
+    //! synchronize replacement of the process standard error handle against calls to this function.
+    LUNA_RUNTIME_API RV write_standard_error(const void* buffer, usize size, usize* write_bytes = nullptr);
 
     //! @}
 

@@ -1,50 +1,113 @@
-The Frontend module provides a stream-based API for LunaSDK appliactions, this is used to implement multiple functions in LunaSDK, including:
-1. Remote Procedual Call used for web applications and multi-process applications.
-2. Model Context Protocol used for LLM agents.
-3. Command-based user actions used in GUI applications (that supports undo/redo).
+The Frontend module provides a protocol-independent resource registry and synchronous function invocation kernel for LunaSDK applications. It maps URL-like names to functions, [[Variants|Variant]] data, or opaque userdata, and lets callers invoke registered functions with a `Variant` parameter and receive an `R<Variant>` result.
 
-The main design purpose of Frontend module is to transfer messages, events, function calls and function call results across multiple domains, so that different application parts can call functions of each other, even if they are written in different programming language, or running on different hosts. When using Frontend, we typically have one part of the application (the **server**) that provides the function, and another part of the application (the **client**) that uses the function. Frontend works like this:
-1. Server registers functions it provides to the Frontend.
-2. Client wants to call one function of the server, it encodes the function call to one **message**, and sends it to the server.
-3. The Frontend module of the server decodes the message, if it accepts the message, it calls the corresponding callback function of the server.
-4. The server performs the function call, and returns the result to Frontend.
-5. Frontend encodes the function result into another **message**, and sends it back to the client.
-6. The client decodes the function result.
-Note that in some cases, both side of the communication can send and handle function calls. The server and client role is only meaningful for one specific call: the client is the side that sends the **request message** (call parameters), while the server is the side that sends the **response message** (call result).
+Frontend deliberately does not define a wire protocol. It does not parse or construct JSON-RPC 2.0 objects, validate or match request IDs, unpack or assemble message batches, serialize data, or read and write a transport. Applications that need these features add a **protocol shell** above Frontend. This separation also lets an application use a protocol other than JSON-RPC 2.0 without changing its registered functions.
 
-## Message
-The format of **messages** of the Frontend is similar to JSON-RPC 2.0 format, it is represented by one `Variant` object, and can be easily encoded into text stream (like JSON) or binary stream (like BSON). If the client and the server are in the same process, the client can pass `Variant` object directly to the server without any serialization/deserialization. In Frontend, we have two types of messages: request message and response message, the former carries the function call information and the later carries the function call result information.
+## Concepts
 
-### Request message
-The request message is sent from client to server. The request message contains the following attributes:
-1. `method`: Specify the function to call. The function is represented by a URL, see [[Frontend#Resource|Resource]] for details. 
-2. `params`: A `Variant` object that contains all parameters of the function call. The handler of the method is responsible for interpreting this object. The type of this `Variant` must be `object`, with keys identifying the name of every parameter. This can be `null` if the message does not have any parameter.
+### Frontend instance
 
-### Response message
-The response message is sent from server to client. The response message contains the following attributes:
-1. `result`: If the function call is successful, this is return value of the function call. The type of this `Variant` is defined by the callee function. If the function call is failed, this must not exist.
-2. `error`: If the function call is failed, this is the error information of the function call. The error information is represented by one error object described below. If the function call is successful, this must not exist.
+An `IFrontend` instance owns one independent resource registry. Create an instance with `new_frontend()`. New instances have an empty registry and do not share resources.
 
-Every request message will only have one response message.
+`IFrontend` is not thread-safe. An application must synchronize every access to the same instance when it may be used by multiple threads. Different instances may be synchronized independently.
 
-### Error object
-The error object is a `object` typed `Variant` with the following attributes:
-1. `category`: One string that identifies the owning module of the result code, for example `Runtime`.
-2. `code`: One string that identifies the name of the error, for example `bad_platform_call`.
-3. `message`: Optional message that describes the error.
-4. `data`: Optional additional information of the error.
+### Resource
 
-### Message batch
-The `Variant` sent to the Frontend can be an `object` or an `array`. If the `Variant` is an `object`, it represents one single message described as above. If the `Variant` is an `array`, it will be a sequence of messages that being sent in the array order. One message sequence can contain both request messages and response messages. Batching multiple messages into one array and send them at once can help improve performance and reduce latency in some cases.
+A **resource** is an entry identified by a non-empty `Name`. Any non-empty name is valid, but absolute paths such as `/Project/Open` are the recommended naming convention. A resource has one of these types:
 
-## Resource
-The client **cannot** access files, objects, memory and data in server directly, instead,  the server must expose such entities as **resources**, so that the client can refer them in function calls. On client side, one resource is simply one URL (uniform resource locator) string that identifies the resource, the URL string is passed to the server along the function call, and it is the server's responsibility to find the resource from the URL. The URL can be any non-empty string, but as a convention, we use absolute path separated by slashes (`/Path/To/Resouce`) as URL format.
+1. **Function**: A `FunctionHandler` that can be called with `IFrontend::invoke`.
+2. **Data**: An arbitrary `Variant` value.
+3. **Userdata**: An opaque pointer with an optional destructor.
+4. **Null**: The resource does not exist.
 
-### Resource Registry
-The Frontend provides a **resource registry**, which can be used to store URL-to-resource map for the server. All functions exposed to Frontend must be registered to this resource registry, so that the Frontend can dispatch function calls correctly. The resource registered in registry can be one of the following types:
-1. Function: A function that can be called from client.
-2. `Variant`: An arbitrary data represented by a `Variant` node.
-3. Userdata: A memory block of any size. The memory block is managed by the resource registry, once it is freed, a special destructor callback can be called to clean up the object in the memory block.
-4. Null: A special type that infers one resource does not exist.
+The registry does not provide reference tracking. Removing or overwriting a resource immediately invalidates references to it.
 
-Resource registry does not have any reference tracking mechanism, it behaves like a file on the file system: once the user removes one resource, it is gone, and all references to that resource is invalidated.
+For userdata, the registry takes ownership only after `set_resource_userdata` succeeds. If a destructor is provided, it is called exactly once when the resource is removed, overwritten, or when the owning Frontend is destroyed. If registration fails, ownership remains with the caller.
+
+### Function invocation
+
+A `FunctionHandler` receives the owning `IFrontend` and one application-defined parameter `Variant`. It returns `R<Variant>`. `IFrontend::invoke` returns that result directly: it does not wrap successful values in a response object and does not convert an `ResultCode` to a protocol error object.
+
+Every registered handler is stored in a reference-counted boxed object. Before calling a handler, `IFrontend::invoke` retains the box rather than copying the handler. This keeps invocation overhead independent of the size of the handler and keeps the executing handler alive if it removes or overwrites its own registry entry. A handler may therefore synchronously invoke other function resources and modify any registry entry, including itself.
+
+### Protocol shell
+
+A protocol shell translates a transport or message protocol into Frontend operations. For a JSON-RPC 2.0 shell, the shell is responsible for:
+
+1. Parsing JSON-RPC 2.0 objects and extracting fields such as `method` and `params`.
+2. Validating request IDs and matching responses to requests.
+3. Unpacking message batches and assembling batch responses.
+4. Calling `IFrontend::invoke` and converting its `R<Variant>` result into a JSON-RPC 2.0 response or error object.
+5. Serializing messages and reading or writing the selected transport.
+
+A complete JSON-RPC 2.0 object must therefore not be passed directly to `IFrontend::invoke`. The shell passes the extracted method as the resource name and the extracted parameters as the parameter `Variant`.
+
+## Programming guide
+
+### Initialize and create a Frontend
+
+Register the Frontend module during application initialization, then create an instance:
+
+```cpp
+init();
+lupanic_if_failed(add_modules({Frontend::module_frontend()}));
+lupanic_if_failed(init_modules());
+
+Ref<Frontend::IFrontend> frontend = Frontend::new_frontend();
+```
+
+Release every Frontend instance before calling `close()`.
+
+### Register and invoke a function
+
+Register functions with `set_resource_function`. By default, registration fails with `E_ALREADY_EXISTS` when the URL is occupied. Pass `true` as `overwrite` to replace the old resource.
+
+```cpp
+using namespace Luna;
+using namespace Luna::Frontend;
+
+lupanic_if_failed(frontend->set_resource_function(
+    "/Math/Add",
+    FunctionHandler([](IFrontend*, const Variant& params) -> R<Variant>
+    {
+        if(params.type() != VariantType::object)
+        {
+            return E_BAD_ARGUMENTS;
+        }
+        i64 result = params["a"].inum() + params["b"].inum();
+        return Variant(result);
+    })));
+
+Variant params(VariantType::object);
+params["a"] = Variant((i64)2);
+params["b"] = Variant((i64)3);
+R<Variant> result = frontend->invoke("/Math/Add", params);
+if(result.valid())
+{
+    i64 value = result.get().inum();
+}
+```
+
+Invoking a missing resource or a non-function resource returns `Frontend::E_METHOD_NOT_FOUND`. Errors returned by a handler are propagated unchanged.
+
+### Store data and userdata
+
+Use `set_resource_data` and `get_resource_data` for `Variant` resources. Use `set_resource_userdata` and `get_resource_userdata` for opaque pointers. Both getters return `Frontend::E_RESOURCE_NOT_FOUND` for an absent resource and `Frontend::E_TYPE_MISMATCH` for a resource of the wrong type.
+
+```cpp
+lupanic_if_failed(frontend->set_resource_data(
+    "/Configuration", Variant(VariantType::object)));
+
+R<Variant> configuration = frontend->get_resource_data("/Configuration");
+```
+
+`get_resource_userdata` returns a borrowed pointer. The pointer may become invalid after the resource is removed or overwritten, or after the Frontend is destroyed.
+
+### Remove resources and shut down
+
+`remove_resource` succeeds without effect if the URL does not exist. A successful removal releases the resource immediately. Empty resource names are rejected with `E_BAD_ARGUMENTS`.
+
+```cpp
+lupanic_if_failed(frontend->remove_resource("/Math/Add"));
+frontend.reset();
+close();
+```

@@ -48,9 +48,10 @@ namespace Luna
     //! Interns one name string to the runtime and fetches the interned address for it.
     //! @param[in] name The name string to intern.
     //! @param[in] count The number of characters that should be copied in `name`, excluding the null terminator if any.
-    //! @return Returns the interned address for the name string. If `name` is `nullptr` or `size` is `0`, the returned 
+    //! @return Returns the interned address for the name string. If `name` is `nullptr` or `count` is `0`, the returned
     //! address is `nullptr` and the memory block is not interned.
-    //! @remark The name string is saved in the runtime and is reference counted. The first call to @ref intern_namewith a new string
+    //! @remark The name string may contain null characters. Its identity is determined by all `count` characters. The name string is
+    //! saved in the runtime and is reference counted. The first call to @ref intern_name with a new string
     //! allocates the memory block to store the string and returns the block address. Additional calls to @ref intern_name with the same string
     //! will only increase the reference count of the memory block and returns the same address, so the user can simply compares
     //! two address (pointer) to check if they refer to the same string.
@@ -119,7 +120,7 @@ namespace Luna
         //! Constructs one name from one string.
         //! @param[in] str The name string.
         Name(const String& str) :
-            m_str(intern_name(str.c_str())) {}
+            m_str(intern_name(str.data(), str.size())) {}
         //! Constructs one name from one substring of the provided string.
         //! @param[in] str The name string.
         //! @param[in] pos The first character used for the name.
@@ -142,28 +143,36 @@ namespace Luna
         }
         Name& operator=(const Name& rhs)
         {
-            release_name(m_str);
-            m_str = rhs.m_str;
-            retain_name(m_str);
+            if (this != &rhs)
+            {
+                retain_name(rhs.m_str);
+                release_name(m_str);
+                m_str = rhs.m_str;
+            }
             return *this;
         }
         Name& operator=(Name&& rhs)
         {
-            release_name(m_str);
-            m_str = rhs.m_str;
-            rhs.m_str = nullptr;
+            if (this != &rhs)
+            {
+                release_name(m_str);
+                m_str = rhs.m_str;
+                rhs.m_str = nullptr;
+            }
             return *this;
         }
         Name& operator=(const c8* name)
         {
+            const c8* new_name = intern_name(name);
             release_name(m_str);
-            m_str = intern_name(name);
+            m_str = new_name;
             return *this;
         }
         Name& operator=(const String& str)
         {
+            const c8* new_name = intern_name(str.data(), str.size());
             release_name(m_str);
-            m_str = intern_name(str.c_str());
+            m_str = new_name;
             return *this;
         }
         //! Gets the internal string pointer of this name.

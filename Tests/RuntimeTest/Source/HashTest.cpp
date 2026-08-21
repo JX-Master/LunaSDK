@@ -963,4 +963,35 @@ namespace Luna
             lutest(h.find(1) == h.end());
         }
     }
+
+    void hash_test()
+    {
+        // Known-answer tests against the standard CRC implementations.
+        // All variants hash with initial value 0 and no final XOR.
+        // memhash8:  CRC-8/MAXIM-DOW (poly 0x31, reflected), check value 0xA1.
+        // memhash16: CRC-16/ARC (poly 0x8005, reflected), check value 0xBB3D.
+        // memhash32: CRC-32 (poly 0x04C11DB7, reflected), check value 0x2DFD2D88.
+        // memhash64: CRC-64 (ECMA-182 poly 0xC96C5795D7870F42, reflected), check value 0x4DB9A9F87EC10C59.
+        constexpr c8 check_data[] = "123456789";
+        constexpr usize check_data_size = sizeof(check_data) - 1;
+        lutest(memhash8(check_data, check_data_size) == 0xA1);
+        lutest(memhash16(check_data, check_data_size) == 0xBB3D);
+        lutest(memhash32(check_data, check_data_size) == 0x2DFD2D88);
+        lutest(memhash64(check_data, check_data_size) == 0x4DB9A9F87EC10C59ULL);
+        // strhash variants hash the same bytes (the string is null-terminated).
+        lutest(strhash8(check_data) == 0xA1);
+        lutest(strhash16(check_data) == 0xBB3D);
+        lutest(strhash32(check_data) == 0x2DFD2D88);
+        lutest(strhash64(check_data) == 0x4DB9A9F87EC10C59ULL);
+        // Empty data hashes to the initial hash value.
+        lutest(memhash8(nullptr, 0) == 0);
+        lutest(memhash16(nullptr, 0) == 0);
+        lutest(memhash32(nullptr, 0) == 0);
+        lutest(memhash64(nullptr, 0) == 0);
+        // Chained hashing equals hashing the concatenated data.
+        lutest(memhash32("World", 5, memhash32("Hello ", 6)) ==
+            memhash32("Hello World", 11));
+        lutest(memhash64("World", 5, memhash64("Hello ", 6)) ==
+            memhash64("Hello World", 11));
+    }
 }

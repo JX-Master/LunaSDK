@@ -18,18 +18,23 @@ namespace Luna
     {
         void xml_init();
         void xml_close();
+        RV json_init();
+        void json_close();
 
         struct ModuleVariantUtils : public Module
         {
             virtual const c8* get_name() override { return "VariantUtils"; }
             virtual RV on_init() override
             {
+                RV json_result = json_init();
+                if(failed(json_result)) return json_result.errcode();
                 xml_init();
                 return ok;
             }
             virtual void on_close() override
             {
                 xml_close();
+                json_close();
             }
         };
     }

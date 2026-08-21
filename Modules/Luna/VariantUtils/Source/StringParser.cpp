@@ -67,23 +67,29 @@ namespace Luna
             }
             return utf16_decode_char(buf);
         }
-        c32 BufferReadContext::next_char(usize index)
+        R<c32> BufferReadContext::next_char(usize index)
         {
             if(encoding == Encoding::utf_8)
             {
                 const c8* cur_utf8 = (const c8*)cur;
                 const c8* next_cur = cur_utf8;
-                while (index)
+                const c8* end = (const c8*)src + src_size;
+                while(index)
                 {
                     // advance characters.
-                    c32 ch = utf8_decode_char(next_cur);
-                    if (!ch) return 0;
-                    next_cur += utf8_charspan(ch);
-                    if ((usize)(next_cur - (const c8*)src) >= src_size) return 0;
+                    if(next_cur >= end) return (c32)0;
+                    usize num_bytes;
+                    R<c32> ch = utf8_decode_char(next_cur, (usize)(end - next_cur), &num_bytes);
+                    if(failed(ch)) return ch.errcode();
+                    if(!ch.get()) return E_BAD_DATA;
+                    next_cur += num_bytes;
                     --index;
                 }
-                if ((usize)(next_cur - (const c8*)src) >= src_size) return 0;
-                return utf8_decode_char(next_cur);
+                if(next_cur >= end) return (c32)0;
+                R<c32> ch = utf8_decode_char(next_cur, (usize)(end - next_cur));
+                if(failed(ch)) return ch.errcode();
+                if(!ch.get()) return E_BAD_DATA;
+                return ch.get();
             }
             else if(encoding == Encoding::utf_16_le || encoding == Encoding::utf_16_be)
             {
@@ -93,16 +99,18 @@ namespace Luna
                 {
                     // advance characters.
                     c32 ch = utf16_decode_char_encoding(next_cur, encoding);
-                    if (!ch) return 0;
+                    if (!ch) return E_BAD_DATA;
                     next_cur += utf16_charspan(ch);
-                    if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return 0;
+                    if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return (c32)0;
                     --index;
                 }
-                if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return 0;
-                return utf16_decode_char_encoding(next_cur, encoding);
+                if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return (c32)0;
+                c32 ch = utf16_decode_char_encoding(next_cur, encoding);
+                if(!ch) return E_BAD_DATA;
+                return ch;
             }
             lupanic();
-            return 0;
+            return E_BAD_DATA;
         }
         void BufferReadContext::skip_utf16_bom()
         {
@@ -171,17 +179,26 @@ namespace Luna
             {
                 if(encoding == Encoding::utf_8)
                 {
-                    c8 buf[6];
+                    c8 buf[4];
                     usize read_bytes;
                     luexp(stream_read(buf, sizeof(c8), &read_bytes));
                     if (read_bytes != sizeof(c8)) return 0;
-                    usize charspan = utf8_charlen(buf[0]);
+                    const u8 first = (u8)buf[0];
+                    usize charspan;
+                    if(first <= 0x7F) charspan = 1;
+                    else if(first >= 0xC2 && first <= 0xDF) charspan = 2;
+                    else if(first >= 0xE0 && first <= 0xEF) charspan = 3;
+                    else if(first >= 0xF0 && first <= 0xF4) charspan = 4;
+                    else return E_BAD_DATA;
                     if (charspan > 1)
                     {
                         luexp(stream_read((buf + 1), sizeof(c8) * (charspan - 1), &read_bytes));
-                        if (read_bytes != sizeof(c8) * (charspan - 1)) return 0;
+                        if (read_bytes != sizeof(c8) * (charspan - 1)) return E_END_OF_FILE;
                     }
-                    ret = utf8_decode_char(buf);
+                    R<c32> ch = utf8_decode_char(buf, charspan);
+                    if(failed(ch)) return ch.errcode();
+                    ret = ch.get();
+                    if(!ret) return E_BAD_DATA;
                 }
                 else
                 {
@@ -194,37 +211,40 @@ namespace Luna
                     if (charspan > 1)
                     {
                         luexp(stream_read((buf + 1), sizeof(c16) * (charspan - 1), &read_bytes));
-                        if (read_bytes != sizeof(c16) * (charspan - 1)) return 0;
+                        if (read_bytes != sizeof(c16) * (charspan - 1)) return E_END_OF_FILE;
                         buf[1] = utf16_read_char(buf[1], encoding);
                     }
                     ret = utf16_decode_char(buf);
+                    if(!ret) return E_BAD_DATA;
                 }
             }
             lucatchret;
             return ret;
         }
-        c32 StreamReadContext::next_char(usize index)
+        R<c32> StreamReadContext::next_char(usize index)
         {
             while (index >= buffer.size())
             {
                 auto ch = read_one_char_from_stream();
-                if (failed(ch) || !ch.get()) return 0;
+                if (failed(ch)) return ch.errcode();
+                if (!ch.get()) return (c32)0;
                 buffer.push_back(ch.get());
             }
             return buffer[index];
         }
-        void StreamReadContext::skip_utf16_bom()
+        RV StreamReadContext::skip_utf16_bom()
         {
             u8 ch[2];
             usize read_bytes;
             auto r = stream->read(ch, 2, &read_bytes);
-            if(failed(r) || read_bytes != 2)
+            if(failed(r)) return r.errcode();
+            if(read_bytes != 2)
             {
                 if(read_bytes)
                 {
                     stream_buffer.push_back(ch[0]);
                 }
-                return;
+                return ok;
             }
             if(ch[0] == 0xFE && ch[1] == 0xFF)
             {
@@ -239,6 +259,7 @@ namespace Luna
                 stream_buffer.push_back(ch[0]);
                 stream_buffer.push_back(ch[1]);
             }
+            return ok;
         }
     }
 }

@@ -33,8 +33,7 @@ Task options (markdown):
     -i Sets the input directory. Use current working directory if not specified.
     -v Outputs verbose information for debugging.
 )";
-    auto io = get_std_io_stream();
-    return io->write(help_text, sizeof(help_text));
+    return write_standard_output(help_text, sizeof(help_text) - 1);
 }
 
 RV gen_markdown(int argc, const char* argv[])
@@ -207,13 +206,12 @@ RV run(int argc, const char* argv[])
 
         set_log_to_platform_enabled(true);
         set_log_to_platform_verbosity(LogVerbosity::info);
-        auto io = get_std_io_stream();
         luexp(add_module(module_variant_utils()));
         luexp(init_modules());
         if(argc < 2)
         {
             const c8 usage[] = "Usage: LunaDoc <task> [options]\nType \"LunaDoc --help\" for details.";
-            luexp(io->write(usage, sizeof(usage)));
+            luexp(write_standard_output(usage, sizeof(usage) - 1));
             return ok;
         }
         auto task = Name(argv[1]);

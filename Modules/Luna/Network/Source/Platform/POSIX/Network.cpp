@@ -20,6 +20,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <errno.h>
 #include <string.h>
 #include "Socket.hpp"
@@ -48,6 +50,12 @@ namespace Luna
             case EADDRNOTAVAIL: return Network::E_ADDRESS_NOT_AVAILABLE;
             case EOPNOTSUPP: return E_NOT_SUPPORTED;
             case EALREADY: return E_NOT_READY;
+#if EAGAIN != EWOULDBLOCK
+            case EWOULDBLOCK: return E_NOT_READY;
+#endif
+            case EAGAIN: return E_NOT_READY;
+            case EBADF: return E_BAD_CALLING_TIME;
+            case ENOTSOCK: return E_BAD_CALLING_TIME;
             case ECONNREFUSED: return Network::E_CONNECTION_REFUSED;
             case ECONNABORTED: return Network::E_CONNECTION_ABORTED;
             case ECONNRESET: return Network::E_CONNECTION_RESET;
@@ -233,6 +241,53 @@ namespace Luna
 #endif
         }
 
+        inline bool is_connection_error(int err)
+        {
+            switch(err)
+            {
+            case ENETDOWN:
+            case ENOTCONN:
+            case ECONNABORTED:
+            case ECONNRESET:
+            case ENETRESET:
+            case ENETUNREACH:
+            case EHOSTUNREACH:
+            case ETIMEDOUT:
+            case EPIPE:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        inline RV configure_native_socket(int socket)
+        {
+            int flags = ::fcntl(socket, F_GETFL, 0);
+            if(flags == -1) return translate_error(errno);
+            if(::fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1)
+            {
+                return translate_error(errno);
+            }
+#ifdef SO_NOSIGPIPE
+            int no_sigpipe = 1;
+            if(::setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, &no_sigpipe, sizeof(no_sigpipe)) == -1)
+            {
+                return translate_error(errno);
+            }
+#endif
+            return ok;
+        }
+
+        void SocketBase::close()
+        {
+            if(m_socket != -1)
+            {
+                int socket = m_socket;
+                m_socket = -1;
+                ::close(socket);
+            }
+        }
+
         RV SocketBase::get_local_address(SocketAddress& address)
         {
             sockaddr_storage addr;
@@ -257,44 +312,97 @@ namespace Luna
             return decode_socket_address(address, (sockaddr*)&addr) ? ok : RV(Network::E_ADDRESS_NOT_SUPPORTED);
         }
 
-        RV TCPSocket::read(void* buffer, usize size, usize* read_bytes)
+        TCPConnectionState TCPSocket::get_status()
         {
-            usize read_size = size > (usize)ISIZE_MAX ? (usize)ISIZE_MAX : size;
-            isize read_sz = ::recv(m_socket, buffer, read_size, 0);
-            if(read_sz == -1)
+            if(m_socket == -1) return TCPConnectionState::closed;
+            if(m_status != TCPConnectionState::connecting) return m_status;
+
+            pollfd descriptor = {};
+            descriptor.fd = m_socket;
+            descriptor.events = POLLOUT;
+            int result = ::poll(&descriptor, 1, 0);
+            if(result == 0) return TCPConnectionState::connecting;
+            if(result == -1)
             {
-                if (read_bytes) *read_bytes = 0;
-                return translate_error(errno);
+                if(errno == EINTR) return TCPConnectionState::connecting;
+                m_error = translate_error(errno);
+                m_status = TCPConnectionState::error;
+                return m_status;
             }
-            if (read_bytes) *read_bytes = (usize)read_sz;
+
+            int socket_error = 0;
+            socklen_t error_size = sizeof(socket_error);
+            if(::getsockopt(m_socket, SOL_SOCKET, SO_ERROR, &socket_error, &error_size) == -1)
+            {
+                if(errno == EINTR) return TCPConnectionState::connecting;
+                m_error = translate_error(errno);
+                m_status = TCPConnectionState::error;
+                return m_status;
+            }
+            if(socket_error)
+            {
+                m_error = translate_error(socket_error);
+                m_status = TCPConnectionState::error;
+                return m_status;
+            }
+            m_status = TCPConnectionState::connected;
+            return m_status;
+        }
+
+        RV TCPSocket::receive(void* buffer, usize size, usize* out_received_bytes)
+        {
+            if(out_received_bytes) *out_received_bytes = 0;
+            if(!size) return ok;
+            if(m_socket == -1) return E_BAD_CALLING_TIME;
+            if(m_status != TCPConnectionState::connected && m_status != TCPConnectionState::peer_closed)
+            {
+                return E_BAD_CALLING_TIME;
+            }
+            usize read_size = size > (usize)ISIZE_MAX ? (usize)ISIZE_MAX : size;
+            isize received = ::recv(m_socket, buffer, read_size, 0);
+            if(received == -1)
+            {
+                int err = errno;
+                ResultCode error = translate_error(err);
+                if(is_connection_error(err))
+                {
+                    m_error = error;
+                    m_status = TCPConnectionState::error;
+                }
+                return error;
+            }
+            if(out_received_bytes) *out_received_bytes = (usize)received;
+            if(received == 0)
+            {
+                m_status = TCPConnectionState::peer_closed;
+            }
             return ok;
         }
 
-        RV TCPSocket::write(const void* buffer, usize size, usize* write_bytes)
+        RV TCPSocket::send(const void* buffer, usize size, usize* out_sent_bytes)
         {
-            usize total_written = 0;
-            while(total_written < size)
+            if(out_sent_bytes) *out_sent_bytes = 0;
+            if(!size) return ok;
+            if(m_socket == -1) return E_BAD_CALLING_TIME;
+            if(m_status != TCPConnectionState::connected && m_status != TCPConnectionState::peer_closed)
             {
-                usize chunk = size - total_written;
-                if(chunk > (usize)ISIZE_MAX) chunk = (usize)ISIZE_MAX;
-                isize write_sz = ::send(m_socket, (const u8*)buffer + total_written, chunk, send_flags());
-                if(write_sz == -1)
-                {
-                    if (write_bytes) *write_bytes = total_written;
-                    return translate_error(errno);
-                }
-                if(write_sz == 0)
-                {
-                    if (write_bytes) *write_bytes = total_written;
-                    return E_NO_DATA;
-                }
-                total_written += (usize)write_sz;
-                if(m_type != SocketType::stream)
-                {
-                    break;
-                }
+                return E_BAD_CALLING_TIME;
             }
-            if (write_bytes) *write_bytes = total_written;
+            usize write_size = size > (usize)ISIZE_MAX ? (usize)ISIZE_MAX : size;
+            isize sent = ::send(m_socket, buffer, write_size, send_flags());
+            if(sent == -1)
+            {
+                int err = errno;
+                ResultCode error = translate_error(err);
+                if(is_connection_error(err))
+                {
+                    m_error = error;
+                    m_status = TCPConnectionState::error;
+                }
+                return error;
+            }
+            if(sent == 0) return E_NO_DATA;
+            if(out_sent_bytes) *out_sent_bytes = (usize)sent;
             return ok;
         }
         RV SocketBase::bind(const SocketAddress& address)
@@ -311,6 +419,8 @@ namespace Luna
         }
         RV TCPSocket::listen(i32 len)
         {
+            if(m_socket == -1) return E_BAD_CALLING_TIME;
+            if(m_status != TCPConnectionState::not_connected) return E_BAD_CALLING_TIME;
             if (len == I32_MAX)
             {
                 len = SOMAXCONN;
@@ -318,24 +428,54 @@ namespace Luna
             int r = ::listen(m_socket, len);
             if (r == -1)
             {
-                return translate_error(errno);
+                m_error = translate_error(errno);
+                m_status = TCPConnectionState::error;
+                return m_error;
             }
+            m_status = TCPConnectionState::listening;
             return ok;
         }
         RV TCPSocket::connect(const SocketAddress& address)
         {
+            if(m_socket == -1) return E_BAD_CALLING_TIME;
+            if(m_status == TCPConnectionState::connected || m_status == TCPConnectionState::peer_closed)
+            {
+                return Network::E_ALREADY_CONNECTED;
+            }
+            if(m_status != TCPConnectionState::not_connected) return E_BAD_CALLING_TIME;
             sockaddr_storage addr;
             auto addr_size = encode_socket_address(addr, address);
-            if(!addr_size.valid()) return addr_size.errcode();
+            if(!addr_size.valid())
+            {
+                m_error = addr_size.errcode();
+                m_status = TCPConnectionState::error;
+                return m_error;
+            }
             int r = ::connect(m_socket, (sockaddr*)&addr, addr_size.get());
             if (r == -1)
             {
-                return translate_error(errno);
+                int err = errno;
+                if(err == EINPROGRESS || err == EALREADY)
+                {
+                    m_status = TCPConnectionState::connecting;
+                    return ok;
+                }
+                if(err == EISCONN)
+                {
+                    m_status = TCPConnectionState::connected;
+                    return ok;
+                }
+                m_error = translate_error(err);
+                m_status = TCPConnectionState::error;
+                return m_error;
             }
+            m_status = TCPConnectionState::connected;
             return ok;
         }
         R<Ref<ITCPSocket>> TCPSocket::accept(SocketAddress& address)
         {
+            if(m_socket == -1) return E_BAD_CALLING_TIME;
+            if(m_status != TCPConnectionState::listening) return E_BAD_CALLING_TIME;
             sockaddr_storage addr;
             socklen_t size = sizeof(addr);
             auto r = ::accept(m_socket, (sockaddr*)&addr, &size);
@@ -348,36 +488,43 @@ namespace Luna
                 ::close(r);
                 return Network::E_ADDRESS_NOT_SUPPORTED;
             }
+            RV configure_result = configure_native_socket(r);
+            if(failed(configure_result))
+            {
+                ::close(r);
+                return configure_result.errcode();
+            }
             Ref<TCPSocket> s = new_object<TCPSocket>();
             s->m_af = address.family;
             s->m_type = m_type;
             s->m_socket = r;
+            s->m_status = TCPConnectionState::connected;
             return Ref<ITCPSocket>(s);
         }
-        RV UDPSocket::send_to(const void* buffer, usize size, const SocketAddress& address, usize* sent_bytes)
+        RV UDPSocket::send_to(const void* buffer, usize size, const SocketAddress& address, usize* out_sent_bytes)
         {
             if(size > (usize)ISIZE_MAX)
             {
-                if(sent_bytes) *sent_bytes = 0;
+                if(out_sent_bytes) *out_sent_bytes = 0;
                 return E_DATA_TOO_BIG;
             }
             sockaddr_storage addr;
             auto addr_size = encode_socket_address(addr, address);
             if(!addr_size.valid())
             {
-                if(sent_bytes) *sent_bytes = 0;
+                if(out_sent_bytes) *out_sent_bytes = 0;
                 return addr_size.errcode();
             }
             isize sent = ::sendto(m_socket, buffer, size, send_flags(), (sockaddr*)&addr, addr_size.get());
             if(sent == -1)
             {
-                if(sent_bytes) *sent_bytes = 0;
+                if(out_sent_bytes) *out_sent_bytes = 0;
                 return translate_error(errno);
             }
-            if(sent_bytes) *sent_bytes = (usize)sent;
+            if(out_sent_bytes) *out_sent_bytes = (usize)sent;
             return ok;
         }
-        RV UDPSocket::receive_from(void* buffer, usize size, SocketAddress* address, usize* received_bytes)
+        RV UDPSocket::receive_from(void* buffer, usize size, SocketAddress* address, usize* out_received_bytes)
         {
             usize read_size = size > (usize)ISIZE_MAX ? (usize)ISIZE_MAX : size;
             sockaddr_storage addr;
@@ -385,15 +532,15 @@ namespace Luna
             isize received = ::recvfrom(m_socket, buffer, read_size, 0, (sockaddr*)&addr, &addr_size);
             if(received == -1)
             {
-                if(received_bytes) *received_bytes = 0;
+                if(out_received_bytes) *out_received_bytes = 0;
                 return translate_error(errno);
             }
             if(address && !decode_socket_address(*address, (sockaddr*)&addr))
             {
-                if(received_bytes) *received_bytes = 0;
+                if(out_received_bytes) *out_received_bytes = 0;
                 return Network::E_ADDRESS_NOT_SUPPORTED;
             }
-            if(received_bytes) *received_bytes = (usize)received;
+            if(out_received_bytes) *out_received_bytes = (usize)received;
             return ok;
         }
         RV platform_init()
@@ -434,10 +581,12 @@ namespace Luna
             {
                 return translate_error(errno);
             }
-#ifdef SO_NOSIGPIPE
-            int no_sigpipe = 1;
-            ::setsockopt(r, SOL_SOCKET, SO_NOSIGPIPE, &no_sigpipe, sizeof(no_sigpipe));
-#endif
+            RV configure_result = configure_native_socket(r);
+            if(failed(configure_result))
+            {
+                ::close(r);
+                return configure_result.errcode();
+            }
             return r;
         }
 

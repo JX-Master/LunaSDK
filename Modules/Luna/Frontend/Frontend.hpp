@@ -6,9 +6,12 @@
 * @file Frontend.hpp
 * @author JXMaster
 * @date 2026/3/13
-* @brief Frontend module public API: message helpers, error codes, and module entry points.
+* @brief Frontend module public API: resource registry, invocation, error codes, and module entry points.
 */
 #pragma once
+#include <Luna/Runtime/Functional.hpp>
+#include <Luna/Runtime/Result.hpp>
+#include <Luna/Runtime/Variant.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Name.hpp>
 #include <Luna/Runtime/Interface.hpp>
@@ -22,8 +25,8 @@
 namespace Luna
 {
     //! @addtogroup Frontend Frontend
-    //! The Frontend module provides a stream-based API for message passing, remote procedure calls,
-    //! Model Context Protocol (MCP), and command-based user actions (undo/redo).
+    //! The Frontend module provides a protocol-independent resource registry and synchronous
+    //! Variant-based function invocation kernel.
     //! @{
     //! @}
 
@@ -48,24 +51,32 @@ namespace Luna
         struct IFrontend;
 
         //! The function handler type used to register callable resources.
-        //! @details The handler receives the `params` field of the request message and returns
-        //! either a result Variant on success, or an ResultCode on failure.
-        //! The ResultCode will be converted to a Frontend error object by IFrontend.
+        //! @details The handler receives an application-defined Variant and returns either a
+        //! Variant on success or a ResultCode on failure. IFrontend propagates this result without
+        //! adding a protocol-specific message envelope.
         using FunctionHandler = Function<R<Variant>(IFrontend* frontend, const Variant& params)>;
 
         //! @interface IFrontend
         //! The main interface of the Frontend module.
-        //! @details IFrontend owns one IResourceRegistry and exposes a synchronous message
-        //! dispatch interface. Asynchronous use cases are handled by the user by building an
-        //! external message queue and calling handle_message at the appropriate time.
+        //! @details Every IFrontend instance owns one independent resource registry. It does not
+        //! parse or construct JSON-RPC messages, match request identifiers, process message
+        //! batches, perform serialization, or provide a transport. Such behavior belongs to a
+        //! protocol shell built on top of this interface.
+        //!
+        //! IFrontend is not thread-safe. The caller must synchronize all access to one instance.
+        //! Function handlers may invoke other function resources and modify the registry,
+        //! including removing or overwriting the function resource being invoked.
         struct [[Luna::interface("{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}")]] IFrontend : virtual Interface
         {
             //! Calls one registered function in this frontend.
             //! @param[in] url The URL identifying the function.
-            //! @param[in] params The parameter to pass to the function.
-            //! @return Returns the function calling result. If the call is a notification, returns 
-            //! an empty object.
-            virtual Variant invoke(const Name& url, const Variant& params) = 0;
+            //! @param[in] params The application-defined parameter Variant passed to the function.
+            //! @return Returns the handler result without modification, or
+            //! @ref Frontend::E_METHOD_NOT_FOUND if the URL does not identify a function.
+            //! @details The handler is stored in a reference-counted boxed object. This call retains
+            //! the box before invoking the handler, so the handler is not copied and remains valid
+            //! if it removes or overwrites its own registry entry while executing.
+            virtual R<Variant> invoke(const Name& url, const Variant& params) = 0;
 
             //! Sets a function resource at the given URL.
             //! @param[in] url The URL identifying the resource.
@@ -73,6 +84,8 @@ namespace Luna
             //! @param[in] overwrite If `false` (default), returns @ref E_ALREADY_EXISTS
             //!            if a resource already exists at the URL.
             //!            If `true`, the existing resource is replaced.
+            //! @return Returns @ref E_BAD_ARGUMENTS if `url` is empty or `handler` is
+            //! invalid.
             virtual RV set_resource_function(const Name& url, FunctionHandler&& handler, bool overwrite = false) = 0;
 
             //! Sets a Variant data resource at the given URL.
@@ -82,6 +95,7 @@ namespace Luna
             //! @param[in] data The Variant value to store.
             //! @param[in] overwrite If `false` (default), returns @ref E_ALREADY_EXISTS
             //!            if a resource already exists at the URL.
+            //! @return Returns @ref E_BAD_ARGUMENTS if `url` is empty.
             virtual RV set_resource_data(const Name& url, Variant&& data, bool overwrite = false) = 0;
 
             //! Sets a userdata resource at the given URL.
@@ -90,6 +104,9 @@ namespace Luna
             //! @param[in] dtor Optional destructor called when the resource is removed or overwritten.
             //! @param[in] overwrite If `false` (default), returns @ref E_ALREADY_EXISTS
             //!            if a resource already exists at the URL.
+            //! @return Returns @ref E_BAD_ARGUMENTS if `url` is empty.
+            //! @details This IFrontend takes ownership of `data` only if this call succeeds. If a
+            //! destructor is provided, it is also called when the IFrontend is destroyed.
             virtual RV set_resource_userdata(
                 const Name& url,
                 void* data,
@@ -102,63 +119,28 @@ namespace Luna
             virtual ResourceType get_resource_type(const Name& url) = 0;
 
             //! Returns the Variant data of the resource at the given URL.
-            //! @return Returns @ref E_RESOURCE_NOT_FOUND if no resource exists,
-            //!         or @ref E_TYPE_MISMATCH if the resource is not a data resource.
+            //! @return Returns @ref Frontend::E_RESOURCE_NOT_FOUND if no resource exists,
+            //!         or @ref Frontend::E_TYPE_MISMATCH if the resource is not a data resource.
             virtual R<Variant> get_resource_data(const Name& url) = 0;
+
+            //! Returns the pointer stored by a userdata resource at the given URL.
+            //! @return Returns @ref Frontend::E_RESOURCE_NOT_FOUND if no resource exists,
+            //! or @ref Frontend::E_TYPE_MISMATCH if the resource is not a userdata resource.
+            //! @details The pointer remains owned by this IFrontend and may be invalidated by a
+            //! subsequent resource removal, overwrite, or destruction of the IFrontend.
+            virtual R<void*> get_resource_userdata(const Name& url) = 0;
 
             //! Removes the resource at the given URL.
             //! @param[in] url The resource to remove.
-            virtual void remove_resource(const Name& url) = 0;
+            //! @return Returns @ref E_BAD_ARGUMENTS if `url` is empty. Removing a URL
+            //! that does not exist succeeds without effect.
+            virtual RV remove_resource(const Name& url) = 0;
         };
 
         
         //! Creates and returns a new independent Frontend instance.
-        //! @details The returned instance has its own resource registry and built-in functions,
-        //! and is independent of the global instance.
+        //! @details The returned instance has its own empty resource registry.
         LUNA_FRONTEND_API Ref<IFrontend> new_frontend();
-
-        // -----------------------------------------------------------------------
-        // Message helpers
-        // -----------------------------------------------------------------------
-
-        //! Constructs a request message Variant.
-        //! @param[in] method The URL of the function resource to call.
-        //! @param[in] params The parameters for the function call. Must be an array, object, or null Variant.
-        //! @return A Variant object representing the request message.
-        LUNA_FRONTEND_API Variant make_request(const Name& method, const Variant& params);
-
-        //! Constructs a notification message Variant (a request with a null id).
-        //! @details Notification messages do not generate a response from the server.
-        //! @param[in] method The URL of the function resource to call.
-        //! @param[in] params The parameters for the function call.
-        //! @return A Variant object representing the notification message.
-        LUNA_FRONTEND_API Variant make_notification(const Name& method, const Variant& params);
-
-        //! Constructs a successful response message Variant.
-        //! @param[in] result The return value of the function call. Must not be a null Variant.
-        //! @return A Variant object representing the response message.
-        LUNA_FRONTEND_API Variant make_response(const Variant& result);
-
-        //! Constructs an error response message Variant.
-        //! @param[in] error An error object Variant, typically created with @ref make_frontend_error.
-        //! @return A Variant object representing the error response message.
-        LUNA_FRONTEND_API Variant make_error_response(const Variant& error);
-
-        //! Constructs a Frontend error object Variant.
-        //! @param[in] result_code The stable result code. The returned object's `result_code` field
-        //! stores this value as a fixed-width 16-digit hexadecimal string.
-        //! @param[in] category The error category name (e.g., "Frontend").
-        //! @param[in] code The result code name (e.g., "method_not_found").
-        //! @param[in] message Optional human-readable error description.
-        //! @param[in] data Optional additional error data.
-        //! @return A Variant object representing the error object.
-        LUNA_FRONTEND_API Variant make_frontend_error(
-            ResultCode result_code,
-            const Name& category,
-            const Name& code,
-            const Name& message = Name(),
-            const Variant& data = Variant()
-        );
 
         //! Returns the Frontend module pointer for use with @ref add_module.
         LUNA_FRONTEND_API Module* module_frontend();
@@ -175,9 +157,11 @@ namespace Luna
 
         //! The requested resource URL was not found in the registry.
         inline constexpr ResultCode E_RESOURCE_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::FRONTEND, -1);
-        //! The resource type does not match the expected type.
+
+        //! The resource exists but its type does not match the expected type.
         inline constexpr ResultCode E_TYPE_MISMATCH = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::FRONTEND, -2);
-        //! The requested method does not identify a function resource.
+
+        //! The requested URL does not identify a function resource.
         inline constexpr ResultCode E_METHOD_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::FRONTEND, -3);
 
         //! @}

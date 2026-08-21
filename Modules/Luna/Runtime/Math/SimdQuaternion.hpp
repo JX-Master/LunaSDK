@@ -73,17 +73,14 @@ namespace Luna
         //! ```
         float4 LUNA_SIMD_CALL quateulerangles_f4(float4 a);
 
-        //! Interpolates between two unit quaternions `a` and `b` using linear interpolation, 
+        //! Interpolates between two unit quaternions `a` and `b` using normalized linear interpolation,
         //! and stores the result in `dst`.
         //! @details
         //! ```
-        //! OMEGA := ACOS(DOT4(a, b))
-        //! WA := SIN((1.0 - t) * OMEGA) / SIN(OMEGA)
-        //! WB := SIN(t * OMEGA) / SIN(OMEGA)
-        //! dst.x = a.x * WA + b.x * WB
-        //! dst.y = a.y * WA + b.y * WB
-        //! dst.z = a.z * WA + b.z * WB
-        //! dst.w = a.w * WA + b.w * WB
+        //! IF DOT4(a, b) >= 0
+        //!     dst := NORMALIZE4(a + t * (b - a))
+        //! ELSE
+        //!     dst := NORMALIZE4(a * (1.0 - t) - b * t)
         //! ```
         float4 LUNA_SIMD_CALL quatlerp_f4(float4 a, float4 b, f32 t);
 
@@ -99,6 +96,8 @@ namespace Luna
         //! dst.z = a.z * WA + b.z * WB
         //! dst.w = a.w * WA + b.w * WB
         //! ```
+        //! If `a` and `b` are nearly parallel or antipodal, `SIN(OMEGA)` is close to zero, in which case
+        //! this function falls back to `quatlerp_f4` to avoid division by zero.
         float4 LUNA_SIMD_CALL quatslerp_f4(float4 a, float4 b, f32 t);
         
         //! @}
