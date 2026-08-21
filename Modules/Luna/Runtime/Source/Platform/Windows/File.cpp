@@ -12,7 +12,7 @@
 #include <Luna/Runtime/Unicode.hpp>
 #include "../File.hpp"
 #include <shellapi.h>
-#include "ResultCode.hpp"
+#include "ErrCode.hpp"
 #include "Utils.hpp"
 
 #pragma comment(lib, "Shell32.lib")

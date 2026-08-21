@@ -9,7 +9,7 @@
 */
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include "../DLL.hpp"
-#include "ResultCode.hpp"
+#include "ErrCode.hpp"
 
 namespace Luna
 {

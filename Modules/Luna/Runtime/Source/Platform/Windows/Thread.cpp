@@ -13,7 +13,7 @@
 #include "../../../Unicode.hpp"
 #include "Utils.hpp"
 #include "../Memory.hpp"
-#include "ResultCode.hpp"
+#include "ErrCode.hpp"
 
 namespace Luna
 {

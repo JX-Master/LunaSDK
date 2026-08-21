@@ -8,7 +8,7 @@
 * @date 2026/2/10
 */
 #include "../Fiber.hpp"
-#include "ResultCode.hpp"
+#include "ErrCode.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
 
 namespace Luna
