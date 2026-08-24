@@ -119,14 +119,14 @@ namespace Luna
             auto depth_texture = compiler->get_input_resource("depth_texture");
             auto base_color_roughness_texture = compiler->get_input_resource("base_color_roughness_texture");
             auto normal_metallic_texture = compiler->get_input_resource("normal_metallic_texture");
-            if(scene_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Output \"scene_texture\" is not specified.");
-            if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"depth_texture\" is not specified.");
-            if(base_color_roughness_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"base_color_roughness_texture\" is not specified.");
-            if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"normal_metallic_texture\" is not specified.");
+            if(scene_texture == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "BufferVisualizationPass: Output \"scene_texture\" is not specified.");
+            if(depth_texture == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "BufferVisualizationPass: Input \"depth_texture\" is not specified.");
+            if(base_color_roughness_texture == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "BufferVisualizationPass: Input \"base_color_roughness_texture\" is not specified.");
+            if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "BufferVisualizationPass: Input \"normal_metallic_texture\" is not specified.");
             RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
             if (desc.texture.format != RHI::Format::rgba8_unorm)
             {
-                return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba8_unorm.");
+                return set_error(E_BAD_ARGUMENTS, "BufferVisualizationPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba8_unorm.");
             }
             desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
             compiler->set_resource_desc(scene_texture, desc);
@@ -134,7 +134,7 @@ namespace Luna
             desc = compiler->get_resource_desc(depth_texture);
             if (desc.texture.format != RHI::Format::d32_float)
             {
-                return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be Format::d32_float.");
+                return set_error(E_BAD_ARGUMENTS, "BufferVisualizationPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be Format::d32_float.");
             }
             desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
             compiler->set_resource_desc(depth_texture, desc);

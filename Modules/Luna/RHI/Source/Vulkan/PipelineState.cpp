@@ -57,11 +57,11 @@ namespace Luna
                 {
                     if(desc.vs.format != ShaderDataFormat::spirv)
                     {
-                        return set_error(BasicError::bad_arguments(), "The data format of vertex shader must be ShaderDataFormat::spirv for Vulkan backend!");
+                        return set_error(E_BAD_ARGUMENTS, "The data format of vertex shader must be ShaderDataFormat::spirv for Vulkan backend!");
                     }
                     if(desc.vs.data.empty())
                     {
-                        return set_error(BasicError::bad_arguments(), "The vertex shader data is empty.");
+                        return set_error(E_BAD_ARGUMENTS, "The vertex shader data is empty.");
                     }
                     luexp(vs.init(m_device, desc.vs.data));
                     shader_modles[num_stages] = vs.shader_module;
@@ -78,11 +78,11 @@ namespace Luna
                 {
                     if(desc.ps.format != ShaderDataFormat::spirv)
                     {
-                        return set_error(BasicError::bad_arguments(), "The data format of pixel shader must be ShaderDataFormat::spirv for Vulkan backend!");
+                        return set_error(E_BAD_ARGUMENTS, "The data format of pixel shader must be ShaderDataFormat::spirv for Vulkan backend!");
                     }
                     if(desc.ps.data.empty())
                     {
-                        return set_error(BasicError::bad_arguments(), "The pixel shader data is empty.");
+                        return set_error(E_BAD_ARGUMENTS, "The pixel shader data is empty.");
                     }
                     luexp(ps.init(m_device, desc.ps.data));
                     shader_modles[num_stages] = ps.shader_module;
@@ -303,7 +303,7 @@ namespace Luna
                 VkShaderModule shader_modle = { VK_NULL_HANDLE };
                 if(desc.cs.format != ShaderDataFormat::spirv || desc.cs.data.empty())
                 {
-                    return set_error(BasicError::not_supported(), "The compute shader data must be in ShaderDataFormat::spirv and must not be empty for Vulkan backend");
+                    return set_error(E_NOT_SUPPORTED, "The compute shader data must be in ShaderDataFormat::spirv and must not be empty for Vulkan backend");
                 }
                 luexp(cs.init(m_device, desc.cs.data));
                 create_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

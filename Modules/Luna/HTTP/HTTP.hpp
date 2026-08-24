@@ -141,7 +141,7 @@ namespace Luna
 
             //! Gets the effective local listener address.
             //! @param[out] address Receives the bound address, including an automatically assigned port.
-            //! @return Returns @ref BasicError::bad_calling_time after the server is closed.
+            //! @return Returns @ref E_BAD_CALLING_TIME after the server is closed.
             virtual RV get_local_address(Network::SocketAddress& address) = 0;
 
             //! Tests whether this server has been closed.

@@ -46,7 +46,7 @@ namespace Luna
         {
             MutexGuard g(g_asset_types_mutex);
             auto iter = g_asset_types.find(name);
-            if (iter == g_asset_types.end()) return AssetError::unknown_asset_type();
+            if (iter == g_asset_types.end()) return Asset::E_UNKNOWN_ASSET_TYPE;
             return *iter;
         }
     }

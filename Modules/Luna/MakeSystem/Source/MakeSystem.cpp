@@ -171,7 +171,7 @@ namespace Luna
             {
                 if(!file_exists(output))
                 {
-                    return set_error(BasicError::bad_arguments(), "Build command for node %s did not produce output %s", node->path.encode().c_str(), output.encode().c_str());
+                    return set_error(E_BAD_ARGUMENTS, "Build command for node %s did not produce output %s", node->path.encode().c_str(), output.encode().c_str());
                 }
             }
             return ok;
@@ -243,7 +243,7 @@ namespace Luna
                     auto file = open_file(depfile->path.encode().c_str(), FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing);
                     if(!file.valid())
                     {
-                        if(file.errcode() == BasicError::not_found())
+                        if(file.errcode() == E_NOT_FOUND)
                         {
                             continue;
                         }
@@ -305,12 +305,12 @@ namespace Luna
                 {
                     if(node->path.empty())
                     {
-                        return set_error(BasicError::bad_arguments(), "Make node path cannot be empty.");
+                        return set_error(E_BAD_ARGUMENTS, "Make node path cannot be empty.");
                     }
                     auto iter = nodes_by_path.find(node->path);
                     if(iter != nodes_by_path.end() && iter->second != node)
                     {
-                        return set_error(BasicError::bad_arguments(), "Duplicate make node path: %s", node->path.encode().c_str());
+                        return set_error(E_BAD_ARGUMENTS, "Duplicate make node path: %s", node->path.encode().c_str());
                     }
                     nodes_by_path.insert_or_assign(node->path, node);
                 }
@@ -323,7 +323,7 @@ namespace Luna
         {
             if(visiting.contains(node))
             {
-                return set_error(BasicError::bad_arguments(), "Circular dependency detected at node: %s", node->path.encode().c_str());
+                return set_error(E_BAD_ARGUMENTS, "Circular dependency detected at node: %s", node->path.encode().c_str());
             }
             if(!visited.insert(node).second)
             {
@@ -393,7 +393,7 @@ namespace Luna
                 if(!env->m_cancelled)
                 {
                     env->m_cancelled = true;
-                    if(r.errcode() == BasicError::error_object())
+                    if(r.errcode() == E_ERROR_OBJECT)
                     {
                         env->m_error = get_error();
                     }
@@ -522,7 +522,7 @@ namespace Luna
                     {
                         if(node->kind == MakeNodeKind::file && missing_file && !generated_side_nodes.contains(node))
                         {
-                            return set_error(BasicError::not_found(), "Input file node is missing and has no command: %s", node->path.encode().c_str());
+                            return set_error(E_NOT_FOUND, "Input file node is missing and has no command: %s", node->path.encode().c_str());
                         }
                         should_build = node->kind == MakeNodeKind::phony ? dependency_needs_build : false;
                     }
@@ -597,7 +597,7 @@ namespace Luna
                     }
                     if(ready_indices.empty())
                     {
-                        return set_error(BasicError::bad_arguments(), "Internal MakeSystem scheduler deadlock.");
+                        return set_error(E_BAD_ARGUMENTS, "Internal MakeSystem scheduler deadlock.");
                     }
 
                     Vector<JobSystem::job_id_t> job_ids;
@@ -632,7 +632,7 @@ namespace Luna
                     if(env.m_cancelled)
                     {
                         get_error() = env.m_error;
-                        return BasicError::error_object();
+                        return E_ERROR_OBJECT;
                     }
                     usize job_ctx_index = 0;
                     for(usize index : ready_indices)
@@ -644,7 +644,7 @@ namespace Luna
                         }
                         if(!job_ctxs[job_ctx_index]->m_succeeded)
                         {
-                            return set_error(BasicError::bad_arguments(), "Build command failed for node %s", info.node->path.encode().c_str());
+                            return set_error(E_BAD_ARGUMENTS, "Build command failed for node %s", info.node->path.encode().c_str());
                         }
                         ++job_ctx_index;
                         luexp(validate_outputs(info.node));
@@ -691,7 +691,7 @@ namespace Luna
                 return Ref<IMakeSystem>(ret);
             }
             lucatchret;
-            return BasicError::error_object();
+            return E_ERROR_OBJECT;
         }
     }
 

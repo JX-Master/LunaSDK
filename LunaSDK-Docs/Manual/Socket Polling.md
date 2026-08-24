@@ -2,7 +2,7 @@
 #include <Luna/Network/SocketPoller.hpp>
 ```
 
-Socket polling lets one reactor thread wait efficiently for readiness on multiple non-blocking Network sockets. It completes the scheduling side of the non-blocking socket API: socket operations report `BasicError::not_ready`, and a socket poller tells the reactor when an operation may make progress again.
+Socket polling lets one reactor thread wait efficiently for readiness on multiple non-blocking Network sockets. It completes the scheduling side of the non-blocking socket API: socket operations report `E_NOT_READY`, and a socket poller tells the reactor when an operation may make progress again.
 
 The poller does not receive, send, accept, dispatch callbacks, or own an application event loop. Protocol implementations such as HTTP retain control of buffers, connection state, work quotas, and error handling.
 
@@ -66,7 +66,7 @@ lulet(listener_token, poller->add(
     listener_context));
 ```
 
-When the listener becomes readable, call `accept` repeatedly until it returns `BasicError::not_ready`, subject to the reactor's fairness quota. Register every accepted socket that should remain active.
+When the listener becomes readable, call `accept` repeatedly until it returns `E_NOT_READY`, subject to the reactor's fairness quota. Register every accepted socket that should remain active.
 
 ### Starting a TCP connection
 
@@ -98,7 +98,7 @@ default:
 
 ### Managing read and write interests
 
-Keep `readable` enabled while the protocol accepts inbound data. On a read event, call `receive` until it returns `BasicError::not_ready`, reaches the connection's work quota, or reports zero received bytes.
+Keep `readable` enabled while the protocol accepts inbound data. On a read event, call `receive` until it returns `E_NOT_READY`, reaches the connection's work quota, or reports zero received bytes.
 
 Enable `writable` only when a connection is still connecting or has unsent output. Connected TCP sockets are normally writable, so leaving the interest enabled without pending output causes the reactor to spin.
 
@@ -127,11 +127,11 @@ for(usize i = 0; i < event_count; ++i)
 }
 ```
 
-`poll` may return `BasicError::interrupted`; the reactor can process its other work and retry. A return value of zero means the timeout expired or `wake` interrupted the wait without a socket event.
+`poll` may return `E_INTERRUPTED`; the reactor can process its other work and retry. A return value of zero means the timeout expired or `wake` interrupted the wait without a socket event.
 
 ### Removing and closing sockets
 
-Unregister a socket before closing it. Removed or stale tokens return `BasicError::not_found` from later `modify` and `remove` calls.
+Unregister a socket before closing it. Removed or stale tokens return `E_NOT_FOUND` from later `modify` and `remove` calls.
 
 ```c++
 lupanic_if_failed(poller->remove(token));

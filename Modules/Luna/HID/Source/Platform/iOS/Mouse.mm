@@ -39,7 +39,7 @@ namespace Luna
         {
             (void)x;
             (void)y;
-            return BasicError::not_supported();
+            return E_NOT_SUPPORTED;
         }
     }
 }

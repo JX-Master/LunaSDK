@@ -96,7 +96,7 @@ namespace Luna
         {
             if (index >= XUSER_MAX_COUNT)
             {
-                return BasicError::bad_platform_call();
+                return E_BAD_PLATFORM_CALL;
             }
             XINPUT_VIBRATION vib;
             f32 lb = clamp(state.left_vibration, 0.0f, 1.0f);
@@ -104,7 +104,7 @@ namespace Luna
             vib.wLeftMotorSpeed = (WORD)(lb * 65535.0f);
             vib.wRightMotorSpeed = (WORD)(rb * 65535.0f);
             DWORD r = XInputSetState(index, &vib);
-            return (r == ERROR_SUCCESS) ? RV() : BasicError::bad_platform_call();
+            return (r == ERROR_SUCCESS) ? RV() : E_BAD_PLATFORM_CALL;
         }
     }
 }

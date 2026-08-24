@@ -63,7 +63,7 @@ namespace Luna
                 }
                 else
                 {
-                    return BasicError::not_supported();
+                    return E_NOT_SUPPORTED;
                 }
             }
             lucatchret;
@@ -190,7 +190,7 @@ namespace Luna
                 }
                 else
                 {
-                    return BasicError::not_supported();
+                    return E_NOT_SUPPORTED;
                 }
             }
             lucatchret;

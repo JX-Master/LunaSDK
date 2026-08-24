@@ -339,7 +339,7 @@ namespace Luna
 
     //! A function wrapper that can store one callable object, and enable coping, moving and invoking of such callable object.
     //! @details The callable object can be a function pointer or a function object (types that overloads `operator()`).
-    //! 
+    //!
     //! The function wrapper stores one inline buffer with the size of `4 * sizeof(void*)` bytes. If the size and alignment
     //! requirement of the callable object is no greater than the size and alignment requirement of the inline buffer, the
     //! callable object is stored in the inline buffer directly without allocating heap memory. Otherwise, the callable

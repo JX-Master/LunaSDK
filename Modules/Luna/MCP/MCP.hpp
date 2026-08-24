@@ -155,14 +155,14 @@ namespace Luna
             //! Registers or replaces one exported MCP tool.
             //! @param[in] desc The tool descriptor and Frontend mapping to consume.
             //! @param[in] overwrite Whether an existing export with the same MCP name may be replaced.
-            //! @return Returns @ref BasicError::bad_arguments if the descriptor is invalid or the
-            //! mapped Frontend resource is not a function. Returns @ref BasicError::already_exists
+            //! @return Returns @ref E_BAD_ARGUMENTS if the descriptor is invalid or the
+            //! mapped Frontend resource is not a function. Returns @ref E_ALREADY_EXISTS
             //! when the name exists and `overwrite` is `false`.
             virtual RV set_tool(ToolDesc&& desc, bool overwrite = false) = 0;
 
             //! Removes an exported MCP tool. Removing an absent name succeeds without effect.
             //! @param[in] name The MCP tool name to remove.
-            //! @return Returns @ref BasicError::bad_arguments if `name` is empty.
+            //! @return Returns @ref E_BAD_ARGUMENTS if `name` is empty.
             virtual RV remove_tool(const Name& name) = 0;
 
             //! Gets the number of currently exported tools.
@@ -171,7 +171,7 @@ namespace Luna
 
             //! Creates one independent processor for a fixed protocol revision.
             //! @param[in] version The protocol revision processed by the new object.
-            //! @return The new processor, or @ref BasicError::bad_arguments for an invalid revision.
+            //! @return The new processor, or @ref E_BAD_ARGUMENTS for an invalid revision.
             virtual R<Ref<IMCPMessageProcessor>> new_message_processor(
                 ProtocolVersion version) = 0;
         };
@@ -179,7 +179,7 @@ namespace Luna
         //! Creates a dual-protocol MCP tools server backed by `frontend`.
         //! @param[in] frontend The Frontend instance to retain and invoke.
         //! @param[in] desc The implementation identity and cache configuration to copy.
-        //! @return Returns @ref BasicError::bad_arguments if `frontend` or `desc` is invalid.
+        //! @return Returns @ref E_BAD_ARGUMENTS if `frontend` or `desc` is invalid.
         LUNA_MCP_API R<Ref<IMCPServer>> new_server(
             Frontend::IFrontend* frontend,
             const ServerDesc& desc);

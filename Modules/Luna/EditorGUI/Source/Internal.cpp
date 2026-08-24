@@ -163,9 +163,9 @@ namespace Luna
                 const GUI::ElementHandle& element, const RectF& rect,
                 const Float4U& rect_layout_scale, f32 radius, Span<const RoundedRectEffect> effects)
             {
-                if(!context || effects.empty()) return BasicError::bad_arguments();
+                if(!context || effects.empty()) return E_BAD_ARGUMENTS;
                 const GUI::Element* element_data = context->get_element(element.index);
-                if(!element_data) return BasicError::bad_arguments();
+                if(!element_data) return E_BAD_ARGUMENTS;
                 const RectF& element_rect = element_data->layout_result.rect;
                 auto resolve_extent = [](f32 element_extent, f32 offset, f32 extent, f32 scale)
                 {
@@ -201,7 +201,7 @@ namespace Luna
                     {
                         range = GUI::sdf_color_add_solid(color_floats, effect.color);
                     }
-                    if(!range.valid()) return BasicError::bad_data();
+                    if(!range.valid()) return E_BAD_DATA;
                 }
                 auto color = context->append_sdf_color_program(color_floats.cspan());
                 if(failed(color)) return color.errcode();
@@ -257,7 +257,7 @@ namespace Luna
         {
             if(!context)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             return context->apply_layout(root, rect);
         }

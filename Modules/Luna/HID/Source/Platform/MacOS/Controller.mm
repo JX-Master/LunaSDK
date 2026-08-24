@@ -27,7 +27,7 @@ namespace Luna
         }
         LUNA_HID_API RV set_controller_state(u32 index, const ControllerOutputState& state)
         {
-            return BasicError::not_supported();
+            return E_NOT_SUPPORTED;
         }
     }
 }

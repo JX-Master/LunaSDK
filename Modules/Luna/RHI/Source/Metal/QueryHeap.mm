@@ -17,7 +17,7 @@ namespace Luna
         {
             m_desc = desc;
             m_buffer = [m_device->m_device newBufferWithLength:sizeof(u64) * desc.count options:encode_resource_options(RHI::MemoryType::readback)];
-            if(!m_buffer) return BasicError::bad_platform_call();
+            if(!m_buffer) return E_BAD_PLATFORM_CALL;
             return ok;
         }
         void BufferQueryHeap::set_name(const c8* name)
@@ -60,7 +60,7 @@ namespace Luna
                         break;
                     }
                 }
-                if(!target_counter_set) return BasicError::not_supported();
+                if(!target_counter_set) return E_NOT_SUPPORTED;
                 
                 MTLCounterSampleBufferDescriptor* d = [[MTLCounterSampleBufferDescriptor alloc]init];
                 d.counterSet = target_counter_set;
@@ -77,7 +77,7 @@ namespace Luna
                 if(!m_buffer)
                 {
                     NSString* err_desc = [err description];
-                    return set_error(BasicError::bad_platform_call(), "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
+                    return set_error(E_BAD_PLATFORM_CALL, "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
                 }
                 return ok;
             }
@@ -86,13 +86,13 @@ namespace Luna
         {
             @autoreleasepool
             {
-                if(m_desc.type != QueryType::timestamp && m_desc.type != QueryType::timestamp_copy_queue) return BasicError::not_supported();
+                if(m_desc.type != QueryType::timestamp && m_desc.type != QueryType::timestamp_copy_queue) return E_NOT_SUPPORTED;
                 NSRange range;
                 range.location = index;
                 range.length = count;
                 NSData* data = [m_buffer resolveCounterRange:range];
                 NSUInteger resolved_samples = data.length / sizeof(MTLCounterResultTimestamp);
-                if(resolved_samples < count) return BasicError::bad_platform_call();
+                if(resolved_samples < count) return E_BAD_PLATFORM_CALL;
                 const MTLCounterResultTimestamp* src = (const MTLCounterResultTimestamp*)data.bytes;
                 for(usize i = 0; i < count; ++i)
                 {
@@ -105,14 +105,14 @@ namespace Luna
         {
             @autoreleasepool
             {
-                if(m_desc.type != QueryType::pipeline_statistics) return BasicError::not_supported();
+                if(m_desc.type != QueryType::pipeline_statistics) return E_NOT_SUPPORTED;
                 usize num_samples_per_count = sizeof(PipelineStatistics) / sizeof(u64);
                 NSRange range;
                 range.location = index * 2;
                 range.length = count * 2;
                 NSData* data = [m_buffer resolveCounterRange:range];
                 NSUInteger resolved_samples = data.length / sizeof(MTLCounterResultStatistic);
-                if(resolved_samples < count) return BasicError::bad_platform_call();
+                if(resolved_samples < count) return E_BAD_PLATFORM_CALL;
                 const MTLCounterResultStatistic* src = (const MTLCounterResultStatistic*)data.bytes;
                 for(usize i = 0; i < count; ++i)
                 {

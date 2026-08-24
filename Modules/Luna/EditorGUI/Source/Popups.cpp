@@ -44,7 +44,7 @@ namespace Luna
                 GUI::DrawPhase, void* userdata)
             {
                 PopupPanelDrawData* data = (PopupPanelDrawData*)userdata;
-                if(!data || !data->prefix) return BasicError::bad_arguments();
+                if(!data || !data->prefix) return E_BAD_ARGUMENTS;
                 const c8* prefix = data->prefix;
                 String name;
                 strprintf(name, "gui.%s.background", prefix);

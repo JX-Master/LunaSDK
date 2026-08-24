@@ -2,7 +2,7 @@
 * This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
-* 
+*
 * @file ErrorTest.cpp
 * @author JXMaster
 * @date 2020/2/23
@@ -10,82 +10,81 @@
 #include "TestCommon.hpp"
 #include <Luna/Runtime/Error.hpp>
 #include <Luna/Runtime/HashSet.hpp>
+#include <Luna/Runtime/Result.hpp>
 
 namespace Luna
 {
+    constexpr u32 TEST_ERROR_DOMAIN = 0x81234567;
+    constexpr u16 TEST_ERROR_CATEGORY_ID = 0x89AB;
+    constexpr errcat_t TEST_ERROR_CATEGORY = make_error_category(TEST_ERROR_DOMAIN, TEST_ERROR_CATEGORY_ID);
+    constexpr ResultCode E_TEST_FAILURE = make_error_code(TEST_ERROR_DOMAIN, TEST_ERROR_CATEGORY_ID, -1);
+    constexpr ResultCode E_TEST_MIN_FAILURE = make_error_code(TEST_ERROR_DOMAIN, TEST_ERROR_CATEGORY_ID, -32768);
+    constexpr ResultCode S_TEST_ZERO_STATUS = make_error_code(TEST_ERROR_DOMAIN, TEST_ERROR_CATEGORY_ID, 0);
+    constexpr ResultCode S_TEST_POSITIVE_STATUS = make_error_code(TEST_ERROR_DOMAIN, TEST_ERROR_CATEGORY_ID, 1);
+    constexpr ResultCode S_TEST_MAX_STATUS = make_error_code(TEST_ERROR_DOMAIN, TEST_ERROR_CATEGORY_ID, 32767);
+
+    static_assert(E_TEST_FAILURE.code == 0x8123456789ABFFFF);
+    static_assert(sizeof(ResultCode) == sizeof(u64));
+    static_assert(is_registered_error_domain(0x7FFFFFFF));
+    static_assert(!is_registered_error_domain(TEST_ERROR_DOMAIN));
+    static_assert(is_self_allocated_error_domain(TEST_ERROR_DOMAIN));
+    static_assert(get_error_code_domain(E_TEST_FAILURE) == TEST_ERROR_DOMAIN);
+    static_assert(get_error_code_category_id(E_TEST_FAILURE) == TEST_ERROR_CATEGORY_ID);
+    static_assert(get_error_code_result(E_TEST_FAILURE) == -1);
+    static_assert(get_error_code_result(E_TEST_MIN_FAILURE) == -32768);
+    static_assert(failed(E_TEST_FAILURE));
+    static_assert(failed(E_TEST_MIN_FAILURE));
+    static_assert(succeeded(ResultCode()));
+    static_assert(succeeded(S_TEST_ZERO_STATUS));
+    static_assert(succeeded(S_TEST_POSITIVE_STATUS));
+    static_assert(get_error_code_result(S_TEST_MAX_STATUS) == 32767);
+    static_assert(succeeded(S_TEST_MAX_STATUS));
+    static_assert(is_plain_success(ResultCode()));
+    static_assert(!is_plain_success(S_TEST_ZERO_STATUS));
+    static_assert(is_informative_success(S_TEST_ZERO_STATUS));
+    static_assert(is_informative_success(S_TEST_POSITIVE_STATUS));
+    static_assert(is_informative_success(make_error_code(TEST_ERROR_DOMAIN, 0, 0)));
+    static_assert(is_informative_success(make_error_code(0, 1, 0)));
+    static_assert(get_error_code_category(E_TEST_FAILURE) == TEST_ERROR_CATEGORY);
+    static_assert(ok.valid());
+    static_assert(is_plain_success(ok.errcode()));
+
     void error_test()
     {
-        /*
-        prototype:
+        lutest(!strcmp(get_error_category_name(ERROR_CATEGORY), "Runtime"));
+        lutest(register_error_category(TEST_ERROR_CATEGORY, "TestError"));
+        lutest(register_error_category(TEST_ERROR_CATEGORY, "TestError"));
+        lutest(!register_error_category(TEST_ERROR_CATEGORY, "ConflictingTestError"));
 
-        errtype TestError
-        {
-            err1,
-            err2,
-            err3,
-            err4,
+        lutest(register_error_code(E_TEST_FAILURE, "failure", "Test failure."));
+        lutest(register_error_code(S_TEST_ZERO_STATUS, "zero_status", "Successful status with a zero local result."));
+        lutest(register_error_code(S_TEST_POSITIVE_STATUS, "positive_status", "Successful status with a positive local result."));
+        lutest(register_error_code(E_TEST_FAILURE, "failure", "Test failure."));
+        lutest(!register_error_code(E_TEST_FAILURE, "renamed_failure", "Test failure."));
 
-            SubError
-            {
-                err5,
-                err6,
-                err7,
-                err8,
-                err9,
-            }
-        }
-        */
+        lutest(!strcmp(get_error_category_name(TEST_ERROR_CATEGORY), "TestError"));
+        lutest(!strcmp(get_error_code_name(E_TEST_FAILURE), "failure"));
+        lutest(!strcmp(get_error_code_description(E_TEST_FAILURE), "Test failure."));
+        lutest(!strcmp(explain(E_TEST_FAILURE), "Test failure."));
 
-        ErrCode err1 = get_error_code_by_name("TestError", "err1");
-        ErrCode err2 = get_error_code_by_name("TestError", "err2");
-        ErrCode err3 = get_error_code_by_name("TestError", "err3");
-        ErrCode err4 = get_error_code_by_name("TestError", "err4");
-        ErrCode err5 = get_error_code_by_name("TestError::SubError", "err5");
-        ErrCode err6 = get_error_code_by_name("TestError::SubError", "err6");
-        ErrCode err7 = get_error_code_by_name("TestError::SubError", "err7");
-        ErrCode err8 = get_error_code_by_name("TestError::SubError", "err8");
-        ErrCode err9 = get_error_code_by_name("TestError::SubError", "err9");
-
-        errcat_t test_error = get_error_category_by_name("TestError");
-        auto errs = get_all_error_codes_of_category(test_error);
-        auto subcats = get_all_error_subcategories_of_category(test_error);
-        errcat_t sub_error = get_error_category_by_name("TestError::SubError");
-        auto suberrs = get_all_error_codes_of_category(sub_error);
-
-        lutest(subcats.size() == 1);
-        lutest(errs.size() == 4);
-        lutest(suberrs.size() == 5);
-        lutest(subcats[0] == sub_error);
-
-        lutest(get_error_code_category(err1) == test_error);
-        lutest(get_error_code_category(err2) == test_error);
-        lutest(get_error_code_category(err3) == test_error);
-        lutest(get_error_code_category(err4) == test_error);
-        lutest(get_error_code_category(err5) == sub_error);
-        lutest(get_error_code_category(err6) == sub_error);
-        lutest(get_error_code_category(err7) == sub_error);
-        lutest(get_error_code_category(err8) == sub_error);
-        lutest(get_error_code_category(err9) == sub_error);
-
-        HashSet<ErrCode> s1;
-        for (auto i : errs)
-        {
-            s1.insert(i);
-        }
-        HashSet<ErrCode> s2;
-        for (auto i : suberrs)
-        {
-            s2.insert(i);
-        }
-
-        lutest(s1.contains(err1));
-        lutest(s1.contains(err2));
-        lutest(s1.contains(err3));
-        lutest(s1.contains(err4));
-        lutest(s2.contains(err5));
-        lutest(s2.contains(err6));
-        lutest(s2.contains(err7));
-        lutest(s2.contains(err8));
-        lutest(s2.contains(err9));
+        auto codes = get_all_error_codes_of_category(TEST_ERROR_CATEGORY);
+        lutest(codes.size() == 3);
+        HashSet<ResultCode> code_set;
+        for(ResultCode code : codes) code_set.insert(code);
+        lutest(code_set.contains(E_TEST_FAILURE));
+        lutest(code_set.contains(S_TEST_ZERO_STATUS));
+        lutest(code_set.contains(S_TEST_POSITIVE_STATUS));
+        RV plain_success;
+        RV informative_success(S_TEST_ZERO_STATUS);
+        R<i32> value_with_status(42, S_TEST_POSITIVE_STATUS);
+        R<i32> failure(E_TEST_FAILURE);
+        lutest(plain_success.valid());
+        lutest(informative_success.valid());
+        lutest(is_informative_success(informative_success.errcode()));
+        lutest(value_with_status.valid());
+        lutest(value_with_status.get() == 42);
+        lutest(value_with_status.errcode() == S_TEST_POSITIVE_STATUS);
+        lutest(!failure.valid());
+        lutest(failure.errcode() == E_TEST_FAILURE);
     }
 }

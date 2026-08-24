@@ -31,9 +31,9 @@ namespace Luna
                 {
                     return ok;
                 }
-                return set_error(BasicError::bad_arguments(), "Path exists but is not a directory: %s", dir_str.c_str());
+                return set_error(E_BAD_ARGUMENTS, "Path exists but is not a directory: %s", dir_str.c_str());
             }
-            if(attr.errcode() != BasicError::not_found())
+            if(attr.errcode() != E_NOT_FOUND)
             {
                 return attr.errcode();
             }
@@ -45,7 +45,7 @@ namespace Luna
                 if(failed(r)) return r;
             }
             auto r = create_dir(dir_str.c_str());
-            if(failed(r) && r.errcode() != BasicError::already_exists())
+            if(failed(r) && r.errcode() != E_ALREADY_EXISTS)
             {
                 return r;
             }
@@ -102,7 +102,7 @@ namespace Luna
         {
             LockGuard guard(m_lock);
             auto iter = m_records.find(path);
-            if(iter == m_records.end()) return BasicError::not_found();
+            if(iter == m_records.end()) return E_NOT_FOUND;
             return iter->second;
         }
         void BuildCache::set_record(const Path& path, const BuildCacheRecord& record)

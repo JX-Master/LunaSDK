@@ -121,7 +121,7 @@ namespace Luna::GUITest
             const GUI::ElementHandle&, GUI::DrawPhase, void* userdata)
         {
             SheetState* state = (SheetState*)userdata;
-            if(!state) return BasicError::bad_arguments();
+            if(!state) return E_BAD_ARGUMENTS;
             f32 time = state->animation_time;
 
             draw_rect(context, RectF(0.0f, 0.0f, SECTION_WIDTH, SECTION_HEIGHT),
@@ -188,7 +188,7 @@ namespace Luna::GUITest
         {
             const GlassMaterialSample* material =
                 (const GlassMaterialSample*)userdata;
-            if(!material) return BasicError::bad_arguments();
+            if(!material) return E_BAD_ARGUMENTS;
 
             GUI::ShadowDesc shadow;
             shadow.offset = Float2U(0.0f, 10.0f);

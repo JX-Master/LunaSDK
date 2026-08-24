@@ -40,30 +40,30 @@ namespace Luna
     }
     //! @addtogroup RHI
     //! @{
-    //! @defgroup RHIError RHI Errors
+    //! @defgroup RHIResultCodes RHI Result Codes
     //! @}
-    namespace RHIError
+    namespace RHI
     {
-        //! @addtogroup RHIError
+        //! @addtogroup RHIResultCodes
         //! @{
         
-        LUNA_RHI_API errcat_t errtype();
-        //! The application's device failed due to badly formed commands sent by the application. This is an design-time issue that should be investigated and fixed.
-        LUNA_RHI_API ErrCode device_hung();
-        //! The device failed due to a badly formed command. This is a run-time issue; The application should destroy and recreate the device.
-        LUNA_RHI_API ErrCode device_reset();
-        //! The video card has been physically removed from the system, or a driver upgrade for the video card has occurred. The application should destroy and recreate the device.
-        //! Sending badly formed commands to the device will also cause device being (virtually) removed from the application.
-        LUNA_RHI_API ErrCode device_removed();
-        //! The driver encountered a problem and was put into the device removed state.
-        LUNA_RHI_API ErrCode driver_internal_error();
-        //! An event (for example, a power cycle) interrupted the gathering of presentation statistics.
-        LUNA_RHI_API ErrCode frame_statistics_disjoint();
-        //! The swap chain is no longer compatible with the surface and should be reset.
-        LUNA_RHI_API ErrCode swap_chain_out_of_date();
-        //! The color space format is not supported by the current backend.
-        LUNA_RHI_API ErrCode color_space_not_supported();
-        
+        //! The RHI error category identifier.
+        inline constexpr errcat_t ERROR_CATEGORY = make_error_category(ErrorDomain::LUNA_SDK, LunaErrorCategory::RHI);
+        //! The device failed because the application submitted invalid commands.
+        inline constexpr ResultCode E_DEVICE_HUNG = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::RHI, -1);
+        //! The device was reset and must be recreated.
+        inline constexpr ResultCode E_DEVICE_RESET = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::RHI, -2);
+        //! The graphics device was removed or became unavailable.
+        inline constexpr ResultCode E_DEVICE_REMOVED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::RHI, -3);
+        //! The graphics driver reported an internal error.
+        inline constexpr ResultCode E_DRIVER_INTERNAL_ERROR = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::RHI, -4);
+        //! Presentation statistics were interrupted and are disjoint.
+        inline constexpr ResultCode E_FRAME_STATISTICS_DISJOINT = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::RHI, -5);
+        //! The swap chain is no longer compatible with its surface.
+        inline constexpr ResultCode E_SWAP_CHAIN_OUT_OF_DATE = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::RHI, -6);
+        //! The requested color space is not supported.
+        inline constexpr ResultCode E_COLOR_SPACE_NOT_SUPPORTED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::RHI, -7);
+
         //! @}
     }
     

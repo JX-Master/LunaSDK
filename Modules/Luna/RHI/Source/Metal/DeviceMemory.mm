@@ -19,7 +19,7 @@ namespace Luna
             lutry
             {
                 m_heap = [m_device->m_device newHeapWithDescriptor:desc];
-                if(!m_heap) return BasicError::bad_platform_call();
+                if(!m_heap) return E_BAD_PLATFORM_CALL;
                 m_size = m_heap.size;
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
                 memory_profiler_allocate((__bridge void*)m_heap, m_size);

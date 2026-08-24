@@ -269,7 +269,7 @@ namespace Luna
         RV Window::set_foreground()
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             @autoreleasepool
             {
                 NSWindow* window = (NSWindow*)m_window;
@@ -304,7 +304,7 @@ namespace Luna
         RV Window::set_minimized()
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             @autoreleasepool
             {
                 NSWindow* window = (NSWindow*)m_window;
@@ -316,7 +316,7 @@ namespace Luna
         RV Window::set_maximized()
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             @autoreleasepool
             {
                 NSWindow* window = (NSWindow*)m_window;
@@ -331,7 +331,7 @@ namespace Luna
         RV Window::set_restored()
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             @autoreleasepool
             {
                 NSWindow* window = (NSWindow*)m_window;
@@ -374,7 +374,7 @@ namespace Luna
         RV Window::set_visible(bool visible)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             @autoreleasepool
             {
                 NSWindow* window = (NSWindow*)m_window;
@@ -417,7 +417,7 @@ namespace Luna
         RV Window::set_style(WindowStyleFlag style)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             @autoreleasepool
             {
                 NSWindow* window = (NSWindow*)m_window;
@@ -462,7 +462,7 @@ namespace Luna
         RV Window::set_position(i32 x, i32 y)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             @autoreleasepool
             {
                 NSWindow* window = (NSWindow*)m_window;
@@ -493,7 +493,7 @@ namespace Luna
         RV Window::set_size(u32 width, u32 height)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             @autoreleasepool
             {
                 NSWindow* window = (NSWindow*)m_window;
@@ -533,7 +533,7 @@ namespace Luna
         RV Window::set_title(const c8* title)
         {
             lutsassert_main_thread();
-            if (is_closed()) return BasicError::bad_calling_time();
+            if (is_closed()) return E_BAD_CALLING_TIME;
             @autoreleasepool
             {
                 NSWindow* window = (NSWindow*)m_window;
@@ -747,7 +747,7 @@ namespace Luna
                 
                 if (!window)
                 {
-                    return set_error(BasicError::bad_platform_call(), "Failed to create NSWindow");
+                    return set_error(E_BAD_PLATFORM_CALL, "Failed to create NSWindow");
                 }
                 
                 // Set title

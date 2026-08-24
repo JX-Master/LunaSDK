@@ -2,7 +2,7 @@
 * This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
-* 
+*
 * @file StdIOTest.cpp
 * @author JXMaster
 * @date 2026/8/14
@@ -123,7 +123,7 @@ namespace Luna
         CloseHandle(write_pipe_handle);
 
         lutest(!result.valid());
-        lutest(result.errcode() == BasicError::bad_pipe());
+        lutest(result.errcode() == E_BAD_PIPE);
         lutest(write_bytes == 0);
     }
 #else
@@ -229,7 +229,7 @@ namespace Luna
         ::close(old_standard_output);
 
         lutest(!result.valid());
-        lutest(result.errcode() == BasicError::bad_pipe());
+        lutest(result.errcode() == E_BAD_PIPE);
         lutest(write_bytes == 0);
     }
 #endif

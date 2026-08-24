@@ -14,6 +14,30 @@
 #include <Luna/Runtime/Module.hpp>
 namespace Luna
 {
+    static RV register_ahi_error_codes()
+    {
+        if (!register_error_category(AHI::ERROR_CATEGORY, "AHI") ||
+            !register_error_code(AHI::E_FORMAT_NOT_SUPPORTED, "format_not_supported", "The audio format is not supported.") ||
+            !register_error_code(AHI::E_DEVICE_TYPE_NOT_SUPPORTED, "device_type_not_supported", "The audio device type is not supported.") ||
+            !register_error_code(AHI::E_SHARE_MODE_NOT_SUPPORTED, "share_mode_not_supported", "The audio sharing mode is not supported.") ||
+            !register_error_code(AHI::E_NO_BACKEND, "no_backend", "No audio backend is available.") ||
+            !register_error_code(AHI::E_NO_DEVICE, "no_device", "No matching audio device is available.") ||
+            !register_error_code(AHI::E_API_NOT_FOUND, "api_not_found", "The requested audio API was not found.") ||
+            !register_error_code(AHI::E_BAD_DEVICE_CONFIG, "bad_device_config", "The audio device configuration is invalid.") ||
+            !register_error_code(AHI::E_LOOP, "loop", "An audio routing loop was detected.") ||
+            !register_error_code(AHI::E_DEVICE_NOT_STARTED, "device_not_started", "The audio device has not been started.") ||
+            !register_error_code(AHI::E_DEVICE_NOT_STOPPED, "device_not_stopped", "The audio device has not been stopped.") ||
+            !register_error_code(AHI::E_FAILED_TO_INIT_BACKEND, "failed_to_init_backend", "The audio backend failed to initialize.") ||
+            !register_error_code(AHI::E_FAILED_TO_OPEN_BACKEND_DEVICE, "failed_to_open_backend_device", "The backend audio device failed to open.") ||
+            !register_error_code(AHI::E_FAILED_TO_START_BACKEND_DEVICE, "failed_to_start_backend_device", "The backend audio device failed to start.") ||
+            !register_error_code(AHI::E_FAILED_TO_STOP_BACKEND_DEVICE, "failed_to_stop_backend_device", "The backend audio device failed to stop.") ||
+            !register_error_code(AHI::E_BACKEND_NOT_ENABLED, "backend_not_enabled", "The requested audio backend is not enabled in this build."))
+        {
+            return set_error(E_ALREADY_EXISTS, "AHI error metadata conflicts with an existing registration.");
+        }
+        return ok;
+    }
+
     namespace AHI
     {
         RV init()
@@ -27,6 +51,10 @@ namespace Luna
         struct AHIModule : public Module
         {
             virtual const c8* get_name() override { return "AHI"; }
+            virtual RV on_register() override
+            {
+                return register_ahi_error_codes();
+            }
             virtual RV on_init() override
             {
                 return platform_init();
@@ -41,88 +69,5 @@ namespace Luna
     {
         static AHI::AHIModule m;
         return &m;
-    }
-    namespace AHIError
-    {
-        LUNA_AHI_API errcat_t errtype()
-        {
-            static errcat_t e = get_error_category_by_name("AHIError");
-            return e;
-        }
-        LUNA_AHI_API ErrCode format_not_supported()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "format_not_supported");
-            return e;
-        }
-        LUNA_AHI_API ErrCode device_type_not_supported()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "device_type_not_supported");
-            return e;
-        }
-        LUNA_AHI_API ErrCode share_mode_not_supported()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "share_mode_not_supported");
-            return e;
-        }
-        LUNA_AHI_API ErrCode no_backend()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "no_backend");
-            return e;
-        }
-        LUNA_AHI_API ErrCode no_device()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "no_device");
-            return e;
-        }
-        LUNA_AHI_API ErrCode api_not_found()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "api_not_found");
-            return e;
-        }
-        LUNA_AHI_API ErrCode bad_device_config()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "bad_device_config");
-            return e;
-        }
-        LUNA_AHI_API ErrCode loop()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "loop");
-            return e;
-        }
-        LUNA_AHI_API ErrCode backend_not_enabled()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "backend_not_enabled");
-            return e;
-        }
-        LUNA_AHI_API ErrCode device_not_started()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "device_not_started");
-            return e;
-        }
-        LUNA_AHI_API ErrCode device_not_stopped()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "device_not_stopped");
-            return e;
-        }
-        LUNA_AHI_API ErrCode failed_to_init_backend()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "failed_to_init_backend");
-            return e;
-        }
-        LUNA_AHI_API ErrCode failed_to_open_backend_device()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "failed_to_open_backend_device");
-            return e;
-        }
-        LUNA_AHI_API ErrCode failed_to_start_backend_device()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "failed_to_start_backend_device");
-            return e;
-        }
-        LUNA_AHI_API ErrCode failed_to_stop_backend_device()
-        {
-            static ErrCode e = get_error_code_by_name("AHIError", "failed_to_stop_backend_device");
-            return e;
-        }
     }
 }

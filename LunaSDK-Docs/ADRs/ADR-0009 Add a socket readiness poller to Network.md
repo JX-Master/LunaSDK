@@ -5,14 +5,14 @@ Approved.
 2026/8/14
 
 ## Background
-ADR-0008 changed Network sockets to permanently non-blocking APIs. Non-blocking operations report `BasicError::not_ready`, but the module currently provides no platform-independent way to wait until one of several sockets can make progress. A consumer must otherwise busy-retry, periodically sleep, or use `ISocket::get_native_handle` with platform-specific polling code.
+ADR-0008 changed Network sockets to permanently non-blocking APIs. Non-blocking operations report `E_NOT_READY`, but the module currently provides no platform-independent way to wait until one of several sockets can make progress. A consumer must otherwise busy-retry, periodically sleep, or use `ISocket::get_native_handle` with platform-specific polling code.
 
 The planned HTTP service layer needs to manage listeners and multiple client connections without dedicating a blocked thread to each socket. The same readiness facility will also be useful to other Network consumers, so implementing it privately in HTTP would duplicate the platform abstraction.
 
 Runtime's `IWaitable` represents one synchronization object with blocking `wait` and non-blocking `try_wait`. It does not represent read and write interests, return multiple ready objects, support a timeout, or provide the error and hang-up hints required by sockets. Making sockets implement `IWaitable` would therefore lose essential readiness information and conflate synchronization objects with network endpoints.
 
 ## Decision
-Network provides a socket-specific readiness poller in a separate public `SocketPoller.hpp` header. The poller uses level-triggered readiness and does not perform socket I/O on behalf of the caller. A consumer reacts to an event by calling `accept`, `receive`, `send`, or `get_status` until the operation reports `BasicError::not_ready` or its immediate work quota is exhausted.
+Network provides a socket-specific readiness poller in a separate public `SocketPoller.hpp` header. The poller uses level-triggered readiness and does not perform socket I/O on behalf of the caller. A consumer reacts to an event by calling `accept`, `receive`, `send`, or `get_status` until the operation reports `E_NOT_READY` or its immediate work quota is exhausted.
 
 The public API uses these concepts:
 
@@ -59,13 +59,13 @@ struct ISocketPoller : virtual Interface
 };
 ```
 
-`readable` and `writable` are registration interests. `error` and `hang_up` are output-only hints and are reported whenever the platform provides them for an active native registration. Passing output-only or unknown flags to `add` or `modify` returns `BasicError::bad_arguments`. `SocketEventFlag::none` creates or changes a registration to a dormant state without changing its token.
+`readable` and `writable` are registration interests. `error` and `hang_up` are output-only hints and are reported whenever the platform provides them for an active native registration. Passing output-only or unknown flags to `add` or `modify` returns `E_BAD_ARGUMENTS`. `SocketEventFlag::none` creates or changes a registration to a dormant state without changing its token.
 
 `readable` does not guarantee that bytes will be returned. It can also indicate a queued TCP connection, an orderly peer shutdown, or a pending socket error. `writable` does not prove that a non-blocking TCP connection succeeded. A connecting TCP socket must call `get_status` after a readiness notification and use `get_error` if the state becomes `error`. A connected socket must use the result of its next transfer operation as authoritative.
 
-Each successful `add` returns an opaque, non-zero token composed internally from a slot index and generation. Removing and reusing a slot changes its generation, so a delayed native event or stale caller token cannot refer to a newer registration. `modify` and `remove` return `BasicError::not_found` for invalid, removed, or stale tokens. Events referring to stale native tokens are silently discarded.
+Each successful `add` returns an opaque, non-zero token composed internally from a slot index and generation. Removing and reusing a slot changes its generation, so a delayed native event or stale caller token cannot refer to a newer registration. `modify` and `remove` return `E_NOT_FOUND` for invalid, removed, or stale tokens. Events referring to stale native tokens are silently discarded.
 
-A socket may be registered at most once in one poller. A duplicate `add` returns `BasicError::already_exists`. The poller retains one strong reference to every registered socket, but the application must still remove the registration before calling `ISocket::close`; retaining the object does not keep an explicitly closed native handle valid. Destroying the poller releases all retained references and platform resources.
+A socket may be registered at most once in one poller. A duplicate `add` returns `E_ALREADY_EXISTS`. The poller retains one strong reference to every registered socket, but the application must still remove the registration before calling `ISocket::close`; retaining the object does not keep an explicitly closed native handle valid. Destroying the poller releases all retained references and platform resources.
 
 `poll` waits until readiness, timeout, interruption, or an explicit wake. `timeout_ms == 0` performs a non-blocking query, and `U32_MAX` waits indefinitely. The output span must contain at least one element. The call writes no more than the span capacity and returns the number written. Multiple native notifications for the same token in one call are coalesced into one `SocketPollEvent`. Because readiness is level-triggered, events omitted due to output capacity remain observable while their conditions remain true.
 

@@ -73,7 +73,7 @@ namespace Luna
         //! ```
         float4 LUNA_SIMD_CALL quateulerangles_f4(float4 a);
 
-        //! Interpolates between two unit quaternions `a` and `b` using normalized linear interpolation, 
+        //! Interpolates between two unit quaternions `a` and `b` using normalized linear interpolation,
         //! and stores the result in `dst`.
         //! @details
         //! ```

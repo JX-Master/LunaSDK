@@ -23,7 +23,7 @@ namespace Luna
             if (!OpenClipboard(NULL))
             {
                 DWORD error = GetLastError();
-                return set_error(BasicError::bad_platform_call(), "OpenClipboard failed: %d", error);
+                return set_error(E_BAD_PLATFORM_CALL, "OpenClipboard failed: %d", error);
             }
             
             HANDLE hData = GetClipboardData(CF_UNICODETEXT);
@@ -31,7 +31,7 @@ namespace Luna
             {
                 DWORD error = GetLastError();
                 CloseClipboard();
-                return set_error(BasicError::bad_platform_call(), "GetClipboardData failed: %d", error);
+                return set_error(E_BAD_PLATFORM_CALL, "GetClipboardData failed: %d", error);
             }
             
             wchar_t* pszText = static_cast<wchar_t*>(GlobalLock(hData));
@@ -39,7 +39,7 @@ namespace Luna
             {
                 DWORD error = GetLastError();
                 CloseClipboard();
-                return set_error(BasicError::bad_platform_call(), "GlobalLock failed: %d", error);
+                return set_error(E_BAD_PLATFORM_CALL, "GlobalLock failed: %d", error);
             }
             
             // Convert UTF-16 to UTF-8
@@ -76,7 +76,7 @@ namespace Luna
             if (!hMem)
             {
                 DWORD error = GetLastError();
-                return set_error(BasicError::out_of_memory(), "GlobalAlloc failed: %d", error);
+                return set_error(E_OUT_OF_MEMORY, "GlobalAlloc failed: %d", error);
             }
             
             wchar_t* pszText = static_cast<wchar_t*>(GlobalLock(hMem));
@@ -84,7 +84,7 @@ namespace Luna
             {
                 DWORD error = GetLastError();
                 GlobalFree(hMem);
-                return set_error(BasicError::bad_platform_call(), "GlobalLock failed: %d", error);
+                return set_error(E_BAD_PLATFORM_CALL, "GlobalLock failed: %d", error);
             }
             
             utf8_to_utf16((char16_t*)pszText, utf16_size + 1, text, actual_size);
@@ -94,7 +94,7 @@ namespace Luna
             {
                 DWORD error = GetLastError();
                 GlobalFree(hMem);
-                return set_error(BasicError::bad_platform_call(), "OpenClipboard failed: %d", error);
+                return set_error(E_BAD_PLATFORM_CALL, "OpenClipboard failed: %d", error);
             }
             
             EmptyClipboard();
@@ -104,7 +104,7 @@ namespace Luna
                 DWORD error = GetLastError();
                 CloseClipboard();
                 GlobalFree(hMem);
-                return set_error(BasicError::bad_platform_call(), "SetClipboardData failed: %d", error);
+                return set_error(E_BAD_PLATFORM_CALL, "SetClipboardData failed: %d", error);
             }
             
             CloseClipboard();

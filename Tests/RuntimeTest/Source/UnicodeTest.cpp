@@ -87,15 +87,15 @@ namespace Luna
             R<usize> invalid_encode = utf8_encode_char(
                 unchanged_buffer, sizeof(unchanged_buffer), 0xD800);
             lucheck(failed(invalid_encode));
-            lucheck(invalid_encode.errcode() == BasicError::bad_data());
+            lucheck(invalid_encode.errcode() == E_BAD_DATA);
             lucheck(unchanged_buffer[0] == 1 && unchanged_buffer[1] == 2 &&
                 unchanged_buffer[2] == 3 && unchanged_buffer[3] == 4);
             invalid_encode = utf8_encode_char(unchanged_buffer, sizeof(unchanged_buffer), 0x110000);
             lucheck(failed(invalid_encode));
-            lucheck(invalid_encode.errcode() == BasicError::bad_data());
+            lucheck(invalid_encode.errcode() == E_BAD_DATA);
             invalid_encode = utf8_encode_char(unchanged_buffer, 3, 0x10000);
             lucheck(failed(invalid_encode));
-            lucheck(invalid_encode.errcode() == BasicError::insufficient_user_buffer());
+            lucheck(invalid_encode.errcode() == E_INSUFFICIENT_USER_BUFFER);
             lucheck(unchanged_buffer[0] == 1 && unchanged_buffer[1] == 2 &&
                 unchanged_buffer[2] == 3 && unchanged_buffer[3] == 4);
 
@@ -114,47 +114,47 @@ namespace Luna
             num_bytes = USIZE_MAX;
             result = utf8_decode_char(invalid_continuation, sizeof(invalid_continuation), &num_bytes);
             lucheck(failed(result));
-            lucheck(result.errcode() == BasicError::bad_data() && num_bytes == 0);
+            lucheck(result.errcode() == E_BAD_DATA && num_bytes == 0);
 
             c8 truncated_sequence[] = {(c8)0xF0, (c8)0x9F, (c8)0x92};
             result = utf8_decode_char(truncated_sequence, sizeof(truncated_sequence));
             lucheck(failed(result));
-            lucheck(result.errcode() == BasicError::end_of_file());
+            lucheck(result.errcode() == E_END_OF_FILE);
 
             c8 invalid_truncated_sequence[] = {(c8)0xE2, (c8)0x28};
             result = utf8_decode_char(invalid_truncated_sequence, sizeof(invalid_truncated_sequence));
             lucheck(failed(result));
-            lucheck(result.errcode() == BasicError::bad_data());
+            lucheck(result.errcode() == E_BAD_DATA);
 
             c8 overlong_sequence[] = {(c8)0xE0, (c8)0x80, (c8)0xAF};
             result = utf8_decode_char(overlong_sequence, sizeof(overlong_sequence));
             lucheck(failed(result));
-            lucheck(result.errcode() == BasicError::bad_data());
+            lucheck(result.errcode() == E_BAD_DATA);
 
             c8 invalid_two_byte_lead[] = {(c8)0xC0, (c8)0x80};
             result = utf8_decode_char(invalid_two_byte_lead, sizeof(invalid_two_byte_lead));
             lucheck(failed(result));
-            lucheck(result.errcode() == BasicError::bad_data());
+            lucheck(result.errcode() == E_BAD_DATA);
 
             c8 encoded_surrogate[] = {(c8)0xED, (c8)0xA0, (c8)0x80};
             result = utf8_decode_char(encoded_surrogate, sizeof(encoded_surrogate));
             lucheck(failed(result));
-            lucheck(result.errcode() == BasicError::bad_data());
+            lucheck(result.errcode() == E_BAD_DATA);
 
             c8 out_of_range[] = {(c8)0xF4, (c8)0x90, (c8)0x80, (c8)0x80};
             result = utf8_decode_char(out_of_range, sizeof(out_of_range));
             lucheck(failed(result));
-            lucheck(result.errcode() == BasicError::bad_data());
+            lucheck(result.errcode() == E_BAD_DATA);
 
             c8 invalid_four_byte_lead[] = {(c8)0xF5, (c8)0x80, (c8)0x80, (c8)0x80};
             result = utf8_decode_char(invalid_four_byte_lead, sizeof(invalid_four_byte_lead));
             lucheck(failed(result));
-            lucheck(result.errcode() == BasicError::bad_data());
+            lucheck(result.errcode() == E_BAD_DATA);
 
             c8 stray_continuation[] = {(c8)0x80};
             result = utf8_decode_char(stray_continuation, sizeof(stray_continuation));
             lucheck(failed(result));
-            lucheck(result.errcode() == BasicError::bad_data());
+            lucheck(result.errcode() == E_BAD_DATA);
         }
         // UTF-16: system-default endian.
         {

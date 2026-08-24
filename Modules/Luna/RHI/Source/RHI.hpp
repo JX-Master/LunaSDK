@@ -34,17 +34,17 @@ namespace Luna
         inline RV validate_texture_desc(TextureDesc& desc)
         {
             if(desc.width == 0 || desc.height == 0 || desc.depth == 0 || desc.array_size == 0)
-                return set_error(BasicError::bad_arguments(), "Invalid TextureDesc: width=%u, height=%u, depth=%u and array_size=%u must not be 0.", desc.width, desc.height, desc.depth, desc.array_size);
+                return set_error(E_BAD_ARGUMENTS, "Invalid TextureDesc: width=%u, height=%u, depth=%u and array_size=%u must not be 0.", desc.width, desc.height, desc.depth, desc.array_size);
             if(desc.type == TextureType::tex1d && (desc.height != 1 || desc.depth != 1))
-                return set_error(BasicError::bad_arguments(), "Invalid TextureDesc: height=%u and depth=%u must be 1 for TextureType::tex1d.", desc.height, desc.depth);
+                return set_error(E_BAD_ARGUMENTS, "Invalid TextureDesc: height=%u and depth=%u must be 1 for TextureType::tex1d.", desc.height, desc.depth);
             if(desc.type == TextureType::tex2d && desc.depth != 1)
-                return set_error(BasicError::bad_arguments(), "Invalid TextureDesc: depth=%u must be 1 for TextureType::tex2d.", desc.depth);
+                return set_error(E_BAD_ARGUMENTS, "Invalid TextureDesc: depth=%u must be 1 for TextureType::tex2d.", desc.depth);
             if(desc.type == TextureType::tex3d && desc.array_size != 1)
-                return set_error(BasicError::bad_arguments(), "Invalid TextureDesc: array_size=%u must be 1 for TextureType::tex3d.", desc.array_size);
+                return set_error(E_BAD_ARGUMENTS, "Invalid TextureDesc: array_size=%u must be 1 for TextureType::tex3d.", desc.array_size);
             if(test_flags(desc.usages, TextureUsageFlag::cube) && (desc.array_size % 6) != 0)
-                return set_error(BasicError::bad_arguments(), "Invalid TextureDesc: array_size=%u must be times of 6 if TextureUsageFlag::cube is set.", desc.array_size);
+                return set_error(E_BAD_ARGUMENTS, "Invalid TextureDesc: array_size=%u must be times of 6 if TextureUsageFlag::cube is set.", desc.array_size);
             if(desc.type != TextureType::tex2d && desc.sample_count != 1)
-                return set_error(BasicError::bad_arguments(), "Invalid TextureDesc: sample_count=%u must be 1 if type is not TextureType::tex2d.", desc.sample_count);
+                return set_error(E_BAD_ARGUMENTS, "Invalid TextureDesc: sample_count=%u must be 1 if type is not TextureType::tex2d.", desc.sample_count);
             if (desc.mip_levels == 0)
             {
                 if (is_depth_stencil_format(desc.format))

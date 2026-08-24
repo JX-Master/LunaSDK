@@ -74,10 +74,14 @@ namespace Luna
         LUNA_ECS_API Ref<IWorld> new_world();
     }
 
-    namespace ECSError
+    namespace ECS
     {
-        LUNA_ECS_API errcat_t errtype();
-        LUNA_ECS_API ErrCode entity_not_found();
-        LUNA_ECS_API ErrCode component_not_found();
+        //! The ECS error category identifier.
+        inline constexpr errcat_t ERROR_CATEGORY = make_error_category(ErrorDomain::LUNA_SDK, LunaErrorCategory::ECS);
+        //! The specified entity was not found.
+        inline constexpr ResultCode E_ENTITY_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ECS, -1);
+        //! The specified component was not found.
+        inline constexpr ResultCode E_COMPONENT_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ECS, -2);
+
     }
 }

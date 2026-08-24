@@ -248,7 +248,7 @@ void stdio_test(IMCPServer* server)
     String too_large_output = run_redirected_stdio(
         server, String("12345\n"), small_options, run_result);
     lutest(!run_result.valid());
-    lutest(unwrap_errcode(run_result.errcode()) == BasicError::data_too_big());
+    lutest(unwrap_errcode(run_result.errcode()) == E_DATA_TOO_BIG);
     lutest(too_large_output.empty());
 
     StdioServerOptions exact_options;
@@ -262,17 +262,17 @@ void stdio_test(IMCPServer* server)
     String incomplete_output = run_redirected_stdio(
         server, String("{}"), options, run_result);
     lutest(!run_result.valid());
-    lutest(unwrap_errcode(run_result.errcode()) == BasicError::bad_data());
+    lutest(unwrap_errcode(run_result.errcode()) == E_BAD_DATA);
     lutest(incomplete_output.empty());
 
     StdioServerOptions zero_options;
     zero_options.max_message_size = 0;
     RV zero_result = run_stdio_server(server, zero_options);
     lutest(!zero_result.valid());
-    lutest(zero_result.errcode() == BasicError::bad_arguments());
+    lutest(zero_result.errcode() == E_BAD_ARGUMENTS);
     RV null_result = run_stdio_server(nullptr, options);
     lutest(!null_result.valid());
-    lutest(null_result.errcode() == BasicError::bad_arguments());
+    lutest(null_result.errcode() == E_BAD_ARGUMENTS);
 }
 
 void stdio_legacy_test(IMCPServer* server)

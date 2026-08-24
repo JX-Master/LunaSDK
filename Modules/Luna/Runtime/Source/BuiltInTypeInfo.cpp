@@ -268,7 +268,7 @@ namespace Luna
     }
     static RV deserialize_vector(typeinfo_t type, void* inst, const Variant& data)
     {
-        if (data.type() != VariantType::array) return BasicError::bad_arguments();
+        if (data.type() != VariantType::array) return E_BAD_ARGUMENTS;
         VectorData* vec = (VectorData*)inst;
         typeinfo_t element_type = get_struct_generic_arguments(type)[0].type;
         usize element_size = get_type_size(element_type);
@@ -1010,7 +1010,7 @@ namespace Luna
     }
     static RV deserialize_array(typeinfo_t type, void* inst, const Variant& data)
     {
-        if (data.type() != VariantType::array) return BasicError::bad_arguments();
+        if (data.type() != VariantType::array) return E_BAD_ARGUMENTS;
         lutry
         {
             Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
@@ -1699,7 +1699,7 @@ namespace Luna
                     *v = Blob(data.blob_data(), data.blob_size(), data.blob_alignment());
                     return ok;
                 }
-                return BasicError::bad_data();
+                return E_BAD_DATA;
             };
             set_serializable(g_blob_type, &desc);
         }
@@ -1896,7 +1896,7 @@ namespace Luna
                         Guid type_guid;
                         luexp(deserialize(type_guid, data[0]));
                         typeinfo_t type = get_type_by_guid(type_guid);
-                        if(!type) return set_error(BasicError::bad_data(), "Deserialize Any failed: unknown type.");
+                        if(!type) return set_error(E_BAD_DATA, "Deserialize Any failed: unknown type.");
                         v->construct(type);
                         luexp(deserialize(type, v->data(), data[1]));
                     }

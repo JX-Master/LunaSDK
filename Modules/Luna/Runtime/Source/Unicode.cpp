@@ -16,8 +16,8 @@ namespace Luna
     LUNA_RUNTIME_API R<usize> utf8_encode_char(c8* dst, usize dst_size, c32 ch)
     {
         usize num_bytes = utf8_charspan(ch);
-        if(!num_bytes) return BasicError::bad_data();
-        if(dst_size < num_bytes) return BasicError::insufficient_user_buffer();
+        if(!num_bytes) return E_BAD_DATA;
+        if(dst_size < num_bytes) return E_INSUFFICIENT_USER_BUFFER;
         lucheck(dst);
         if (ch <= UnicodeImpl::UTF8_ONE_END)
         {
@@ -49,7 +49,7 @@ namespace Luna
     LUNA_RUNTIME_API R<c32> utf8_decode_char(const c8* src, usize src_size, usize* out_num_bytes)
     {
         if(out_num_bytes) *out_num_bytes = 0;
-        if(!src_size) return BasicError::end_of_file();
+        if(!src_size) return E_END_OF_FILE;
         lucheck(src);
 
         const u8 first = (u8)src[0];
@@ -61,12 +61,12 @@ namespace Luna
         else if(first >= 0xC2 && first <= 0xDF) num_bytes = 2;
         else if(first >= 0xE0 && first <= 0xEF) num_bytes = 3;
         else if(first >= 0xF0 && first <= 0xF4) num_bytes = 4;
-        else return BasicError::bad_data();
+        else return E_BAD_DATA;
 
         for(usize i = 1; i < min(src_size, num_bytes); ++i)
         {
             const u8 continuation = (u8)src[i];
-            if(continuation < 0x80 || continuation > 0xBF) return BasicError::bad_data();
+            if(continuation < 0x80 || continuation > 0xBF) return E_BAD_DATA;
         }
 
         if(src_size > 1 &&
@@ -75,9 +75,9 @@ namespace Luna
             (first == 0xF0 && (u8)src[1] < 0x90) ||
             (first == 0xF4 && (u8)src[1] > 0x8F)))
         {
-            return BasicError::bad_data();
+            return E_BAD_DATA;
         }
-        if(src_size < num_bytes) return BasicError::end_of_file();
+        if(src_size < num_bytes) return E_END_OF_FILE;
 
         c32 codepoint;
         if(num_bytes == 1) codepoint = (c32)first;

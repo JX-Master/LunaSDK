@@ -39,7 +39,7 @@ namespace Luna
 #else
             g_json_locale = newlocale(LC_NUMERIC_MASK, "C", nullptr);
 #endif
-            if(!g_json_locale) return BasicError::failure();
+            if(!g_json_locale) return E_FAILURE;
             return ok;
         }
 
@@ -99,19 +99,19 @@ namespace Luna
             ctx.consume('/');
             ctx.consume('*');
             c32 ch = ctx.next_char_or_eof();
-            if (!ch) return set_error(BasicError::format_error(),
+            if (!ch) return set_error(E_FORMAT_ERROR,
                 "Unterminated comment at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
         entry:
             while (ch != '*')
             {
                 ctx.consume(ch);
                 ch = ctx.next_char_or_eof();
-                if (!ch) return set_error(BasicError::format_error(),
+                if (!ch) return set_error(E_FORMAT_ERROR,
                     "Unterminated comment at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
             }
             ctx.consume(ch); // for *.
             ch = ctx.next_char_or_eof();
-            if (!ch) return set_error(BasicError::format_error(),
+            if (!ch) return set_error(E_FORMAT_ERROR,
                 "Unterminated comment at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
             if (ch == '/')
             {
@@ -171,7 +171,7 @@ namespace Luna
                 if(!(ch >= '0' && ch <= '9') && !(ch >= 'a' && ch <= 'f') &&
                     !(ch >= 'A' && ch <= 'F'))
                 {
-                    return set_error(BasicError::format_error(),
+                    return set_error(E_FORMAT_ERROR,
                         "Invalid Unicode escape at line %u, pos %u.",
                         ctx.get_line(), ctx.get_pos());
                 }
@@ -218,7 +218,7 @@ namespace Luna
                     case '0':
                         if(!options.allow_nonstandard_escapes)
                         {
-                            return set_error(BasicError::format_error(),
+                            return set_error(E_FORMAT_ERROR,
                                 "Non-standard string escape at line %u, pos %u.",
                                 ctx.get_line(), ctx.get_pos());
                         }
@@ -226,7 +226,7 @@ namespace Luna
                     case '\'':
                         if(!options.allow_nonstandard_escapes)
                         {
-                            return set_error(BasicError::format_error(),
+                            return set_error(E_FORMAT_ERROR,
                                 "Non-standard string escape at line %u, pos %u.",
                                 ctx.get_line(), ctx.get_pos());
                         }
@@ -241,7 +241,7 @@ namespace Luna
                         {
                             if(ctx.next_char_or_eof() != '\\' || ctx.next_char_or_eof(1) != 'u')
                             {
-                                return set_error(BasicError::format_error(),
+                                return set_error(E_FORMAT_ERROR,
                                     "A high surrogate must be followed by a low surrogate at line %u, pos %u.",
                                     ctx.get_line(), ctx.get_pos());
                             }
@@ -252,7 +252,7 @@ namespace Luna
                             u32 low = low_result.get();
                             if(low < 0xDC00 || low > 0xDFFF)
                             {
-                                return set_error(BasicError::format_error(),
+                                return set_error(E_FORMAT_ERROR,
                                     "Invalid low surrogate at line %u, pos %u.",
                                     ctx.get_line(), ctx.get_pos());
                             }
@@ -260,7 +260,7 @@ namespace Luna
                         }
                         else if(unicode >= 0xDC00 && unicode <= 0xDFFF)
                         {
-                            return set_error(BasicError::format_error(),
+                            return set_error(E_FORMAT_ERROR,
                                 "Unexpected low surrogate at line %u, pos %u.",
                                 ctx.get_line(), ctx.get_pos());
                         }
@@ -268,7 +268,7 @@ namespace Luna
                     }
                     break;
                     default:
-                        return set_error(BasicError::format_error(),
+                        return set_error(E_FORMAT_ERROR,
                             "Invalid character appeared after \"\\\" at line %d, pos %d.",
                             ctx.get_line(), ctx.get_pos());
                     }
@@ -286,7 +286,7 @@ namespace Luna
                 }
                 if(ch < 0x20)
                 {
-                    return set_error(BasicError::format_error(),
+                    return set_error(E_FORMAT_ERROR,
                         "Unescaped control character at line %u, pos %u.",
                         ctx.get_line(), ctx.get_pos());
                 }
@@ -299,7 +299,7 @@ namespace Luna
             }
             if(!ch)
             {
-                return set_error(BasicError::format_error(),
+                return set_error(E_FORMAT_ERROR,
                     "Unterminated string at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
             }
             return s;
@@ -320,7 +320,7 @@ namespace Luna
             }
             while(ch)
             {
-                if (ch != '"') return set_error(BasicError::format_error(),
+                if (ch != '"') return set_error(E_FORMAT_ERROR,
                     "The object field must start with a string name (line %d pos %d).",
                     ctx.get_line(), ctx.get_pos());
                 R<String> name_str = read_string_literal(ctx, options);
@@ -328,7 +328,7 @@ namespace Luna
                 skip_result = skip_whitespaces_and_comments(ctx, options);
                 if(failed(skip_result)) return skip_result.errcode();
                 ch = ctx.next_char_or_eof();
-                if (ch != ':') return set_error(BasicError::format_error(),
+                if (ch != ':') return set_error(E_FORMAT_ERROR,
                     "':' expected at the end of the field name (line %d pos %d).",
                     ctx.get_line(), ctx.get_pos());
                 ctx.consume(ch);
@@ -336,7 +336,7 @@ namespace Luna
                 if (failed(val)) return val.errcode();
                 if(!v.insert(Name(name_str.get()), move(val.get())))
                 {
-                    return set_error(BasicError::format_error(),
+                    return set_error(E_FORMAT_ERROR,
                         "Duplicate object name at line %u, pos %u.",
                         ctx.get_line(), ctx.get_pos());
                 }
@@ -348,7 +348,7 @@ namespace Luna
                     ctx.consume('}');
                     return v;
                 }
-                if (ch != ',') return set_error(BasicError::format_error(),
+                if (ch != ',') return set_error(E_FORMAT_ERROR,
                     "',' expected at the end of the field (line %d pos %d).",
                     ctx.get_line(), ctx.get_pos());
                 ctx.consume(ch);
@@ -359,7 +359,7 @@ namespace Luna
                 {
                     if(!options.allow_trailing_commas)
                     {
-                        return set_error(BasicError::format_error(),
+                        return set_error(E_FORMAT_ERROR,
                             "Trailing comma in object at line %u, pos %u.",
                             ctx.get_line(), ctx.get_pos());
                     }
@@ -367,7 +367,7 @@ namespace Luna
                     return v;
                 }
             }
-            return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+            return set_error(E_FORMAT_ERROR, "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
         }
 
         static R<Variant> read_array(IReadContext& ctx, const JSONReadOptions& options)
@@ -396,7 +396,7 @@ namespace Luna
                     ctx.consume(']');
                     return v;
                 }
-                if (ch != ',') return set_error(BasicError::format_error(),
+                if (ch != ',') return set_error(E_FORMAT_ERROR,
                     "',' expected at the end of every array item (line %d pos %d).",
                     ctx.get_line(), ctx.get_pos());
                 ctx.consume(ch);
@@ -407,7 +407,7 @@ namespace Luna
                 {
                     if(!options.allow_trailing_commas)
                     {
-                        return set_error(BasicError::format_error(),
+                        return set_error(E_FORMAT_ERROR,
                             "Trailing comma in array at line %u, pos %u.",
                             ctx.get_line(), ctx.get_pos());
                     }
@@ -415,7 +415,7 @@ namespace Luna
                     return v;
                 }
             }
-            return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+            return set_error(E_FORMAT_ERROR, "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
         }
 
         static bool read_blob_integer(const c8*& cursor, const c8* end, u64& value)
@@ -436,10 +436,10 @@ namespace Luna
 
         static R<Variant> read_blob(const String& str)
         {
-            if(str.size() < 8) return BasicError::failure();
+            if(str.size() < 8) return E_FAILURE;
             bool use_base85 = !memcmp(str.c_str(), "@base85@", 8 * sizeof(c8));
             bool use_base64 = !memcmp(str.c_str(), "@base64@", 8 * sizeof(c8));
-            if(!use_base85 && !use_base64) return BasicError::failure();
+            if(!use_base85 && !use_base64) return E_FAILURE;
 
             const c8* cursor = str.c_str() + 8;
             const c8* end = str.c_str() + str.size();
@@ -449,16 +449,16 @@ namespace Luna
                 !read_blob_integer(cursor, end, alignment) ||
                 size > USIZE_MAX || alignment > USIZE_MAX)
             {
-                return BasicError::failure();
+                return E_FAILURE;
             }
-            if(alignment && (alignment & (alignment - 1))) return BasicError::failure();
+            if(alignment && (alignment & (alignment - 1))) return E_FAILURE;
 
             usize payload_size = (usize)(end - cursor);
             usize expected_size = use_base85 ?
                 base85_get_encoded_size((usize)size) :
                 base64_get_encoded_size((usize)size);
-            if(payload_size != expected_size) return BasicError::failure();
-            if(use_base85 && size % 4) return BasicError::failure();
+            if(payload_size != expected_size) return E_FAILURE;
+            if(use_base85 && size % 4) return E_FAILURE;
 
             Blob data((usize)size, (usize)alignment);
             usize decoded_size;
@@ -472,7 +472,7 @@ namespace Luna
                 decoded_size = base64_decode(
                     data.data(), data.size(), cursor, payload_size);
             }
-            if(decoded_size != size) return BasicError::failure();
+            if(decoded_size != size) return E_FAILURE;
             return Variant(move(data));
         }
 
@@ -508,7 +508,7 @@ namespace Luna
                 ch = ctx.next_char_or_eof();
                 if(ch >= '0' && ch <= '9')
                 {
-                    return set_error(BasicError::format_error(),
+                    return set_error(E_FORMAT_ERROR,
                         "A JSON number cannot have leading zeroes at line %u, pos %u.",
                         ctx.get_line(), ctx.get_pos());
                 }
@@ -524,7 +524,7 @@ namespace Luna
             }
             else
             {
-                return set_error(BasicError::format_error(),
+                return set_error(E_FORMAT_ERROR,
                     "A digit is expected at line %u, pos %u.",
                     ctx.get_line(), ctx.get_pos());
             }
@@ -536,7 +536,7 @@ namespace Luna
                 ch = ctx.next_char_or_eof();
                 if(ch < '0' || ch > '9')
                 {
-                    return set_error(BasicError::format_error(),
+                    return set_error(E_FORMAT_ERROR,
                         "A digit is expected after the decimal point at line %u, pos %u.",
                         ctx.get_line(), ctx.get_pos());
                 }
@@ -561,7 +561,7 @@ namespace Luna
                 }
                 if(ch < '0' || ch > '9')
                 {
-                    return set_error(BasicError::format_error(),
+                    return set_error(E_FORMAT_ERROR,
                         "A digit is expected in the exponent at line %u, pos %u.",
                         ctx.get_line(), ctx.get_pos());
                 }
@@ -578,11 +578,11 @@ namespace Luna
                 f64 value = parse_f64(number.c_str(), &number_end);
                 if(number_end != number.c_str() + number.size())
                 {
-                    return set_error(BasicError::format_error(), "Invalid JSON number.");
+                    return set_error(E_FORMAT_ERROR, "Invalid JSON number.");
                 }
                 if(!std::isfinite(value) && !options.allow_non_finite_numbers)
                 {
-                    return set_error(BasicError::format_error(),
+                    return set_error(E_FORMAT_ERROR,
                         "The JSON number is outside the finite f64 range.");
                 }
                 return Variant(value);
@@ -596,7 +596,7 @@ namespace Luna
                 u64 digit = (u64)(digits[i] - '0');
                 if(magnitude > (U64_MAX - digit) / 10)
                 {
-                    return set_error(BasicError::format_error(),
+                    return set_error(E_FORMAT_ERROR,
                         "The JSON integer is outside the 64-bit integer range.");
                 }
                 magnitude = magnitude * 10 + digit;
@@ -608,7 +608,7 @@ namespace Luna
             constexpr u64 negative_limit = (u64)I64_MAX + 1;
             if(magnitude > negative_limit)
             {
-                return set_error(BasicError::format_error(),
+                return set_error(E_FORMAT_ERROR,
                     "The JSON integer is outside the 64-bit integer range.");
             }
             if(magnitude == negative_limit)
@@ -631,7 +631,7 @@ namespace Luna
             c32 ch = ctx.next_char_or_eof();
             if (ch == '\0')
             {
-                return set_error(BasicError::format_error(), "Unexpected EOF reached at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
+                return set_error(E_FORMAT_ERROR, "Unexpected EOF reached at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
             }
             else if (ch == '{')
             {
@@ -649,7 +649,7 @@ namespace Luna
             {
                 if(is_token_continuation(ctx.next_char_or_eof(4)))
                 {
-                    return set_error(BasicError::format_error(), "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
+                    return set_error(E_FORMAT_ERROR, "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
                 }
                 ctx.consume('t');
                 ctx.consume('r');
@@ -661,7 +661,7 @@ namespace Luna
             {
                 if(is_token_continuation(ctx.next_char_or_eof(5)))
                 {
-                    return set_error(BasicError::format_error(), "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
+                    return set_error(E_FORMAT_ERROR, "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
                 }
                 ctx.consume('f');
                 ctx.consume('a');
@@ -674,7 +674,7 @@ namespace Luna
             {
                 if(is_token_continuation(ctx.next_char_or_eof(4)))
                 {
-                    return set_error(BasicError::format_error(), "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
+                    return set_error(E_FORMAT_ERROR, "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
                 }
                 ctx.consume('n');
                 ctx.consume('u');
@@ -687,7 +687,7 @@ namespace Luna
             {
                 if(is_token_continuation(ctx.next_char_or_eof(3)))
                 {
-                    return set_error(BasicError::format_error(), "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
+                    return set_error(E_FORMAT_ERROR, "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
                 }
                 ctx.consume('n');
                 ctx.consume('a');
@@ -699,7 +699,7 @@ namespace Luna
             {
                 if(is_token_continuation(ctx.next_char_or_eof(3)))
                 {
-                    return set_error(BasicError::format_error(), "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
+                    return set_error(E_FORMAT_ERROR, "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
                 }
                 ctx.consume('i');
                 ctx.consume('n');
@@ -712,7 +712,7 @@ namespace Luna
             {
                 if(is_token_continuation(ctx.next_char_or_eof(4)))
                 {
-                    return set_error(BasicError::format_error(), "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
+                    return set_error(E_FORMAT_ERROR, "Invalid token at line %u, pos %u.", ctx.get_line(), ctx.get_pos());
                 }
                 ctx.consume('-');
                 ctx.consume('i');
@@ -726,7 +726,7 @@ namespace Luna
             }
             else
             {
-                return set_error(BasicError::format_error(),
+                return set_error(E_FORMAT_ERROR,
                     "Unrecognized token: %c(0x%0x) at line %u, pos %u.",
                     (c8)ch, (u32)ch, ctx.get_line(), ctx.get_pos());
             }
@@ -751,7 +751,7 @@ namespace Luna
                 R<c32> decode_result = utf8_decode_char(cur, (usize)(end - cur), &num_bytes);
                 if(failed(decode_result))
                 {
-                    return set_error(BasicError::bad_data(),
+                    return set_error(E_BAD_DATA,
                         "The JSON string contains invalid UTF-8 data.");
                 }
                 c32 ch = decode_result.get();
@@ -921,7 +921,7 @@ namespace Luna
                     {
                         if(!options.allow_non_finite_numbers)
                         {
-                            return set_error(BasicError::not_supported(),
+                            return set_error(E_NOT_SUPPORTED,
                                 "Non-finite floating-point values cannot be represented in JSON.");
                         }
                         if(std::isnan(value)) s.append("nan");
@@ -931,7 +931,7 @@ namespace Luna
                     i32 length = format_f64(buf, sizeof(buf), value);
                     if(length < 0 || (usize)length >= sizeof(buf))
                     {
-                        return set_error(BasicError::failure(), "Failed to format a JSON number.");
+                        return set_error(E_FAILURE, "Failed to format a JSON number.");
                     }
                     s.append(buf, (usize)length);
                     bool is_floating_point_token = false;
@@ -951,7 +951,7 @@ namespace Luna
                     std::to_chars_result conversion = std::to_chars(buf, buf + sizeof(buf), v.inum());
                     if(conversion.ec != std::errc())
                     {
-                        return set_error(BasicError::failure(), "Failed to format a JSON integer.");
+                        return set_error(E_FAILURE, "Failed to format a JSON integer.");
                     }
                     s.append(buf, (usize)(conversion.ptr - buf));
                     break;
@@ -961,7 +961,7 @@ namespace Luna
                     std::to_chars_result conversion = std::to_chars(buf, buf + sizeof(buf), v.unum());
                     if(conversion.ec != std::errc())
                     {
-                        return set_error(BasicError::failure(), "Failed to format a JSON integer.");
+                        return set_error(E_FAILURE, "Failed to format a JSON integer.");
                     }
                     s.append(buf, (usize)(conversion.ptr - buf));
                     break;
@@ -982,7 +982,7 @@ namespace Luna
             case VariantType::blob:
                 if(!options.encode_blobs)
                 {
-                    return set_error(BasicError::not_supported(),
+                    return set_error(E_NOT_SUPPORTED,
                         "BLOB variants cannot be represented under the specified JSON options.");
                 }
                 RV result = write_blob_value(s, v.blob_data(), v.blob_size(), v.blob_alignment());
@@ -1004,7 +1004,7 @@ namespace Luna
                 if(failed(skip_result)) return skip_result.errcode();
                 if(ctx.next_char_or_eof())
                 {
-                    return set_error(BasicError::format_error(),
+                    return set_error(E_FORMAT_ERROR,
                         "Unexpected content after the root JSON value at line %u, pos %u.",
                         ctx.get_line(), ctx.get_pos());
                 }
@@ -1030,7 +1030,7 @@ namespace Luna
             ctx.skip_utf16_bom();
             if(ctx.encoding != Encoding::utf_8 && !options.allow_utf16)
             {
-                return set_error(BasicError::format_error(),
+                return set_error(E_FORMAT_ERROR,
                     "UTF-16 input is disabled by the specified JSON options.");
             }
             return read_json_context(ctx, options);
@@ -1061,7 +1061,7 @@ namespace Luna
             if(failed(bom_result)) return bom_result.errcode();
             if(ctx.encoding != Encoding::utf_8 && !options.allow_utf16)
             {
-                return set_error(BasicError::format_error(),
+                return set_error(E_FORMAT_ERROR,
                     "UTF-16 input is disabled by the specified JSON options.");
             }
             return read_json_context(ctx, options);

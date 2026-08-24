@@ -12,9 +12,9 @@ lupanic_if_failed(init_modules());
 
 ## Socket model
 
-Every socket created by the module is non-blocking for its complete lifetime. The module does not provide a blocking mode or blocking convenience operations. An operation that cannot make progress immediately returns `BasicError::not_ready`; wait for the corresponding native socket readiness event before trying it again.
+Every socket created by the module is non-blocking for its complete lifetime. The module does not provide a blocking mode or blocking convenience operations. An operation that cannot make progress immediately returns `E_NOT_READY`; wait for the corresponding native socket readiness event before trying it again.
 
-TCP sockets do not implement `IStream`. `receive` and `send` are available in the `connected` and `peer_closed` states, perform at most one native socket operation, and return `BasicError::bad_calling_time` in other states. A successful `send` may transfer fewer bytes than requested. The caller is responsible for retaining and resending the remaining suffix. A successful non-zero-size `receive` that reports zero bytes indicates an orderly shutdown of the peer's sending direction.
+TCP sockets do not implement `IStream`. `receive` and `send` are available in the `connected` and `peer_closed` states, perform at most one native socket operation, and return `E_BAD_CALLING_TIME` in other states. A successful `send` may transfer fewer bytes than requested. The caller is responsible for retaining and resending the remaining suffix. A successful non-zero-size `receive` that reports zero bytes indicates an orderly shutdown of the peer's sending direction.
 
 Socket objects are not thread-safe. Synchronize all access externally or assign each socket to one event-loop thread.
 
@@ -84,7 +84,7 @@ lupanic_if_failed(getaddrinfo(nullptr, "0", &hints, bind_addresses));
 - `error`: the connection or its status query failed.
 - `closed`: the native socket was closed locally.
 
-`get_status` itself does not return an error. When the state is `error`, call `get_error` to retrieve the translated error code. `get_error` returns `ErrCode(0)` if no connection error has been cached, and `close` does not erase a cached error.
+`get_status` itself does not return an error. When the state is `error`, call `get_error` to retrieve the translated error code. `get_error` returns `ResultCode(0)` if no connection error has been cached, and `close` does not erase a cached error.
 
 ## TCP servers
 
@@ -97,12 +97,12 @@ lupanic_if_failed(listener->listen(I32_MAX));
 luassert(listener->get_status() == TCPConnectionState::listening);
 ```
 
-Call `accept` when the native listener reports read readiness. If no connection is queued, `accept` returns `BasicError::not_ready`. Every accepted socket is already non-blocking and starts in the `connected` state.
+Call `accept` when the native listener reports read readiness. If no connection is queued, `accept` returns `E_NOT_READY`. Every accepted socket is already non-blocking and starts in the `connected` state.
 
 ```c++
 SocketAddress client_address = {};
 auto accepted = listener->accept(client_address);
-if(!accepted.valid() && accepted.errcode() == BasicError::not_ready())
+if(!accepted.valid() && accepted.errcode() == E_NOT_READY)
 {
     // Wait for listener readiness before trying again.
 }
@@ -110,7 +110,7 @@ if(!accepted.valid() && accepted.errcode() == BasicError::not_ready())
 
 ## TCP clients
 
-`connect` returns `ok` when the connection either completes immediately or is successfully started asynchronously. It does not return `BasicError::in_progress`. Use `get_status` to distinguish the two successful outcomes.
+`connect` returns `ok` when the connection either completes immediately or is successfully started asynchronously. It does not return `E_IN_PROGRESS`. Use `get_status` to distinguish the two successful outcomes.
 
 ```c++
 lulet(socket, new_tcp_socket(AddressFamily::ipv4));
@@ -136,7 +136,7 @@ After a readiness notification for a connecting socket, call `get_status` again.
 
 ## TCP data transfer
 
-Call `send` only when data is pending. Preserve the unsent suffix after a partial operation, and retry only after the socket becomes writable if `BasicError::not_ready` is returned.
+Call `send` only when data is pending. Preserve the unsent suffix after a partial operation, and retry only after the socket becomes writable if `E_NOT_READY` is returned.
 
 ```c++
 usize offset = 0;
@@ -146,7 +146,7 @@ while(offset < message.size())
     RV result = socket->send(message.data() + offset, message.size() - offset, &sent);
     if(failed(result))
     {
-        if(result.errcode() == BasicError::not_ready())
+        if(result.errcode() == E_NOT_READY)
         {
             // Stop this loop iteration and wait for write readiness.
             break;
@@ -158,7 +158,7 @@ while(offset < message.size())
 }
 ```
 
-Call `receive` when the socket becomes readable. `BasicError::not_ready` means no bytes are currently available. A successful non-zero-size receive that returns zero bytes changes the socket state to `peer_closed`.
+Call `receive` when the socket becomes readable. `E_NOT_READY` means no bytes are currently available. A successful non-zero-size receive that returns zero bytes changes the socket state to `peer_closed`.
 
 ```c++
 c8 buffer[4096];
@@ -174,7 +174,7 @@ Zero-size `receive` and `send` calls succeed with zero transferred bytes and do 
 
 ## UDP sockets
 
-Create UDP sockets with `new_udp_socket`. `send_to` and `receive_from` each perform one non-blocking datagram operation. They return `BasicError::not_ready` if the datagram cannot be sent immediately or no datagram is available.
+Create UDP sockets with `new_udp_socket`. `send_to` and `receive_from` each perform one non-blocking datagram operation. They return `E_NOT_READY` if the datagram cannot be sent immediately or no datagram is available.
 
 ```c++
 lulet(socket, new_udp_socket(AddressFamily::ipv6));
@@ -207,16 +207,16 @@ socket->close(); // Safe: close is idempotent.
 
 ## Error handling
 
-Network operations return LunaSDK `RV` or `R<T>` values. Platform socket errors are translated to `NetworkError` where possible, such as `not_connected`, `address_not_supported`, `address_in_use`, `connection_refused`, and `host_not_found`.
+Network operations return LunaSDK `RV` or `R<T>` values. Platform socket errors are translated to `Network` result codes where possible, such as `Network::E_NOT_CONNECTED`, `Network::E_ADDRESS_NOT_SUPPORTED`, `Network::E_ADDRESS_IN_USE`, `Network::E_CONNECTION_REFUSED`, and `Network::E_HOST_NOT_FOUND`.
 
-`BasicError::not_ready` is a normal non-blocking result and should normally cause the operation to wait for a readiness notification rather than close the socket. `BasicError::interrupted` may also be retried. Fatal TCP connection failures change the connection state to `error` and are available from `get_error`.
+`E_NOT_READY` is a normal non-blocking result and should normally cause the operation to wait for a readiness notification rather than close the socket. `E_INTERRUPTED` may also be retried. Fatal TCP connection failures change the connection state to `error` and are available from `get_error`.
 
 ```c++
 auto socket_result = new_tcp_socket(AddressFamily::unspecified);
 if(!socket_result.valid())
 {
-    luassert(socket_result.errcode() == NetworkError::address_not_supported());
+    luassert(socket_result.errcode() == Network::E_ADDRESS_NOT_SUPPORTED);
 }
 ```
 
-Some invalid operation combinations can be reported as generic `BasicError` values by the host platform, such as `bad_arguments` or `not_supported`. Code should check for failure before using output values unless it specifically needs one exact error code documented by the API.
+Some invalid operation combinations can be reported as generic Runtime result codes by the host platform, such as `E_BAD_ARGUMENTS` or `E_NOT_SUPPORTED`. Code should check for failure before using output values unless it specifically needs one exact result code documented by the API.

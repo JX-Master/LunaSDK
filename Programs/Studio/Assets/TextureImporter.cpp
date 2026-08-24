@@ -314,7 +314,7 @@ namespace Luna
                 //    img_desc.format, Image::rhi_to_image_format(desc.format);
                 //    if (img_desc.format == Image::ImageFormat::unknown)
                 //    {
-                //        luthrow(BasicError::not_supported());
+                //        luthrow(E_NOT_SUPPORTED);
                 //    }
                 //    Pair<u64, u64> offset;
                 //    luset(offset.first, f->tell());
@@ -349,7 +349,7 @@ namespace Luna
                     default: lupanic();
                 }
                 desc.format = Image::dds_to_rhi_format(dds_image.desc.format);
-                if(desc.format == RHI::Format::unknown) luthrow(set_error(BasicError::not_supported(), "Unsupported DDS formats."));
+                if(desc.format == RHI::Format::unknown) luthrow(set_error(E_NOT_SUPPORTED, "Unsupported DDS formats."));
                 desc.width = dds_image.desc.width;
                 desc.height = dds_image.desc.height;
                 desc.depth = dds_image.desc.depth;
@@ -578,7 +578,7 @@ namespace Luna
         if(EditorGUI::is_item_clicked(context, select_source))
         {
             RV r = select_texture_import_files(m_files);
-            if(failed(r) && r.errcode() != BasicError::interrupted())
+            if(failed(r) && r.errcode() != E_INTERRUPTED)
             {
                 auto _ = Window::message_box(explain(r.errcode()), "Failed to import texture",
                     Window::MessageBoxType::ok, Window::MessageBoxIcon::error);

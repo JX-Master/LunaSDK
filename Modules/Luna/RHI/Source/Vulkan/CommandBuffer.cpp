@@ -95,7 +95,7 @@ namespace Luna
         {
             lutry
             {
-                if (command_queue_index >= m_device->m_queues.size()) return BasicError::bad_arguments();
+                if (command_queue_index >= m_device->m_queues.size()) return E_BAD_ARGUMENTS;
                 m_queue = m_device->m_queues[command_queue_index];
                 m_queue_index = command_queue_index;
                 VkCommandPoolCreateInfo pool_info{};
@@ -953,7 +953,7 @@ namespace Luna
         {
             lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "submit can only be called when no render, compute or copy pass is open.");
             StackAllocator salloc;
-            if (!m_recording) return BasicError::bad_calling_time();
+            if (!m_recording) return E_BAD_CALLING_TIME;
             lutry
             {
                 // Finish barrier.

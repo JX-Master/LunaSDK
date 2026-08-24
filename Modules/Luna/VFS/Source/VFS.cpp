@@ -51,7 +51,7 @@ namespace Luna
         {
             MutexGuard guard(g_mounts_mutex);
             DriverDesc* d = find_driver(driver);
-            if (!d) return VFSError::driver_not_found();
+            if (!d) return VFS::E_DRIVER_NOT_FOUND;
             MountPair p;
             p.m_mount_path = mount_path;
             p.m_driver = d;
@@ -59,7 +59,7 @@ namespace Luna
             {
                 if (p.m_mount_path == i.m_mount_path)
                 {
-                    return BasicError::already_exists();
+                    return E_ALREADY_EXISTS;
                 }
             }
             lutry
@@ -87,7 +87,7 @@ namespace Luna
                     return ok;
                 }
             }
-            return BasicError::not_found();
+            return E_NOT_FOUND;
         }
         LUNA_VFS_API RV remount(const Path& from_path, const Path& to_path)
         {
@@ -101,7 +101,7 @@ namespace Luna
                     return ok;
                 }
             }
-            return BasicError::not_found();
+            return E_NOT_FOUND;
         }
         static R<MountPair> route_path(const Path& filename, Path& relative_path)
         {
@@ -122,7 +122,7 @@ namespace Luna
                 }
             }
             // Not found.
-            return BasicError::not_found();
+            return E_NOT_FOUND;
         }
         static RV copy_file_between_driver(MountPair* from, MountPair* to, const Path& from_path, const Path& to_path)
         {
@@ -142,7 +142,7 @@ namespace Luna
                 alloc_buf = memalloc(alloc_size);
                 if (!alloc_buf)
                 {
-                    luthrow(BasicError::out_of_memory());
+                    luthrow(E_OUT_OF_MEMORY);
                 }
                 Blob buf;
                 buf.attach((byte_t*)alloc_buf, alloc_size, 0);
@@ -296,6 +296,15 @@ namespace Luna
         struct VFSModule : public Module
         {
             virtual const c8* get_name() override { return "VFS"; }
+            virtual RV on_register() override
+            {
+                if (!register_error_category(ERROR_CATEGORY, "VFS") ||
+                    !register_error_code(VFS::E_DRIVER_NOT_FOUND, "driver_not_found", "The specified VFS driver was not found."))
+                {
+                    return set_error(E_ALREADY_EXISTS, "VFS error metadata conflicts with an existing registration.");
+                }
+                return ok;
+            }
             virtual RV on_init() override
             {
                 g_driver_mutex = new_mutex();
@@ -325,18 +334,4 @@ namespace Luna
         return &m;
     }
 
-    namespace VFSError
-    {
-        LUNA_VFS_API errcat_t errtype()
-        {
-            static errcat_t e = get_error_category_by_name("VFSError");
-            return e;
-        }
-
-        LUNA_VFS_API ErrCode driver_not_found()
-        {
-            static ErrCode e = get_error_code_by_name("VFSError", "driver_not_found");
-            return e;
-        }
-    }
 }

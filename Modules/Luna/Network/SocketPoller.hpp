@@ -80,7 +80,7 @@ namespace Luna
             //! @param[in] interests A combination of @ref SocketEventFlag::readable and
             //! @ref SocketEventFlag::writable. @ref SocketEventFlag::none creates a dormant registration.
             //! @param[in] user_data Opaque application data copied to every event for this registration.
-            //! @return Returns a non-zero token for the registration. Returns @ref BasicError::already_exists
+            //! @return Returns a non-zero token for the registration. Returns @ref E_ALREADY_EXISTS
             //! if this socket is already registered with this poller.
             //! @remark The socket must be removed from the poller before @ref ISocket::close is called.
             virtual R<socket_poll_token_t> add(
@@ -92,12 +92,12 @@ namespace Luna
             //! @param[in] token The token returned by @ref add.
             //! @param[in] interests A combination of @ref SocketEventFlag::readable and
             //! @ref SocketEventFlag::writable. @ref SocketEventFlag::none makes the registration dormant.
-            //! @return Returns @ref BasicError::not_found if `token` is invalid, removed, or stale.
+            //! @return Returns @ref E_NOT_FOUND if `token` is invalid, removed, or stale.
             virtual RV modify(socket_poll_token_t token, SocketEventFlag interests) = 0;
 
             //! Removes one socket registration.
             //! @param[in] token The token returned by @ref add.
-            //! @return Returns @ref BasicError::not_found if `token` is invalid, removed, or stale.
+            //! @return Returns @ref E_NOT_FOUND if `token` is invalid, removed, or stale.
             //! @details This operation releases the strong socket reference held by the poller.
             virtual RV remove(socket_poll_token_t token) = 0;
 

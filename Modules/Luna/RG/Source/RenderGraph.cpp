@@ -143,7 +143,7 @@ namespace Luna
                         auto iter = g_render_pass_types.find(m_desc.passes[i].type);
                         if(iter == g_render_pass_types.end())
                         {
-                            return set_error(BasicError::not_found(), "Render pass type \"%s\" is not found.", m_desc.passes[i].type.c_str());
+                            return set_error(E_NOT_FOUND, "Render pass type \"%s\" is not found.", m_desc.passes[i].type.c_str());
                         }
                         luexp(iter->compile(iter->userdata.get(), this));
                     }
@@ -178,7 +178,7 @@ namespace Luna
                         }
                         else
                         {
-                            return set_error(BasicError::bad_data(), "Cannot create output resource %s because the resource layout is not specified.", m_desc.resources[i].name.c_str());
+                            return set_error(E_BAD_DATA, "Cannot create output resource %s because the resource layout is not specified.", m_desc.resources[i].name.c_str());
                         }
                     }
                 }
@@ -235,7 +235,7 @@ namespace Luna
                         }
                         else
                         {
-                            return set_error(BasicError::bad_data(), "Cannot create transient resource %s because the resource layout is not specified.", m_desc.resources[h].name.c_str());
+                            return set_error(E_BAD_DATA, "Cannot create transient resource %s because the resource layout is not specified.", m_desc.resources[h].name.c_str());
                         }
                         if (res.m_resource_desc.type == ResourceType::texture)
                         {

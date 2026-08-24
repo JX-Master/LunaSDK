@@ -183,9 +183,9 @@ namespace Luna
             virtual TCPConnectionState get_status() = 0;
 
             //! Gets the last cached connection error.
-            //! @return Returns the translated error code, or `ErrCode(0)` if this socket has not encountered
+            //! @return Returns the translated error code, or `ResultCode(0)` if this socket has not encountered
             //! an error. Closing the socket does not clear the cached error.
-            virtual ErrCode get_error() = 0;
+            virtual ResultCode get_error() = 0;
 
             //! Gets the remote address connected to this socket.
             //! @param[out] address Returns the remote address.
@@ -195,8 +195,8 @@ namespace Luna
             //! @param[in] buffer The buffer to receive data into.
             //! @param[in] size The maximum number of bytes to receive.
             //! @param[out] out_received_bytes If not `nullptr`, returns the number of bytes received.
-            //! @return Returns @ref BasicError::not_ready if no data is currently available, or
-            //! @ref BasicError::bad_calling_time if the socket is not connected. A successful non-zero-size
+            //! @return Returns @ref E_NOT_READY if no data is currently available, or
+            //! @ref E_BAD_CALLING_TIME if the socket is not connected. A successful non-zero-size
             //! operation that receives zero bytes indicates an orderly peer shutdown.
             //! @details A zero-size operation succeeds with zero bytes without probing the connection.
             virtual RV receive(void* buffer, usize size, usize* out_received_bytes = nullptr) = 0;
@@ -205,8 +205,8 @@ namespace Luna
             //! @param[in] buffer The buffer that holds the bytes to send.
             //! @param[in] size The number of bytes available to send.
             //! @param[out] out_sent_bytes If not `nullptr`, returns the number of bytes sent.
-            //! @return Returns @ref BasicError::not_ready if the socket cannot currently accept data, or
-            //! @ref BasicError::bad_calling_time if the socket is not connected.
+            //! @return Returns @ref E_NOT_READY if the socket cannot currently accept data, or
+            //! @ref E_BAD_CALLING_TIME if the socket is not connected.
             //! @details This operation may successfully send fewer bytes than requested. A zero-size
             //! operation succeeds with zero bytes without probing the connection.
             virtual RV send(const void* buffer, usize size, usize* out_sent_bytes = nullptr) = 0;
@@ -225,7 +225,7 @@ namespace Luna
             //! Accepts incoming connection attempt on this socket.
             //! @param[out] address The assigned address for the accepted connection.
             //! @return Returns the non-blocking socket that represents the accepted connection, or
-            //! @ref BasicError::not_ready if no connection is waiting to be accepted.
+            //! @ref E_NOT_READY if no connection is waiting to be accepted.
             virtual R<Ref<ITCPSocket>> accept(SocketAddress& address) = 0;
         };
 
@@ -239,7 +239,7 @@ namespace Luna
             //! @param[in] size The size, in bytes, to send from the buffer.
             //! @param[in] address The destination address.
             //! @param[out] out_sent_bytes If not `nullptr`, returns the actual number of bytes sent.
-            //! @return Returns @ref BasicError::not_ready if the datagram cannot currently be sent.
+            //! @return Returns @ref E_NOT_READY if the datagram cannot currently be sent.
             virtual RV send_to(const void* buffer, usize size, const SocketAddress& address, usize* out_sent_bytes = nullptr) = 0;
 
             //! Receives one datagram and optionally reports the source address.
@@ -247,7 +247,7 @@ namespace Luna
             //! @param[in] size The size, in bytes, of `buffer`.
             //! @param[out] address If not `nullptr`, returns the source address of the datagram.
             //! @param[out] out_received_bytes If not `nullptr`, returns the actual number of bytes received.
-            //! @return Returns @ref BasicError::not_ready if no datagram is currently available.
+            //! @return Returns @ref E_NOT_READY if no datagram is currently available.
             virtual RV receive_from(void* buffer, usize size, SocketAddress* address = nullptr, usize* out_received_bytes = nullptr) = 0;
         };
 
@@ -327,65 +327,46 @@ namespace Luna
     }
     //! @addtogroup Network
     //! @{
-    //! @defgroup NetworkError Network Errors
+    //! @defgroup NetworkResultCodes Network Result Codes
     //! @}
-    namespace NetworkError
+    namespace Network
     {
-        //! @addtogroup NetworkError
+        //! @addtogroup NetworkResultCodes
         //! @{
         
-        LUNA_NETWORK_API errcat_t errtype();
+        //! The Network error category identifier.
+        inline constexpr errcat_t ERROR_CATEGORY = make_error_category(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK);
 
         //! The socket is not connected.
-        LUNA_NETWORK_API ErrCode not_connected();
-
+        inline constexpr ResultCode E_NOT_CONNECTED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -1);
         //! The socket is already connected.
-        LUNA_NETWORK_API ErrCode already_connected();
-
+        inline constexpr ResultCode E_ALREADY_CONNECTED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -2);
         //! The network subsystem has failed.
-        LUNA_NETWORK_API ErrCode network_down();
-
-        //! The specified address family is not supported by the socket/protocol.
-        LUNA_NETWORK_API ErrCode address_not_supported();
-
-        //! The speciifed address is already bound to one existing socket.
-        LUNA_NETWORK_API ErrCode address_in_use();
-
-        //! The requested address is not available.
-        LUNA_NETWORK_API ErrCode address_not_available();
-
-        //! For a connection-oriented socket, this error indicates that the connection has been broken 
-        //! due to keep-alive activity that detected a failure while the operation was in progress.
-        //! For a datagram socket, this error indicates that the time to live has expired.
-        LUNA_NETWORK_API ErrCode network_reset();
-
-        //! The attempt to connect was forcefully rejected.
-        LUNA_NETWORK_API ErrCode connection_refused();
-
-        //! The virtual circuit was terminated due to a time-out or other failure. 
-        //! The application should close the socket as it is no longer usable.
-        LUNA_NETWORK_API ErrCode connection_aborted();
-
-        //! The virtual circuit was reset by the remote side executing a hard or abortive close. 
-        //! The application should close the socket as it is no longer usable. 
-        //! On a UDP-datagram socket, this error would indicate that a previous send operation 
-        //! resulted in an ICMP "Port Unreachable" message.
-        LUNA_NETWORK_API ErrCode connection_reset();
-
-        //! The network cannot be reached from this host at this time.
-        LUNA_NETWORK_API ErrCode network_unreachable();
-
-        //! A socket operation was attempted to an unreachable host.
-        LUNA_NETWORK_API ErrCode host_unreachable();
-
-        //! The specified protocol is not supported within this address family.
-        LUNA_NETWORK_API ErrCode protocol_not_supported();
-
-        //! The specified host cannot be found.
-        LUNA_NETWORK_API ErrCode host_not_found();
-
-        //! The service is not supported on the target host with specified socket type.
-        LUNA_NETWORK_API ErrCode service_not_found();
+        inline constexpr ResultCode E_NETWORK_DOWN = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -3);
+        //! The address family is not supported.
+        inline constexpr ResultCode E_ADDRESS_NOT_SUPPORTED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -4);
+        //! The address is already in use.
+        inline constexpr ResultCode E_ADDRESS_IN_USE = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -5);
+        //! The address is not available.
+        inline constexpr ResultCode E_ADDRESS_NOT_AVAILABLE = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -6);
+        //! The network connection was reset.
+        inline constexpr ResultCode E_NETWORK_RESET = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -7);
+        //! The connection attempt was refused.
+        inline constexpr ResultCode E_CONNECTION_REFUSED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -8);
+        //! The connection was aborted.
+        inline constexpr ResultCode E_CONNECTION_ABORTED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -9);
+        //! The connection was reset by its peer.
+        inline constexpr ResultCode E_CONNECTION_RESET = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -10);
+        //! The network is unreachable.
+        inline constexpr ResultCode E_NETWORK_UNREACHABLE = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -11);
+        //! The host is unreachable.
+        inline constexpr ResultCode E_HOST_UNREACHABLE = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -12);
+        //! The protocol is not supported.
+        inline constexpr ResultCode E_PROTOCOL_NOT_SUPPORTED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -13);
+        //! The host was not found.
+        inline constexpr ResultCode E_HOST_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -14);
+        //! The network service was not found.
+        inline constexpr ResultCode E_SERVICE_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::NETWORK, -15);
 
         //! @}
     }

@@ -27,9 +27,9 @@ namespace Luna
             virtual IDevice* get_device() override { return m_device; }
             virtual void set_name(const c8* name) override;
             virtual QueryHeapDesc get_desc() override { return m_desc; }
-            virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override { return BasicError::not_supported(); }
+            virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override { return E_NOT_SUPPORTED; }
             virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override;
-            virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) override { return BasicError::not_supported(); }
+            virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) override { return E_NOT_SUPPORTED; }
         };
         struct [[luna::struct("{2660efc3-0198-45e6-b2c0-1f6539f82ccd}")]] CounterSampleQueryHeap : IQueryHeap
         {
@@ -45,7 +45,7 @@ namespace Luna
             virtual void set_name(const c8* name) override  { }
             virtual QueryHeapDesc get_desc() override { return m_desc; }
             virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override;
-            virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override { return BasicError::not_supported(); }
+            virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override { return E_NOT_SUPPORTED; }
             virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) override;
         };
     }

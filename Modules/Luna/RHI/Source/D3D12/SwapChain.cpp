@@ -26,7 +26,7 @@ namespace Luna
                 m_event = CreateEventA(NULL, TRUE, TRUE, NULL);
                 if (m_event == NULL)
                 {
-                    return BasicError::bad_platform_call();
+                    return E_BAD_PLATFORM_CALL;
                 }
                 m_back_buffer = new_object<TextureResource>();
                 m_back_buffer->m_device = device;
@@ -155,7 +155,7 @@ namespace Luna
                 m_sc->QueryInterface<IDXGISwapChain3>(&swap_chain);
                 if(!swap_chain)
                 {
-                    return RHIError::color_space_not_supported();
+                    return RHI::E_COLOR_SPACE_NOT_SUPPORTED;
                 }
                 DXGI_COLOR_SPACE_TYPE type;
                 if(color_space == ColorSpace::unspecified) return ok;
@@ -171,7 +171,7 @@ namespace Luna
                     type = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
                     break;
                     default:
-                    return RHIError::color_space_not_supported();
+                    return RHI::E_COLOR_SPACE_NOT_SUPPORTED;
                 }
                 luexp(encode_hresult(swap_chain->SetColorSpace1(type)));
             }

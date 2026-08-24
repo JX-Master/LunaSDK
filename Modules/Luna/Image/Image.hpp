@@ -169,17 +169,18 @@ namespace Luna
     }
     //! @addtogroup Image
     //! @{
-    //! @defgroup ImageError Image Errors
+    //! @defgroup ImageResultCodes Image Result Codes
     //! @}
-    namespace ImageError
+    namespace Image
     {
-        //! @addtogroup ImageError
+        //! @addtogroup ImageResultCodes
         //! @{
 
-        LUNA_IMAGE_API errcat_t errtype();
+        //! The Image error category identifier.
+        inline constexpr errcat_t ERROR_CATEGORY = make_error_category(ErrorDomain::LUNA_SDK, LunaErrorCategory::IMAGE);
 
-        //! Failed to parse image file.
-        LUNA_IMAGE_API ErrCode file_parse_error();
+        //! Failed to parse an image file.
+        inline constexpr ResultCode E_FILE_PARSE_ERROR = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::IMAGE, -1);
 
         //! @}
     }

@@ -53,7 +53,7 @@ namespace Luna
         LUNA_HID_API RV set_mouse_pos(i32 x, i32 y)
         {
             BOOL r = ::SetCursorPos(x, y);
-            return r ? RV() : BasicError::bad_platform_call();
+            return r ? RV() : E_BAD_PLATFORM_CALL;
         }
     }
 }

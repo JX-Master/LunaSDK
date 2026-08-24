@@ -82,11 +82,11 @@ namespace Luna
             Name name = get_type_name(type, &alias);
             if (alias)
             {
-                return set_error(BasicError::bad_data(), "The value %lld is not a valid option for enumeration %s::%s.", value, name.c_str(), alias.c_str());
+                return set_error(E_BAD_DATA, "The value %lld is not a valid option for enumeration %s::%s.", value, name.c_str(), alias.c_str());
             }
             else
             {
-                return set_error(BasicError::bad_data(), "The value %lld is not a valid option for enumeration %s.", value, name.c_str());
+                return set_error(E_BAD_DATA, "The value %lld is not a valid option for enumeration %s.", value, name.c_str());
             }
         }
     }
@@ -127,11 +127,11 @@ namespace Luna
                 Name name = get_type_name(type, &alias);
                 if (alias)
                 {
-                    return set_error(BasicError::bad_data(), "The value %s is not a valid option for enumeration %s::%s.", data.c_str(), name.c_str(), alias.c_str());
+                    return set_error(E_BAD_DATA, "The value %s is not a valid option for enumeration %s::%s.", data.c_str(), name.c_str(), alias.c_str());
                 }
                 else
                 {
-                    return set_error(BasicError::bad_data(), "The value %s is not a valid option for enumeration %s.", data.c_str(), name.c_str());
+                    return set_error(E_BAD_DATA, "The value %s is not a valid option for enumeration %s.", data.c_str(), name.c_str());
                 }
             }
         }
@@ -169,13 +169,13 @@ namespace Luna
     LUNA_RUNTIME_API R<Variant> serialize(typeinfo_t type, const void* inst)
     {
         SerializableTypeDesc* d = (SerializableTypeDesc*)get_type_private_data(type, serialization_data_guid);
-        if (!d) return set_error(BasicError::not_supported(), "Type %s is not serializable.", get_type_name(type).c_str());
+        if (!d) return set_error(E_NOT_SUPPORTED, "Type %s is not serializable.", get_type_name(type).c_str());
         return d->serialize_func(type, inst);
     }
     LUNA_RUNTIME_API RV deserialize(typeinfo_t type, void* inst, const Variant& data)
     {
         SerializableTypeDesc* d = (SerializableTypeDesc*)get_type_private_data(type, serialization_data_guid);
-        if (!d) return set_error(BasicError::not_supported(), "Type %s is not serializable.", get_type_name(type).c_str());
+        if (!d) return set_error(E_NOT_SUPPORTED, "Type %s is not serializable.", get_type_name(type).c_str());
         return d->deserialize_func(type, inst, data);
     }
 }

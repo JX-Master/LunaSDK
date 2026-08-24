@@ -78,7 +78,7 @@ namespace Luna
                         break;
                     }
                 }
-                if (m_command_queue == U32_MAX) return set_error(BasicError::not_supported(), "No command queue is suitable.");
+                if (m_command_queue == U32_MAX) return set_error(E_NOT_SUPPORTED, "No command queue is suitable.");
                 luset(m_window, new_window("RHI Test"));
                 Window::set_event_handler([](object_t event, void* userdata) {
                     if(auto e = cast_object<WindowFramebufferResizeEvent>(event))

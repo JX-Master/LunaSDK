@@ -66,7 +66,7 @@ namespace
 
         RV duplicate = frontend->set_resource_data("/data", Variant((i64)43));
         lutest(failed(duplicate));
-        lutest(duplicate.errcode() == BasicError::already_exists());
+        lutest(duplicate.errcode() == E_ALREADY_EXISTS);
         data = frontend->get_resource_data("/data");
         lutest(data.valid() && data.get().inum() == 42);
 
@@ -76,18 +76,18 @@ namespace
 
         auto missing = frontend->get_resource_data("/missing");
         lutest(!missing.valid());
-        lutest(missing.errcode() == FrontendError::resource_not_found());
+        lutest(missing.errcode() == Frontend::E_RESOURCE_NOT_FOUND);
 
         RV empty_url = frontend->set_resource_data(Name(), Variant());
         lutest(failed(empty_url));
-        lutest(empty_url.errcode() == BasicError::bad_arguments());
+        lutest(empty_url.errcode() == E_BAD_ARGUMENTS);
 
         lupanic_if_failed(frontend->remove_resource("/data"));
         lutest(frontend->get_resource_type("/data") == ResourceType::null);
         lupanic_if_failed(frontend->remove_resource("/data"));
         RV empty_remove = frontend->remove_resource(Name());
         lutest(failed(empty_remove));
-        lutest(empty_remove.errcode() == BasicError::bad_arguments());
+        lutest(empty_remove.errcode() == E_BAD_ARGUMENTS);
     }
 
     void resource_userdata_lifetime_test()
@@ -106,7 +106,7 @@ namespace
         RV duplicate = frontend->set_resource_userdata(
             "/userdata", rejected, destroy_tracked_userdata);
         lutest(failed(duplicate));
-        lutest(duplicate.errcode() == BasicError::already_exists());
+        lutest(duplicate.errcode() == E_ALREADY_EXISTS);
         lutest(destructor_count == 0);
         destroy_tracked_userdata(rejected);
         lutest(destructor_count == 1);
@@ -115,7 +115,7 @@ namespace
         lutest(destructor_count == 2);
         auto wrong_type = frontend->get_resource_userdata("/userdata");
         lutest(!wrong_type.valid());
-        lutest(wrong_type.errcode() == FrontendError::type_mismatch());
+        lutest(wrong_type.errcode() == Frontend::E_TYPE_MISMATCH);
 
         TrackedUserdata* second = memnew<TrackedUserdata>(&destructor_count);
         lupanic_if_failed(frontend->set_resource_userdata(
@@ -148,31 +148,31 @@ namespace
         FunctionHandler empty_handler;
         RV empty_function = frontend->set_resource_function("/empty", move(empty_handler));
         lutest(failed(empty_function));
-        lutest(empty_function.errcode() == BasicError::bad_arguments());
+        lutest(empty_function.errcode() == E_BAD_ARGUMENTS);
 
         RV empty_url = frontend->set_resource_function(
             Name(), FunctionHandler(CountingHandler(&handler_copy_count)));
         lutest(failed(empty_url));
-        lutest(empty_url.errcode() == BasicError::bad_arguments());
+        lutest(empty_url.errcode() == E_BAD_ARGUMENTS);
 
         auto missing = frontend->invoke("/missing", Variant());
         lutest(!missing.valid());
-        lutest(missing.errcode() == FrontendError::method_not_found());
+        lutest(missing.errcode() == Frontend::E_METHOD_NOT_FOUND);
 
         lupanic_if_failed(frontend->set_resource_data("/not-a-function", Variant()));
         auto not_a_function = frontend->invoke("/not-a-function", Variant());
         lutest(!not_a_function.valid());
-        lutest(not_a_function.errcode() == FrontendError::method_not_found());
+        lutest(not_a_function.errcode() == Frontend::E_METHOD_NOT_FOUND);
 
         lupanic_if_failed(frontend->set_resource_function(
             "/failure",
             FunctionHandler([](IFrontend*, const Variant&) -> R<Variant>
             {
-                return BasicError::bad_data();
+                return E_BAD_DATA;
             })));
         auto failure = frontend->invoke("/failure", Variant());
         lutest(!failure.valid());
-        lutest(failure.errcode() == BasicError::bad_data());
+        lutest(failure.errcode() == E_BAD_DATA);
     }
 
     void nested_invocation_test()

@@ -61,7 +61,7 @@ namespace Luna
                 TableAction* action = (TableAction*)userdata;
                 if(!action || !action->layout_desc)
                 {
-                    return BasicError::bad_arguments();
+                    return E_BAD_ARGUMENTS;
                 }
                 lutry(GUI::layout_table(context, element, rect, action->layout_desc));
                 if(!action->splitter_count)
@@ -71,7 +71,7 @@ namespace Luna
                 const GUI::Element* table = context->get_element(element.index);
                 if(!table)
                 {
-                    return BasicError::bad_arguments();
+                    return E_BAD_ARGUMENTS;
                 }
                 RectF content_rect = inset_rect(rect, table->layout.padding);
                 f32 cursor = content_rect.offset_x;

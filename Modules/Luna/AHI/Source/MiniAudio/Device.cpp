@@ -212,7 +212,7 @@ namespace Luna
             if(test_flags(desc.flags, DeviceFlag::playback | DeviceFlag::capture)) type = ma_device_type_duplex;
             else if(test_flags(desc.flags, DeviceFlag::playback)) type = ma_device_type_playback;
             else if(test_flags(desc.flags, DeviceFlag::capture)) type = ma_device_type_capture;
-            else return set_error(BasicError::bad_arguments(), "One of DeviceFlag::playback and DeviceFlag::capture must be set when creating audio devices");
+            else return set_error(E_BAD_ARGUMENTS, "One of DeviceFlag::playback and DeviceFlag::capture must be set when creating audio devices");
             ma_device_config config = ma_device_config_init(type);
             if(test_flags(desc.flags, DeviceFlag::playback))
             {

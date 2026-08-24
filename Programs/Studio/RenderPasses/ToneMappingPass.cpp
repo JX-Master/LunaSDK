@@ -301,9 +301,9 @@ namespace Luna
             auto bloom_texture = compiler->get_input_resource("bloom_texture");
             auto ldr_texture = compiler->get_output_resource("ldr_texture");
 
-            if(hdr_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "ToneMappingPass: Input \"hdr_texture\" is not specified.");
-            if(bloom_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "ToneMappingPass: Input \"bloom_texture\" is not specified.");
-            if(ldr_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "ToneMappingPass: Output \"ldr_texture\" is not specified.");
+            if(hdr_texture == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "ToneMappingPass: Input \"hdr_texture\" is not specified.");
+            if(bloom_texture == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "ToneMappingPass: Input \"bloom_texture\" is not specified.");
+            if(ldr_texture == RG::INVALID_RESOURCE) return set_error(E_BAD_ARGUMENTS, "ToneMappingPass: Output \"ldr_texture\" is not specified.");
 
             // Set output texture format if not specified.
             RG::ResourceDesc desc = compiler->get_resource_desc(hdr_texture);

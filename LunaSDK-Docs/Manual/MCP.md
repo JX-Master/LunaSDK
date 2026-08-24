@@ -87,7 +87,7 @@ Frontend::FunctionHandler add_handler =
     const Variant& b = arguments.find("b");
     if(a.type() != VariantType::number || b.type() != VariantType::number)
     {
-        return set_error(BasicError::bad_arguments(), "a and b must be numbers");
+        return set_error(E_BAD_ARGUMENTS, "a and b must be numbers");
     }
     Variant result(VariantType::object);
     result["sum"] = a.fnum() + b.fnum();

@@ -361,7 +361,7 @@ namespace Luna
             Ref<IDeviceMemory> ret;
             lutry
             {
-                if (buffers.size() + textures.size() < 1) return BasicError::bad_arguments();
+                if (buffers.size() + textures.size() < 1) return E_BAD_ARGUMENTS;
                 VkMemoryRequirements memory_requirements;
                 memory_requirements.size = 0;
                 memory_requirements.alignment = 0;
@@ -389,7 +389,7 @@ namespace Luna
                 memory_requirements.size = align_upper(memory_requirements.size, memory_requirements.alignment);
                 if (!memory_requirements.memoryTypeBits)
                 {
-                    return BasicError::not_supported();
+                    return E_NOT_SUPPORTED;
                 }
                 auto memory = new_object<DeviceMemory>();
                 memory->m_device = this;

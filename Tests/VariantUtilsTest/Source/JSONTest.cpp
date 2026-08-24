@@ -29,7 +29,7 @@ namespace Luna
 
         virtual RV read(void* buffer, usize size, usize* read_bytes) override
         {
-            if(fail_reads) return BasicError::bad_data();
+            if(fail_reads) return E_BAD_DATA;
             usize remaining = data_size - cursor;
             usize bytes_to_read = size < remaining ? size : remaining;
             if(bytes_to_read)
@@ -43,7 +43,7 @@ namespace Luna
 
         virtual RV write(const void*, usize, usize*) override
         {
-            return BasicError::not_supported();
+            return E_NOT_SUPPORTED;
         }
     };
 

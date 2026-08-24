@@ -22,7 +22,7 @@ These streams are process-global platform resources rather than LunaSDK objects.
 
 Each standard IO function performs one native blocking I/O operation. A successful read or write may transfer fewer bytes than requested. The caller must inspect `read_bytes` or `write_bytes` and repeat the operation when an exact byte count is required.
 
-End of input is represented by a successful read of zero bytes. A zero-size operation also succeeds with zero transferred bytes without accessing the buffer. Writing to a pipe whose reader has closed fails with `BasicError::bad_pipe`; on POSIX platforms Runtime prevents that operation's `SIGPIPE` from terminating the process.
+End of input is represented by a successful read of zero bytes. A zero-size operation also succeeds with zero transferred bytes without accessing the buffer. Writing to a pipe whose reader has closed fails with `E_BAD_PIPE`; on POSIX platforms Runtime prevents that operation's `SIGPIPE` from terminating the process.
 
 Calls are not serialized. Concurrent calls are allowed, but the ordering of bytes from concurrent writers is unspecified. Applications must synchronize replacement of standard handles against active I/O calls.
 

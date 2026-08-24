@@ -34,7 +34,7 @@ namespace Luna
         struct IReadContext
         {
         private:
-            ErrCode m_read_error = ErrCode(0);
+            ResultCode m_read_error = ResultCode(0);
         public:
             //! Moves the cursor to next character in the string.
             //! @param[in] ch The current character to advance.
@@ -59,7 +59,7 @@ namespace Luna
                 return result.get();
             }
             //! Gets the first error recorded by @ref next_char_or_eof.
-            ErrCode get_read_error() const { return m_read_error; }
+            ResultCode get_read_error() const { return m_read_error; }
             //! Gets the line position of the cursor.
             virtual u32 get_line() = 0;
             //! Gets the position of the cursor in the current line.

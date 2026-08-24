@@ -30,13 +30,13 @@ namespace Luna
                     RV result = write_standard_output(data + offset, size - offset, &write_bytes);
                     if(failed(result))
                     {
-                        if(unwrap_errcode(result.errcode()) == BasicError::interrupted()) continue;
+                        if(unwrap_errcode(result.errcode()) == E_INTERRUPTED) continue;
                         return result.errcode();
                     }
                     if(!write_bytes)
                     {
                         return set_error(
-                            BasicError::io_error(),
+                            E_IO_ERROR,
                             "Standard output accepted no bytes for a non-empty write");
                     }
                     offset += write_bytes;
@@ -122,7 +122,7 @@ namespace Luna
             IMCPServer* server,
             const StdioServerOptions& options)
         {
-            if(!server || !options.max_message_size) return BasicError::bad_arguments();
+            if(!server || !options.max_message_size) return E_BAD_ARGUMENTS;
 
             c8 read_buffer[4096];
             String frame;
@@ -133,14 +133,14 @@ namespace Luna
                 RV result = read_standard_input(read_buffer, sizeof(read_buffer), &read_bytes);
                 if(failed(result))
                 {
-                    if(unwrap_errcode(result.errcode()) == BasicError::interrupted()) continue;
+                    if(unwrap_errcode(result.errcode()) == E_INTERRUPTED) continue;
                     return result.errcode();
                 }
                 if(!read_bytes)
                 {
                     if(frame.empty()) return ok;
                     return set_error(
-                        BasicError::bad_data(),
+                        E_BAD_DATA,
                         "MCP standard input ended before the message newline delimiter");
                 }
 
@@ -157,7 +157,7 @@ namespace Luna
                         if(frame.size() == options.max_message_size)
                         {
                             return set_error(
-                                BasicError::data_too_big(),
+                                E_DATA_TOO_BIG,
                                 "MCP standard input message exceeds the configured size limit");
                         }
                         frame.push_back(read_buffer[i]);

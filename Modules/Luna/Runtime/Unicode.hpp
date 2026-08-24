@@ -156,8 +156,8 @@ namespace Luna
     //! @param[in] dst_size The number of bytes available in @p dst.
     //! @param[in] ch The Unicode character to encode.
     //! @return Returns the number of UTF-8 characters written to @p dst. Returns
-    //! @ref BasicError::bad_data if @p ch is not a Unicode scalar value. Returns
-    //! @ref BasicError::insufficient_user_buffer if @p dst does not have enough space.
+    //! @ref E_BAD_DATA if @p ch is not a Unicode scalar value. Returns
+    //! @ref E_INSUFFICIENT_USER_BUFFER if @p dst does not have enough space.
     //! @par Valid Usage
     //! * `dst` must not be `nullptr` when `dst_size` is not `0`.
     LUNA_RUNTIME_API R<usize> utf8_encode_char(c8* dst, usize dst_size, c32 ch);
@@ -167,9 +167,9 @@ namespace Luna
     //! @param[in] src_size The number of available bytes in @p src.
     //! @param[out] out_num_bytes If this is not `nullptr`, returns the number of bytes consumed on success.
     //! This is set to `0` if the operation fails.
-    //! @return Returns the decoded Unicode codepoint on success. Returns @ref BasicError::end_of_file if
+    //! @return Returns the decoded Unicode codepoint on success. Returns @ref E_END_OF_FILE if
     //! the input does not contain enough bytes for one complete character sequence. Returns
-    //! @ref BasicError::bad_data if the input is not a valid RFC 3629 UTF-8 character sequence.
+    //! @ref E_BAD_DATA if the input is not a valid RFC 3629 UTF-8 character sequence.
     //! @par Valid Usage
     //! * `src` must not be `nullptr` when `src_size` is not `0`.
     LUNA_RUNTIME_API R<c32> utf8_decode_char(

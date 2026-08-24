@@ -242,8 +242,8 @@ namespace Luna
     //! @{
     
     //! Computes a hash code for the specified binary data.
-    //! @details This is the basic hash function that uses the standard table-driven crc 
-    //! algorithm (crc-8, crc-16, crc-32 or crc-64, depending on the hash value type) to 
+    //! @details This is the basic hash function that uses the standard table-driven crc
+    //! algorithm (crc-8, crc-16, crc-32 or crc-64, depending on the hash value type) to
     //! hash any kind of binary data stream to a single hash value.
     //! @param[in] data A pointer to the data to be hashed.
     //! @param[in] size The length of the data in bytes.

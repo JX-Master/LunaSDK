@@ -34,12 +34,12 @@ namespace Luna
                         }
                         else
                         {
-                            return set_error(BasicError::bad_arguments(), "The vertex shader format must be ShaderDataFormat::metallib for Metal backend.");
+                            return set_error(E_BAD_ARGUMENTS, "The vertex shader format must be ShaderDataFormat::metallib for Metal backend.");
                         }
                         if(!vs)
                         {
                             NSString* err_desc = [err description];
-                            return set_error(BasicError::bad_platform_call(), "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
+                            return set_error(E_BAD_PLATFORM_CALL, "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
                         }
                         MTLFunctionConstantValues* values = [[MTLFunctionConstantValues alloc]init];
                         NSString* name = [NSString stringWithUTF8String:desc.vs.entry_point.c_str()];
@@ -47,7 +47,7 @@ namespace Luna
                         if(!vs_func)
                         {
                             NSString* err_desc = [err description];
-                            return set_error(BasicError::bad_platform_call(), "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
+                            return set_error(E_BAD_PLATFORM_CALL, "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
                         }
                     }
                     if(desc.ps.format != ShaderDataFormat::none)
@@ -59,12 +59,12 @@ namespace Luna
                         }
                         else
                         {
-                            return set_error(BasicError::bad_arguments(), "The pixel shader format must be ShaderDataFormat::metallib for Metal backend.");
+                            return set_error(E_BAD_ARGUMENTS, "The pixel shader format must be ShaderDataFormat::metallib for Metal backend.");
                         }
                         if(!ps)
                         {
                             NSString* err_desc = [err description];
-                            return set_error(BasicError::bad_platform_call(), "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
+                            return set_error(E_BAD_PLATFORM_CALL, "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
                         }
                         MTLFunctionConstantValues* values = [[MTLFunctionConstantValues alloc]init];
                         NSString* name = [NSString stringWithUTF8String:desc.ps.entry_point.c_str()];
@@ -72,7 +72,7 @@ namespace Luna
                         if(!ps_func)
                         {
                             NSString* err_desc = [err description];
-                            return set_error(BasicError::bad_platform_call(), "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
+                            return set_error(E_BAD_PLATFORM_CALL, "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
                         }
                     }
                     MTLRenderPipelineDescriptor* d = [[MTLRenderPipelineDescriptor alloc]init];
@@ -159,7 +159,7 @@ namespace Luna
                     if(!m_pso)
                     {
                         NSString* err_desc = [err description];
-                        return set_error(BasicError::bad_platform_call(), "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
+                        return set_error(E_BAD_PLATFORM_CALL, "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
                     }
                     switch(desc.rasterizer_state.fill_mode)
                     {
@@ -206,7 +206,7 @@ namespace Luna
                         m_dss = [m_device->m_device newDepthStencilStateWithDescriptor:ds_desc];
                         if(!m_dss)
                         {
-                            return BasicError::bad_platform_call();
+                            return E_BAD_PLATFORM_CALL;
                         }
                         m_depth_bias = desc.rasterizer_state.depth_bias;
                         m_slope_scaled_depth_bias = desc.rasterizer_state.slope_scaled_depth_bias;
@@ -234,12 +234,12 @@ namespace Luna
                     }
                     else
                     {
-                        return set_error(BasicError::bad_arguments(), "The compute shader format must be ShaderDataFormat::metallib for Metal backend.");
+                        return set_error(E_BAD_ARGUMENTS, "The compute shader format must be ShaderDataFormat::metallib for Metal backend.");
                     }
                     if(!cs)
                     {
                         NSString* err_desc = [err description];
-                        return set_error(BasicError::bad_platform_call(), "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
+                        return set_error(E_BAD_PLATFORM_CALL, "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
                     }
                     MTLFunctionConstantValues* values = [[MTLFunctionConstantValues alloc]init];
                     NSString* name = [NSString stringWithUTF8String:desc.cs.entry_point.c_str()];
@@ -247,7 +247,7 @@ namespace Luna
                     if(!cs_func)
                     {
                         NSString* err_desc = [err description];
-                        return set_error(BasicError::bad_platform_call(), "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
+                        return set_error(E_BAD_PLATFORM_CALL, "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
                     }
                     MTLComputePipelineDescriptor* d = [[MTLComputePipelineDescriptor alloc]init];
                     d.computeFunction = cs_func;
@@ -256,7 +256,7 @@ namespace Luna
                     if(!m_pso)
                     {
                         NSString* err_desc = [err description];
-                        return set_error(BasicError::bad_platform_call(), "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
+                        return set_error(E_BAD_PLATFORM_CALL, "%s", [err_desc cStringUsingEncoding:NSUTF8StringEncoding]);
                     }
                     m_num_threads_per_group = UInt3U(desc.metal_numthreads_x, desc.metal_numthreads_y, desc.metal_numthreads_z);
                 }

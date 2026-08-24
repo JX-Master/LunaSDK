@@ -78,9 +78,9 @@ namespace Luna
                 const RectF& rect, void* userdata)
             {
                 TabAction* action = (TabAction*)userdata;
-                if(!action || !action->state) return BasicError::bad_arguments();
+                if(!action || !action->state) return E_BAD_ARGUMENTS;
                 const GUI::Element* bar = context->get_element(element.index);
-                if(!bar) return BasicError::bad_arguments();
+                if(!bar) return E_BAD_ARGUMENTS;
                 f32 header_height = style_scalar(context, element, "gui.tab.height", 32.0f);
                 f32 x = rect.offset_x;
                 f32 scale = tab_width_scale(context, element, *action, rect.width);

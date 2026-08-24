@@ -79,9 +79,9 @@ namespace
         }
     }
 
-    bool is_retryable(ErrCode error)
+    bool is_retryable(ResultCode error)
     {
-        return error == BasicError::not_ready() || error == BasicError::interrupted();
+        return error == E_NOT_READY || error == E_INTERRUPTED;
     }
 
     void retry_delay()
@@ -96,10 +96,10 @@ namespace
             TCPConnectionState state = socket->get_status();
             if(state == TCPConnectionState::connected) return ok;
             if(state == TCPConnectionState::error) return socket->get_error();
-            if(state != TCPConnectionState::connecting) return BasicError::bad_calling_time();
+            if(state != TCPConnectionState::connecting) return E_BAD_CALLING_TIME;
             retry_delay();
         }
-        return BasicError::timeout();
+        return E_TIMEOUT;
     }
 
     R<Ref<ITCPSocket>> wait_for_accept(ITCPSocket* listener, SocketAddress& address)
@@ -111,7 +111,7 @@ namespace
             if(!is_retryable(result.errcode())) return result.errcode();
             retry_delay();
         }
-        return BasicError::timeout();
+        return E_TIMEOUT;
     }
 
     RV send_all(ITCPSocket* socket, const void* buffer, usize size)
@@ -131,7 +131,7 @@ namespace
                 }
                 return result;
             }
-            if(!sent) return BasicError::no_data();
+            if(!sent) return E_NO_DATA;
             total_sent += sent;
             retries = 0;
         }
@@ -155,7 +155,7 @@ namespace
                 }
                 return result;
             }
-            if(!received) return BasicError::no_data();
+            if(!received) return E_NO_DATA;
             total_received += received;
             retries = 0;
         }
@@ -171,13 +171,13 @@ namespace
             RV result = socket->receive(&data, 1, &received);
             if(succeeded(result))
             {
-                if(received) return BasicError::bad_data();
-                return socket->get_status() == TCPConnectionState::peer_closed ? RV(ok) : RV(BasicError::bad_data());
+                if(received) return E_BAD_DATA;
+                return socket->get_status() == TCPConnectionState::peer_closed ? RV(ok) : RV(E_BAD_DATA);
             }
             if(!is_retryable(result.errcode())) return result;
             retry_delay();
         }
-        return BasicError::timeout();
+        return E_TIMEOUT;
     }
 
     usize poll_events(
@@ -192,7 +192,7 @@ namespace
                 Span<SocketPollEvent>(events, event_capacity),
                 timeout_ms);
             if(result.valid()) return result.get();
-            lutest(result.errcode() == BasicError::interrupted());
+            lutest(result.errcode() == E_INTERRUPTED);
         }
         lutest(false);
         return 0;
@@ -227,11 +227,11 @@ namespace
     {
         auto tcp_result = new_tcp_socket(AddressFamily::unspecified);
         lutest(!tcp_result.valid());
-        lutest(tcp_result.errcode() == NetworkError::address_not_supported());
+        lutest(tcp_result.errcode() == Network::E_ADDRESS_NOT_SUPPORTED);
 
         auto udp_result = new_udp_socket(AddressFamily::unspecified);
         lutest(!udp_result.valid());
-        lutest(udp_result.errcode() == NetworkError::address_not_supported());
+        lutest(udp_result.errcode() == Network::E_ADDRESS_NOT_SUPPORTED);
     }
 
     void address_info_query_test(AddressFamily family, const c8* node)
@@ -301,7 +301,7 @@ namespace
         lutest(listener_result.valid());
         Ref<ITCPSocket> listener = listener_result.get();
         lutest(listener->get_status() == TCPConnectionState::not_connected);
-        lutest(listener->get_error() == ErrCode(0));
+        lutest(listener->get_error() == ResultCode(0));
         lupanic_if_failed(listener->bind(loopback_address(family, 0)));
         lutest(listener->get_status() == TCPConnectionState::not_connected);
 
@@ -315,27 +315,27 @@ namespace
         SocketAddress accepted_remote_address = {};
         auto early_accept_result = listener->accept(accepted_remote_address);
         lutest(!early_accept_result.valid());
-        lutest(early_accept_result.errcode() == BasicError::not_ready());
+        lutest(early_accept_result.errcode() == E_NOT_READY);
 
         auto client_result = new_tcp_socket(family);
         lutest(client_result.valid());
         Ref<ITCPSocket> client = client_result.get();
         lutest(client->get_status() == TCPConnectionState::not_connected);
-        lutest(client->get_error() == ErrCode(0));
+        lutest(client->get_error() == ResultCode(0));
 
         c8 invalid_state_data = 0;
         usize transferred = 1;
         RV invalid_state_receive_result = client->receive(&invalid_state_data, 1, &transferred);
         lutest(failed(invalid_state_receive_result));
-        lutest(invalid_state_receive_result.errcode() == BasicError::bad_calling_time());
+        lutest(invalid_state_receive_result.errcode() == E_BAD_CALLING_TIME);
         lutest(transferred == 0);
         transferred = 1;
         RV invalid_state_send_result = client->send(&invalid_state_data, 1, &transferred);
         lutest(failed(invalid_state_send_result));
-        lutest(invalid_state_send_result.errcode() == BasicError::bad_calling_time());
+        lutest(invalid_state_send_result.errcode() == E_BAD_CALLING_TIME);
         lutest(transferred == 0);
         lutest(client->get_status() == TCPConnectionState::not_connected);
-        lutest(client->get_error() == ErrCode(0));
+        lutest(client->get_error() == ResultCode(0));
 
         transferred = 1;
         lupanic_if_failed(client->receive(nullptr, 0, &transferred));
@@ -349,13 +349,13 @@ namespace
         lutest(initial_connect_state == TCPConnectionState::connecting ||
             initial_connect_state == TCPConnectionState::connected);
         lupanic_if_failed(wait_for_connected(client.get()));
-        lutest(client->get_error() == ErrCode(0));
+        lutest(client->get_error() == ResultCode(0));
 
         auto accepted_result = wait_for_accept(listener.get(), accepted_remote_address);
         lutest(accepted_result.valid());
         Ref<ITCPSocket> accepted = accepted_result.get();
         lutest(accepted->get_status() == TCPConnectionState::connected);
-        lutest(accepted->get_error() == ErrCode(0));
+        lutest(accepted->get_error() == ResultCode(0));
         lutest(accepted_remote_address.family == family);
 
         SocketAddress client_local_address = {};
@@ -375,7 +375,7 @@ namespace
         usize received = 1;
         RV empty_receive_result = accepted->receive(empty_buffer, sizeof(empty_buffer), &received);
         lutest(failed(empty_receive_result));
-        lutest(empty_receive_result.errcode() == BasicError::not_ready());
+        lutest(empty_receive_result.errcode() == E_NOT_READY);
         lutest(received == 0);
         lutest(accepted->get_status() == TCPConnectionState::connected);
 
@@ -394,11 +394,11 @@ namespace
         client->close();
         client->close();
         lutest(client->get_status() == TCPConnectionState::closed);
-        lutest(client->get_error() == ErrCode(0));
+        lutest(client->get_error() == ResultCode(0));
         usize sent = 1;
         RV closed_send_result = client->send(ping, sizeof(ping), &sent);
         lutest(failed(closed_send_result));
-        lutest(closed_send_result.errcode() == BasicError::bad_calling_time());
+        lutest(closed_send_result.errcode() == E_BAD_CALLING_TIME);
         lutest(sent == 0);
         lupanic_if_failed(wait_for_peer_closed(accepted.get()));
         lutest(accepted->get_status() == TCPConnectionState::peer_closed);
@@ -426,7 +426,7 @@ namespace
         usize received = 1;
         RV empty_receive_result = receiver->receive_from(input, sizeof(input), &sender_address, &received);
         lutest(failed(empty_receive_result));
-        lutest(empty_receive_result.errcode() == BasicError::not_ready());
+        lutest(empty_receive_result.errcode() == E_NOT_READY);
         lutest(received == 0);
 
         auto sender_result = new_udp_socket(family);
@@ -462,14 +462,14 @@ namespace
         received = 1;
         RV closed_receive_result = receiver->receive_from(input, sizeof(input), nullptr, &received);
         lutest(failed(closed_receive_result));
-        lutest(closed_receive_result.errcode() == BasicError::bad_calling_time());
+        lutest(closed_receive_result.errcode() == E_BAD_CALLING_TIME);
         lutest(received == 0);
     }
 
     struct PollWakeContext
     {
         Ref<ISocketPoller> poller;
-        ErrCode error = ErrCode(0);
+        ResultCode error = ResultCode(0);
         usize event_count = USIZE_MAX;
     };
 
@@ -502,7 +502,7 @@ namespace
         sleep(10);
         poller->wake();
         thread->wait();
-        lutest(context.error == ErrCode(0));
+        lutest(context.error == ResultCode(0));
         lutest(context.event_count == 0);
 
         auto socket_result = new_udp_socket(AddressFamily::ipv4);
@@ -530,7 +530,7 @@ namespace
 
         auto empty_poll_result = poller->poll(Span<SocketPollEvent>());
         lutest(!empty_poll_result.valid());
-        lutest(empty_poll_result.errcode() == BasicError::bad_arguments());
+        lutest(empty_poll_result.errcode() == E_BAD_ARGUMENTS);
         lutest(poll_events(poller.get(), events, 8, 0) == 0);
 
         auto listener_result = new_tcp_socket(AddressFamily::ipv4);
@@ -543,7 +543,7 @@ namespace
 
         auto invalid_add_result = poller->add(listener.get(), SocketEventFlag::error);
         lutest(!invalid_add_result.valid());
-        lutest(invalid_add_result.errcode() == BasicError::bad_arguments());
+        lutest(invalid_add_result.errcode() == E_BAD_ARGUMENTS);
         auto listener_token_result = poller->add(
             listener.get(),
             SocketEventFlag::readable,
@@ -553,7 +553,7 @@ namespace
         lutest(listener_token);
         auto duplicate_result = poller->add(listener.get(), SocketEventFlag::readable);
         lutest(!duplicate_result.valid());
-        lutest(duplicate_result.errcode() == BasicError::already_exists());
+        lutest(duplicate_result.errcode() == E_ALREADY_EXISTS);
         lutest(poll_events(poller.get(), events, 8, 0) == 0);
 
         auto client_result = new_tcp_socket(AddressFamily::ipv4);
@@ -635,7 +635,7 @@ namespace
         socket_poll_token_t accepted_token = accepted_token_result.get();
         RV invalid_modify_result = poller->modify(accepted_token, SocketEventFlag::hang_up);
         lutest(failed(invalid_modify_result));
-        lutest(invalid_modify_result.errcode() == BasicError::bad_arguments());
+        lutest(invalid_modify_result.errcode() == E_BAD_ARGUMENTS);
         lutest(poll_events(poller.get(), events, 8, 0) == 0);
 
         const c8 ping[] = {'p', 'i', 'n', 'g'};
@@ -670,7 +670,7 @@ namespace
         lupanic_if_failed(poller->remove(client_token));
         RV stale_remove_result = poller->remove(client_token);
         lutest(failed(stale_remove_result));
-        lutest(stale_remove_result.errcode() == BasicError::not_found());
+        lutest(stale_remove_result.errcode() == E_NOT_FOUND);
         client->close();
 
         bool accepted_hang_up = false;
@@ -695,10 +695,10 @@ namespace
         lutest(reused_token != listener_token);
         RV stale_modify_result = poller->modify(listener_token, SocketEventFlag::readable);
         lutest(failed(stale_modify_result));
-        lutest(stale_modify_result.errcode() == BasicError::not_found());
+        lutest(stale_modify_result.errcode() == E_NOT_FOUND);
         duplicate_result = poller->add(listener.get(), SocketEventFlag::readable);
         lutest(!duplicate_result.valid());
-        lutest(duplicate_result.errcode() == BasicError::already_exists());
+        lutest(duplicate_result.errcode() == E_ALREADY_EXISTS);
         lupanic_if_failed(poller->remove(reused_token));
 
         accepted->close();
@@ -758,7 +758,7 @@ namespace
         lupanic_if_failed(poller->remove(token));
         RV stale_modify_result = poller->modify(token, SocketEventFlag::readable);
         lutest(failed(stale_modify_result));
-        lutest(stale_modify_result.errcode() == BasicError::not_found());
+        lutest(stale_modify_result.errcode() == E_NOT_FOUND);
         sender->close();
         receiver->close();
     }
@@ -771,17 +771,17 @@ namespace
         lutest(tcp_result.valid());
         Ref<ITCPSocket> tcp = tcp_result.get();
         lutest(tcp->get_status() == TCPConnectionState::not_connected);
-        lutest(tcp->get_error() == ErrCode(0));
+        lutest(tcp->get_error() == ResultCode(0));
         SocketAddress address = {};
         RV result = tcp->get_remote_address(address);
         lutest(failed(result));
-        lutest(result.errcode() == NetworkError::not_connected());
+        lutest(result.errcode() == Network::E_NOT_CONNECTED);
 
         result = tcp->connect(ipv6_loopback(9));
         lutest(failed(result));
         lutest(tcp->get_status() == TCPConnectionState::error);
         lutest(tcp->get_error() == result.errcode());
-        ErrCode cached_error = tcp->get_error();
+        ResultCode cached_error = tcp->get_error();
         tcp->close();
         lutest(tcp->get_status() == TCPConnectionState::closed);
         lutest(tcp->get_error() == cached_error);
@@ -815,7 +815,7 @@ namespace
             lutest(observed_error);
         }
         lutest(refused_connection->get_status() == TCPConnectionState::error);
-        lutest(refused_connection->get_error() != ErrCode(0));
+        lutest(refused_connection->get_error() != ResultCode(0));
         cached_error = refused_connection->get_error();
         refused_connection->close();
         lutest(refused_connection->get_status() == TCPConnectionState::closed);

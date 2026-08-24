@@ -34,13 +34,13 @@ namespace Luna
             Window::IWin32Window* win32_window = query_interface<Window::IWin32Window>(window->get_object());
             if (!win32_window)
             {
-                return BasicError::not_supported();
+                return E_NOT_SUPPORTED;
             }
             info.hwnd = win32_window->get_hwnd();
             auto func = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");
             if (!func)
             {
-                return BasicError::not_supported();
+                return E_NOT_SUPPORTED;
             }
             err = func(instance, &info, nullptr, &surface);
             if (err)
@@ -51,12 +51,12 @@ namespace Luna
             Window::IAndroidWindow* android_window = query_interface<Window::IAndroidWindow>(window->get_object());
             if (!android_window)
             {
-                return BasicError::not_supported();
+                return E_NOT_SUPPORTED;
             }
             ANativeWindow* native_window = (ANativeWindow*)android_window->get_native_window();
             if (!native_window)
             {
-                return BasicError::bad_calling_time();
+                return E_BAD_CALLING_TIME;
             }
             VkResult err;
             VkAndroidSurfaceCreateInfoKHR info{};
@@ -67,7 +67,7 @@ namespace Luna
             auto func = (PFN_vkCreateAndroidSurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateAndroidSurfaceKHR");
             if (!func)
             {
-                return BasicError::not_supported();
+                return E_NOT_SUPPORTED;
             }
             err = func(instance, &info, nullptr, &surface);
             if (err)

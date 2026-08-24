@@ -25,22 +25,22 @@ namespace Luna
             constexpr SocketEventFlag OUTPUT_FLAGS =
                 SocketEventFlag::error | SocketEventFlag::hang_up;
 
-            ErrCode translate_poller_error(int error)
+            ResultCode translate_poller_error(int error)
             {
                 switch(error)
                 {
-                case EACCES: return BasicError::access_denied();
-                case EAGAIN: return BasicError::not_ready();
-                case EBADF: return BasicError::bad_calling_time();
-                case EEXIST: return BasicError::already_exists();
-                case EINTR: return BasicError::interrupted();
-                case EINVAL: return BasicError::bad_arguments();
-                case EMFILE: return BasicError::out_of_resource();
-                case ENFILE: return BasicError::out_of_resource();
-                case ENOENT: return BasicError::not_found();
-                case ENOMEM: return BasicError::out_of_memory();
-                case ENOSPC: return BasicError::out_of_resource();
-                default: return BasicError::bad_platform_call();
+                case EACCES: return E_ACCESS_DENIED;
+                case EAGAIN: return E_NOT_READY;
+                case EBADF: return E_BAD_CALLING_TIME;
+                case EEXIST: return E_ALREADY_EXISTS;
+                case EINTR: return E_INTERRUPTED;
+                case EINVAL: return E_BAD_ARGUMENTS;
+                case EMFILE: return E_OUT_OF_RESOURCE;
+                case ENFILE: return E_OUT_OF_RESOURCE;
+                case ENOENT: return E_NOT_FOUND;
+                case ENOMEM: return E_OUT_OF_MEMORY;
+                case ENOSPC: return E_OUT_OF_RESOURCE;
+                default: return E_BAD_PLATFORM_CALL;
                 }
             }
 
@@ -340,18 +340,18 @@ namespace Luna
             SocketEventFlag interests,
             opaque_t user_data)
         {
-            if(!socket || !validate_interests(interests)) return BasicError::bad_arguments();
+            if(!socket || !validate_interests(interests)) return E_BAD_ARGUMENTS;
             object_t socket_object = socket->get_object();
             for(const SocketPollRegistration& registration : m_registrations)
             {
                 if(registration.active && registration.socket.object() == socket_object)
                 {
-                    return BasicError::already_exists();
+                    return E_ALREADY_EXISTS;
                 }
             }
 
             int fd = get_native_socket(socket);
-            if(fd < 0) return BasicError::bad_calling_time();
+            if(fd < 0) return E_BAD_CALLING_TIME;
 
             u32 index;
             bool reused_slot = !m_free_slots.empty();
@@ -362,7 +362,7 @@ namespace Luna
             }
             else
             {
-                if(m_registrations.size() >= (usize)U32_MAX) return BasicError::out_of_resource();
+                if(m_registrations.size() >= (usize)U32_MAX) return E_OUT_OF_RESOURCE;
                 index = (u32)m_registrations.size();
                 m_registrations.emplace_back();
             }
@@ -391,13 +391,13 @@ namespace Luna
 
         RV SocketPoller::modify(socket_poll_token_t token, SocketEventFlag interests)
         {
-            if(!validate_interests(interests)) return BasicError::bad_arguments();
+            if(!validate_interests(interests)) return E_BAD_ARGUMENTS;
             SocketPollRegistration* registration = find_registration(m_registrations, token);
-            if(!registration) return BasicError::not_found();
+            if(!registration) return E_NOT_FOUND;
             if(registration->interests == interests) return ok;
 
             int fd = get_native_socket(registration->socket.get());
-            if(fd < 0) return BasicError::bad_calling_time();
+            if(fd < 0) return E_BAD_CALLING_TIME;
             RV result = update_native_registration(
                 this,
                 fd,
@@ -412,7 +412,7 @@ namespace Luna
         RV SocketPoller::remove(socket_poll_token_t token)
         {
             SocketPollRegistration* registration = find_registration(m_registrations, token);
-            if(!registration) return BasicError::not_found();
+            if(!registration) return E_NOT_FOUND;
 
             int fd = get_native_socket(registration->socket.get());
             if(fd >= 0)
@@ -439,7 +439,7 @@ namespace Luna
 
         R<usize> SocketPoller::poll(Span<SocketPollEvent> events, u32 timeout_ms)
         {
-            if(events.empty()) return BasicError::bad_arguments();
+            if(events.empty()) return E_BAD_ARGUMENTS;
             usize native_capacity = events.size() < (usize)I32_MAX ? events.size() + 1 : (usize)I32_MAX;
             if(m_native_events.size() < native_capacity) m_native_events.resize(native_capacity);
             usize event_count = 0;

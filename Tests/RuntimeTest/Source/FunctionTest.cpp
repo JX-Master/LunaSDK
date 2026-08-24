@@ -110,7 +110,7 @@ namespace Luna
 #endif
             lutest(allocated == get_allocated_memory());
         }
-        // Tests that copying one function wrapper from one non-const lvalue uses the copy constructor instead of the 
+        // Tests that copying one function wrapper from one non-const lvalue uses the copy constructor instead of the
         // template constructor, so the callable object is copied only once.
         {
             usize alloc_count = get_memory_allocate_count();
@@ -137,7 +137,7 @@ namespace Luna
 #endif
             lutest(allocated == get_allocated_memory());
         }
-        // Tests that callable objects whose alignment requirement exceeds the alignment of the inline buffer are 
+        // Tests that callable objects whose alignment requirement exceeds the alignment of the inline buffer are
         // allocated on heap.
         {
             usize alloc_count = get_memory_allocate_count();

@@ -25,7 +25,7 @@ For userdata, the registry takes ownership only after `set_resource_userdata` su
 
 ### Function invocation
 
-A `FunctionHandler` receives the owning `IFrontend` and one application-defined parameter `Variant`. It returns `R<Variant>`. `IFrontend::invoke` returns that result directly: it does not wrap successful values in a response object and does not convert an `ErrCode` to a protocol error object.
+A `FunctionHandler` receives the owning `IFrontend` and one application-defined parameter `Variant`. It returns `R<Variant>`. `IFrontend::invoke` returns that result directly: it does not wrap successful values in a response object and does not convert an `ResultCode` to a protocol error object.
 
 Every registered handler is stored in a reference-counted boxed object. Before calling a handler, `IFrontend::invoke` retains the box rather than copying the handler. This keeps invocation overhead independent of the size of the handler and keeps the executing handler alive if it removes or overwrites its own registry entry. A handler may therefore synchronously invoke other function resources and modify any registry entry, including itself.
 
@@ -59,7 +59,7 @@ Release every Frontend instance before calling `close()`.
 
 ### Register and invoke a function
 
-Register functions with `set_resource_function`. By default, registration fails with `BasicError::already_exists` when the URL is occupied. Pass `true` as `overwrite` to replace the old resource.
+Register functions with `set_resource_function`. By default, registration fails with `E_ALREADY_EXISTS` when the URL is occupied. Pass `true` as `overwrite` to replace the old resource.
 
 ```cpp
 using namespace Luna;
@@ -71,7 +71,7 @@ lupanic_if_failed(frontend->set_resource_function(
     {
         if(params.type() != VariantType::object)
         {
-            return BasicError::bad_arguments();
+            return E_BAD_ARGUMENTS;
         }
         i64 result = params["a"].inum() + params["b"].inum();
         return Variant(result);
@@ -87,11 +87,11 @@ if(result.valid())
 }
 ```
 
-Invoking a missing resource or a non-function resource returns `FrontendError::method_not_found`. Errors returned by a handler are propagated unchanged.
+Invoking a missing resource or a non-function resource returns `Frontend::E_METHOD_NOT_FOUND`. Errors returned by a handler are propagated unchanged.
 
 ### Store data and userdata
 
-Use `set_resource_data` and `get_resource_data` for `Variant` resources. Use `set_resource_userdata` and `get_resource_userdata` for opaque pointers. Both getters return `FrontendError::resource_not_found` for an absent resource and `FrontendError::type_mismatch` for a resource of the wrong type.
+Use `set_resource_data` and `get_resource_data` for `Variant` resources. Use `set_resource_userdata` and `get_resource_userdata` for opaque pointers. Both getters return `Frontend::E_RESOURCE_NOT_FOUND` for an absent resource and `Frontend::E_TYPE_MISMATCH` for a resource of the wrong type.
 
 ```cpp
 lupanic_if_failed(frontend->set_resource_data(
@@ -104,7 +104,7 @@ R<Variant> configuration = frontend->get_resource_data("/Configuration");
 
 ### Remove resources and shut down
 
-`remove_resource` succeeds without effect if the URL does not exist. A successful removal releases the resource immediately. Empty resource names are rejected with `BasicError::bad_arguments`.
+`remove_resource` succeeds without effect if the URL does not exist. A successful removal releases the resource immediately. Empty resource names are rejected with `E_BAD_ARGUMENTS`.
 
 ```cpp
 lupanic_if_failed(frontend->remove_resource("/Math/Add"));

@@ -111,8 +111,8 @@ namespace
             RV result = socket->send((const u8*)data + offset, available, &sent);
             if(failed(result))
             {
-                if((result.errcode() == BasicError::not_ready() ||
-                    result.errcode() == BasicError::interrupted()) && retries++ < RETRY_LIMIT)
+                if((result.errcode() == E_NOT_READY ||
+                    result.errcode() == E_INTERRUPTED) && retries++ < RETRY_LIMIT)
                 {
                     lupanic_if_failed(server->poll(1));
                     continue;
@@ -143,8 +143,8 @@ namespace
             RV result = socket->receive(buffer, sizeof(buffer), &received);
             if(failed(result))
             {
-                if(result.errcode() == BasicError::not_ready()) break;
-                if(result.errcode() == BasicError::interrupted()) continue;
+                if(result.errcode() == E_NOT_READY) break;
+                if(result.errcode() == E_INTERRUPTED) continue;
                 lupanic_if_failed(result);
             }
             if(!received)
@@ -194,7 +194,7 @@ namespace
     struct WakeContext
     {
         IServer* server = nullptr;
-        ErrCode error;
+        ResultCode error;
         usize dispatched = USIZE_MAX;
     };
 
@@ -224,7 +224,7 @@ namespace
         sleep(10);
         server->wake();
         thread->wait();
-        lutest(context.error == ErrCode(0));
+        lutest(context.error == ResultCode(0));
         lutest(context.dispatched == 0);
         server->close();
     }
@@ -310,7 +310,7 @@ namespace
         Network::SocketAddress address = {};
         RV address_result = server->get_local_address(address);
         lutest(failed(address_result));
-        lutest(address_result.errcode() == BasicError::bad_calling_time());
+        lutest(address_result.errcode() == E_BAD_CALLING_TIME);
     }
 
     void expect_continue_test()
@@ -446,7 +446,7 @@ namespace
         {
             if(string_equal(request.path, "/handler-error"))
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             if(string_equal(request.path, "/bad-header"))
             {
@@ -508,12 +508,12 @@ namespace
             }),
             options);
         lutest(!invalid_options.valid());
-        lutest(invalid_options.errcode() == BasicError::bad_arguments());
+        lutest(invalid_options.errcode() == E_BAD_ARGUMENTS);
 
         auto invalid_handler = new_server(
             loopback_address(), RequestHandler(), ServerOptions());
         lutest(!invalid_handler.valid());
-        lutest(invalid_handler.errcode() == BasicError::bad_arguments());
+        lutest(invalid_handler.errcode() == E_BAD_ARGUMENTS);
 
         options = ServerOptions();
         options.max_body_size = 0;

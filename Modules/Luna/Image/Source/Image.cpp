@@ -89,7 +89,7 @@ namespace Luna
             if (!stbi_info_from_memory((const unsigned char*)data, (int)data_size, &x, &y, &comp))
             {
                 // data corrupted.
-                return ImageError::file_parse_error();
+                return Image::E_FILE_PARSE_ERROR;
             }
             is_16_bit = stbi_is_16_bit_from_memory((const unsigned char*)data, (int)data_size);
             is_hdr = stbi_is_hdr_from_memory((const unsigned char*)data, (int)data_size);
@@ -168,7 +168,7 @@ namespace Luna
             }
             if (!read_data)
             {
-                return ImageError::file_parse_error();
+                return Image::E_FILE_PARSE_ERROR;
             }
             out_desc.width = out_x;
             out_desc.height = out_y;
@@ -213,17 +213,17 @@ namespace Luna
         {
             if (!check_png_format(desc.format))
             {
-                return set_error(BasicError::bad_arguments(), "The specified encode format does not support the image pixel format.");
+                return set_error(E_BAD_ARGUMENTS, "The specified encode format does not support the image pixel format.");
             }
             if(desc.width * desc.height * pixel_size(desc.format) > data_size)
             {
-                return set_error(BasicError::bad_arguments(), "The pixel data is not enough.");
+                return set_error(E_BAD_ARGUMENTS, "The pixel data is not enough.");
             }
             int comp = stbiw_get_comp(desc.format);
             int res = stbi_write_png_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, data, (u32)pixel_size(desc.format) * desc.width);
             if (!res)
             {
-                return ImageError::file_parse_error();
+                return Image::E_FILE_PARSE_ERROR;
             }
             return ok;
         }
@@ -231,17 +231,17 @@ namespace Luna
         {
             if (!check_bmp_tga_jpg_format(desc.format))
             {
-                return set_error(BasicError::bad_arguments(), "The specified encode format does not support the image pixel format.");
+                return set_error(E_BAD_ARGUMENTS, "The specified encode format does not support the image pixel format.");
             }
             if(desc.width * desc.height * pixel_size(desc.format) > data_size)
             {
-                return set_error(BasicError::bad_arguments(), "The pixel data is not enough.");
+                return set_error(E_BAD_ARGUMENTS, "The pixel data is not enough.");
             }
             int comp = stbiw_get_comp(desc.format);
             int res = stbi_write_bmp_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, data);
             if (!res)
             {
-                return ImageError::file_parse_error();
+                return Image::E_FILE_PARSE_ERROR;
             }
             return ok;
         }
@@ -249,17 +249,17 @@ namespace Luna
         {
             if (!check_bmp_tga_jpg_format(desc.format))
             {
-                return set_error(BasicError::bad_arguments(), "The specified encode format does not support the image pixel format.");
+                return set_error(E_BAD_ARGUMENTS, "The specified encode format does not support the image pixel format.");
             }
             if(desc.width * desc.height * pixel_size(desc.format) > data_size)
             {
-                return set_error(BasicError::bad_arguments(), "The pixel data is not enough.");
+                return set_error(E_BAD_ARGUMENTS, "The pixel data is not enough.");
             }
             int comp = stbiw_get_comp(desc.format);
             int res = stbi_write_tga_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, data);
             if (!res)
             {
-                return ImageError::file_parse_error();
+                return Image::E_FILE_PARSE_ERROR;
             }
             return ok;
         }
@@ -267,17 +267,17 @@ namespace Luna
         {
             if (!check_bmp_tga_jpg_format(desc.format))
             {
-                return set_error(BasicError::bad_arguments(), "The specified encode format does not support the image pixel format.");
+                return set_error(E_BAD_ARGUMENTS, "The specified encode format does not support the image pixel format.");
             }
             if(desc.width * desc.height * pixel_size(desc.format) > data_size)
             {
-                return set_error(BasicError::bad_arguments(), "The pixel data is not enough.");
+                return set_error(E_BAD_ARGUMENTS, "The pixel data is not enough.");
             }
             int comp = stbiw_get_comp(desc.format);
             int res = stbi_write_jpg_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, data, quality);
             if (!res)
             {
-                return ImageError::file_parse_error();
+                return Image::E_FILE_PARSE_ERROR;
             }
             return ok;
         }
@@ -285,17 +285,17 @@ namespace Luna
         {
             if (!check_hdr_format(desc.format))
             {
-                return set_error(BasicError::bad_arguments(), "The specified encode format does not support the image pixel format.");
+                return set_error(E_BAD_ARGUMENTS, "The specified encode format does not support the image pixel format.");
             }
             if(desc.width * desc.height * pixel_size(desc.format) > data_size)
             {
-                return set_error(BasicError::bad_arguments(), "The pixel data is not enough.");
+                return set_error(E_BAD_ARGUMENTS, "The pixel data is not enough.");
             }
             int comp = stbiw_get_comp(desc.format);
             int res = stbi_write_hdr_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, (f32*)data);
             if (!res)
             {
-                return ImageError::file_parse_error();
+                return Image::E_FILE_PARSE_ERROR;
             }
             return ok;
         }
@@ -303,6 +303,15 @@ namespace Luna
         struct ImageModule : public Module
         {
             virtual const c8* get_name() override { return "Image"; }
+            virtual RV on_register() override
+            {
+                if (!register_error_category(ERROR_CATEGORY, "Image") ||
+                    !register_error_code(Image::E_FILE_PARSE_ERROR, "file_parse_error", "The image file could not be parsed."))
+                {
+                    return set_error(E_ALREADY_EXISTS, "Image error metadata conflicts with an existing registration.");
+                }
+                return ok;
+            }
             virtual RV on_init() override
             {
                 stbi_init();
@@ -317,17 +326,4 @@ namespace Luna
         return &m;
     }
 
-    namespace ImageError
-    {
-        LUNA_IMAGE_API errcat_t errtype()
-        {
-            static errcat_t e = get_error_category_by_name("ImageError");
-            return e;
-        }
-        LUNA_IMAGE_API ErrCode file_parse_error()
-        {
-            static ErrCode e = get_error_code_by_name("ImageError", "file_parse_error");
-            return e;
-        }
-    }
 }

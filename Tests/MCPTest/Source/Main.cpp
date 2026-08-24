@@ -131,7 +131,7 @@ namespace
             "/failure",
             FunctionHandler([](IFrontend*, const Variant&) -> R<Variant>
             {
-                return set_error(BasicError::bad_arguments(), "handler rejected input");
+                return set_error(E_BAD_ARGUMENTS, "handler rejected input");
             })));
         lupanic_if_failed(fixture.frontend->set_resource_function(
             "/bad-result",
@@ -179,25 +179,25 @@ namespace
 
         R<Ref<IMCPServer>> null_frontend = new_server(nullptr, desc);
         lutest(!null_frontend.valid());
-        lutest(unwrap_errcode(null_frontend.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(null_frontend.errcode()) == E_BAD_ARGUMENTS);
 
         ServerDesc missing_name = desc;
         missing_name.name.reset();
         R<Ref<IMCPServer>> missing_name_result = new_server(frontend, missing_name);
         lutest(!missing_name_result.valid());
-        lutest(unwrap_errcode(missing_name_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(missing_name_result.errcode()) == E_BAD_ARGUMENTS);
 
         ServerDesc missing_version = desc;
         missing_version.version.reset();
         R<Ref<IMCPServer>> missing_version_result = new_server(frontend, missing_version);
         lutest(!missing_version_result.valid());
-        lutest(unwrap_errcode(missing_version_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(missing_version_result.errcode()) == E_BAD_ARGUMENTS);
 
         ServerDesc invalid_icons = desc;
         invalid_icons.icons = Variant(VariantType::object);
         R<Ref<IMCPServer>> invalid_icons_result = new_server(frontend, invalid_icons);
         lutest(!invalid_icons_result.valid());
-        lutest(unwrap_errcode(invalid_icons_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(invalid_icons_result.errcode()) == E_BAD_ARGUMENTS);
 
         ServerDesc invalid_icon_theme = desc;
         invalid_icon_theme.icons = Variant(VariantType::array);
@@ -207,20 +207,20 @@ namespace
         invalid_icon_theme.icons.push_back(move(bad_icon));
         R<Ref<IMCPServer>> invalid_theme_result = new_server(frontend, invalid_icon_theme);
         lutest(!invalid_theme_result.valid());
-        lutest(unwrap_errcode(invalid_theme_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(invalid_theme_result.errcode()) == E_BAD_ARGUMENTS);
 
         ServerDesc invalid_utf8 = desc;
         const c8 invalid_bytes[] = {(c8)0xED, (c8)0xA0, (c8)0x80};
         invalid_utf8.instructions = Name(invalid_bytes, sizeof(invalid_bytes));
         R<Ref<IMCPServer>> invalid_utf8_result = new_server(frontend, invalid_utf8);
         lutest(!invalid_utf8_result.valid());
-        lutest(unwrap_errcode(invalid_utf8_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(invalid_utf8_result.errcode()) == E_BAD_ARGUMENTS);
 
         ServerDesc invalid_scope = desc;
         invalid_scope.cache_scope = (CacheScope)99;
         R<Ref<IMCPServer>> invalid_scope_result = new_server(frontend, invalid_scope);
         lutest(!invalid_scope_result.valid());
-        lutest(unwrap_errcode(invalid_scope_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(invalid_scope_result.errcode()) == E_BAD_ARGUMENTS);
 
         R<Ref<IMCPServer>> default_server = new_server(frontend, desc);
         lupanic_if_failed(default_server);
@@ -263,7 +263,7 @@ namespace
 
         RV duplicate = fixture.server->set_tool(make_tool("alpha", "/echo"));
         lutest(!duplicate.valid());
-        lutest(duplicate.errcode() == BasicError::already_exists());
+        lutest(duplicate.errcode() == E_ALREADY_EXISTS);
         lupanic_if_failed(fixture.server->set_tool(make_tool("alpha", "/echo"), true));
 
         c8 boundary_name_bytes[128];
@@ -279,12 +279,12 @@ namespace
         empty_name.name.reset();
         RV empty_name_result = fixture.server->set_tool(move(empty_name));
         lutest(!empty_name_result.valid());
-        lutest(unwrap_errcode(empty_name_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(empty_name_result.errcode()) == E_BAD_ARGUMENTS);
 
         ToolDesc bad_char = make_tool("bad/name", "/echo");
         RV bad_char_result = fixture.server->set_tool(move(bad_char));
         lutest(!bad_char_result.valid());
-        lutest(unwrap_errcode(bad_char_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(bad_char_result.errcode()) == E_BAD_ARGUMENTS);
 
         c8 long_name_bytes[129];
         for(usize i = 0; i < sizeof(long_name_bytes); ++i) long_name_bytes[i] = 'a';
@@ -292,65 +292,65 @@ namespace
         long_name.name = Name(long_name_bytes, sizeof(long_name_bytes));
         RV long_name_result = fixture.server->set_tool(move(long_name));
         lutest(!long_name_result.valid());
-        lutest(unwrap_errcode(long_name_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(long_name_result.errcode()) == E_BAD_ARGUMENTS);
 
         ToolDesc missing_mapping = make_tool("missing", "/missing");
         RV missing_mapping_result = fixture.server->set_tool(move(missing_mapping));
         lutest(!missing_mapping_result.valid());
-        lutest(unwrap_errcode(missing_mapping_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(missing_mapping_result.errcode()) == E_BAD_ARGUMENTS);
 
         lupanic_if_failed(fixture.frontend->set_resource_data("/not-function", Variant()));
         ToolDesc wrong_mapping_type = make_tool("wrong_mapping", "/not-function");
         RV wrong_mapping_result = fixture.server->set_tool(move(wrong_mapping_type));
         lutest(!wrong_mapping_result.valid());
-        lutest(unwrap_errcode(wrong_mapping_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(wrong_mapping_result.errcode()) == E_BAD_ARGUMENTS);
         lupanic_if_failed(fixture.frontend->remove_resource("/not-function"));
 
         ToolDesc bad_input_schema = make_tool("bad_input", "/echo");
         bad_input_schema.input_schema["type"] = "array";
         RV bad_input_result = fixture.server->set_tool(move(bad_input_schema));
         lutest(!bad_input_result.valid());
-        lutest(unwrap_errcode(bad_input_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(bad_input_result.errcode()) == E_BAD_ARGUMENTS);
 
         ToolDesc bad_output_schema = make_tool("bad_output", "/echo");
         bad_output_schema.output_schema = Variant(VariantType::array);
         RV bad_output_result = fixture.server->set_tool(move(bad_output_schema));
         lutest(!bad_output_result.valid());
-        lutest(unwrap_errcode(bad_output_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(bad_output_result.errcode()) == E_BAD_ARGUMENTS);
 
         ToolDesc bad_annotations = make_tool("bad_annotations", "/echo");
         bad_annotations.annotations = Variant(VariantType::object);
         bad_annotations.annotations["readOnlyHint"] = "yes";
         RV bad_annotations_result = fixture.server->set_tool(move(bad_annotations));
         lutest(!bad_annotations_result.valid());
-        lutest(unwrap_errcode(bad_annotations_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(bad_annotations_result.errcode()) == E_BAD_ARGUMENTS);
 
         ToolDesc bad_icons = make_tool("bad_icons", "/echo");
         bad_icons.icons = Variant(VariantType::array);
         bad_icons.icons.push_back(Variant(VariantType::object));
         RV bad_icons_result = fixture.server->set_tool(move(bad_icons));
         lutest(!bad_icons_result.valid());
-        lutest(unwrap_errcode(bad_icons_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(bad_icons_result.errcode()) == E_BAD_ARGUMENTS);
 
         ToolDesc bad_metadata = make_tool("bad_metadata", "/echo");
         bad_metadata.metadata = Variant(VariantType::array);
         RV bad_metadata_result = fixture.server->set_tool(move(bad_metadata));
         lutest(!bad_metadata_result.valid());
-        lutest(unwrap_errcode(bad_metadata_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(bad_metadata_result.errcode()) == E_BAD_ARGUMENTS);
 
         ToolDesc bad_metadata_key = make_tool("bad_metadata_key", "/echo");
         bad_metadata_key.metadata = Variant(VariantType::object);
         bad_metadata_key.metadata["bad key"] = true;
         RV bad_metadata_key_result = fixture.server->set_tool(move(bad_metadata_key));
         lutest(!bad_metadata_key_result.valid());
-        lutest(unwrap_errcode(bad_metadata_key_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(bad_metadata_key_result.errcode()) == E_BAD_ARGUMENTS);
 
         ToolDesc bad_utf8 = make_tool("bad_utf8", "/echo");
         const c8 invalid_utf8[] = {(c8)0xF4, (c8)0x90, (c8)0x80, (c8)0x80};
         bad_utf8.description = Name(invalid_utf8, sizeof(invalid_utf8));
         RV bad_utf8_result = fixture.server->set_tool(move(bad_utf8));
         lutest(!bad_utf8_result.valid());
-        lutest(unwrap_errcode(bad_utf8_result.errcode()) == BasicError::bad_arguments());
+        lutest(unwrap_errcode(bad_utf8_result.errcode()) == E_BAD_ARGUMENTS);
 
         ToolDesc empty_header = make_tool("empty_header", "/echo");
         empty_header.input_schema["properties"]["value"]["type"] = "string";
@@ -394,7 +394,7 @@ namespace
 
         RV empty_remove = fixture.server->remove_tool(Name());
         lutest(!empty_remove.valid());
-        lutest(empty_remove.errcode() == BasicError::bad_arguments());
+        lutest(empty_remove.errcode() == E_BAD_ARGUMENTS);
         lupanic_if_failed(fixture.server->remove_tool("absent"));
     }
 
@@ -871,7 +871,7 @@ namespace
         R<Ref<IMCPMessageProcessor>> invalid = fixture.server->new_message_processor(
             (ProtocolVersion)99);
         lutest(!invalid.valid());
-        lutest(invalid.errcode() == BasicError::bad_arguments());
+        lutest(invalid.errcode() == E_BAD_ARGUMENTS);
 
         R<Ref<IMCPMessageProcessor>> first_result =
             fixture.server->new_message_processor(ProtocolVersion::v2025_06_18);

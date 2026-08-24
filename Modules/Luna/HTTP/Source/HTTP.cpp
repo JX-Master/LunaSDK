@@ -949,7 +949,7 @@ namespace Luna
                 !options.max_requests_per_poll ||
                 !options.max_socket_events_per_poll)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
 
             m_handler = move(handler);
@@ -1050,7 +1050,7 @@ namespace Luna
                 if(!append_output_with_limit(
                     connection, response, server->m_options.max_buffered_output_size))
                 {
-                    return BasicError::out_of_resource();
+                    return E_OUT_OF_RESOURCE;
                 }
                 if(close_connection) connection->close_after_write = true;
                 return update_connection_interests(server, connection);
@@ -1085,7 +1085,7 @@ namespace Luna
                                 interim,
                                 server->m_options.max_buffered_output_size))
                             {
-                                return BasicError::out_of_resource();
+                                return E_OUT_OF_RESOURCE;
                             }
                             connection->sent_continue = true;
                             return update_connection_interests(server, connection);
@@ -1191,8 +1191,8 @@ namespace Luna
                     if(failed(result))
                     {
                         connection->input.resize(old_size);
-                        if(result.errcode() == BasicError::not_ready()) break;
-                        if(result.errcode() == BasicError::interrupted()) continue;
+                        if(result.errcode() == E_NOT_READY) break;
+                        if(result.errcode() == E_INTERRUPTED) continue;
                         return result;
                     }
                     connection->input.resize(old_size + received);
@@ -1230,8 +1230,8 @@ namespace Luna
                         &sent);
                     if(failed(result))
                     {
-                        if(result.errcode() == BasicError::not_ready()) break;
-                        if(result.errcode() == BasicError::interrupted()) continue;
+                        if(result.errcode() == E_NOT_READY) break;
+                        if(result.errcode() == E_INTERRUPTED) continue;
                         return result;
                     }
                     connection->output_offset += sent;
@@ -1255,8 +1255,8 @@ namespace Luna
                     auto accepted_result = server->m_listener->accept(remote_address);
                     if(!accepted_result.valid())
                     {
-                        if(accepted_result.errcode() == BasicError::not_ready()) return ok;
-                        if(accepted_result.errcode() == BasicError::interrupted()) continue;
+                        if(accepted_result.errcode() == E_NOT_READY) return ok;
+                        if(accepted_result.errcode() == E_INTERRUPTED) continue;
                         return accepted_result.errcode();
                     }
                     Connection* connection = memnew<Connection>();
@@ -1282,7 +1282,7 @@ namespace Luna
 
         R<usize> Server::poll(u32 timeout_ms)
         {
-            if(m_closed) return BasicError::bad_calling_time();
+            if(m_closed) return E_BAD_CALLING_TIME;
             usize dispatched = 0;
 
             for(usize i = 0;
@@ -1359,7 +1359,7 @@ namespace Luna
 
         RV Server::get_local_address(Network::SocketAddress& address)
         {
-            if(m_closed) return BasicError::bad_calling_time();
+            if(m_closed) return E_BAD_CALLING_TIME;
             return m_listener->get_local_address(address);
         }
 

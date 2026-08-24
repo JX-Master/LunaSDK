@@ -739,21 +739,21 @@ namespace Luna
                 !options.max_legacy_sessions)
             {
                 return set_error(
-                    BasicError::bad_arguments(),
+                    E_BAD_ARGUMENTS,
                     "Streamable HTTP requires a server, loopback address, valid endpoint, and session capacity");
             }
             MCPServer* concrete_pointer = cast_object<MCPServer>(server->get_object());
             Ref<MCPServer> concrete_server(concrete_pointer);
             if(!concrete_server)
             {
-                return set_error(BasicError::bad_arguments(), "Invalid MCP server implementation");
+                return set_error(E_BAD_ARGUMENTS, "Invalid MCP server implementation");
             }
             for(const String& origin : options.allowed_origins)
             {
                 if(origin.empty() || origin.find('\r') != String::npos ||
                     origin.find('\n') != String::npos)
                 {
-                    return set_error(BasicError::bad_arguments(), "Invalid allowed Origin value");
+                    return set_error(E_BAD_ARGUMENTS, "Invalid allowed Origin value");
                 }
             }
 

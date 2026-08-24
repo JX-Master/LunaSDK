@@ -60,9 +60,9 @@ namespace Luna
                 CGError error = CGWarpMouseCursorPosition(new_mouse_location);
                 if(error != kCGErrorSuccess)
                 {
-                    if(error == kCGErrorIllegalArgument) return BasicError::bad_arguments();
-                    if(error == kCGErrorNotImplemented) return BasicError::not_supported();
-                    return BasicError::bad_platform_call();
+                    if(error == kCGErrorIllegalArgument) return E_BAD_ARGUMENTS;
+                    if(error == kCGErrorNotImplemented) return E_NOT_SUPPORTED;
+                    return E_BAD_PLATFORM_CALL;
                 }
             }
             return ok;

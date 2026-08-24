@@ -52,7 +52,7 @@ namespace Luna
 
         //! The function handler type used to register callable resources.
         //! @details The handler receives an application-defined Variant and returns either a
-        //! Variant on success or an ErrCode on failure. IFrontend propagates this result without
+        //! Variant on success or a ResultCode on failure. IFrontend propagates this result without
         //! adding a protocol-specific message envelope.
         using FunctionHandler = Function<R<Variant>(IFrontend* frontend, const Variant& params)>;
 
@@ -72,7 +72,7 @@ namespace Luna
             //! @param[in] url The URL identifying the function.
             //! @param[in] params The application-defined parameter Variant passed to the function.
             //! @return Returns the handler result without modification, or
-            //! @ref FrontendError::method_not_found if the URL does not identify a function.
+            //! @ref Frontend::E_METHOD_NOT_FOUND if the URL does not identify a function.
             //! @details The handler is stored in a reference-counted boxed object. This call retains
             //! the box before invoking the handler, so the handler is not copied and remains valid
             //! if it removes or overwrites its own registry entry while executing.
@@ -81,10 +81,10 @@ namespace Luna
             //! Sets a function resource at the given URL.
             //! @param[in] url The URL identifying the resource.
             //! @param[in] handler The callable handler for this function resource.
-            //! @param[in] overwrite If `false` (default), returns @ref BasicError::already_exists
+            //! @param[in] overwrite If `false` (default), returns @ref E_ALREADY_EXISTS
             //!            if a resource already exists at the URL.
             //!            If `true`, the existing resource is replaced.
-            //! @return Returns @ref BasicError::bad_arguments if `url` is empty or `handler` is
+            //! @return Returns @ref E_BAD_ARGUMENTS if `url` is empty or `handler` is
             //! invalid.
             virtual RV set_resource_function(const Name& url, FunctionHandler&& handler, bool overwrite = false) = 0;
 
@@ -93,18 +93,18 @@ namespace Luna
             //! does not exist, or replaces it if `overwrite` is `true`.
             //! @param[in] url The URL identifying the resource.
             //! @param[in] data The Variant value to store.
-            //! @param[in] overwrite If `false` (default), returns @ref BasicError::already_exists
+            //! @param[in] overwrite If `false` (default), returns @ref E_ALREADY_EXISTS
             //!            if a resource already exists at the URL.
-            //! @return Returns @ref BasicError::bad_arguments if `url` is empty.
+            //! @return Returns @ref E_BAD_ARGUMENTS if `url` is empty.
             virtual RV set_resource_data(const Name& url, Variant&& data, bool overwrite = false) = 0;
 
             //! Sets a userdata resource at the given URL.
             //! @param[in] url The URL identifying the resource.
             //! @param[in] data Pointer to the memory block.
             //! @param[in] dtor Optional destructor called when the resource is removed or overwritten.
-            //! @param[in] overwrite If `false` (default), returns @ref BasicError::already_exists
+            //! @param[in] overwrite If `false` (default), returns @ref E_ALREADY_EXISTS
             //!            if a resource already exists at the URL.
-            //! @return Returns @ref BasicError::bad_arguments if `url` is empty.
+            //! @return Returns @ref E_BAD_ARGUMENTS if `url` is empty.
             //! @details This IFrontend takes ownership of `data` only if this call succeeds. If a
             //! destructor is provided, it is also called when the IFrontend is destroyed.
             virtual RV set_resource_userdata(
@@ -119,20 +119,20 @@ namespace Luna
             virtual ResourceType get_resource_type(const Name& url) = 0;
 
             //! Returns the Variant data of the resource at the given URL.
-            //! @return Returns @ref FrontendError::resource_not_found if no resource exists,
-            //!         or @ref FrontendError::type_mismatch if the resource is not a data resource.
+            //! @return Returns @ref Frontend::E_RESOURCE_NOT_FOUND if no resource exists,
+            //!         or @ref Frontend::E_TYPE_MISMATCH if the resource is not a data resource.
             virtual R<Variant> get_resource_data(const Name& url) = 0;
 
             //! Returns the pointer stored by a userdata resource at the given URL.
-            //! @return Returns @ref FrontendError::resource_not_found if no resource exists,
-            //! or @ref FrontendError::type_mismatch if the resource is not a userdata resource.
+            //! @return Returns @ref Frontend::E_RESOURCE_NOT_FOUND if no resource exists,
+            //! or @ref Frontend::E_TYPE_MISMATCH if the resource is not a userdata resource.
             //! @details The pointer remains owned by this IFrontend and may be invalidated by a
             //! subsequent resource removal, overwrite, or destruction of the IFrontend.
             virtual R<void*> get_resource_userdata(const Name& url) = 0;
 
             //! Removes the resource at the given URL.
             //! @param[in] url The resource to remove.
-            //! @return Returns @ref BasicError::bad_arguments if `url` is empty. Removing a URL
+            //! @return Returns @ref E_BAD_ARGUMENTS if `url` is empty. Removing a URL
             //! that does not exist succeeds without effect.
             virtual RV remove_resource(const Name& url) = 0;
         };
@@ -149,23 +149,20 @@ namespace Luna
         // Error codes
         // -----------------------------------------------------------------------
 
-        //! @defgroup FrontendError Frontend Errors
+        //! @defgroup FrontendResultCodes Frontend Result Codes
         //! @{
 
-        namespace FrontendError
-        {
-            //! Returns the Frontend error category.
-            LUNA_FRONTEND_API errcat_t errtype();
+        //! The Frontend error category identifier.
+        inline constexpr errcat_t ERROR_CATEGORY = make_error_category(ErrorDomain::LUNA_SDK, LunaErrorCategory::FRONTEND);
 
-            //! The requested resource URL was not found in the registry.
-            LUNA_FRONTEND_API ErrCode resource_not_found();
+        //! The requested resource URL was not found in the registry.
+        inline constexpr ResultCode E_RESOURCE_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::FRONTEND, -1);
 
-            //! The resource exists but its type does not match the expected type.
-            LUNA_FRONTEND_API ErrCode type_mismatch();
+        //! The resource exists but its type does not match the expected type.
+        inline constexpr ResultCode E_TYPE_MISMATCH = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::FRONTEND, -2);
 
-            //! The requested URL does not identify a function resource.
-            LUNA_FRONTEND_API ErrCode method_not_found();
-        }
+        //! The requested URL does not identify a function resource.
+        inline constexpr ResultCode E_METHOD_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::FRONTEND, -3);
 
         //! @}
         //! @}

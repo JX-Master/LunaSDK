@@ -33,7 +33,7 @@ namespace Luna
                 case ColorSpace::scrgb_linear:  return VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
                 case ColorSpace::bt2020:        return VK_COLOR_SPACE_HDR10_ST2084_EXT;
                 case ColorSpace::display_p3:    return VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT;
-                default: return RHIError::color_space_not_supported();
+                default: return RHI::E_COLOR_SPACE_NOT_SUPPORTED;
             }
         }
         inline ColorSpace decode_color_space(VkColorSpaceKHR color_space)
@@ -174,7 +174,7 @@ namespace Luna
                 log_error("RHI", "    {%s, %s}", print_vk_format(format.format), print_vk_colorspace(format.colorSpace));
             }
 #endif
-            return set_error(BasicError::not_supported(), "The specified pixel format for swap chain is not supported.");
+            return set_error(E_NOT_SUPPORTED, "The specified pixel format for swap chain is not supported.");
         }
 
         VkPresentModeKHR choose_present_mode(const Vector<VkPresentModeKHR>& available_presnet_modes, bool vertical_synchronized)
@@ -194,7 +194,7 @@ namespace Luna
             if (desc.width < capabilities.minImageExtent.width || desc.height < capabilities.minImageExtent.height ||
                 desc.width > capabilities.maxImageExtent.width || desc.height > capabilities.maxImageExtent.height)
             {
-                return set_error(BasicError::not_supported(), 
+                return set_error(E_NOT_SUPPORTED,
                     "The swap chain size specified is not supported by the current window. Speciifed size is: (%u, %u), supportted range is: (%u-%u, %u-%u)", 
                     desc.width, desc.height, capabilities.minImageExtent.width, capabilities.maxImageExtent.width, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
             }
@@ -270,7 +270,7 @@ namespace Luna
                 m_desc.height = m_desc.height == 0 ? framebuffer_size.y : m_desc.height;
                 if (!test_flags(m_queue.desc.flags, CommandQueueFlag::presenting))
                 {
-                    return set_error(BasicError::not_supported(), "The specified command queue for creating swap chain does not have presenting support");
+                    return set_error(E_NOT_SUPPORTED, "The specified command queue for creating swap chain does not have presenting support");
                 }
                 auto surface_info = get_physical_device_surface_info(m_device->m_physical_device, m_surface);
                 lulet(surface_format, choose_swap_surface_format(surface_info.formats, m_desc.format, m_desc.color_space));
@@ -282,7 +282,7 @@ namespace Luna
                 }
                 if (m_desc.buffer_count < surface_info.capabilities.minImageCount || m_desc.buffer_count > surface_info.capabilities.maxImageCount)
                 {
-                    return set_error(BasicError::not_supported(),
+                    return set_error(E_NOT_SUPPORTED,
                         "The specified buffer count is not supported by the current window. Specified buffer count is %u, supported range is %u-%u",
                         m_desc.buffer_count, surface_info.capabilities.minImageCount, surface_info.capabilities.maxImageCount);
                 }

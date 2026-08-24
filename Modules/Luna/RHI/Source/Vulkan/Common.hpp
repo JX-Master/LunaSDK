@@ -31,64 +31,64 @@ namespace Luna
             VkStructureType sType;
             const void* pNext;
         };
-        // inline ErrCode encode_vk_result_errcode(VkResult result, const char*& errstr)
+        // inline ResultCode encode_vk_result_errcode(VkResult result, const char*& errstr)
         // {
         //     switch (result)
         //     {
         //     case VK_SUCCESS:
-        //     case VK_SUBOPTIMAL_KHR: return ErrCode(0);
+        //     case VK_SUBOPTIMAL_KHR: return ResultCode(0);
         //     case VK_NOT_READY:
         //         errstr = "VK_NOT_READY";
-        //         return BasicError::not_ready();
+        //         return E_NOT_READY;
         //     case VK_TIMEOUT: 
         //         errstr = "VK_TIMEOUT";
-        //         return BasicError::timeout();
+        //         return E_TIMEOUT;
         //     case VK_INCOMPLETE: 
         //         errstr = "VK_INCOMPLETE";
-        //         return BasicError::not_ready();
+        //         return E_NOT_READY;
         //     case VK_ERROR_OUT_OF_HOST_MEMORY:
         //         errstr = "VK_ERROR_OUT_OF_HOST_MEMORY";
-        //         return BasicError::out_of_memory();
+        //         return E_OUT_OF_MEMORY;
         //     case VK_ERROR_OUT_OF_DEVICE_MEMORY:
         //         errstr = "VK_ERROR_OUT_OF_DEVICE_MEMORY";
-        //         return BasicError::out_of_memory();
+        //         return E_OUT_OF_MEMORY;
         //     case VK_ERROR_INITIALIZATION_FAILED:
         //         errstr = "VK_ERROR_INITIALIZATION_FAILED";
-        //         return BasicError::bad_platform_call();
+        //         return E_BAD_PLATFORM_CALL;
         //     case VK_ERROR_DEVICE_LOST:
         //         errstr = "VK_ERROR_DEVICE_LOST";
-        //         return RHIError::device_removed();
+        //         return RHI::E_DEVICE_REMOVED;
         //     case VK_ERROR_LAYER_NOT_PRESENT:
         //         errstr = "VK_ERROR_LAYER_NOT_PRESENT";
-        //         return BasicError::not_supported();
+        //         return E_NOT_SUPPORTED;
         //     case VK_ERROR_EXTENSION_NOT_PRESENT:
         //         errstr = "VK_ERROR_EXTENSION_NOT_PRESENT";
-        //         return BasicError::not_supported();
+        //         return E_NOT_SUPPORTED;
         //     case VK_ERROR_FEATURE_NOT_PRESENT:
         //         errstr = "VK_ERROR_FEATURE_NOT_PRESENT";
-        //         return BasicError::not_supported();
+        //         return E_NOT_SUPPORTED;
         //     case VK_ERROR_INCOMPATIBLE_DRIVER:
         //         errstr = "VK_ERROR_INCOMPATIBLE_DRIVER";
-        //         return BasicError::not_supported();
+        //         return E_NOT_SUPPORTED;
         //     case VK_ERROR_TOO_MANY_OBJECTS:
         //         errstr = "VK_ERROR_TOO_MANY_OBJECTS";
-        //         return BasicError::out_of_resource();
+        //         return E_OUT_OF_RESOURCE;
         //     case VK_ERROR_FORMAT_NOT_SUPPORTED:
         //         errstr = "VK_ERROR_FORMAT_NOT_SUPPORTED";
-        //         return BasicError::not_supported();
+        //         return E_NOT_SUPPORTED;
         //     case VK_ERROR_OUT_OF_DATE_KHR:
         //         errstr = "VK_ERROR_OUT_OF_DATE_KHR";
-        //         return RHIError::swap_chain_out_of_date();
+        //         return RHI::E_SWAP_CHAIN_OUT_OF_DATE;
         //     default:
         //         errstr = "Unknwon error";
-        //         return BasicError::bad_platform_call();
+        //         return E_BAD_PLATFORM_CALL;
         //     }
         // }
         // inline RV encode_vk_result(VkResult result, const char* func)
         // {
         //     const char* errstr = nullptr;
-        //     ErrCode err = encode_vk_result_errcode(result, errstr);
-        //     if(err != ErrCode(0))
+        //     ResultCode err = encode_vk_result_errcode(result, errstr);
+        //     if(err != ResultCode(0))
         //     {
         //         return set_error(err, "Vulkan error: %s returns %s", func, errstr);
         //     }
@@ -100,29 +100,29 @@ namespace Luna
             {
             case VK_SUCCESS:
             case VK_SUBOPTIMAL_KHR: return ok;
-            case VK_NOT_READY: return BasicError::not_ready();
-            case VK_TIMEOUT: return BasicError::timeout();
-            case VK_INCOMPLETE: return BasicError::not_ready();
+            case VK_NOT_READY: return E_NOT_READY;
+            case VK_TIMEOUT: return E_TIMEOUT;
+            case VK_INCOMPLETE: return E_NOT_READY;
             case VK_ERROR_OUT_OF_HOST_MEMORY:
             case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-                return BasicError::out_of_memory();
+                return E_OUT_OF_MEMORY;
             case VK_ERROR_INITIALIZATION_FAILED:
-                return BasicError::bad_platform_call();
+                return E_BAD_PLATFORM_CALL;
             case VK_ERROR_DEVICE_LOST:
-                return RHIError::device_removed();
+                return RHI::E_DEVICE_REMOVED;
             case VK_ERROR_LAYER_NOT_PRESENT:
             case VK_ERROR_EXTENSION_NOT_PRESENT:
             case VK_ERROR_FEATURE_NOT_PRESENT:
             case VK_ERROR_INCOMPATIBLE_DRIVER:
-                return BasicError::not_supported();
+                return E_NOT_SUPPORTED;
             case VK_ERROR_TOO_MANY_OBJECTS:
-                return BasicError::out_of_resource();
+                return E_OUT_OF_RESOURCE;
             case VK_ERROR_FORMAT_NOT_SUPPORTED:
-                return BasicError::not_supported();
+                return E_NOT_SUPPORTED;
             case VK_ERROR_OUT_OF_DATE_KHR:
-                return RHIError::swap_chain_out_of_date();
+                return RHI::E_SWAP_CHAIN_OUT_OF_DATE;
             default:
-                return BasicError::bad_platform_call();
+                return E_BAD_PLATFORM_CALL;
             }
         }
         inline VkFormat encode_format(Format f)

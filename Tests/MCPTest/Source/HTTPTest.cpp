@@ -122,7 +122,7 @@ namespace
                     request.size() - sent_offset,
                     &sent);
                 if(result.valid()) sent_offset += sent;
-                else lutest(unwrap_errcode(result.errcode()) == BasicError::not_ready());
+                else lutest(unwrap_errcode(result.errcode()) == E_NOT_READY);
             }
             sent_all = sent_offset == request.size();
 
@@ -136,7 +136,7 @@ namespace
             }
             else
             {
-                lutest(unwrap_errcode(receive_result.errcode()) == BasicError::not_ready());
+                lutest(unwrap_errcode(receive_result.errcode()) == E_NOT_READY);
             }
             sleep(1);
         }
@@ -328,7 +328,7 @@ void streamable_http_test(IMCPServer* server)
     R<Ref<HTTP::IServer>> invalid_address = new_streamable_http_server(
         server, any_address(), options);
     lutest(!invalid_address.valid());
-    lutest(unwrap_errcode(invalid_address.errcode()) == BasicError::bad_arguments());
+    lutest(unwrap_errcode(invalid_address.errcode()) == E_BAD_ARGUMENTS);
 
     StreamableHTTPServerOptions invalid_endpoint_options = options;
     invalid_endpoint_options.endpoint = "mcp";

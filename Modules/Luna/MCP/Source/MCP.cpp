@@ -765,13 +765,13 @@ namespace Luna
         {
             if(!validate_tool_name(desc.name))
             {
-                return set_error(BasicError::bad_arguments(), "Invalid MCP tool name");
+                return set_error(E_BAD_ARGUMENTS, "Invalid MCP tool name");
             }
             if(!desc.frontend_url ||
                 m_frontend->get_resource_type(desc.frontend_url) != Frontend::ResourceType::function)
             {
                 return set_error(
-                    BasicError::bad_arguments(),
+                    E_BAD_ARGUMENTS,
                     "The mapped Frontend resource must be a function");
             }
             if(desc.input_schema.type() != VariantType::object ||
@@ -779,24 +779,24 @@ namespace Luna
                 desc.input_schema.find("type").str() != Name("object"))
             {
                 return set_error(
-                    BasicError::bad_arguments(),
+                    E_BAD_ARGUMENTS,
                     "The MCP input schema root type must be object");
             }
             if(desc.output_schema.valid() && desc.output_schema.type() != VariantType::object)
             {
-                return set_error(BasicError::bad_arguments(), "The MCP output schema must be an object");
+                return set_error(E_BAD_ARGUMENTS, "The MCP output schema must be an object");
             }
             if(!validate_annotations(desc.annotations))
             {
-                return set_error(BasicError::bad_arguments(), "Invalid MCP tool annotations");
+                return set_error(E_BAD_ARGUMENTS, "Invalid MCP tool annotations");
             }
             if(!validate_icons(desc.icons))
             {
-                return set_error(BasicError::bad_arguments(), "Invalid MCP tool icons");
+                return set_error(E_BAD_ARGUMENTS, "Invalid MCP tool icons");
             }
             if(desc.metadata.valid() && !validate_meta_object(desc.metadata))
             {
-                return set_error(BasicError::bad_arguments(), "Invalid MCP tool metadata");
+                return set_error(E_BAD_ARGUMENTS, "Invalid MCP tool metadata");
             }
 
             Vector<ToolHeaderBinding> header_bindings;
@@ -810,12 +810,12 @@ namespace Luna
                 header_bindings))
             {
                 return set_error(
-                    BasicError::bad_arguments(),
+                    E_BAD_ARGUMENTS,
                     "Invalid x-mcp-header annotation in MCP tool input schema");
             }
 
             auto existing = m_tools.find(desc.name);
-            if(existing != m_tools.end() && !overwrite) return BasicError::already_exists();
+            if(existing != m_tools.end() && !overwrite) return E_ALREADY_EXISTS;
 
             ToolEntry entry;
             entry.modern_definition = Variant(VariantType::object);
@@ -840,7 +840,7 @@ namespace Luna
             if(!encoded.valid())
             {
                 return set_error(
-                    BasicError::bad_arguments(),
+                    E_BAD_ARGUMENTS,
                     "The MCP tool descriptor is not representable as strict JSON");
             }
             entry.desc = move(desc);
@@ -850,7 +850,7 @@ namespace Luna
 
         RV MCPServer::remove_tool(const Name& name)
         {
-            if(!name) return BasicError::bad_arguments();
+            if(!name) return E_BAD_ARGUMENTS;
             m_tools.erase(name);
             return ok;
         }
@@ -866,7 +866,7 @@ namespace Luna
             if(version != ProtocolVersion::v2025_06_18 &&
                 version != ProtocolVersion::v2026_07_28)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             Ref<MCPMessageProcessor> processor = new_object<MCPMessageProcessor>();
             processor->m_server = Ref<MCPServer>(this);
@@ -894,7 +894,7 @@ namespace Luna
         {
             R<Variant> parsed = json ?
                 VariantUtils::read_json(json, json_size, VariantUtils::JSONReadOptions::strict()) :
-                R<Variant>(BasicError::bad_arguments());
+                R<Variant>(E_BAD_ARGUMENTS);
             MessageResult result;
             if(!parsed.valid())
             {
@@ -916,17 +916,17 @@ namespace Luna
             if(!frontend || !desc.name || !desc.version)
             {
                 return set_error(
-                    BasicError::bad_arguments(),
+                    E_BAD_ARGUMENTS,
                     "An MCP server requires a Frontend, name, and version");
             }
             if(desc.cache_scope != CacheScope::public_cache &&
                 desc.cache_scope != CacheScope::private_cache)
             {
-                return set_error(BasicError::bad_arguments(), "Invalid MCP cache scope");
+                return set_error(E_BAD_ARGUMENTS, "Invalid MCP cache scope");
             }
             if(!validate_icons(desc.icons))
             {
-                return set_error(BasicError::bad_arguments(), "Invalid MCP server icons");
+                return set_error(E_BAD_ARGUMENTS, "Invalid MCP server icons");
             }
 
             Ref<MCPServer> server = new_object<MCPServer>();
@@ -950,7 +950,7 @@ namespace Luna
             if(!encoded.valid())
             {
                 return set_error(
-                    BasicError::bad_arguments(),
+                    E_BAD_ARGUMENTS,
                     "The MCP server descriptor is not representable as strict JSON");
             }
             if(desc.instructions)
@@ -960,7 +960,7 @@ namespace Luna
                 if(!instructions.valid())
                 {
                     return set_error(
-                        BasicError::bad_arguments(),
+                        E_BAD_ARGUMENTS,
                         "The MCP server instructions are not valid UTF-8");
                 }
             }

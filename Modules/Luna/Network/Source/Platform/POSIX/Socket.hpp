@@ -44,10 +44,10 @@ namespace Luna
             luiimpl();
 
             TCPConnectionState m_status = TCPConnectionState::not_connected;
-            ErrCode m_error = ErrCode(0);
+            ResultCode m_error = ResultCode(0);
 
             virtual TCPConnectionState get_status() override;
-            virtual ErrCode get_error() override { return m_error; }
+            virtual ResultCode get_error() override { return m_error; }
             virtual RV get_remote_address(SocketAddress& address) override;
             virtual RV receive(void* buffer, usize size, usize* out_received_bytes) override;
             virtual RV send(const void* buffer, usize size, usize* out_sent_bytes) override;

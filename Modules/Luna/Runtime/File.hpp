@@ -58,12 +58,12 @@ namespace Luna
         //! will be discarded and the file is treated as a new empty file.
         create_always = 1,
         //! Only creates a file and opens it when it does not exist. If the file already exists, the
-        //! call fails with @ref BasicError::already_exists.
+        //! call fails with @ref E_ALREADY_EXISTS.
         create_new = 2,
         //! Always opens a file. If the file already exists, the file will be open with its data preserved,
         //! if the file does not exist, it will be created and opened.
         open_always = 3,
-        //! Only opens a file when it does exists. If the file does not exist, the call fails with @ref BasicError::not_found.
+        //! Only opens a file when it does exists. If the file does not exist, the call fails with @ref E_NOT_FOUND.
         open_existing = 4,
         //! Only opens a file when it does exists, and discards the file data so the file is treated as a new
         //! file.
@@ -127,11 +127,11 @@ namespace Luna
     //! @param[in] creation The file creation mode.
     //! @return Returns the new opened file object.
     //! @par Possible Errors
-    //! * @ref BasicError::bad_arguments
-    //! * @ref BasicError::access_denied
-    //! * @ref BasicError::not_found
-    //! * @ref BasicError::not_directory
-    //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
+    //! * @ref E_BAD_ARGUMENTS
+    //! * @ref E_ACCESS_DENIED
+    //! * @ref E_NOT_FOUND
+    //! * @ref E_NOT_DIRECTORY
+    //! * @ref E_BAD_PLATFORM_CALL for all errors that cannot be identified.
     LUNA_RUNTIME_API R<Ref<IFile>> open_file(const c8* path, FileOpenFlag flags, FileCreationMode creation);
     //! Returns the data in the specified file as a blob object.
     //! @param[in] file The file to read.
@@ -143,57 +143,57 @@ namespace Luna
     //! @param[in] path The path of the file.
     //! @return Returns the file attribute structure.
     //! @par Possible Errors
-    //! * @ref BasicError::access_denied
-    //! * @ref BasicError::not_found
-    //! * @ref BasicError::not_directory
-    //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
+    //! * @ref E_ACCESS_DENIED
+    //! * @ref E_NOT_FOUND
+    //! * @ref E_NOT_DIRECTORY
+    //! * @ref E_BAD_PLATFORM_CALL for all errors that cannot be identified.
     LUNA_RUNTIME_API R<FileAttribute> get_file_attribute(const c8* path);
     //! Copies the file from the source path to the destination path. This function cannot copy directories.
-    //! @param[in] from_path Source file path. If `from_path` does not existm this operation failed with @ref BasicError::not_found.
-    //! @param[in] to_path Destination file or path. If `to_path` already exists, this operation fails with @ref BasicError::already_exists
+    //! @param[in] from_path Source file path. If `from_path` does not existm this operation failed with @ref E_NOT_FOUND.
+    //! @param[in] to_path Destination file or path. If `to_path` already exists, this operation fails with @ref E_ALREADY_EXISTS
     //! and the existing file will not be modified.
     //! @par Possible Errors
-    //! * @ref BasicError::bad_arguments
-    //! * @ref BasicError::already_exists
-    //! * @ref BasicError::access_denied
-    //! * @ref BasicError::not_found
-    //! * @ref BasicError::is_directory
-    //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
+    //! * @ref E_BAD_ARGUMENTS
+    //! * @ref E_ALREADY_EXISTS
+    //! * @ref E_ACCESS_DENIED
+    //! * @ref E_NOT_FOUND
+    //! * @ref E_IS_DIRECTORY
+    //! * @ref E_BAD_PLATFORM_CALL for all errors that cannot be identified.
     LUNA_RUNTIME_API RV copy_file(const c8* from_path, const c8* to_path);
     //! Moves the file or directory from the source path to the destination path. This call can also be used to rename a file.
-    //! @param[in] from_path Source file or directory path. If `from_path` does not existm this operation failed with @ref BasicError::not_found.
-    //! @param[in] to_path Destination file or directory path. If `to_path` already exists, this operation fails with @ref BasicError::already_exists
+    //! @param[in] from_path Source file or directory path. If `from_path` does not existm this operation failed with @ref E_NOT_FOUND.
+    //! @param[in] to_path Destination file or directory path. If `to_path` already exists, this operation fails with @ref E_ALREADY_EXISTS
     //! and the existing file will not be modified.
     //! @par Possible Errors
-    //! * @ref BasicError::bad_arguments
-    //! * @ref BasicError::already_exists
-    //! * @ref BasicError::access_denied
-    //! * @ref BasicError::not_found
-    //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
+    //! * @ref E_BAD_ARGUMENTS
+    //! * @ref E_ALREADY_EXISTS
+    //! * @ref E_ACCESS_DENIED
+    //! * @ref E_NOT_FOUND
+    //! * @ref E_BAD_PLATFORM_CALL for all errors that cannot be identified.
     LUNA_RUNTIME_API RV move_file(const c8* from_path, const c8* to_path);
     //! Deletes the specified file or directory.
     //! @param[in] file_path The file or directory to delete.
     //! If this is a directory, it must be empty.
     //! @par Possible Errors
-    //! * @ref BasicError::bad_arguments
-    //! * @ref BasicError::not_found
-    //! * @ref BasicError::access_denied
-    //! * @ref BasicError::directory_not_empty
-    //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
+    //! * @ref E_BAD_ARGUMENTS
+    //! * @ref E_NOT_FOUND
+    //! * @ref E_ACCESS_DENIED
+    //! * @ref E_DIRECTORY_NOT_EMPTY
+    //! * @ref E_BAD_PLATFORM_CALL for all errors that cannot be identified.
     LUNA_RUNTIME_API RV delete_file(const c8* file_path);
     //! Creates a file iterator that can be used to iterate all files in the specified directory.
     //! @param[in] path The directory path to open.
     //! @return Returns a file iterator object. 
     //! @par Possible Errors
-    //! * @ref BasicError::not_found
-    //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
+    //! * @ref E_NOT_FOUND
+    //! * @ref E_BAD_PLATFORM_CALL for all errors that cannot be identified.
     LUNA_RUNTIME_API R<Ref<IFileIterator>> open_dir(const c8* path);
     //! Creates one empty directory.
     //! @param[in] path The path of the directory to create.
     //! @par Possible Errors
-    //! * @ref BasicError::already_exists
-    //! * @ref BasicError::not_found
-    //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
+    //! * @ref E_ALREADY_EXISTS
+    //! * @ref E_NOT_FOUND
+    //! * @ref E_BAD_PLATFORM_CALL for all errors that cannot be identified.
     LUNA_RUNTIME_API RV create_dir(const c8* path);
     //! Get the current working directory path for the underlying system.
     //! @return Returns the current working directory path. The path should be freed by @ref release_current_dir.

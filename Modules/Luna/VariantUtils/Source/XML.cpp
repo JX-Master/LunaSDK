@@ -174,7 +174,7 @@ namespace Luna
                 (chs[4] == 'l' || chs[4] == 'L')
             ))
             {
-                return set_error(BasicError::format_error(), "'<?xml' or '<?XML' expected at the beginning of the document (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                return set_error(E_FORMAT_ERROR, "'<?xml' or '<?XML' expected at the beginning of the document (line %d pos %d).", ctx.get_line(), ctx.get_pos());
             }
             ctx.consume(chs[0]);
             ctx.consume(chs[1]);
@@ -199,7 +199,7 @@ namespace Luna
                 ctx.consume(chs[0]);
                 chs[0] = ctx.next_char_or_eof(0);
             }
-            return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+            return set_error(E_FORMAT_ERROR, "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
         }
         inline bool is_name_start_char(u32 ch)
         {
@@ -284,7 +284,7 @@ namespace Luna
                     ch = ctx.next_char_or_eof();
                     if(!is_hex(ch))
                     {
-                        return set_error(BasicError::format_error(), "Unexpected character. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                        return set_error(E_FORMAT_ERROR, "Unexpected character. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                     }
                     read_ch = atohex(ch);
                     ctx.consume(ch);
@@ -293,7 +293,7 @@ namespace Luna
                     {
                         if(!is_hex(ch))
                         {
-                            return set_error(BasicError::format_error(), "Unexpected character. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                            return set_error(E_FORMAT_ERROR, "Unexpected character. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                         }
                         read_ch = (read_ch << 4) + atohex(ch);
                         ctx.consume(ch);
@@ -305,7 +305,7 @@ namespace Luna
                     // decimal
                     if((u32)ch < '0' || (u32)ch > '9')
                     {
-                        return set_error(BasicError::format_error(), "Unexpected character. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                        return set_error(E_FORMAT_ERROR, "Unexpected character. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                     }
                     read_ch = (u32)ch - '0';
                     ctx.consume(ch);
@@ -314,7 +314,7 @@ namespace Luna
                     {
                         if((u32)ch < '0' || (u32)ch > '9')
                         {
-                            return set_error(BasicError::format_error(), "Unexpected character. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                            return set_error(E_FORMAT_ERROR, "Unexpected character. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                         }
                         read_ch = read_ch * 10 + ((u32)ch - '0');
                         ctx.consume(ch);
@@ -456,15 +456,15 @@ namespace Luna
             {
                 String name;
                 luexp(read_xml_name(ctx, name));
-                if(name.empty()) return set_error(BasicError::format_error(), "Valid name character expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                if(name.empty()) return set_error(E_FORMAT_ERROR, "Valid name character expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 attribute_name = name;
                 skip_whitespaces_and_comments(ctx);
                 c32 ch = ctx.next_char_or_eof();
-                if(ch != '=') return set_error(BasicError::format_error(), "'=' expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                if(ch != '=') return set_error(E_FORMAT_ERROR, "'=' expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 ctx.consume(ch);
                 skip_whitespaces_and_comments(ctx);
                 ch = ctx.next_char_or_eof();
-                if(ch != '"' && ch != '\'') return set_error(BasicError::format_error(), "'\"' expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                if(ch != '"' && ch != '\'') return set_error(E_FORMAT_ERROR, "'\"' expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 lulet(data, read_xml_string_literal(ctx));
                 ret = Name(data);
             }
@@ -479,12 +479,12 @@ namespace Luna
                 c32 ch = ctx.next_char_or_eof();
                 if(ch != '<')
                 {
-                    return set_error(BasicError::format_error(), "'<' expected at the beginning of one element (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                    return set_error(E_FORMAT_ERROR, "'<' expected at the beginning of one element (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 }
                 ctx.consume(ch);
                 String name;
                 luexp(read_xml_name(ctx, name));
-                if(name.empty()) return set_error(BasicError::format_error(), "Valid name character expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+                if(name.empty()) return set_error(E_FORMAT_ERROR, "Valid name character expected. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                 element_name = name;
                 element = new_xml_element(element_name);
                 skip_whitespaces_and_comments(ctx);
@@ -550,7 +550,7 @@ namespace Luna
             String r;
             while (true)
             {
-                if(!ch[0]) return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+                if(!ch[0]) return set_error(E_FORMAT_ERROR, "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
                 if (ch[0] == ']')
                 {
                     ch[1] = ctx.next_char_or_eof(1);
@@ -581,7 +581,7 @@ namespace Luna
                 c32 ch = ctx.next_char_or_eof();
                 while(true)
                 {
-                    if(!ch) return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+                    if(!ch) return set_error(E_FORMAT_ERROR, "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
                     if(ch == '<')
                     {
                         skip_comments(ctx);
@@ -653,10 +653,10 @@ namespace Luna
             RV name_result = read_xml_name(ctx, name);
             if(failed(name_result)) return name_result.errcode();
             if(Name(name) != element_name) 
-                return set_error(BasicError::format_error(), "The name of the end tag (%s) does not match the name of the start tag (%s). (line %d pos %d)", name.c_str(), element_name.c_str(), ctx.get_line(), ctx.get_pos());
+                return set_error(E_FORMAT_ERROR, "The name of the end tag (%s) does not match the name of the start tag (%s). (line %d pos %d)", name.c_str(), element_name.c_str(), ctx.get_line(), ctx.get_pos());
             skip_whitespaces_and_comments(ctx);
             ch = ctx.next_char_or_eof();
-            if(ch != '>') return set_error(BasicError::format_error(), "'>' expected at the end of one one tag (line %d pos %d).", ctx.get_line(), ctx.get_pos());
+            if(ch != '>') return set_error(E_FORMAT_ERROR, "'>' expected at the end of one one tag (line %d pos %d).", ctx.get_line(), ctx.get_pos());
             ctx.consume(ch);
             return ok;
         }

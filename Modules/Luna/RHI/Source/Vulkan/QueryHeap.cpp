@@ -55,21 +55,21 @@ namespace Luna
         }
         RV QueryHeap::get_timestamp_values(u32 index, u32 count, u64* values)
         {
-            if (m_desc.type != QueryType::timestamp) return BasicError::not_supported();
+            if (m_desc.type != QueryType::timestamp) return E_NOT_SUPPORTED;
             return encode_vk_result(m_device->m_funcs.vkGetQueryPoolResults(
                 m_device->m_device, m_query_pool, index, count, sizeof(u64) * count, values,
                 sizeof(u64), VK_QUERY_RESULT_64_BIT));
         }
         RV QueryHeap::get_occlusion_values(u32 index, u32 count, u64* values)
         {
-            if (m_desc.type != QueryType::occlusion) return BasicError::not_supported();
+            if (m_desc.type != QueryType::occlusion) return E_NOT_SUPPORTED;
             return encode_vk_result(m_device->m_funcs.vkGetQueryPoolResults(
                 m_device->m_device, m_query_pool, index, count, sizeof(u64) * count, values,
                 sizeof(u64), VK_QUERY_RESULT_64_BIT));
         }
         RV QueryHeap::get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values)
         {
-            if (m_desc.type != QueryType::pipeline_statistics) return BasicError::not_supported();
+            if (m_desc.type != QueryType::pipeline_statistics) return E_NOT_SUPPORTED;
             return encode_vk_result(m_device->m_funcs.vkGetQueryPoolResults(
                 m_device->m_device, m_query_pool, index, count, sizeof(PipelineStatistics) * count, values,
                 sizeof(PipelineStatistics), VK_QUERY_RESULT_64_BIT));

@@ -21,9 +21,9 @@ namespace Luna
     {
         RV Frontend::set_resource_function(const Name& url, FunctionHandler&& handler, bool overwrite)
         {
-            if(!url || !handler) return BasicError::bad_arguments();
+            if(!url || !handler) return E_BAD_ARGUMENTS;
             auto iter = m_registry.find(url);
-            if(iter != m_registry.end() && !overwrite) return BasicError::already_exists();
+            if(iter != m_registry.end() && !overwrite) return E_ALREADY_EXISTS;
             ResourceEntry entry;
             entry.type = ResourceType::function;
             entry.function = new_object<FunctionResource>(move(handler));
@@ -33,9 +33,9 @@ namespace Luna
 
         RV Frontend::set_resource_data(const Name& url, Variant&& data, bool overwrite)
         {
-            if(!url) return BasicError::bad_arguments();
+            if(!url) return E_BAD_ARGUMENTS;
             auto iter = m_registry.find(url);
-            if(iter != m_registry.end() && !overwrite) return BasicError::already_exists();
+            if(iter != m_registry.end() && !overwrite) return E_ALREADY_EXISTS;
             ResourceEntry entry;
             entry.type = ResourceType::data;
             entry.data = move(data);
@@ -49,9 +49,9 @@ namespace Luna
             void (*dtor)(void*),
             bool overwrite)
         {
-            if(!url) return BasicError::bad_arguments();
+            if(!url) return E_BAD_ARGUMENTS;
             auto iter = m_registry.find(url);
-            if(iter != m_registry.end() && !overwrite) return BasicError::already_exists();
+            if(iter != m_registry.end() && !overwrite) return E_ALREADY_EXISTS;
             ResourceEntry entry;
             entry.type = ResourceType::userdata;
             entry.userdata_ptr = data;
@@ -75,11 +75,11 @@ namespace Luna
             auto iter = m_registry.find(url);
             if (iter == m_registry.end())
             {
-                return FrontendError::resource_not_found();
+                return E_RESOURCE_NOT_FOUND;
             }
             if (iter->second.type != ResourceType::data)
             {
-                return FrontendError::type_mismatch();
+                return E_TYPE_MISMATCH;
             }
             return iter->second.data;
         }
@@ -89,18 +89,18 @@ namespace Luna
             auto iter = m_registry.find(url);
             if(iter == m_registry.end())
             {
-                return FrontendError::resource_not_found();
+                return E_RESOURCE_NOT_FOUND;
             }
             if(iter->second.type != ResourceType::userdata)
             {
-                return FrontendError::type_mismatch();
+                return E_TYPE_MISMATCH;
             }
             return iter->second.userdata_ptr;
         }
 
         RV Frontend::remove_resource(const Name& url)
         {
-            if(!url) return BasicError::bad_arguments();
+            if(!url) return E_BAD_ARGUMENTS;
             m_registry.erase(url);
             return ok;
         }
@@ -110,7 +110,7 @@ namespace Luna
             auto iter = m_registry.find(url);
             if (iter == m_registry.end() || iter->second.type != ResourceType::function)
             {
-                return FrontendError::method_not_found();
+                return E_METHOD_NOT_FOUND;
             }
             Ref<FunctionResource> function = iter->second.function;
             return function->handler(this, params);
@@ -126,31 +126,16 @@ namespace Luna
         // Error codes
         // -----------------------------------------------------------------------
 
-        namespace FrontendError
+        static RV register_error_codes()
         {
-            LUNA_FRONTEND_API errcat_t errtype()
+            if (!register_error_category(ERROR_CATEGORY, "Frontend") ||
+                !register_error_code(E_RESOURCE_NOT_FOUND, "resource_not_found", "The requested frontend resource was not found.") ||
+                !register_error_code(E_TYPE_MISMATCH, "type_mismatch", "The frontend resource type does not match the requested type.") ||
+                !register_error_code(E_METHOD_NOT_FOUND, "method_not_found", "The requested frontend method was not found."))
             {
-                static errcat_t e = get_error_category_by_name("FrontendError");
-                return e;
+                return set_error(E_ALREADY_EXISTS, "Frontend error metadata conflicts with an existing registration.");
             }
-
-            LUNA_FRONTEND_API ErrCode resource_not_found()
-            {
-                static ErrCode e = get_error_code_by_name("FrontendError", "resource_not_found");
-                return e;
-            }
-
-            LUNA_FRONTEND_API ErrCode type_mismatch()
-            {
-                static ErrCode e = get_error_code_by_name("FrontendError", "type_mismatch");
-                return e;
-            }
-
-            LUNA_FRONTEND_API ErrCode method_not_found()
-            {
-                static ErrCode e = get_error_code_by_name("FrontendError", "method_not_found");
-                return e;
-            }
+            return ok;
         }
 
         // -----------------------------------------------------------------------
@@ -163,6 +148,8 @@ namespace Luna
 
             virtual RV on_register() override
             {
+                RV result = register_error_codes();
+                if(failed(result)) return result;
                 Meta::register_Frontend_types();
                 return ok;
             }

@@ -33,7 +33,7 @@ namespace Luna
             m_mutex = new_mutex();
             if (FAILED(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_heap))))
             {
-                return BasicError::bad_platform_call();
+                return E_BAD_PLATFORM_CALL;
             }
             m_cpu_handle = m_heap->GetCPUDescriptorHandleForHeapStart();
             m_gpu_handle = m_heap->GetGPUDescriptorHandleForHeapStart();
@@ -132,7 +132,7 @@ namespace Luna
                 ComPtr<ID3D12DescriptorHeap> ret;
                 if (FAILED(m_device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&ret))))
                 {
-                    return BasicError::bad_platform_call();
+                    return E_BAD_PLATFORM_CALL;
                 }
                 return ret;
             }
@@ -343,8 +343,8 @@ namespace Luna
             Ref<IDeviceMemory> ret;
             lutry
             {
-                if (buffers.empty() && textures.empty()) return BasicError::bad_arguments();
-                if (!is_resources_aliasing_compatible(memory_type, buffers, textures)) return BasicError::not_supported();
+                if (buffers.empty() && textures.empty()) return E_BAD_ARGUMENTS;
+                if (!is_resources_aliasing_compatible(memory_type, buffers, textures)) return E_NOT_SUPPORTED;
                 D3D12MA::ALLOCATION_DESC allocation_desc{};
                 allocation_desc.HeapType = encode_memory_type(memory_type);
                 allocation_desc.ExtraHeapFlags = D3D12_HEAP_FLAG_DENY_BUFFERS | D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;

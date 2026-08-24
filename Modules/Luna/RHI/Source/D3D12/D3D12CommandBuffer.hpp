@@ -89,7 +89,7 @@ namespace Luna
                 auto iter = m_current.find(k);
                 if (iter == m_current.end())
                 {
-                    return BasicError::not_found();
+                    return E_NOT_FOUND;
                 }
                 return iter->second;
             }*/

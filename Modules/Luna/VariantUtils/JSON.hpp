@@ -66,10 +66,10 @@ namespace Luna
             //! Adds indentation and line breaks to the generated JSON text.
             bool indent = true;
             //! Encodes BLOB variants as strings using the LunaSDK `@base64@` or `@base85@` format.
-            //! If disabled, writing a BLOB variant fails with @ref BasicError::not_supported.
+            //! If disabled, writing a BLOB variant fails with @ref E_NOT_SUPPORTED.
             bool encode_blobs = true;
             //! Writes non-finite floating-point values using the non-standard `nan`, `inf` and `-inf` tokens.
-            //! If disabled, writing a non-finite number fails with @ref BasicError::not_supported.
+            //! If disabled, writing a non-finite number fails with @ref E_NOT_SUPPORTED.
             bool allow_non_finite_numbers = true;
 
             //! Returns options suitable for a compact RFC 8259 JSON text.

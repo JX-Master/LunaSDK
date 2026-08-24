@@ -13,87 +13,31 @@
 
 namespace Luna
 {
-    namespace NetworkError
+    namespace Network
     {
-        LUNA_NETWORK_API errcat_t errtype()
+        RV register_error_codes()
         {
-            static errcat_t e = get_error_category_by_name("NetworkError");
-            return e;
+            if (!register_error_category(ERROR_CATEGORY, "Network") ||
+                !register_error_code(E_NOT_CONNECTED, "not_connected", "The socket is not connected.") ||
+                !register_error_code(E_ALREADY_CONNECTED, "already_connected", "The socket is already connected.") ||
+                !register_error_code(E_NETWORK_DOWN, "network_down", "The network subsystem has failed.") ||
+                !register_error_code(E_ADDRESS_NOT_SUPPORTED, "address_not_supported", "The address family is not supported.") ||
+                !register_error_code(E_ADDRESS_IN_USE, "address_in_use", "The address is already in use.") ||
+                !register_error_code(E_ADDRESS_NOT_AVAILABLE, "address_not_available", "The address is not available.") ||
+                !register_error_code(E_NETWORK_RESET, "network_reset", "The network connection was reset.") ||
+                !register_error_code(E_CONNECTION_REFUSED, "connection_refused", "The connection attempt was refused.") ||
+                !register_error_code(E_CONNECTION_ABORTED, "connection_aborted", "The connection was aborted.") ||
+                !register_error_code(E_CONNECTION_RESET, "connection_reset", "The connection was reset by its peer.") ||
+                !register_error_code(E_NETWORK_UNREACHABLE, "network_unreachable", "The network is unreachable.") ||
+                !register_error_code(E_HOST_UNREACHABLE, "host_unreachable", "The host is unreachable.") ||
+                !register_error_code(E_PROTOCOL_NOT_SUPPORTED, "protocol_not_supported", "The protocol is not supported.") ||
+                !register_error_code(E_HOST_NOT_FOUND, "host_not_found", "The host was not found.") ||
+                !register_error_code(E_SERVICE_NOT_FOUND, "service_not_found", "The network service was not found."))
+            {
+                return set_error(E_ALREADY_EXISTS, "Network error metadata conflicts with an existing registration.");
+            }
+            return ok;
         }
-        LUNA_NETWORK_API ErrCode not_connected()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "not_connected");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode already_connected()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "already_connected");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode network_down()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "network_down");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode address_not_supported()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "address_not_supported");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode address_in_use()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "address_in_use");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode address_not_available()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "address_not_available");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode network_reset()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "network_reset");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode connection_refused()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "connection_refused");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode connection_aborted()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "connection_aborted");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode connection_reset()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "connection_reset");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode network_unreachable()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "network_unreachable");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode host_unreachable()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "host_unreachable");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode protocol_not_supported()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "protocol_not_supported");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode host_not_found()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "host_not_found");
-            return e;
-        }
-        LUNA_NETWORK_API ErrCode service_not_found()
-        {
-            static ErrCode e = get_error_code_by_name("NetworkError", "service_not_found");
-            return e;
-        }
+
     }
 }

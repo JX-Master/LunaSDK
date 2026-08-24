@@ -25,7 +25,7 @@ namespace Luna
             {
                 m_command_queue_index = command_queue_index;
                 m_buffer = [m_device->m_queues[command_queue_index].queue commandBuffer];
-                if(!m_buffer) return BasicError::bad_platform_call();
+                if(!m_buffer) return E_BAD_PLATFORM_CALL;
                 return ok;
             }
         }
@@ -52,7 +52,7 @@ namespace Luna
             {
                 m_objs.clear();
                 m_buffer = [m_device->m_queues[m_command_queue_index].queue commandBuffer];
-                if(!m_buffer) return BasicError::bad_platform_call();
+                if(!m_buffer) return E_BAD_PLATFORM_CALL;
                 return ok;
             }
         }

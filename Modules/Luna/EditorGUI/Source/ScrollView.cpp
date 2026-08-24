@@ -40,10 +40,10 @@ namespace Luna
                 const RectF& rect, void* userdata)
             {
                 ScrollAction* action = (ScrollAction*)userdata;
-                if(!action || !action->layout_desc) return BasicError::bad_arguments();
+                if(!action || !action->layout_desc) return E_BAD_ARGUMENTS;
                 lutry(GUI::layout_scroll_viewport(context, element, rect, action->layout_desc));
                 const GUI::Element* viewport = context->get_element(element.index);
-                if(!viewport) return BasicError::bad_arguments();
+                if(!viewport) return E_BAD_ARGUMENTS;
                 u32 content_index = viewport->first_child;
                 Float2U content_size(0.0f);
                 if(content_index != GUI::INVALID_ELEMENT)

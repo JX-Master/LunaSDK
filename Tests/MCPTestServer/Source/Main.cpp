@@ -30,13 +30,13 @@ namespace
             usize write_bytes = 0;
             RV result = write_standard_error(data + offset, size - offset, &write_bytes);
             if(failed(result)) return result.errcode();
-            if(!write_bytes) return BasicError::io_error();
+            if(!write_bytes) return E_IO_ERROR;
             offset += write_bytes;
         }
         return ok;
     }
 
-    void report_error(ErrCode error)
+    void report_error(ResultCode error)
     {
         String message("MCPTestServer failed: ");
         message.append(explain(error));
@@ -44,7 +44,7 @@ namespace
         write_all_standard_error(message.data(), message.size());
     }
 
-    ErrCode wrap_error(ErrCode error, const c8* context)
+    ResultCode wrap_error(ResultCode error, const c8* context)
     {
         String cause(explain(error));
         return set_error(unwrap_errcode(error), "%s: %s", context, cause.c_str());
@@ -54,13 +54,13 @@ namespace
     {
         if(arguments.type() != VariantType::object)
         {
-            return set_error(BasicError::bad_arguments(), "Arguments must be an object");
+            return set_error(E_BAD_ARGUMENTS, "Arguments must be an object");
         }
         const Variant& a = arguments.find("a");
         const Variant& b = arguments.find("b");
         if(a.type() != VariantType::number || b.type() != VariantType::number)
         {
-            return set_error(BasicError::bad_arguments(), "a and b must be numbers");
+            return set_error(E_BAD_ARGUMENTS, "a and b must be numbers");
         }
         Variant result(VariantType::object);
         result["sum"] = a.fnum() + b.fnum();
@@ -156,7 +156,7 @@ namespace
             (u32)local_address.ipv4.port);
         if(endpoint_size <= 0 || (usize)endpoint_size >= sizeof(endpoint))
         {
-            return BasicError::failure();
+            return E_FAILURE;
         }
         result = write_all_standard_error(endpoint, (usize)endpoint_size);
         if(failed(result))
@@ -190,7 +190,7 @@ int main(int argc, char** argv)
         i64 specified_port = strtoi64(argv[2], &end, 10);
         if(end != argv[2] + strlen(argv[2]) || specified_port < 0 || specified_port > 65535)
         {
-            result = set_error(BasicError::bad_arguments(), "Invalid HTTP port");
+            result = set_error(E_BAD_ARGUMENTS, "Invalid HTTP port");
         }
         else
         {
@@ -201,7 +201,7 @@ int main(int argc, char** argv)
     else if(argc != 1)
     {
         result = set_error(
-            BasicError::bad_arguments(),
+            E_BAD_ARGUMENTS,
             "Usage: MCPTestServer [--stdio | --http <port>]");
     }
     if(succeeded(result)) result = add_modules({MCP::module_mcp()});

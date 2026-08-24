@@ -150,11 +150,11 @@ namespace Luna
             {
                 if(desc.vs.format != ShaderDataFormat::dxil)
                 {
-                    return set_error(BasicError::bad_arguments(), "The vertex shader data must be in ShaderDataFormat::dxil format for D3D12 backend.");
+                    return set_error(E_BAD_ARGUMENTS, "The vertex shader data must be in ShaderDataFormat::dxil format for D3D12 backend.");
                 }
                 if(desc.vs.data.empty())
                 {
-                    return set_error(BasicError::bad_arguments(), 
+                    return set_error(E_BAD_ARGUMENTS,
                         "The vertex shader data is empty, but format is not ShaderDataFormat::none");
                 }
                 fill_shader_data(d.VS, desc.vs.data);
@@ -165,7 +165,7 @@ namespace Luna
             }
             if(desc.ps.format != ShaderDataFormat::dxil || desc.ps.data.empty())
             {
-                return set_error(BasicError::bad_arguments(), "The pixel shader data must be in ShaderDataFormat::dxil format and must not be empty for D3D12 backend.");
+                return set_error(E_BAD_ARGUMENTS, "The pixel shader data must be in ShaderDataFormat::dxil format and must not be empty for D3D12 backend.");
             }
             fill_shader_data(d.PS, desc.ps.data);
             fill_shader_data(d.DS, {});
@@ -347,7 +347,7 @@ namespace Luna
             d.CachedPSO.pCachedBlob = nullptr;
             if(desc.cs.format != ShaderDataFormat::dxil || desc.cs.data.empty())
             {
-                return set_error(BasicError::bad_arguments(), "The compute shader data must be in ShaderDataFormat::dxil format and must not be empty for D3D12 backend.");
+                return set_error(E_BAD_ARGUMENTS, "The compute shader data must be in ShaderDataFormat::dxil format and must not be empty for D3D12 backend.");
             }
             fill_shader_data(d.CS, desc.cs.data);
             d.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;

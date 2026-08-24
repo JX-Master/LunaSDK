@@ -446,7 +446,7 @@ namespace Luna
             if(!root.id || root.generation != m_generation || root.index >= m_elements.size() ||
                 m_elements[root.index].id != root.id)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             LayoutResult root_result;
             root_result.rect = rect;
@@ -533,12 +533,12 @@ namespace Luna
         {
             if(!element.id || element.generation != m_generation || element.index >= m_elements.size())
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             Element* e = mutable_element(element);
             if(!e)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             LayoutCallbackConfig config = get_layout_callback_config(element);
             RectF rect = e->layout_result.rect;
@@ -559,7 +559,7 @@ namespace Luna
             const Element* e = get_element(element.index);
             if(!e || e->id != element.id)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             Vector<u32> children;
             for(u32 child = e->first_child; child != INVALID_ELEMENT;)
@@ -588,7 +588,7 @@ namespace Luna
             e = get_element(element.index);
             if(!e || e->id != element.id)
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             LayoutCallbackConfig config = get_layout_callback_config(element);
             if(config.finalize_callback)
@@ -1027,11 +1027,11 @@ namespace Luna
             lutsassert();
             if(id.empty() || !font || font_index >= font->get_num_fonts())
             {
-                return BasicError::bad_arguments();
+                return E_BAD_ARGUMENTS;
             }
             if(m_fonts.find(id) != m_fonts.end())
             {
-                return BasicError::already_exists();
+                return E_ALREADY_EXISTS;
             }
             FontResource resource;
             resource.font = font;

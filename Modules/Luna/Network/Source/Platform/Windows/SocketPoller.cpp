@@ -22,21 +22,21 @@ namespace Luna
             constexpr SocketEventFlag OUTPUT_FLAGS =
                 SocketEventFlag::error | SocketEventFlag::hang_up;
 
-            ErrCode translate_poller_error(int error)
+            ResultCode translate_poller_error(int error)
             {
                 switch(error)
                 {
-                case WSANOTINITIALISED: return BasicError::bad_calling_time();
-                case WSAEACCES: return BasicError::access_denied();
-                case WSAEFAULT: return BasicError::bad_memory_address();
-                case WSAEINTR: return BasicError::interrupted();
-                case WSAEINVAL: return BasicError::bad_arguments();
-                case WSAEMFILE: return BasicError::out_of_resource();
-                case WSAENETDOWN: return NetworkError::network_down();
-                case WSAENOBUFS: return BasicError::insufficient_system_buffer();
-                case WSAENOTSOCK: return BasicError::bad_calling_time();
-                case WSAEWOULDBLOCK: return BasicError::not_ready();
-                default: return BasicError::bad_platform_call();
+                case WSANOTINITIALISED: return E_BAD_CALLING_TIME;
+                case WSAEACCES: return E_ACCESS_DENIED;
+                case WSAEFAULT: return E_BAD_MEMORY_ADDRESS;
+                case WSAEINTR: return E_INTERRUPTED;
+                case WSAEINVAL: return E_BAD_ARGUMENTS;
+                case WSAEMFILE: return E_OUT_OF_RESOURCE;
+                case WSAENETDOWN: return Network::E_NETWORK_DOWN;
+                case WSAENOBUFS: return E_INSUFFICIENT_SYSTEM_BUFFER;
+                case WSAENOTSOCK: return E_BAD_CALLING_TIME;
+                case WSAEWOULDBLOCK: return E_NOT_READY;
+                default: return E_BAD_PLATFORM_CALL;
                 }
             }
 
@@ -206,16 +206,16 @@ namespace Luna
             SocketEventFlag interests,
             opaque_t user_data)
         {
-            if(!socket || !validate_interests(interests)) return BasicError::bad_arguments();
+            if(!socket || !validate_interests(interests)) return E_BAD_ARGUMENTS;
             object_t socket_object = socket->get_object();
             for(const SocketPollRegistration& registration : m_registrations)
             {
                 if(registration.active && registration.socket.object() == socket_object)
                 {
-                    return BasicError::already_exists();
+                    return E_ALREADY_EXISTS;
                 }
             }
-            if(get_native_socket(socket) == INVALID_SOCKET) return BasicError::bad_calling_time();
+            if(get_native_socket(socket) == INVALID_SOCKET) return E_BAD_CALLING_TIME;
 
             u32 index;
             if(!m_free_slots.empty())
@@ -225,7 +225,7 @@ namespace Luna
             }
             else
             {
-                if(m_registrations.size() >= (usize)U32_MAX) return BasicError::out_of_resource();
+                if(m_registrations.size() >= (usize)U32_MAX) return E_OUT_OF_RESOURCE;
                 index = (u32)m_registrations.size();
                 m_registrations.emplace_back();
             }
@@ -240,12 +240,12 @@ namespace Luna
 
         RV SocketPoller::modify(socket_poll_token_t token, SocketEventFlag interests)
         {
-            if(!validate_interests(interests)) return BasicError::bad_arguments();
+            if(!validate_interests(interests)) return E_BAD_ARGUMENTS;
             SocketPollRegistration* registration = find_registration(m_registrations, token);
-            if(!registration) return BasicError::not_found();
+            if(!registration) return E_NOT_FOUND;
             if(get_native_socket(registration->socket.get()) == INVALID_SOCKET)
             {
-                return BasicError::bad_calling_time();
+                return E_BAD_CALLING_TIME;
             }
             registration->interests = interests;
             return ok;
@@ -254,7 +254,7 @@ namespace Luna
         RV SocketPoller::remove(socket_poll_token_t token)
         {
             SocketPollRegistration* registration = find_registration(m_registrations, token);
-            if(!registration) return BasicError::not_found();
+            if(!registration) return E_NOT_FOUND;
 
             u32 index = get_token_index(token);
             registration->socket.reset();
@@ -269,7 +269,7 @@ namespace Luna
 
         R<usize> SocketPoller::poll(Span<SocketPollEvent> events, u32 timeout_ms)
         {
-            if(events.empty()) return BasicError::bad_arguments();
+            if(events.empty()) return E_BAD_ARGUMENTS;
             m_poll_descriptors.clear();
             m_poll_tokens.clear();
             m_poll_descriptors.reserve(m_registrations.size() + 1);
@@ -300,7 +300,7 @@ namespace Luna
                 m_poll_tokens.push_back(make_token(index, registration.generation));
             }
 
-            if(m_poll_descriptors.size() > (usize)U32_MAX) return BasicError::out_of_resource();
+            if(m_poll_descriptors.size() > (usize)U32_MAX) return E_OUT_OF_RESOURCE;
             int result;
             if(timeout_ms == U32_MAX)
             {

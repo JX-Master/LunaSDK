@@ -44,7 +44,7 @@ namespace Luna
     //! @param[out] write_bytes If not `nullptr`, receives the number of bytes written. This is set to `0` if `size` is
     //! `0` or the operation fails before writing any byte.
     //! @return Returns `ok` if the operation succeeds, or an error code if the operation fails. Writing to a closed
-    //! pipe returns @ref BasicError::bad_pipe.
+    //! pipe returns @ref E_BAD_PIPE.
     //! @remark Concurrent calls are not serialized and their byte ordering is unspecified. The application must
     //! synchronize replacement of the process standard output handle against calls to this function.
     LUNA_RUNTIME_API RV write_standard_output(const void* buffer, usize size, usize* write_bytes = nullptr);
@@ -58,7 +58,7 @@ namespace Luna
     //! @param[out] write_bytes If not `nullptr`, receives the number of bytes written. This is set to `0` if `size` is
     //! `0` or the operation fails before writing any byte.
     //! @return Returns `ok` if the operation succeeds, or an error code if the operation fails. Writing to a closed
-    //! pipe returns @ref BasicError::bad_pipe.
+    //! pipe returns @ref E_BAD_PIPE.
     //! @remark Concurrent calls are not serialized and their byte ordering is unspecified. The application must
     //! synchronize replacement of the process standard error handle against calls to this function.
     LUNA_RUNTIME_API RV write_standard_error(const void* buffer, usize size, usize* write_bytes = nullptr);

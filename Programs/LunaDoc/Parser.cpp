@@ -1026,7 +1026,7 @@ RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, c
             else if(member_name == _compoundname)
             {
                 auto compoundname = get_xml_content(m).at(0).str();
-                if(!compoundname) return set_error(BasicError::format_error(), "<compoundname> not found for group <compounddef>");
+                if(!compoundname) return set_error(E_FORMAT_ERROR, "<compoundname> not found for group <compounddef>");
                 title = compoundname;
             }
             else if(member_name == _basecompoundref)
@@ -1174,7 +1174,7 @@ RV Parser::encode_md_group_file(const Name& xml_name, const Variant& xml_data, c
             if(name == _compoundname)
             {
                 // auto name = get_xml_content(c).at(0).str();
-                // if(!name) return set_error(BasicError::format_error(), "<compoundname> not found for group <compounddef>");
+                // if(!name) return set_error(E_FORMAT_ERROR, "<compoundname> not found for group <compounddef>");
                 // out_group_filename = name;
             }
             else if(name == _title)
@@ -1399,9 +1399,9 @@ void Parser::add_class_member_ids(const Variant& class_data)
 
 RV Parser::add_group_xml_file(Variant&& file_data)
 {
-    if(get_xml_name(file_data) != _doxygen) return set_error(BasicError::format_error(), "One doxygen XML file must begin with <doxygen>, got %s", get_xml_name(file_data).c_str());
+    if(get_xml_name(file_data) != _doxygen) return set_error(E_FORMAT_ERROR, "One doxygen XML file must begin with <doxygen>, got %s", get_xml_name(file_data).c_str());
     auto& compounddef = find_first_xml_child_element(file_data, _compounddef);
-    if(compounddef.type() != VariantType::object) return set_error(BasicError::format_error(), "<compounddef> not found");
+    if(compounddef.type() != VariantType::object) return set_error(E_FORMAT_ERROR, "<compounddef> not found");
     auto& compounddef_attribtues = get_xml_attributes(compounddef);
     Name group_id = compounddef_attribtues[_id].str();
     luassert(group_id.size() > 8);
@@ -1413,9 +1413,9 @@ RV Parser::add_group_xml_file(Variant&& file_data)
 
 RV Parser::add_class_xml_file(Variant&& file_data)
 {
-    if(get_xml_name(file_data) != _doxygen) return set_error(BasicError::format_error(), "One doxygen XML file must begin with <doxygen>, got %s", get_xml_name(file_data).c_str());
+    if(get_xml_name(file_data) != _doxygen) return set_error(E_FORMAT_ERROR, "One doxygen XML file must begin with <doxygen>, got %s", get_xml_name(file_data).c_str());
     auto& compounddef = find_first_xml_child_element(file_data, _compounddef);
-    if(compounddef.type() != VariantType::object) return set_error(BasicError::format_error(), "<compounddef> not found");
+    if(compounddef.type() != VariantType::object) return set_error(E_FORMAT_ERROR, "<compounddef> not found");
     auto& compounddef_attribtues = get_xml_attributes(compounddef);
     Name class_id = compounddef_attribtues[_id].str();
     // Skip classes without docs.

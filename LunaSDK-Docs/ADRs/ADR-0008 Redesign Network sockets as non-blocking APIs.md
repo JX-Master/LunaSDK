@@ -28,9 +28,9 @@ virtual RV send(
     usize* out_sent_bytes = nullptr) = 0;
 ```
 
-Non-zero-size `receive` and `send` calls are valid in the `connected` and `peer_closed` states and return `BasicError::bad_calling_time` in other states. They return `BasicError::not_ready` when the operation would block. A successful `send` may report fewer bytes than requested, and the caller retains responsibility for the unsent suffix. A successful non-zero-size `receive` that reports zero bytes indicates an orderly peer shutdown. Zero-size operations succeed with zero transferred bytes and do not probe connection closure.
+Non-zero-size `receive` and `send` calls are valid in the `connected` and `peer_closed` states and return `E_BAD_CALLING_TIME` in other states. They return `E_NOT_READY` when the operation would block. A successful `send` may report fewer bytes than requested, and the caller retains responsibility for the unsent suffix. A successful non-zero-size `receive` that reports zero bytes indicates an orderly peer shutdown. Zero-size operations succeed with zero transferred bytes and do not probe connection closure.
 
-UDP `send_to` and `receive_from` remain single-datagram operations but use the same non-blocking `BasicError::not_ready` behavior. A successfully accepted TCP socket is placed in non-blocking mode before it is returned to the caller.
+UDP `send_to` and `receive_from` remain single-datagram operations but use the same non-blocking `E_NOT_READY` behavior. A successfully accepted TCP socket is placed in non-blocking mode before it is returned to the caller.
 
 Starting a TCP connection and observing its completion are separated by state rather than by a `finish_connect` operation. `connect` returns `ok` when the connection either completes immediately or is successfully started asynchronously. It returns an error only when the attempt cannot be started. Calling `connect` in an invalid state returns an appropriate calling-time or already-connected error.
 
@@ -49,14 +49,14 @@ enum class TCPConnectionState : u8
 };
 
 virtual TCPConnectionState get_status() = 0;
-virtual ErrCode get_error() = 0;
+virtual ResultCode get_error() = 0;
 ```
 
 A newly created or merely bound TCP socket is `not_connected`. A successfully initiated asynchronous connection is `connecting`; `get_status` changes it to `connected` after the platform confirms completion. A socket becomes `listening` after `listen` succeeds, and a socket returned by `accept` starts as `connected`.
 
-`peer_closed` means an orderly shutdown of the peer's sending direction has been observed. It is distinct from `closed` because TCP can remain writable after the peer stops sending. `error` means that the connection or the non-blocking platform status query has failed. `closed` means the local native socket has been released and no further network operation is permitted. `BasicError::not_ready` from a transfer operation does not change connection state.
+`peer_closed` means an orderly shutdown of the peer's sending direction has been observed. It is distinct from `closed` because TCP can remain writable after the peer stops sending. `error` means that the connection or the non-blocking platform status query has failed. `closed` means the local native socket has been released and no further network operation is permitted. `E_NOT_READY` from a transfer operation does not change connection state.
 
-`get_status` always returns a `TCPConnectionState`; querying object state is not itself a fallible API operation. The socket stores the concrete translated error separately, and `get_error` returns that cached `ErrCode`, or `ErrCode(0)` if the socket has not encountered an error. If refreshing a connecting socket's platform state fails, `get_status` records the error and returns `TCPConnectionState::error`.
+`get_status` always returns a `TCPConnectionState`; querying object state is not itself a fallible API operation. The socket stores the concrete translated error separately, and `get_error` returns that cached `ResultCode`, or `ResultCode(0)` if the socket has not encountered an error. If refreshing a connecting socket's platform state fails, `get_status` records the error and returns `TCPConnectionState::error`.
 
 If `connect` fails before an attempt can be started, it returns that error, stores the same error, and changes the state to `error`. Fatal connection errors observed by `receive`, `send`, or connection completion are cached in the same way. Calling `close` after an error transitions the public state to `closed` and releases the native platform resources, but retains the cached error so diagnostics may still retrieve it with `get_error`.
 
@@ -72,14 +72,14 @@ virtual void close() = 0;
 
 Socket objects remain non-thread-safe. An application must synchronize access or assign each socket to one reactor thread. The socket poller provides a thread-safe wake operation for cross-thread reactor commands rather than making individual sockets concurrently callable.
 
-The implementation maps POSIX `EAGAIN` and `EWOULDBLOCK`, and Windows `WSAEWOULDBLOCK`, to `BasicError::not_ready`. Platform results that mean an asynchronous connection attempt has started are consumed by `connect` and exposed as the `connecting` state rather than returned to the caller as `BasicError::in_progress`.
+The implementation maps POSIX `EAGAIN` and `EWOULDBLOCK`, and Windows `WSAEWOULDBLOCK`, to `E_NOT_READY`. Platform results that mean an asynchronous connection attempt has started are consumed by `connect` and exposed as the `connecting` state rather than returned to the caller as `E_IN_PROGRESS`.
 
 Because the interface inheritance, virtual methods, and behavior change, the affected public socket interfaces receive newly generated GUIDs. `NetworkTest` is rewritten around non-blocking state transitions, short transfers, would-block results, orderly peer closure, explicit close, and both IPv4 and IPv6. The Network manual is updated before the redesigned API is considered complete.
 
 ## Impact
 The Network module has one socket execution model that maps directly to native event-driven networking. HTTP and other network services can manage many connections without dedicating a blocked LunaSDK thread to every connection, and callers cannot accidentally switch a socket between incompatible blocking modes.
 
-Callers must handle `BasicError::not_ready`, partial TCP sends, asynchronous connection state, and readiness-driven retries. Code that requires a complete write or a blocking operation must build that policy above Network rather than relying on the socket object. Removing `IStream` also prevents TCP sockets from being passed directly to helpers designed around blocking stream semantics.
+Callers must handle `E_NOT_READY`, partial TCP sends, asynchronous connection state, and readiness-driven retries. Code that requires a complete write or a blocking operation must build that policy above Network rather than relying on the socket object. Removing `IStream` also prevents TCP sockets from being passed directly to helpers designed around blocking stream semantics.
 
 Explicit `close` makes resource release deterministic and consistent with other LunaSDK lifetime APIs. Omitting half-close keeps the base socket API small, while the `peer_closed` state preserves the information needed to finish sending after receiving an orderly peer shutdown.
 
@@ -95,7 +95,7 @@ This was rejected because `receive`, `send`, `accept`, and `connect` would chang
 ### Keep the names `read` and `write`
 This was rejected because LunaSDK already uses those names for `IStream` operations that block and, for writes, normally attempt to transfer the complete range. `receive` and `send` communicate socket semantics and partial progress more clearly.
 
-### Return `BasicError::in_progress` from `connect` and provide `finish_connect`
+### Return `E_IN_PROGRESS` from `connect` and provide `finish_connect`
 This was rejected because successfully starting a connection is a successful command. Connection progress belongs to socket state, and a separate finishing command would make callers coordinate two operation-specific APIs in addition to readiness events. `get_status` provides one authoritative state query before and after poller notification.
 
 ### Return `R<TCPConnectionState>` from `get_status`
