@@ -24,6 +24,7 @@ void run()
     list_test();
     robin_hood_hash_test();
     hash_test();
+    guid_test();
     tuple_test();
     name_test();
     path_test();
