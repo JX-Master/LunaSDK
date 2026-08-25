@@ -2,10 +2,10 @@
 Approved.
 
 ## Last updated
-2026/8/7
+2026/8/25
 
 ## Background
-LunaSDK currently has an `EditorGUI` module that has already moved away from the old ImGui backend. The current implementation uses explicit GUI contexts, per-frame descriptions, layers, state objects, style entries, render proxies, VG-backed drawing, and GUI debugging support. This direction has proven useful for Studio, GUIEditor, in-game GUI rendering, and custom vector rendering.
+LunaSDK currently has an `EditorGUI` module that has already moved away from the old ImGui backend. The current implementation uses explicit GUI contexts, per-frame descriptions, layers, state objects, style entries, render proxies, VG-backed drawing, and GUI debugging support. This direction has proven useful for Studio, in-game GUI rendering, and custom vector rendering.
 
 However, the current `EditorGUI` module still mixes several responsibilities in one layer:
 
@@ -17,9 +17,9 @@ However, the current `EditorGUI` module still mixes several responsibilities in 
 
 This makes the module powerful, but it also creates architectural pressure. Even after the node-kind enum was removed and concrete nodes became RTTI objects, the context and input code still contain widget-specific branches for cases such as scroll bars, table separators, tab headers, numeric controls, dock panels, and popup handling. As more widgets, visual effects, editor features, and in-game GUI use cases are added, this coupling will keep increasing unless the lower-level GUI primitives are separated from the widget layer.
 
-At the same time, GUIEditor and GUIAsset need stable design-time and runtime metadata. Visual editing should not depend on private widget implementation details, and custom user widgets should not require modifying the EditorGUI component package. A lower-level GUI foundation can provide a small set of orthogonal primitives that are easier to inspect, test, record, replay, and compose.
+At the same time, retained GUI packages such as GameGUI and visual tools such as GameGUIEditor need stable design-time metadata without depending on private execution details. Custom user widgets should not require modifying the EditorGUI component package. A lower-level GUI foundation can provide a small set of orthogonal primitives that are easier to inspect, test, record, replay, and compose.
 
-Since common GUI concepts will be moved into `GUI`, the high-level immediate API does not need to remain a fully generic widget framework. Instead, LunaSDK should support multiple immediate API packages for different application domains. Each package can make stronger visual and interaction assumptions, keep its implementation smaller, and still interoperate with other packages because they all build the same `GUI` element tree.
+Since common GUI concepts will be moved into `GUI`, high-level packages do not need to share one programming model or remain fully generic widget frameworks. LunaSDK may provide immediate API packages and retained semantic packages for different application domains. Each package can make stronger visual and interaction assumptions, keep its implementation smaller, and still interoperate because every package builds the same low-level, per-frame `GUI` element tree.
 
 The original GUI rendering boundary assumed that every generated draw command would be compiled into one VG shape draw list and rasterized exclusively by VG. This is sufficient for ordinary vector shapes, text, and images, but it is too restrictive for procedural shadows, temporary render targets, offscreen composition, and future multi-pass effects. Some of these operations do not consume a VG shape buffer and are more naturally implemented by dedicated RHI pipelines. Requiring VG to own every such pipeline would make VG absorb GUI-specific render orchestration that is unrelated to vector path rasterization.
 
@@ -43,18 +43,18 @@ transform, preserve analytic antialiasing under perspective, optionally use scen
 host-independent two-dimensional events.
 
 ## Decision
-Introduce a new `GUI` layer between `VG` and high-level immediate GUI packages.
+Introduce a new `GUI` layer between `VG` and high-level GUI packages.
 
 `GUI` is a low-level, data-oriented GUI foundation. It provides the foundational functionality needed by GUI systems built with LunaSDK. It must not provide high-level widgets such as buttons, checkboxes, combo boxes, menu items, color editors, or dock panels. Instead, it provides orthogonal primitives that higher-level modules use to build widgets, views, tools, and editors.
 
-The high-level package formerly named `GUI` is named `EditorGUI` and becomes one immediate API package built on top of `GUI`. `EditorGUI` is a GUI component package tailored for data-editing applications such as DCC software, editors, office software, and enterprise administration software. It should favor concise, efficient, editor-style controls over fully customizable game UI visuals. Other packages may be introduced later for game HUDs, console UI, mobile UI, or other visual styles.
+The high-level package formerly named `GUI` is named `EditorGUI` and becomes one immediate API package built on top of `GUI`. `EditorGUI` is a GUI component package tailored for data-editing applications such as DCC software, editors, office software, and enterprise administration software. It should favor concise, efficient, editor-style controls over fully customizable game UI visuals. Retained semantic packages may be introduced for game HUDs, console UI, mobile UI, or other domains; [[ADR-0012 Introduce GameGUI and GameGUIEditor]] proposes `GameGUI` as the first such package.
 
 The new layering is:
 
 ```text
-Applications, Studio, GUIEditor, game code
+Applications, Studio, GameGUIEditor, game code
         |
-Immediate API packages, GUIAsset generators, editor adapters
+Immediate API packages, retained-tree compilers, editor adapters
         |
 GUI logical layer
         |
@@ -66,7 +66,9 @@ VG, Font, RHI, Runtime
 This decision removes the following concepts from the long-term high-level `EditorGUI` architecture:
 
 1. `EditorGUI::Node`
-   - The runtime should maintain only one tree: the typeless `GUI` element tree.
+   - GUI execution should maintain only one low-level, per-frame tree: the typeless `GUI` element tree.
+   - A higher-level package may own a persistent semantic or asset tree, but it must compile that tree into `GUI`
+     elements rather than introduce a competing core context, layout engine, input router or renderer.
    - High-level immediate APIs submit data into this tree directly.
 
 2. `EditorGUI::RenderProxy`
@@ -92,9 +94,9 @@ This decision removes the following concepts from the long-term high-level `Edit
    - Receives a caller-provided final color texture and an optional depth-stencil texture. It derives attachment formats from those resources, begins and ends every GUI pass, and leaves the attachments in documented final states.
    - Uses VG as the primary backend for vector paths, rounded rectangles, text, images, and other suitable vector primitives.
    - May use GUI-owned RHI pipelines directly for primitives or effects that do not naturally use VG shape buffers, such as analytic shadows, backdrop filtering and offscreen composition.
-   - Does not interpret widget semantics or high-level style policy. Immediate API packages still decide which primitives and effects to emit.
+   - Does not interpret widget semantics or high-level style policy. High-level packages still decide which primitives and effects to emit.
 
-Direct RHI use is an internal rendering-layer capability, not a general escape hatch that lets immediate API packages inject arbitrary command-buffer callbacks. Public draw commands must remain inspectable data with deterministic ordering and declared resource usage. New RHI-backed primitives should be represented by explicit draw-command types and implemented by rendering-layer command compilers.
+Direct RHI use is an internal rendering-layer capability, not a general escape hatch that lets high-level packages inject arbitrary command-buffer callbacks. Public draw commands must remain inspectable data with deterministic ordering and declared resource usage. New RHI-backed primitives should be represented by explicit draw-command types and implemented by rendering-layer command compilers.
 
 The renderer exposes one recording entry point. `IRenderer::render` receives the context, a recording graphics command
 buffer, one render-target description and one surface description. The command buffer must not be inside any pass
@@ -171,7 +173,8 @@ The SDF backend consumes two private transient scalar-float streams:
 
 Both resources use a four-byte structured-buffer stride, matching the scalar storage model of `VG::IShapeBuffer` but
 remaining a separate GUI ABI. Widget semantics, Style names and arbitrary shader callbacks do not enter either
-stream. Immediate API packages resolve Style values into concrete color instructions before submission.
+stream. High-level packages or their frame compilers resolve Style values into concrete color instructions before
+submission.
 
 #### Scalar instruction format
 Every instruction begins with an integer-valued float32 opcode. Opcodes remain below `2^24`, so conversion between
@@ -312,9 +315,12 @@ interpolation. Shape evaluation, gradients, color effects, rectangular clips and
 surface coordinate system. The integrated VG draw list historically generates bottom-left coordinates; the GUI
 renderer converts those positions to the public top-left convention before applying the same surface transform.
 
-The first implementation supports one plane per context. Per-element transforms and several non-coplanar surfaces in
-one context are deferred; a host that needs several independently placed panels uses one context and one renderer
-preparation per surface.
+The design supports one plane per context. Generic per-element rotation and scale are not part of the GUI element
+model. Canvas layout provides arbitrary axis-aligned child placement, but it does not rotate or scale children. If a
+future requirement justifies transformed subtrees, it should be implemented as an explicit specialized layout type
+that owns the corresponding layout, clipping and hit-test semantics rather than as transform fields on every element.
+A host that needs several independently placed non-coplanar panels uses one context and one renderer invocation per
+surface.
 
 #### Perspective antialiasing
 Analytic coverage remains derivative based. The SDF pixel shader evaluates signed distance in perspective-correct
@@ -379,6 +385,9 @@ after a pointer leaves the panel. Surface selection, occlusion and nearest-hit o
    - Initial primitives should include flex layout, canvas placement, grid layout, table tracks, scroll viewport layout, and clipping.
    - The element axis size model should stay small: `fixed`, `percent`, and `fit` with explicit min/max constraints. Content-driven `fit` sizing is supplied by measure callbacks owned by higher-level packages instead of by scanning draw commands or hard-coding text knowledge into GUI.
    - Specialized sizing such as ratio table tracks belongs to the specific parent layout primitive that owns that placement policy.
+   - Canvas layout may position children arbitrarily while keeping their geometry axis-aligned. Generic per-element
+     rotation and scale do not belong to the core element record; any future transformed-subtree support must be an
+     explicit specialized layout with matching clipping and hit-test rules.
    - Layout should be axis-agnostic where practical so that width and height logic do not diverge.
    - Layouting is implemented by independent functions operating on element data, not as element methods.
 
@@ -392,6 +401,9 @@ after a pointer leaves the panel. Surface selection, occlusion and nearest-hit o
    - Routes pointer, keyboard, text, scroll, focus, blur, and capture events through layers and interactables.
    - Supports focus scopes and keyboard navigation.
    - Supports scroll routing and future scroll-to-rect propagation.
+   - Maintains one selected interaction stream at a time. Device and pointer identifiers may be preserved on events,
+     but they do not create independent concurrent pointer, capture or focus state. Hosts select controller or
+     keyboard/pointer interaction rather than operating those modes concurrently.
 
 8. **Draw command generation**
    - Records static GUI-level draw commands during tree construction and supports an optional delayed draw callback on each element.
@@ -399,7 +411,7 @@ after a pointer leaves the panel. Surface selection, occlusion and nearest-hit o
    - Invokes callbacks before children, after children, or at both traversal phases so parent backgrounds and overlays have deterministic painter order.
    - Provides primitive commands for rectangles, rounded rectangles, gradients, text, images, shapes, lines, clipping, and explicitly modeled rendering effects such as shadows.
    - Does not know widget rendering policies.
-   - High-level immediate API packages install package-owned callbacks or submit static commands directly.
+   - High-level packages or their frame compilers install package-owned callbacks or submit static commands directly.
 
 9. **Inspection and performance instrumentation**
    - Exposes read-only spans for the current frame's dense element and layer arrays. Tools inspect element topology, layout input and results, interactables, sparse callback bindings, routed interaction state, styles, and draw commands through ordinary public APIs instead of requesting a duplicated debug snapshot.
@@ -466,7 +478,7 @@ target fields.
 `NavigationConfig` is rebuilt each frame like layout, interactable and draw configuration. GUI owns semantic
 events, default algorithms, opt-out modes, callback dispatch and focus mutation APIs, but not application navigation
 edges. Inspection tools can report automatic, disabled and callback modes from the current element array, but cannot
-predict all targets selected inside business callbacks. GUIAsset must serialize higher-level navigation properties or
+predict all targets selected inside business callbacks. GameGUI assets must serialize higher-level navigation properties or
 handler identifiers rather than raw callback pointers.
 
 Drag-drop is a composite interaction protocol rather than a GUI primitive. GUI does not store payloads, source or target type lists, deliveries, or drag-drop state, and its input router does not special-case pointer release for dropping. A high-level package may implement drag-drop by composing generic hit testing, pointer capture, routed input events, context state, layers, and draw commands. Different packages may choose different payload protocols, activation thresholds, previews, target feedback, and delivery lifetimes.
@@ -480,12 +492,13 @@ An immediate API package owns:
 2. The algorithms that translate those APIs into `GUI` element data and package-owned draw callbacks.
 3. The visual style and interaction behavior of those controls.
 4. The small set of user-facing customization points intentionally supported by that package.
-5. GUIAsset runtime generation helpers for widgets provided by that package.
-6. Optional composite interaction protocols such as drag-drop when required by that package.
+5. Optional composite interaction protocols such as drag-drop when required by that package.
 
 An immediate API package does not need to be universally customizable. The default `EditorGUI` package should expose simple customization points such as margins, spacing, colors, font choices, and selected behavior flags. It should not promise that users can completely replace the rendering logic of every control.
 
-Different immediate API packages can coexist and nest because they all submit elements into the same `GUI` context. For example, an editor-style package and an in-game HUD package may both build into one frame as long as they follow the same core layer, layout, input, and draw command rules.
+Immediate API packages and retained semantic packages can contribute to the same `GUI` context when desired because
+they follow the same core layer, layout, input, and draw-command rules. Hosts may instead isolate them in separate
+contexts, as proposed for GameGUIEditor's EditorGUI chrome and GameGUI document previews.
 
 ### Built-in vector icons and composition
 The default `EditorGUI` package provides a curated core icon set for common navigation, editing, file, status and
@@ -509,7 +522,10 @@ license is distributed with that data.
 ### Rendering policy and style schema
 `EditorGUI::RenderProxy` is removed from the target architecture.
 
-In the new model, a high-level immediate API installs a package-owned draw callback or emits static commands for each element it creates. The callback runs only during GUI's fixed painter-order traversal and can read final layout, interaction state, state objects, and style values before emitting primitive commands. It has no object identity, registration, inheritance, RTTI type, or lifecycle of its own.
+In the new model, a high-level package or its frame compiler installs a package-owned draw callback or emits static
+commands for each element it creates. The callback runs only during GUI's fixed painter-order traversal and can read
+final layout, interaction state, state objects, and style values before emitting primitive commands. It has no object
+identity, registration, inheritance, RTTI type, or lifecycle of its own.
 
 This callback is not a revival of `EditorGUI::RenderProxy`. It is a low-level, typeless GUI command-generation hook. The default editor-style EditorGUI package still owns its rendering policy and does not promise that users can replace every widget renderer.
 
@@ -518,20 +534,25 @@ The GUI rendering layer rasterizes the primitive commands produced by these call
 Style usage schema remains useful, but it is no longer attached to `EditorGUI::RenderProxy`. Instead:
 
 1. `GUI` provides style records, style resolution, and read-only access to style records referenced by elements.
-2. Immediate API packages declare the style keys that their APIs read.
-3. GUIEditor and debug tools consume these declarations to display editable style properties.
+2. High-level GUI packages declare the style keys that their APIs or node generators read.
+3. High-level authoring tools and GUI debug tools consume these declarations to display relevant style properties.
 4. Core draw primitives remain widget-independent.
 
-### GUIAsset and GUIEditor
-`GUIAsset` remains a design-time representation, not a direct serialization of the GUI element tree. GUIAsset nodes describe editable widgets/views and their properties. At runtime, GUIAsset generation calls high-level `EditorGUI` APIs, which then build GUI elements.
+### GameGUI and GameGUIEditor
+`GameGUI` owns a persistent high-level semantic node tree and its asset representation, not a direct serialization of
+the GUI element tree. At runtime, each GameGUI instance compiles its semantic nodes directly into one or more
+low-level `GUI` elements for the current frame. GameGUI and EditorGUI are sibling high-level packages; GameGUI does
+not generate through EditorGUI.
 
-GUIEditor should eventually consume three kinds of schema:
+The proposed GameGUIEditor would consume three kinds of schema from GameGUI node descriptors:
 
-1. Widget/view property schema from GUIAsset node types.
-2. Style usage schema from the immediate API package that implements the widget.
-3. Parent layout attachment schema from GUI layout primitives and high-level layout APIs.
+1. Property, event and child-slot schema from GameGUI node types.
+2. Style-usage schema declared by GameGUI node types for their generators.
+3. Parent layout attachment schema from the parent GameGUI node type, which may reuse a GUI layout primitive.
 
-This lets GUIEditor present meaningful inspector controls without depending on private runtime element records.
+This would let GameGUIEditor present meaningful inspector controls without depending on private runtime element records.
+The complete GameGUI asset, instance and editor-service decisions are recorded in
+[[ADR-0012 Introduce GameGUI and GameGUIEditor]].
 
 ### Module boundary
 Prefer a separate module:
@@ -539,10 +560,11 @@ Prefer a separate module:
 ```text
 Modules/Luna/GUI
 Modules/Luna/EditorGUI
+Modules/Luna/GameGUI
 Modules/Luna/GUIWindow
 ```
 
-`GUI` may depend on `Runtime`, `RHI`, `VG`, and `Font` only when required for draw command and font resource integration. It must not depend on `Window`, `HID` platform event types, Studio, GUIEditor, or high-level GUI widgets.
+`GUI` may depend on `Runtime`, `RHI`, `VG`, and `Font` only when required for draw command and font resource integration. It must not depend on `Window`, `HID` platform event types, Studio, `EditorGUI`, `GameGUI`, `GameGUIEditor`, or other high-level GUI widgets and applications.
 
 Within `GUI`, logical data and algorithms should remain separable from rendering implementation code. RHI
 pipeline objects, descriptor sets, backdrop capture textures and other temporary GPU resources belong to the
@@ -552,10 +574,18 @@ presentation. GUI owns attachment transitions and every render/compute pass reco
 
 `EditorGUI` depends on `GUI` and provides the default editor-style immediate API package. It must not define its own runtime context, runtime node tree, or render proxy system.
 
+`GameGUI` depends on `GUI` and the asset/runtime facilities required by its persistent semantic model. It may own
+semantic node trees, compiled node data and per-instance state, but it must not define a competing low-level GUI
+context, element execution tree, layout engine, input router or renderer. It must not depend on `EditorGUI`.
+
+The proposed `GameGUIEditor` would use `GameGUI` for editable semantic documents and previews and `EditorGUI` for its
+application chrome. Its service layer would remain independent of `EditorGUI`, window and swap-chain state. The
+complete dependency and service boundary is proposed by [[ADR-0012 Introduce GameGUI and GameGUIEditor]].
+
 `GUIWindow` adapts Window/HID input and clipboard APIs to `GUI` input interfaces.
 
 ### Migration plan
-The migration should be staged to avoid keeping two competing GUI runtimes alive for too long.
+The migration should be staged to avoid keeping two competing low-level GUI execution runtimes alive for too long.
 
 #### Phase 1: GUI skeleton
 Create the `GUI` module and add:
@@ -573,7 +603,7 @@ Create the `GUI` module and add:
 The current `EditorGUI` module should still build and run while this layer is introduced.
 
 #### Phase 2: Data-oriented element tree
-Move the runtime tree source of truth from `EditorGUI::Node` to the `GUI` element tree.
+Move the low-level execution-tree source of truth from `EditorGUI::Node` to the `GUI` element tree.
 
 This phase should:
 
@@ -583,7 +613,7 @@ This phase should:
 4. Add element ID lookup, dense element/layer scanning, and human-readable debug names.
 5. Add adapter code so old GUI widgets can submit core elements during migration.
 
-The goal of this phase is to make `GUI` element data the only long-term runtime tree representation.
+The goal of this phase is to make `GUI` element data the only long-term low-level execution-tree representation.
 
 #### Phase 3: Interactable graph
 Implement core interactables before migrating most widgets. This phase should include:
@@ -634,13 +664,15 @@ Migrate complex views:
 
 These should use interactable hierarchy, focus scopes, layers, and draw primitives instead of widget-specific context branches.
 
-#### Phase 7: Docking and Studio/GUIEditor integration
+#### Phase 7: Docking and Studio integration
 DockSpace can remain in the high-level `EditorGUI` layer until core layout and interactable primitives are stable. It should be migrated only after the simpler systems are proven.
 
-Studio and GUIEditor should be updated after the corresponding widget groups are migrated. GUIEditor must remain schema-driven and should not edit GUI internal element records directly.
+Studio should be updated after the corresponding widget groups are migrated. GameGUIEditor is a new application, not
+part of this foundation migration; its implementation plan is defined by
+[[ADR-0012 Introduce GameGUI and GameGUIEditor]].
 
 #### Phase 8: Remove legacy GUI runtime concepts
-After all high-level APIs build through GUI, remove:
+After all migrated EditorGUI APIs build through GUI, remove:
 
 1. `EditorGUI::Node`.
 2. `EditorGUI::RenderProxy`.
@@ -654,10 +686,10 @@ Expected benefits:
 
 1. **Cleaner extension model**: users can build custom widgets by composing core primitives instead of modifying the GUI module.
 2. **Less context coupling**: widget-specific input and rendering branches can be removed from the context over time.
-3. **Better tooling**: GUIEditor, debug panels, and external inspection tools can read a smaller and more regular runtime model without duplicating it into a second snapshot representation.
+3. **Better tooling**: debug panels and preview inspection tools can read a smaller and more regular execution model without treating it as persistent semantic data. The proposed GameGUIEditor would edit GameGUI semantic data and may correlate that data with generated GUI elements for preview diagnostics.
 4. **Better performance potential**: dense data arrays and data-oriented traversal are easier to optimize than many concrete widget node types.
 5. **Better in-game GUI support**: layers, draw primitives, interactables, and input routing are host-independent and can be used for window GUI and in-game surfaces.
-6. **Specialized UI packages**: different domains can provide different immediate API packages without duplicating core layout, input, state, and draw infrastructure.
+6. **Specialized UI packages**: different domains can provide immediate or retained semantic packages without duplicating core layout, input, state, and draw infrastructure.
 7. **Simpler default EditorGUI package**: the default editor-style package can stop pretending to be fully generic and can optimize for DCC/editor workflows.
 8. **Extensible rendering orchestration**: GUI can preserve one painter-ordered command stream while selecting
    one or many passes and combining VG vector rasterization with dedicated RHI pipelines and temporary targets.
@@ -671,12 +703,12 @@ Expected benefits:
 
 Risks:
 
-1. **Large migration cost**: current widgets, layout code, input code, debug tools, and GUIEditor integration must be migrated gradually.
-2. **Temporary duplication**: old node runtime and new core runtime may coexist during migration. This must be minimized.
+1. **Large migration cost**: current widgets, layout code, input code, debug tools, and Studio integration must be migrated gradually.
+2. **Temporary duplication**: the old EditorGUI execution-node runtime and the new GUI execution runtime may coexist during migration. This must be minimized.
 3. **Over-generalization risk**: GUI may become too abstract if it tries to solve every future UI problem up front.
 4. **Boundary erosion risk**: high-level widget behavior may leak into GUI if module boundaries are not enforced.
 5. **Performance regression risk**: a data-oriented design still needs benchmarks; new abstractions should not assume they are faster without measurement.
-6. **Customization regression risk**: removing render proxies reduces per-widget render customization in the default EditorGUI package. This is intentional, but it must be documented and offset by supporting additional immediate API packages.
+6. **Customization regression risk**: removing render proxies reduces per-widget render customization in the default EditorGUI package. This is intentional, but it must be offset by supporting additional high-level GUI packages.
 7. **Rendering-layer scope risk**: the new rendering layer may duplicate VG or grow into a general-purpose render graph if its responsibilities are not kept to GUI command execution.
 8. **Backend interleaving risk**: VG-backed and direct-RHI commands must preserve exact painter order, clipping and
    resource states across GUI-owned pass boundaries.
@@ -701,8 +733,8 @@ Mitigations:
 3. Migrate one widget group at a time.
 4. Preserve existing GUI tests and add new stress tests for each migrated subsystem.
 5. Do not migrate DockSpace first.
-6. Keep GUIAsset as a design-time representation rather than serializing GUI internals.
-7. Document each immediate API package's intended domain and supported customization surface.
+6. Keep GameGUI assets as persistent semantic representations rather than serializing GUI internals.
+7. Define each high-level GUI package's intended domain, programming model and supported customization surface.
 8. Keep vector path rasterization in VG and add direct RHI pipelines only for explicit GUI primitives that do not naturally use VG shape buffers.
 9. Keep RHI execution internal to the rendering layer; do not expose arbitrary command-buffer callbacks as ordinary draw commands.
 10. Expose one renderer entry point that starts and ends outside every pass. Let GUI compile the complete plan,
@@ -744,7 +776,7 @@ Mitigations:
     3. Nested captures multiply work and make target/depth equivalence difficult to validate.
     4. Pass count and attachment lifetimes remain split across two owners.
 
-### Give each immediate API package direct RHI rendering callbacks
+### Give each high-level GUI package direct RHI rendering callbacks
 * Status: rejected.
 * Pros:
     1. Maximum rendering freedom for custom packages.
@@ -759,13 +791,13 @@ Mitigations:
 * Status: rejected.
 * Pros:
     1. Lowest short-term migration cost.
-    2. Existing Studio and GUIEditor code keeps working with fewer changes.
+    2. Existing Studio code keeps working with fewer changes.
     3. Current widget APIs already cover many practical needs.
 * Cons:
     1. Context and input code will continue to accumulate widget-specific branches.
     2. Custom widgets still depend on implementation details.
     3. Debugging complex focus, popup, drag-drop, and scroll interactions remains harder.
-    4. GUIEditor will need more ad-hoc knowledge about runtime behavior.
+    4. Debug and visual-authoring tools will need more ad-hoc knowledge about runtime behavior.
 
 ### Put GUI inside the existing EditorGUI module only as an internal namespace
 * Status: rejected for long-term architecture, acceptable only as a temporary migration step.
@@ -778,26 +810,28 @@ Mitigations:
     2. Widget-specific code can easily leak into the core layer.
     3. Other modules cannot depend on the core without also depending on high-level widgets.
 
-### Make GUIAsset directly serialize GUI element trees
+### Make GameGUI directly serialize GUI element trees
 * Status: rejected.
 * Pros:
     1. One runtime representation could be reused for saving and editing.
-    2. GUIEditor could inspect exactly what the runtime consumes.
+    2. GameGUIEditor could inspect exactly what the runtime consumes.
 * Cons:
     1. GUI element records are frame-runtime data, not stable design data.
-    2. GUI assets need semantic widgets/views, not low-level draw and interaction records.
+    2. GameGUI assets need semantic widgets/views, not low-level draw and interaction records.
     3. Runtime element internals will change more frequently than editable asset format.
-    4. This conflicts with ADR-0003's decision that GUIAsset uses its own editable node types.
+    4. This conflicts with [[ADR-0012 Introduce GameGUI and GameGUIEditor]], which gives GameGUI its own editable
+       semantic node types.
 
-### Keep high-level widgets as concrete runtime node types
-* Status: rejected as the long-term direction.
+### Keep high-level widgets as concrete GUI execution-node types
+* Status: rejected as the long-term core direction.
 * Pros:
     1. Familiar implementation model.
     2. Easy to attach widget-specific data and virtual methods.
 * Cons:
     1. Encourages widget-specific behavior in the runtime.
     2. Makes dense traversal and data-oriented optimization harder.
-    3. Makes custom user widgets depend on extending the runtime node model.
+    3. Makes custom user widgets depend on extending the low-level GUI execution-node model. This does not prohibit
+       higher-level packages from owning semantic node types that compile into GUI elements.
 
 ### Keep EditorGUI::RenderProxy as the primary customization mechanism
 * Status: rejected.
@@ -818,7 +852,7 @@ Mitigations:
 * Cons:
     1. It creates two context concepts: one in EditorGUI and one in GUI.
     2. It makes it unclear which layer owns frame state, input routing, layout, and rendering.
-    3. It weakens the rule that GUI owns the only runtime element tree.
+    3. It weakens the rule that GUI owns the only low-level per-frame execution tree.
 
 ### Store an explicit navigation graph in GUI::IContext
 * Status: rejected.
@@ -905,13 +939,16 @@ Mitigations:
     3. Prevents SDF and VG analytic coverage from being evaluated directly at the final scene sampling rate.
 
 ### Store a 4x4 transform in every SDF instance
-* Status: rejected for the initial surface model.
+* Status: rejected for the general element model.
 * Pros:
     1. Allows independently transformed elements inside one context.
 * Cons:
     1. Enlarges the hot instance stream and duplicates a transform shared by most GUI geometry.
     2. Complicates clipping, CPU culling, batching and input semantics.
     3. A surface-level transform already covers ordinary in-game panels.
+
+If transformed subtrees are required later, they should be introduced through a specialized layout type with explicit
+layout, clipping and hit-test behavior rather than by enlarging every element or SDF instance.
 
 ### Submit world-space rays directly to GUI input routing
 * Status: rejected.
@@ -931,15 +968,20 @@ Mitigations:
     2. Applications would need a separate ad-hoc rendering path for depth-tested GUI.
 
 ## Remarks
-This ADR does not require an immediate full rewrite. It defines the target architecture and migration discipline. The project may temporarily build GUI beside the current EditorGUI runtime, but every migration phase should reduce the old widget-node-specific code surface.
+This ADR does not require an immediate full rewrite. It defines the target architecture and migration discipline. The
+project may temporarily build GUI beside the legacy EditorGUI execution runtime, but every migration phase should
+reduce the old widget-node-specific code surface.
 
 The name `GUI` identifies the general LunaSDK foundation used by GUI systems. The name `EditorGUI` makes the bundled component package's editor- and data-oriented scope explicit. Applications should use `GUI` directly for foundational primitives and use `EditorGUI` when its component set matches their product domain.
 
 Until GUI is formally released, architectural refinements to its logical layer, rendering layer, navigation,
 SDF programs, surface model and related core contracts are recorded by revising this ADR rather than creating
 additional GUI-specific ADRs. The version history below preserves when each refinement was adopted.
+High-level package decisions remain separate; [[ADR-0012 Introduce GameGUI and GameGUIEditor]] proposes GameGUI and
+GameGUIEditor without changing GUI's primitive-only responsibility.
 
 ## Version history
+* **2026/8/25** Clarified that GUI owns the only low-level per-frame execution tree while retained high-level packages may own persistent semantic trees. Added the GameGUI/GameGUIEditor sibling-package boundary, retained the single selected input stream, and rejected generic per-element rotation and scale in favor of a possible future specialized layout type.
 * **2026/8/7** Finalized the pre-release module names. Renamed the general-purpose `GUICore` foundation to `GUI`, and renamed the editor- and data-oriented `GUI` component package to `EditorGUI`. Updated namespaces, public headers, build targets, tests, module boundaries, and documentation to match the finalized responsibilities.
 * **2026/7/30** Replaced the application-owned `prepare`/`render` split with one GUI-owned rendering entry point.
   The host supplies a final color texture and optional depth-stencil texture while GUI records all attachment

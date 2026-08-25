@@ -1,13 +1,18 @@
 ## Status
-Proposed
+Retired.
 
 ## Last updated
-2026/6/9
+2026/8/25
 
 ## Background
 Currently LunaSDK has its own GUI module, but all GUI interfaces are hard-coded in C++. Since now we need to offer our new GUI module to UX designers, we need to offer a new visual GUI design tool and its runtime representation so that UX designers can design GUI interface visually without knowing the real C++ code behind.
 
 ## Decision
+This proposal was never approved and is now retired and superseded by [[ADR-0012 Introduce GameGUI and GameGUIEditor]]. The former
+`GUIAsset`/`GUIEditor` naming and the assumption that asset generation should call `EditorGUI` APIs no longer match
+the finalized `GUI`/`EditorGUI` boundary established by [[ADR-0004 Introduce GUI foundation layer]]. The text below
+is retained as the historical proposal.
+
 We introduce two new targets in LunaSDK: `GUIAsset` and `GUIEditor`.
 
 ### GUIAsset
@@ -46,4 +51,5 @@ In CLI mode, the editor behaves like a server process, and MCP is the only way t
 	2. GUI design data and runtime data will not be 100% match at most cases, the runtime data structure version will change rapidly, but the design data is much slower. Use one schema to describe both design data and runtime data will be troublesome.
 
 ## Version history
+* **2026/8/25** Retired this proposal in favor of [[ADR-0012 Introduce GameGUI and GameGUIEditor]], which introduces `GameGUI` and `GameGUIEditor` on the finalized GUI foundation.
 * **2026/6/9** Proposed.
