@@ -177,7 +177,7 @@ namespace
 
 int main(int argc, char** argv)
 {
-    init();
+    lupanic_if_failed(init());
     bool use_http = false;
     u16 port = 0;
     RV result = ok;

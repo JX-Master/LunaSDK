@@ -10,17 +10,18 @@
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include "CoroutineImpl.hpp"
+#include "ErrorImpl.hpp"
 #include "Platform/Thread.hpp"
 
 namespace Luna
 {
     opaque_t g_current_coroutine_tls;
 
-    bool coroutine_init()
+    RV coroutine_init()
     {
         auto r = Platform::tls_alloc(g_current_coroutine_tls);
-        if(r != Platform::Result::success) return false;
-        return true;
+        if(r != Platform::Result::success) return encode_platform_result(r);
+        return ok;
     }
     void coroutine_close()
     {

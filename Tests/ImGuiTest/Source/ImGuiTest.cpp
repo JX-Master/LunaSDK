@@ -132,7 +132,7 @@ namespace Luna
 
 int luna_main(int argc, const char* argv[])
 {
-    if(!Luna::init()) return -1;
+    if(Luna::failed(Luna::init())) return -1;
     auto r = Luna::run_app();
     if(failed(r))
     {

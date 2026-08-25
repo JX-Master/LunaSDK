@@ -58,8 +58,7 @@ namespace Luna
             DWORD index = FlsAlloc(destructor);
             if (index == FLS_OUT_OF_INDEXES)
             {
-                DWORD err = GetLastError();
-                return translate_last_error(err);
+                return Result::out_of_resource;
             }
             out_handle = (opaque_t)(usize)index;
             return Result::success;

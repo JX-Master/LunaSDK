@@ -834,7 +834,7 @@ namespace
 
 int main()
 {
-    init();
+    lupanic_if_failed(init());
     lupanic_if_failed(add_modules({module_network()}));
     lupanic_if_failed(init_modules());
     set_log_to_platform_enabled(true);

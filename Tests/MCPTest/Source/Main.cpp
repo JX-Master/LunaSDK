@@ -923,7 +923,7 @@ namespace
 
 int main()
 {
-    init();
+    lupanic_if_failed(init());
     lupanic_if_failed(add_modules({module_mcp()}));
     lupanic_if_failed(init_modules());
     server_descriptor_test();

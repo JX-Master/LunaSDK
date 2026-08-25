@@ -108,7 +108,7 @@ void ecs_test()
 
 int main()
 {
-    Luna::init();
+    lupanic_if_failed(Luna::init());
     lupanic_if_failed(Luna::add_modules({Luna::module_job_system(), Luna::module_ecs()}));
     lupanic_if_failed(Luna::init_modules());
     ecs_test();

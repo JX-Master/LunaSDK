@@ -255,8 +255,8 @@ RV run_app()
 }
 int main()
 {
-    bool initialized = Luna::init();
-    if(!initialized) return -1;
+    auto initialized = Luna::init();
+    if(failed(initialized)) return -1;
     RV result = run_app();
     if(failed(result)) log_error("DemoApp", "%s", explain(result.errcode()));
     Luna::close();

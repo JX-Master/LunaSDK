@@ -1,7 +1,5 @@
 LunaSDK does not use C++ exceptions. Operations that can fail return stable result codes, usually through `R<T>` or `RV`. A result code can be constructed, compared, returned, and transferred between processes without initializing LunaSDK. The runtime error information system is optional and only adds diagnostic metadata.
 
-The architecture and allocation policy are recorded in [[ADR-0011 Introduce static result codes]].
-
 ## Functionality
 
 The error handling facilities provide four related features:
@@ -252,6 +250,8 @@ RV refresh_cache()
     return ok;
 }
 ```
+
+Because `RV` only stores a static `ResultCode`, it can be returned before Runtime initialization. `Luna::init` uses `RV` to report initialization failures without relying on runtime metadata or the thread-local `Error` object.
 
 Inspect both the success state and optional status when it matters:
 

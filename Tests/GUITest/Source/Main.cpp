@@ -590,7 +590,7 @@ int luna_main(int argc, const char* argv[])
             max_frames = max<u32>((u32)strtoul(argv[i] + 9, nullptr, 10), 1);
         }
     }
-    Luna::init();
+    lupanic_if_failed(Luna::init());
     lupanic_if_failed(run_gui_test(initial_slice, max_frames));
     Luna::close();
     return 0;

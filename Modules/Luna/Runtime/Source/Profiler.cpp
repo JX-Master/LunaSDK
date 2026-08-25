@@ -10,6 +10,7 @@
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include "ProfilerImpl.hpp"
+#include "ErrorImpl.hpp"
 #include "../Event.hpp"
 #include "../ReadWriteLock.hpp"
 #include "../Time.hpp"
@@ -141,12 +142,12 @@ namespace Luna
         }
         return ctx;
     }
-    bool profiler_init()
+    RV profiler_init()
     {
         auto r = Platform::fls_alloc(profiler_thread_context_dtor, g_profiler_thread_context_tls);
-        if(r != Platform::Result::success) return false;
+        if(r != Platform::Result::success) return encode_platform_result(r);
         Platform::new_read_write_lock(g_profiler_callbacks_lock);
-        return true;
+        return ok;
     }
     void profiler_close()
     {

@@ -427,7 +427,7 @@ static void side_output_test()
 
 int main()
 {
-    init();
+    lupanic_if_failed(init());
     lupanic_if_failed(add_module(module_make_system()));
     lupanic_if_failed(init_modules());
     Meta::register_MakeSystemTest_types();

@@ -72,6 +72,6 @@ namespace Luna
             return false;
         }
     };
-    bool thread_init();
+    RV thread_init();
     void thread_close();
 }

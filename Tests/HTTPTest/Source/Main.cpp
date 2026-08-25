@@ -531,7 +531,7 @@ namespace
 
 int main()
 {
-    init();
+    lupanic_if_failed(init());
     lupanic_if_failed(add_modules({module_http()}));
     lupanic_if_failed(init_modules());
     argument_validation_test();

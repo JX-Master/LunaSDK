@@ -254,7 +254,7 @@ namespace
 
 int main()
 {
-    init();
+    lupanic_if_failed(init());
     lupanic_if_failed(add_modules({module_frontend()}));
     lupanic_if_failed(init_modules());
     resource_data_test();

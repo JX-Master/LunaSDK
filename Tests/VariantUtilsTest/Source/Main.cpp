@@ -16,7 +16,7 @@ using namespace Luna;
 
 int main()
 {
-    Luna::init();
+    lupanic_if_failed(Luna::init());
     lupanic_if_failed(add_modules({module_variant_utils()}));
     lupanic_if_failed(init_modules());
     set_log_to_platform_enabled(true);

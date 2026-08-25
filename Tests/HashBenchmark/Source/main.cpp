@@ -417,7 +417,7 @@ namespace
 
 int main(int argc, char** argv)
 {
-    init();
+    lupanic_if_failed(init());
     Config cfg = parse_config(argc, argv);
     if (cfg.churn_ops > cfg.size) cfg.churn_ops = cfg.size;
 

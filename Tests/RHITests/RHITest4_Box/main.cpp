@@ -235,7 +235,7 @@ void cleanup()
 
 int luna_main(int argc, const char* argv[])
 {
-    if(!Luna::init()) return -1;
+    if(Luna::failed(Luna::init())) return -1;
     lutry
     {
         luexp(add_modules({module_rhi_test_bed()}));

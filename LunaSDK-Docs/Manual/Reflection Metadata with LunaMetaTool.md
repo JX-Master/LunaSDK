@@ -331,7 +331,7 @@ Source:
 
 int main()
 {
-    Luna::init();
+    lupanic_if_failed(Luna::init());
     Luna::Meta::register_LunaMetaToolSmoke_types();
 
     auto type = Luna::typeof<Luna::MetaToolSmoke::MetaSmokeStruct>();

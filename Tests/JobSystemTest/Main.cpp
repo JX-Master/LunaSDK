@@ -87,7 +87,7 @@ namespace Luna
 
 int main()
 {
-    Luna::init();
+    lupanic_if_failed(Luna::init());
     lupanic_if_failed(Luna::add_module(Luna::module_job_system()));
     lupanic_if_failed(Luna::init_modules());
     Luna::job_system_test();

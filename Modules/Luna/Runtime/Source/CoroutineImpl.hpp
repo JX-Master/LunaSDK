@@ -8,6 +8,7 @@
 * @date 2026/2/14
 */
 #include "../Coroutine.hpp"
+#include "../Result.hpp"
 #include "CoroutineImpl.generated.hpp"
 namespace Luna
 {
@@ -26,6 +27,6 @@ namespace Luna
         }
     };
 
-    bool coroutine_init();
+    RV coroutine_init();
     void coroutine_close();
 }

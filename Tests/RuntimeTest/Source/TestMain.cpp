@@ -45,8 +45,13 @@ void run()
 
 int main()
 {
-    init();
+    lupanic_if_failed(init());
+    auto repeated_init_result = init();
+    luassert_always(repeated_init_result.errcode() == S_ALREADY_INITIALIZED);
     run();
+    close();
+    auto reinit_result = init();
+    luassert_always(is_plain_success(reinit_result.errcode()));
     close();
     return 0;
 }

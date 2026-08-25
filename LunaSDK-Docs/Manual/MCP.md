@@ -67,7 +67,7 @@ Notifications return HTTP 202 with no body. GET returns HTTP 405 because server-
 Initialize Runtime and register the MCP module. The MCP module depends on VariantUtils, Frontend, and HTTP; HTTP brings in Network through the normal module dependency graph.
 
 ```cpp
-Luna::init();
+lupanic_if_failed(Luna::init());
 lupanic_if_failed(Luna::add_modules({Luna::MCP::module_mcp()}));
 lupanic_if_failed(Luna::init_modules());
 ```

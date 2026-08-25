@@ -304,6 +304,9 @@ namespace Luna
     //! The Runtime error category identifier.
     inline constexpr errcat_t ERROR_CATEGORY = make_error_category(ErrorDomain::LUNA_SDK, LunaErrorCategory::RUNTIME);
 
+    //! The requested service was already initialized, so the initialization request performed no work.
+    inline constexpr ResultCode S_ALREADY_INITIALIZED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::RUNTIME, 1);
+
     //! General failure.
     inline constexpr ResultCode E_FAILURE = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::RUNTIME, -1);
     //! The real error is recorded in the error object of the current thread.

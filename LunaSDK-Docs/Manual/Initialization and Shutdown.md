@@ -4,7 +4,17 @@
 #include <Luna/Runtime/Runtime.hpp>
 ```
 
-Call `Luna::init` to initialize LunaSDK. Most features provided by LunaSDK are only available after LunaSDK is initialized, so always initialize LunaSDK firstly on program startup. `Luna::init` returns one `bool` value, which indicates whether the initialization is succeeded. After the initialization is succeeded, following calls to `Luna::init` does nothing and returns `true` directly.
+Call `Luna::init` to initialize LunaSDK. Most features provided by LunaSDK are only available after LunaSDK is initialized, so initialize LunaSDK near the beginning of program startup. `Luna::init` returns `RV`: `ok` indicates that initialization completed, a failure result identifies the failed initialization operation, and `S_ALREADY_INITIALIZED` indicates that LunaSDK was already initialized and no work was performed.
+
+```c++
+auto result = Luna::init();
+if(Luna::failed(result))
+{
+    return 1;
+}
+```
+
+Initialization failures contain static result codes. Runtime error metadata and the thread-local `Error` object may not be available, so do not assume that `explain` can provide a diagnostic string for a failed `Luna::init` call.
 
 Note that modules registered to LunaSDK will not be initialized by `Luna::init`, they should be initialized manually using functions like `init_modules`. See [Modules](Modules.md) for details.
 
@@ -21,7 +31,6 @@ Unlike SDK initialization, initialized modules **will** be closed by `Luna::clos
 ### Release resources before closing SDK
 
 All dynamic memory allocated from `memalloc`, `memrealloc` and `memnew` must be freed before calling `Luna::close`. All boxed object created from `new_object` and `object_alloc` must be released before calling `Luna::close`. Calls to `memfree`, `memdelete`, `object_release` and other functions after `Luna::close` results in undefined behavior, and usually a program crash. This often happens when you declare global variables that hold dynamic allocated resources (such as `Ref`) and memory blocks (such as `UniquePtr`, and containers like `Vector`, `HashMap`, etc.). Remember to clear such resources before calling `Luna::close`. For some containers, you should call `clear` then `shrink_to_fit` to eventually frees the internal memory buffer used by containers.
-
 
 
 

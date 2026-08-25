@@ -235,8 +235,8 @@ RV run(int argc, const char* argv[])
 
 int main(int argc, const char* argv[])
 {
-    bool inited = Luna::init();
-    if(!inited) return -1;
+    auto inited = Luna::init();
+    if(failed(inited)) return -1;
     auto r = run(argc, argv);
     if(failed(r))
     {

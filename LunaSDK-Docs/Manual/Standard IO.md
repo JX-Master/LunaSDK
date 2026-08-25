@@ -38,7 +38,7 @@ Initialize Runtime before using standard IO and close Runtime during normal appl
 
 int main()
 {
-    if (!Luna::init()) return 1;
+    if(Luna::failed(Luna::init())) return 1;
 
     // Use standard IO here.
 

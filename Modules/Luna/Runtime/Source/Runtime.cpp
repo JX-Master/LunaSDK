@@ -27,14 +27,15 @@
 #include "RandomImpl.hpp"
 #include "ReadWriteLockImpl.hpp"
 #include "ProfilerImpl.hpp"
+#include "ErrorImpl.hpp"
 #include "Runtime.meta.generated.hpp"
 namespace Luna
 {
-    bool error_init();
+    RV error_init();
     void error_close();
     void object_close();
     void add_builtin_typeinfo();
-    bool stack_allocator_init();
+    RV stack_allocator_init();
 
     void log_init();
     void log_close();
@@ -47,27 +48,30 @@ namespace Luna
 
     static bool g_initialized = false;
 
-    LUNA_RUNTIME_API bool init()
+    LUNA_RUNTIME_API RV init()
     {
-        if (g_initialized) return true;
-        auto r = Platform::init();
-        if(r != Platform::Result::success) [[unlikely]] return false;
-        if(!profiler_init()) [[unlikely]]
+        if (g_initialized) return S_ALREADY_INITIALIZED;
+        auto platform_result = Platform::init();
+        if(platform_result != Platform::Result::success) [[unlikely]] return encode_platform_result(platform_result);
+        RV result = profiler_init();
+        if(failed(result)) [[unlikely]]
         {
             Platform::close();
-            return false;
+            return result;
         }
-        if(!error_init()) [[unlikely]]
+        result = error_init();
+        if(failed(result)) [[unlikely]]
         {
             profiler_close();
             Platform::close();
-            return false;
+            return result;
         }
         name_init();
         type_registry_init();
         add_builtin_typeinfo();
         register_types_and_interfaces();
-        if(!thread_init()) [[unlikely]]
+        result = thread_init();
+        if(failed(result)) [[unlikely]]
         {
             object_close();
             type_registry_close();
@@ -75,9 +79,10 @@ namespace Luna
             error_close();
             profiler_close();
             Platform::close();
-            return false;
+            return result;
         }
-        if(!coroutine_init()) [[unlikely]]
+        result = coroutine_init();
+        if(failed(result)) [[unlikely]]
         {
             thread_close();
             object_close();
@@ -86,9 +91,10 @@ namespace Luna
             error_close();
             profiler_close();
             Platform::close();
-            return false;
+            return result;
         }
-        if(!stack_allocator_init()) [[unlikely]]
+        result = stack_allocator_init();
+        if(failed(result)) [[unlikely]]
         {
             coroutine_close();
             thread_close();
@@ -98,14 +104,14 @@ namespace Luna
             error_close();
             profiler_close();
             Platform::close();
-            return false;
+            return result;
         }
         random_init();
         log_init();
         module_init();
         g_profiler_ready = true;
         g_initialized = true;
-        return true;
+        return ok;
     }
     LUNA_RUNTIME_API bool is_initialized()
     {

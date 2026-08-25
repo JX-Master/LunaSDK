@@ -19,7 +19,7 @@
 int luna_main(int argc, const char* argv[])
 {
     using namespace Luna;
-    if(!Luna::init()) return -1;
+    if(Luna::failed(Luna::init())) return -1;
     lutry
     {
         luexp(add_modules({module_window()}));

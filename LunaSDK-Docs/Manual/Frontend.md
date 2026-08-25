@@ -48,7 +48,7 @@ A complete JSON-RPC 2.0 object must therefore not be passed directly to `IFronte
 Register the Frontend module during application initialization, then create an instance:
 
 ```cpp
-init();
+lupanic_if_failed(init());
 lupanic_if_failed(add_modules({Frontend::module_frontend()}));
 lupanic_if_failed(init_modules());
 

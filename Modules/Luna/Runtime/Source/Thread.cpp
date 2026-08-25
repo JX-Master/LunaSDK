@@ -18,15 +18,15 @@ namespace Luna
     IThread* g_main_thread_ref;
     opaque_t g_tls_thread;
 
-    bool thread_init()
+    RV thread_init()
     {
+        auto r = Platform::tls_alloc(g_tls_thread);
+        if(r != Platform::Result::success) return encode_platform_result(r);
         g_main_thread = new_object<MainThread>();
         g_main_thread_ref = query_interface<IThread>(g_main_thread.object());
         Platform::get_main_thread(g_main_thread->m_thread);
-        auto r = Platform::tls_alloc(g_tls_thread);
-        if(r != Platform::Result::success) return false;
         Platform::tls_set(g_tls_thread, g_main_thread_ref);
-        return true;
+        return ok;
     }
     void thread_close()
     {

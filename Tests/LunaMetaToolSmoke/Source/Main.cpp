@@ -5,7 +5,7 @@
 
 int main()
 {
-    Luna::init();
+    lupanic_if_failed(Luna::init());
     Luna::MetaToolSmoke::MetaSmokeStruct value;
     (void)Luna::Meta::StructMetaData<Luna::MetaToolSmoke::MetaSmokeStruct>::__guid;
     static_assert(Luna::Meta::StructMetaData<Luna::MetaToolSmoke::MetaSmokeStruct>::__properties[0].offset == 0);

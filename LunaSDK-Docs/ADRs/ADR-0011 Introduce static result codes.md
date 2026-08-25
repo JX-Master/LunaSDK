@@ -2,7 +2,7 @@
 Approved.
 
 ## Last updated
-2026/8/20
+2026/8/25
 
 ## Background
 The legacy LunaSDK error system represents an error code with an `ErrCode` wrapper around a machine-sized integer. The integer is produced on first use by hashing an error category name and error name, then using the hash as a key into a runtime registry. Error categories are represented by runtime `errcat_t` values produced by the same system.
@@ -93,6 +93,10 @@ The registered category display name is the owning module's canonical name, such
 
 Returning an informative success from `R<T>` requires an API that supplies both the returned value and its `ResultCode`. `R<void>` can carry an informative success directly. `ok` continues to represent the all-zero plain success result. Error-propagation and panic helpers react only to failures; informative successes are not sent to `lucatch` blocks.
 
+`Luna::init` returns `RV` instead of `bool`. `RV` stores only a static `ResultCode`, so constructing and inspecting it does not require LunaSDK to be initialized. The first successful initialization returns `ok`; a call made while LunaSDK is already initialized returns the informative success `S_ALREADY_INITIALIZED`. An initialization failure returns the most specific available static Runtime result code from the failed initialization stage.
+
+Initialization failures must not use `set_error`, `E_ERROR_OBJECT`, or another facility backed by the thread-local `Error` object. Runtime error metadata and rich error objects may not exist yet and are removed when a partially completed initialization is rolled back. The returned static result code remains valid after rollback even when its diagnostic metadata is unavailable.
+
 The storage used by `R<T>` should support constant evaluation when `T` itself permits constant evaluation. Making `ResultCode` independent of runtime initialization is required even where a particular `R<T>` instantiation cannot be constant-evaluated.
 
 ### Runtime error information
@@ -111,6 +115,8 @@ Binary protocols may transfer the complete `u64` value after specifying byte ord
 Result codes become stable, allocation-free values that can be used before `Luna::init`, in inter-process interfaces, and in constant-evaluated code where the surrounding result type permits it. Returning common errors no longer requires an exported function call or runtime registry lookup.
 
 The change is a breaking public ABI and source-level change. The public wrapper is renamed from `ErrCode` to `ResultCode` and changes from `usize` to `u64`, which changes its size on 32-bit platforms. Existing code that treats every non-zero complete value as a failure becomes incorrect because informative successes can be non-zero. Result constants also move from dedicated error namespaces into their module root namespaces. Registered category display names change to module names; this affects diagnostics and text fields but not the stable numeric identity. `R<T>` and all result propagation macros must be migrated before any informative success is introduced.
+
+Changing `Luna::init` from `bool` to `RV` is an additional public source and ABI break. Callers must use `succeeded`, `failed`, or the standard result propagation and panic helpers instead of Boolean conversion. Callers that ignore the return value now receive the existing `[[nodiscard]]` diagnostic on `RV`.
 
 Every LunaSDK module needs permanent category and result assignments. Dynamic category enumeration becomes a view over registered metadata. The former name-to-code lookup and hierarchical subcategory APIs are removed because static category identities are flat and codes are referenced directly.
 
@@ -137,10 +143,19 @@ This would reduce the practical collision risk without a registry, but it would 
 
 This would make signed comparison of the complete value sufficient, but it would couple severity to the ownership fields and provide a less natural local result space. The selected layout keeps a domain-independent signed 16-bit result value within each category and uses the remaining 48 bits exclusively for ownership.
 
+### Keep `Luna::init` returning `bool`
+
+This would preserve source compatibility, but it would continue discarding specific platform, TLS, FLS, and Runtime initialization failures even though static result codes are valid before Runtime initialization. It was rejected because the original reason for the Boolean return no longer applies.
+
+### Return a bare `ResultCode` from `Luna::init`
+
+This would expose the same static identity with slightly less API wrapping, but it would make initialization inconsistent with other fallible operations that return no value. It would also prevent callers from using the existing `RV` propagation and panic helpers directly and would not receive the `[[nodiscard]]` behavior already provided by `R<void>`. It was rejected in favor of `RV`, whose only stored state is the same `ResultCode`.
+
 ## Remarks
 The complete value is the stable interchange identity. Runtime metadata may be added, translated, or improved without changing the numeric result code.
 
 ## Version history
+* **2026/8/25** Changed `Luna::init` to return `RV`, required exact static failure propagation without rich error objects, and added `S_ALREADY_INITIALIZED` for repeated initialization.
 * **2026/8/20** Renamed the public wrapper type from `ErrCode` to `ResultCode`, moved result constants and `ERROR_CATEGORY` into module root namespaces, and made registered category names equal to canonical module names.
 * **2026/8/19** Approved the decision, recorded the initial LunaSDK category allocation, clarified the stable `errcat_t` representation, removed function-style and name-based result getters, and adopted the `E_`/`S_` result-constant naming rule.
 * **2026/8/17** Proposed.

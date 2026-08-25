@@ -63,7 +63,7 @@ namespace Luna
     Vector<UniquePtr<StackAllocatorFLSContext>> g_stack_allocator_ctxs;
     SpinLock g_stack_allocator_ctxs_lock;
 
-    bool stack_allocator_init()
+    RV stack_allocator_init()
     {
         auto r = fls_alloc([](void* ptr)
         {
@@ -78,9 +78,9 @@ namespace Luna
                 }
             }
         });
-        if(failed(r)) return false;
+        if(failed(r)) return r.errcode();
         g_stack_allocator_fls = r.get();
-        return true;
+        return ok;
     }
     void stack_allocator_close()
     {

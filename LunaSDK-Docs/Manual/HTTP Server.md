@@ -2,7 +2,7 @@
 
 The HTTP module provides a bounded, event-driven HTTP/1.x origin server over the non-blocking sockets and socket poller supplied by Network. It accepts TCP connections, incrementally parses fragmented requests, invokes an application handler after a complete request is available, serializes the returned response, and manages persistent connections without assigning one blocking thread to each client.
 
-The initial server is designed for local tools and small embedded services. It supports HTTP/1.1, basic HTTP/1.0 interoperability, fixed-length and chunked request bodies, trailers, `Expect: 100-continue`, persistent HTTP/1.1 connections, and pipelined requests. It does not provide TLS, HTTP clients, routing, authentication, compression, static files, WebSocket, HTTP/2, HTTP/3, request or response streaming, proxy behavior, or automatic worker dispatch. See [[HTTP Messages]] for the request and response data model and [[ADR-0010 Introduce an event-driven HTTP server module]] for the architectural decision.
+The initial server is designed for local tools and small embedded services. It supports HTTP/1.1, basic HTTP/1.0 interoperability, fixed-length and chunked request bodies, trailers, `Expect: 100-continue`, persistent HTTP/1.1 connections, and pipelined requests. It does not provide TLS, HTTP clients, routing, authentication, compression, static files, WebSocket, HTTP/2, HTTP/3, request or response streaming, proxy behavior, or automatic worker dispatch. See [[HTTP Messages]] for the request and response data model.
 
 ## Concepts
 
@@ -90,7 +90,7 @@ Register and initialize HTTP after Runtime. HTTP declares its dependency on Netw
 
 using namespace Luna;
 
-init();
+lupanic_if_failed(init());
 lupanic_if_failed(add_modules({HTTP::module_http()}));
 lupanic_if_failed(init_modules());
 ```
@@ -230,7 +230,7 @@ using namespace Luna;
 
 int main()
 {
-    init();
+    lupanic_if_failed(init());
     lupanic_if_failed(add_modules({HTTP::module_http()}));
     lupanic_if_failed(init_modules());
 

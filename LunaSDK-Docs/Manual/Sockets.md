@@ -5,7 +5,7 @@
 The `Network` module provides non-blocking TCP and UDP socket APIs for IPv4 and IPv6 on Windows, macOS, and Linux. Add and initialize the module before using any socket API:
 
 ```c++
-init();
+lupanic_if_failed(init());
 lupanic_if_failed(add_modules({Luna::Network::module_network()}));
 lupanic_if_failed(init_modules());
 ```

@@ -30,11 +30,14 @@ namespace Luna
 
     //! Initializes LunaSDK.
     //! @details Call this function to initialize LunaSDK. Most features provided by LunaSDK are only available after LunaSDK is initialized, 
-    //! so always initialize LunaSDK firstly on program startup. Calling this function when LunaSDK is already initialized does nothing and returns `true` directly.
+    //! so always initialize LunaSDK firstly on program startup. Calling this function when LunaSDK is already initialized does nothing and returns
+    //! @ref S_ALREADY_INITIALIZED.
     //! 
     //! Note that modules registered to LunaSDK will not be initialized by this function, they should be initialized manually using functions like @ref init_modules.
-    //! @return Returns `true` if LunaSDK is succssfully initialized, returns `false` otherwise.
-    LUNA_RUNTIME_API bool init();
+    //! @return Returns @ref ok if LunaSDK is successfully initialized. Returns @ref S_ALREADY_INITIALIZED if LunaSDK is already initialized.
+    //! Returns one failure result code if initialization fails.
+    //! @remark Initialization failures contain static result codes only. Runtime error metadata and the thread-local error object may be unavailable.
+    LUNA_RUNTIME_API RV init();
 
     //! Checks whether LunaSDK is initialized.
     //! @return Returns `true` if LunaSDK is initialized. Returns `false` otherwise.

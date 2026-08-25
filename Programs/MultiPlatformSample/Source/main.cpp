@@ -337,7 +337,7 @@ RV run_app()
 }
 int luna_main(int argc, const char* argv[])
 {
-    if(!Luna::init())
+    if(Luna::failed(Luna::init()))
     {
         lupanic_msg("Failed to initialize LunaSDK");
     }

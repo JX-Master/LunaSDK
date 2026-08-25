@@ -374,7 +374,7 @@ int luna_main(int argc, const char* argv[])
         else if(!strcmp(argv[i], "--density=compact")) options.density = 0;
         else if(!strcmp(argv[i], "--density=touch")) options.density = 1;
     }
-    Luna::init();
+    lupanic_if_failed(Luna::init());
     lupanic_if_failed(run_demo(options));
     Luna::close();
     return 0;

@@ -9,7 +9,7 @@ int luna_main(int argc, const char* argv[])
 {
     (void)argc;
     (void)argv;
-    if(!Luna::init())
+    if(Luna::failed(Luna::init()))
     {
         return 1;
     }

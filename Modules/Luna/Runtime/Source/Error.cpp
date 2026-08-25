@@ -12,6 +12,7 @@
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include <Luna/Runtime/Error.hpp>
 #include <Luna/Runtime/HashMap.hpp>
+#include "ErrorImpl.hpp"
 #include "Platform/Fiber.hpp"
 #include "../SpinLock.hpp"
 
@@ -100,6 +101,7 @@ namespace Luna
         };
         constexpr Info infos[] =
         {
+            {S_ALREADY_INITIALIZED, "already_initialized", "LunaSDK is already initialized."},
             {E_FAILURE, "failure", "General failure."},
             {E_ERROR_OBJECT, "error_object", "Detailed failure information is stored in the current thread's Error object."},
             {E_NOT_FOUND, "not_found", "The specified item does not exist."},
@@ -149,21 +151,28 @@ namespace Luna
         return true;
     }
 
-    bool error_init()
+    RV error_init()
     {
         g_errcat_registry.construct();
         g_result_code_registry.construct();
         g_error_ready = true;
         auto result = Platform::fls_alloc(error_destructor, g_error_tls);
-        if(result != Platform::Result::success || !register_runtime_error_codes())
+        if(result != Platform::Result::success)
         {
-            if(result == Platform::Result::success) Platform::fls_free(g_error_tls);
             g_error_ready = false;
             g_result_code_registry.destruct();
             g_errcat_registry.destruct();
-            return false;
+            return encode_platform_result(result);
         }
-        return true;
+        if(!register_runtime_error_codes())
+        {
+            Platform::fls_free(g_error_tls);
+            g_error_ready = false;
+            g_result_code_registry.destruct();
+            g_errcat_registry.destruct();
+            return E_ALREADY_EXISTS;
+        }
+        return ok;
     }
 
     void error_close()

@@ -117,7 +117,7 @@ using namespace Luna;
 
 int luna_main(int argc, const char* argv[])
 {
-    luassert_always(Luna::init());
+    lupanic_if_failed(Luna::init());
     set_current_dir_to_process_path();
     run_editor();
     Luna::close();

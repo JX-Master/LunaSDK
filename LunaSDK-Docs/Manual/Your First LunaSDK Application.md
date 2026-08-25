@@ -88,7 +88,7 @@ RV run_app()
 }
 int luna_main(int argc, const char* argv[])
 {
-    if(!Luna::init()) return -1;
+    if(failed(Luna::init())) return -1;
     RV result = run_app();
     if(failed(result)) log_error("DemoApp", "%s", explain(result.errcode()));
     Luna::close();
@@ -112,14 +112,14 @@ The program starts with the `luna_main` function, this is a special entry functi
 
 > Only include `<Luna/Window/AppMain.hpp>` in your main function file, not in any header file, since `<Luna/Window/AppMain.hpp>` defines platform-specific main function directly, including this function in multiple files result in symbol redifinition.
 
-In the main function, we firstly call `Luna::init` to initialize LunaSDK. This function should be called before any other LunaSDK function. `Luna::init` returns one Boolean value to indicate whether the SDK initialization is succeeded, if the return value is `false`, we then return `-1` and exit the program to indicate one runtime error. If `Luna::init` returns `true`, then one `Luna::close` call is need before the program exit to let LunaSDK clean up all internal resources.
+In the main function, we first call `Luna::init` to initialize LunaSDK. This function should be called before APIs that require Runtime services. `Luna::init` returns `RV`, so `failed` tests whether initialization failed. Static result codes are valid before initialization, but runtime error metadata and rich `Error` objects may not be available on this failure path. After successful initialization, call `Luna::close` before program exit so LunaSDK can release its internal resources.
 
 We then wrap the real program logic in one `run_app` function. The return type of `run_app` is `RV`, which is a shortcut for `R<void>` and is part of LunaSDK's error handling mechanism. `R<T>` encapsulates a return value of type `T` and a stable result code of type `ResultCode`, which wraps a `u64`. A negative local result value indicates failure; a non-negative local result value indicates success. The all-zero code is plain success, while other successful codes may carry status information. If the function fails, the `T` value is uninitialized and inaccessible. Call `errcode()` to fetch the result code and `explain` to get a brief description. In `main`, we use `failed` to detect failure (the corresponding `succeeded` helper is also available), print the description, and exit if an error occurred.
 
 In our `run_app` function, the first thing to do is calling `add_modules`, which will add all modules we need to use into the module system, so that we can initialize such modules by calling `init_modules`. The program only needs to add modules that are directly used by the program, if such modules have dependent modules, they will be added to the module system automatically when such modules are added. In our example, the following modules are added:
 1. `Window`: Provides functions for managing windows.
 2. `RHI`: Provides uniform interfaces to rendering backend (like D3D12\Vulkan\Metal).
-The `Runtime` module is always implicitly added to the module system, so the program should not add `Runtime` module explicitly. After adding modules, `run_app` then calls `init_modules`, which will initialize all linked SDK modules for our program. We deliberately separate module initialization from `Luna::init` so that the user get a chance to set module initialization parameters before initializing modules, and modules can also indicate initialization failure by returning error codes, since error handling system is available only after `Luna::init` .
+The `Runtime` module is always implicitly added to the module system, so the program should not add `Runtime` module explicitly. After adding modules, `run_app` then calls `init_modules`, which will initialize all linked SDK modules for our program. We deliberately separate module initialization from `Luna::init` so that the user gets a chance to set module initialization parameters before initializing modules. Static result codes are always available, while initialized modules can additionally use Runtime metadata and rich `Error` objects when reporting failures.
 
 Then, we allocate and initialize one new object of `DemoApp` type by calling `memnew` function. The following table shows memory allocation functions used in LunaSDK:
 
@@ -332,7 +332,7 @@ RV run_app()
 }
 int luna_main(int argc, const char* argv[])
 {
-    if(!Luna::init()) return -1;
+    if(failed(Luna::init())) return -1;
     RV result = run_app();
     if(failed(result)) log_error("DemoApp", "%s", explain(result.errcode()));
     Luna::close();

@@ -321,7 +321,7 @@ public static class ProjectGenerator
 
             int main()
             {
-                if(!Luna::init())
+                if(Luna::failed(Luna::init()))
                 {
                     return 1;
                 }

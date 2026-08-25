@@ -592,7 +592,7 @@ using namespace Luna;
 
 int luna_main(int argc, const char** argv)
 {
-    if(!Luna::init())
+    if(Luna::failed(Luna::init()))
     {
         return -1;
     }
