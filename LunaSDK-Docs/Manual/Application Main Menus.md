@@ -1,6 +1,6 @@
 An application main menu is native, application-wide system UI. On macOS it is the menu bar shown to the right of
 the Apple menu and remains available even when the application has no open windows. It is distinct from an
-EditorGUI menu bar, which is drawn inside one GUI surface. Application main menu API only works on macOS.
+EditorGUI menu bar, which is drawn inside one GUI surface. **Application main menu API only works on macOS.**
 
 The Window module exposes application main menus as a platform-independent descriptor tree. Applications do not
 create or retain native menu objects, and ordinary application code does not need to compile as Objective-C++.
@@ -173,13 +173,3 @@ perform long-running work while AppKit is opening or tracking a menu.
 
 Before shutting down, clear the Window event handler and release application objects as usual. The Window module
 detaches its native menu targets during module shutdown; applications do not release native menu resources.
-
-## Backend coverage
-
-| API | Windows | macOS | iOS | Android |
-| --- | --- | --- | --- | --- |
-| Application main menu | Not supported | Supported | Not supported | Not supported |
-
-Unsupported backends return `false` from `supports_application_menu` and `E_NOT_SUPPORTED` from mutating operations.
-Windows window-attached menus and iPad command menus have different ownership and lifecycle semantics and are not
-emulated by this application-global API.
