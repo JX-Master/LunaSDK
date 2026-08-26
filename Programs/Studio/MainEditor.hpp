@@ -54,12 +54,13 @@ namespace Luna
 
         Ref<JobSystem::IJobScheduler> m_job_scheduler;
 
-        bool m_application_menu_enabled = false;
+#if defined(LUNA_PLATFORM_MACOS)
         bool m_application_menu_save_all_enabled = false;
         bool m_application_menu_undo_enabled = false;
         bool m_application_menu_redo_enabled = false;
         bool m_application_menu_asset_browsers_checked[4] = {};
         bool m_application_menu_memory_profiler_checked = false;
+#endif
 
         //u32 m_next_asset_browser_index;
 
@@ -80,11 +81,15 @@ namespace Luna
         // `has_any_unsaved_changes`, `has_unsaved_changes`, `get_asset_edit_version` instead.
         HashMap<Asset::asset_t, AssetVersion> m_assets_version;
 
+#if !defined(LUNA_PLATFORM_MACOS)
         void draw_main_menu_bar(GUI::IContext* context, const RectF& rect);
+#endif
         bool draw_asset_editor(IAssetEditor* editor, GUI::IContext* context, const GUI::LayoutConfig& layout);
         bool confirm_exit();
+#if defined(LUNA_PLATFORM_MACOS)
         RV install_application_menu();
         RV update_application_menu_state();
+#endif
 
     public:
 

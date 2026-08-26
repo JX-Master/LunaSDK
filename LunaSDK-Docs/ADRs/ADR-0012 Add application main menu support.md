@@ -25,10 +25,14 @@ therefore cannot be allowed to terminate the process directly.
 
 ## Decision
 ### Public application-menu model
-The Window module provides a platform-independent application-main-menu API in `ApplicationMenu.hpp`. The menu is an
-application-global tree described by value descriptors. Nodes are commands, submenus or separators. Command nodes
-have a non-zero application-defined `u64` identifier. Descriptors contain UTF-8 titles, enabled and check states, an
-optional keyboard shortcut, an optional standard platform role and child nodes for submenus.
+On macOS, the Window module provides an application-main-menu API in `ApplicationMenu.hpp`. The complete public API,
+including related menu events and the accepted-Quit query, is enclosed by `LUNA_PLATFORM_MACOS`. Other platforms do
+not declare or export these symbols. Cross-platform applications select their menu implementation at compile time;
+Studio continues to use its EditorGUI client-area menu outside macOS.
+
+The menu is an application-global tree described by value descriptors. Nodes are commands, submenus or separators.
+Command nodes have a non-zero application-defined `u64` identifier. Descriptors contain UTF-8 titles, enabled and
+check states, an optional keyboard shortcut, an optional standard platform role and child nodes for submenus.
 
 `set_application_menu` validates and deep-copies the complete descriptor tree before installing it. The caller does
 not retain descriptor strings or spans. Replacing a menu is transactional: an invalid replacement leaves the current
@@ -37,14 +41,13 @@ incremental title, enabled, check-state and visibility updates without exposing 
 
 The initial public operations are:
 
-1. Query whether the current platform supports an application main menu.
-2. Replace the application main menu from a descriptor tree.
-3. Restore the platform default application menu.
-4. Update the cached presentation state of an identified item.
+1. Replace the application main menu from a descriptor tree.
+2. Restore the platform default application menu.
+3. Update the cached presentation state or title of an identified item.
 
-The first complete backend is macOS. Other Window backends export the same symbols, report the capability as
-unsupported and return `E_NOT_SUPPORTED` from mutating operations. A future Windows menu API may attach a menu to a
-specific `IWindow`; it will not pretend that Win32 window menus have macOS application-global semantics.
+The API is macOS-only because its application-global semantics model `NSApplication.mainMenu`. A future Windows menu
+API may attach a menu to a specific `IWindow`; it will not pretend that Win32 window menus have macOS
+application-global semantics.
 
 ### Commands, standard roles and native validation
 Selecting an application-defined command by pointer or keyboard dispatches one synchronous
@@ -106,8 +109,9 @@ Objective-C++ or owning AppKit objects. Native menu commands share the existing 
 command state remains under the application model rather than being inferred from EditorGUI widgets.
 
 Applications that want standard Quit behavior must include the accepted quit-request state in their loop condition.
-Existing examples and Studio need this small migration. Studio can route native Save All, Undo, Redo and View commands
-to the same operations used by its EditorGUI menu and can omit the client-area menu bar on macOS.
+Code that uses the API must be compiled conditionally with `LUNA_PLATFORM_MACOS`. Studio routes native Save All, Undo,
+Redo and View commands to the same operations used by its EditorGUI menu on macOS and compiles its prior EditorGUI
+client-area menu on Windows and other platforms.
 
 Giving native key equivalents priority changes Cocoa input delivery for handled shortcuts: content receives the menu
 command event instead of a matching Window key pair. This matches macOS menu behavior and prevents duplicate command
@@ -143,5 +147,11 @@ application-owned loop.
 Per-item callbacks would introduce additional userdata lifetime and reentrancy rules beside the Window module's
 existing single event handler. Command events keep all native input and lifecycle messages on one established path.
 
+### Export the API on every platform and report unsupported at runtime
+This would allow cross-platform source code to compile while providing no working menu on some targets. It hides a
+semantic platform difference until runtime and encourages applications to omit their real fallback UI. Compile-time
+availability, matching the Window Display API pattern, makes the platform boundary explicit.
+
 ## Version history
 * **2026/8/26** Proposed and approved.
+* **2026/8/26** Restricted the API to macOS at compile time and retained EditorGUI menus on other platforms.

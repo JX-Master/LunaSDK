@@ -1,10 +1,11 @@
 An application main menu is native, application-wide system UI. On macOS it is the menu bar shown to the right of
 the Apple menu and remains available even when the application has no open windows. It is distinct from an
-EditorGUI menu bar, which is drawn inside one GUI surface. **Application main menu API only works on macOS.**
+EditorGUI menu bar, which is drawn inside one GUI surface.
 
-The Window module exposes application main menus as a platform-independent descriptor tree. Applications do not
-create or retain native menu objects, and ordinary application code does not need to compile as Objective-C++.
-The initial backend is macOS. Other platforms report that the capability is unsupported.
+The Window module exposes the macOS application main menu as a C++ descriptor tree. Applications do not create or
+retain native menu objects, and ordinary application code does not need to compile as Objective-C++. The entire API
+is declared only when `LUNA_PLATFORM_MACOS` is defined. Other platforms do not provide these types, functions or
+related events; a cross-platform application should compile its in-window menu implementation on those targets.
 
 ## Concepts
 
@@ -75,8 +76,20 @@ Window::set_startup_params(startup_params);
 lupanic_if_failed(init_modules());
 ```
 
-Use `supports_application_menu` before installing an application menu. This lets the same application retain an
-in-window menu on platforms that do not provide an application-global menu.
+Guard all application-main-menu code with `LUNA_PLATFORM_MACOS`. On other platforms, compile the application's normal
+in-window menu instead:
+
+```cpp
+#if defined(LUNA_PLATFORM_MACOS)
+#include <Luna/Window/ApplicationMenu.hpp>
+#endif
+
+#if defined(LUNA_PLATFORM_MACOS)
+lupanic_if_failed(install_menu());
+#else
+draw_in_window_menu();
+#endif
+```
 
 ### Install a menu
 

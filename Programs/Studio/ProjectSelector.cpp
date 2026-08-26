@@ -389,10 +389,12 @@ namespace Luna
             {
                 Window::poll_events();
 
+#if defined(LUNA_PLATFORM_MACOS)
                 if(Window::is_application_quit_requested())
                 {
                     break;
                 }
+#endif
                 if (window->is_closed())
                 {
                     break;

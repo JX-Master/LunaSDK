@@ -19,7 +19,9 @@
 
 #include <Luna/VFS/VFS.hpp>
 #include <Luna/Window/MessageBox.hpp>
+#if defined(LUNA_PLATFORM_MACOS)
 #include <Luna/Window/ApplicationMenu.hpp>
+#endif
 
 #include "Camera.hpp"
 #include "Transform.hpp"
@@ -53,6 +55,7 @@ namespace Luna
 
     namespace
     {
+#if defined(LUNA_PLATFORM_MACOS)
         constexpr Window::application_menu_item_id_t MENU_ITEM_SAVE_ALL = 1;
         constexpr Window::application_menu_item_id_t MENU_ITEM_UNDO = 2;
         constexpr Window::application_menu_item_id_t MENU_ITEM_REDO = 3;
@@ -112,6 +115,7 @@ namespace Luna
                 Window::ApplicationMenuItemCheckState::none;
             return state;
         }
+#else
 
         GUI::LayoutConfig fixed_height_layout(f32 height)
         {
@@ -122,6 +126,7 @@ namespace Luna
             layout.height.value = height;
             return layout;
         }
+#endif
 
         GUI::LayoutConfig fill_layout()
         {
@@ -135,6 +140,7 @@ namespace Luna
         }
     }
 
+#if !defined(LUNA_PLATFORM_MACOS)
     void MainEditor::draw_main_menu_bar(GUI::IContext* context, const RectF& rect)
     {
         luassert(context);
@@ -191,6 +197,7 @@ namespace Luna
         }
         context->pop_data_scope();
     }
+#endif
 
     bool MainEditor::draw_asset_editor(IAssetEditor* editor, GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
@@ -221,6 +228,7 @@ namespace Luna
         return true;
     }
 
+#if defined(LUNA_PLATFORM_MACOS)
     RV MainEditor::install_application_menu()
     {
         Window::ApplicationMenuItemDesc app_items[] =
@@ -338,6 +346,7 @@ namespace Luna
         lucatchret;
         return ok;
     }
+#endif
 
     RV MainEditor::init(const Path& project_path)
     {
@@ -369,6 +378,7 @@ namespace Luna
             Window::set_event_handler([](object_t event, void* userdata){
                 MainEditor* editor = (MainEditor*)userdata;
                 GUIWindow::handle_window_event(event, editor->m_window, editor->m_gui);
+#if defined(LUNA_PLATFORM_MACOS)
                 if(auto e = cast_object<Window::ApplicationMenuItemInvokedEvent>(event))
                 {
                     switch(e->item_id)
@@ -404,6 +414,7 @@ namespace Luna
                 {
                     e->do_quit = editor->confirm_exit();
                 }
+#endif
                 if(auto e = cast_object<Window::WindowRequestCloseEvent>(event))
                 {
                     if(e->window == editor->m_window)
@@ -470,11 +481,9 @@ namespace Luna
 
             register_enum_type<SceneRendererMode>();
 
-            if(Window::supports_application_menu())
-            {
-                luexp(install_application_menu());
-                m_application_menu_enabled = true;
-            }
+#if defined(LUNA_PLATFORM_MACOS)
+            luexp(install_application_menu());
+#endif
         }
         lucatchret;
         return ok;
@@ -484,21 +493,24 @@ namespace Luna
     {
         Window::poll_events();
 
+#if defined(LUNA_PLATFORM_MACOS)
         if(Window::is_application_quit_requested())
         {
             m_exiting = true;
             return ok;
         }
+#endif
         if (m_window->is_closed())
         {
             m_exiting = true;
             return ok;
         }
-        if(m_application_menu_enabled)
+#if defined(LUNA_PLATFORM_MACOS)
         {
             RV r = update_application_menu_state();
             if(failed(r)) return r;
         }
+#endif
         if (m_window->is_minimized())
         {
             sleep(100);
@@ -525,16 +537,17 @@ namespace Luna
             m_gui->begin_frame(gui_frame);
             GUIWindow::update_input(m_window, m_gui);
 
-            constexpr f32 menu_height = 34.0f;
             RectF screen_rect(0.0f, 0.0f, (f32)sz.x, (f32)sz.y);
+#if !defined(LUNA_PLATFORM_MACOS)
+            constexpr f32 menu_height = 34.0f;
             RectF menu_rect(0.0f, 0.0f, (f32)sz.x, min(menu_height, (f32)sz.y));
+#endif
 
             m_gui->push_layer(m_gui->make_id("studio_root_layer"), Float2U(0.0f));
             GUI::ElementHandle root = EditorGUI::begin_v_layout(m_gui, m_gui->make_id("studio_root"), "Studio Root");
-            if(!m_application_menu_enabled)
-            {
-                draw_main_menu_bar(m_gui, menu_rect);
-            }
+#if !defined(LUNA_PLATFORM_MACOS)
+            draw_main_menu_bar(m_gui, menu_rect);
+#endif
 
             GUI::ElementHandle dock_space = EditorGUI::begin_dock_space(m_gui, m_gui->make_id("studio_dock_space"),
                 "Studio DockSpace", fill_layout());
@@ -595,11 +608,9 @@ namespace Luna
     }
     void MainEditor::close()
     {
-        if(m_application_menu_enabled)
-        {
-            auto _ = Window::reset_application_menu();
-            m_application_menu_enabled = false;
-        }
+#if defined(LUNA_PLATFORM_MACOS)
+        auto _ = Window::reset_application_menu();
+#endif
         Window::set_event_handler(nullptr, nullptr);
         unregister_profiler_callback(m_memory_profiler_callback_handle);
     }

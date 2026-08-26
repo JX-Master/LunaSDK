@@ -21,7 +21,9 @@ namespace Luna
         void(*g_event_handler)(object_t event, void* userdata) = nullptr;
         void* g_event_handler_userdata = nullptr;
         bool g_any_event_dispatched = false;
+#if defined(LUNA_PLATFORM_MACOS)
         bool g_application_quit_requested = false;
+#endif
 
         void dispatch_event_to_handler(object_t event)
         {
@@ -32,6 +34,7 @@ namespace Luna
             }
         }
 
+#if defined(LUNA_PLATFORM_MACOS)
         void dispatch_application_menu_item_invoked(application_menu_item_id_t item_id)
         {
             auto event = new_object<ApplicationMenuItemInvokedEvent>();
@@ -54,6 +57,7 @@ namespace Luna
         {
             g_application_quit_requested = false;
         }
+#endif
 
         LUNA_WINDOW_API void set_event_handler(void(*event_handler)(object_t event, void* userdata), void* userdata)
         {
@@ -69,11 +73,13 @@ namespace Luna
             if(out_userdata) *out_userdata = g_event_handler_userdata;
         }
 
+#if defined(LUNA_PLATFORM_MACOS)
         LUNA_WINDOW_API bool is_application_quit_requested()
         {
             lutsassert_main_thread();
             return g_application_quit_requested;
         }
+#endif
 
     }
 }

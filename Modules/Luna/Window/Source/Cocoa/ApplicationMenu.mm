@@ -838,11 +838,6 @@ namespace Luna
             return suppress;
         }
 
-        LUNA_WINDOW_API bool supports_application_menu()
-        {
-            return true;
-        }
-
         LUNA_WINDOW_API RV set_application_menu(const ApplicationMenuDesc& desc)
         {
             lutsassert_main_thread();

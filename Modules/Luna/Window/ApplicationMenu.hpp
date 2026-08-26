@@ -23,7 +23,7 @@ namespace Luna
         //! @addtogroup Window
         //! @{
 
-#ifdef LUNA_PLATFORM_MACOS
+#if defined(LUNA_PLATFORM_MACOS)
 
         //! Identifies one application menu item.
         //! @details The value `0` is reserved for items that do not expose an application-defined identifier.
@@ -141,15 +141,10 @@ namespace Luna
             Span<const ApplicationMenuItemDesc> items;
         };
 
-        //! Checks whether the current platform supports an application main menu.
-        //! @return Returns `true` if application main menus are supported. Returns `false` otherwise.
-        LUNA_WINDOW_API bool supports_application_menu();
-
         //! Replaces the application main menu.
         //! @param[in] desc The complete menu descriptor tree.
-        //! @return Returns `ok` on success, @ref E_BAD_ARGUMENTS if the descriptor tree is invalid,
-        //! @ref E_OUT_OF_MEMORY if native menu allocation fails, or @ref E_NOT_SUPPORTED if the platform does not
-        //! support an application main menu.
+        //! @return Returns `ok` on success, @ref E_BAD_ARGUMENTS if the descriptor tree is invalid, or
+        //! @ref E_OUT_OF_MEMORY if native menu allocation fails.
         //! @remark The complete descriptor tree is validated and deep-copied before this function returns. If
         //! validation or installation fails, the currently installed menu is not changed.
         //! @par Valid Usage
@@ -157,8 +152,7 @@ namespace Luna
         LUNA_WINDOW_API RV set_application_menu(const ApplicationMenuDesc& desc);
 
         //! Restores the platform-default application main menu.
-        //! @return Returns `ok` on success, @ref E_OUT_OF_MEMORY if native menu allocation fails, or
-        //! @ref E_NOT_SUPPORTED if the platform does not support an application main menu.
+        //! @return Returns `ok` on success or @ref E_OUT_OF_MEMORY if native menu allocation fails.
         //! @par Valid Usage
         //! * This function must be called from the main thread after the Window module is initialized.
         LUNA_WINDOW_API RV reset_application_menu();
@@ -166,9 +160,8 @@ namespace Luna
         //! Updates the presentation state of one identified application menu item.
         //! @param[in] id The non-zero identifier of the item to update.
         //! @param[in] state The new presentation state.
-        //! @return Returns `ok` on success, @ref E_BAD_ARGUMENTS if `state` is invalid, @ref E_NOT_FOUND if no item
-        //! has the specified identifier, or @ref E_NOT_SUPPORTED if the platform does not support an application
-        //! main menu.
+        //! @return Returns `ok` on success, @ref E_BAD_ARGUMENTS if `state` is invalid, or @ref E_NOT_FOUND if no
+        //! item has the specified identifier.
         //! @par Valid Usage
         //! * This function must be called from the main thread after the Window module is initialized.
         LUNA_WINDOW_API RV set_application_menu_item_state(application_menu_item_id_t id,
@@ -177,9 +170,8 @@ namespace Luna
         //! Updates the title of one identified application menu item.
         //! @param[in] id The non-zero identifier of the item to update.
         //! @param[in] title The new null-terminated UTF-8 title.
-        //! @return Returns `ok` on success, @ref E_BAD_ARGUMENTS if `title` is invalid, @ref E_NOT_FOUND if no item
-        //! has the specified identifier, or @ref E_NOT_SUPPORTED if the platform does not support an application
-        //! main menu.
+        //! @return Returns `ok` on success, @ref E_BAD_ARGUMENTS if `title` is invalid, or @ref E_NOT_FOUND if no
+        //! item has the specified identifier.
         //! @par Valid Usage
         //! * This function must be called from the main thread after the Window module is initialized.
         //! * `title` must specify one null-terminated UTF-8 string.

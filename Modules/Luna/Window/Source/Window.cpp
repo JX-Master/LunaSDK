@@ -37,7 +37,9 @@ namespace Luna
                     g_name.clear();
                 }
                 g_version = g_startup_params.version;
+#if defined(LUNA_PLATFORM_MACOS)
                 reset_application_quit_request();
+#endif
                 Meta::register_Window_types();
                 RV result = platform_init();
                 if(failed(result))

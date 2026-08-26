@@ -10,7 +10,9 @@
 #pragma once
 #include "Window.hpp"
 #include "Application.hpp"
+#if defined(LUNA_PLATFORM_MACOS)
 #include "ApplicationMenu.hpp"
+#endif
 #include <Luna/HID/KeyCode.hpp>
 #include "Event.generated.hpp"
 #ifndef LUNA_WINDOW_API
@@ -39,13 +41,15 @@ namespace Luna
         //! fetched if the event queue is empty.
         LUNA_WINDOW_API void poll_events(bool wait_events = false);
 
-        //! Checks whether an application quit request was accepted by the event handler.
+#if defined(LUNA_PLATFORM_MACOS)
+        //! Checks whether a macOS application quit request was accepted by the event handler.
         //! @return Returns `true` if a quit request was accepted since the Window module was initialized.
         //! @remark An accepted quit request remains set until the Window module is reinitialized. The application
         //! should observe this state, release its resources and return normally through `luna_main`.
         //! @par Valid Usage
         //! * This function must be called from the main thread after the Window module is initialized.
         LUNA_WINDOW_API bool is_application_quit_requested();
+#endif
 
         //! The base class for all events dispatched by to a specific window.
         struct [[luna::struct("749dcf28-511b-430f-810e-e09bcd98652f")]] WindowEvent
@@ -295,6 +299,7 @@ namespace Luna
         {
         };
 
+#if defined(LUNA_PLATFORM_MACOS)
         //! Dispatched when the user invokes one application-defined menu item.
         //! @par Default Behavior
         //! Do nothing.
@@ -315,6 +320,7 @@ namespace Luna
             //! The default value is `true`.
             bool do_quit = true;
         };
+#endif
 
         //! Dispatched when the application has entered foreground.
         struct [[luna::struct("5bb08e54-ac48-47be-9487-4221dcb26d6d")]] ApplicationDidEnterForegroundEvent : ApplicationEvent
