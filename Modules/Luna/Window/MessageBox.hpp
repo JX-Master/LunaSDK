@@ -18,6 +18,8 @@ namespace Luna
     {
         //! @addtogroup Window
         //! @{
+
+#ifdef LUNA_PLATFORM_DESKTOP
         
         //! Specifies the type of the message box.
         enum class MessageBoxType : u32
@@ -79,6 +81,8 @@ namespace Luna
         //! * `text` and `caption` must specify null-terminated strings.
         LUNA_WINDOW_API R<MessageBoxButton> message_box(const c8* text, const c8* caption, MessageBoxType type, MessageBoxIcon icon = MessageBoxIcon::none);
     
+#endif
+
         //! @}
     }
 }

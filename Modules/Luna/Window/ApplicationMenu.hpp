@@ -23,6 +23,8 @@ namespace Luna
         //! @addtogroup Window
         //! @{
 
+#ifdef LUNA_PLATFORM_MACOS
+
         //! Identifies one application menu item.
         //! @details The value `0` is reserved for items that do not expose an application-defined identifier.
         using application_menu_item_id_t = u64;
@@ -182,6 +184,8 @@ namespace Luna
         //! * This function must be called from the main thread after the Window module is initialized.
         //! * `title` must specify one null-terminated UTF-8 string.
         LUNA_WINDOW_API RV set_application_menu_item_title(application_menu_item_id_t id, const c8* title);
+
+#endif
 
         //! @}
     }
