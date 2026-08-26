@@ -1,15 +1,17 @@
 This section discusses the coding conventions used in LunaSDK. All users using LunaSDK should follow these conventions to achieve a consistent code style and prevent programming errors.
 
-## Disabled C++ features
+## Disallowed C++ features
 
-The following C++ features are disabled in LunaSDK:
+Do not use the following C++ features in LunaSDK code:
 
 1. Exceptions (`try`, `throw`, `catch`).
-2. Real-time type identification (RTTI, `dynamic_cast` and `typeid` for objects). The use of `typeid` for static types is allowed.
+2. Compiler run-time type information (RTTI), including `dynamic_cast` and every use of `typeid`.
 
-In rare cases, if you have to use these features (like integrating one third-party library that uses these features), make sure these features are used internally in your module, and not cross the module interface, or they may not be handled correctly.
+LunaBuild passes an exception-disable option to Clang-based toolchains. Its current MSVC command-line builder does not add an equivalent compiler switch, so Windows builds also rely on this coding rule and review rather than compiler enforcement. RTTI is enabled by default at the target-rule level, although an individual target may disable it with `Rtti(false)`. The coding convention is stricter than that compiler default: do not use `dynamic_cast` or `typeid`, including `typeid` with a type operand. Use Runtime reflection and boxed-object interface queries when dynamic type information is required.
 
-The `noexcept` decorator is not used in LunaSDK, since exceptions are disabled by default.
+If a third-party library requires RTTI, isolate it behind a target or module boundary. A library that requires C++ exceptions must currently be built outside LunaBuild's native C++ compilation path and integrated as an external artifact, because TargetRules does not expose an exception-enablement switch. Exception objects, RTTI identities, and exception-dependent ownership must not cross the LunaSDK module boundary.
+
+`noexcept` is permitted and is used where a function's C++ type or optimization contract benefits from an explicit non-throwing guarantee. It does not enable exceptions and does not replace LunaSDK result-based error handling.
 
 ## File naming conventions
 
@@ -42,7 +44,7 @@ One indent can be represented by one tab character or four whitespace characters
 In most cases, scope opening and closing brackets should occupy a whole line. Nested scopes should be properly indented.
 
 ```c++
-namesapce A
+namespace A
 {
 	namespace B
 	{
@@ -54,7 +56,7 @@ namesapce A
 }
 ```
 
-However, if the scope is empty or contains simple statements, you may write the opening and coding brackets without beginning a new line:
+However, if the scope is empty or contains simple statements, you may write the opening and closing brackets without beginning a new line:
 
 ```c++
 class A
@@ -105,7 +107,7 @@ For all user-defined aliasing types of primitive types, uses `_t` suffix:
 
 ### Enumeration types
 
-Use `enum classs` instead of `enum` for all enumerations. All enumeration types are named using the Pascal case. Options of the enumeration are named using the underscore case.
+Use `enum class` instead of `enum` for all enumerations. All enumeration types are named using the Pascal case. Options of the enumeration are named using the underscore case.
 
 ```c++
 enum class ResourceType : u8
@@ -193,14 +195,21 @@ Note that using the Pascal case for such structure type is also allowed.
 If the structure type represents an interface, append `I` prefix to the structure type name.
 
 ```c++
-struct IStream : virtual Interface
-{
-	luiid("{0345f636-ca5c-4b4d-8416-29834377d239}");
+#include <Luna/Runtime/Interface.hpp>
+#include <Luna/Runtime/Result.hpp>
+#include "Stream.generated.hpp"
 
-	virtual RV read(void* buffer, usize size, usize* read_bytes = nullptr) = 0;
-	virtual RV write(const void* buffer, usize size, usize* write_bytes = nullptr) = 0;
-};
+namespace Luna
+{
+    struct [[Luna::interface("{0345F636-CA5C-4B4D-8416-29834377D239}")]] IStream : virtual Interface
+    {
+        virtual RV read(void* buffer, usize size, usize* read_bytes = nullptr) = 0;
+        virtual RV write(const void* buffer, usize size, usize* write_bytes = nullptr) = 0;
+    };
+}
 ```
+
+For new reflected declarations, use LunaMetaTool attributes and include the generated header after all ordinary includes. List the source header in the target's `MetaHeaders(...)` rules. Legacy identity macros such as `luiid` are compatibility shims and should not be used in new declarations.
 
 ### Functions
 
@@ -298,17 +307,35 @@ Macros can be declared using two forms. The first form is uppercase words separa
 #endif
 ```
 
-The second form is the underscore case with `lu` prefix. These macros are usually used to replace some code patterns to improve coding efficiency.
+The second form is the underscore case with a `lu` prefix. These macros replace frequently used control-flow or assertion patterns.
 
 ```c++
 #define luassert(_condition) //...
 #define luassert_msg(_condition, _message) //...
-#define lustruct(_name, _guid) //...
-#define luproperty(_struct, _type, _name) //...
-#define luenum(_type, _name, _guid) //...
-#define luoption(_enum, _item) //...
 #define lucatchret //...
 ```
+
+New reflection metadata is declared with C++ attributes rather than `lu` macros:
+
+```c++
+#include <Luna/Runtime/Base.hpp>
+#include "Settings.generated.hpp"
+
+namespace Luna::Example
+{
+    struct [[Luna::struct("{8D251F28-0BF4-4659-BB24-568A03737784}")]] Settings
+    {
+        [[Luna::property]] i32 value;
+    };
+
+    enum class [[Luna::enum("{14A8110E-917A-49C3-AC2B-A254EA9382C0}")]] Mode : u32
+    {
+        default_mode [[Luna::option]] = 0,
+    };
+}
+```
+
+`lustruct`, `luproperty`, `luenum`, `luoption`, and `luiid` remain available only for compatibility with declarations that have not migrated to LunaMetaTool. `luiimpl` remains a convenience macro for implementing `Interface::get_object`; it does not declare reflection metadata.
 
 Macro parameters are allowed for both macro forms. Macro parameter names should be prefixed with one underscore character.
 

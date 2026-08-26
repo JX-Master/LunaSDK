@@ -184,7 +184,7 @@ EditorGUI::text_button(context, context->make_id("run"), "Run", button_layout);
 GUI::FlexLayoutDesc desc;
 desc.axis = GUI::LayoutAxis::x;
 desc.main_axis_gap = 8.0f;
-luexp(EditorGUI::end_h_layout(context, row, desc));
+EditorGUI::end_h_layout(context, row, desc);
 ```
 
 The high-level package builds typeless GUI elements behind these calls.

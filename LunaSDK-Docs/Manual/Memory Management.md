@@ -15,13 +15,19 @@ The following functions allocate memory blocks in heaps.
 | `memrealloc(ptr, size, alignment)` | Reallocates memory block.                    | `realloc(ptr, size)` |
 | `memsize(ptr, alignment)`          | Gets the size of the allocated memory block. | N/A                  |
 
-You may notice that all heap memory allocation functions provided by LunaSDK takes an `alignment` parameter, which can be used to allocate memory blocks with special address alignment requirements. If you don't have such requirement, simply specify `alignment` as `0` and LunaSDK will use the default alignment requirement for allocating memory blocks, which is `8` on 32-bit platforms and `16` on 64-bit platforms.
+All heap memory allocation functions provided by LunaSDK take an `alignment` parameter for memory blocks with special alignment requirements. Specify `0` when no additional alignment is required. In that case, Runtime guarantees alignment to `MAX_ALIGN`, which is defined as `alignof(long double)` for the current compiler and platform. Do not assume a fixed alignment from pointer width alone.
 
-### Memory leak detection
+### Memory profiling and leak detection
 
-LunaSDK comes with a memory profiler layer that tracks memory blocks allocated from `memalloc` or `memrealloc`. The memory profiler is disabled by default and can be enabled with the LunaBuild `--memory-profiler` option, which defines `LUNA_ENABLE_MEMORY_PROFILER` for compiled targets. Runtime code can check `LUNA_MEMORY_PROFILER_ENABLED` to determine whether the memory profiler is active.
+```c++
+#include <Luna/Runtime/Profiler.hpp>
+```
 
-If the memory profiler is enabled and unfreed memory blocks are detected when LunaSDK is closing, LunaSDK will print warning messages for each unfreed memory block, including the size and the memory address of the block. If these blocks were allocated using `memnew`, the type of the block will also be printed, so that the user can detect the problem quickly.
+LunaSDK can emit profiler events for memory blocks allocated by `memalloc` or `memrealloc`. Memory events are disabled by default and can be enabled with the LunaBuild `--memory-profiler` option, which defines `LUNA_ENABLE_MEMORY_PROFILER` for compiled targets. Runtime code can check `LUNA_MEMORY_PROFILER_ENABLED` to determine whether memory event instrumentation is active.
+
+When instrumentation is enabled, allocation and deallocation submit `ProfilerEventId::MEMORY_ALLOCATE` and `ProfilerEventId::MEMORY_DEALLOCATE` events. Applications and profiling tools can register a callback with `register_profiler_callback` and maintain an allocation table from those events. Optional `ProfilerEventId::SET_MEMORY_NAME`, `ProfilerEventId::SET_MEMORY_TYPE`, and `ProfilerEventId::SET_MEMORY_DOMAIN` events can attach diagnostic labels when code emits them explicitly.
+
+Runtime does not keep a built-in leak table and does not automatically print one warning per unfreed block during `Luna::close`. A tool that needs leak reporting must track the events itself and report the allocations that remain when the tool shuts down. `memnew` does not automatically attach a type name.
 
 ## Dynamic object creation and destruction
 

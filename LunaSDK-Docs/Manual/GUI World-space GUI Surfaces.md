@@ -52,7 +52,7 @@ frame.delta_time = delta_time;
 context->begin_frame(frame);
 ```
 
-Build, lay out and route the UI using the normal GUI and GUI APIs.
+Build, lay out and route the UI using the normal GUI and EditorGUI APIs.
 
 ### 2. Compose the surface transform
 Create a transform that maps local points `(x, y, 0, 1)` to clip space. Include any scale needed to convert logical
@@ -95,8 +95,9 @@ target.depth_load_op = RHI::LoadOp::load;
 target.depth_store_op = RHI::StoreOp::store;
 ```
 
-The color and depth textures must have matching extents and sample counts. If backdrop capture interrupts a
-depth-enabled pass, GUI preserves depth/stencil contents and loads them again before continuing.
+The current GUI renderer supports only single-sample render targets: the color texture and optional depth texture must
+both have `sample_count` equal to `1`, and their extents must match. If backdrop capture interrupts a depth-enabled
+pass, GUI preserves depth/stencil contents and loads them again before continuing.
 
 ### 5. Map pointer rays
 

@@ -18,6 +18,14 @@ The user should choose the suitable memory type based on the use situation. Here
 1. If you need to upload data from CPU side multiple times, and the data will be read by GPU multiple times per CPU update, use one local memory resource for GPU access and one upload memory resource for CPU access, and copy data between two resources when needed.
 1. If you need to read resource data from CPU side, use readback memory.
 
+## Aliasing resources and device memory
+
+By default, `IDevice::new_buffer` and `IDevice::new_texture` create a resource together with its device-memory allocation. RHI also supports aliasing, where multiple compatible resources occupy the same allocation at different times. This is useful for transient resources whose lifetimes do not overlap.
+
+Set `ResourceFlag::allow_aliasing` when a normally created resource may provide its allocation to another resource, and obtain that allocation through `IResource::get_memory()`. Alternatively, use `IDevice::is_resources_aliasing_compatible` to check a group of descriptors, allocate suitable memory explicitly with `IDevice::allocate_memory`, and create the resources with `IDevice::new_aliasing_buffer` or `IDevice::new_aliasing_texture`.
+
+Only one resource that shares an allocation may be active at a time. Before switching to another alias, issue a resource barrier with `ResourceBarrierFlag::aliasing` for the resource that becomes active. Its contents are unspecified after the switch and must be initialized before an operation that depends on prior data.
+
 ## Buffers
 Buffers are memory blocks that can store arbitrary binary data. Typically, you use buffers to:
 
@@ -42,7 +50,7 @@ Buffer usages specify the possible usages of one buffer. One buffer can have mul
 1. `index_buffer`: Allows this buffer to be bound as a index buffer.
 1. `indirect_buffer`: Allows this buffer to be bound as a buffer providing indirect draw arguments.
 
-All possible usages for one buffer must be specified when the buffer is created, one buffer cannot be 
+All possible usages for one buffer must be specified when the buffer is created. Usage flags cannot be added after creation.
 
 ### Usage patterns
 Buffers themselves are scheme-less (or typeless), they can store arbitrary binary data, and it is up to the user how to interpret buffer data. Here we list some typeical usage patterns for buffers.
@@ -50,18 +58,19 @@ Buffers themselves are scheme-less (or typeless), they can store arbitrary binar
 #### Uniform buffer
 Uniform buffers are used to store uniform parameters that will be passed to all shader threads, they are set by the application and is read-only in shader code.
 
-To create a uniform buffer, call `IDevice::new_buffer(memory_type, desc)` with `MemoryType::upload` and `BufferUsageFlag::uniform_buffer`. The device has memory alignment requires for uniform buffers, which can be fetched by `IDevice::get_uniform_buffer_data_alignment()`. The buffer size for one uniform buffer must satisfy the alignment requires:
+To create a uniform buffer, call `IDevice::new_buffer(memory_type, desc)` with `MemoryType::upload` and `BufferUsageFlag::uniform_buffer`. Query the device's uniform-buffer alignment through `IDevice::check_feature(DeviceFeature::uniform_buffer_data_alignment)`. The buffer size for one uniform buffer must satisfy this alignment requirement:
 
 ```c++
 #include <Luna/RHI/Device.hpp>
 #include <Luna/RHI/Buffer.hpp>
 
-usize alignment = device->get_uniform_buffer_data_alignment();
+usize alignment = device->check_feature(
+    DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
 BufferDesc desc;
 desc.size = align_upper(sizeof(MyUniformBuffer), alignment);
 desc.usages = BufferUsageFlag::uniform_buffer;
 desc.flags = ResourceFlag::none;
-luexp(buffer, device->new_buffer(MemoryType::upload, desc));
+lulet(buffer, device->new_buffer(MemoryType::upload, desc));
 ```
 
 You can also pack multiple uniform buffers into one big buffer. In such case, the offset and size of each uniform buffer must also satisfy alignment requirements for uniform buffers:
@@ -70,7 +79,8 @@ You can also pack multiple uniform buffers into one big buffer. In such case, th
 #include <Luna/RHI/Device.hpp>
 #include <Luna/RHI/Buffer.hpp>
 
-usize alignment = device->get_uniform_buffer_data_alignment();
+usize alignment = device->check_feature(
+    DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
 usize size = 0;
 for(auto& my_buffer : my_buffers)
 {
@@ -105,12 +115,12 @@ luexp(ds->update_descriptors({&write, 1}));
 ```
 
 #### Vertex buffer and index buffer
-Vertex buffers and index buffers store vertex data of one geometry. To create a vertex buffer, call `IDevice::new_buffer(memory_type, desc)` with `MemoryType::local` and `BufferUsageFlag::vertex_buffer | BufferUsageFlag::copy_dest`. To create a index buffer, call `IDevice::new_buffer(memory_type, desc)` with `MemoryType::local` and `BufferUsageFlag::index_buffer | BufferUsageFlag::copy_dest`. The data of vertex buffers and index buffers can be uploaded using `copy_resource_data(command_buffer, copies)`:
+Vertex buffers and index buffers store the vertex and index data of one geometry. To create a vertex buffer, call `IDevice::new_buffer(memory_type, desc)` with `MemoryType::local` and `BufferUsageFlag::vertex_buffer | BufferUsageFlag::copy_dest`. To create an index buffer, use `MemoryType::local` and `BufferUsageFlag::index_buffer | BufferUsageFlag::copy_dest`. `RHIUtility::IResourceWriteContext` stages host data in an upload buffer and records the required copies:
 
 ```c++
 #include <Luna/RHI/Device.hpp>
 #include <Luna/RHI/Buffer.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 
 u64 vb_size = sizeof(MyVertex) * num_vertices;
 u64 ib_size = sizeof(u32) * num_indices;
@@ -123,12 +133,16 @@ desc.size = ib_size;
 desc.usages = BufferUsageFlag::index_buffer | BufferUsageFlag::copy_dest;
 lulet(ib, device->new_buffer(MemoryType::local, desc));
 
-CopyResourceData copies[2] = {
-    CopyResourceData::write_buffer(vb, 0, my_vertex_data, vb_size),
-    CopyResourceData::write_buffer(ib, 0, my_index_data, ib_size)
-};
-luexp(copy_resource_data(get_copy_command_buffer(), {copies, 2}));
+Ref<RHIUtility::IResourceWriteContext> writer =
+    RHIUtility::new_resource_write_context(device);
+lulet(vb_data, writer->write_buffer(vb, 0, vb_size));
+memcpy(vb_data, my_vertex_data, vb_size);
+lulet(ib_data, writer->write_buffer(ib, 0, ib_size));
+memcpy(ib_data, my_index_data, ib_size);
+luexp(writer->commit(get_copy_command_buffer(), true));
 ```
+
+`commit` records the required transition to the copy-destination state and the copy commands. With `submit_and_wait` set to `true`, it also submits, waits for completion, and resets the command buffer before returning. Pass `false` to batch this work with other command recording and handle submission and synchronization yourself. In that mode, keep the write context alive and do not reset or reuse it until the recorded command buffer has finished, because the context owns the staging buffers referenced by those commands. The uploaded buffers remain in the copy-destination state, so transition them to the vertex-buffer, index-buffer, or shader state before use.
 
 Vertex buffers and index buffers are described by `VertexBufferView` and `IndexBufferView`, and are bound to the pipeline directly by calling `ICommandBuffer::set_vertex_buffers(start_slot, views)` and `ICommandBuffer::set_index_buffer(view)`:
 
@@ -155,7 +169,7 @@ BufferDesc desc;
 desc.size = sizeof(MyBufferElement) * num_elements;
 desc.usages = BufferUsageFlag::read_buffer;
 desc.flags = ResourceFlag::none;
-luexp(buffer, device->new_buffer(MemoryType::upload, desc));
+lulet(buffer, device->new_buffer(MemoryType::upload, desc));
 ```
 
 To bind one structured buffer to the descriptor set, use `BufferViewDesc::structured_buffer(buffer, first_element, element_count, element_size)` to create a view for the buffer:
@@ -214,7 +228,7 @@ One texture also have a particular pixel format, which is identified by `Format`
 1. The bit width of every color channel. One pixel may have 8 to 64 bits per channel.
 1. The number format of every color channel. One pixel may have the following number formats:
     1. `uint`: unsigned integer.
-    1. `sing`: signed integer.
+    1. `sint`: signed integer.
     1. `unorm`: unsigned normalized integer that maps the unsigned integer to [0.0, 1.0]. For example, if every channel have 8 bits, then the value range [0, 255] is mapped to [0.0, 1.0] in shader automatically. 
     1. `snorm`: signed normalized integer that maps the signed integer to [-1.0, 1.0]. For example, if every channel have 8 bits, then the value range [-128, 127] is mapped to [-1.0, 1.0] in shader automatically. 
     1. `float`: floating-point number.
@@ -261,6 +275,8 @@ Textures can be used as color attachments and depth stencil attachments for rend
 To bind attachments to render passes, firstly set textures in `RenderPassDesc`, then call `ICommandBuffer::begin_render_pass(desc)` with the render pass descriptor. Attachments will be bound to the render pass until `ICommandBuffer::end_render_pass()` is called.
 
 #### Static textures
-Static textures store data loaded from image files, such texture is usually used for texturing models in the scene. To create one static texture, firstly add `TextureUsageFlag::read_texture` and `TextureUsageFlag::copy_dest` usage flags to texture usages. `mip_levels` is usually set to `0` to generate a full mipmap chain for such texture. After the texture is created, use `copy_resource_data(command_buffer, copies)` or upload buffers to upload texture data to the mip 0 of the texture.
+Static textures store data loaded from image files and are commonly used for texturing models. Add `TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest` to the texture usages and use `RHIUtility::IResourceWriteContext` from `<Luna/RHIUtility/ResourceWriteContext.hpp>` to stage and upload mip level 0. Set `mip_levels` to `0` when a full mip chain is required.
 
-After the texture is created, we need to generate mipmaps for the texture. This can be done by using a compute shader to downsample from a detailed mip to a coarse mip.
+To generate the remaining levels with `RHIUtility::IMipmapGenerationContext`, also create the texture with `TextureUsageFlag::read_write_texture`. Include `<Luna/RHIUtility/MipmapGenerationContext.hpp>`, call `generate_mipmaps(texture)`, and then call `commit(compute_command_buffer, submit_and_wait)`. The current implementation supports non-array 1D, 2D, and 3D textures; it operates only on array slice 0, so it must not be used to generate all slices of an array or cube texture. The utility reads each source mip through a read-texture view and writes each destination mip through a read-write texture view. It leaves the subresources in compute shader read/write states, including the last generated level in `shader_write_cs`; record barriers for every level that will subsequently be sampled or used in another state. When `submit_and_wait` is `false`, keep the mipmap context alive and do not commit or reuse it again until the recorded GPU work has completed, because it owns command data and descriptor sets used by that work.
+
+For staged GPU-to-CPU transfers, use `RHIUtility::IResourceReadContext` from `<Luna/RHIUtility/ResourceReadContext.hpp>`. As with uploads, the command buffer must be submitted and completed before consuming the staged result unless the context is asked to submit and wait. In the manual-submit mode, keep the read context alive and do not reset or reuse it until the command buffer has completed, because it owns the readback buffer. The source resources remain in the copy-source state after the readback is recorded, so transition them before their next use.

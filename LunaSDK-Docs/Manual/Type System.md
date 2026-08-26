@@ -14,9 +14,9 @@ Type reflection is the ability of a program to introspect type name, size, layou
 #include <Luna/Runtime/Reflection.hpp>
 ```
 
-Every registered type can be identified by name or by GUID, you can get one type object from its name by calling `get_type_by_name`, and from its GUID by calling `get_type_by_guid`. The name and GUID of one type object can be fetched by calling `get_type_name` and `get_type_guid`.
+Registered non-generic types and generic type families can be looked up by name with `get_type_by_name` or by GUID with `get_type_by_guid`. Fetch the name and GUID associated with a type object by calling `get_type_name` and `get_type_guid`.
 
-Every type must have one unique GUID, but multiple types may have the same name. If multiple types have the same name, each of them should have one unique alias so that it can be differed from others. If the type is defined in namespaces, its namespace should be appended before the type name, separated by double colons (`::`).
+Every non-generic registered type and every generic type family has a stable GUID. Instantiated types of one generic family share the family's name and GUID and are distinguished by their generic arguments and `typeinfo_t` handles. Multiple unrelated types may have the same name, but each must have a unique alias so that it can be distinguished from the others. If the type is defined in namespaces, its namespace should be prepended to the type name and separated with double colons (`::`).
 
 ## Type size and alignment
 
@@ -75,84 +75,54 @@ LunaSDK supports *multiple enumeration type*, which enables the user to select m
 
 ### Generic structure type and generic structure instanced type
 
-Generic structure type represents one structure type with generic type parameters, such as `Vector<T>`. The number of generic type parameters can be uncertain, like `Tuple<T1, T2, ...>`.
+Generic structure type represents one structure type with generic parameters, such as `Vector<T>` or `Array<T, Count>`. A generic argument can be a type or an integer. The number of generic parameters may be variable, like `Tuple<T1, T2, ...>`.
 
-Generic structure types cannot be used directly, they must be instantiated to a *generic structure instanced type* by calling `get_generic_instanced_type`. The generic instantiation process is happened at run time, every generic instanced type with one particular set of generic structure type and generic type parameters will be instantiated only once, and the instantiated type will be reused. One generic structure instanced type can be used just as one normal structure type.
+Generic structure types cannot be used directly; they must be instantiated as a *generic structure instanced type* by calling `get_generic_instanced_type`. Instantiation happens at run time. Each combination of generic structure type and generic arguments is instantiated only once, and the resulting type object is reused. A generic structure instanced type can be used like a normal structure type.
 
-## Registering structure type
+## Registering structure types
 
 ```c++
 #include <Luna/Runtime/Reflection.hpp>
 ```
 
-**For new reflected structures, prefer LunaMetaTool attributes and generated registration. See [[Reflection Metadata with LunaMetaTool]] for the current recommended workflow. The macro-based methods below are kept for compatibility with code that has not been migrated yet, and for low-level cases that intentionally bypass LunaMetaTool.**
+### Generated registration
 
-There are two methods to register one structure type. The first method is simpler and can be used for most cases, the second method is non-intrusive can be used if the structure is defined in another module or third-party library and cannot be changed directly.
-
-### The first method
-
-The first method is to insert one `lustruct` macro in your structure definition, specifying the name and GUID of the structure.
+For new reflected structures, use LunaMetaTool attributes and generated registration. Attach `[[Luna::struct]]` to a named non-template structure and `[[Luna::property]]` to every field that should be visible to Runtime reflection. The header must include its generated header after all ordinary includes.
 
 ```c++
-struct SpotLight
+#include <Luna/Runtime/Math/Vector.hpp>
+#include "SpotLight.generated.hpp"
+
+namespace Luna::Example
 {
-	lustruct("SpotLight", "{2BB45396-E0E3-433E-8794-49BEE8BD1BB5}");
-	Float3 intensity = { 0.5f, 0.5f, 0.5f };
-	f32 intensity_multiplier = 1.0f;
-	f32 attenuation_power = 1.0f;
-	f32 spot_power = 64.0f;
-};
+    struct [[Luna::struct("{2BB45396-E0E3-433E-8794-49BEE8BD1BB5}")]] SpotLight
+    {
+        [[Luna::property]] Float3 intensity = {0.5f, 0.5f, 0.5f};
+        [[Luna::property]] f32 intensity_multiplier = 1.0f;
+        [[Luna::property]] f32 attenuation_power = 1.0f;
+        [[Luna::property]] f32 spot_power = 64.0f;
+    };
+}
 ```
 
-Then you can call `register_struct_type<T>` to register the type. The properties of the type can be specified quickly using `luproperty` macro:
+List the header in the target's `MetaHeaders(...)` rules. LunaBuild then generates compile-time metadata and a target registration function. Include the target-generated header in one source file and call the registration function after Runtime and the module's dependencies are initialized:
 
 ```c++
-register_struct_type<SpotLight>({
-	luproperty(SpotLight, Float3, intensity),
-	luproperty(SpotLight, f32, intensity_multiplier),
-	luproperty(SpotLight, f32, attenuation_power),
-	luproperty(SpotLight, f32, spot_power)
-	});
-```
+#include "MyModule.meta.generated.hpp"
 
-If the structure type has base type, the base type should be specified as the second argument, after the property list.
-
-### The second method
-
-In the second method, the user should fill one `StructureTypeDesc` structure, then call `register_struct_type` to register the type. For example, the following code registers `Name` type into the system.
-
-```c++
-StructureTypeDesc desc;
-desc.guid = Guid("{E5EEA2C6-2D51-4658-9B3F-C141DDE983D8}");
-desc.name = "Name";
-desc.alias = "";
-desc.size = sizeof(Name);
-desc.alignment = alignof(Name);
-desc.base_type = nullptr;
-desc.ctor = nullptr;
-desc.dtor = default_dtor<Name>;
-desc.copy_ctor = default_copy_ctor<Name>;
-desc.move_ctor = default_move_ctor<Name>;
-desc.copy_assign = default_copy_assign<Name>;
-desc.move_assign = default_move_assign<Name>;
-desc.trivially_relocatable = true;
-typeinfo_t type = register_struct_type(desc);
-```
-
-After the type is registered, the user should also implement `typeof_t<T>` structure for the type like so:
-
-```c++
-// In .hpp file:
-LUNA_MYMODULE_API typeinfo_t get_my_type();
-template <> struct typeof_t<MyType>
+void initialize_my_module_reflection()
 {
-	typeinfo_t operator()() const { return get_my_type(); }
-};
-
-// In .cpp file:
-typeinfo_t g_my_type;
-LUNA_XXX_API typeinfo_t get_my_type() { return g_my_type; }
+    Luna::Meta::register_MyModule_types();
+}
 ```
+
+For declarations owned by the same target, the generated function registers reflected base types and property dependencies before the structures that depend on them. Types owned by dependency targets must already be registered through module initialization order. See [[Reflection Metadata with LunaMetaTool]] for header layout, supported declarations, and target configuration.
+
+### Low-level and compatibility registration
+
+`register_struct_type`, `StructureTypeDesc`, and explicit `typeof_t<T>` specializations remain available for third-party or low-level types that intentionally bypass LunaMetaTool. Code using this path is responsible for providing a stable GUID and name, correct size and alignment, property offsets and types, base-type relationships, lifecycle operations, and a stable way for `typeof<T>()` to retrieve the registered handle.
+
+The legacy `lustruct` and `luproperty` macros remain compatibility shims for code that has not migrated. Do not use them for new reflected declarations.
 
 ## Registering enumeration type
 
@@ -160,34 +130,17 @@ LUNA_XXX_API typeinfo_t get_my_type() { return g_my_type; }
 #include <Luna/Runtime/Reflection.hpp>
 ```
 
-**For new reflected enumerations, prefer `[[Luna::enum(... )]]` and `[[Luna::option]]` with LunaMetaTool. See [[Reflection Metadata with LunaMetaTool]].**
-
-The user can use `register_enum_type` function and `luoption` macro to register one enumeration type. For example, if we have the following type:
+For new reflected enumerations, attach `[[Luna::enum]]` to a named enum with a fixed underlying type and attach `[[Luna::option]]` to each value that should be exported:
 
 ```c++
-enum class CameraType : u32
+enum class [[Luna::enum("{920C8F7F-7CEC-4776-BF01-1F63A4C51D9F}")]] CameraType : u32
 {
-	perspective = 0,
-	orthographic = 1,
+    perspective [[Luna::option]] = 0,
+    orthographic [[Luna::option]] = 1,
 };
 ```
 
-The registration code will be:
-
-```c++
-register_enum_type<CameraType>({
-	luoption(CameraType, perspective),
-	luoption(CameraType, orthographic)
-});
-```
-
-Since enumeration types cannot include static variables, the GUID of the enumeration type must be declared separately using `luenum` like so:
-
-```c++
-luenum(CameraType, "CameraType", "{920C8F7F-7CEC-4776-BF01-1F63A4C51D9F}");
-```
-
-`luenum` must be defined directly in `Luna` namespace, not the sub-namespace of `Luna` namespace.
+Place the enum in a meta header just like a reflected structure. The generated target registration function registers the enum and its marked options. `register_enum_type`, `EnumerationTypeDesc`, `luenum`, and `luoption` remain available only for low-level and compatibility registration paths.
 
 ## Registering generic structure type
 
@@ -195,17 +148,19 @@ luenum(CameraType, "CameraType", "{920C8F7F-7CEC-4776-BF01-1F63A4C51D9F}");
 #include <Luna/Runtime/Reflection.hpp>
 ```
 
-Generic structure type is not actually a real type, but a *type generator* for generic structure instance types. To register one generic structure type, the user should fill one `GenericStructureTypeDesc` structure, and call `register_generic_struct_type` to register the generic structure type.
+Generic structure type is not itself an instantiable data type, but a *type generator* for generic structure instance types. LunaMetaTool does not process templates, so generic structures are registered with `GenericStructureTypeDesc` and `register_generic_struct_type`.
 
 The most important property of `GenericStructureTypeDesc` is `instantiate`, which is a callback function that generates one generic structure instance type based on type arguments provided:
 
 ```c++
-GenericStructureInstantiateInfo instantiate(typeinfo_t generic_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+GenericStructureInstantiateInfo instantiate(
+    typeinfo_t generic_type,
+    Span<const GenericArgument> generic_arguments)
 ```
 
-This function should returns one `GenericStructureInstantiateInfo` structure, which is similar to `StructureTypeDesc` and describes one generic structure instanced type. The generic structure instanced type is then registered to the system can will be returned by `get_generic_instanced_type`. The instantiation function never fails, if the instantiation function cannot handle the input type arguments, it should call `lupanic_msg` to crash the program.
+Each `GenericArgument` contains either a `typeinfo_t` or an integer. The callback returns `GenericStructureInstantiateInfo`, which describes the size, alignment, lifecycle operations, properties, and optional base type of one instantiated structure. `get_generic_instanced_type` creates or retrieves the instance for a particular argument list. The instantiation callback does not return an error; invalid argument combinations should be rejected with an assertion or panic.
 
-The base generic structure type and all its instanced types will have the same name and GUID, but each of them will have a unique `typeinfo_t` handle. You can get the type arguments of one generic structure instanced type by calling `count_struct_generic_arguments` and `get_struct_generic_argument`.
+The generic structure type and all its instantiated types have the same name and GUID, but each has a unique `typeinfo_t` handle. Use `get_struct_generic_type` to get the family from an instantiated type, `get_struct_generic_arguments` to get its argument span, and `get_struct_generic_parameter_names` to get the declared parameter names.
 
 ### Implementing `typeof_t<T>` for generic structure types
 

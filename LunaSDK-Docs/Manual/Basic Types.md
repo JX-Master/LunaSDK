@@ -1,6 +1,6 @@
 ## Primitive types
 
-The following table lists all primitive typed designed by LunaSDK.
+The following table lists the primitive types defined by LunaSDK.
 
 | Type    | Description                     | C++ STD Equivalent |
 | ------- | ------------------------------- | ------------------ |
@@ -17,7 +17,7 @@ The following table lists all primitive typed designed by LunaSDK.
 | `f32`   | 32-bit floating-point number.   | `float`            |
 | `f64`   | 64-bit floating-point number.   | `double`           |
 | `c8`    | 8-bit character.                | `char`             |
-| `c16`   | 16-bit character.               | `chat16_t`         |
+| `c16`   | 16-bit character.               | `char16_t`         |
 | `c32`   | 32-bit character.               | `char32_t`         |
 
 ### Aliasing types of primitive types
@@ -34,9 +34,12 @@ The following table lists all primitive typed designed by LunaSDK.
 
 ```c++
 #include <Luna/Runtime/Vector.hpp>
+#include <Luna/Runtime/Array.hpp>
 #include <Luna/Runtime/List.hpp>
 #include <Luna/Runtime/HashMap.hpp>
 #include <Luna/Runtime/HashSet.hpp>
+#include <Luna/Runtime/RobinMap.hpp>
+#include <Luna/Runtime/RobinSet.hpp>
 #include <Luna/Runtime/UnorderedMap.hpp>
 #include <Luna/Runtime/UnorderedSet.hpp>
 #include <Luna/Runtime/UnorderedMultiMap.hpp>
@@ -47,18 +50,21 @@ The following table lists all primitive typed designed by LunaSDK.
 #include <Luna/Runtime/RingDeque.hpp>
 ```
 
-For compatibility and cross-platform consistency concerns, LunaSDK does not use C++ Standard Template Library (STD), but implements its own container types using APIs similar to those of STD. The following table lists all containers provided by LunaSDK.
+For compatibility and cross-platform consistency, LunaSDK provides its own container types with APIs similar to those of the C++ standard library. The following table summarizes the commonly used containers.
 
 | Container Type                          | Description                                                                                                             | C++ STD Equivalent              |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
 | `Vector<T>`                             | Dynamic array type.                                                                                                     | `std::vector<T>`                |
+| `Array<T, Size = DYNAMIC_ARRAY_SIZE>`   | Fixed- or construction-sized array whose size does not change after creation.                                           | `std::array<T, Size>` for fixed sizes |
 | `List<T>`                               | Dynamic double-linked list type.                                                                                        | `std::list<T>`                  |
-| `HashMap<K, V>`                         | Closed hash map type using Robinhood Hashing.                                                                           | N/A                             |
-| `HashSet<V>`                            | Closed hash set type using Robinhood Hashing.                                                                           | N/A                             |
+| `HashMap<K, V>`                         | Sparse-array hash map using bucket chains for collision resolution.                                                     | N/A                             |
+| `HashSet<V>`                            | Sparse-array hash set using bucket chains for collision resolution.                                                     | N/A                             |
+| `RobinMap<K, V>`                        | Open-addressing hash map using Robin Hood hashing.                                                                      | N/A                             |
+| `RobinSet<V>`                           | Open-addressing hash set using Robin Hood hashing.                                                                      | N/A                             |
 | `UnorderedMap<K, V>`                    | Open hash map type.                                                                                                     | `std::unordered_map<K, V>`      |
 | `UnorderedSet<V>`                       | Open hash set type.                                                                                                     | `std::unordered_set<V>`         |
 | `UnorderedMultiMap<K, V>`               | Open hash map type that allows elements with the same key.                                                              | `std::unordered_multimap<K, V>` |
-| `UnorderedMultiSet<V>`                  | Open hash map type that allows multiple insertions of the same elements.                                                | `std::unordered_multiset<K, V>` |
+| `UnorderedMultiSet<V>`                  | Open hash set type that allows multiple insertions of the same elements.                                                | `std::unordered_multiset<V>`    |
 | `SelfIndexedHashMap<K, V, E>`           | Closed hash map whose key type can be extracted from the value type.                                                    | N/A                             |
 | `SelfIndexedUnorderedMap<K, V, E>`      | Open hash map whose key type can be extracted from the value type.                                                      | N/A                             |
 | `SelfIndexedUnorderedMultiMap<K, V, E>` | Open hash map whose key type can be extracted from the value type, and allows multiple insertions of the same elements. | N/A                             |
@@ -124,12 +130,12 @@ Fixed spans are spans whose size is decided at compile time, and cannot be chang
 i32 data[] = {3, 4, 5, 6, 7};
 
 Span<i32, 3> range(data + 1);
-debug_printf("%d", range.size()); // 3
-for (i32 i : range) debug_printf("%d, ", i); // 4, 5, 6,
+usize range_size = range.size(); // 3
+// Iterating range produces 4, 5, 6.
 
 range = Span<i32, 3>(data + 2);
-debug_printf("%d", range.size()); // 3
-for (i32 i : range) debug_printf("%d, ", i); // 5, 6, 7,
+range_size = range.size(); // 3
+// Iterating range produces 5, 6, 7.
 ```
 
 Variable spans are spans whose size may change at run time. Such span requires both the pointer to the object range and the size of the range to be well defined:
@@ -137,13 +143,13 @@ Variable spans are spans whose size may change at run time. Such span requires b
 ```c++
 i32 data[] = {3, 4, 5, 6, 7};
 
-Span<i32> range(data + 1), 3;
-debug_printf("%d", range.size()); // 3
-for (i32 i : range) debug_printf("%d, ", i); // 4, 5, 6, 
+Span<i32> range(data + 1, 3);
+usize range_size = range.size(); // 3
+// Iterating range produces 4, 5, 6.
 
 range = Span<i32>(data + 2, 2);
-debug_printf("%d", range.size()); // 2
-for (i32 i : range) debug_printf("%d, ", i); // 5, 6, 
+range_size = range.size(); // 2
+// Iterating range produces 5, 6.
 ```
 
 Note that spans are NOT containers, they don't allocate memory to store the data, only stores pointers to the objects provided by the user. So use spans only when the original object sequence is valid.
@@ -170,8 +176,8 @@ LunaSDK supports generating GUID instances from the registry form (`xxxxxxxx-xxx
 
 ```c++
 constexpr Guid test_id("{5cf28858-60b0-49f2-9674-5888fa7ad027}");
-static_assert(test_id.low == 10841387548328775719Ui64, "Incorrect GUID values.");
-static_assert(test_id.high == 6697565509014014450Ui64, "Incorrect GUID values.");
+static_assert(test_id.low == 10841387548328775719ULL, "Incorrect GUID values.");
+static_assert(test_id.high == 6697565509014014450ULL, "Incorrect GUID values.");
 ```
 
 GUIDs are used widely in LunaSDK for identifying assets, types, interfaces, objects and many other entities.
@@ -219,10 +225,6 @@ We suggest using the following rules to manage the version number:
 `Path` is one kind of string that describes the location of one node in a hierarchical-based node tree, given that each node in the tree can be identified by a name string. One common use of `Path` is to represent the location of one file or directory in the file system.
 
 `Path` is represented by a root name (like `C:`), plus a `Vector` of `Name` that stores nodes of the path. One path can be absolute or relative, which is identified by `PathFlag::absolute`. One relative path can be calculated by two paths, it can also be appended to another path to create a new path. Path can be created form one string, it can also be encoded to one string using the user-specified path separator.
-
-
-
-
 
 
 

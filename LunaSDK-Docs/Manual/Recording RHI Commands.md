@@ -1,9 +1,9 @@
-This section describes commands that can be added to one command buffer. In RHI, we have four kinds of commands:
+This section describes commands that can be added to one command buffer. RHI has six command categories:
 
 1. Pass begin/end commands.
 1. Render commands, which can only be added in render passes.
 1. Compute commands, which can only be added in compute passes.
-1. Copy command, which can only be added in copy passes.
+1. Copy commands, which can only be added in copy passes.
 1. The barrier command.
 1. Profile commands.
 
@@ -106,7 +106,7 @@ The following compute pipeline setup order is suggested:
 1. `ICommandBuffer::set_compute_descriptor_set(index, descriptor_set)` / `ICommandBuffer::set_compute_descriptor_sets(start_index, descriptor_sets)`
 
 ### Copy commands
-Copy commands are commands used for coping data between resources, they can only be recorded between `ICommandBuffer::begin_compute_pass(desc)` and `ICommandBuffer::end_compute_pass()`. The following commands are copy commands:
+Copy commands copy data between resources. They can only be recorded between `ICommandBuffer::begin_copy_pass(desc)` and `ICommandBuffer::end_copy_pass()`. The following commands are copy commands:
 
 1. `copy_resource(dst, src)`
 1. `copy_buffer(dst, dst_offset, src, src_offset, copy_bytes)`
@@ -150,6 +150,11 @@ In LunaSDK, barriers are specified by declaring resource barriers, and are submi
 
 Multiple states can be bit-OR combined so long as they are compatible to each other, for example, the resource state can be `TextureStateFlag::shader_read_vs | TextureStateFlag::shader_read_ps` if the texture will be read by both vertex shader and pixel shader. A resource barrier tells the driver to wait for the **before** pipeline stage that uses the resource to finish before allowing the **after** pipeline state to access the resource, this barrier also deals the cache visibility so that the **after** pipeline state always have the latest resource data. Multiple resource barriers can be batched and submitted in one call, which is suggested so that the driver can handle all resource barriers in one physical barrier command.
 
+`BufferBarrier` and `TextureBarrier` also accept `ResourceBarrierFlag` values:
+
+1. `ResourceBarrierFlag::aliasing` activates a resource that shares device memory with a previously active resource. Work on the previous alias is completed before the new alias is used, and the new resource's contents are unspecified.
+1. `ResourceBarrierFlag::discard_content` states that the old contents do not need to be preserved. The contents are undefined after the barrier and must be overwritten before any operation that depends on them.
+
 When specifying resource barriers, the before state of one resource barrier for one resource must match the after state of the last resource barrier for the same resource. RHI also tracks the resource state internally, so that in most cases the user can simple specify `BufferStateFlag::automatic` or `TextureStateFlag::automatic` as the before state of one resource, which tells RHI to read the internal state recorded for the resource on the last source barrier. The resource state tracking is valid even between multiple command buffers and multiple command queues.
 
 There are some rules that must comply when using barriers:
@@ -157,6 +162,8 @@ There are some rules that must comply when using barriers:
 1. One resource can only be used by one command queue at one time. If multiple command queues need to access the same resource, they must be synchronized using fences. See "Multi-queues Synchronization" section of "Command Recording and Submission" for the usage of fences.
 1. When using one resource that is previously used by another command queue, always submit a barrier before using the resource, even if the resource state is not changed. This is because different command queues may use different internal texture layouts and may have different cache visibility for the same resource state.
 1. Command buffers submitted earier to the command queue must be executed earier than command buffers submitted later if they access the same resource because the resource state tracking system updates resources' global states when submitting command buffers, so that different submission order will cause the track system's recorded state being inconsistent with the resource's real state.
-1. For barriers submitted within a render pass, the following additional rules must be complied, according to [Vulkan specifications](https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCmdPipelineBarrier.html):
-    1. Buffer barriers cannot be submitted.
-    1. Texture barriers can only including textures used as attachments for the render pass.
+1. `ICommandBuffer::resource_barrier` cannot be called inside a render pass. End the render pass, record the barrier, and begin another render pass before issuing more draw commands.
+
+### Diagnostic events
+
+`ICommandBuffer::begin_event(name)` and `ICommandBuffer::end_event()` group recorded commands into named, hierarchical sections for GPU diagnostic tools. Every begun event must have a matching end event, and nested events must be ended in reverse order.

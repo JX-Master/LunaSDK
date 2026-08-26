@@ -1,44 +1,60 @@
-Welcome to LunaSDK. In this article, we will guide you to LunaSDK by creating a simple program that draws one textured 3D cube on the screen. At the end of this article, you will have a basic understanding of using LunaSDK to create a simple graphic program, and can start to explore more advanced features provided by LunaSDK. The source code of this article can be found in `{DOCS_ROOT_DIR}/Res/DemoApp`
+Welcome to LunaSDK. In this article, we will create a simple program that draws one textured 3D cube on the screen. At the end, you will have a basic understanding of using LunaSDK to create a graphics program and can start exploring more advanced features. An earlier companion target named `DemoApp` and its assets are available in `LunaSDK-Docs/Res/DemoApp`; use its graphics setup and assets as reference, but follow this article for the current application entry, module, and resource-path workflow.
+
 ## Prerequisites
-In this article, we assume that you have the basic knowledge of C++ programming and graphics programming (like using D3D11, D3D12 or OpenGL). You should also correctly setup LunaSDK and developing environments using the instructions provided in `README.md` of the project. The program described in this article runs ONLY on desktop platforms (Windows and macOS), it does not compile on mobile and other platforms.
+
+This article assumes basic knowledge of C++ and graphics programming, such as D3D11, D3D12, Vulkan, Metal, or OpenGL. Set up LunaSDK and the development environment by following [[Building LunaSDK]]. The program described in this article targets the current desktop Window backends on Windows and macOS; it does not compile for mobile platforms without adapting window creation and application resources.
 
 ## Creating the program
-The first thing to do is to create a binary target for our demo program, so that LunaBuild can build our program. To create a new program, create a new folder in the `{ROOT_DIR}/Programs` directory, and name it `DemoApp`. In this folder, create a new C# target rule file called `DemoApp.Target.cs`, and fill its content with the following text:
+
+The first thing to do is to create a binary target for the demo program. The completed companion project is already discovered by LunaBuild as `DemoApp`, so this walkthrough uses the distinct target name `TutorialDemoApp`. Create `Programs/TutorialDemoApp` below the repository root. In this folder, create `TutorialDemoApp.Target.cs` with the following content:
 
 ```csharp
 namespace LunaBuild.Core.Targets;
 
-public sealed class DemoAppTargetRules : TargetRules
+public sealed class TutorialDemoAppTargetRules : TargetRules
 {
-    public DemoAppTargetRules()
+    public TutorialDemoAppTargetRules()
         : base(
-            name: "DemoApp",
-            targetDirectory: "Programs/DemoApp",
-            rulesPath: "Programs/DemoApp/DemoApp.Target.cs")
+            name: "TutorialDemoApp",
+            targetDirectory: "Programs/TutorialDemoApp",
+            rulesPath: "Programs/TutorialDemoApp/TutorialDemoApp.Target.cs")
     {
+        SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS);
         Kind = BuildTargetKind.Application;
         Sources("**.cpp");
-        Shader("DemoAppVS.cxx", "vertex", "vs_main");
-        Shader("DemoAppPS.cxx", "pixel", "ps_main");
-        RuntimeFiles("luna.png");
         DependsOn("Runtime", "Window", "RHI", "RHIUtility", "Image");
+    }
+
+    protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+    {
+        if(Platform == BuildPlatform.MacOS)
+        {
+            AppleBundle("com.lunasdk.TutorialDemoApp", "TutorialDemoApp");
+            AppleInfoPlist("MacOSInfo.plist");
+        }
     }
 }
 ```
 
-`Kind = BuildTargetKind.Application` tells LunaBuild that this target is an app-style runnable program. Use `BuildTargetKind.Executable` instead for command-line tools and test binaries. `Sources("**.cpp")` adds all C++ source files in the current directory and all subdirectories to this target. `Shader(...)` declares CPPSL shader entry files that will be compiled before the C++ sources. `RuntimeFiles("luna.png")` copies the image next to the produced executable. `DependsOn(...)` lists all libraries that this program links to. In our example, we need to link to the SDK runtime (`Runtime`), the window module (`Window`), the Graphics API module (`RHI`), the RHI utility module (`RHIUtility`) and the image file module (`Image`). If you get unresolved external symbol errors when compiling, make sure you already link correct libraries.
+`Kind = BuildTargetKind.Application` tells LunaBuild that this target is an app-style runnable program. Use `BuildTargetKind.Executable` instead for command-line tools and test binaries. `Sources("**.cpp")` adds all C++ source files in the target directory and its subdirectories. `DependsOn(...)` lists the libraries linked by the program: Runtime, Window, RHI, RHIUtility, and Image.
 
-Then we need to create source CPP files for our program. Since out demo program is simple, we only create one "main. cpp" file to host all source codes. After this, the `DemoApp` directory should looks like this:
+On macOS, `run` packages an `Application` as an `.app` bundle before launching it. `AppleInfoPlist(...)` supplies the required Info.plist template, and `AppleBundle(...)` supplies its default bundle identity. Copy `MacOSInfo.plist` from the companion project or provide an equivalent template in `Programs/TutorialDemoApp`. These declarations are not needed for the Windows build.
+
+Then create one `main.cpp` file for the program. On macOS, also add the Info.plist template described above. The directory initially looks like this:
+
 ```
-DemoApp
-|- DemoApp.Target.cs
+TutorialDemoApp
+|- TutorialDemoApp.Target.cs
 |- main.cpp
+|- MacOSInfo.plist    # Required for macOS Application packaging.
 ```
+
 LunaBuild discovers `*.Target.cs` files automatically, so no parent build script needs to be edited. Well done, now everything is set up and we can start to program our first LunaSDK program!
 
 ## Program structure
 
-Next, fills `main.cpp` with the following initial content. As we go further, we will add more properties and methods to our `DemoApp` structure, while remaining the rest part unchanged.
+Next, fill `main.cpp` with the following initial content. As we proceed, we will add properties and methods to the `DemoApp` structure while leaving the rest unchanged.
+
 ```c++
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
@@ -90,35 +106,40 @@ int luna_main(int argc, const char* argv[])
 {
     if(failed(Luna::init())) return -1;
     RV result = run_app();
-    if(failed(result)) log_error("DemoApp", "%s", explain(result.errcode()));
+    bool app_failed = failed(result);
+    if(app_failed) log_error("DemoApp", "%s", explain(result.errcode()));
     Luna::close();
-    return 0;
+    return app_failed ? -1 : 0;
 }
 ```
-Fristly we include header files that we need to include to compile the program, which are:
-* <Luna/Runtime/Runtime. hpp> for `Luna::init()` and `Luna::shutdown()`.
-* <Luna/Runtime/Module. hpp> for `Luna::init_modules()`.
-* <Luna/Runtime/Log. hpp> for `Luna::log_error()`.
-* <Luna/Runtime/UniquePtr. hpp> for `UniquePtr<T>`.
-* <Luna/Window/Window. hpp> for `module_window()`.
-* <Luna/RHI/RHI. hpp> for `module_rhi()`.
-* <Luna/Window/AppMain. hpp> for `luna_main()`
 
-You can include any SDK interface header files using similar syntax: `#include <Luna/Module/File>`. We set `{LUNA_ROOT_DIR}/Engine` as the global include directory, the user may check it for available header files. We will describe these modules and files when we reach the place for using them.
+First, include the headers needed to compile the program:
+
+* `<Luna/Runtime/Runtime.hpp>` for `Luna::init()` and `Luna::close()`.
+* `<Luna/Runtime/Module.hpp>` for module registration and `Luna::init_modules()`.
+* `<Luna/Runtime/Log.hpp>` for `Luna::log_error()`.
+* `<Luna/Runtime/UniquePtr.hpp>` for `UniquePtr<T>`.
+* `<Luna/Window/Window.hpp>` for `module_window()` and `IWindow`.
+* `<Luna/RHI/RHI.hpp>` for `module_rhi()`.
+* `<Luna/Window/AppMain.hpp>` for the platform entry adapter that calls `luna_main()`.
+
+LunaSDK public headers use paths such as `#include <Luna/Window/Window.hpp>`. LunaSDK's project rules add the repository's `Modules` directory as a global include directory, so public headers below `Modules/Luna` are addressed through the `Luna/...` prefix.
 
 The next statement is `using namespace Luna`. In LunaSDK, all types, functions and variables are defined in `Luna` namespace, and every module will define its elements in nested namespace, such as `Luna::RHI`. So, we use this statement to prevent spelling the `Luna::` namespace prefix in our following code.
 
-The program starts with the `luna_main` function, this is a special entry function defined in `<Luna/Window/AppMain.hpp>`. Since different platforms use different entry point functions (for example, Windows uses `WinMain` instead of regular `main`), we define a wrapper entry function for every platfrom in `AppMain.hpp`, then calls `luna_main` from that wrapper function to hide such platform differences. This feature is totally optional, if you are happy with handling platform-specific main functions yourself, you can still manage the entry function manually.
+The program starts with `luna_main`, the unified entry function declared by `<Luna/Window/AppMain.hpp>`. Platforms use different native entry points—for example, a Windows GUI application uses `WinMain`—so `AppMain.hpp` defines the platform wrapper that calls `luna_main`. The adapter is optional; an application can implement its native entry point and platform startup directly instead.
 
-> Only include `<Luna/Window/AppMain.hpp>` in your main function file, not in any header file, since `<Luna/Window/AppMain.hpp>` defines platform-specific main function directly, including this function in multiple files result in symbol redifinition.
+> Include `<Luna/Window/AppMain.hpp>` in exactly one source file, never in a shared header. It defines the platform entry point, so including it in multiple translation units causes duplicate symbols.
 
 In the main function, we first call `Luna::init` to initialize LunaSDK. This function should be called before APIs that require Runtime services. `Luna::init` returns `RV`, so `failed` tests whether initialization failed. Static result codes are valid before initialization, but runtime error metadata and rich `Error` objects may not be available on this failure path. After successful initialization, call `Luna::close` before program exit so LunaSDK can release its internal resources.
 
 We then wrap the real program logic in one `run_app` function. The return type of `run_app` is `RV`, which is a shortcut for `R<void>` and is part of LunaSDK's error handling mechanism. `R<T>` encapsulates a return value of type `T` and a stable result code of type `ResultCode`, which wraps a `u64`. A negative local result value indicates failure; a non-negative local result value indicates success. The all-zero code is plain success, while other successful codes may carry status information. If the function fails, the `T` value is uninitialized and inaccessible. Call `errcode()` to fetch the result code and `explain` to get a brief description. In `main`, we use `failed` to detect failure (the corresponding `succeeded` helper is also available), print the description, and exit if an error occurred.
 
-In our `run_app` function, the first thing to do is calling `add_modules`, which will add all modules we need to use into the module system, so that we can initialize such modules by calling `init_modules`. The program only needs to add modules that are directly used by the program, if such modules have dependent modules, they will be added to the module system automatically when such modules are added. In our example, the following modules are added:
+In `run_app`, call `add_modules` to register the modules used directly by the program. Their dependencies are added automatically. This initial version registers:
+
 1. `Window`: Provides functions for managing windows.
-2. `RHI`: Provides uniform interfaces to rendering backend (like D3D12\Vulkan\Metal).
+2. `RHI`: Provides uniform interfaces to rendering backends such as D3D12, Vulkan, and Metal.
+
 The `Runtime` module is always implicitly added to the module system, so the program should not add `Runtime` module explicitly. After adding modules, `run_app` then calls `init_modules`, which will initialize all linked SDK modules for our program. We deliberately separate module initialization from `Luna::init` so that the user gets a chance to set module initialization parameters before initializing modules. Static result codes are always available, while initialized modules can additionally use Runtime metadata and rich `Error` objects when reporting failures.
 
 Then, we allocate and initialize one new object of `DemoApp` type by calling `memnew` function. The following table shows memory allocation functions used in LunaSDK:
@@ -128,27 +149,27 @@ Then, we allocate and initialize one new object of `DemoApp` type by calling `me
 | `memalloc(size, alignment)`        | `malloc(size)`         |
 | `memfree(ptr, alignment)`          | `free(ptr)`            |
 | `memrealloc(ptr, size, alignment)` | `realloc(ptr, size)`   |
-| `memsize(size, alignment)`         | N/A                    |
+| `memsize(ptr, alignment)`          | N/A                    |
 | `memnew<T>(args...)`               | `new T (args...)`      |
 | `memdelete(ptr)`                   | `delete ptr`           |
 
-The user should uses allocation functions provided by LunaSDK instead of those provided by C++ std. `DemoApp` will contain all states and logics for our demo program. The created `DempApp` instance will then be stored as a variable `app` with `UniquePtr<DemoApp>` type, which is a smart pointer that will delete the pointing object automatically when expired.
+Use LunaSDK allocation functions for objects managed by LunaSDK. `DemoApp` contains the state and logic for this program. The created `DemoApp` instance is stored in `app`, whose `UniquePtr<DemoApp>` type destroys the pointed-to object when the pointer goes out of scope.
 
-`DemoApp` has three functions: `init`, `update` and `is_closed`. The `init` function initializes the program, and reports errors if the initialization is failed; the `update` function updates the program state and renders the image at every frame; the `is_exiting` function checks whether the program is exiting. We will implement these three methods in the following sections. 
+`DemoApp` has three functions: `init`, `update`, and `is_exiting`. The `init` function initializes the program and reports failures; the `update` function updates the program state and renders each frame; and `is_exiting` checks whether the program is exiting. We will implement these methods in the following sections.
 
-The rest part of our `run_app` function simply checks whether the program is exiting by calling `is_exiting`, and updates the program when it is not exiting. 
+The remainder of `run_app` calls `update` until `is_exiting` returns `true`.
 
-After filling this content, execute the following command on terminal or use the generated IDE build task, you should successfully build the `DemoApp` program:
+After filling this content, run the following command in a terminal or use the generated IDE build task:
 
 ```sh
-dotnet run --project LunaBuild.csproj -- build --target DemoApp
+dotnet run --project LunaBuild.csproj -- build --target TutorialDemoApp
 ```
 
 ## Window creation and event handling
 
 Now that we have one basic program structure, we need to create a system window so that we can render images to it. We also need to implement window event handling so that the program can exit when the user clicks the close button of the window.
 
-Window creation is fairly simple, we firstly add one new property to our `DemoApp` structure:
+First, add a window property to the `DemoApp` structure:
 
 ```c++
 struct DemoApp
@@ -162,7 +183,7 @@ struct DemoApp
 };
 ```
 
-The window object is provided by `Window::IWindow*` interface pointer in LunaSDK, which points to a *boxed object* which manages its lifetime using *reference counting*. `IWindow` interface may have different implementations on different platforms, by they all provide the same functionality required by this interface. `Ref<T>` is a smart pointer for boxed objects, it will manage the reference counter of the pointing object automatically when being constructed and destructed, so the user does not need to call `object_retain` and `object_release` manually. You may compare `Ref<T>` to `ComPtr` used in Microsoft's Component-Object Model (COM), or the *automatic reference counting* in Apple's Objective-C and Swift. The default constructor of `Ref<T>` initializes the pointer to `nullptr`, so we need to assign it with a valid object.
+`Window::IWindow` is a boxed interface with platform-specific implementations and reference-counted lifetime. `Ref<T>` retains and releases boxed objects automatically, so the application does not call `object_retain` or `object_release` manually. Its default constructor produces a null pointer, which we replace with the window returned by `new_window`.
 
 Then we need to create our window in `DemoApp::init`:
 
@@ -211,14 +232,14 @@ LUNA_WINDOW_API R<Ref<IWindow>> new_window(const c8* title,
             WindowCreationFlag creation_flags = WindowCreationFlag::none);
 ```
 
-In this function, `title` Specifies the title of the window, which is usually displayed on the title bar of the window. `x` and `y` are the position of the window on screen coordinates. The user may pass `DEFAULT_POS` constant to indicate a system-specific default position for the window. `width` and `height` are used to control the size of the window, the user can pass `0` to indicate a system-specific default size. `style_flags` specifies the window style, like whether window is borderless, whether the window can be resized by dragging the window border, etc. `creation_flags` are a combination of `WindowCreationFlag` enumeration class that lists flags for window creation process. For now, we just leave most parameters as default and LunaSDK will create a proper window for us.
+`title` supplies the window title. `x` and `y` set its initial position in screen coordinates; pass `DEFAULT_POS` to let the windowing system choose. `width` and `height` set the initial client-area size, and zero lets the system choose a suitable size. `style_flags` combines `WindowStyleFlag` values such as `resizable` and `borderless`; `creation_flags` combines `WindowCreationFlag` values such as `hidden`. This example accepts the defaults.
 
-After the window is created, we need to set our window event handler so that we can handle window events properly. To set event handlers, firstly include a new header:
+After creating the window, install the application-wide Window event handler. First include the event header:
 ```c++
 #include <Luna/Window/Event.hpp>
 ```
 
-In this example, the events we need to handle is the framebuffer resize event (triggered when the window framebuffer size is changed). This can be done by the following statements:
+This example handles the framebuffer resize event, which is dispatched when the window's pixel size changes:
 ```c++
 Window::set_event_handler([](object_t event, void* userdata){
             DemoApp* app = (DemoApp*)userdata;
@@ -233,7 +254,7 @@ Window::set_event_handler([](object_t event, void* userdata){
 LUNA_WINDOW_API void set_event_handler(void(*event_handler)(object_t event, void* userdata), void* userdata);
 ```
 
-The event is provided as a [[Boxed Objects|boxed object]], so we can check the concrete event type by trying to cast it using `cast_object<T>`. In our example, we try to catch `WindowFramebufferResizeEvent`, and call `DemoApp::resize` to handle this event.The `resize` method is currently empty, we will fill the content of this method when we create render textures later:
+The event is provided as a [[Boxed Objects|boxed object]], so we can check the concrete event type by trying to cast it using `cast_object<T>`. In our example, we catch `WindowFramebufferResizeEvent` and call `DemoApp::resize` to handle it. The `resize` method is currently empty; we will fill it when we create render textures later:
 ```c++
 RV DemoApp::resize(u32 width, u32 height)
 {
@@ -241,7 +262,16 @@ RV DemoApp::resize(u32 width, u32 height)
 }
 ```
 
-Window events are not polled automatically, we need to tell the window system to poll events at every frame by calling `Window::poll_events` in `update` function:
+The event handler is application-wide, and it does not retain its userdata. Add `~DemoApp();` to the `DemoApp` declaration, then clear the handler before the object is destroyed:
+
+```c++
+DemoApp::~DemoApp()
+{
+    Window::set_event_handler(nullptr, nullptr);
+}
+```
+
+Window events are not polled automatically. Call `Window::poll_events` once per frame from `update`:
 ```c++
 RV DemoApp::update()
 {
@@ -250,7 +280,7 @@ RV DemoApp::update()
 }
 ```
 
-This call polls events for all existing windows, so we don't need to provide specific window here. After we correctly handle the close event, we can complete the `is_closed` method of `DemoApp`:
+This call polls events for all existing windows, so no specific window is passed. A `WindowRequestCloseEvent` closes its target by default unless the event handler sets `do_close` to `false`. We can therefore complete the `is_exiting` method by querying the window state:
 
 ```c++
 bool DemoApp::is_exiting()
@@ -276,11 +306,16 @@ struct DemoApp
 {
     Ref<Window::IWindow> window;
 
+    ~DemoApp();
     RV init();
     RV update();
     bool is_exiting();
     RV resize(u32 width, u32 height);
 };
+DemoApp::~DemoApp()
+{
+    Window::set_event_handler(nullptr, nullptr);
+}
 RV DemoApp::init()
 {
     lutry
@@ -334,14 +369,23 @@ int luna_main(int argc, const char* argv[])
 {
     if(failed(Luna::init())) return -1;
     RV result = run_app();
-    if(failed(result)) log_error("DemoApp", "%s", explain(result.errcode()));
+    bool app_failed = failed(result);
+    if(app_failed) log_error("DemoApp", "%s", explain(result.errcode()));
     Luna::close();
-    return 0;
+    return app_failed ? -1 : 0;
 }
 ```
 
-Build and run `DemoApp`, and you will see a blank window appears, and the program exits when you click the close button of the window.
-![[DemoApp-window.png]]
+Build and run the `TutorialDemoApp` target:
+
+```sh
+dotnet run --project LunaBuild.csproj -- run --target TutorialDemoApp
+```
+
+A blank window titled "DemoApp" appears, and the program exits when you click its close button.
+
+![](../Res/DemoApp-window.png)
+
 ## Fetching graphics device
 
 After the window is created, we can start drawing our box. LunaSDK provides all rendering features through `RHI` module, which is the abbreviation of *Rendering Hardware Interface*. The RHI module header is already included as:
@@ -370,11 +414,15 @@ RV DemoApp::init()
 {
     lutry
     {
-    	luset(window, Window::new_window("DemoApp"));
-        window->get_close_event().add_handler([](Window::IWindow* window) { window->close(); });
-        window->get_framebuffer_resize_event().add_handler([this](Window::IWindow* window, u32 width, u32 height) {
-            lupanic_if_failed(this->resize(width, height));
-            });
+        luset(window, Window::new_window("DemoApp"));
+        Window::set_event_handler([](object_t event, void* userdata)
+        {
+            DemoApp* app = (DemoApp*)userdata;
+            if(auto resize = cast_object<Window::WindowFramebufferResizeEvent>(event))
+            {
+                lupanic_if_failed(app->resize(resize->width, resize->height));
+            }
+        }, this);
 
         dev = RHI::get_main_device();
         using namespace RHI;
@@ -574,12 +622,19 @@ The next thing to do is creating shaders for the pipeline state object. LunaSDK 
 
 For this demo, create three shader files beside `main.cpp`: `DemoAppShader.hxx`, `DemoAppVS.cxx` and `DemoAppPS.cxx`. The `.hxx` file stores shared CPPSL structures and resource bindings, while each `.cxx` file contains one shader entry point.
 
+Add the two shader entry files to the `TutorialDemoAppTargetRules` constructor. LunaBuild compiles them before the C++ sources and generates the C++ headers used below:
+
+```csharp
+Shader("DemoAppVS.cxx", "vertex", "vs_main");
+Shader("DemoAppPS.cxx", "pixel", "ps_main");
+```
+
 ```c++
 #include <DemoAppVS.hpp>
 #include <DemoAppPS.hpp>
 ```
 
-The `Shader(...)` calls in `DemoApp.Target.cs` compile these CPPSL entry files and generate the two headers above. The descriptor bindings declared in CPPSL must match the descriptor set layout created by the C++ code: binding `0` is the uniform buffer, binding `1` is the texture and binding `2` is the sampler.
+The `Shader(...)` calls in `TutorialDemoApp.Target.cs` compile these CPPSL entry files and generate the two headers above. The descriptor bindings declared in CPPSL must match the descriptor set layout created by the C++ code: binding `0` is the uniform buffer, binding `1` is the texture and binding `2` is the sampler.
 
 ## Creating pipeline layout and pipeline state
 
@@ -859,7 +914,7 @@ When we finish recording commands into the command buffer, we call `ICommandBuff
 In order to use `RHIUtility::IResourceWriteContext`, we need to include two new header files:
 
 ```c++
-#inlcude <Luna/RHIUtility/RHIUtility.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 ```
 
@@ -870,8 +925,7 @@ RV run_app()
     auto result = add_modules({
         module_window(),
         module_rhi(),
-        module_rhi_utility(), // Add this.
-        module_shader_compiler()
+        module_rhi_utility() // Add this.
     });
     //...
 }
@@ -896,24 +950,28 @@ We firstly create a `IResourceWriteContext` object, which contains a staging buf
 
 The next step is to load our Luna LOGO image that will be drawn on the box surface:
 
-![](luna.png)
+![](../Res/DemoApp/luna.png)
 
-Save the image file in the same directory as `main.cpp`, and naming it `luna.png`. You should have one file structure similar to this:
+Save the image file beside `main.cpp` and name it `luna.png`. At this stage, the directory should look like this:
 
 ```
-DemoApp
-|- DemoApp.Target.cs
+TutorialDemoApp
+|- TutorialDemoApp.Target.cs
+|- DemoAppPS.cxx
+|- DemoAppShader.hxx
+|- DemoAppVS.cxx
+|- MacOSInfo.plist
 |- main.cpp
 |- luna.png
 ```
 
-Make sure `DemoApp.Target.cs` declares the image as a runtime file:
+Make sure `TutorialDemoApp.Target.cs` declares the image as a runtime file:
 
 ```csharp
 RuntimeFiles("luna.png");
 ```
 
-LunaBuild emits a `file.copy` action for runtime files. The image is copied to the same directory as the program binary, so that our program can correctly find the image file. The same runtime file metadata is also used by `lunabuild install`.
+LunaBuild emits a `file.copy` action for runtime files. For a plain Windows executable, the image is copied beside the binary. When a macOS `Application` is packaged, the image is copied to `TutorialDemoApp.app/Contents/Resources`. The same runtime-file metadata is also used by LunaBuild's `install` command.
 
 Then, go back to `main.cpp`, and add one new property to `DemoApp` to represent the loaded image:
 
@@ -921,17 +979,39 @@ Then, go back to `main.cpp`, and add one new property to `DemoApp` to represent 
 Ref<RHI::ITexture> file_tex;
 ```
 
-To load the image in our program, we need to use one new module called `Image`, which parses image file data and gives row-majored image data in our desired format. We also need to use the file API provided by `Runtime` module, so we includes two new headers:
+To load the image, use the `Image` module to decode the file into row-major pixel data. The Runtime file and path APIs locate and read the packaged resource, so add these headers:
 
 ```c++
 #include <Luna/Runtime/File.hpp>
+#include <Luna/Runtime/Path.hpp>
 #include <Luna/Image/Image.hpp>
 ```
 
-The first thing to do is to load image file data from our `luna.png` file. In order to load file data, we need to use the `open_file` function provided by the `Runtime` module. This function returns one file handle represented by `IFile` if the file is correctly opened. Then, we loads the file data into one `Blob` object by calling `load_file_data`, this function creates one properly-sized blob object, and calls `IFile::read` to read all data of the file to the blob, then returns the blob:
+Register the Image module in `run_app` before `init_modules`:
 
 ```c++
-lulet(image_file, open_file("Luna.png", FileOpenFlag::read, FileCreationMode::open_existing));
+auto result = add_modules({
+    module_window(),
+    module_rhi(),
+    module_rhi_utility(),
+    module_image()
+});
+```
+
+Resolve the image from the executable location instead of relying on the process's current working directory. On macOS, move from `Contents/MacOS` to `Contents/Resources`; on Windows, the runtime file is already beside the executable. Then open the file and load its bytes into a `Blob`:
+
+```c++
+const c8* process_path = get_process_path();
+Path image_path(process_path);
+release_process_path(process_path);
+image_path.pop_back();
+#if defined(LUNA_PLATFORM_MACOS)
+image_path.pop_back();
+image_path.push_back(Name("Resources"));
+#endif
+image_path.push_back(Name("luna.png"));
+String image_file_path = image_path.encode(PathSeparator::system_preferred);
+lulet(image_file, open_file(image_file_path.c_str(), FileOpenFlag::read, FileCreationMode::open_existing));
 lulet(image_file_data, load_file_data(image_file));
 ```
 
@@ -1035,7 +1115,7 @@ RV DemoApp::update()
 
 After we updates the camera rotation, we need to calculate the view-projection matrix for the camera. Fortunately, the math library of the `Runtime` module already includes implementations for many commonly used vector and matrix calculations, and here we are going to use two of them: `AffineMatrix::make_look_at` and `ProjectionMatrix::make_perspective_fov`. To use these two functions, we firstly need to add one new header file:
 
-```c+
+```c++
 #include <Luna/Runtime/Math/Transform.hpp>
 ```
 
@@ -1083,7 +1163,8 @@ cmdbuf->resource_barrier({
     TextureBarrier(file_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps),
     TextureBarrier(back_buffer, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write),
     TextureBarrier(depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::depth_stencil_attachment_write)
-});```
+});
+```
 
 One resource can have multiple states, so long as such states are compatible to each other. For example, one texture can have `TextureStateFlag::shader_read_vs` and `TextureStateFlag::shader_read_ps` at the same time if it will be accessed by both vertex and pixel shader, or can have `TextureStateFlag::shader_read_cs` and `TextureStateFlag::shader_write_cs` at the same time if it will be read and write by compute shader. LunaSDK internally tracks the current states for all resources, so we can set `before` states of resources to `automatic` in most cases, which tells the system to load the previous states automatically. LunaSDK also omits unnecessary barriers automatically.
 
@@ -1137,7 +1218,8 @@ The last thing we need to do is to present our rendering result to the window. T
 luexp (swap_chain->present ());
 ```
 
-This concludes the `DemoApp::update` function. Build and run `DemoApp`, if everything goes correctly, you will see a textured rotating box in the screen:
-![](DemoApp-final.png)
+This concludes the `DemoApp::update` function. Build and run the `TutorialDemoApp` target. If everything is correct, you will see a textured rotating box in the window:
 
-Congratulations! If you have followed every step of this article correctly, you should have a first impression of graphic programming using LunaSDK. If anything goes wrong, you can download the source code archive from the beginning of this article and compare it with your code.
+![](../Res/DemoApp-final.png)
+
+Congratulations! If you followed every step, you now have a first impression of graphics programming with LunaSDK. The earlier `LunaSDK-Docs/Res/DemoApp` target remains useful for comparing the graphics resources and rendering setup, but its `main.cpp` is not a completed copy of this walkthrough: it uses the legacy process entry, does not register the Image module, opens `luna.png` relative to the working directory, and does not remove the global Window handler. Keep the current `luna_main`, module list, executable-relative resource lookup, and handler cleanup from this article.

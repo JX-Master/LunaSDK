@@ -115,8 +115,9 @@ An SDF draw references two context-owned scalar `float32` program ranges:
 
 1. A shape program contains rectangle, four-corner rounded rectangle, circle, ellipse, capsule, union,
    intersection, difference, and XOR instructions. Boolean operations use prefix order.
-2. A color program contains one solid, linear, radial, conic, four-corner bilinear, or unified shadow instruction.
-   Gradients support up to 16 ordered stops, optional interpolation midpoints, and pad or repeat spreading.
+2. A color program contains one or more ordered solid, linear, radial, conic, four-corner bilinear, or unified shadow
+   instructions. One program accepts at most `SDF_MAX_COLOR_INSTRUCTIONS` (currently 8) instructions. Gradients
+   support up to 16 ordered stops, optional interpolation midpoints, and pad or repeat spreading.
 
 Programs use local GUI coordinates. Build the complete scalar sequence, append it through
 `append_sdf_shape_program` or `append_sdf_color_program`, and store the returned validated metadata in
@@ -137,9 +138,12 @@ generic clip modes:
 clip descriptor can be applied to any color opcode. An outer shadow uses inner clip at zero, while an inner shadow
 uses outer clip at zero.
 
-Build one color program per ordered effect pass. The same validated shape program can be reused by shadow, fill,
-border, and highlight commands. Consecutive commands that reference the same buffer pages remain separate logical
-passes but are submitted as one instanced draw call.
+One SDF draw evaluates one shape and one contiguous color-program range. Its color instructions are applied in append
+order, and each newer result is composited over the accumulated result using premultiplied source-over blending. In a
+multi-instruction color program, every non-shadow instruction must have an outer clip; the default
+`SDFClipDesc::fill()` satisfies this requirement. Use separate draw commands when effects require different raster
+domains or clip state, or when painter order requires other content between them. The same validated shape program can
+also be reused by separate shadow, fill, border, or highlight commands when those cases apply.
 
 ### Font
 Text draw commands reference fonts by `Name`. Register fonts on the context before using them.
@@ -280,19 +284,22 @@ ring.sdf.color = color_program;
 context->draw(ring);
 ```
 
-### Reuse one shape for a shadow and fill
-The shadow and fill are two color programs and two ordered commands. Both commands reference the same shape range.
+### Compose a shadow and fill in one color program
+Append the effects in painter order. The fill has an outer clip, so it can share one validated color program and one
+draw command with the shadow.
 
 ```cpp
-Vector<f32> shadow_floats;
-GUI::sdf_color_add_shadow(shadow_floats, Float4U(0.0f, 0.0f, 0.0f, 0.25f),
+Vector<f32> effect_floats;
+GUI::sdf_color_add_shadow(effect_floats, Float4U(0.0f, 0.0f, 0.0f, 0.25f),
     Float2U(0.0f, 4.0f), 6.0f, 0.0f, GUI::SDFClipDesc::inner(0.0f));
-lulet(shadow_program, context->append_sdf_color_program(shadow_floats.cspan()));
+GUI::sdf_color_add_radial_gradient(effect_floats, Float2U(32.0f), Float2U(30.0f),
+    Span<const GUI::SDFGradientStop>(stops, 2), GUI::SDFGradientSpread::pad,
+    GUI::SDFClipDesc::fill());
+lulet(effect_program, context->append_sdf_color_program(effect_floats.cspan()));
 
-GUI::DrawCommand shadow = ring;
-shadow.sdf.color = shadow_program;
-context->draw(shadow);
-context->draw(ring);
+GUI::DrawCommand shadowed_ring = ring;
+shadowed_ring.sdf.color = effect_program;
+context->draw(shadowed_ring);
 ```
 
 ### Use clips
@@ -359,6 +366,11 @@ target.color_load_op = RHI::LoadOp::load;
 target.color_final_state = RHI::TextureStateFlag::shader_read_ps;
 luexp(renderer->render(context, command_buffer, target));
 ```
+
+The renderer owns upload buffers and descriptor sets referenced by the recorded commands and may replace them on its
+next `render` call. Keep the renderer alive and do not reuse that renderer until the previous GPU work has completed.
+For multiple frames in flight, use a separate renderer for each frame slot and reuse a slot only after its completion
+fence has signaled.
 
 The first internal color pass uses `color_load_op` and `color_clear_value`; every resumed pass uses load/store.
 Color storage is always preserved. `depth_stencil_texture` is optional and required only when surface depth testing

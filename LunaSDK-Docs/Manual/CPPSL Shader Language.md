@@ -264,7 +264,7 @@ InterlockedAdd(bins[index], 1u);
 
 ## Functions And Expressions
 
-CPPSL supports ordinary free functions, local variables, control flow, function calls, member access, array/pointer indexing, and common arithmetic/comparison expressions.
+CPPSL supports ordinary free functions, local variables, fixed-size function-local arrays, control flow, function calls, member access, array/pointer indexing, and common arithmetic/comparison expressions. Local array extents must be compile-time constants; dynamically sized local arrays are not supported.
 
 ```cpp
 float luminance(float3 value)
@@ -279,6 +279,16 @@ float3 normal_tangent_to_world(float3 normal_map, float3 normal_world, float3 ta
     float3 b = cross(n, t);
     return normalize(t * normal_map.x + b * normal_map.y + n * normal_map.z);
 }
+
+float average(float value)
+{
+    float values[4];
+    values[0] = value;
+    values[1] = value * 2.0f;
+    values[2] = value * 3.0f;
+    values[3] = value * 4.0f;
+    return (values[0] + values[1] + values[2] + values[3]) / 4.0f;
+}
 ```
 
 Common math intrinsics from `<cppsl/math.hxx>` include:
@@ -290,6 +300,14 @@ any, distance, reflect, lerp, clamp
 ```
 
 CPPSL also supports common vector/scalar `+`, `-`, `*`, `/`, `+=`, `-=`, `*=`, and `/=` operators.
+
+C-style casts are supported between the scalar numeric types currently used by CPPSL, including `uint`, `int`, and `float`:
+
+```cpp
+uint unsigned_value = (uint)value;
+int signed_value = (int)unsigned_value;
+float floating_value = (float)signed_value;
+```
 
 ## Current Restrictions
 

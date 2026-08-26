@@ -16,7 +16,7 @@ The math library use SIMD instructions for vector and matrix calculations when p
 #include <Luna/Runtime/Math/Vector.hpp>
 ```
 
-`Float2`, `Float3` and `Float4` represent 2D, 3D and 4D vectors. These three types are 16-bytes aligned for maximizing SIMD performance. LunaSDK also provides unaligned vector types, these types are `Vec2U<T>`, `Vec3U<T>` and `Vec4U<T>`. The unaligned types are used mainly for storing and transferring vectors, such types should be converted to aligned types before they can be used for calculations. LunaSDK also defines `Float2U`, `Int2U`, `UInt2U`, `Float3U`, `Int3U`, `UInt3U`, `Float4U`, `Int4U`, `UInt4U` as aliasing types of `Vec2U<T>`, `Vec3U<T>`, `Vec24U<T>` for convenience. Components of these vector types can be fetched by their `x`, `y`, `z` and `w` properties.
+`Float2`, `Float3` and `Float4` represent 2D, 3D and 4D vectors. These three types are 16-bytes aligned for maximizing SIMD performance. LunaSDK also provides unaligned vector types, these types are `Vec2U<T>`, `Vec3U<T>` and `Vec4U<T>`. The unaligned types are used mainly for storing and transferring vectors, such types should be converted to aligned types before they can be used for calculations. LunaSDK also defines `Float2U`, `Int2U`, `UInt2U`, `Float3U`, `Int3U`, `UInt3U`, `Float4U`, `Int4U`, `UInt4U` as aliasing types of `Vec2U<T>`, `Vec3U<T>`, `Vec4U<T>` for convenience. Components of these vector types can be fetched by their `x`, `y`, `z` and `w` properties.
 
 Aligned vector types can be compared(`==` and `!=`), added (`+`), subtracted (`-`), multiplied (`*`) and divided (`/`) like normal scalar types. These calculations are performed as performing the same calculation on each component element of the vector individually. When performing mathematical calculations between vector types and scalar types, the scaler number will be applied to all components of the vector.
 
@@ -49,7 +49,7 @@ LunaSDK defines a series of functions to perform basic vector calculations. All 
 #include <Luna/Runtime/Math/Matrix.hpp>
 ```
 
-`Float3x3` and `Float4x4` represent 3x3 and 4x4 32-bit floating-point matrices. These two types are 16-bytes aligned for maximizing SIMD performance. LunaSDK also provides unaligned matrix types, these types are `Float3x2U`, `Float3x3U`, `Float4x3U` and `Float4x4U`. The  unaligned types are used for storing and transferring matrices, and should be converted to aligned types (`Float3x2U` to `Float3x3`, `Float4x3U` to `Float4x4`) before they can be used for calculation. Rows in one matrix can be fetched by the `m` property of the matrix type, which is an array of `Float3` or `Float4` for `Float3x3` and `Float4x4`, or an two-dimensional `f32` array for any unaligned matrix type.
+`Float3x3` and `Float4x4` represent 3x3 and 4x4 32-bit floating-point matrices. These two types are 16-bytes aligned for maximizing SIMD performance. LunaSDK also provides unaligned matrix types, these types are `Float3x2U`, `Float3x3U`, `Float4x3U` and `Float4x4U`. The unaligned types are used for storing and transferring matrices, and should be converted to aligned types (`Float3x2U` to `Float3x3`, `Float4x3U` to `Float4x4`) before they are used for calculation. Rows of `Float3x3` and `Float4x4` are stored in the `r` array as `Float3` or `Float4` values. Unaligned matrix types expose their scalar components through a two-dimensional `m` array.
 
 Aligned matrix types can be compared(`==` and `!=`), added (`+`), subtracted (`-`), multiplied (`*`) and divided (`/`) like normal scalar types. These calculations are performed as performing the same calculation on each component element of the matrix individually. When performing mathematical calculations between matrix types and scalar types, the scaler number will be applied to all components of the matrix.
 
@@ -68,22 +68,21 @@ LunaSDK defines a series of functions to perform basic matrix calculations. All 
 #include <Luna/Runtime/Math/Quaternion.hpp>
 ```
 
-`Quaternion` represents one Quaternion that can be used to represent a rotating operation in 3D space. Every `Quaternion` contains four `f32` components, and is 16-bytes aligned for maximizing SIMD performance. The user can convert one `Quaternion ` to `Float4U` for storing and transferring the Quaternion.
+`Quaternion` represents a rotation in 3D space. Every `Quaternion` contains four `f32` components and is 16-byte aligned for SIMD operations. It can be converted to `Float4`; use the corresponding unaligned vector form when storing or transferring its four components.
 
-`Quaternion` can be compared(`==` and `!=`), added (`+`), subtracted (`-`), multiplied (`*`) and divided (`/`) like normal scalar types. The addition and subtraction behavior of one Quaternion is the same as those of `Float4`. The multiplication operation concatenates two Quaternions, while the division operation decomposes one Quaternion into two.
+`Quaternion` does not define quaternion arithmetic operators. In particular, do not use `q1 * q2` to compose rotations: implicit conversion to `Float4` can select component-wise vector arithmetic instead. Use `mul(q1, q2)` to concatenate two quaternions.
 
 LunaSDK defines a series of functions to perform Quaternion calculations. The following table lists all Quaternion functions.
 
-| Function            | Description                                                  |
-| ------------------- | ------------------------------------------------------------ |
-| `length(q)`         | Returns the length of one `Quaternion`. Same as `length` for `Float4`. |
-| `length_squared(q)` | Returns the squared length of one `Quaternion`. Same as `length_squared` for `Float4`. |
-| `normalize(q)`      | Normalizes one `Quaternion`. Same as `normalize` for `Float4`. |
-| `conjugate(q)`      | Computes the conjugate of one `Quaternion`.                  |
-| `inverse(q)`        | Computes the inverse of one `Quaternion`.                    |
-| `dot(q1, q2)`       | Computes the dot product of two `Quaternion`s `q1` and `q2`. Same as `dot` for `Float4`. |
-| `lerp(q1, q2, t)`   | Performs [linear interpolation](https://en.wikipedia.org/wiki/Linear_interpolation) on two `Quaternion`s `q1` and `q2` according to one scalar factor `t`. |
-| `slerp(q1, q2, t)`  | Performs [spherical linear interpolation](https://en.wikipedia.org/wiki/Slerp) on two `Quaternion`s `q1` and `q2` according to one scalar factor `t`. |
+| Function           | Description                                                  |
+| ------------------ | ------------------------------------------------------------ |
+| `mul(q1, q2)`      | Concatenates two quaternions.                                |
+| `conjugate(q)`     | Computes the conjugate of one `Quaternion`.                  |
+| `inverse(q)`       | Computes the inverse of one `Quaternion`.                    |
+| `lerp(q1, q2, t)`  | Performs [linear interpolation](https://en.wikipedia.org/wiki/Linear_interpolation) on two `Quaternion`s `q1` and `q2` according to one scalar factor `t`. |
+| `slerp(q1, q2, t)` | Performs [spherical linear interpolation](https://en.wikipedia.org/wiki/Slerp) on two `Quaternion`s `q1` and `q2` according to one scalar factor `t`. |
+
+For vector-style operations such as length, dot product, or component normalization, convert the quaternion to `Float4` explicitly. Vector `normalize` returns `Float4`, so construct a `Quaternion` from that result when a quaternion value is required.
 
 ## Transform
 
@@ -106,22 +105,22 @@ The following table lists all functions for operating affine matrices. All funct
 | `down(m)`                               | Extracts the down vector from one 2D or 3D affine matrix.    |
 | `left(m)`                               | Extracts the left vector from one 2D or 3D affine matrix.    |
 | `right(m)`                              | Extracts the right vector from one 2D or 3D affine matrix.   |
-| `forward`                               | Extracts the forward vector from one 3D affine matrix.       |
-| `backward`                              | Extracts the backward vector from one 2D or 3D affine matrix. |
+| `forward(m)`                            | Extracts the forward vector from one 3D affine matrix.       |
+| `backward(m)`                           | Extracts the backward vector from one 3D affine matrix.      |
 | `translation(m)`                        | Extracts the translation vector from one 2D or 3D affine matrix. |
-| `rotation(m)`                           | Extracts the rotation scalar or Quaternion from one 2D or 3D affine matrix. |
-| `euler_angles(m)`                       | Extracts the rotation vector that uses stores the rotation in Euler angles (pitch, yaw, roll) from one 3D affine matrix. |
+| `rotation(m)`                           | Extracts an `f32` rotation from a 2D affine matrix. For 3D, computes quaternion components as `Float4` from a rotation matrix; call `rotation_matrix` first when starting from an affine matrix. |
+| `euler_angles(m)`                       | Extracts Euler angles (pitch, yaw, roll) from a 3D rotation matrix; call `rotation_matrix` first when starting from an affine matrix. |
 | `scaling(m)`                            | Extracts the scaling vector from one 2D or 3D affine matrix. |
 | `translation_matrix(m)`                 | Extracts the translation matrix from one 2D or 3D affine matrix. |
 | `rotation_matrix(m)`                    | Extracts the rotation matrix from one 2D or 3D affine matrix. |
 | `scaling_matrix(m)`                     | Extracts the scaling matrix from one 2D or 3D affine matrix. |
-| `make_translation(t)`                   | Constructs one 2D or 3D translation matrix from position vector `p`. |
+| `make_translation(t)`                   | Constructs one 2D or 3D translation matrix from translation vector `t`. |
 | `make_rotation(r)`                      | Constructs one 2D or 3D rotation matrix from rotation scalar or Quaternion `r`. |
-| `make_rotation_x(r)`                    | Constructs one 3D rotation matrix that represents one rotation alone x axis. |
-| `make_rotation_y(r)`                    | Constructs one 3D rotation matrix that represents one rotation alone y axis. |
-| `make_rotation_z(r)`                    | Constructs one 3D rotation matrix that represents one rotation alone z axis. |
+| `make_rotation_x(angle)`                | Constructs one 3D rotation matrix around the X axis.         |
+| `make_rotation_y(angle)`                | Constructs one 3D rotation matrix around the Y axis.         |
+| `make_rotation_z(angle)`                | Constructs one 3D rotation matrix around the Z axis.         |
 | `make_rotation_axis_angle(axis, angle)` | Constructs one 3D rotation matrix by specifying the rotation axis and rotation angle. |
-| `make_rotation_euler_angles`            | Constructs one 3D rotation matrix from Euler angles (pitch, yaw, roll). |
+| `make_rotation_euler_angles(angles)`    | Constructs one 3D rotation matrix from Euler angles (pitch, yaw, roll). |
 | `make_scaling(s)`                       | Constructs one 2D or 3D scaling matrix from scaling vector `s`. |
 | `make_look_at(eye, target, up)`         | Constructs one view matrix that targets the specified position. |
 | `make_look_to(eye, dir, up)`            | Constructs one view matrix that targets the specified direction. |
@@ -133,8 +132,9 @@ The following table lists all functions for operating projection matrices. All f
 | Function                                                     | Description                                                  |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | `make_perspective(width, height, near_z, far_z)`             | Constructs a perspective projection matrix using width and height of the frustum. |
-| `make_perspective_fov(fov, aspect_ratio, near_z, far_z)`     | Constructs a perspective projection matrix using field-of-view and aspect_ratio of the frustum. |
+| `make_perspective_fov(fov, aspect_ratio, near_z, far_z)`     | Constructs a perspective projection matrix using the diagonal field of view. |
+| `make_perspective_fov_w(fov_w, aspect_ratio, near_z, far_z)` | Constructs a perspective projection matrix using the horizontal field of view. |
+| `make_perspective_fov_h(fov_h, aspect_ratio, near_z, far_z)` | Constructs a perspective projection matrix using the vertical field of view. |
 | `make_perspective_off_center(left, right, bottom, top, near_z, far_z)` | Constructs a perspective projection matrix using offsets of the four sides of the frustum from the camera center. |
-| `make_orthographic(width, height, near_z, far_z)`            | Constructs a orthographic projection matrix using width and height of the frustum. |
-| `make_orthographic_off_center(f32 left, f32 right, f32 bottom, f32 top, f32 near_z, f32 far_z)` | Constructs a orthographic projection matrix using offsets of the four sides of the frustum from the camera center. |
-
+| `make_orthographic(width, height, near_z, far_z)`            | Constructs an orthographic projection matrix using width and height of the frustum. |
+| `make_orthographic_off_center(left, right, bottom, top, near_z, far_z)` | Constructs an orthographic projection matrix using offsets of the four sides of the frustum from the camera center. |

@@ -1,25 +1,93 @@
-A window is a virtual surface that the application can draw user interface or game image on. One window is represented by `IWindow` interface, and can be created by calling  `new_window`. One window can be full-screen or windowed, a windowed window usually has a border and a title bar, which displays the window title and let the user to move, minimize, maximize and close the window.
+A window is a system-managed surface represented by `Window::IWindow`. It can receive input and can be used as the presentation surface for an RHI swap chain. Window objects are reference-counted and are normally stored in `Ref<Window::IWindow>`.
 
-## Multi-Window System and Single-Window System
+Use Window APIs on the main thread. The platform backends dispatch events and perform native window operations on that thread.
 
-Most desktop operating systems (Windows, macOS, Linux, etc.) are multi-window systems, while most mobile and gaming console operating systems (iOS, Android, PlayStation, XBOX, etc.) are single-window systems. Single window systems only support displaying one window at a time for one application (although some systems do support creating multiple windows for one application, only one of them can be set as visible), while multi-window systems support displaying multiple windows simultaneously. On single window systems, always create only one window for your application.
+## Desktop and system-created windows
 
-## Windowed Window and Full Screen Window
+On desktop platforms, create windows with `Window::new_window` after the Window module has been initialized:
 
-GUI-based operating systems will have some sort of window management subsystem (usually called windowing system) to manage all displayed windows. In such case, the windowing system controls the [[Displays#Display and Video Mode|video mode]] of all monitors, and all windows controlled by windowing system must use the same video mode of the windowing system. Meanwhile, some operating systems (like Windows and consoles) allows one window to bypass windowing system and take control of one display directly. In LunaSDK, we use **windowed window** to refer one window managed by the windowing system, and **full screen window** to refer one window that controls display directly.
+```cpp
+RV create_desktop_window(Ref<Window::IWindow>& window)
+{
+    lutry
+    {
+        luset(window, Window::new_window(
+            "Example",
+            Window::DEFAULT_POS,
+            Window::DEFAULT_POS,
+            1280,
+            720));
+    }
+    lucatchret;
+    return ok;
+}
+```
 
-> Not to be confused by a full screen window and a maximized window. A maximized window usually fills the whole user area of one display, but it is still managed by the windowing system, so it is still a windowed window.
+`DEFAULT_POS` lets the windowing system select an initial position. A width or height of zero lets it select a suitable size. Desktop applications may create multiple windows.
 
-One window can be set as windowed or full screen at creation time or later by calling `IWindow::set_display_settings`. For a windowed window, the application can set the window's position and size; for a full screen window, the application can set the target display and the video mode used by the target display.
+On mobile and console platforms, the operating system creates the application window. Obtain it with `Window::get_system_window`; `new_window` is not available on those platforms. The system window cannot be moved, resized, retitled, or restyled by the application.
 
-## Window Coordinates and Pixel Size
+```cpp
+RV acquire_application_window(Ref<Window::IWindow>& window)
+{
+    lutry
+    {
+    #if defined(LUNA_PLATFORM_DESKTOP)
+        luset(window, Window::new_window("Example"));
+    #else
+        window = Window::get_system_window();
+    #endif
+    }
+    lucatchret;
+    return ok;
+}
+```
 
-Windows' positions and sizes are measured in window coordinates, which on some platforms are not represented using pixels. Use `IWindow::get_framebuffer_size` to fetch the window's pixel size if you need to create a frame buffer for rendering content to the window.
+## Window state and style
 
-## DPI Scaling
+The cross-platform queries include `is_closed`, `has_input_focus`, `has_mouse_focus`, `is_minimized`, `get_position`, `get_size`, `get_framebuffer_size`, and `get_dpi_scale_factor`.
 
-The DPI scale value of one window is the same as the [[Displays#DPI Scaling|DPI scale value of the display]] that contains the window. The DPI scale value of one window can be fetched by calling `IWindow::get_dpi_scale_factor`. This value can change if the user moves the window from one display to another, in such case the system sends `WindowEvents::dpi_scale_changed` event to the application, so application can update its content to fit new DPI scale value.
+Desktop windows additionally support:
 
-## Window Events
+* closing, foreground activation, minimization, maximization, and restoration;
+* visibility changes;
+* changing the client-area position and size;
+* changing the title;
+* changing `WindowStyleFlag::resizable` and `WindowStyleFlag::borderless`.
 
-Window events can be fetched by calling `IWindow::get_events`, then the application can register callbacks to the event that needs to be handled.  Note that window object is not thread safe, so that all window manipulation operations should only be done on main thread.
+`WindowCreationFlag::hidden` creates a desktop window without initially showing it. A borderless window has no system decoration; it is not an exclusive fullscreen mode. The current public Window API does not change display video modes or expose exclusive fullscreen settings.
+
+## Window coordinates and framebuffer size
+
+`IWindow::get_position` and `IWindow::get_size` use platform screen coordinates. Screen coordinates are not necessarily physical pixels. Use `IWindow::get_framebuffer_size` when allocating render targets or resetting a swap chain.
+
+Use `screen_to_client` and `client_to_screen` to convert points between the virtual screen coordinate space and a window's client coordinate space.
+
+## DPI scaling
+
+`IWindow::get_dpi_scale_factor` returns the ratio between the window's current DPI and the platform's default DPI. The value can change, for example when a desktop window moves to a display with a different scale.
+
+Handle `WindowDPIScaleChangedEvent` through the application-wide event handler, then query `get_dpi_scale_factor` again and update the layout and pixel resources that depend on it.
+
+## Window events
+
+Install one application-wide handler with `Window::set_event_handler`, and call `Window::poll_events` from the main loop. There is no per-window `get_events` API. Every event derived from `WindowEvent` contains a retained `window` member identifying its target.
+
+```cpp
+#include <Luna/Runtime/Log.hpp>
+
+void handle_window_event(object_t event, void*)
+{
+    if(auto moved = cast_object<Window::WindowMoveEvent>(event))
+    {
+        log_info("Example", "Window moved to %d, %d", moved->x, moved->y);
+    }
+}
+
+void install_window_handler()
+{
+    Window::set_event_handler(handle_window_event, nullptr);
+}
+```
+
+A `WindowRequestCloseEvent` is closed by default. Set its `do_close` member to `false` in the handler only when the application must reject that request. A `WindowClosedEvent` reports that the native window has already closed and that attached resources should be released.
