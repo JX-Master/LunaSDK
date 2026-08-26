@@ -8,6 +8,7 @@
 * @date 2023/4/19
 */
 #include "VulkanDescriptorSetLayout.hpp"
+#include <Luna/Runtime/Algorithm.hpp>
 #include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
@@ -46,6 +47,15 @@ namespace Luna
             StackAllocator salloc;
             lutry
             {
+                const bool has_variable_descriptors = test_flags(desc.flags, DescriptorSetLayoutFlag::variable_descriptors);
+                if (has_variable_descriptors && desc.bindings.empty())
+                {
+                    return set_error(E_BAD_ARGUMENTS, "A variable descriptor set layout must contain at least one binding.");
+                }
+                if (has_variable_descriptors && !m_device->m_supports_variable_descriptor_count)
+                {
+                    return set_error(E_NOT_SUPPORTED, "Variable descriptor counts are not supported by this Vulkan device.");
+                }
                 m_flags = desc.flags;
                 VkDescriptorSetLayoutCreateInfo info{};
                 info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -57,6 +67,14 @@ namespace Luna
                     {
                         encode_descriptor_set_binding(bindings[i], desc.bindings[i]);
                     }
+                    // Vulkan requires the variable descriptor binding to have the largest
+                    // binding number. Sort the encoded bindings so the last flag below always
+                    // refers to that binding, independently of caller-provided array order.
+                    sort(bindings, bindings + desc.bindings.size(),
+                        [](const VkDescriptorSetLayoutBinding& lhs, const VkDescriptorSetLayoutBinding& rhs)
+                        {
+                            return lhs.binding < rhs.binding;
+                        });
                     info.pBindings = bindings;
                     info.bindingCount = (u32)desc.bindings.size();
                 }
@@ -66,13 +84,14 @@ namespace Luna
                     info.bindingCount = 0;
                 }
                 VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags{};
-                if (test_flags(desc.flags, DescriptorSetLayoutFlag::variable_descriptors) && info.bindingCount)
+                if (has_variable_descriptors)
                 {
                     binding_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
                     binding_flags.bindingCount = info.bindingCount;
                     auto flags = (VkDescriptorBindingFlags*)salloc.allocate(sizeof(VkDescriptorBindingFlags) * info.bindingCount);
                     memzero(flags, sizeof(VkDescriptorBindingFlags) * info.bindingCount);
                     flags[info.bindingCount - 1] |= VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT;
+                    binding_flags.pBindingFlags = flags;
                     info.pNext = &binding_flags;
                 }
                 luexp(encode_vk_result(m_device->m_funcs.vkCreateDescriptorSetLayout(m_device->m_device, &info, nullptr, &m_layout)));

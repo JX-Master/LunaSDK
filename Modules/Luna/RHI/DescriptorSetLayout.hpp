@@ -194,8 +194,8 @@ namespace Luna
         enum class DescriptorSetLayoutFlag : u32
         {
             none = 0,
-            //! Enable variable-sized descriptors array for the last binding (the binding with 
-            //! the largest `binding_slot` value).
+            //! Enables a variable-sized descriptor array for the binding with the largest
+            //! `binding_slot` value. The input bindings may be supplied in any order.
             variable_descriptors = 1,
         };
 
