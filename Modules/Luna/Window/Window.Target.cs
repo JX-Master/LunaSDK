@@ -28,7 +28,7 @@ public sealed class WindowTargetRules : TargetRules
         }
         else if(Platform == BuildPlatform.MacOS)
         {
-            Headers("Cocoa/*.hpp", "Source/Backend/Cocoa/*.h");
+            Headers("Cocoa/*.hpp", "Source/Cocoa/*.h", "Source/Backend/Cocoa/*.h");
             MetaHeaders("Cocoa/CocoaWindow.hpp", "Source/Backend/Cocoa/CocoaWindowImpl.h");
             Sources("Source/Backend/Cocoa/*.mm", "Source/Cocoa/*.mm");
             Frameworks("AppKit", "UniformTypeIdentifiers");

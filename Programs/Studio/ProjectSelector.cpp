@@ -389,6 +389,10 @@ namespace Luna
             {
                 Window::poll_events();
 
+                if(Window::is_application_quit_requested())
+                {
+                    break;
+                }
                 if (window->is_closed())
                 {
                     break;
@@ -507,11 +511,11 @@ namespace Luna
                 luexp(cmdbuf->reset());
                 luexp(swap_chain->present());
             }
+            GUIWindow::uninstall_window_event_handler(&input_adapter);
             if(window->is_text_input_active())
             {
                 luexp(window->end_text_input());
             }
-            GUIWindow::uninstall_window_event_handler(&input_adapter);
             if (path.empty())
             {
                 return E_FAILURE;

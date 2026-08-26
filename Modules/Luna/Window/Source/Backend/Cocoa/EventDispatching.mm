@@ -13,6 +13,7 @@
 #include "EventDispatching.h"
 #include "Luna/Window/Event.hpp"
 #include "CocoaWindowImpl.h"
+#include "../../Cocoa/ApplicationMenu.h"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
@@ -236,6 +237,14 @@ namespace Luna
         {
             @autoreleasepool
             {
+                if([event type] == NSEventTypeKeyDown && cocoa_application_menu_handle_key_down(event))
+                {
+                    // performKeyEquivalent already invoked the menu action. Do not dispatch the same key
+                    // through either the Luna event handler or the AppKit responder chain again.
+                    return;
+                }
+                bool suppress_luna_key_up = [event type] == NSEventTypeKeyUp &&
+                    cocoa_application_menu_handle_key_up(event);
                 NSWindow* nswindow = [event window];
                 if(!nswindow)
                 {
@@ -290,7 +299,7 @@ namespace Luna
                                 {
                                     auto e = new_object<WindowKeyDownEvent>();
                                     e->window = window;
-                                    e->key = key = key;
+                                    e->key = key;
                                     dispatch_event_to_handler(e.object());
                                 }
                             }
@@ -299,13 +308,16 @@ namespace Luna
                         
                         case NSEventTypeKeyUp:
                         {
-                            KeyCode key = translate_key([event keyCode]);
-                            if (key != KeyCode::unknown)
+                            if(!suppress_luna_key_up)
                             {
-                                auto e = new_object<WindowKeyUpEvent>();
-                                e->window = window;
-                                e->key = key = key;
-                                dispatch_event_to_handler(e.object());
+                                KeyCode key = translate_key([event keyCode]);
+                                if (key != KeyCode::unknown)
+                                {
+                                    auto e = new_object<WindowKeyUpEvent>();
+                                    e->window = window;
+                                    e->key = key;
+                                    dispatch_event_to_handler(e.object());
+                                }
                             }
                             break;
                         }

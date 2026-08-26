@@ -28,7 +28,7 @@ namespace Luna
         //! Platform-specific application startup parameters.
         struct StartupParams
         {
-            //! Tha application name.
+            //! The application name.
             const c8* name = nullptr;
             //! The application version.
             Version version = Version(0, 0, 0);
@@ -57,7 +57,7 @@ namespace Luna
         //! Gets the application name.
         //! @return Returns one string that represents the application name. The string is valid 
         //! until this module is closed.
-        //! @remark The application version is set by filling @ref StartupParams::name and calling @ref set_startup_params
+        //! @remark The application name is set by filling @ref StartupParams::name and calling @ref set_startup_params
         //! before Window module is initialized.
         LUNA_WINDOW_API const c8* get_app_name();
 

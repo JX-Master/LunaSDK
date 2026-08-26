@@ -54,6 +54,13 @@ namespace Luna
 
         Ref<JobSystem::IJobScheduler> m_job_scheduler;
 
+        bool m_application_menu_enabled = false;
+        bool m_application_menu_save_all_enabled = false;
+        bool m_application_menu_undo_enabled = false;
+        bool m_application_menu_redo_enabled = false;
+        bool m_application_menu_asset_browsers_checked[4] = {};
+        bool m_application_menu_memory_profiler_checked = false;
+
         //u32 m_next_asset_browser_index;
 
         bool m_exiting;
@@ -75,6 +82,9 @@ namespace Luna
 
         void draw_main_menu_bar(GUI::IContext* context, const RectF& rect);
         bool draw_asset_editor(IAssetEditor* editor, GUI::IContext* context, const GUI::LayoutConfig& layout);
+        bool confirm_exit();
+        RV install_application_menu();
+        RV update_application_menu_state();
 
     public:
 
