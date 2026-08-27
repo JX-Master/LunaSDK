@@ -1735,10 +1735,8 @@ namespace Luna
 
                 if(EditorGUI::begin_dock_panel(context, hierarchy_id, "Hierarchy", nullptr, panel_desc))
                 {
-                    GUI::LayoutConfig panel_layout = grow_y();
-                    panel_layout.padding = Float4U(10.0f);
                     GUI::ElementHandle panel = EditorGUI::begin_v_layout(context,
-                        id(context, "workspace.hierarchy.content"), "Hierarchy content", panel_layout);
+                        id(context, "workspace.hierarchy.content"), "Hierarchy content", grow_y());
                     tree_label(context, id(context, "workspace.scene"), EditorGUI::IconName::folder_open,
                         "Scene", 0, true, true);
                     tree_label(context, id(context, "workspace.camera"), EditorGUI::IconName::camera,
@@ -1749,7 +1747,9 @@ namespace Luna
                     EditorGUI::end_dock_panel(context);
                 }
 
-                if(EditorGUI::begin_dock_panel(context, viewport_id, "Viewport", nullptr, panel_desc))
+                EditorGUI::DockPanelDesc viewport_panel_desc = panel_desc;
+                viewport_panel_desc.content_padding = 0.0f;
+                if(EditorGUI::begin_dock_panel(context, viewport_id, "Viewport", nullptr, viewport_panel_desc))
                 {
                     GUI::ElementHandle panel = EditorGUI::begin_v_layout(context,
                         id(context, "workspace.viewport.content"), "Viewport content", grow_y());
@@ -1783,10 +1783,8 @@ namespace Luna
                 }
                 if(EditorGUI::begin_dock_panel(context, material_editor_id, "Material Editor", nullptr, panel_desc))
                 {
-                    GUI::LayoutConfig panel_layout = grow_y();
-                    panel_layout.padding = Float4U(12.0f);
                     GUI::ElementHandle panel = EditorGUI::begin_v_layout(context,
-                        id(context, "workspace.material.content"), "Material editor content", panel_layout);
+                        id(context, "workspace.material.content"), "Material editor content", grow_y());
                     icon_label(context, id(context, "workspace.material.title"), EditorGUI::IconName::palette,
                         "M_Rusted_Metal", fill_width(34.0f), 18.0f, 13.0f);
                     EditorGUI::slider_float(context, id(context, "workspace.material.roughness"), &state.roughness,
@@ -1798,10 +1796,8 @@ namespace Luna
                 }
                 if(EditorGUI::begin_dock_panel(context, shader_graph_id, "Shader Graph", nullptr, panel_desc))
                 {
-                    GUI::LayoutConfig panel_layout = grow_y();
-                    panel_layout.padding = Float4U(12.0f);
                     GUI::ElementHandle panel = EditorGUI::begin_v_layout(context,
-                        id(context, "workspace.shader.content"), "Shader graph content", panel_layout);
+                        id(context, "workspace.shader.content"), "Shader graph content", grow_y());
                     icon_label(context, id(context, "workspace.shader.title"), EditorGUI::IconName::code,
                         "Surface to PBR Output", fill_width(40.0f), 18.0f, 13.0f);
                     label(context, id(context, "workspace.shader.note"),
@@ -1813,10 +1809,8 @@ namespace Luna
 
                 if(EditorGUI::begin_dock_panel(context, inspector_id, "Inspector", nullptr, panel_desc))
                 {
-                    GUI::LayoutConfig panel_layout = grow_y();
-                    panel_layout.padding = Float4U(12.0f);
                     GUI::ElementHandle panel = EditorGUI::begin_v_layout(context,
-                        id(context, "workspace.inspector.content"), "Inspector content", panel_layout);
+                        id(context, "workspace.inspector.content"), "Inspector content", grow_y());
                     icon_label(context, id(context, "workspace.inspector.transform"), EditorGUI::IconName::bounding_box,
                         "Transform", fill_width(34.0f), 18.0f, 12.0f);
                     EditorGUI::drag_float3(context, id(context, "workspace.position"), state.position, -100.0f, 100.0f,
@@ -1830,10 +1824,8 @@ namespace Luna
                 }
                 if(EditorGUI::begin_dock_panel(context, layers_id, "Layers", nullptr, panel_desc))
                 {
-                    GUI::LayoutConfig panel_layout = grow_y();
-                    panel_layout.padding = Float4U(12.0f);
                     GUI::ElementHandle panel = EditorGUI::begin_v_layout(context,
-                        id(context, "workspace.layers.content"), "Layers content", panel_layout);
+                        id(context, "workspace.layers.content"), "Layers content", grow_y());
                     EditorGUI::checkbox(context, id(context, "workspace.layers.geometry"), "Geometry",
                         &state.checkbox_value, fill_width(40.0f));
                     EditorGUI::checkbox(context, id(context, "workspace.layers.lighting"), "Lighting",
@@ -1844,10 +1836,8 @@ namespace Luna
 
                 if(EditorGUI::begin_dock_panel(context, console_id, "Console", nullptr, panel_desc))
                 {
-                    GUI::LayoutConfig panel_layout = grow_y();
-                    panel_layout.padding = Float4U(10.0f);
                     GUI::ElementHandle panel = EditorGUI::begin_v_layout(context,
-                        id(context, "workspace.console.content"), "Console content", panel_layout);
+                        id(context, "workspace.console.content"), "Console content", grow_y());
                     icon_label(context, id(context, "workspace.console.info"), EditorGUI::IconName::info,
                         "Dock workspace initialized.", fill_width(30.0f), 15.0f, 10.0f, "gui.text.secondary");
                     icon_label(context, id(context, "workspace.console.warning"), EditorGUI::IconName::warning,
@@ -1858,10 +1848,8 @@ namespace Luna
                 }
                 if(EditorGUI::begin_dock_panel(context, build_id, "Build", nullptr, panel_desc))
                 {
-                    GUI::LayoutConfig panel_layout = grow_y();
-                    panel_layout.padding = Float4U(10.0f);
                     GUI::ElementHandle panel = EditorGUI::begin_v_layout(context,
-                        id(context, "workspace.build.content"), "Build content", panel_layout);
+                        id(context, "workspace.build.content"), "Build content", grow_y());
                     icon_label(context, id(context, "workspace.build.title"), EditorGUI::IconName::spinner_gap,
                         "Material bake queue", fill_width(30.0f), 15.0f, 10.0f,
                         "gui.text.secondary", EditorGUI::IconWeight::bold);
@@ -1878,10 +1866,8 @@ namespace Luna
                 if(EditorGUI::begin_dock_panel(context, pinned_inspector_id, "Inspector (Pinned)",
                     &state.pinned_inspector_open, floating_panel_desc))
                 {
-                    GUI::LayoutConfig panel_layout = grow_y();
-                    panel_layout.padding = Float4U(12.0f);
                     GUI::ElementHandle panel = EditorGUI::begin_v_layout(context,
-                        id(context, "workspace.pinned.content"), "Pinned inspector content", panel_layout);
+                        id(context, "workspace.pinned.content"), "Pinned inspector content", grow_y());
                     label(context, id(context, "workspace.pinned.scale"), "Scale",
                         fill_width(30.0f), 11.0f, "gui.text.secondary");
                     EditorGUI::drag_float3(context, id(context, "workspace.pinned.position"), state.position,

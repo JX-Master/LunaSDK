@@ -154,7 +154,7 @@ namespace Luna
             return nullptr;
         }
 
-        R<Variant> encode_document(const Document& document)
+        LUNA_GAME_GUI_API R<Variant> encode_document(const Document& document)
         {
             Variant result(VariantType::object);
             result["format_version"] = (u64)CURRENT_DOCUMENT_FORMAT_VERSION;
@@ -189,7 +189,7 @@ namespace Luna
             return result;
         }
 
-        R<Ref<Document>> decode_document(const Variant& data,
+        LUNA_GAME_GUI_API R<Ref<Document>> decode_document(const Variant& data,
             Vector<Diagnostic>* diagnostics)
         {
             if(data.type() != VariantType::object)

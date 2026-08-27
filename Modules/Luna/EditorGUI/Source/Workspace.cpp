@@ -614,8 +614,14 @@ namespace Luna
                     bool selected = direction == state.drop_direction;
                     Float4U fill = action.desc.docking_indicator_color;
                     fill.w = selected ? min(fill.w + 0.10f, 1.0f) : fill.w * 0.42f;
-                    Float4U stroke = selected ? Float4U(0.74f, 0.87f, 1.0f, 1.0f) :
-                        Float4U(0.46f, 0.56f, 0.68f, 0.95f);
+                    f32 luminance = fill.x * 0.2126f + fill.y * 0.7152f + fill.z * 0.0722f;
+                    Float4U stroke = action.desc.docking_indicator_color;
+                    if(selected)
+                    {
+                        stroke = luminance > 0.40f ? Float4U(0.082f, 0.090f, 0.094f, 1.0f) :
+                            Float4U(1.0f);
+                    }
+                    else stroke.w = 0.95f;
                     draw_rect(context, GUI::DrawCommandType::rounded_rect, icon, fill, 5.0f,
                         GUI::DrawCommandRectReference::layer);
                     f32 left = icon.offset_x + 5.0f;
@@ -1133,6 +1139,11 @@ namespace Luna
             scope.id = id;
             scope.root = root;
             scope.desc = desc;
+            if(scope.desc.docking_indicator_color.w <= 0.0f)
+            {
+                scope.desc.docking_indicator_color = Internal::style_color(context, root,
+                    "gui.accent", Float4U(0.890f, 0.310f, 0.349f, 1.0f));
+            }
             scope.state = state.get();
             frame->dock_space_stack.push_back(move(scope));
             return root;
@@ -1293,6 +1304,10 @@ namespace Luna
             content_layout.width.value = 1.0f;
             content_layout.height.kind = GUI::SizeKind::percent;
             content_layout.height.value = 1.0f;
+            f32 content_padding = info.desc.content_padding >= 0.0f ?
+                info.desc.content_padding : Internal::style_scalar(context, info.root,
+                    "gui.dock_panel.content_padding", 10.0f);
+            content_layout.padding = Float4U(max(content_padding, 0.0f));
             info.content = begin_v_layout(context, Internal::derived_id(id, "dock.panel.content"),
                 "Dock Panel Content", content_layout);
             scope.panels.push_back(move(info));

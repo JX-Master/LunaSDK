@@ -15,9 +15,6 @@ namespace Luna
 {
     namespace GameGUI
     {
-        R<Variant> encode_document(const Document& document);
-        R<Ref<Document>> decode_document(const Variant& data,
-            Vector<Diagnostic>* diagnostics = nullptr);
         void get_direct_referred_assets(const Document& document,
             Vector<Asset::asset_t>& assets);
         void close_node_registry();

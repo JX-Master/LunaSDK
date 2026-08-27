@@ -115,5 +115,19 @@ namespace Luna
         LUNA_GAME_GUI_API RV validate_document(const Document& document,
             Vector<Diagnostic>* diagnostics = nullptr);
 
+        //! Encodes one document into its canonical Variant representation.
+        //! @param[in] document The document to encode.
+        //! @return Returns the encoded document.
+        //! @remark The returned value contains only persistent authoring data and is suitable for
+        //! JSON serialization, editor snapshots and protocol transport.
+        LUNA_GAME_GUI_API R<Variant> encode_document(const Document& document);
+
+        //! Decodes one canonical Variant representation into a document.
+        //! @param[in] data The canonical document data.
+        //! @param[out] diagnostics Optional destination for migration and validation diagnostics.
+        //! @return Returns a validated document while preserving unsupported node records.
+        LUNA_GAME_GUI_API R<Ref<Document>> decode_document(const Variant& data,
+            Vector<Diagnostic>* diagnostics = nullptr);
+
     }
 }

@@ -84,8 +84,8 @@ namespace Luna
             f32 minimum_split_ratio = 0.08f;
             //! Color used by splitters.
             Float4U splitter_color = Float4U(0.24f, 0.29f, 0.36f, 1.0f);
-            //! Color used by docking target indicators.
-            Float4U docking_indicator_color = Float4U(0.10f, 0.50f, 0.82f, 0.86f);
+            //! Color used by docking target indicators. Zero alpha uses `gui.accent` from the current Style.
+            Float4U docking_indicator_color = Float4U(0.0f);
         };
 
         //! Configures one panel managed by a dock space.
@@ -99,6 +99,9 @@ namespace Luna
             bool resize_border = true;
             //! Title bar height in logical units. A non-positive value uses `gui.control.height` from the current Style.
             f32 title_bar_height = 0.0f;
+            //! Uniform padding around panel content in logical units. A negative value uses
+            //! `gui.dock_panel.content_padding` from the current Style.
+            f32 content_padding = -1.0f;
             //! Border thickness in logical units.
             f32 border_size = 1.0f;
             //! Resize hit region thickness in logical units.
@@ -143,6 +146,8 @@ namespace Luna
         //! @param[in] desc Panel behavior and drawing configuration.
         //! @return Returns `true` when this panel's content should be submitted. Call @ref end_dock_panel only
         //! when this function returns `true`.
+        //! @remark Panel content uses the Style-defined padding by default. Set
+        //! @ref DockPanelDesc::content_padding to zero for edge-to-edge content.
         LUNA_EDITOR_GUI_API bool begin_dock_panel(GUI::IContext* context, id_t id, const c8* label,
             bool* open = nullptr, const DockPanelDesc& desc = DockPanelDesc());
 
