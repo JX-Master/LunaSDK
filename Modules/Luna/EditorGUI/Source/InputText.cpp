@@ -358,12 +358,28 @@ namespace Luna
                             }
                             else changed = true;
                         }
-                        else if(event.key == KeyCode::left || event.key == KeyCode::right)
+                        else if(event.key == KeyCode::left || event.key == KeyCode::right ||
+                            event.key == KeyCode::up || event.key == KeyCode::down ||
+                            event.key == KeyCode::home || event.key == KeyCode::end)
                         {
                             if(!has_modifier(event.modifiers, GUI::KeyModifierFlag::shift)) state.selection_anchor = USIZE_MAX;
                             else if(state.selection_anchor == USIZE_MAX) state.selection_anchor = state.cursor;
-                            state.cursor = event.key == KeyCode::left ? previous_cursor(value, state.cursor) :
-                                next_cursor(value, state.cursor);
+                            if(event.key == KeyCode::left)
+                            {
+                                state.cursor = previous_cursor(value, state.cursor);
+                            }
+                            else if(event.key == KeyCode::right)
+                            {
+                                state.cursor = next_cursor(value, state.cursor);
+                            }
+                            else if(event.key == KeyCode::up || event.key == KeyCode::home)
+                            {
+                                state.cursor = 0;
+                            }
+                            else
+                            {
+                                state.cursor = value.size();
+                            }
                         }
                         else if(event.key == KeyCode::enter || event.key == KeyCode::esc)
                         {

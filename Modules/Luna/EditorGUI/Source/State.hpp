@@ -396,6 +396,7 @@ namespace Luna
                 Vector<PopupBuildScope> popup_stack;
                 Vector<MenuBarBuildScope> menu_bar_stack;
                 Vector<DockSpaceBuildScope> dock_space_stack;
+                bool input_text_navigation_suppressed = false;
             };
 
             struct [[Luna::struct("{66221FD7-35D2-4A64-816B-A9838E47621E}")]] ButtonGroupState

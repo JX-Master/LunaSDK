@@ -81,12 +81,23 @@ namespace Luna
             //! @return Returns the current modifier flags.
             virtual KeyModifierFlag get_key_modifiers() const = 0;
 
+            //! Enables or disables navigation input events for this context.
+            //! @param[in] enabled `true` to queue navigation events, or `false` to discard them.
+            //! @remark This does not discard raw key events. The setting persists across frames and is enabled by default.
+            virtual void set_navigation_events_enabled(bool enabled) = 0;
+
+            //! Checks whether navigation input events are enabled for this context.
+            //! @return Returns `true` when navigation events are queued.
+            virtual bool navigation_events_enabled() const = 0;
+
             //! Queues one input event for the current frame.
             //! @param[in] event The input event in screen logical coordinates.
+            //! @remark Navigation events are discarded when @ref set_navigation_events_enabled is set to `false`.
             virtual void add_input_event(const InputEvent& event) = 0;
 
             //! Queues multiple input events for the current frame.
             //! @param[in] events The events in the order they should be processed.
+            //! @remark Navigation events are discarded when @ref set_navigation_events_enabled is set to `false`.
             virtual void add_input_events(Span<const InputEvent> events) = 0;
 
             //! Gets input events queued for the current frame.
