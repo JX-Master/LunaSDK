@@ -956,8 +956,8 @@ namespace Luna
             }
             lucatch
             {
-                auto _ = Window::message_box(explain(luerr), "Failed to save scene",
-                    Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                auto _ = Window::message_box(explain(luerr), "Failed to save scene", {"OK"},
+                    Window::MessageBoxIcon::error);
             }
         }
         if(EditorGUI::is_item_clicked(context, capture_item))
@@ -1021,7 +1021,7 @@ namespace Luna
         }
         lucatch
         {
-            auto _ = Window::message_box(explain(luerr), "Failed to capture image", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+            auto _ = Window::message_box(explain(luerr), "Failed to capture image", {"OK"}, Window::MessageBoxIcon::error);
         }
     }
 

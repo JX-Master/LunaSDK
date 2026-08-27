@@ -389,6 +389,12 @@ namespace Luna
             {
                 Window::poll_events();
 
+#if defined(LUNA_PLATFORM_MACOS)
+                if(Window::is_application_quit_requested())
+                {
+                    break;
+                }
+#endif
                 if (window->is_closed())
                 {
                     break;
@@ -444,7 +450,7 @@ namespace Luna
                         }
                         else
                         {
-                            auto _ = Window::message_box(explain(res2.errcode()), "Project Creation Failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                            auto _ = Window::message_box(explain(res2.errcode()), "Project Creation Failed", {"OK"}, Window::MessageBoxIcon::error);
                         }
                     }
                 }
@@ -507,11 +513,11 @@ namespace Luna
                 luexp(cmdbuf->reset());
                 luexp(swap_chain->present());
             }
+            GUIWindow::uninstall_window_event_handler(&input_adapter);
             if(window->is_text_input_active())
             {
                 luexp(window->end_text_input());
             }
-            GUIWindow::uninstall_window_event_handler(&input_adapter);
             if (path.empty())
             {
                 return E_FAILURE;

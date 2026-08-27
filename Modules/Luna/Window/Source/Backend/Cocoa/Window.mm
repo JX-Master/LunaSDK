@@ -15,6 +15,7 @@
 #include <Luna/Runtime/TSAssert.hpp>
 #include <Luna/Runtime/HashMap.hpp>
 #include "../../../Event.hpp"
+#include "../../Cocoa/ApplicationMenu.h"
 #include "EventDispatching.h"
 #import <objc/runtime.h>
 
@@ -651,29 +652,20 @@ namespace Luna
                 // Initialize application if not already done
                 [NSApplication sharedApplication];
                 [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-                
-                return ok;
+                return cocoa_application_menu_platform_init(get_app_name());
             }
         }
 
         void platform_close()
-        {   
-            
+        {
+            cocoa_application_menu_platform_close();
         }
 
         StartupParams g_startup_params;
 
         LUNA_WINDOW_API void set_startup_params(const StartupParams& params)
-		{
-			g_startup_params = params;
-		}
-        LUNA_WINDOW_API const c8* get_app_name()
         {
-            return g_startup_params.name;
-        }
-        LUNA_RUNTIME_API Version get_app_version()
-        {
-            return g_startup_params.version;
+            g_startup_params = params;
         }
 
         LUNA_WINDOW_API R<Ref<IWindow>> new_window(const c8* title, 

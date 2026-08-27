@@ -19,6 +19,9 @@
 
 #include <Luna/VFS/VFS.hpp>
 #include <Luna/Window/MessageBox.hpp>
+#if defined(LUNA_PLATFORM_MACOS)
+#include <Luna/Window/ApplicationMenu.hpp>
+#endif
 
 #include "Camera.hpp"
 #include "Transform.hpp"
@@ -52,6 +55,68 @@ namespace Luna
 
     namespace
     {
+#if defined(LUNA_PLATFORM_MACOS)
+        constexpr Window::application_menu_item_id_t MENU_ITEM_SAVE_ALL = 1;
+        constexpr Window::application_menu_item_id_t MENU_ITEM_UNDO = 2;
+        constexpr Window::application_menu_item_id_t MENU_ITEM_REDO = 3;
+        constexpr Window::application_menu_item_id_t MENU_ITEM_ASSET_BROWSER_1 = 101;
+        constexpr Window::application_menu_item_id_t MENU_ITEM_ASSET_BROWSER_2 = 102;
+        constexpr Window::application_menu_item_id_t MENU_ITEM_ASSET_BROWSER_3 = 103;
+        constexpr Window::application_menu_item_id_t MENU_ITEM_ASSET_BROWSER_4 = 104;
+        constexpr Window::application_menu_item_id_t MENU_ITEM_MEMORY_PROFILER = 105;
+
+        Window::ApplicationMenuItemDesc menu_command(const c8* title,
+            Window::application_menu_item_id_t id, KeyCode shortcut_key = KeyCode::unknown,
+            Window::KeyModifierFlag shortcut_modifiers = Window::KeyModifierFlag::none)
+        {
+            Window::ApplicationMenuItemDesc desc;
+            desc.title = title;
+            desc.id = id;
+            desc.shortcut_key = shortcut_key;
+            desc.shortcut_modifiers = shortcut_modifiers;
+            return desc;
+        }
+
+        Window::ApplicationMenuItemDesc standard_menu_command(Window::ApplicationMenuItemRole role,
+            KeyCode shortcut_key = KeyCode::unknown,
+            Window::KeyModifierFlag shortcut_modifiers = Window::KeyModifierFlag::none)
+        {
+            Window::ApplicationMenuItemDesc desc;
+            desc.role = role;
+            desc.shortcut_key = shortcut_key;
+            desc.shortcut_modifiers = shortcut_modifiers;
+            return desc;
+        }
+
+        Window::ApplicationMenuItemDesc menu_separator()
+        {
+            Window::ApplicationMenuItemDesc desc;
+            desc.type = Window::ApplicationMenuItemType::separator;
+            return desc;
+        }
+
+        Window::ApplicationMenuItemDesc menu_submenu(const c8* title,
+            Span<const Window::ApplicationMenuItemDesc> children,
+            Window::ApplicationMenuItemRole role = Window::ApplicationMenuItemRole::none)
+        {
+            Window::ApplicationMenuItemDesc desc;
+            desc.type = Window::ApplicationMenuItemType::submenu;
+            desc.role = role;
+            desc.title = title;
+            desc.children = children;
+            return desc;
+        }
+
+        Window::ApplicationMenuItemState menu_item_state(bool enabled, bool checked = false)
+        {
+            Window::ApplicationMenuItemState state;
+            state.enabled = enabled;
+            state.check_state = checked ? Window::ApplicationMenuItemCheckState::checked :
+                Window::ApplicationMenuItemCheckState::none;
+            return state;
+        }
+#else
+
         GUI::LayoutConfig fixed_height_layout(f32 height)
         {
             GUI::LayoutConfig layout;
@@ -61,6 +126,7 @@ namespace Luna
             layout.height.value = height;
             return layout;
         }
+#endif
 
         GUI::LayoutConfig fill_layout()
         {
@@ -74,6 +140,7 @@ namespace Luna
         }
     }
 
+#if !defined(LUNA_PLATFORM_MACOS)
     void MainEditor::draw_main_menu_bar(GUI::IContext* context, const RectF& rect)
     {
         luassert(context);
@@ -130,6 +197,7 @@ namespace Luna
         }
         context->pop_data_scope();
     }
+#endif
 
     bool MainEditor::draw_asset_editor(IAssetEditor* editor, GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
@@ -140,6 +208,148 @@ namespace Luna
         editor->on_render(context, layout);
         return true;
     }
+
+    bool MainEditor::confirm_exit()
+    {
+        if(!has_any_unsaved_changes())
+        {
+            return true;
+        }
+        constexpr usize SAVE_BUTTON_INDEX = 0;
+        constexpr usize CANCEL_BUTTON_INDEX = 2;
+        auto r = Window::message_box("Save changes before closing the current project?", APP_NAME,
+            {"Save", "Don't Save", "Cancel"}, Window::MessageBoxIcon::question,
+            SAVE_BUTTON_INDEX, CANCEL_BUTTON_INDEX);
+        if(failed(r) || r.get() == CANCEL_BUTTON_INDEX)
+        {
+            return false;
+        }
+        if(r.get() == SAVE_BUTTON_INDEX)
+        {
+            return succeeded(save_all());
+        }
+        return true;
+    }
+
+#if defined(LUNA_PLATFORM_MACOS)
+    RV MainEditor::install_application_menu()
+    {
+        Window::ApplicationMenuItemDesc app_items[] =
+        {
+            standard_menu_command(Window::ApplicationMenuItemRole::about),
+            menu_separator(),
+            menu_submenu(nullptr, {}, Window::ApplicationMenuItemRole::services),
+            menu_separator(),
+            standard_menu_command(Window::ApplicationMenuItemRole::hide,
+                KeyCode::h, Window::KeyModifierFlag::system),
+            standard_menu_command(Window::ApplicationMenuItemRole::hide_others,
+                KeyCode::h, Window::KeyModifierFlag::system | Window::KeyModifierFlag::alt),
+            standard_menu_command(Window::ApplicationMenuItemRole::show_all),
+            menu_separator(),
+            standard_menu_command(Window::ApplicationMenuItemRole::quit,
+                KeyCode::q, Window::KeyModifierFlag::system),
+        };
+
+        Window::ApplicationMenuItemDesc file_items[] =
+        {
+            menu_command("Save All", MENU_ITEM_SAVE_ALL, KeyCode::s,
+                Window::KeyModifierFlag::system | Window::KeyModifierFlag::alt),
+        };
+        file_items[0].state = menu_item_state(has_any_unsaved_changes());
+
+        Window::ApplicationMenuItemDesc edit_items[] =
+        {
+            menu_command("Undo", MENU_ITEM_UNDO, KeyCode::z, Window::KeyModifierFlag::system),
+            menu_command("Redo", MENU_ITEM_REDO, KeyCode::z,
+                Window::KeyModifierFlag::system | Window::KeyModifierFlag::shift),
+        };
+        edit_items[0].state = menu_item_state(can_undo());
+        edit_items[1].state = menu_item_state(can_redo());
+
+        Window::ApplicationMenuItemDesc view_items[] =
+        {
+            menu_command("Asset Browser 0", MENU_ITEM_ASSET_BROWSER_1),
+            menu_command("Asset Browser 1", MENU_ITEM_ASSET_BROWSER_2),
+            menu_command("Asset Browser 2", MENU_ITEM_ASSET_BROWSER_3),
+            menu_command("Asset Browser 3", MENU_ITEM_ASSET_BROWSER_4),
+            menu_command("Memory Profiler", MENU_ITEM_MEMORY_PROFILER),
+        };
+        for(usize i = 0; i < 4; ++i)
+        {
+            view_items[i].state = menu_item_state(true, m_asset_browsers_enabled[i]);
+        }
+        view_items[4].state = menu_item_state(true, m_memory_profiler_window_enabled);
+
+        Window::ApplicationMenuItemDesc main_items[] =
+        {
+            menu_submenu(APP_NAME, Span<const Window::ApplicationMenuItemDesc>(app_items, 9)),
+            menu_submenu("File", Span<const Window::ApplicationMenuItemDesc>(file_items, 1)),
+            menu_submenu("Edit", Span<const Window::ApplicationMenuItemDesc>(edit_items, 2)),
+            menu_submenu("View", Span<const Window::ApplicationMenuItemDesc>(view_items, 5)),
+            menu_submenu(nullptr, {}, Window::ApplicationMenuItemRole::window_menu),
+            menu_submenu(nullptr, {}, Window::ApplicationMenuItemRole::help_menu),
+        };
+        Window::ApplicationMenuDesc desc;
+        desc.items = Span<const Window::ApplicationMenuItemDesc>(main_items, 6);
+        lutry
+        {
+            luexp(Window::set_application_menu(desc));
+            m_application_menu_save_all_enabled = file_items[0].state.enabled;
+            m_application_menu_undo_enabled = edit_items[0].state.enabled;
+            m_application_menu_redo_enabled = edit_items[1].state.enabled;
+            for(usize i = 0; i < 4; ++i)
+            {
+                m_application_menu_asset_browsers_checked[i] = m_asset_browsers_enabled[i];
+            }
+            m_application_menu_memory_profiler_checked = m_memory_profiler_window_enabled;
+        }
+        lucatchret;
+        return ok;
+    }
+
+    RV MainEditor::update_application_menu_state()
+    {
+        lutry
+        {
+            bool save_all_enabled = has_any_unsaved_changes();
+            if(save_all_enabled != m_application_menu_save_all_enabled)
+            {
+                luexp(Window::set_application_menu_item_state(MENU_ITEM_SAVE_ALL,
+                    menu_item_state(save_all_enabled)));
+                m_application_menu_save_all_enabled = save_all_enabled;
+            }
+            bool undo_enabled = can_undo();
+            if(undo_enabled != m_application_menu_undo_enabled)
+            {
+                luexp(Window::set_application_menu_item_state(MENU_ITEM_UNDO, menu_item_state(undo_enabled)));
+                m_application_menu_undo_enabled = undo_enabled;
+            }
+            bool redo_enabled = can_redo();
+            if(redo_enabled != m_application_menu_redo_enabled)
+            {
+                luexp(Window::set_application_menu_item_state(MENU_ITEM_REDO, menu_item_state(redo_enabled)));
+                m_application_menu_redo_enabled = redo_enabled;
+            }
+            for(usize i = 0; i < 4; ++i)
+            {
+                if(m_asset_browsers_enabled[i] != m_application_menu_asset_browsers_checked[i])
+                {
+                    luexp(Window::set_application_menu_item_state(MENU_ITEM_ASSET_BROWSER_1 + i,
+                        menu_item_state(true, m_asset_browsers_enabled[i])));
+                    m_application_menu_asset_browsers_checked[i] = m_asset_browsers_enabled[i];
+                }
+            }
+            if(m_memory_profiler_window_enabled != m_application_menu_memory_profiler_checked)
+            {
+                luexp(Window::set_application_menu_item_state(MENU_ITEM_MEMORY_PROFILER,
+                    menu_item_state(true, m_memory_profiler_window_enabled)));
+                m_application_menu_memory_profiler_checked = m_memory_profiler_window_enabled;
+            }
+        }
+        lucatchret;
+        return ok;
+    }
+#endif
 
     RV MainEditor::init(const Path& project_path)
     {
@@ -171,30 +381,48 @@ namespace Luna
             Window::set_event_handler([](object_t event, void* userdata){
                 MainEditor* editor = (MainEditor*)userdata;
                 GUIWindow::handle_window_event(event, editor->m_window, editor->m_gui);
+#if defined(LUNA_PLATFORM_MACOS)
+                if(auto e = cast_object<Window::ApplicationMenuItemInvokedEvent>(event))
+                {
+                    switch(e->item_id)
+                    {
+                    case MENU_ITEM_SAVE_ALL:
+                    {
+                        auto _ = editor->save_all();
+                        break;
+                    }
+                    case MENU_ITEM_UNDO:
+                        if(editor->can_undo()) editor->undo();
+                        break;
+                    case MENU_ITEM_REDO:
+                        if(editor->can_redo()) editor->redo();
+                        break;
+                    case MENU_ITEM_ASSET_BROWSER_1:
+                    case MENU_ITEM_ASSET_BROWSER_2:
+                    case MENU_ITEM_ASSET_BROWSER_3:
+                    case MENU_ITEM_ASSET_BROWSER_4:
+                    {
+                        usize index = (usize)(e->item_id - MENU_ITEM_ASSET_BROWSER_1);
+                        editor->m_asset_browsers_enabled[index] = !editor->m_asset_browsers_enabled[index];
+                        break;
+                    }
+                    case MENU_ITEM_MEMORY_PROFILER:
+                        editor->m_memory_profiler_window_enabled = !editor->m_memory_profiler_window_enabled;
+                        break;
+                    default:
+                        break;
+                    }
+                }
+                if(auto e = cast_object<Window::ApplicationRequestQuitEvent>(event))
+                {
+                    e->do_quit = editor->confirm_exit();
+                }
+#endif
                 if(auto e = cast_object<Window::WindowRequestCloseEvent>(event))
                 {
                     if(e->window == editor->m_window)
                     {
-                        bool should_close = true;
-                        if(editor->has_any_unsaved_changes())
-                        {
-                            auto r = Window::message_box("Save changes before closing the current project?", APP_NAME, Window::MessageBoxType::yes_no_cancel, Window::MessageBoxIcon::question);
-                            luassert_always(succeeded(r));
-                            if(r.get() == Window::MessageBoxButton::cancel)
-                            {
-                                should_close = false;
-                            }
-                            else if(r.get() == Window::MessageBoxButton::yes)
-                            {
-                                // Save document.
-                                RV ret = editor->save_all();
-                                if(failed(ret))
-                                {
-                                    should_close = false;
-                                }
-                            }
-                        }
-                        e->do_close = should_close;
+                        e->do_close = editor->confirm_exit();
                     }
                 }
             }, this);
@@ -255,6 +483,10 @@ namespace Luna
             luexp(register_buffer_visualization_pass());
 
             register_enum_type<SceneRendererMode>();
+
+#if defined(LUNA_PLATFORM_MACOS)
+            luexp(install_application_menu());
+#endif
         }
         lucatchret;
         return ok;
@@ -264,11 +496,24 @@ namespace Luna
     {
         Window::poll_events();
 
+#if defined(LUNA_PLATFORM_MACOS)
+        if(Window::is_application_quit_requested())
+        {
+            m_exiting = true;
+            return ok;
+        }
+#endif
         if (m_window->is_closed())
         {
             m_exiting = true;
             return ok;
         }
+#if defined(LUNA_PLATFORM_MACOS)
+        {
+            RV r = update_application_menu_state();
+            if(failed(r)) return r;
+        }
+#endif
         if (m_window->is_minimized())
         {
             sleep(100);
@@ -295,14 +540,17 @@ namespace Luna
             m_gui->begin_frame(gui_frame);
             GUIWindow::update_input(m_window, m_gui);
 
-            constexpr f32 menu_height = 34.0f;
             RectF screen_rect(0.0f, 0.0f, (f32)sz.x, (f32)sz.y);
+#if !defined(LUNA_PLATFORM_MACOS)
+            constexpr f32 menu_height = 34.0f;
             RectF menu_rect(0.0f, 0.0f, (f32)sz.x, min(menu_height, (f32)sz.y));
-            RectF dock_rect(0.0f, menu_rect.height, (f32)sz.x, max((f32)sz.y - menu_rect.height, 0.0f));
+#endif
 
             m_gui->push_layer(m_gui->make_id("studio_root_layer"), Float2U(0.0f));
             GUI::ElementHandle root = EditorGUI::begin_v_layout(m_gui, m_gui->make_id("studio_root"), "Studio Root");
+#if !defined(LUNA_PLATFORM_MACOS)
             draw_main_menu_bar(m_gui, menu_rect);
+#endif
 
             GUI::ElementHandle dock_space = EditorGUI::begin_dock_space(m_gui, m_gui->make_id("studio_dock_space"),
                 "Studio DockSpace", fill_layout());
@@ -363,6 +611,10 @@ namespace Luna
     }
     void MainEditor::close()
     {
+#if defined(LUNA_PLATFORM_MACOS)
+        auto _ = Window::reset_application_menu();
+#endif
+        Window::set_event_handler(nullptr, nullptr);
         unregister_profiler_callback(m_memory_profiler_callback_handle);
     }
     RV MainEditor::save_all()
@@ -378,7 +630,7 @@ namespace Luna
                     ret = r;
                     String errmsg;
                     strprintf(errmsg, "Failed to save asset %s: %s", Asset::get_asset_path(asset.first).encode().c_str(), explain(r.errcode()));
-                    auto _ = Window::message_box(errmsg.c_str(), APP_NAME, Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                    auto _ = Window::message_box(errmsg.c_str(), APP_NAME, {"OK"}, Window::MessageBoxIcon::error);
                 }
             }
         }
@@ -493,7 +745,7 @@ namespace Luna
         }
         lucatch
         {
-            auto _ = Window::message_box(explain(luerr), "Editor Crashed.", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+            auto _ = Window::message_box(explain(luerr), "Editor Crashed.", {"OK"}, Window::MessageBoxIcon::error);
             return;
         }
         Asset::close();

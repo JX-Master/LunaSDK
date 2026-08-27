@@ -78,7 +78,7 @@ namespace Luna
                 }
                 lucatch
                 {
-                    auto _ = Window::message_box(explain(luerr), "Failed to save asset", Window::MessageBoxType::ok,
+                    auto _ = Window::message_box(explain(luerr), "Failed to save asset", {"OK"},
                         Window::MessageBoxIcon::error);
                 }
             }

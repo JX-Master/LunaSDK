@@ -10,6 +10,9 @@
 #pragma once
 #include "Window.hpp"
 #include "Application.hpp"
+#if defined(LUNA_PLATFORM_MACOS)
+#include "ApplicationMenu.hpp"
+#endif
 #include <Luna/HID/KeyCode.hpp>
 #include "Event.generated.hpp"
 #ifndef LUNA_WINDOW_API
@@ -37,6 +40,16 @@ namespace Luna
         //! @param[in] wait_events Whether to suspend the current thread until one event is 
         //! fetched if the event queue is empty.
         LUNA_WINDOW_API void poll_events(bool wait_events = false);
+
+#if defined(LUNA_PLATFORM_MACOS)
+        //! Checks whether a macOS application quit request was accepted by the event handler.
+        //! @return Returns `true` if a quit request was accepted since the Window module was initialized.
+        //! @remark An accepted quit request remains set until the Window module is reinitialized. The application
+        //! should observe this state, release its resources and return normally through `luna_main`.
+        //! @par Valid Usage
+        //! * This function must be called from the main thread after the Window module is initialized.
+        LUNA_WINDOW_API bool is_application_quit_requested();
+#endif
 
         //! The base class for all events dispatched by to a specific window.
         struct [[luna::struct("749dcf28-511b-430f-810e-e09bcd98652f")]] WindowEvent
@@ -285,6 +298,29 @@ namespace Luna
         struct [[luna::struct("ce988e37-c317-4fac-8538-726df3a6a62b")]] ApplicationEvent
         {
         };
+
+#if defined(LUNA_PLATFORM_MACOS)
+        //! Dispatched when the user invokes one application-defined menu item.
+        //! @par Default Behavior
+        //! Do nothing.
+        struct [[luna::struct("5a2acc84-ecde-443c-b75d-63de9c5b8150")]] ApplicationMenuItemInvokedEvent : ApplicationEvent
+        {
+            //! The identifier of the invoked menu item.
+            application_menu_item_id_t item_id = 0;
+        };
+
+        //! Dispatched when the user or platform requests the application to quit.
+        //! @details The application can reject the request, for example while prompting the user to save unsaved
+        //! work. An accepted request is recorded and can be queried by @ref is_application_quit_requested.
+        //! @par Default Behavior
+        //! Accept the request.
+        struct [[luna::struct("7beab768-33a0-46f2-be2b-daea476a157f")]] ApplicationRequestQuitEvent : ApplicationEvent
+        {
+            //! Set this to `true` to accept the quit request, or `false` to reject it.
+            //! The default value is `true`.
+            bool do_quit = true;
+        };
+#endif
 
         //! Dispatched when the application has entered foreground.
         struct [[luna::struct("5bb08e54-ac48-47be-9487-4221dcb26d6d")]] ApplicationDidEnterForegroundEvent : ApplicationEvent

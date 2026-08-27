@@ -15,6 +15,14 @@ namespace Luna
     namespace Window
     {
         void dispatch_event_to_handler(object_t event);
+#if defined(LUNA_PLATFORM_MACOS)
+        // Dispatches one application-defined menu command through the Window event handler.
+        void dispatch_application_menu_item_invoked(application_menu_item_id_t item_id);
+        // Dispatches one cancelable quit request and returns whether it was accepted.
+        bool dispatch_application_quit_request();
+        // Clears the sticky accepted quit-request state.
+        void reset_application_quit_request();
+#endif
         // Used to check whether any event is dispatched in the current event iteration.
         // If this is false and wait_events is true when calling poll_events, we should wait for the event.
         // This is used only for iOS and Android, since Windows/macOS has native API for waiting events.
