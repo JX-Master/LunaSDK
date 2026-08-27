@@ -29,6 +29,9 @@
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Window/Window.hpp>
+#if defined(LUNA_PLATFORM_MACOS)
+#include <Luna/Window/ApplicationMenu.hpp>
+#endif
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -37,8 +40,68 @@ using namespace Luna;
 
 namespace
 {
+    constexpr c8 APP_NAME[] = "Luna GameGUI Editor";
     constexpr u32 PREVIEW_WIDTH = 640;
     constexpr u32 PREVIEW_HEIGHT = 480;
+
+#if defined(LUNA_PLATFORM_MACOS)
+    constexpr Window::application_menu_item_id_t MENU_ITEM_NEW = 1;
+    constexpr Window::application_menu_item_id_t MENU_ITEM_OPEN = 2;
+    constexpr Window::application_menu_item_id_t MENU_ITEM_SAVE = 3;
+    constexpr Window::application_menu_item_id_t MENU_ITEM_SAVE_AS = 4;
+    constexpr Window::application_menu_item_id_t MENU_ITEM_CLOSE = 5;
+    constexpr Window::application_menu_item_id_t MENU_ITEM_UNDO = 6;
+    constexpr Window::application_menu_item_id_t MENU_ITEM_REDO = 7;
+
+    Window::ApplicationMenuItemDesc menu_command(const c8* title,
+        Window::application_menu_item_id_t id, KeyCode shortcut_key = KeyCode::unknown,
+        Window::KeyModifierFlag shortcut_modifiers = Window::KeyModifierFlag::none)
+    {
+        Window::ApplicationMenuItemDesc desc;
+        desc.title = title;
+        desc.id = id;
+        desc.shortcut_key = shortcut_key;
+        desc.shortcut_modifiers = shortcut_modifiers;
+        return desc;
+    }
+
+    Window::ApplicationMenuItemDesc standard_menu_command(Window::ApplicationMenuItemRole role,
+        KeyCode shortcut_key = KeyCode::unknown,
+        Window::KeyModifierFlag shortcut_modifiers = Window::KeyModifierFlag::none)
+    {
+        Window::ApplicationMenuItemDesc desc;
+        desc.role = role;
+        desc.shortcut_key = shortcut_key;
+        desc.shortcut_modifiers = shortcut_modifiers;
+        return desc;
+    }
+
+    Window::ApplicationMenuItemDesc menu_separator()
+    {
+        Window::ApplicationMenuItemDesc desc;
+        desc.type = Window::ApplicationMenuItemType::separator;
+        return desc;
+    }
+
+    Window::ApplicationMenuItemDesc menu_submenu(const c8* title,
+        Span<const Window::ApplicationMenuItemDesc> children,
+        Window::ApplicationMenuItemRole role = Window::ApplicationMenuItemRole::none)
+    {
+        Window::ApplicationMenuItemDesc desc;
+        desc.type = Window::ApplicationMenuItemType::submenu;
+        desc.role = role;
+        desc.title = title;
+        desc.children = children;
+        return desc;
+    }
+
+    Window::ApplicationMenuItemState menu_item_state(bool enabled)
+    {
+        Window::ApplicationMenuItemState state;
+        state.enabled = enabled;
+        return state;
+    }
+#endif
 
     GUI::LayoutConfig fill_layout()
     {
@@ -149,6 +212,23 @@ namespace
         Variant schema;
     };
 
+    EditorGUI::IconName node_type_icon(const NodeTypeView& type)
+    {
+        const c8* kind = type.schema.type() == VariantType::object ?
+            type.schema["kind"].c_str("") : "";
+        if(!strcmp(kind, "flex")) return EditorGUI::IconName::rows;
+        if(!strcmp(kind, "canvas")) return EditorGUI::IconName::frame_corners;
+        if(!strcmp(kind, "panel")) return EditorGUI::IconName::squares_four;
+        if(!strcmp(kind, "text")) return EditorGUI::IconName::cursor_text;
+        if(!strcmp(kind, "button")) return EditorGUI::IconName::cursor_click;
+        if(!strcmp(kind, "asset_instance")) return EditorGUI::IconName::package;
+        if(!strcmp(type.category.c_str(), "Layout")) return EditorGUI::IconName::grid_four;
+        if(!strcmp(type.category.c_str(), "Visual")) return EditorGUI::IconName::eye;
+        if(!strcmp(type.category.c_str(), "Input")) return EditorGUI::IconName::hand_tap;
+        if(!strcmp(type.category.c_str(), "Composition")) return EditorGUI::IconName::stack;
+        return EditorGUI::IconName::plus;
+    }
+
     struct NodeHit
     {
         Guid node;
@@ -211,6 +291,11 @@ namespace
         u32 width = 0;
         u32 height = 0;
         i32 max_frames = -1;
+#if defined(LUNA_PLATFORM_MACOS)
+        bool application_menu_has_document = false;
+        bool application_menu_can_undo = false;
+        bool application_menu_can_redo = false;
+#endif
 
         RV init();
         RV run();
@@ -229,7 +314,9 @@ namespace
         RV build_preview(DocumentView& document, Span<const GUI::InputEvent> input);
         RV render_frame(DocumentView* preview_document);
         GUI::ElementHandle build_editor(UIHandles& handles);
+#if !defined(LUNA_PLATFORM_MACOS)
         void build_main_menu_bar(UIHandles& handles);
+#endif
         void build_hierarchy_panel(UIHandles& handles);
         void build_palette_panel(UIHandles& handles);
         void build_document_panel(UIHandles& handles);
@@ -241,8 +328,16 @@ namespace
         void apply_inspector_changes(DocumentView& document);
         void remove_document_view(u64 id);
         bool has_dirty_documents() const;
+        bool confirm_exit();
         void request_close(DocumentView& document, bool discard);
         void save(DocumentView& document, bool save_as);
+        void undo_document(DocumentView& document);
+        void redo_document(DocumentView& document);
+#if defined(LUNA_PLATFORM_MACOS)
+        RV install_application_menu();
+        RV update_application_menu_state();
+        void handle_application_menu_item(Window::application_menu_item_id_t id);
+#endif
     };
 
     String property_text(const Variant& value)
@@ -475,6 +570,185 @@ namespace
         return params;
     }
 
+    bool EditorApp::confirm_exit()
+    {
+        if(!has_dirty_documents()) return true;
+        constexpr usize DISCARD_BUTTON_INDEX = 0;
+        constexpr usize CANCEL_BUTTON_INDEX = 1;
+        const c8* buttons[] = {"Discard Changes", "Cancel"};
+        auto response = Window::message_box(
+            "There are unsaved changes. Discard them and quit?", "Unsaved Changes",
+            Span<const c8*>(buttons, 2), Window::MessageBoxIcon::warning,
+            DISCARD_BUTTON_INDEX, CANCEL_BUTTON_INDEX);
+        if(!response.valid())
+        {
+            error_message = explain(response.errcode());
+            return false;
+        }
+        return response.get() == DISCARD_BUTTON_INDEX;
+    }
+
+    void EditorApp::undo_document(DocumentView& document)
+    {
+        if(!document.can_undo) return;
+        Variant result;
+        if(invoke(GameGUIEditor::UNDO_URL, editing_params(document), result))
+            refresh_snapshot(document);
+    }
+
+    void EditorApp::redo_document(DocumentView& document)
+    {
+        if(!document.can_redo) return;
+        Variant result;
+        if(invoke(GameGUIEditor::REDO_URL, editing_params(document), result))
+            refresh_snapshot(document);
+    }
+
+#if defined(LUNA_PLATFORM_MACOS)
+    RV EditorApp::install_application_menu()
+    {
+        Window::ApplicationMenuItemDesc app_items[] =
+        {
+            standard_menu_command(Window::ApplicationMenuItemRole::about),
+            menu_separator(),
+            menu_submenu(nullptr, {}, Window::ApplicationMenuItemRole::services),
+            menu_separator(),
+            standard_menu_command(Window::ApplicationMenuItemRole::hide,
+                KeyCode::h, Window::KeyModifierFlag::system),
+            standard_menu_command(Window::ApplicationMenuItemRole::hide_others,
+                KeyCode::h, Window::KeyModifierFlag::system | Window::KeyModifierFlag::alt),
+            standard_menu_command(Window::ApplicationMenuItemRole::show_all),
+            menu_separator(),
+            standard_menu_command(Window::ApplicationMenuItemRole::quit,
+                KeyCode::q, Window::KeyModifierFlag::system),
+        };
+
+        Window::ApplicationMenuItemDesc file_items[] =
+        {
+            menu_command("New", MENU_ITEM_NEW, KeyCode::n, Window::KeyModifierFlag::system),
+            menu_command("Open...", MENU_ITEM_OPEN, KeyCode::o, Window::KeyModifierFlag::system),
+            menu_separator(),
+            menu_command("Save", MENU_ITEM_SAVE, KeyCode::s, Window::KeyModifierFlag::system),
+            menu_command("Save As...", MENU_ITEM_SAVE_AS, KeyCode::s,
+                Window::KeyModifierFlag::system | Window::KeyModifierFlag::shift),
+            menu_separator(),
+            menu_command("Close", MENU_ITEM_CLOSE, KeyCode::w, Window::KeyModifierFlag::system),
+        };
+        DocumentView* document = active_document();
+        bool has_document = document != nullptr;
+        file_items[3].state = menu_item_state(has_document);
+        file_items[4].state = menu_item_state(has_document);
+        file_items[6].state = menu_item_state(has_document);
+
+        Window::ApplicationMenuItemDesc edit_items[] =
+        {
+            menu_command("Undo", MENU_ITEM_UNDO, KeyCode::z, Window::KeyModifierFlag::system),
+            menu_command("Redo", MENU_ITEM_REDO, KeyCode::z,
+                Window::KeyModifierFlag::system | Window::KeyModifierFlag::shift),
+        };
+        edit_items[0].state = menu_item_state(document && document->can_undo);
+        edit_items[1].state = menu_item_state(document && document->can_redo);
+
+        Window::ApplicationMenuItemDesc main_items[] =
+        {
+            menu_submenu(APP_NAME, Span<const Window::ApplicationMenuItemDesc>(app_items, 9)),
+            menu_submenu("File", Span<const Window::ApplicationMenuItemDesc>(file_items, 7)),
+            menu_submenu("Edit", Span<const Window::ApplicationMenuItemDesc>(edit_items, 2)),
+            menu_submenu(nullptr, {}, Window::ApplicationMenuItemRole::window_menu),
+            menu_submenu(nullptr, {}, Window::ApplicationMenuItemRole::help_menu),
+        };
+        Window::ApplicationMenuDesc desc;
+        desc.items = Span<const Window::ApplicationMenuItemDesc>(main_items, 5);
+        lutry
+        {
+            luexp(Window::set_application_menu(desc));
+            application_menu_has_document = has_document;
+            application_menu_can_undo = document && document->can_undo;
+            application_menu_can_redo = document && document->can_redo;
+        }
+        lucatchret;
+        return ok;
+    }
+
+    RV EditorApp::update_application_menu_state()
+    {
+        DocumentView* document = active_document();
+        bool has_document = document != nullptr;
+        bool can_undo = document && document->can_undo;
+        bool can_redo = document && document->can_redo;
+        lutry
+        {
+            if(has_document != application_menu_has_document)
+            {
+                Window::ApplicationMenuItemState state = menu_item_state(has_document);
+                luexp(Window::set_application_menu_item_state(MENU_ITEM_SAVE, state));
+                luexp(Window::set_application_menu_item_state(MENU_ITEM_SAVE_AS, state));
+                luexp(Window::set_application_menu_item_state(MENU_ITEM_CLOSE, state));
+                application_menu_has_document = has_document;
+            }
+            if(can_undo != application_menu_can_undo)
+            {
+                luexp(Window::set_application_menu_item_state(MENU_ITEM_UNDO,
+                    menu_item_state(can_undo)));
+                application_menu_can_undo = can_undo;
+            }
+            if(can_redo != application_menu_can_redo)
+            {
+                luexp(Window::set_application_menu_item_state(MENU_ITEM_REDO,
+                    menu_item_state(can_redo)));
+                application_menu_can_redo = can_redo;
+            }
+        }
+        lucatchret;
+        return ok;
+    }
+
+    void EditorApp::handle_application_menu_item(Window::application_menu_item_id_t id)
+    {
+        switch(id)
+        {
+        case MENU_ITEM_NEW:
+            create_document();
+            break;
+        case MENU_ITEM_OPEN:
+            open_document();
+            break;
+        case MENU_ITEM_SAVE:
+        {
+            DocumentView* document = active_document();
+            if(document) save(*document, false);
+            break;
+        }
+        case MENU_ITEM_SAVE_AS:
+        {
+            DocumentView* document = active_document();
+            if(document) save(*document, true);
+            break;
+        }
+        case MENU_ITEM_CLOSE:
+        {
+            DocumentView* document = active_document();
+            if(document) request_close(*document, false);
+            break;
+        }
+        case MENU_ITEM_UNDO:
+        {
+            DocumentView* document = active_document();
+            if(document) undo_document(*document);
+            break;
+        }
+        case MENU_ITEM_REDO:
+        {
+            DocumentView* document = active_document();
+            if(document) redo_document(*document);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+#endif
+
     void EditorApp::save(DocumentView& document, bool save_as)
     {
         Variant params = editing_params(document);
@@ -618,18 +892,8 @@ namespace
 
             if(EditorGUI::is_item_clicked(gui, handles.save_document)) save(*document, false);
             if(EditorGUI::is_item_clicked(gui, handles.save_as_document)) save(*document, true);
-            if(EditorGUI::is_item_clicked(gui, handles.undo) && document->can_undo)
-            {
-                Variant result;
-                if(invoke(GameGUIEditor::UNDO_URL, editing_params(*document), result))
-                    refresh_snapshot(*document);
-            }
-            if(EditorGUI::is_item_clicked(gui, handles.redo) && document->can_redo)
-            {
-                Variant result;
-                if(invoke(GameGUIEditor::REDO_URL, editing_params(*document), result))
-                    refresh_snapshot(*document);
-            }
+            if(EditorGUI::is_item_clicked(gui, handles.undo)) undo_document(*document);
+            if(EditorGUI::is_item_clicked(gui, handles.redo)) redo_document(*document);
             if(EditorGUI::is_item_clicked(gui, handles.close_document))
                 request_close(*document, false);
 
@@ -721,6 +985,10 @@ namespace
             while(true)
             {
                 Window::poll_events();
+#if defined(LUNA_PLATFORM_MACOS)
+                if(Window::is_application_quit_requested()) break;
+                luexp(update_application_menu_state());
+#endif
                 if(window->is_closed()) break;
                 if(window->is_minimized())
                 {
@@ -802,6 +1070,9 @@ namespace
                 ++frame_index;
                 if(max_frames >= 0 && frame_index >= max_frames) break;
             }
+#if defined(LUNA_PLATFORM_MACOS)
+            auto _ = Window::reset_application_menu();
+#endif
             GUIWindow::uninstall_window_event_handler(&input_adapter);
             Window::set_event_handler(nullptr, nullptr);
             service.reset();
@@ -838,6 +1109,9 @@ int luna_main(int argc, const char* argv[])
         GameGUI::module_game_gui(),
         Frontend::module_frontend()
     }));
+    Window::StartupParams startup_params;
+    startup_params.name = APP_NAME;
+    Window::set_startup_params(startup_params);
     lupanic_if_failed(init_modules());
     {
         EditorApp app;
@@ -906,25 +1180,44 @@ namespace
     {
         if(!EditorGUI::begin_dock_panel(gui, gui->make_id("panel.palette"),
             "Node Palette")) return;
-        GUI::ElementHandle root = EditorGUI::begin_v_layout(gui,
-            gui->make_id("palette.root"), "Palette Root", fill_layout());
-        EditorGUI::text(gui, gui->make_id("palette.help"),
-            "Click a registered type to add it under the selected node.", fill_width(38.0f));
         EditorGUI::ScrollViewDesc scroll_desc;
-        scroll_desc.horizontal = false;
+        scroll_desc.horizontal = true;
+        scroll_desc.vertical = false;
         EditorGUI::begin_scroll_view(gui, gui->make_id("palette.scroll"),
             "Palette Scroll", fill_layout(), scroll_desc);
+        GUI::LayoutConfig row_config;
+        row_config.width.kind = GUI::SizeKind::fit;
+        row_config.height.kind = GUI::SizeKind::fixed;
+        row_config.height.value = 36.0f;
+        row_config.flex_shrink = 0.0f;
+        GUI::ElementHandle row = EditorGUI::begin_h_layout(gui,
+            gui->make_id("palette.row"), "Palette Row", row_config);
         GUI::id_t scope = gui->make_id("palette.types");
         for(const NodeTypeView& type : node_types)
         {
-            String label;
-            strprintf(label, "%s / %s", type.category.c_str(), type.display_name.c_str());
-            GUI::ElementHandle item = EditorGUI::selectable(gui,
-                guid_gui_id(scope, type.type), label.c_str(), false, fill_width(28.0f));
+            GUI::id_t item_id = guid_gui_id(scope, type.type);
+            GUI::LayoutConfig button_layout = fixed_layout(36.0f, 36.0f);
+            button_layout.padding = Float4U(0.01f);
+            GUI::ElementHandle item = EditorGUI::begin_button(gui, item_id,
+                type.display_name.c_str(), button_layout);
+            EditorGUI::IconDesc icon_desc;
+            icon_desc.size = 20.0f;
+            EditorGUI::icon(gui, GUI::make_scoped_id(item_id, "icon"),
+                node_type_icon(type), fixed_layout(20.0f, 20.0f), icon_desc);
+            EditorGUI::end_button(gui);
+            String tooltip;
+            strprintf(tooltip, "%s / %s", type.category.c_str(), type.display_name.c_str());
+            EditorGUI::set_item_tooltip(gui,
+                guid_gui_id(gui->make_id("palette.tooltips"), type.type), item,
+                tooltip.c_str());
             handles.types.push_back(TypeHit{type.type, item});
         }
+        GUI::FlexLayoutDesc row_flex;
+        row_flex.axis = GUI::LayoutAxis::x;
+        row_flex.cross_alignment = GUI::FlexAlignment::center;
+        row_flex.main_axis_gap = 8.0f;
+        EditorGUI::end_h_layout(gui, row, row_flex);
         EditorGUI::end_scroll_view(gui);
-        EditorGUI::end_v_layout(gui, root);
         EditorGUI::end_dock_panel(gui);
     }
 
@@ -989,6 +1282,7 @@ namespace
         EditorGUI::end_dock_panel(gui);
     }
 
+#if !defined(LUNA_PLATFORM_MACOS)
     void EditorApp::build_main_menu_bar(UIHandles& handles)
     {
         DocumentView* document = active_document();
@@ -1037,6 +1331,7 @@ namespace
         }
         EditorGUI::end_menu_bar(gui, menu_bar);
     }
+#endif
 
     void EditorApp::build_inspector_panel(UIHandles& handles)
     {
@@ -1163,7 +1458,9 @@ namespace
     {
         GUI::ElementHandle root = EditorGUI::begin_v_layout(gui,
             gui->make_id("editor.root"), "GameGUI Editor Root", fill_layout());
+#if !defined(LUNA_PLATFORM_MACOS)
         build_main_menu_bar(handles);
+#endif
         EditorGUI::begin_dock_space(gui,
             gui->make_id("editor.dock_space"), "GameGUI Editor DockSpace", fill_layout());
         build_hierarchy_panel(handles);
@@ -1200,19 +1497,18 @@ namespace
         layout.nodes.resize(9);
         layout.root_node = 0;
         layout.nodes[0].split = true;
-        layout.nodes[0].split_axis = EditorGUI::DockSplitAxis::x;
-        layout.nodes[0].split_ratio = 0.22f;
+        layout.nodes[0].split_axis = EditorGUI::DockSplitAxis::y;
+        layout.nodes[0].split_ratio = 0.10f;
         layout.nodes[0].child0 = 1;
-        layout.nodes[0].child1 = 4;
+        layout.nodes[0].child1 = 2;
+        layout.nodes[1].tabs.push_back(gui->make_id("panel.palette"));
 
-        layout.nodes[1].split = true;
-        layout.nodes[1].split_axis = EditorGUI::DockSplitAxis::y;
-        layout.nodes[1].split_ratio = 0.62f;
-        layout.nodes[1].child0 = 2;
-        layout.nodes[1].child1 = 3;
-        layout.nodes[2].tabs.push_back(gui->make_id("panel.hierarchy"));
-        layout.nodes[3].tabs.push_back(gui->make_id("panel.palette"));
-
+        layout.nodes[2].split = true;
+        layout.nodes[2].split_axis = EditorGUI::DockSplitAxis::x;
+        layout.nodes[2].split_ratio = 0.22f;
+        layout.nodes[2].child0 = 3;
+        layout.nodes[2].child1 = 4;
+        layout.nodes[3].tabs.push_back(gui->make_id("panel.hierarchy"));
         layout.nodes[4].split = true;
         layout.nodes[4].split_axis = EditorGUI::DockSplitAxis::x;
         layout.nodes[4].split_ratio = 0.76f;
@@ -1260,7 +1556,7 @@ namespace
                 workspace_root.encode(PathSeparator::system_preferred).c_str(), "/"));
             luexp(Asset::load_assets_meta("/", true));
 
-            luset(window, Window::new_window("Luna GameGUI Editor",
+            luset(window, Window::new_window(APP_NAME,
                 Window::DEFAULT_POS, Window::DEFAULT_POS, 1440, 960));
             luexp(window->set_foreground());
             RHI::IDevice* device = RHI::get_main_device();
@@ -1316,24 +1612,27 @@ namespace
             Window::set_event_handler([](object_t event, void* userdata)
             {
                 EditorApp* app = (EditorApp*)userdata;
+#if defined(LUNA_PLATFORM_MACOS)
+                if(auto menu_item = cast_object<Window::ApplicationMenuItemInvokedEvent>(event))
+                {
+                    app->handle_application_menu_item(menu_item->item_id);
+                }
+                if(auto quit = cast_object<Window::ApplicationRequestQuitEvent>(event))
+                {
+                    quit->do_quit = app->confirm_exit();
+                }
+#endif
                 if(auto close = cast_object<Window::WindowRequestCloseEvent>(event))
                 {
-                    if(close->window == app->window && app->has_dirty_documents())
-                    {
-                        auto response = Window::message_box(
-                            "There are unsaved changes. Discard them and quit?",
-                            "Unsaved Changes", Window::MessageBoxType::yes_no,
-                            Window::MessageBoxIcon::warning);
-                        close->do_close = response.valid() &&
-                            response.get() == Window::MessageBoxButton::yes;
-                        if(!response.valid())
-                            app->error_message = explain(response.errcode());
-                    }
+                    if(close->window == app->window) close->do_close = app->confirm_exit();
                 }
             }, this);
             input_adapter.window = window;
             input_adapter.gui = gui;
             GUIWindow::install_window_event_handler(&input_adapter);
+#if defined(LUNA_PLATFORM_MACOS)
+            luexp(install_application_menu());
+#endif
         }
         lucatchret;
         return ok;

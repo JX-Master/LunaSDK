@@ -47,7 +47,7 @@ Introduce a new `GUI` layer between `VG` and high-level GUI packages.
 
 `GUI` is a low-level, data-oriented GUI foundation. It provides the foundational functionality needed by GUI systems built with LunaSDK. It must not provide high-level widgets such as buttons, checkboxes, combo boxes, menu items, color editors, or dock panels. Instead, it provides orthogonal primitives that higher-level modules use to build widgets, views, tools, and editors.
 
-The high-level package formerly named `GUI` is named `EditorGUI` and becomes one immediate API package built on top of `GUI`. `EditorGUI` is a GUI component package tailored for data-editing applications such as DCC software, editors, office software, and enterprise administration software. It should favor concise, efficient, editor-style controls over fully customizable game UI visuals. Retained semantic packages may be introduced for game HUDs, console UI, mobile UI, or other domains; [[ADR-0012 Introduce GameGUI and GameGUIEditor]] proposes `GameGUI` as the first such package.
+The high-level package formerly named `GUI` is named `EditorGUI` and becomes one immediate API package built on top of `GUI`. `EditorGUI` is a GUI component package tailored for data-editing applications such as DCC software, editors, office software, and enterprise administration software. It should favor concise, efficient, editor-style controls over fully customizable game UI visuals. Retained semantic packages may be introduced for game HUDs, console UI, mobile UI, or other domains; [[ADR-0014 Introduce GameGUI and GameGUIEditor]] proposes `GameGUI` as the first such package.
 
 The new layering is:
 
@@ -552,7 +552,7 @@ The proposed GameGUIEditor would consume three kinds of schema from GameGUI node
 
 This would let GameGUIEditor present meaningful inspector controls without depending on private runtime element records.
 The complete GameGUI asset, instance and editor-service decisions are recorded in
-[[ADR-0012 Introduce GameGUI and GameGUIEditor]].
+[[ADR-0014 Introduce GameGUI and GameGUIEditor]].
 
 ### Module boundary
 Prefer a separate module:
@@ -580,7 +580,7 @@ context, element execution tree, layout engine, input router or renderer. It mus
 
 The proposed `GameGUIEditor` would use `GameGUI` for editable semantic documents and previews and `EditorGUI` for its
 application chrome. Its service layer would remain independent of `EditorGUI`, window and swap-chain state. The
-complete dependency and service boundary is proposed by [[ADR-0012 Introduce GameGUI and GameGUIEditor]].
+complete dependency and service boundary is proposed by [[ADR-0014 Introduce GameGUI and GameGUIEditor]].
 
 `GUIWindow` adapts Window/HID input and clipboard APIs to `GUI` input interfaces.
 
@@ -669,7 +669,7 @@ DockSpace can remain in the high-level `EditorGUI` layer until core layout and i
 
 Studio should be updated after the corresponding widget groups are migrated. GameGUIEditor is a new application, not
 part of this foundation migration; its implementation plan is defined by
-[[ADR-0012 Introduce GameGUI and GameGUIEditor]].
+[[ADR-0014 Introduce GameGUI and GameGUIEditor]].
 
 #### Phase 8: Remove legacy GUI runtime concepts
 After all migrated EditorGUI APIs build through GUI, remove:
@@ -819,7 +819,7 @@ Mitigations:
     1. GUI element records are frame-runtime data, not stable design data.
     2. GameGUI assets need semantic widgets/views, not low-level draw and interaction records.
     3. Runtime element internals will change more frequently than editable asset format.
-    4. This conflicts with [[ADR-0012 Introduce GameGUI and GameGUIEditor]], which gives GameGUI its own editable
+    4. This conflicts with [[ADR-0014 Introduce GameGUI and GameGUIEditor]], which gives GameGUI its own editable
        semantic node types.
 
 ### Keep high-level widgets as concrete GUI execution-node types
@@ -977,7 +977,7 @@ The name `GUI` identifies the general LunaSDK foundation used by GUI systems. Th
 Until GUI is formally released, architectural refinements to its logical layer, rendering layer, navigation,
 SDF programs, surface model and related core contracts are recorded by revising this ADR rather than creating
 additional GUI-specific ADRs. The version history below preserves when each refinement was adopted.
-High-level package decisions remain separate; [[ADR-0012 Introduce GameGUI and GameGUIEditor]] proposes GameGUI and
+High-level package decisions remain separate; [[ADR-0014 Introduce GameGUI and GameGUIEditor]] proposes GameGUI and
 GameGUIEditor without changing GUI's primitive-only responsibility.
 
 ## Version history

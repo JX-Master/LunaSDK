@@ -2,7 +2,7 @@
 Proposed.
 
 ## Last updated
-2026/8/25
+2026/8/27
 
 ## Background
 LunaSDK separates its current GUI infrastructure into two layers. `GUI` is the low-level, data-oriented foundation
@@ -374,4 +374,5 @@ framework, service boundary and preview lifecycle are sufficiently stable. This 
 define the initial contract during that period.
 
 ## Version history
+* **2026/8/27** Renumbered from ADR-0012 to ADR-0014 after restoring the approved application-menu and message-box ADR numbers.
 * **2026/8/25** Proposed.
