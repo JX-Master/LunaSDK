@@ -30,14 +30,6 @@ namespace Luna
                 return false;
             }
 
-            bool is_navigation_event(InputEventType type)
-            {
-                return type == InputEventType::navigation_dpad ||
-                    type == InputEventType::navigation_move ||
-                    type == InputEventType::navigation_confirm ||
-                    type == InputEventType::navigation_back;
-            }
-
             Float2U element_screen_center(Span<const Layer> layers, const Element& element)
             {
                 const RectF& rect = element.layout_result.rect;
@@ -160,32 +152,16 @@ namespace Luna
             return m_key_modifiers;
         }
 
-        void Context::set_navigation_events_enabled(bool enabled)
-        {
-            lutsassert();
-            m_navigation_events_enabled = enabled;
-        }
-
-        bool Context::navigation_events_enabled() const
-        {
-            lutsassert();
-            return m_navigation_events_enabled;
-        }
-
         void Context::add_input_event(const InputEvent& event)
         {
             lutsassert();
-            if(!m_navigation_events_enabled && is_navigation_event(event.type)) return;
             m_input_events.push_back(event);
         }
 
         void Context::add_input_events(Span<const InputEvent> events)
         {
             lutsassert();
-            for(const InputEvent& event : events)
-            {
-                add_input_event(event);
-            }
+            m_input_events.insert(m_input_events.end(), events.begin(), events.end());
         }
 
         Span<const InputEvent> Context::get_input_events() const

@@ -217,40 +217,6 @@ namespace Luna
                     break;
                 }
             }
-            bool input_text_focused = false;
-            id_t focused_element = context->focused_element();
-            if(focused_element)
-            {
-                for(const Internal::Action& record : frame->actions)
-                {
-                    if(record.type != Internal::ActionType::input_text) continue;
-                    const Internal::TextInputAction* action =
-                        (const Internal::TextInputAction*)record.data;
-                    if(action && action->id == focused_element)
-                    {
-                        input_text_focused = true;
-                        break;
-                    }
-                }
-            }
-            if(input_text_focused)
-            {
-                if(!frame->input_text_navigation_suppressed &&
-                    context->navigation_events_enabled())
-                {
-                    context->set_navigation_events_enabled(false);
-                    frame->input_text_navigation_suppressed = true;
-                }
-                else if(frame->input_text_navigation_suppressed)
-                {
-                    context->set_navigation_events_enabled(false);
-                }
-            }
-            else if(frame->input_text_navigation_suppressed)
-            {
-                context->set_navigation_events_enabled(true);
-                frame->input_text_navigation_suppressed = false;
-            }
             return result;
         }
     }

@@ -193,12 +193,10 @@ namespace Luna
             }
         }
 
-        static void append_translated_input_event(Vector<GUI::InputEvent>& events,
-            GUI::InputEvent&& event, bool navigation_events_enabled)
+        static void append_translated_input_event(Vector<GUI::InputEvent>& events, GUI::InputEvent&& event)
         {
             GUI::InputEvent nav_event;
-            bool has_nav_event = navigation_events_enabled &&
-                make_navigation_event(event, nav_event);
+            bool has_nav_event = make_navigation_event(event, nav_event);
             events.push_back(move(event));
             if(has_nav_event)
             {
@@ -213,7 +211,7 @@ namespace Luna
             if(!translate_gui_window_event(event, window, ge)) return false;
             gui->add_input_event(ge);
             GUI::InputEvent nav_event;
-            if(gui->navigation_events_enabled() && make_navigation_event(ge, nav_event))
+            if(make_navigation_event(ge, nav_event))
             {
                 gui->add_input_event(nav_event);
             }
@@ -227,8 +225,7 @@ namespace Luna
             GUI::InputEvent ge;
             if(translate_gui_window_event(event, adapter->window, ge))
             {
-                append_translated_input_event(adapter->pending_events, move(ge),
-                    !adapter->gui || adapter->gui->navigation_events_enabled());
+                append_translated_input_event(adapter->pending_events, move(ge));
             }
             if(adapter->forward_events && adapter->next_event_handler)
             {

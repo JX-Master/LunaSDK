@@ -104,7 +104,6 @@ namespace Luna
             bool m_pointer_down[5] = {};
             bool m_key_down[256] = {};
             KeyModifierFlag m_key_modifiers = KeyModifierFlag::none;
-            bool m_navigation_events_enabled = true;
             u32 m_generation = 0;
             u32 m_draw_generation_layer = INVALID_LAYER;
             u32 m_draw_generation_element = INVALID_ELEMENT;
@@ -121,8 +120,6 @@ namespace Luna
             virtual bool is_pointer_button_down(PointerButton button) const override;
             virtual bool is_key_down(KeyCode key) const override;
             virtual KeyModifierFlag get_key_modifiers() const override;
-            virtual void set_navigation_events_enabled(bool enabled) override;
-            virtual bool navigation_events_enabled() const override;
             virtual void add_input_event(const InputEvent& event) override;
             virtual void add_input_events(Span<const InputEvent> events) override;
             virtual Span<const InputEvent> get_input_events() const override;
