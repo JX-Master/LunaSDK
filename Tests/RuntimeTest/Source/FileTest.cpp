@@ -17,6 +17,12 @@ namespace Luna
         const char s[] = "Sample String";
 
         {
+            auto attribute = get_file_attribute("MissingFileAttributeTest.file");
+            lutest(failed(attribute));
+            lutest(unwrap_errcode(attribute.errcode()) == E_NOT_FOUND);
+        }
+
+        {
             // Try to open one file from vfs and writes to it.
             auto file = open_file("SampleFile.txt",
                 FileOpenFlag::write, FileCreationMode::create_always).get();

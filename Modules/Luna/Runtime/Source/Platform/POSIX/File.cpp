@@ -470,7 +470,7 @@ namespace Luna
             int r = stat(path, &s);
             if (r != 0)
             {
-                return Result::bad_platform_call;
+                return encode_errno(errno);
             }
             out_attribute.size = s.st_size;
             out_attribute.last_access_time = s.st_atime;
