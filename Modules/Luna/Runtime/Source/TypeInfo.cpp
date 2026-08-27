@@ -527,7 +527,7 @@ namespace Luna
         {
         case TypeKind::primitive: if(alias) *alias = ((PrimitiveTypeInfo*)t)->alias; return ((PrimitiveTypeInfo*)t)->name;
         case TypeKind::structure: if(alias) *alias = ((StructureTypeInfo*)t)->alias; return ((StructureTypeInfo*)t)->name;
-        case TypeKind::enumeration: if(alias) *alias = ((EnumerationTypeInfo*)t)->alias; return ((EnumerationTypeInfo*)t)->underlying_type->name;
+        case TypeKind::enumeration: if(alias) *alias = ((EnumerationTypeInfo*)t)->alias; return ((EnumerationTypeInfo*)t)->name;
         case TypeKind::generic_structure: if(alias) *alias = ((GenericStructureTypeInfo*)t)->alias; return ((GenericStructureTypeInfo*)t)->name;
         case TypeKind::generic_structure_instanced: if(alias) *alias = ((GenericStructureInstancedTypeInfo*)t)->generic_type->alias; return ((GenericStructureInstancedTypeInfo*)t)->generic_type->name;
         default: lupanic();
@@ -541,7 +541,7 @@ namespace Luna
         {
         case TypeKind::primitive: return ((PrimitiveTypeInfo*)t)->guid;
         case TypeKind::structure: return ((StructureTypeInfo*)t)->guid;
-        case TypeKind::enumeration: return ((EnumerationTypeInfo*)t)->underlying_type->guid;
+        case TypeKind::enumeration: return ((EnumerationTypeInfo*)t)->guid;
         case TypeKind::generic_structure: return ((GenericStructureTypeInfo*)t)->guid;
         case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->generic_type->guid;
         default: lupanic();

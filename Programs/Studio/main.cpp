@@ -21,6 +21,7 @@
 #include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/GUIWindow/GUIWindow.hpp>
 
+#include <Luna/Window/Application.hpp>
 #include <Luna/Window/AppMain.hpp>
 
 namespace Luna
@@ -77,6 +78,9 @@ namespace Luna
             module_rg(),
             module_job_system(),
             module_ecs()}));
+        Window::StartupParams startup_params;
+        startup_params.name = APP_NAME;
+        Window::set_startup_params(startup_params);
         auto r = init_modules();
         if (failed(r))
         {

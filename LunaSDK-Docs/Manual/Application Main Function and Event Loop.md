@@ -1,31 +1,108 @@
-An old-school C++ application always starts with one main function similar to this:
-```c++
-int main(int argc, const char* argv[]);
+GUI platforms use different native process entry points. Windows GUI programs enter through `WinMain`, macOS applications need Cocoa application state, iOS applications are launched through UIKit, and Android native applications enter through `android_main`. The Window module provides `<Luna/Window/AppMain.hpp>` to adapt these native entry points to one LunaSDK entry function:
+
+```cpp
+int luna_main(int argc, const char* argv[]);
 ```
-this works for command-line programs, but not for GUI-based applications, since most modern operation systems have special requirements for the entry function of one GUI application. For example, Windows wants the application to use `WinMain` instead of `main`, macOS and iOS want the application to only call  `NSApplicationMain` and  `UIApplicationMain` in `main`, WASM does not have `main` at all, the application can only provide some callbacks that will be called by the system at certain condition. In order to wrap up such platform differences, we provide a "main callbacks" interface to replace the old-school `main` function as the entry point of one GUI application. If you want to develop a GUI application, you should either use the new interface, or writing different version of main functions for different platform manually.
 
-## The Main Callbacks Interface
+`AppMain.hpp` currently supplies adapters for Windows, macOS, iOS, and Android. It does not provide a Linux adapter.
 
-In order to use the main callbacks interface, the application should `#include <Luna/Window/AppMain.hpp>` in the application's `main.cpp` file. `AppMain.hpp` contains inline main function implementation for every different platform, so the application should only include this header once in only one cpp file. After including this header, the application should implement three functions that will be called by the system:
-```c++
-Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[]);
+## Using the unified application entry point
 
-Window::AppStatus app_update(opaque_t app_state);
+Include `<Luna/Window/AppMain.hpp>` in exactly one source file and implement `luna_main` in that file. The header defines a platform entry point, so including it in multiple translation units causes duplicate symbols.
 
-void app_close(opaque_t app_state, Window::AppStatus status);
+The adapter performs only the platform startup needed to reach `luna_main`. It does not initialize LunaSDK, register modules, create a window, or run the application's update loop. The application remains responsible for all of those steps.
+
+```cpp
+#include <Luna/Runtime/Log.hpp>
+#include <Luna/Runtime/Module.hpp>
+#include <Luna/Runtime/Runtime.hpp>
+#include <Luna/Window/Application.hpp>
+#include <Luna/Window/Event.hpp>
+#include <Luna/Window/Window.hpp>
+#include <Luna/Window/AppMain.hpp>
+
+using namespace Luna;
+
+void handle_window_event(object_t event, void*)
+{
+    if(auto resize = cast_object<Window::WindowFramebufferResizeEvent>(event))
+    {
+        log_info("Example", "Framebuffer resized to %u x %u", resize->width, resize->height);
+    }
+}
+
+RV run_app()
+{
+    lutry
+    {
+        luexp(add_modules({module_window()}));
+
+        Window::StartupParams startup_params;
+        startup_params.name = "Example";
+        Window::set_startup_params(startup_params);
+        luexp(init_modules());
+
+        Window::set_event_handler(handle_window_event, nullptr);
+
+        Ref<Window::IWindow> window;
+#if defined(LUNA_PLATFORM_DESKTOP)
+        luset(window, Window::new_window("Example"));
+#else
+        window = Window::get_system_window();
+#endif
+
+        while(!window->is_closed())
+        {
+            Window::poll_events();
+            // Update and render one frame here.
+        }
+
+        Window::set_event_handler(nullptr, nullptr);
+    }
+    lucatchret;
+    return ok;
+}
+
+int luna_main(int argc, const char* argv[])
+{
+    if(failed(Luna::init())) return -1;
+
+    RV result = run_app();
+    bool app_failed = failed(result);
+    if(app_failed)
+    {
+        log_error("Example", "%s", explain(result.errcode()));
+    }
+
+    Luna::close();
+    return app_failed ? -1 : 0;
+}
 ```
-as you may guess from their names, `app_init` will be called firstly when the application is initializing, then `app_update` will be called repeatedly until the return value of `app_state` is not `AppStatus::running`. After that `app_close` will be called to close the application. In `app_init`, the application can optionally returns one opaque pointer by setting `app_state` parameter, the pointer will be passed to `app_update` and `app_close` as one parameter. Both `app_init` and `app_update` returns one enumeration type `AppStatus`, which has three options: `running`, `failing`, `exiting`. When `app_init` or `app_update` returns `AppStatus::running`, the system continues to run the application event loop. When `app_init` or `app_update` returns `AppStatus::exiting` or `AppStatus::failed`, the system calls `app_close` to close the application and returns normal or abnormal exiting code.
 
-Note that LunaSDK itself is not initialized by the system, the application should call `Luna::init` in `app_init` explicitly to initialize LunaSDK, and also call `Luna::close` in `app_close` explicitly to close LunaSDK.
+Set `Window::StartupParams` after adding the Window module but before `init_modules`, because the Window module reads these parameters during initialization. Objects that use Runtime allocation or reference counting must be released before `Luna::close`; keeping application objects inside `run_app` provides that ordering.
 
-## Application Event Loop
+## Application event loop
 
-Almost all modern operating systems use a event queue pattern to post system-level events to the application, which requires the application to have some form of event loop to repeatedly pop events from the queue and handle them. If the application uses [[Application Main Function and Event Loop#The Main Callbacks Interface|main callbacks interface]], then the application event loop is managed by the system automatically, otherwise, the application should implement the event loop manually and posts events to the Window system. See [[Application Main Function and Event Loop#Implementing Main Function Manually|Implementing Main Function Manually]] for details.
+Call `Window::poll_events` regularly on the main thread. With its default argument, it processes pending platform events and returns. Passing `true` waits until an event is available when the queue is empty.
 
-### Event Handling
+`AppMain.hpp` does not call `poll_events` automatically. This is true on desktop and mobile platforms: the platform adapter reaches `luna_main`, and the application owns the loop that pumps events, updates state, and renders frames.
 
-Events are categorized in **application events** and **window events**. Window events are events dispatched to one specific window (usually the window that gains user focus), while application events are events dispatched to the application directly. Both types of events are handled by registering callback functions to event objects provided by the system, and the system will call these callbacks when the event occurs.
+## Event handling
 
-## Implementing Main Function Manually
+The Window module has one application-wide event handler, installed with `Window::set_event_handler`. `Window::poll_events` calls that handler synchronously for every fetched event. The event is a boxed object; use `cast_object<T>` to test its concrete type.
 
-If for some reasons, your application cannot use main callbacks interface, then you should implement the application entry point ("main function") manually. In such case, the application should post system-level events to LunaSDK window system manually by calling `dispatch_xxx_event` functions in `<Luna/Window/EventDispatching.hpp>`.
+Window events derive from `Window::WindowEvent` and retain the target `IWindow` in their `window` member. Application lifecycle events derive from `Window::ApplicationEvent`. Examples include:
+
+* `WindowRequestCloseEvent`
+* `WindowFramebufferResizeEvent`
+* `WindowDPIScaleChangedEvent`
+* `WindowInputTextEvent`
+* `ApplicationWillTerminateEvent`
+
+`WindowRequestCloseEvent::do_close` is initialized to `true`. A handler may set it to `false` to reject a close request. Most other events are notifications and have no mutable default action.
+
+The handler and its userdata are global to the Window module and are not retained. Clear the handler before destroying its userdata or before handing event processing to another application component.
+
+## Supplying a native entry point manually
+
+`AppMain.hpp` is optional. An application may define the platform-native entry point itself, perform the required native application startup, and then call its LunaSDK application logic. Platform event translation is implemented by the Window backend; applications do not call backend `dispatch_*` functions, and there is no public `EventDispatching.hpp` API.

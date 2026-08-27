@@ -9,7 +9,6 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
-#include "../../MessageBox.hpp"
 #include "../../FileDialog.hpp"
 #include "../../Window.hpp"
 #include <Luna/Runtime/Unicode.hpp>
@@ -51,83 +50,6 @@ namespace Luna
                 dst.insert(dst.end(), Span<wchar_t>(wch, wsz));
                 cur += num_bytes;
             }
-        }
-
-        LUNA_WINDOW_API R<MessageBoxButton> message_box(const c8* text, const c8* caption, MessageBoxType type, MessageBoxIcon icon)
-        {
-            StackAllocator salloc;
-            wchar_t* wtext;
-            wchar_t* wcap;
-            usize text_size, caption_size;
-            text_size = utf8_to_utf16_len(text);
-            caption_size = utf8_to_utf16_len(caption);
-            wtext = (wchar_t*)salloc.allocate((text_size + 1) * sizeof(wchar_t));
-            wcap = (wchar_t*)salloc.allocate((caption_size + 1) * sizeof(wchar_t));
-            utf8_to_utf16((char16_t*)wtext, text_size + 1, text);
-            utf8_to_utf16((char16_t*)wcap, caption_size + 1, caption);
-            UINT f = 0;
-            switch (type)
-            {
-            case MessageBoxType::ok:
-                f = MB_OK;
-                break;
-            case MessageBoxType::ok_cancel:
-                f = MB_OKCANCEL;
-                break;
-            case MessageBoxType::retry_cancel:
-                f = MB_RETRYCANCEL;
-                break;
-            case MessageBoxType::yes_no:
-                f = MB_YESNO;
-                break;
-            case MessageBoxType::yes_no_cancel:
-                f = MB_YESNOCANCEL;
-                break;
-            default:
-                lupanic();
-                break;
-            }
-            switch (icon)
-            {
-            case MessageBoxIcon::none:
-                break;
-            case MessageBoxIcon::information:
-                f |= MB_ICONINFORMATION;
-                break;
-            case MessageBoxIcon::warning:
-                f |= MB_ICONWARNING;
-                break;
-            case MessageBoxIcon::question:
-                f |= MB_ICONQUESTION;
-                break;
-            case MessageBoxIcon::error:
-                f |= MB_ICONERROR;
-                break;
-            default:
-                lupanic();
-                break;
-            }
-            int ret = ::MessageBoxW(NULL, wtext, wcap, f);
-            if (!ret)
-            {
-                return E_BAD_PLATFORM_CALL;
-            }
-            switch (ret)
-            {
-            case IDOK:
-                return MessageBoxButton::ok;
-            case IDNO:
-                return MessageBoxButton::no;
-            case IDYES:
-                return MessageBoxButton::yes;
-            case IDCANCEL:
-                return MessageBoxButton::cancel;
-            case IDRETRY:
-                return MessageBoxButton::retry;
-            default:
-                lupanic();
-            }
-            return MessageBoxButton::ok;
         }
 
         LUNA_WINDOW_API R<Vector<Path>> open_file_dialog(const c8* title, Span<const FileDialogFilter> filters, const Path& initial_dir, FileDialogFlag flags)

@@ -238,7 +238,7 @@ namespace Luna
                 {
                     auto _ = Window::message_box(
                         "File or directory name cannot contain the following characters: \\ / : * ? \" < > |",
-                        "Rename asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                        "Rename asset failed", {"OK"}, Window::MessageBoxIcon::error);
                     valid_filename = false;
                     break;
                 }
@@ -259,8 +259,8 @@ namespace Luna
                     }
                     if(failed(r))
                     {
-                        auto _ = Window::message_box(explain(r.errcode()), "Rename directory failed",
-                            Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                        auto _ = Window::message_box(explain(r.errcode()), "Rename directory failed", {"OK"},
+                            Window::MessageBoxIcon::error);
                     }
                 }
                 else
@@ -271,8 +271,8 @@ namespace Luna
                         auto r = Asset::move_asset(asset.get(), to_path);
                         if(failed(r))
                         {
-                            auto _ = Window::message_box(explain(r.errcode()), "Rename asset failed",
-                                Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                            auto _ = Window::message_box(explain(r.errcode()), "Rename asset failed", {"OK"},
+                                Window::MessageBoxIcon::error);
                         }
                     }
                 }
@@ -288,7 +288,7 @@ namespace Luna
             auto r = Asset::delete_asset(asset);
             if(failed(r))
             {
-                auto _ = Window::message_box(explain(r.errcode()), "Delete asset failed", Window::MessageBoxType::ok,
+                auto _ = Window::message_box(explain(r.errcode()), "Delete asset failed", {"OK"},
                     Window::MessageBoxIcon::error);
             }
         }
@@ -682,14 +682,14 @@ namespace Luna
                         auto r = remove_assets_in_folder(path);
                         if(failed(r))
                         {
-                            auto _ = Window::message_box(explain(r.errcode()), "Delete directory failed",
-                                Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                            auto _ = Window::message_box(explain(r.errcode()), "Delete directory failed", {"OK"},
+                                Window::MessageBoxIcon::error);
                         }
                         r = remove_dir(path);
                         if(failed(r))
                         {
-                            auto _ = Window::message_box(explain(r.errcode()), "Delete directory failed",
-                                Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                            auto _ = Window::message_box(explain(r.errcode()), "Delete directory failed", {"OK"},
+                                Window::MessageBoxIcon::error);
                         }
                     }
                     else
@@ -697,8 +697,8 @@ namespace Luna
                         auto asset = Asset::get_asset_by_path(path);
                         if(failed(asset))
                         {
-                            auto _ = Window::message_box(explain(asset.errcode()), "Delete asset failed",
-                                Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                            auto _ = Window::message_box(explain(asset.errcode()), "Delete asset failed", {"OK"},
+                                Window::MessageBoxIcon::error);
                         }
                         else
                         {

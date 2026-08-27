@@ -1,4 +1,4 @@
-Strings are sequences of characters represented by `c8`, `c16` and `c32`, terminated by a null terminator (`\0`). LunaSDK provides various string types and libraries, they will be discussed in this section.
+Strings are sequences of characters represented by `c8`, `c16` and `c32`. Most string APIs use null-terminated strings, while sized APIs such as the sized `Name` constructor may also represent embedded null characters. LunaSDK provides several string types and utility libraries, which are discussed in this section.
 
 ## String types
 
@@ -58,7 +58,7 @@ The string utility library provides functions for processing characters and stri
 #include <Luna/Runtime/Unicode.hpp>
 ```
 
-[Unicode](https://home.unicode.org/) is a text encoding standard that is widely used in modern computers, programs and websites. LunaSDK comes with a built-in Unicode library for processing strings encoded in commonly-used Unicode formats, including UTF-8, UTF-16 (LE and BE) and UTF-32.
+[Unicode](https://home.unicode.org/) is a text encoding standard that is widely used in modern computers, programs and websites. LunaSDK comes with a built-in Unicode library for processing UTF-8, platform-native-endian UTF-16, and UTF-32 code points. UTF-16 data in a non-native byte order must be byte-swapped before it is passed to these APIs.
 
 LunaSDK uses the 32-bit character type `c32` to represent one Unicode codepoint. A Unicode scalar value ranges from U+0000 to U+10FFFF, excluding the UTF-16 surrogate range U+D800 to U+DFFF. One Unicode scalar value is encoded as one `c32` character in UTF-32, one or two `c16` characters in UTF-16, and one to four `c8` characters in RFC 3629 UTF-8.
 
@@ -78,6 +78,6 @@ LunaSDK uses the 32-bit character type `c32` to represent one Unicode codepoint.
 
 [Base64](https://en.wikipedia.org/wiki/Base64) is an encoding format that represents arbitrary binary data using 64 printable characters, plus one character (`=`) for paddings. It is useful to store binary data in a text-based file. LunaSDK comes with a built-in Base64 library for encoding and decoding binary data using Base64.
 
-`base64_encode` encodes the binary data in the user-provided source buffer to a Base64 encoded string, and writes the string to the user-provided destination buffer. To determine the size of the destination buffer required, call `base64_get_encoded_size` with the size of the row binary data.
+`base64_encode` encodes the binary data in the user-provided source buffer to a Base64 encoded string, and writes the string to the user-provided destination buffer. `base64_get_encoded_size` returns the encoded character count without the null terminator. The destination buffer passed to `base64_encode` must therefore have at least `base64_get_encoded_size(raw_size) + 1` characters.
 
 `base64_decode` decodes the Base64 string in the user-provided source buffer to original binary data, and writes the binary data to the user-provided destination buffer. To determine the size of the destination buffer required, call `base64_get_decoded_size` with the size of the Base64 string, excluding the null terminator.

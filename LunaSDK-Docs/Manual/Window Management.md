@@ -1,7 +1,7 @@
-Manage windows on GUI-based platforms.
-* [[Application Main Function and Event Loop]]
-* [[Displays]]
-* [[Manipulating Windows]]
+The Window module provides native application entry adapters, system windows, event dispatch, desktop display queries, text input, clipboard access, and system dialogs.
+* [[Application Main Function and Event Loop]] 
+* [[Manipulating Windows]] 
+* [[Displays]] 
 * [[Input Method Editor (IME)]]
-* [[System Clipboard]]
-* [[System Dialogs]]
+* [[Message Boxes]]
+* [[Application Main Menus]] 

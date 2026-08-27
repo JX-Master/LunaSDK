@@ -4,7 +4,7 @@ Elements and layers are the structural data model of GUI. They describe what exi
 The element and layer system provides a widget-free representation of one GUI frame:
 
 1. Elements store typeless records for submitted GUI primitives.
-2. Layers separate independent GUI surfaces such as normal content, popups and overlays.
+2. Layers separate Z-ordered root trees and content groups, such as normal content, popups and overlays, within one logical surface.
 3. Stable IDs connect the current frame to state, interaction data and debug output.
 4. Dense indexes provide efficient traversal during layout, input routing and draw command compilation.
 
@@ -55,6 +55,8 @@ A data scope participates in ID generation but does not affect topology. It is u
 The first element created after `push_layer` becomes the root of that layer. Every element must belong to one layer.
 
 Layer-local positions use the layer origin as `(0, 0)`. Screen positions are converted by adding the layer origin. `Layer::draw_command_indices` is the authoritative command order for a layer.
+
+One context and frame describe one logical surface. Layers do not carry independent projection or surface transforms. Use separate contexts and render preparations for surfaces that must be transformed independently.
 
 ## Programming guide
 ### Begin a layer

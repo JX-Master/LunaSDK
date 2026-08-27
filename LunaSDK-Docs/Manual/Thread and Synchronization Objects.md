@@ -6,7 +6,7 @@
 
 `new_thread` creates one system-level thread, which is represented by `IThread`. The user can wait for the thread to exit by calling `IThread::wait`, and check whether the thread is exited by calling `IThread::try_wait`. When the last reference to `IThread` is releasing, the system blocks the current thread until the thread quits.
 
-Every thread uses a thread-local variable to record the current thread's handle, which can be retrieved by `get_current_thread`. The main thread's handle is also recorded and can be retrieved from any thread by `get_main_thread`. The user can delay the execution of the current thread by calling `sleep` or `fast_sleep`, the second function is more accurate and will not suspend the current thread if the time specified is smaller than several milliseconds.
+Runtime records an `IThread` handle for the thread that initializes LunaSDK and for threads created by `new_thread`. `get_current_thread` returns that handle, or `nullptr` on a thread that Runtime does not track, such as a thread created directly by a third-party library. The main thread's handle is recorded and can be retrieved from any thread by `get_main_thread`. The user can delay the execution of the current thread by calling `sleep` or `fast_sleep`; the latter is more accurate and will not suspend the current thread if the requested time is smaller than several milliseconds.
 
 The user can call `yield_current_thread` to yield the remain time slice of the current thread and let OS to schedule other threads. This is useful for reducing CPU cycles if the current thread is waiting for another operation to finish by hardware or another thread.
 
@@ -22,13 +22,24 @@ LunaSDK recognizes main thread as the thread that initializes LunaSDK, which **d
 
 Thread local storage is a set of pointer-sized memory slots that contains unique data for every thread. This can be useful to store thread-local data and is efficient since reading such data does not require synchronization between threads.
 
-Use `tls_alloc` to create a new thread local storage slot. The slot is allocated for every thread in the current process, including threads that are not yet created. Every thread local storage slot may accept an optional destructor function, which will be called to clean up the thread local object when one thread with one non-zero thread local value on the specified slot is exiting.
+Use `tls_alloc` to create a new thread local storage slot. The slot is available to every thread in the current process, including threads created later. The function returns `R<opaque_t>`, so allocation failure must be handled before the returned handle is passed to `tls_get`, `tls_set`, or `tls_free`.
 
-> The TLS destructor function works only for threads created by `new_thread` on Windows.
+`tls_set` stores one pointer-sized value for the calling thread, and `tls_get` retrieves the value for that same thread. A slot initially contains `nullptr` on every thread.
 
-`tls_alloc` returns one `opaque_t`-typed handle, which will be used to get the pointer stored in the thread local storage by `tls_get`, and set the pointer stored in the thread local storage by `tls_set`. The stored pointer will be set to `0` by system before it is set by the user for the first time on one particular thread.
+TLS slots do not accept destructor callbacks. Code that stores owned resources in a slot must release each thread's resource explicitly before that thread exits and before the slot is freed. `tls_free` discards the slot and does not release any pointer stored in it.
 
-`tls_free` frees one thread local storage slot allocated by `tls_alloc`. Note that freeing one TLS slot will not call destructors registered by `tls_alloc`, so make sure to clean up such resources manually.
+## Fibers and stackful coroutines
+
+```c++
+#include <Luna/Runtime/Fiber.hpp>
+#include <Luna/Runtime/Coroutine.hpp>
+```
+
+A fiber is an execution context with its own stack that runs cooperatively on a thread. The current fiber implementation is safe only on Runtime-tracked threads: the thread that initializes Runtime and threads created by `new_thread`. Check that `get_current_thread()` is non-null before using the fiber or coroutine API; calling `convert_thread_to_fiber` from an unrelated third-party thread currently dereferences the missing Runtime thread record. On a tracked thread, `convert_thread_to_fiber` creates the calling thread's fiber context and returns the same context on repeated calls. After conversion, `new_fiber` creates another context and `switch_to_fiber` switches directly between contexts on that thread. `get_current_fiber` returns the active context, or `nullptr` if that tracked thread has not been converted. Call `convert_fiber_to_thread` only after execution has returned to the thread's original fiber context.
+
+Direct fiber switching gives the caller complete control over transfers, but also makes it easy to bypass normal C++ scope exit. Prefer the stackful coroutine API when the work has a parent-child calling structure. Create a coroutine with `new_coroutine`, call `resume_coroutine` from a thread that has first been converted to a fiber, and call `yield_coroutine` inside the coroutine to return to its parent. `get_current_coroutine` returns `nullptr` outside a coroutine. Fiber and coroutine switching is cooperative: it does not create a new system thread or make work run in parallel.
+
+Fiber local storage (FLS) follows the active fiber rather than only the current thread. Allocate a slot with `fls_alloc`, then access it with `fls_set` and `fls_get`. Unlike TLS, an FLS slot accepts a destructor callback for non-null values. The exact release point is platform-dependent: notably, the current POSIX backend does not invoke the callback immediately when `convert_fiber_to_thread` returns, so code must not use that call as a portable destruction boundary. Release timing-sensitive resources explicitly. Call `fls_free` only after all users of the slot have stopped accessing it.
 
 ## Signals
 
@@ -58,9 +69,9 @@ One mutex can be created by `new_mutex`, the mutex is in unlocked state when cre
 
 A spin lock (`SpinLock` or `RecursiveSpinLock`) is a light-weight version of `IMutex` with the following differences:
 
-1. The spin lock is implemented purely in user-mode by C++, while the mutex is implemented by the underlying platform/OS and is usually implemented in kernel-mode as an OS component, which means locking and releasing one spin lock is much faster than locking and releasing one mutex, since the later is usually performed through a system call.
-2. The spin lock will never suspend one thread, nor will it yield the time slice of the waiting thread. If one spin lock is already locked, the waiting thread will keep checking (busy-waiting) until it obtains the lock. In the other side, the mutex will usually suspends or yields the current thread if the mutex is already locked to let other threads use the processor. This makes the spin lock suitable for locking the resource for a very short period of time (hundreds or thousands of CPU-cycles), but not suitable if the lock will be obtained for a long time (>100us).
-3. Creating one spin lock creation consumes much less memory than creating one mutex (only 4 bytes for non-recursive spin lock). Meanwhile, creating one spin lock does not need to allocate any dynamic memory, just declare and use it, which makes it suitable for embedding into other objects.
+1. A spin lock is implemented with user-mode atomic operations. `IMutex` uses the platform mutex primitive, which may also have an uncontended user-mode fast path and normally enters the operating system only when it must block. A spin lock can avoid sleeping and context-switch overhead under very short contention, but it is not unconditionally faster.
+2. A waiting spin lock keeps checking in a busy loop and does not suspend the thread. A contended platform mutex can block the caller so another thread can use the processor. Use a spin lock only when the critical section is predictably short; use a mutex when the wait may be long, when the owner may be descheduled, or when CPU time should not be consumed by busy-waiting.
+3. `SpinLock` and `RecursiveSpinLock` are value types that need no dynamic allocation, so they can be embedded directly in another object. `IMutex` is a reference-counted platform object created with `new_mutex`.
 
 One spin lock can be acquired by `lock` and `try_lock`, and can be released by `unlock`. Recursive locking from the same thread is supported only by `RecursiveSpinLock`, not `SpinLock`. The user can use `LockGuard` helper object to acquire one spin lock in one function scope and release it automatically when `LockGuard` is expired. `LockGuard` works for both `SpinLock`  and `RecursiveSpinLock`.
 
@@ -83,8 +94,4 @@ One semaphore can be created by `new_semaphore`. When creating the semaphore, th
 A read write lock (`IReadWriteLock`) is a special mutex that allows unlimited number of read locks, but only one write lock at the same time. Every read write lock have three states: unlocked, read locked and write locked. When the read write lock is in unlocked state, the user can acquire both read and write lock from the object, which transfers the object into read locked or write locked state. When the read write lock is in read locked state, only read locks can be acquired, which increases the internal read count of the lock. The read locked state will be transferred back to unlocked state when all read locks are released. When the object is in write locked state, neither read lock nor write lock can be acquired. The write locked state will be transferred back to unlocked state when the unique write lock is released.
 
 One read write lock can be acquired by `new_read_write_lock`. The read lock of one read write lock can be acquired by `acquire_read` and `try_acquire_read`, and can be released by `release_read`. The write lock of one read write lock can be acquired by `acquire_write` and `try_acquire_write`, and can be released by `release_write`. `try_acquire_read` and `try_acquire_write` return `false` instead of blocking the current thread if failed to acquire the lock.
-
-
-
-
 

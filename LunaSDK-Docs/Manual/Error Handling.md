@@ -186,11 +186,14 @@ Declare result constants and `ERROR_CATEGORY` directly in the owning module's ro
 
 ### Registering optional metadata
 
-Register metadata after Runtime initialization, normally from the owning module's `on_register` function:
+Register metadata after Runtime initialization, normally by calling a helper like this from the owning module's `on_register` function:
 
 ```c++
-RV MyModule::on_register()
+#include <Luna/Runtime/Result.hpp>
+
+Luna::RV register_my_module_error_metadata()
 {
+    using namespace Luna;
     if(!register_error_category(MyModule::ERROR_CATEGORY, "MyModule") ||
         !register_error_code(MyModule::E_RECORD_NOT_FOUND, "record_not_found", "The requested record was not found.") ||
         !register_error_code(MyModule::S_CACHE_HIT, "cache_hit", "The returned value came from a cache.") ||
@@ -288,11 +291,13 @@ RV open_record(const c8* path)
 `set_error` stores `MyModule::E_RECORD_NOT_FOUND` and the formatted message in the current thread's `Error`, then returns `E_ERROR_OBJECT`. The code passed to `set_error` must be a failure; informative successes do not use the thread-local `Error` path. Call `unwrap_errcode` to obtain the underlying code:
 
 ```c++
+#include <Luna/Runtime/Log.hpp>
+
 auto result = open_record(path);
 if(failed(result))
 {
     ResultCode code = unwrap_errcode(result);
-    log_error("%s", explain(result.errcode()));
+    log_error("MyModule", "%s", explain(result.errcode()));
     if(code == MyModule::E_RECORD_NOT_FOUND)
     {
         // Handle the specific failure.
@@ -342,7 +347,7 @@ Parse the string back to `u64`, construct `ResultCode`, and use the field helper
 
 When migrating older code:
 
-1. Replace the legacy `ResultCode` type with `ResultCode`; no compatibility alias is provided.
+1. Replace the legacy `ErrCode` type with `ResultCode`; no compatibility alias is provided.
 2. Allocate permanent domain, category, and local result values.
 3. Replace calls to the removed name-based result lookup API with public `inline constexpr ResultCode` constants.
 4. Replace `code.code == 0` and `code.code != 0` control-flow checks with `succeeded`, `failed`, `is_plain_success`, or `is_informative_success` as appropriate.

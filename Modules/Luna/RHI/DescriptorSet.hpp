@@ -322,7 +322,8 @@ namespace Luna
             //! The descriptor layout for this descriptor set.
             IDescriptorSetLayout* layout;
             //! If the descriptor layout has `DescriptorSetLayoutFlag::variable_descriptors` 
-            //! set, this is the number of variable descriptors being allocated for this else.
+            //! set, this is the number of descriptors allocated for its variable binding.
+            //! This value must not exceed the binding's `DescriptorSetLayoutBinding::num_descs`.
             //! Otherwise, this should always be 0.
             u32 num_variable_descriptors = 0;
 

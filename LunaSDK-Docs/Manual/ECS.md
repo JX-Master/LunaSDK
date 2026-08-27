@@ -1,36 +1,103 @@
-ECS (entity-component-system) is a data structure that stores data using a data-oriented pattern. In ECS model, objects (we call entities) don't have any particular type, the behavior of one entity depends on what kind of data it has. This brings a great flexibility for defining entity behavior, it also brings better performance since we can group entities with similar components together for a more cache-friendly data accessing.
+ECS (entity-component-system) stores application data in a data-oriented form. Objects, called *entities*, do not have a fixed class. Their data and behavior are determined by the components and tags assigned to them. Entities with the same component and tag set are stored together so systems can process their data efficiently.
 
-## The ECS Architecture
-In LunaSDK, we use the following terms to describe one ECS database:
-1. *world*: The world is the container for entities and their data. The world allocates memory to store all data for one ECS database instance, when the world is destroyed, all entities in the world will be destroyed, along with their data.
-2. *entity*: An entity represents a data object in one specific world. An entity is represented by a unique 64-bit unsigned integer that can be allocated and freed. The entity itself does not contain any data, it acquires data by adding *components* to that entity.
-3. *component*: A component is a typed structure that describes parts of the entity data. One entity can have unlimited components attached, but at most one component per type. Components can be added to or removed from one entity at any time.
-4. *system*: The system is the procedure that manipulates entities and their components. In theory, systems are pure functions that does not have any state, but in practice, the system is usually used to describe user codes that doing CRUD operations on one ECS world.
+## The ECS architecture
 
-## Archetypes and Clusters
-Archetypes and clusters are how we store entities and their data in ECS module, we expose this internal data structure to the application so that user can maximize performance when manipulating entities.
+LunaSDK uses the following terms to describe an ECS database:
 
-An *archetype* is an implicit type described by a set of component types and tags. For example, one camera archetype may be described by one transform component and one camera component, while one static mesh archetype may be described by one transform component and one static mesh component. If two entities have the exact same kind of components, we say these two entities have the same archetype. ^dnm0tf
+1. A *world* owns entities, clusters, and component storage for one independent ECS database. Destroying the world destroys all of its entities and component data. `IWorld` is not thread-safe; the application must synchronize structural changes.
+2. An *entity* is an object in one world. It is represented by an opaque 64-bit `entity_id_t`. `NULL_ENTITY` is reserved as the invalid entity ID. An entity ID identifies an entity, but does not contain its component data.
+3. A *component* is a reflected structure that stores one aspect of entity data. An entity can have at most one component of each type.
+4. A *tag* is an untyped pointer used as an additional identity marker. Tags do not store component data, but they participate in archetype selection.
+5. A *system* is application code that finds and processes entities and components. LunaSDK does not impose a system object type.
 
-Archetypes are used to organize memory storage for entities. Every archetype that owns at least one entity will allocate memory storage for all entities of that archetype, which is called a *cluster*. Every entity will be placed in one specific cluster based on its archetype, and two entities are in the same cluster *if and only if they have exact the same kinds of components and tags*. The cluster that an entity belongs to and the position of the entity in that cluster are called the *address* of that entity. The world maintains a map from entity ID to the address of that entity, if any component is added to or removed from one entity, then the entity will be moved to a new cluster, causing its address being changed.
+## Archetypes and clusters
 
-The memory allocated for one cluster is not continuous, it is composed by one or more memory chunks. The size of one chunk is usually aligned to system's memory page and is fixed. If the free size in one chunk is not enough to place new entities, one new chunk will be allocated to contain more entities. Removing entities from one chunk swaps the data with the last entity in the cluster, so that entities in one chunk is always continuous, and new entities are always allocated from the last chunk.
+An *archetype* is the exact set of component types and tags assigned to an entity. For example, a camera archetype might contain transform and camera components, while a static-mesh archetype might contain transform and static-mesh components. Two entities have the same archetype if and only if their component and tag sets are identical. ^dnm0tf
 
-## Using Tags to Separate Entities to Different Clusters
-Tags are untyped pointers that are used to mark entities. One entity can have unlimited number of tags, each of them must have a pointer different from others. Since [[ECS#^dnm0tf|tags are part of archetype definition]], if two entities have exact the same kinds of components, but with different set of tags, their archetypes are different and belongs to two different clusters.
+A *cluster* stores every entity of one archetype. The world creates or finds a cluster with `IWorld::get_cluster`. The combination of a cluster pointer and an index within that cluster is an `EntityAddress`.
 
-The application can use this feature to separate entities to different clusters, so that they can be manipulated independently without interfering each other. For example, the application can define one tag for every loaded sub-level, they use the tag of one sub-level to filter out all clusters for that level, such clusters can them be removed directly to efficiently unloads that sub-level.
+Adding or removing a component or tag is a structural change. The application performs it by moving the entity to another cluster with `IWorld::set_entity_cluster`; shared components are moved, removed components are destroyed, and new components are default-constructed.
 
-## Managing Entities
-Every entity is identified by one *entity ID* that is unique in the current world context. Besides the entity ID, every entity also have one *entity address* that tells which *cluster* this entity belongs to and the position of the entity in that cluster. The entity address will change if the entity is moved to another cluster, or if any entity is removed from the cluster that contains the current entity. The application can use the entity address to read and write components of that entity.
+Cluster storage is dense and is split into fixed-capacity chunks. Deleting or moving an entity can leave a hole. The current implementation fills that hole by relocating the last entity in the source cluster. Therefore, the address of the affected entity and, when applicable, the relocated last entity changes; unrelated entity addresses do not all change merely because one entity was removed. Treat cached `EntityAddress` values as transient across structural changes and call `IWorld::get_entity_address` again when necessary.
 
-Components and tags cannot be added to or removed from entities directly. Instead, the application should fetch the cluster that matches the specified components and tags firstly by calling `IWorld::get_cluster`, then calls `IWorld::set_entity_cluster` to move the entity to the target cluster. When moving entities between clusters, components are automatically constructed, destructed or moved.
+## Using tags to separate entities
 
-To iterate over entities, the application should call `IWorld::find_clusters` to get all clusters that matches the user-defined filter function, then entities in every cluster can be iterated independently and concurrently. `IWorld::find_clusters` provides a more convenient version that accepts a set of component types and tags and returns all clusters that contains the specified component types and tags. Entities are always continuous in one cluster, if one entity is removed from the cluster, the place will be filled by swapping the last entity front. The application can also call `IWorld::delete_cluster` to delete one cluster and all entities in that cluster, this will be more efficient than deleting every entity in the cluster manually.
+Tags are part of the [[ECS#^dnm0tf|archetype definition]]. Entities with identical components but different tag sets belong to different clusters.
 
-## Chunks
-Entities in one cluster are stored using *chunks*. One chunk is a continuous memory storage that stores at most `CLUSTER_CHUNK_CAPACITY` entities, forming one entity array. Components in one chunk are stored using structure-of-array structure, every component has its own element array in one chunk, which can be fetched by calling `get_cluster_components_data`. Given a entity address with specified position `i`, the entity will be placed in chunk `i / CLUSTER_CHUNK_CAPACITY` at index `i % CLUSTER_CHUNK_CAPACITY`, so them component can be fetched like so:
+This can be used to partition data without adding storage. For example, an application can use one stable tag pointer for each loaded sub-level, find all clusters carrying that tag, and delete those clusters to unload the sub-level efficiently. Tag values must remain stable and unique while they are used by the world; ECS treats them as opaque values and does not dereference them.
+
+## Programming guide
+
+### Declare and register components
+
+ECS component types must be registered with Runtime reflection before they are passed to `typeof<T>()` or used in a cluster. Use LunaMetaTool metadata for new component types. For example:
+
 ```c++
-ComponentType* component_array = (ComponentType*)get_cluster_components_data(addr.cluster, addr.index / CLUSTER_CHUNK_CAPACITY, typeof<ComponentType>());
-ComponentType& data = component_array[addr.index % CLUSTER_CHUNK_CAPACITY];
+// Position.hpp
+#pragma once
+#include <Luna/Runtime/Math/Vector.hpp>
+#include "Position.generated.hpp"
+
+struct [[Luna::struct("{FA5B32C3-3768-4905-82D0-0F214E8EE31E}")]] Position
+{
+    [[Luna::property]] Luna::Float3 value;
+};
 ```
+
+Add `Position.hpp` to `MetaHeaders(...)` in the target rules so LunaMetaTool generates `Position.generated.hpp`. If the target is named `MyGame`, include its target registration header in one source file and call the generated function after Runtime and the ECS module have been initialized:
+
+```c++
+#include "MyGame.meta.generated.hpp"
+
+Luna::Meta::register_MyGame_types();
+```
+
+Every reflected type must use its own generated, globally unique GUID.
+
+### Initialize ECS and create a world
+
+```c++
+#include <Luna/Runtime/Runtime.hpp>
+#include <Luna/Runtime/Module.hpp>
+#include <Luna/Runtime/Reflection.hpp>
+#include <Luna/ECS/ECS.hpp>
+#include <Luna/ECS/World.hpp>
+#include "Position.hpp"
+#include "MyGame.meta.generated.hpp"
+
+using namespace Luna;
+using namespace Luna::ECS;
+
+lupanic_if_failed(init());
+lupanic_if_failed(add_modules({module_ecs()}));
+lupanic_if_failed(init_modules());
+
+Meta::register_MyGame_types();
+Ref<IWorld> world = new_world();
+```
+
+`module_ecs()` registers the JobSystem module as a dependency, so it does not need to be added separately. Release all worlds and other ECS objects before calling `Luna::close()`.
+
+### Create and access an entity
+
+Create or find a cluster containing the desired component set, then create an entity in that cluster. The returned address can be used immediately to access its component arrays:
+
+```c++
+Cluster* position_cluster = world->get_cluster({typeof<Position>()}, {});
+
+EntityAddress addr;
+entity_id_t entity = world->new_entity(position_cluster, &addr);
+
+usize chunk = addr.index / CLUSTER_CHUNK_CAPACITY;
+usize index_in_chunk = addr.index % CLUSTER_CHUNK_CAPACITY;
+Position* positions = get_cluster_components_data<Position>(addr.cluster, chunk);
+positions[index_in_chunk].value = Float3(1.0f, 2.0f, 3.0f);
+```
+
+Each cluster stores at most `CLUSTER_CHUNK_CAPACITY` entities per chunk. Entity IDs occupy one dense array in each chunk, while each component type occupies its own dense array. `get_cluster_entities` returns the entity IDs in one chunk. `get_cluster_components`, `get_cluster_tags`, `get_cluster_num_entities`, and `get_cluster_num_chunks` expose the remaining metadata required for iteration.
+
+### Change archetypes, find clusters, and delete data
+
+Components and tags are changed by moving an entity to another cluster with `IWorld::set_entity_cluster`. Use `IWorld::find_clusters` to collect clusters that contain a required set of component types and tags, or supply a custom filter callback. Different clusters can be processed independently, but structural changes to the world must still be synchronized by the application.
+
+Use `IWorld::delete_entity` to delete one entity, `IWorld::delete_cluster` to delete a cluster and all of its entities, or `IWorld::delete_all_entities` to clear the world. `delete_cluster` is more efficient than deleting the cluster's entities one at a time.

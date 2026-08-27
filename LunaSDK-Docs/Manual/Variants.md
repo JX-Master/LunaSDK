@@ -1,4 +1,4 @@
-```
+```c++
 #include <Luna/Runtime/Variant.hpp>
 ```
 
@@ -9,13 +9,12 @@
 The type of one `Variant` is represented by `VariantType` enumeration and can be fetched by calling `type` method. LunaSDK supports the following variant types:
 
 1. Null
-2. Number
-3. String
-4. Boolean
-5. BLOB
-6. Pointer
-7. Array of variants
-8. Associated array of variants
+2. Object
+3. Array
+4. Number
+5. String
+6. Boolean
+7. BLOB
 
 ## Null variant
 
@@ -23,7 +22,7 @@ Variant can be `null`, which represents the absence of value for the variant obj
 
 ## Number variant
 
-Number variant contains one number of integer or floating-point type. The number type of one number variant is represented by `VariantNumberType` enumeration and can be fetched by calling `number_type` method. If the variant object is not a number type, `NumberType::not_number` will be returned.
+Number variant contains one number of integer or floating-point type. The number type of one number variant is represented by `VariantNumberType` enumeration and can be fetched by calling `number_type` method. If the variant object is not a number type, `VariantNumberType::not_number` will be returned.
 
 The number value of the variant can be fetched by calling `unum`, `inum` and `fnum` methods, each of them returns the underlying number in specified format with implicit type conversion when needed. If the variant type is not `VariantType::number`, `0` or `0.0` will be returned.
 
@@ -33,7 +32,7 @@ One variant can be set to number by assigning it with one integer or floating-po
 
 String variant contains one single string represented by a `Name` object. You can fetch the underlying string of one variant by calling `str()` method, which returns one empty string if the type of the variant is not `VariantType::string`. We also provide `c_str` method to fetch the string buffer quickly, which will return `""` if the variant is not `VariantType::string`.
 
-One variant can be set to string by assigning it with one `Name` instance, one `String` instance, one string literal, or one zero-terminated `c8*` pointer instance.
+One variant can be set to string by assigning it a `Name`, a string literal, or a null-terminated `const c8*`. To assign data stored in `String`, pass its `c_str()` value.
 
 ## Boolean variant
 
@@ -45,31 +44,27 @@ One variant can be set to Boolean by assigning it with one `bool` value or insta
 
 BLOB variant contains one single binary large object. The data, size and alignment of the data can be fetched by calling `blob_data`, `blob_size` and `blob_alignment` methods. Note that `Variant` does optimizations for small blob data, so the blob data is not necessary represented by `Blob`. You may detach the blob data from the variant by calling `blob_detach`, which returns the blob data as a `Blob` object, and the variant will contain one empty blob after this operation.
 
-One variant can be set to pointer by assigning it with one `Blob` value or instance.
-
-## Pointer Variant
-
-Pointer variant contains one type-less user pointer. The pointer is stored as-is and can be fetched by calling `pointer` method, which returns `nullptr` if the variant is not `VariantType::pointer`.
-
-One variant can be set to pointer by assigning it with one pointer value or instance.
+One variant can be set to BLOB by assigning it a `Blob` value. The data is copied from an lvalue `Blob` and moved from an rvalue `Blob`.
 
 ## Array of variants
 
 Array variant contains one array of `Variant` objects, which acts as sub-objects of the current object. Note that `Variant` does optimizations for small array, so the array data is not necessary represented by `Vector<Variant>`.
 
-## Associated array of variants
+## Object variants
 
-Associated array variant contains one set of `Variant` objects, which acts as sub-objects of the current object. Unlike array variants, objects in associated array variant are indexed by `Name` objects, and does not have a particular order. Note that `Variant` does optimizations for small array, so the array data is not necessary represented by `HashMap<Name, Variant>`.
+Object variant contains one unordered set of name-value pairs. Child variants are indexed by `Name` keys. The internal representation is an implementation detail and is not necessarily `HashMap<Name, Variant>`.
 
-For both array variants and associated array variants, `size` method returns the number of sub-objects in the array, and `empty` method returns `true` if `size()` returns `0`. The user can use subscript syntaxes (`[]`) to fetch elements in array variants (`[N]`) and associated array variants (`["Name"]`), if the specified element does not exist, one null variant will be returned. Using subscript syntaxes for variants with incorrect types always return null objects.
+For array and object variants, `size` returns the number of child variants and `empty` reports whether that count is zero. The const array subscript returns the shared null sentinel from `Variant::npos()` when the value is not an array or the index is invalid. The mutable array subscript requires a valid array index.
+
+The const object subscript returns `Variant::npos()` when the value is not an object or the key is absent. The mutable object subscript finds or inserts the requested key. If the current variant is null, it is first converted to an object; using the mutable object subscript on any other type violates the API's valid-usage requirements.
 
 ## Variant differential
 
 ```c++
-#include <Luna/Runtime/VariantDiff.hpp>
+#include <Luna/VariantUtils/Diff.hpp>
 ```
 
-LunaSDK comes with one variant differential library that computes and patches variant differences. `diff_variant` calculates the difference between `before` and `after` variant objects, and returns the difference as another variant object called `diff` object. `patch_variant_diff` applies `diff` object to `before` variant object to reproduce `after` object, and `reverse_variant_diff` removes the `diff` object from `after` object to reproduce `before` object. These functions are useful for implementing data versioning and undo/redo operations.
+The VariantUtils module provides a variant differential library in the `Luna::VariantUtils` namespace. `diff(before, after)` returns a delta variant that represents the changes from `before` to `after`. `patch(before, delta)` applies those changes, while `revert(after, delta)` removes them. These functions are useful for data versioning and undo/redo operations.
 
 ## JSON encoding
 
@@ -82,14 +77,18 @@ The VariantUtils module provides JSON encoding and decoding for `Variant` object
 The default options preserve LunaSDK's relaxed JSON behavior. This includes comments, trailing commas, non-standard whitespace and escapes, UTF-16 input, Tagged BLOB strings, trailing content, and non-finite floating-point values. Applications consuming data from a strict protocol should pass `JSONReadOptions::strict()` and `JSONWriteOptions::strict()` explicitly:
 
 ```cpp
-using namespace Luna;
-using namespace Luna::VariantUtils;
+R<Luna::String> normalize_strict_json(const Luna::c8* json_data,
+    Luna::usize json_size)
+{
+    using namespace Luna;
+    using namespace Luna::VariantUtils;
 
-JSONReadOptions read_options = JSONReadOptions::strict();
-R<Variant> value = read_json(json_data, json_size, read_options);
+    R<Variant> value = read_json(
+        json_data, json_size, JSONReadOptions::strict());
+    if(!value.valid()) return value.errcode();
 
-JSONWriteOptions write_options = JSONWriteOptions::strict();
-R<String> json = write_json(value.get(), write_options);
+    return write_json(value.get(), JSONWriteOptions::strict());
+}
 ```
 
 ### Read options

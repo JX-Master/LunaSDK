@@ -14,13 +14,15 @@ Graphics pipeline are used to perform render tasks, with draws primitives (point
 
 Most configurations are done by filling `GraphicsPipelineStateDesc` descriptor, then call `IDevice::new_graphics_pipeline_state(desc)` with the descriptor to create a graphics pipeline state object. When recording render commands, call `ICommandBuffer::set_graphics_pipeline_state(pso)` to bind the pipeline state object to the pipeline, then all configurations in the pipeline state object will apply to succeeding draw commands until another PSO is bind, or until the render pass is ended.
 
+`GraphicsPipelineStateDesc::pipeline_layout` specifies the pipeline layout used to create the pipeline state. Descriptor sets bound for drawing must be compatible with that layout. The render-target configuration is also part of the pipeline state: `num_color_attachments`, `color_formats`, `depth_stencil_format`, and `sample_count` must match the attachments of the render pass in which the pipeline is used. `ib_strip_cut_value` configures the restart index used by strip topologies.
+
 ### Input assembler
 Input assembler reads the vertex buffers and index buffer to generate vertices that will be processed on succeeding stages. Input assembers are configured by the `input_layout` property of `GraphicsPipelineStateDesc`, which includes **input bindings** configuration (`InputBindingDesc`) and **input attributes** configuration (`InputAttributeDesc`).
 
-Input bindings describe vertex buffers that are attached to the pipeline, including the binding slot of the vertex buffer, the size of elements in the vertex buffer, and the input rate of the vertex buffer (per vertex or per instance). The user should specify one input binding for every vertex buffer bound to the pipeline. Input attributes describe vertex attributes, including the format of the attribute, the semantic name and semantic index of the attribute, the location of the attribute, the binding slot of the vertex buffer that provides the attribute, and the byte offset of the attribute from the beginning of the element. The following diagram shows one comprehensive input assembler setup, where we provide vertices data using one vertex buffer, and provide instance data using two vertex buffers to draw the geometry multiple times using different color and transform information:
+Input bindings describe vertex buffers that are attached to the pipeline, including the binding slot of the vertex buffer, the size of elements in the vertex buffer, and the input rate of the vertex buffer (per vertex or per instance). The user should specify one input binding for every vertex buffer bound to the pipeline. Input attributes describe the shader input location, vertex-buffer binding slot, byte offset from the beginning of the element, and data format. `InputAttributeDesc` does not contain semantic names or semantic indices. The following diagram shows one comprehensive input assembler setup, where we provide vertex data using one vertex buffer, and provide instance data using two vertex buffers to draw the geometry multiple times using different color and transform information:
 ![[input_layout.svg]]
 ### Vertex shader
-Vertex shaders are user-defined functions that are called on every vertex outputted from input assembler. One vertex shader must have a four-component vector output attribute with `SV_POSITION` semantics that will be used as the vertex position for succeeding stages. The outputted vertex position is interpreted in normalized device coordinates (NDC), as shown below. If the fourth component (`w`) of the outputted vertex position is not `1.0`, the system divides each component of the vertex position with `w` to normalize it internally.
+Vertex shaders are user-defined functions that are called on every vertex outputted from input assembler. One vertex shader must provide a four-component position output for succeeding stages. The exact declaration depends on the shader language and backend; CPPSL uses the `cppsl::position` attribute. The outputted vertex position is interpreted in normalized device coordinates (NDC), as shown below. If the fourth component (`w`) of the outputted vertex position is not `1.0`, the system divides each component of the vertex position with `w` to normalize it internally.
 ![[ndc.svg]]
 Note that the depth value starts from **0.0**, not -1.0.
 
@@ -45,7 +47,7 @@ Rasterizers are configured by the `rasterizer_state` property of `GraphicsPipeli
 
     The front face and back face of one triangle is determined by the winding order of three triangle vertices in NDC (looking from -Z to +Z) and `front_counter_clockwise` property of `RasterizerDesc`.
 1. `front_counter_clockwise`: If this is `true`, the rasterizer will regard one triangle as front-facing if its three vertices are wound in counter clockwise order; if this is `false`, the rasterizer will regard one triangle as front-facing if its three vertices are wound in clockwise order.
-1. `depth_clamp_enable`: If this is `true`, the rasterizer will clamp the depth value of pixel to `1.0` if it is greater than `1.0`, and retain the coverage value, which may cause depth test produce incorrect results. If this is `false`, the rasterizer will discard pixels whose depth value (`z` component of position after divided by `w`) goes beyond.
+1. `depth_clamp_enable`: If this is `true`, the rasterizer clamps depth values outside `[0.0, 1.0]` instead of clipping those primitives. This option may be enabled only when `device->check_feature(DeviceFeature::rasterizer_depth_clamp)` reports support. If this is `false`, the normal depth clipping rules apply.
 1. `depth_bias`, `slope_scaled_depth_bias` and `depth_bias_clamp` are used to compute one **depth bias value** that will be added to the original depth value in depth bias step. The depth bias value is computed as:
 
     $$bias(depth) = clamp(C_{b} * E + C_{s} * slope(depth), -C_{clamp}, C_{clamp})$$
@@ -95,7 +97,7 @@ After viewport transformation, scissor culling will be performed to discard pixe
 Viewports and scissor rects are set dynamically in command recording by `ICommandBuffer::set_viewport(viewport)` and `ICommandBuffer::set_scissor_rect(rect)`. The user may also set multiple viewports and scissor rects for one draw call by calling `ICommandBuffer::set_viewports(viewports)` and `ICommandBuffer::set_scissor_rects(rects)`, in such case, the viewport array and scissor rect array must have the same size so that every viewport will have one corresponding scissor rect. Every primitive generated by the rasterizer can only be sent to one viewport, the user can use `SV_ViewportArrayIndex` (`uint`) vertex shader output semantics to select which viewport to use. All vertices in the same primitive should choose the same viewport, or the behavior is not defined. If `SV_ViewportArrayIndex` is not specified, the first viewport and scissor rect will be used.
 
 ### Pixel shader
-Pixel shaders (or fragment shaders in some graphic APIs) are user-defined functions that are called on every pixel outputted from rasterizer whose coverage value is greater than zero. One pixel shader must have one output attribute with `SV_COLOR{N}` semantic for every color attachment of the render pass with correct type regarding to the format of the corresponding color attachment. Attribute values outputted from the vertex shader will be interpolated into every pixel and used as input attribute value of pixel shaders.
+Pixel shaders (or fragment shaders in some graphics APIs) are user-defined functions that are called on every pixel outputted from the rasterizer whose coverage value is greater than zero. A pixel shader provides one color output at the corresponding backend output location for every color attachment it writes, using a type compatible with that attachment format. Attribute values outputted from the vertex shader are interpolated for each pixel and used as pixel-shader inputs.
 
 ### Depth stencil testing
 Depth stencil testing stage performs depth and stencil tests on pixels outputted from the pixel shader and discards pixels that do not pass such tests, one pixel will be written to the attachment only if it passes both depth and stencil test. The depth test is usually used to ensure that pixels near the camera will not be covered by pixels far from the camera if they are rastered to the same screen position, even if the closer pixel is drawn first.
@@ -204,7 +206,7 @@ Color blending stage performs color blending between pixel colors outputted from
     1. `src_blend_alpha`: The blend factor for the source alpha component (A).
     1. `dst_blend_alpha`: The blend factor for the destination alpha component (A).
     1. `blend_op_alpha`: The blend operation for the alpha component (A).
-    1. `render_target_write_mask`: Specify which color channels (RGBA) are written to the color attachment texture.
+    1. `color_write_mask`: Specifies which color channels (RGBA) are written to the color attachment texture.
 1. `independent_blend_enable`: If this is `false`, then all color attachments should use the same color blending settings specified by the first element of `attachments` array. If this is `true`, then each color attachment uses dedicated color blending setting specified by the corresponding elements of `attachments` array. Set this to `false` may improve performance on some platforms.
 1. `alpha_to_coverage_enable`: On MSAA pipelines, if this is `true`, alpha to coverage feature is enabled. See "Multisample anti-aliasing" section for details about coverage mask. This must be `false` on non-MSAA pipelines.
 
@@ -238,20 +240,26 @@ The sample count number must be equal for `TextureDesc`, `GraphicsPipelineStateD
 For every pixel in every primitive pixel list, the render pipeline generates a **coverage mask** thatrecords the coverage result of every sub-pixel of that pixel. Every sub-pixel in one pixel takes one bitof the coverage mask, and that bit will be set to `1` if the sub-pixel passes coverage test and depthstencil test, and `0` otherwise. If **alpha to coverage** is enabled, the render pipeline will generateanother coverage mask based on the alpha value of the first shader output color. The coverage maskgeneration algorithm is platform-specific, but should unset all bit if alpha is 0.0, set all bits ifalpha is 1.0, and set a number of bits proportionally to the value of the floating-point input. Thatcoverage mask will be bitwise-AND combined with the original coverage mask to compute the final coveragemask. The final coverage mask is used in color blending to determine which sub-pixels should be writtenback to the color and depth stencil buffer.
 
 ## Compute pipeline
-Compute pipelines are used to perform arbitrary compute tasks, which is somethings referred asgeneral-purpose GPU (GPGPU) programming. The compute pipeline only includes one stage: the computeshader stage, which runs user-defined compute tasks. Compute pipelines configurations are done byfilling `ComputePipelineStateDesc` descriptor, then call `IDevice::new_compute_pipeline_state(desc)`with the descriptor to create a compute pipeline state object. When recording compute commands, call`ICommandBuffer::set_compute_pipeline_state(pso)` to bind the pipeline state object to the pipeline,then all configurations in the pipeline state object will apply to succeeding dispatch commands untilanother PSO is bind, or until the render pass is ended.
+
+Compute pipelines perform general-purpose GPU work through a compute shader. Fill `ComputePipelineStateDesc` and pass it to `IDevice::new_compute_pipeline_state(desc)` to create a compute pipeline state object. The descriptor contains the compatible `pipeline_layout` and the compute shader `cs`. For Metal shader libraries, `metal_numthreads_x`, `metal_numthreads_y`, and `metal_numthreads_z` provide the thread-group size expected by the shader.
+
+During a compute pass, call `ICommandBuffer::set_compute_pipeline_state(pso)` before dispatching work. The pipeline state applies to subsequent dispatch commands until another compute pipeline state is bound or the compute pass ends.
 
 ## Shaders
-Shaders are user-defined functions that can be invoked by GPU to perform certain tasks. In LunaSDK, wehave the following shaders:
+
+Shaders are user-defined functions invoked by the GPU. LunaSDK uses the following shader stages:
 
 1. Vertex shader, set by `GraphicsPipelineStateDesc::vs`.
 1. Pixel shader, set by `GraphicsPipelineStateDesc::ps`.
 1. Compute shader, set by `ComputePipelineStateDesc::cs`.
 
-All shaders are specified by filling a `ShaderData` object, which has the following properties:
-1. `data`, which is the shader binary data.
-1. `entry_point`, the entry point (main function) of the shader.
-1. `format`, the shader binary data format, with one of the following options:
-    1. `dxil`: DirectX intermediate language format. Used only for Direct3D 12 backend.
-    1. `spirv`: SPIR-V format. Used only for Vulkan backend.
-    1. `msl`: Metal shading language source form. Used only for Metal backend.
-    1. `metallib`: Metal library. Used only for Metal backend.
+All shaders are specified by a `ShaderData` object with the following properties:
+
+1. `data`: The compiled shader binary data.
+1. `entry_point`: The shader entry point. It is used by the Vulkan and Metal backends and ignored by the Direct3D 12 backend.
+1. `format`: The runtime shader binary format. The supported values are:
+    1. `dxil`: DirectX Intermediate Language, used by the Direct3D 12 backend.
+    1. `spirv`: SPIR-V, used by the Vulkan backend.
+    1. `metallib`: A compiled Metal library, used by the Metal backend.
+
+Metal Shading Language source may be used as an offline compilation intermediate, but it is not a runtime `ShaderDataFormat`.

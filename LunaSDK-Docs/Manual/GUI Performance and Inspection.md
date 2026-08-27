@@ -7,7 +7,7 @@ These APIs provide observability without maintaining a duplicated debug snapshot
 2. `get_elements` and `get_layers` expose the current dense arrays for read-only scanning.
 3. `get_input_events`, `get_data_scope_stack` and `get_styles` expose the remaining frame and context collections without copying them.
 4. Existing query APIs expose callback configurations, interaction state, delivered input, styles and draw commands.
-5. Human-readable debug names and the high-level GUI debug panel are available in every build.
+5. Human-readable debug names are available in every build so external tools and higher-level packages can present useful labels.
 
 GUI does not provide issue/pass logs, input recording, input replay, frame timelines or a cross-process transport format.
 
@@ -30,6 +30,8 @@ Performance counters are operational telemetry and remain available in every bui
 
 Tools should read the spans without mutating the tree. A tool that builds its own panel into the inspected context must first copy the small amount of presentation data it needs, then add the panel elements. Callback pointers and userdata may be inspected for presence and identity, but their package-owned semantics are not discoverable by GUI.
 
+GUI does not ship or own a built-in inspector panel. Higher-level packages and tools can build their own inspection view from these APIs without requiring a debug-only GUI ABI.
+
 ### Debug names
 `Element` and `Layer` contain human-readable debug names. Use `set_element_debug_name` and `set_layer_debug_name` to set them.
 
@@ -41,7 +43,7 @@ Debug names and inspection views are not controlled by a build option. Keeping t
 ### Read performance counters
 ```cpp
 GUI::PerformanceCounters counters = context->get_performance_counters();
-log_info("GUI: elements=%u draw=%u callbacks=%u route=%.3f ms generate=%.3f ms",
+log_info("GUI", "elements=%u draw=%u callbacks=%u route=%.3f ms generate=%.3f ms",
     counters.element_count,
     counters.draw_command_count,
     counters.draw_callback_count,
@@ -55,11 +57,11 @@ Renderer counters are read from the renderer after recording:
 
 ```cpp
 GUI::RendererPerformanceCounters rendering = renderer->get_performance_counters();
-log_info("GUI renderer: %.3f ms, %u passes, %u captures, %llu filtered pixels",
+log_info("GUI", "renderer: %.3f ms, %u passes, %u captures, %llu filtered pixels",
     rendering.render_ms,
     rendering.render_pass_count,
     rendering.backdrop_capture_count,
-    rendering.backdrop_filtered_pixel_count);
+    (unsigned long long)rendering.backdrop_filtered_pixel_count);
 ```
 
 ### Scan the element tree

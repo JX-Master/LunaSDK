@@ -32,9 +32,11 @@ namespace Luna
         {
             StackAllocator salloc;
             Vector<const c8*> enabled_extensions;
+            m_physical_device = physical_device;
+            vkGetPhysicalDeviceProperties(physical_device, &m_physical_device_properties);
             // This is required.
             enabled_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-            if (g_vk_version < VK_API_VERSION_1_1)
+            if (m_physical_device_properties.apiVersion < VK_API_VERSION_1_1)
             {
                 enabled_extensions.push_back(VK_KHR_MAINTENANCE1_EXTENSION_NAME);
             }
@@ -45,30 +47,46 @@ namespace Luna
             m_extension_properties.resize(extension_count);
             vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, m_extension_properties.data());
             
-            if (g_vk_version < VK_API_VERSION_1_2)
+            const bool supports_vulkan_1_1 = m_physical_device_properties.apiVersion >= VK_API_VERSION_1_1;
+            bool descriptor_indexing_available = m_physical_device_properties.apiVersion >= VK_API_VERSION_1_2;
+            if (supports_vulkan_1_1 && !descriptor_indexing_available)
             {
-                m_supports_descriptor_indexing = false;
                 for(auto& extension : m_extension_properties)
                 {
                     if(strcmp(extension.extensionName, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0)
                     {
-                        m_supports_descriptor_indexing = true;
+                        descriptor_indexing_available = true;
                         enabled_extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
                         break;
                     }
                 }
             }
+
+            VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{};
+            descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+            if (supports_vulkan_1_1 && g_vk_version >= VK_API_VERSION_1_1)
+            {
+                VkPhysicalDeviceFeatures2 features{};
+                features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                if (descriptor_indexing_available)
+                {
+                    features.pNext = &descriptor_indexing_features;
+                }
+                vkGetPhysicalDeviceFeatures2(physical_device, &features);
+                m_physical_device_features = features.features;
+                m_supports_variable_descriptor_count = descriptor_indexing_available &&
+                    descriptor_indexing_features.descriptorBindingVariableDescriptorCount == VK_TRUE;
+            }
             else
             {
-                // VK_EXT_descriptor_indexing is promoted to 1.2 and later.
-                m_supports_descriptor_indexing = true;
+                // The physical-device Vulkan 1.0 extension path additionally requires
+                // VK_KHR_get_physical_device_properties2 and VK_KHR_maintenance3. This
+                // backend does not enable that path, so variable counts require Vulkan 1.1.
+                vkGetPhysicalDeviceFeatures(physical_device, &m_physical_device_features);
+                m_supports_variable_descriptor_count = false;
             }
 
             m_desc_pool_mtx = new_mutex();
-            m_physical_device = physical_device;
-            vkGetPhysicalDeviceProperties(physical_device, &m_physical_device_properties);
-            // Check device features.
-            vkGetPhysicalDeviceFeatures(physical_device, &m_physical_device_features);
             // Create queues for every valid queue family.
             Vector<VkDeviceQueueCreateInfo> queue_create_infos;
             for (usize i = 0; i < queue_families.size(); ++i)
@@ -88,7 +106,6 @@ namespace Luna
             
             // Create device.
             VkDeviceCreateInfo create_info{};
-            VkStructureHeader* last = (VkStructureHeader*)&create_info;
             create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
             create_info.pQueueCreateInfos = queue_create_infos.data();
             create_info.queueCreateInfoCount = (u32)queue_create_infos.size();
@@ -97,6 +114,13 @@ namespace Luna
             create_info.ppEnabledLayerNames = g_enabled_layers.data();
             create_info.enabledExtensionCount = (u32)enabled_extensions.size();
             create_info.ppEnabledExtensionNames = enabled_extensions.data();
+            VkPhysicalDeviceDescriptorIndexingFeatures enabled_descriptor_indexing_features{};
+            if (m_supports_variable_descriptor_count)
+            {
+                enabled_descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+                enabled_descriptor_indexing_features.descriptorBindingVariableDescriptorCount = VK_TRUE;
+                create_info.pNext = &enabled_descriptor_indexing_features;
+            }
             auto r = encode_vk_result(vkCreateDevice(physical_device, &create_info, nullptr, &m_device));
             volkLoadDeviceTable(&m_funcs, m_device);
             if (failed(r))
@@ -291,7 +315,7 @@ namespace Luna
             switch (feature)
             {
             case DeviceFeature::unbound_descriptor_array:
-                ret.unbound_descriptor_array = m_supports_descriptor_indexing;
+                ret.unbound_descriptor_array = m_supports_variable_descriptor_count;
                 break;
             case DeviceFeature::pixel_shader_write: 
                 ret.pixel_shader_write = m_physical_device_features.fragmentStoresAndAtomics == VK_TRUE;

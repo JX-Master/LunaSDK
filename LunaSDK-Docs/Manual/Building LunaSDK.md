@@ -32,7 +32,7 @@ LunaBuild builds the native targets. The Android Gradle project is used only for
 
 ### iOS/iPadOS
 
-Install iOS/iPadOS SDK in Xcode. iOS build packaging is not part of the current LunaBuild main path.
+Install the iOS/iPadOS platform in Xcode. LunaBuild can compile iOS targets, assemble `.app` bundles, optionally sign them, and create an `.ipa` when the package output ends in `.ipa`. Device signing requires a suitable identity and, when applicable, a provisioning profile. Simulator builds use `--apple-sdk iphonesimulator`.
 
 ## Setup
 
@@ -93,7 +93,7 @@ dotnet run --project LunaBuild.csproj -- build --all --force
 
 ## Running
 
-Run builds the selected executable target first, then launches the produced program from its output directory:
+`run` builds the selected runnable target first. A normal `Executable` is launched directly from its output directory:
 
 ```sh
 dotnet run --project LunaBuild.csproj -- run --target RuntimeTest
@@ -111,13 +111,15 @@ Pass program arguments after a second `--` separator:
 dotnet run --project LunaBuild.csproj -- run RuntimeTest -- --list
 ```
 
+For a macOS `Application`, `run` first assembles the target's `.app` bundle and launches it through LaunchServices. An iOS `Application` can be run only when it targets `iphonesimulator` and a Simulator is booted. Running Android applications is not implemented; use `package` and install the resulting APK with Android tools.
+
 ### Common Options
 
 * `--target <name>` builds one target and its dependencies.
 * `--all` builds all default targets.
 * `--category <name>` filters all-target operations by `Engine`, `Tests`, or `Tools`. This option can be repeated or passed as a comma-separated list.
 * `--mode <name>` selects `Debug`, `Profile`, or `Release`. Default: `Debug`.
-* `--platform <name>` selects `Windows`, `MacOS`, `Linux`, `Android`, or `IOS`. Default: host platform.
+* `--platform <name>` accepts `Windows`, `MacOS`, `Linux`, `Android`, or `IOS`. Default: host platform. The current C++ build executors implement Windows, macOS, Android, and iOS; Linux C++ compilation and linking are not implemented yet.
 * `--arch <name>` selects architecture. LunaSDK supports macOS arm64 only.
 * Other common architecture values include Windows `x64` and Android ABI names such as `arm64-v8a`.
 * `--rhi <name>` selects `D3D12`, `Vulkan`, or `Metal`. Default: platform default.
@@ -178,7 +180,27 @@ Package `MultiPlatformSample` into an APK:
 dotnet run --project LunaBuild.csproj -- package MultiPlatformSample --platform Android --arch arm64-v8a --mode Debug --rhi Vulkan --output build/LunaBuild/AndroidPackages
 ```
 
-The package command builds the selected executable target first, copies the produced native `.so` files into the target's `AndroidProject/app/src/main/jniLibs/<abi>` directory, then invokes the Gradle wrapper for `assembleDebug` or `assembleRelease`. LunaBuild redirects Gradle and Android user-state directories under `build/LunaBuild` so local package runs do not depend on writable user profile cache directories.
+The package command builds the selected `Application` target first, copies the produced native `.so` files into the target's `AndroidProject/app/src/main/jniLibs/<abi>` directory, then invokes the Gradle wrapper for `assembleDebug` or `assembleRelease`. LunaBuild redirects Gradle and Android user-state directories under `build/LunaBuild` so local package runs do not depend on writable user profile cache directories.
+
+### macOS Application Example
+
+Build, assemble, and ad-hoc sign the `MultiPlatformSample` application bundle:
+
+```sh
+dotnet run --project LunaBuild.csproj -- package MultiPlatformSample --platform MacOS --arch arm64 --mode Debug --rhi Metal
+```
+
+The target must declare an Info.plist template with `AppleInfoPlist(...)`. Runtime files are placed in the bundle's `Resources` directory, and shared Luna module libraries are placed in `Frameworks`.
+
+### iOS/iPadOS Examples
+
+Build and package the iOS package smoke test without code signing:
+
+```sh
+dotnet run --project LunaBuild.csproj -- package IOSPackageSmoke --platform IOS --arch arm64 --ios-codesign-identity none --output build/LunaBuild/IOSPackageSmoke.app
+```
+
+Use an `.ipa` output path to create an IPA. For a simulator build on Apple Silicon, add `--apple-sdk iphonesimulator --arch arm64`; the current Apple executor accepts arm64. An iOS `Application` target must declare its Info.plist template; signing options can be supplied with `--ios-bundle-identifier`, `--ios-codesign-identity`, and `--ios-provisioning-profile`.
 
 ## Cleaning
 
@@ -239,12 +261,6 @@ For clangd, point it at the generated compile commands directory:
 
 Generate the Visual Studio solution:
 
-```bat
-gen_vs2022.bat
-```
-
-Or run the command directly:
-
 ```powershell
 dotnet run --project LunaBuild.csproj -- generate --format vs2022 --all --platform Windows --arch x64
 ```
@@ -256,22 +272,7 @@ Open the generated solution under `build/LunaBuild/VS2022`. The projects use NMa
 Generate the Xcode project:
 
 ```sh
-chmod +x ./gen_xcode.sh
-./gen_xcode.sh
-```
-
-Or run the command directly:
-
-```sh
 dotnet run --project LunaBuild.csproj -- generate --format xcode --all --platform MacOS --arch arm64
 ```
 
-Open the generated project under `build/LunaBuild/Xcode`. Xcode schemes call LunaBuild through the generated `lunabuild-xcode.sh` helper.
-
-## Long-Running Local Builds
-
-When investigating local build issues, use the timeout wrapper so compiler or toolchain hangs do not leave stale processes running:
-
-```powershell
-.\Tools\run_with_timeout.ps1 -FilePath (Get-Command dotnet).Source -ArgumentList @('run','--no-restore','--project','LunaBuild.csproj','--','build','--all') -TimeoutSeconds 300
-```
+Open the generated project under `build/LunaBuild/Xcode`. Xcode schemes call LunaBuild through the generated `lunabuild-xcode.sh` helper inside that output directory.

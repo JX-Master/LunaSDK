@@ -195,18 +195,10 @@ namespace Luna
             g_android_app->onAppCmd = handle_cmd;
         }
         LUNA_WINDOW_API void set_startup_params(const StartupParams& params)
-		{
-			g_startup_params = params;
-		}
-        LUNA_WINDOW_API const c8* get_app_name()
         {
-            return g_startup_params.name;
+            g_startup_params = params;
         }
-        LUNA_RUNTIME_API Version get_app_version()
-        {
-            return g_startup_params.version;
-        }
-        
+
         bool AndroidWindow::has_input_focus()
         {
             lutsassert_main_thread();

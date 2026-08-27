@@ -58,7 +58,7 @@ namespace Luna
                     }
                     else
                     {
-                        auto _ = Window::message_box(explain(r.errcode()), failure_title, Window::MessageBoxType::ok,
+                        auto _ = Window::message_box(explain(r.errcode()), failure_title, {"OK"},
                             Window::MessageBoxIcon::error);
                     }
                 }

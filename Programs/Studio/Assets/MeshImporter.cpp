@@ -268,8 +268,8 @@ namespace Luna
         }
         lucatch
         {
-            auto _ = Window::message_box(explain(luerr), "Failed to import obj mesh asset",
-                Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+            auto _ = Window::message_box(explain(luerr), "Failed to import obj mesh asset", {"OK"},
+                Window::MessageBoxIcon::error);
         }
     }
 
@@ -296,8 +296,8 @@ namespace Luna
             RV r = select_obj_mesh_file(m_source_file_path, m_obj_file, m_import_names);
             if(failed(r) && r.errcode() != E_INTERRUPTED)
             {
-                auto _ = Window::message_box(explain(r.errcode()), "Failed to import obj file",
-                    Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                auto _ = Window::message_box(explain(r.errcode()), "Failed to import obj file", {"OK"},
+                    Window::MessageBoxIcon::error);
                 m_source_file_path.clear();
             }
         }

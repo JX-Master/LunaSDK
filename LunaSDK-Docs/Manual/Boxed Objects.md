@@ -12,7 +12,30 @@ To implement such features, every boxed object will have one *Object Header* all
 #include <Luna/Runtime/Object.hpp>
 ```
 
-One type must be registered to the [[Type System]] to be used for creating boxed objects. If you want to register one type solely for creating boxed objects, you may use `register_boxed_type` instead of calling `register_struct_type` directly.
+A type must be registered to the [[Type System]] before it can be used to create boxed objects. For new code, declare the boxed type as a reflected structure, declare every implemented interface with `[[Luna::interface]]`, and let LunaMetaTool generate the type and interface registration code. The header containing the declaration must include its generated header and be listed in the target's `MetaHeaders(...)` rules. See [[Reflection Metadata with LunaMetaTool]] for the complete workflow.
+
+```c++
+#include <Luna/Runtime/Interface.hpp>
+#include "MyObject.generated.hpp"
+
+namespace Luna::Example
+{
+    struct [[Luna::interface("{F4B1C82B-ADA3-41A9-94C3-D76F848327F9}")]] IMyInterface : virtual Interface
+    {
+        virtual void do_something() = 0;
+    };
+
+    struct [[Luna::struct("{3B0BB920-245F-4536-AA84-100A94B9B4F7}")]] MyObject : IMyInterface
+    {
+        virtual object_t get_object() override { return this; }
+        virtual void do_something() override {}
+    };
+}
+```
+
+The generated target registration function registers `MyObject` as a boxed type and records its interface implementations. Do not call `register_boxed_type` or `impl_interface_for_type` manually for a type managed by LunaMetaTool.
+
+`register_boxed_type<T>` remains available as a low-level compatibility API for types that intentionally bypass generated registration. It registers only the information required to create a boxed object; use `register_struct_type` when complete structure reflection metadata is required.
 
 ## Managing boxed object manually
 
@@ -26,7 +49,7 @@ Boxed objects implement both strong reference counting and weak reference counti
 
 ## Managing boxed object automatically
 
-```
+```c++
 #include <Luna/Runtime/Ref.hpp>
 ```
 
@@ -37,7 +60,7 @@ In most of the time, you don't need to manage boxed object manually. You can use
 * `WeakRef<T>` for weak references to typed boxed objects.
 * `WeakObjRef` for weak references to type-less boxed objects.
 
-All smart pointers decrease the reference counter value automatically when being destructed, so the user does not need to handle this manually. Coping one smart pointer object only increase the reference counter value of the object, the object itself is not copied. You can create one weak reference smart pointer object by casting from one strong reference smart pointer directly, but you should call `pin` on one weak reference smart pointer to fetch one strong reference smart pointer from it, which will return `nullptr` if failed. The weak smart pointer will be reset to `nullptr` automatically when the object is expired and the user calls `get` on the smart pointer.
+All smart pointers decrease the corresponding reference counter automatically when destroyed, so the user does not need to handle this manually. Copying one smart pointer increases the reference counter; it does not copy the object. A weak reference can be constructed from a strong reference, but the object must be accessed through `pin`, which returns a strong `Ref<T>` or `ObjRef` and yields `nullptr` if the object has expired. Calls that inspect a weak reference, including `valid`, `object`, `pin`, and `WeakObjRef::get`, detect expiration and clear the stored weak pointer; expiration is not delivered as a separate notification.
 
 ## Run-time type identification and dynamic casting
 
@@ -45,7 +68,7 @@ All smart pointers decrease the reference counter value automatically when being
 #include <Luna/Runtime/Object.hpp>
 ```
 
-LunaSDK uses `object_t` to represent one type-less pointer to one boxed object. It is not safe to cast one `typeinfo_t` to one concrete typed pointer without checking whether the object type conforms to the pointer type specified. LunaSDK provides run-time type identification (RTTI) for all boxed objects to perform type casting safely at run time.
+LunaSDK uses `object_t` to represent one type-less pointer to one boxed object. It is not safe to cast an `object_t` to one concrete typed pointer without checking whether the object type conforms to the pointer type specified. LunaSDK provides run-time type identification (RTTI) for all boxed objects to perform type casting safely at run time.
 
 Use `get_object_type` on `object_t` to fetch the real type of the object. This function returns one `typeinfo_t` directly, so it is suitable if you want to inspect the type to perform some special operations. 
 

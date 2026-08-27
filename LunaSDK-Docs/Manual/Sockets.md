@@ -1,18 +1,26 @@
 ```c++
+#include <Luna/Runtime/Runtime.hpp>
+#include <Luna/Runtime/Module.hpp>
+#include <Luna/Runtime/Log.hpp>
 #include <Luna/Network/Network.hpp>
+
+using namespace Luna;
+using namespace Luna::Network;
 ```
 
-The `Network` module provides non-blocking TCP and UDP socket APIs for IPv4 and IPv6 on Windows, macOS, and Linux. Add and initialize the module before using any socket API:
+The `Network` module provides non-blocking TCP and UDP socket APIs for IPv4 and IPv6 on Windows, macOS, iOS, and Linux. Add and initialize the module before using any socket API. The platform must also be supported by the selected LunaBuild toolchain; in particular, the current repository does not yet provide a functional Linux C++ build backend even though the Network module has a POSIX Linux implementation.
 
 ```c++
 lupanic_if_failed(init());
-lupanic_if_failed(add_modules({Luna::Network::module_network()}));
+lupanic_if_failed(add_modules({module_network()}));
 lupanic_if_failed(init_modules());
 ```
 
 ## Socket model
 
-Every socket created by the module is non-blocking for its complete lifetime. The module does not provide a blocking mode or blocking convenience operations. An operation that cannot make progress immediately returns `E_NOT_READY`; wait for the corresponding native socket readiness event before trying it again.
+Every socket created by the module is non-blocking for its complete lifetime. The module does not provide a blocking socket mode or blocking socket-I/O convenience operations. `accept`, TCP transfer, and UDP transfer operations that cannot make progress immediately return `E_NOT_READY`; wait for the corresponding native socket readiness event before trying them again. `connect` is different: successfully starting an asynchronous connection returns `ok` and changes the state to `connecting`.
+
+`getaddrinfo` performs a synchronous host lookup and may block while the operating system resolves a host or service name. Resolve names before entering a latency-sensitive socket event loop, or perform lookup on an application-managed worker thread.
 
 TCP sockets do not implement `IStream`. `receive` and `send` are available in the `connected` and `peer_closed` states, perform at most one native socket operation, and return `E_BAD_CALLING_TIME` in other states. A successful `send` may transfer fewer bytes than requested. The caller is responsible for retaining and resending the remaining suffix. A successful non-zero-size `receive` that reports zero bytes indicates an orderly shutdown of the peer's sending direction.
 
@@ -25,9 +33,6 @@ All socket types implement `ISocket::close`. `close` releases the native socket 
 `SocketAddress` stores either an IPv4 or IPv6 endpoint. Set `family` first, then fill the corresponding union member.
 
 ```c++
-using namespace Luna;
-using namespace Luna::Network;
-
 SocketAddress address = {};
 address.family = AddressFamily::ipv4;
 address.ipv4.address = {127, 0, 0, 1};
@@ -91,7 +96,9 @@ lupanic_if_failed(getaddrinfo(nullptr, "0", &hints, bind_addresses));
 Create a listener with `new_tcp_socket`, bind it, and call `listen`. A successful `listen` changes the socket state to `listening`.
 
 ```c++
-lulet(listener, new_tcp_socket(AddressFamily::ipv4));
+auto listener_result = new_tcp_socket(AddressFamily::ipv4);
+lupanic_if_failed(listener_result);
+Ref<ITCPSocket> listener = listener_result.get();
 lupanic_if_failed(listener->bind(address));
 lupanic_if_failed(listener->listen(I32_MAX));
 luassert(listener->get_status() == TCPConnectionState::listening);
@@ -113,7 +120,9 @@ if(!accepted.valid() && accepted.errcode() == E_NOT_READY)
 `connect` returns `ok` when the connection either completes immediately or is successfully started asynchronously. It does not return `E_IN_PROGRESS`. Use `get_status` to distinguish the two successful outcomes.
 
 ```c++
-lulet(socket, new_tcp_socket(AddressFamily::ipv4));
+auto socket_result = new_tcp_socket(AddressFamily::ipv4);
+lupanic_if_failed(socket_result);
+Ref<ITCPSocket> socket = socket_result.get();
 lupanic_if_failed(socket->connect(address));
 
 switch(socket->get_status())
@@ -177,7 +186,9 @@ Zero-size `receive` and `send` calls succeed with zero transferred bytes and do 
 Create UDP sockets with `new_udp_socket`. `send_to` and `receive_from` each perform one non-blocking datagram operation. They return `E_NOT_READY` if the datagram cannot be sent immediately or no datagram is available.
 
 ```c++
-lulet(socket, new_udp_socket(AddressFamily::ipv6));
+auto socket_result = new_udp_socket(AddressFamily::ipv6);
+lupanic_if_failed(socket_result);
+Ref<IUDPSocket> socket = socket_result.get();
 lupanic_if_failed(socket->bind(address));
 
 const c8 message[] = {'u', 'd', 'p'};
