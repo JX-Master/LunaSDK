@@ -28,13 +28,15 @@ namespace Luna
         }
 
         static void draw_combo_text(GUI::IContext* context, const RectF& rect, const c8* value,
-            const Float4U& color, f32 font_size, VG::TextAlignment alignment = VG::TextAlignment::begin)
+            const Name& font, const Float4U& color, f32 font_size,
+            VG::TextAlignment alignment = VG::TextAlignment::begin)
         {
             GUI::DrawCommand command;
             command.type = GUI::DrawCommandType::text;
             command.rect_reference = GUI::DrawCommandRectReference::element;
             command.rect = rect;
             command.color = color;
+            command.font = font;
             command.font_size = font_size;
             command.horizontal_alignment = alignment;
             command.vertical_alignment = VG::TextAlignment::center;
@@ -105,7 +107,8 @@ namespace Luna
             draw_combo_rect(context, background, max(radius - 1.0f, 0.0f), RectF(1.0f, 1.0f, -2.0f, -2.0f));
             const c8* selected = "";
             if(current_item && *current_item >= 0 && (usize)*current_item < items.size()) selected = items[(usize)*current_item];
-            draw_combo_text(context, RectF(12.0f, 0.0f, -44.0f, 0.0f), selected, text_color, font_size);
+            draw_combo_text(context, RectF(12.0f, 0.0f, -44.0f, 0.0f), selected,
+                Internal::style_name(context, preview, "gui.font"), text_color, font_size);
             draw_combo_chevron(context, text_color, open);
             context->end_element();
 
