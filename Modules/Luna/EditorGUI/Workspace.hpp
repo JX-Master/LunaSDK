@@ -32,6 +32,21 @@ namespace Luna
             y
         };
 
+        //! Identifies how a panel is placed relative to an existing docked panel.
+        enum class DockPanelPlacement : u8
+        {
+            //! Adds the panel as a tab in the target panel's leaf.
+            tab,
+            //! Splits the target leaf and places the panel on its left side.
+            left,
+            //! Splits the target leaf and places the panel on its right side.
+            right,
+            //! Splits the target leaf and places the panel above it.
+            up,
+            //! Splits the target leaf and places the panel below it.
+            down
+        };
+
         //! Describes one node in a dock space split tree.
         struct DockSpaceLayoutNodeDesc
         {
@@ -137,6 +152,28 @@ namespace Luna
         //! @remark Call this only during initialization or when the application explicitly changes layouts.
         LUNA_EDITOR_GUI_API void set_dockspace_layout(GUI::IContext* context, id_t dock_space,
             const DockSpaceLayoutDesc& desc);
+
+        //! Docks one panel relative to an existing docked panel.
+        //! @param[in] context GUI context.
+        //! @param[in] dock_space Stable dock space ID.
+        //! @param[in] panel Stable ID of the panel to place. The panel does not need to be submitted yet.
+        //! @param[in] target_panel Stable ID of an existing docked panel.
+        //! @param[in] placement Placement relative to `target_panel`.
+        //! @param[in] panel_ratio Fraction of the target leaf assigned to `panel` for split placements.
+        //! This value is ignored for @ref DockPanelPlacement::tab.
+        //! @return Returns `true` if `target_panel` exists in the dock tree and the panel was placed.
+        LUNA_EDITOR_GUI_API bool dock_panel(GUI::IContext* context, id_t dock_space, id_t panel,
+            id_t target_panel, DockPanelPlacement placement = DockPanelPlacement::tab,
+            f32 panel_ratio = 0.5f);
+
+        //! Activates one panel in a dock space.
+        //! @param[in] context GUI context.
+        //! @param[in] dock_space Stable dock space ID.
+        //! @param[in] panel Stable panel ID.
+        //! @return Returns `true` if the panel exists. Docked panels become the selected tab of their leaf;
+        //! floating panels are raised above other floating panels on the next frame.
+        LUNA_EDITOR_GUI_API bool activate_dock_panel(GUI::IContext* context, id_t dock_space,
+            id_t panel);
 
         //! Begins one panel in the current dock space.
         //! @param[in] context GUI context.

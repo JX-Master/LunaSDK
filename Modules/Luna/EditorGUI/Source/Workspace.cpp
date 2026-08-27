@@ -233,7 +233,8 @@ namespace Luna
                 if(!leaf.selected_tab) leaf.selected_tab = panel;
             }
 
-            static void dock_panel(DockSpaceState& state, id_t panel, u32 target, DockDropDirection direction)
+            static void dock_panel(DockSpaceState& state, id_t panel, u32 target,
+                DockDropDirection direction, f32 panel_ratio)
             {
                 DockPanelPersistentData& panel_state = get_or_add_panel(state, panel);
                 if(panel_state.mode == DockPanelMode::floating)
@@ -271,8 +272,9 @@ namespace Luna
                 branch.parent = state.nodes[target].parent;
                 branch.split_axis = direction == DockDropDirection::left || direction == DockDropDirection::right ?
                     DockSplitAxis::x : DockSplitAxis::y;
-                branch.split_ratio = 0.5f;
                 bool new_first = direction == DockDropDirection::left || direction == DockDropDirection::up;
+                panel_ratio = clamp(panel_ratio, 0.01f, 0.99f);
+                branch.split_ratio = new_first ? panel_ratio : 1.0f - panel_ratio;
                 branch.child0 = new_first ? new_child : old_child;
                 branch.child1 = new_first ? old_child : new_child;
                 state.nodes[target] = move(branch);
@@ -925,8 +927,6 @@ namespace Luna
                     if(panel.close.id && context->get_interaction_state(panel.close.id).clicked)
                     {
                         if(panel.open) *panel.open = false;
-                        remove_panel(state, panel.id);
-                        relayout = true;
                         continue;
                     }
                     if(panel.title.id && has_pointer_event(context, panel.title.id,
@@ -1104,7 +1104,7 @@ namespace Luna
                     if(state.drag_mode == DockDragMode::floating_move && state.drag_panel &&
                         state.drop_direction != DockDropDirection::none)
                     {
-                        dock_panel(state, state.drag_panel, state.drop_target, state.drop_direction);
+                        dock_panel(state, state.drag_panel, state.drop_target, state.drop_direction, 0.5f);
                         relayout = true;
                     }
                     state.drag_mode = DockDragMode::none;
@@ -1199,6 +1199,49 @@ namespace Luna
                 panel.z_order = source.z_order ? source.z_order : state->next_z_order++;
                 state->next_z_order = max(state->next_z_order, panel.z_order + 1);
             }
+        }
+
+        LUNA_EDITOR_GUI_API bool dock_panel(GUI::IContext* context, id_t dock_space, id_t panel,
+            id_t target_panel, DockPanelPlacement placement, f32 panel_ratio)
+        {
+            luassert(context && dock_space && panel && target_panel);
+            if(panel == target_panel) return activate_dock_panel(context, dock_space, panel);
+            Ref<Internal::DockSpaceState> state = Internal::dock_space_state(context, dock_space);
+            u32 target = Internal::find_panel_leaf(*state, target_panel);
+            if(target == U32_MAX) return false;
+            Internal::remove_panel_from_tree(*state, panel);
+            target = Internal::find_panel_leaf(*state, target_panel);
+            if(target == U32_MAX) return false;
+            Internal::DockDropDirection direction = Internal::DockDropDirection::center;
+            switch(placement)
+            {
+            case DockPanelPlacement::tab: direction = Internal::DockDropDirection::center; break;
+            case DockPanelPlacement::left: direction = Internal::DockDropDirection::left; break;
+            case DockPanelPlacement::right: direction = Internal::DockDropDirection::right; break;
+            case DockPanelPlacement::up: direction = Internal::DockDropDirection::up; break;
+            case DockPanelPlacement::down: direction = Internal::DockDropDirection::down; break;
+            default: return false;
+            }
+            Internal::dock_panel(*state, panel, target, direction, panel_ratio);
+            return true;
+        }
+
+        LUNA_EDITOR_GUI_API bool activate_dock_panel(GUI::IContext* context, id_t dock_space,
+            id_t panel)
+        {
+            luassert(context && dock_space && panel);
+            Ref<Internal::DockSpaceState> state = Internal::dock_space_state(context, dock_space);
+            Internal::DockPanelPersistentData* persistent = Internal::find_panel(*state, panel);
+            if(!persistent) return false;
+            if(persistent->mode == DockPanelMode::floating)
+            {
+                persistent->z_order = state->next_z_order++;
+                return true;
+            }
+            u32 leaf_index = Internal::find_panel_leaf(*state, panel);
+            if(leaf_index == U32_MAX) return false;
+            state->nodes[leaf_index].selected_tab = panel;
+            return true;
         }
 
         LUNA_EDITOR_GUI_API bool begin_dock_panel(GUI::IContext* context, id_t id, const c8* label,

@@ -164,6 +164,11 @@ namespace
         return result ? result : GUI::DEFAULT_DATA_SCOPE;
     }
 
+    GUI::id_t document_panel_id(GUI::IContext* context, u64 document_id)
+    {
+        return GUI::make_scoped_id(context->make_id("panel.document"), document_id);
+    }
+
     struct PropertyEditor
     {
         Name key;
@@ -191,6 +196,7 @@ namespace
         bool dirty = false;
         bool can_undo = false;
         bool can_redo = false;
+        bool panel_open = true;
         Ref<GameGUI::Document> snapshot;
         Variant diagnostics;
         Guid selected_node;
@@ -254,9 +260,6 @@ namespace
         GUI::ElementHandle delete_node;
         GUI::ElementHandle add_property;
         GUI::ElementHandle preview_host;
-        GUI::ElementHandle close_save;
-        GUI::ElementHandle close_discard;
-        GUI::ElementHandle close_cancel;
         Vector<NodeHit> nodes;
         Vector<TypeHit> types;
     };
@@ -282,7 +285,7 @@ namespace
         Vector<u64> deferred_document_removals;
         Vector<NodeTypeView> node_types;
         i32 selected_document = 0;
-        u64 pending_close_document = 0;
+        bool dock_layout_initialized = false;
         bool discard_smoke = false;
         String workspace_path;
         Path workspace_root;
@@ -309,6 +312,7 @@ namespace
         bool update_metadata(DocumentView& document, const Variant& metadata);
         DocumentView* find_document(u64 id);
         DocumentView* active_document();
+        void place_document_panel(u64 document_id, u64 target_document_id);
         void rebuild_inspector(DocumentView& document);
         RV ensure_preview(DocumentView& document);
         RV build_preview(DocumentView& document, Span<const GUI::InputEvent> input);
@@ -319,7 +323,7 @@ namespace
 #endif
         void build_hierarchy_panel(UIHandles& handles);
         void build_palette_panel(UIHandles& handles);
-        void build_document_panel(UIHandles& handles);
+        void build_document_panels(UIHandles& handles);
         void build_inspector_panel(UIHandles& handles);
         void build_diagnostics_panel();
         void build_hierarchy_node(DocumentView& document, const Guid& node, u32 depth,
@@ -414,6 +418,29 @@ namespace
         return &documents[(usize)selected_document];
     }
 
+    void EditorApp::place_document_panel(u64 document_id, u64 target_document_id)
+    {
+        GUI::id_t dock_space = gui->make_id("editor.dock_space");
+        GUI::id_t panel = document_panel_id(gui, document_id);
+        bool placed = false;
+        if(target_document_id && target_document_id != document_id)
+        {
+            placed = EditorGUI::dock_panel(gui, dock_space, panel,
+                document_panel_id(gui, target_document_id));
+        }
+        if(!placed)
+        {
+            placed = EditorGUI::dock_panel(gui, dock_space, panel,
+                gui->make_id("panel.diagnostics"), EditorGUI::DockPanelPlacement::up, 0.78f);
+        }
+        if(!placed)
+        {
+            error_message = "The document panel could not be added to the dock space.";
+            return;
+        }
+        EditorGUI::activate_dock_panel(gui, dock_space, panel);
+    }
+
     bool EditorApp::invoke(const c8* url, const Variant& params, Variant& result)
     {
         auto response = service->frontend()->invoke(url, params);
@@ -466,6 +493,8 @@ namespace
 
     bool EditorApp::create_document()
     {
+        DocumentView* target = active_document();
+        u64 target_id = target ? target->id : 0;
         Variant metadata;
         if(!invoke(GameGUIEditor::CREATE_DOCUMENT_URL, Variant(VariantType::object), metadata))
             return false;
@@ -473,7 +502,9 @@ namespace
         update_metadata(document, metadata);
         documents.push_back(move(document));
         selected_document = (i32)documents.size() - 1;
-        return refresh_snapshot(documents.back());
+        if(!refresh_snapshot(documents.back())) return false;
+        if(dock_layout_initialized) place_document_panel(documents.back().id, target_id);
+        return true;
     }
 
     bool EditorApp::native_path_to_asset_path(Path native_path, String& asset_path)
@@ -528,14 +559,24 @@ namespace
             if(documents[i].id == id)
             {
                 selected_document = (i32)i;
-                return refresh_snapshot(documents[i]);
+                if(!refresh_snapshot(documents[i])) return false;
+                if(dock_layout_initialized)
+                {
+                    EditorGUI::activate_dock_panel(gui, gui->make_id("editor.dock_space"),
+                        document_panel_id(gui, documents[i].id));
+                }
+                return true;
             }
         }
+        DocumentView* target = active_document();
+        u64 target_id = target ? target->id : 0;
         DocumentView document;
         update_metadata(document, metadata);
         documents.push_back(move(document));
         selected_document = (i32)documents.size() - 1;
-        return refresh_snapshot(documents.back());
+        if(!refresh_snapshot(documents.back())) return false;
+        if(dock_layout_initialized) place_document_panel(documents.back().id, target_id);
+        return true;
     }
 
     void EditorApp::rebuild_inspector(DocumentView& document)
@@ -791,8 +832,14 @@ namespace
             if(documents[i].id == id)
             {
                 documents.erase(documents.begin() + i);
-                if(selected_document >= (i32)documents.size())
-                    selected_document = max((i32)documents.size() - 1, 0);
+                if(documents.empty()) selected_document = 0;
+                else
+                {
+                    usize next = min(i, documents.size() - 1);
+                    selected_document = (i32)next;
+                    EditorGUI::activate_dock_panel(gui, gui->make_id("editor.dock_space"),
+                        document_panel_id(gui, documents[next].id));
+                }
                 break;
             }
         }
@@ -800,13 +847,45 @@ namespace
 
     void EditorApp::request_close(DocumentView& document, bool discard)
     {
+        if(document.dirty && !discard)
+        {
+            constexpr usize SAVE_BUTTON_INDEX = 0;
+            constexpr usize DISCARD_BUTTON_INDEX = 1;
+            constexpr usize CANCEL_BUTTON_INDEX = 2;
+            const c8* buttons[] = {"Save", "Discard", "Cancel"};
+            String message;
+            strprintf(message, "Save changes to \"%s\" before closing?", document.title.c_str());
+            auto response = Window::message_box(message.c_str(), "Unsaved Changes",
+                Span<const c8*>(buttons, 3), Window::MessageBoxIcon::warning,
+                SAVE_BUTTON_INDEX, CANCEL_BUTTON_INDEX);
+            if(!response.valid())
+            {
+                document.panel_open = true;
+                error_message = explain(response.errcode());
+                return;
+            }
+            if(response.get() == CANCEL_BUTTON_INDEX)
+            {
+                document.panel_open = true;
+                return;
+            }
+            if(response.get() == SAVE_BUTTON_INDEX)
+            {
+                save(document, document.asset_path.empty());
+                if(document.dirty)
+                {
+                    document.panel_open = true;
+                    return;
+                }
+            }
+            else discard = true;
+        }
         Variant params = editing_params(document);
         params["discard"] = discard;
         Variant result;
         if(invoke(GameGUIEditor::CLOSE_DOCUMENT_URL, params, result))
         {
             u64 id = document.id;
-            pending_close_document = 0;
             // The editor draw list generated earlier in this frame may still refer to
             // resources owned by this document, notably its preview texture. Keep the
             // view alive until Renderer has consumed the draw list.
@@ -821,10 +900,7 @@ namespace
             }
             if(!already_deferred) deferred_document_removals.push_back(id);
         }
-        else if(document.dirty && !discard)
-        {
-            pending_close_document = document.id;
-        }
+        else document.panel_open = true;
     }
 
     void EditorApp::apply_inspector_changes(DocumentView& document)
@@ -872,6 +948,15 @@ namespace
 
     void EditorApp::process_interactions(const UIHandles& handles)
     {
+        for(usize i = 0; i < documents.size(); ++i)
+        {
+            if(documents[i].panel_open) continue;
+            selected_document = (i32)i;
+            apply_inspector_changes(documents[i]);
+            request_close(documents[i], false);
+            return;
+        }
+
         if(EditorGUI::is_item_clicked(gui, handles.create_document)) create_document();
         if(EditorGUI::is_item_clicked(gui, handles.open_document)) open_document();
 
@@ -895,7 +980,10 @@ namespace
             if(EditorGUI::is_item_clicked(gui, handles.undo)) undo_document(*document);
             if(EditorGUI::is_item_clicked(gui, handles.redo)) redo_document(*document);
             if(EditorGUI::is_item_clicked(gui, handles.close_document))
+            {
                 request_close(*document, false);
+                return;
+            }
 
             if(EditorGUI::is_item_clicked(gui, handles.delete_node) &&
                 document->snapshot && document->selected_node != document->snapshot->root)
@@ -961,20 +1049,6 @@ namespace
             }
         }
 
-        if(pending_close_document)
-        {
-            DocumentView* closing = find_document(pending_close_document);
-            if(!closing) pending_close_document = 0;
-            else if(EditorGUI::is_item_clicked(gui, handles.close_save))
-            {
-                save(*closing, closing->asset_path.empty());
-                if(!closing->dirty) request_close(*closing, false);
-            }
-            else if(EditorGUI::is_item_clicked(gui, handles.close_discard))
-                request_close(*closing, true);
-            else if(EditorGUI::is_item_clicked(gui, handles.close_cancel))
-                pending_close_document = 0;
-        }
     }
 
     RV EditorApp::run()
@@ -1221,65 +1295,34 @@ namespace
         EditorGUI::end_dock_panel(gui);
     }
 
-    void EditorApp::build_document_panel(UIHandles& handles)
+    void EditorApp::build_document_panels(UIHandles& handles)
     {
-        if(!EditorGUI::begin_dock_panel(gui, gui->make_id("panel.document"),
-            "Documents")) return;
-        GUI::ElementHandle root = EditorGUI::begin_v_layout(gui,
-            gui->make_id("documents.root"), "Documents Root", fill_layout());
-
-        if(pending_close_document)
-        {
-            GUI::ElementHandle row = EditorGUI::begin_h_layout(gui,
-                gui->make_id("close.prompt"), "Close Prompt", fill_width(38.0f));
-            EditorGUI::text(gui, gui->make_id("close.prompt.text"),
-                "This document has unsaved changes.", grow_width(30.0f));
-            handles.close_save = EditorGUI::text_button(gui,
-                gui->make_id("close.save"), "Save", fixed_layout(60.0f, 30.0f));
-            handles.close_discard = EditorGUI::text_button(gui,
-                gui->make_id("close.discard"), "Discard", fixed_layout(72.0f, 30.0f));
-            handles.close_cancel = EditorGUI::text_button(gui,
-                gui->make_id("close.cancel"), "Cancel", fixed_layout(64.0f, 30.0f));
-            GUI::FlexLayoutDesc row_layout;
-            row_layout.axis = GUI::LayoutAxis::x;
-            row_layout.cross_alignment = GUI::FlexAlignment::center;
-            row_layout.main_axis_gap = 6.0f;
-            EditorGUI::end_h_layout(gui, row, row_layout);
-        }
-
-        EditorGUI::TabBarDesc tab_desc;
-        tab_desc.fitting_mode = EditorGUI::TabBarFittingMode::shrink;
-        EditorGUI::begin_tab_bar(gui, gui->make_id("documents.tabs"), &selected_document,
-            fill_layout(), tab_desc);
         for(usize i = 0; i < documents.size(); ++i)
         {
             DocumentView& document = documents[i];
             String label = document.title;
             if(document.dirty) label.append(" *");
-            if(EditorGUI::begin_tab_item(gui,
-                GUI::make_scoped_id(gui->make_id("documents.tabs.items"), document.id),
-                label.c_str()))
-            {
-                handles.document_id = document.id;
-                RV preview_result = ensure_preview(document);
-                if(failed(preview_result)) error_message = explain(preview_result.errcode());
-                handles.preview_host = EditorGUI::begin_button(gui,
-                    GUI::make_scoped_id(gui->make_id("documents.preview.host"), document.id),
-                    "Interactive GameGUI Preview", fill_layout());
-                EditorGUI::ImageDesc image;
-                image.flags = EditorGUI::ImageFlag::flip_y;
-                EditorGUI::image(gui,
-                    GUI::make_scoped_id(gui->make_id("documents.preview.image"), document.id),
-                    document.preview.target, fill_layout(), image);
-                EditorGUI::end_button(gui);
-                EditorGUI::end_tab_item(gui);
-            }
+            if(!EditorGUI::begin_dock_panel(gui, document_panel_id(gui, document.id),
+                label.c_str(), &document.panel_open)) continue;
+            selected_document = (i32)i;
+            handles.document_id = document.id;
+            GUI::id_t content_scope = GUI::make_scoped_id(gui->make_id("documents.content"),
+                document.id);
+            GUI::ElementHandle root = EditorGUI::begin_v_layout(gui, content_scope,
+                "Document Preview", fill_layout());
+            RV preview_result = ensure_preview(document);
+            if(failed(preview_result)) error_message = explain(preview_result.errcode());
+            handles.preview_host = EditorGUI::begin_button(gui,
+                GUI::make_scoped_id(content_scope, "preview.host"),
+                "Interactive GameGUI Preview", fill_layout());
+            EditorGUI::ImageDesc image;
+            image.flags = EditorGUI::ImageFlag::flip_y;
+            EditorGUI::image(gui, GUI::make_scoped_id(content_scope, "preview.image"),
+                document.preview.target, fill_layout(), image);
+            EditorGUI::end_button(gui);
+            EditorGUI::end_v_layout(gui, root);
+            EditorGUI::end_dock_panel(gui);
         }
-        EditorGUI::end_tab_bar(gui);
-        GUI::FlexLayoutDesc root_layout;
-        root_layout.main_axis_gap = 4.0f;
-        EditorGUI::end_v_layout(gui, root, root_layout);
-        EditorGUI::end_dock_panel(gui);
     }
 
 #if !defined(LUNA_PLATFORM_MACOS)
@@ -1463,9 +1506,9 @@ namespace
 #endif
         EditorGUI::begin_dock_space(gui,
             gui->make_id("editor.dock_space"), "GameGUI Editor DockSpace", fill_layout());
+        build_document_panels(handles);
         build_hierarchy_panel(handles);
         build_palette_panel(handles);
-        build_document_panel(handles);
         build_inspector_panel(handles);
         build_diagnostics_panel();
         EditorGUI::end_dock_space(gui);
@@ -1519,10 +1562,19 @@ namespace
         layout.nodes[5].split_ratio = 0.78f;
         layout.nodes[5].child0 = 6;
         layout.nodes[5].child1 = 7;
-        layout.nodes[6].tabs.push_back(gui->make_id("panel.document"));
+        for(const DocumentView& document : documents)
+        {
+            layout.nodes[6].tabs.push_back(document_panel_id(gui, document.id));
+        }
+        if(!documents.empty())
+        {
+            usize selected = (usize)clamp(selected_document, 0, (i32)documents.size() - 1);
+            layout.nodes[6].selected_tab = document_panel_id(gui, documents[selected].id);
+        }
         layout.nodes[7].tabs.push_back(gui->make_id("panel.diagnostics"));
         layout.nodes[8].tabs.push_back(gui->make_id("panel.inspector"));
         EditorGUI::set_dockspace_layout(gui, gui->make_id("editor.dock_space"), layout);
+        dock_layout_initialized = true;
         return ok;
     }
 
@@ -1587,8 +1639,6 @@ namespace
             luexp(resize_target(size));
             width = size.x;
             height = size.y;
-            luexp(initialize_dock_layout());
-
             lulet(created_service, GameGUIEditor::new_service());
             service = move(created_service);
             Variant types;
@@ -1608,6 +1658,7 @@ namespace
                 node_types.push_back(move(type));
             }
             if(!create_document()) luthrow(E_FAILURE);
+            luexp(initialize_dock_layout());
 
             Window::set_event_handler([](object_t event, void* userdata)
             {
