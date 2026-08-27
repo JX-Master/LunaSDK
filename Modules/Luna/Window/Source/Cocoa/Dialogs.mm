@@ -12,6 +12,7 @@
 #include "../../MessageBox.hpp"
 #include "../../FileDialog.hpp"
 #include "../../Window.hpp"
+#include <Luna/Runtime/TSAssert.hpp>
 
 #import <Cocoa/Cocoa.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -20,15 +21,26 @@ namespace Luna
 {
     namespace Window
     {
-        LUNA_WINDOW_API R<MessageBoxButton> message_box(const c8* text, const c8* caption, MessageBoxType type, MessageBoxIcon icon)
+        LUNA_WINDOW_API R<usize> message_box(const c8* text, const c8* title, Span<const c8*> buttons,
+            MessageBoxIcon icon, usize default_button_index, usize cancel_button_index)
         {
+            lutsassert_main_thread();
+            if(!text || !title || buttons.empty() || default_button_index >= buttons.size() ||
+                (cancel_button_index != USIZE_MAX && (cancel_button_index >= buttons.size() ||
+                    cancel_button_index == default_button_index)))
+            {
+                return E_BAD_ARGUMENTS;
+            }
             @autoreleasepool
             {
+                NSString* message_text = [NSString stringWithUTF8String: text];
+                NSString* message_title = [NSString stringWithUTF8String: title];
+                if(!message_text || !message_title) return E_BAD_ARGUMENTS;
+
                 NSAlert* alert = [[NSAlert alloc] init];
-                NSString* title = [NSString stringWithUTF8String: caption];
-                NSString* info = [NSString stringWithUTF8String: text];
-                [alert setMessageText: title];
-                [alert setInformativeText: info];
+                if(!alert) return E_OUT_OF_MEMORY;
+                [alert setMessageText: message_title];
+                [alert setInformativeText: message_text];
                 switch(icon)
                 {
                     case MessageBoxIcon::none:
@@ -42,97 +54,45 @@ namespace Luna
                     case MessageBoxIcon::error:
                         [alert setAlertStyle: NSAlertStyleCritical];
                         break;
+                    default:
+                        return E_BAD_ARGUMENTS;
                 }
-                switch(type)
+
+                for(const c8* button_text : buttons)
                 {
-                    case MessageBoxType::ok:
-                        [alert addButtonWithTitle: @"OK"];
-                        break;
-                    case MessageBoxType::ok_cancel:
-                        [alert addButtonWithTitle: @"OK"];
-                        [alert addButtonWithTitle: @"Cancel"];
-                        break;
-                    case MessageBoxType::retry_cancel:
-                        [alert addButtonWithTitle: @"Retry"];
-                        [alert addButtonWithTitle: @"Cancel"];
-                        break;
-                    case MessageBoxType::yes_no:
-                        [alert addButtonWithTitle: @"Yes"];
-                        [alert addButtonWithTitle: @"No"];
-                        break;
-                    case MessageBoxType::yes_no_cancel:
-                        [alert addButtonWithTitle: @"Yes"];
-                        [alert addButtonWithTitle: @"No"];
-                        [alert addButtonWithTitle: @"Cancel"];
-                        break;
+                    if(!button_text || !button_text[0]) return E_BAD_ARGUMENTS;
+                    NSString* native_button_text = [NSString stringWithUTF8String: button_text];
+                    if(!native_button_text) return E_BAD_ARGUMENTS;
+                    if(![alert addButtonWithTitle: native_button_text]) return E_OUT_OF_MEMORY;
                 }
+
+                NSArray<NSButton*>* native_buttons = [alert buttons];
+                for(NSButton* button in native_buttons)
+                {
+                    [button setKeyEquivalent: @""];
+                    [button setKeyEquivalentModifierMask: 0];
+                }
+                NSButton* default_button = [native_buttons objectAtIndex: default_button_index];
+                [default_button setKeyEquivalent: @"\r"];
+                if(cancel_button_index != USIZE_MAX)
+                {
+                    NSButton* cancel_button = [native_buttons objectAtIndex: cancel_button_index];
+                    [cancel_button setKeyEquivalent: @"\033"];
+                }
+
                 NSModalResponse response = [alert runModal];
-                if(response == NSModalResponseCancel)
+                if(response >= NSAlertFirstButtonReturn)
                 {
-                    return MessageBoxButton::cancel;
+                    usize button_index = (usize)(response - NSAlertFirstButtonReturn);
+                    if(button_index < buttons.size()) return button_index;
                 }
-                if(response == NSModalResponseOK)
-                {
-                    return MessageBoxButton::ok;
-                }
-                if(response == NSModalResponseStop || response == NSModalResponseAbort)
+                if(response == NSModalResponseCancel || response == NSModalResponseStop ||
+                    response == NSModalResponseAbort)
                 {
                     return E_INTERRUPTED;
                 }
-                switch(type)
-                {
-                    case MessageBoxType::ok:
-                        if(response == NSAlertFirstButtonReturn)
-                        {
-                            return MessageBoxButton::ok;
-                        }
-                        break;
-                    case MessageBoxType::ok_cancel:
-                        if(response == NSAlertFirstButtonReturn)
-                        {
-                            return MessageBoxButton::ok;
-                        }
-                        else if(response == NSAlertSecondButtonReturn)
-                        {
-                            return MessageBoxButton::cancel;
-                        }
-                        break;
-                    case MessageBoxType::retry_cancel:
-                        if(response == NSAlertFirstButtonReturn)
-                        {
-                            return MessageBoxButton::retry;
-                        }
-                        else if(response == NSAlertSecondButtonReturn)
-                        {
-                            return MessageBoxButton::cancel;
-                        }
-                        break;
-                    case MessageBoxType::yes_no:
-                        if(response == NSAlertFirstButtonReturn)
-                        {
-                            return MessageBoxButton::yes;
-                        }
-                        else if(response == NSAlertSecondButtonReturn)
-                        {
-                            return MessageBoxButton::no;
-                        }
-                        break;
-                    case MessageBoxType::yes_no_cancel:
-                        if(response == NSAlertFirstButtonReturn)
-                        {
-                            return MessageBoxButton::yes;
-                        }
-                        else if(response == NSAlertSecondButtonReturn)
-                        {
-                            return MessageBoxButton::no;
-                        }
-                        else if(response == NSAlertThirdButtonReturn)
-                        {
-                            return MessageBoxButton::cancel;
-                        }
-                        break;
-                }
-                return E_BAD_PLATFORM_CALL;
+                return set_error(E_BAD_PLATFORM_CALL, "NSAlert returned unexpected modal response: %lld.",
+                    (i64)response);
             }
         }
         LUNA_WINDOW_API R<Vector<Path>> open_file_dialog(const c8* title, Span<const FileDialogFilter> filters, const Path& initial_dir, FileDialogFlag flags)

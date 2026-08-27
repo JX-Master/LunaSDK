@@ -14,6 +14,9 @@
 #include <Luna/Window/AppMain.hpp>
 #include <Luna/Window/Window.hpp>
 #include <Luna/Window/Event.hpp>
+#if defined(LUNA_PLATFORM_WINDOWS) || defined(LUNA_PLATFORM_MACOS)
+#include <Luna/Window/MessageBox.hpp>
+#endif
 #if defined(LUNA_PLATFORM_MACOS)
 #include <Luna/Window/ApplicationMenu.hpp>
 #endif
@@ -30,6 +33,9 @@ namespace Luna
         struct WindowTestContext
         {
             Ref<Window::IWindow> window;
+#if defined(LUNA_PLATFORM_WINDOWS) || defined(LUNA_PLATFORM_MACOS)
+            bool show_message_box = false;
+#endif
         };
 
 #if defined(LUNA_PLATFORM_MACOS)
@@ -124,6 +130,12 @@ namespace Luna
                 {
                     toggle_resizable(context);
                 }
+#if defined(LUNA_PLATFORM_WINDOWS) || defined(LUNA_PLATFORM_MACOS)
+                else if(e->key == KeyCode::m)
+                {
+                    context->show_message_box = true;
+                }
+#endif
             }
 #if defined(LUNA_PLATFORM_MACOS)
             if(auto e = cast_object<Window::ApplicationMenuItemInvokedEvent>(event))
@@ -160,11 +172,35 @@ int luna_main(int argc, const char* argv[])
 #endif
         luset(context.window, Window::new_window("Window Test"));
         Window::set_event_handler(window_test_event_handler, &context);
+#if defined(LUNA_PLATFORM_WINDOWS) || defined(LUNA_PLATFORM_MACOS)
+        log_info("WindowTest", "Press M to test a message box with custom buttons.");
+#endif
 
         while(true)
         {
             Window::poll_events();
             if(context.window->is_closed()) break;
+#if defined(LUNA_PLATFORM_WINDOWS) || defined(LUNA_PLATFORM_MACOS)
+            if(context.show_message_box)
+            {
+                context.show_message_box = false;
+                auto selected_button = Window::message_box(
+                    "Return selects the second button. Escape selects the localized cancel button.",
+                    "Custom Message Box",
+                    {"First & Choice", "Second Choice", "取消", "Fourth Choice"},
+                    Window::MessageBoxIcon::warning,
+                    1,
+                    2);
+                if(succeeded(selected_button))
+                {
+                    log_info("WindowTest", "Message box selected button index: %zu", selected_button.get());
+                }
+                else
+                {
+                    log_error("WindowTest", "Message box failed: %s", explain(selected_button.errcode()));
+                }
+            }
+#endif
 #if defined(LUNA_PLATFORM_MACOS)
             if(Window::is_application_quit_requested()) break;
 #endif

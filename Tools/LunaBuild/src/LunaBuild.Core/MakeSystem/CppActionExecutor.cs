@@ -218,6 +218,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             "/nologo",
             "/machine:x64",
             "/debug",
+            "/manifest:embed",
             $"/pdb:{Quote(pdb)}",
             $"/out:{Quote(output)}",
         };
@@ -277,6 +278,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             "/nologo",
             "/machine:x64",
             "/debug",
+            "/manifest:embed",
             $"/pdb:{Quote(pdb)}",
             $"/out:{Quote(output)}",
         };

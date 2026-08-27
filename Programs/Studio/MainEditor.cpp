@@ -215,13 +215,16 @@ namespace Luna
         {
             return true;
         }
+        constexpr usize SAVE_BUTTON_INDEX = 0;
+        constexpr usize CANCEL_BUTTON_INDEX = 2;
         auto r = Window::message_box("Save changes before closing the current project?", APP_NAME,
-            Window::MessageBoxType::yes_no_cancel, Window::MessageBoxIcon::question);
-        if(failed(r) || r.get() == Window::MessageBoxButton::cancel)
+            {"Save", "Don't Save", "Cancel"}, Window::MessageBoxIcon::question,
+            SAVE_BUTTON_INDEX, CANCEL_BUTTON_INDEX);
+        if(failed(r) || r.get() == CANCEL_BUTTON_INDEX)
         {
             return false;
         }
-        if(r.get() == Window::MessageBoxButton::yes)
+        if(r.get() == SAVE_BUTTON_INDEX)
         {
             return succeeded(save_all());
         }
@@ -627,7 +630,7 @@ namespace Luna
                     ret = r;
                     String errmsg;
                     strprintf(errmsg, "Failed to save asset %s: %s", Asset::get_asset_path(asset.first).encode().c_str(), explain(r.errcode()));
-                    auto _ = Window::message_box(errmsg.c_str(), APP_NAME, Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                    auto _ = Window::message_box(errmsg.c_str(), APP_NAME, {"OK"}, Window::MessageBoxIcon::error);
                 }
             }
         }
@@ -742,7 +745,7 @@ namespace Luna
         }
         lucatch
         {
-            auto _ = Window::message_box(explain(luerr), "Editor Crashed.", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+            auto _ = Window::message_box(explain(luerr), "Editor Crashed.", {"OK"}, Window::MessageBoxIcon::error);
             return;
         }
         Asset::close();

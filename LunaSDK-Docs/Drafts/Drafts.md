@@ -5,3 +5,4 @@ Documents in this directory are drafts awaiting review and promotion into the us
 
 ## Window
 - [[Application Main Menus]]
+- [[Message Boxes]]

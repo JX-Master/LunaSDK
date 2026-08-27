@@ -450,7 +450,7 @@ namespace Luna
                         }
                         else
                         {
-                            auto _ = Window::message_box(explain(res2.errcode()), "Project Creation Failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                            auto _ = Window::message_box(explain(res2.errcode()), "Project Creation Failed", {"OK"}, Window::MessageBoxIcon::error);
                         }
                     }
                 }
