@@ -18,6 +18,7 @@
 #include <Luna/RHIUtility/BlitContext.hpp>
 #include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/Runtime/Guid.hpp>
+#include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Thread.hpp>
@@ -41,8 +42,18 @@ using namespace Luna;
 namespace
 {
     constexpr c8 APP_NAME[] = "Luna GameGUI Editor";
-    constexpr u32 PREVIEW_WIDTH = 640;
-    constexpr u32 PREVIEW_HEIGHT = 480;
+    constexpr u32 PREVIEW_LAYOUT_WIDTH = 640;
+    constexpr u32 PREVIEW_LAYOUT_HEIGHT = 480;
+    constexpr f32 PREVIEW_GRID_SIZE = 32.0f;
+    constexpr f32 PREVIEW_RESIZE_HANDLE_SIZE = 14.0f;
+    constexpr f32 PREVIEW_MIN_NODE_SIZE = 64.0f;
+    constexpr f32 PREVIEW_MAX_NODE_SIZE = 8192.0f;
+    constexpr f32 PREVIEW_ZOOM_LEVELS[] = {
+        0.125f, 0.25f, 0.5f, 0.75f, 1.0f, 1.25f,
+        1.5f, 2.0f, 3.0f, 4.0f, 6.0f, 8.0f
+    };
+    constexpr usize PREVIEW_ZOOM_LEVEL_COUNT =
+        sizeof(PREVIEW_ZOOM_LEVELS) / sizeof(PREVIEW_ZOOM_LEVELS[0]);
 
 #if defined(LUNA_PLATFORM_MACOS)
     constexpr Window::application_menu_item_id_t MENU_ITEM_NEW = 1;
@@ -169,6 +180,12 @@ namespace
         return GUI::make_scoped_id(context->make_id("panel.document"), document_id);
     }
 
+    GUI::id_t hierarchy_context_popup_id(GUI::IContext* context, u64 document_id)
+    {
+        return GUI::make_scoped_id(context->make_id("hierarchy.context_popup"),
+            document_id);
+    }
+
     struct PropertyEditor
     {
         Name key;
@@ -183,6 +200,45 @@ namespace
         Ref<GameGUI::IInstance> instance;
         Ref<RHI::ITexture> target;
         u64 revision = 0;
+        Float2U viewport_size = Float2U((f32)PREVIEW_LAYOUT_WIDTH,
+            (f32)PREVIEW_LAYOUT_HEIGHT);
+        UInt2U render_size = UInt2U(PREVIEW_LAYOUT_WIDTH, PREVIEW_LAYOUT_HEIGHT);
+        Float2U pending_viewport_size = Float2U((f32)PREVIEW_LAYOUT_WIDTH,
+            (f32)PREVIEW_LAYOUT_HEIGHT);
+        UInt2U pending_render_size = UInt2U(PREVIEW_LAYOUT_WIDTH,
+            PREVIEW_LAYOUT_HEIGHT);
+        Float2U pan = Float2U(0.0f);
+        Float2U pan_pointer = Float2U(0.0f);
+        f32 zoom = 1.0f;
+        f32 zoom_wheel_accumulator = 0.0f;
+        Float2U node_size = Float2U((f32)PREVIEW_LAYOUT_WIDTH,
+            (f32)PREVIEW_LAYOUT_HEIGHT);
+        Float2U resize_pointer = Float2U(0.0f);
+        Float2U resize_start_size = Float2U(0.0f);
+        bool panning = false;
+        bool resizing = false;
+    };
+
+    enum class HierarchyDropMode : u8
+    {
+        none,
+        before,
+        after,
+        child
+    };
+
+    struct HierarchyDragState
+    {
+        Guid source;
+        Float2U press_position = Float2U(0.0f);
+        bool pressed = false;
+        bool dragging = false;
+        HierarchyDropMode drop_mode = HierarchyDropMode::none;
+        Guid target_node;
+        Guid target_parent;
+        usize target_index = 0;
+        RectF feedback_rect;
+        u32 feedback_depth = 0;
     };
 
     struct DocumentView
@@ -207,6 +263,9 @@ namespace
         String new_property_name;
         String new_property_value = "null";
         PreviewState preview;
+        HierarchyDragState hierarchy_drag;
+        Guid hierarchy_context_node;
+        Float2U hierarchy_context_position = Float2U(0.0f);
     };
 
     struct NodeTypeView
@@ -238,6 +297,9 @@ namespace
     struct NodeHit
     {
         Guid node;
+        Guid parent;
+        usize sibling_index = 0;
+        u32 depth = 0;
         GUI::ElementHandle element;
     };
 
@@ -257,6 +319,7 @@ namespace
         GUI::ElementHandle close_document;
         GUI::ElementHandle undo;
         GUI::ElementHandle redo;
+        GUI::ElementHandle set_root_node;
         GUI::ElementHandle delete_node;
         GUI::ElementHandle add_property;
         GUI::ElementHandle preview_host;
@@ -279,6 +342,7 @@ namespace
         Ref<RHIUtility::IBlitContext> blit;
         Ref<GUI::IContext> gui;
         Ref<GUI::IRenderer> renderer;
+        Ref<GUI::IRenderer> preview_renderer;
         UniquePtr<GameGUIEditor::Service> service;
         GUIWindow::GUIWindowInputAdapter input_adapter;
         Vector<DocumentView> documents;
@@ -314,9 +378,13 @@ namespace
         DocumentView* active_document();
         void place_document_panel(u64 document_id, u64 target_document_id);
         void rebuild_inspector(DocumentView& document);
+        RV apply_preview_surface_size(DocumentView& document);
         RV ensure_preview(DocumentView& document);
         RV build_preview(DocumentView& document, Span<const GUI::InputEvent> input);
         RV render_frame(DocumentView* preview_document);
+        void collect_preview_input(DocumentView& document,
+            const GUI::ElementHandle& preview_host, const RectF& preview_rect,
+            const GUI::FrameDesc& editor_frame, PreviewInput& preview_input);
         GUI::ElementHandle build_editor(UIHandles& handles);
 #if !defined(LUNA_PLATFORM_MACOS)
         void build_main_menu_bar(UIHandles& handles);
@@ -326,9 +394,14 @@ namespace
         void build_document_panels(UIHandles& handles);
         void build_inspector_panel(UIHandles& handles);
         void build_diagnostics_panel();
-        void build_hierarchy_node(DocumentView& document, const Guid& node, u32 depth,
-            UIHandles& handles);
+        void build_hierarchy_node(DocumentView& document, const Guid& node,
+            const Guid& parent, usize sibling_index, u32 depth, UIHandles& handles);
         void process_interactions(const UIHandles& handles);
+        bool process_hierarchy_interactions(DocumentView& document,
+            const UIHandles& handles);
+        void update_hierarchy_drop(DocumentView& document, const UIHandles& handles,
+            const Float2U& pointer_position);
+        bool apply_hierarchy_drop(DocumentView& document);
         void apply_inspector_changes(DocumentView& document);
         void remove_document_view(u64 id);
         bool has_dirty_documents() const;
@@ -402,6 +475,316 @@ namespace
         }
     }
 
+    bool point_in_rect(const RectF& rect, const Float2U& point)
+    {
+        return point.x >= rect.offset_x && point.y >= rect.offset_y &&
+            point.x < rect.offset_x + rect.width &&
+            point.y < rect.offset_y + rect.height;
+    }
+
+    RectF item_screen_rect(GUI::IContext* context, const GUI::ElementHandle& item,
+        bool clip_rect = false)
+    {
+        const GUI::Element* element = context->get_element(item.index);
+        if(!element || element->id != item.id) return RectF();
+        Span<const GUI::Layer> layers = context->get_layers();
+        if(element->layer >= layers.size()) return RectF();
+        RectF result = clip_rect ? element->layout_result.clip_rect :
+            element->layout_result.rect;
+        result.offset_x += layers[element->layer].screen_position.x;
+        result.offset_y += layers[element->layer].screen_position.y;
+        return result;
+    }
+
+    bool subtree_contains(const GameGUI::Document& document, const Guid& root,
+        const Guid& node)
+    {
+        if(root == node) return true;
+        const GameGUI::NodeRecord* record = GameGUI::find_node(document, root);
+        if(!record) return false;
+        for(const GameGUI::ChildLink& child : record->children)
+        {
+            if(subtree_contains(document, child.child, node)) return true;
+        }
+        return false;
+    }
+
+    bool find_parent_info(const GameGUI::Document& document, const Guid& node,
+        Guid& parent, usize& sibling_index)
+    {
+        for(const GameGUI::NodeRecord& candidate : document.nodes)
+        {
+            for(usize i = 0; i < candidate.children.size(); ++i)
+            {
+                if(candidate.children[i].child == node)
+                {
+                    parent = candidate.id;
+                    sibling_index = i;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    usize preview_zoom_level_index(f32 zoom)
+    {
+        usize result = 0;
+        f32 minimum_difference = abs(zoom - PREVIEW_ZOOM_LEVELS[0]);
+        for(usize i = 1; i < PREVIEW_ZOOM_LEVEL_COUNT; ++i)
+        {
+            f32 difference = abs(zoom - PREVIEW_ZOOM_LEVELS[i]);
+            if(difference < minimum_difference)
+            {
+                result = i;
+                minimum_difference = difference;
+            }
+        }
+        return result;
+    }
+
+    Float2U preview_logical_position(const PreviewState& preview,
+        const Float2U& surface_position)
+    {
+        Float2U center((f32)PREVIEW_LAYOUT_WIDTH * 0.5f,
+            (f32)PREVIEW_LAYOUT_HEIGHT * 0.5f);
+        return Float2U(
+            center.x + (surface_position.x - center.x - preview.pan.x) / preview.zoom,
+            center.y + (surface_position.y - center.y - preview.pan.y) / preview.zoom);
+    }
+
+    void build_preview_background(GUI::IContext* context, const PreviewState& preview)
+    {
+        Float2U logical_top_left = preview_logical_position(preview, Float2U(0.0f));
+        Float2U logical_bottom_right = preview_logical_position(preview,
+            preview.viewport_size);
+        GUI::DrawCommand background;
+        background.type = GUI::DrawCommandType::rect;
+        background.rect_reference = GUI::DrawCommandRectReference::layer;
+        background.rect = RectF(logical_top_left.x, logical_top_left.y,
+            logical_bottom_right.x - logical_top_left.x,
+            logical_bottom_right.y - logical_top_left.y);
+        background.color = Float4U(0.26f, 0.26f, 0.26f, 1.0f);
+        context->draw(background);
+
+        f32 grid_size = PREVIEW_GRID_SIZE;
+        while(grid_size * preview.zoom < 12.0f) grid_size *= 2.0f;
+        i32 first_x = (i32)floor(logical_top_left.x / grid_size);
+        i32 last_x = (i32)ceil(logical_bottom_right.x / grid_size);
+        i32 first_y = (i32)floor(logical_top_left.y / grid_size);
+        i32 last_y = (i32)ceil(logical_bottom_right.y / grid_size);
+        for(i32 i = first_x; i <= last_x; ++i)
+        {
+            f32 x = (f32)i * grid_size;
+            GUI::DrawCommand line;
+            line.type = GUI::DrawCommandType::line;
+            line.rect_reference = GUI::DrawCommandRectReference::layer;
+            line.rect = RectF(x, logical_top_left.y, 0.0f, 0.0f);
+            line.point1 = Float2U(x, logical_bottom_right.y);
+            line.color = Float4U(1.0f, 1.0f, 1.0f,
+                (i % 4) ? 0.12f : 0.22f);
+            line.line_width = ((i % 4) ? 1.0f : 1.25f) / preview.zoom;
+            context->draw(line);
+        }
+        for(i32 i = first_y; i <= last_y; ++i)
+        {
+            f32 y = (f32)i * grid_size;
+            GUI::DrawCommand line;
+            line.type = GUI::DrawCommandType::line;
+            line.rect_reference = GUI::DrawCommandRectReference::layer;
+            line.rect = RectF(logical_top_left.x, y, 0.0f, 0.0f);
+            line.point1 = Float2U(logical_bottom_right.x, y);
+            line.color = Float4U(1.0f, 1.0f, 1.0f,
+                (i % 4) ? 0.12f : 0.22f);
+            line.line_width = ((i % 4) ? 1.0f : 1.25f) / preview.zoom;
+            context->draw(line);
+        }
+    }
+
+    void build_preview_overlay(GUI::IContext* context, const PreviewState& preview)
+    {
+        constexpr f32 BADGE_WIDTH = 68.0f;
+        constexpr f32 BADGE_HEIGHT = 26.0f;
+        constexpr f32 BADGE_MARGIN = 8.0f;
+        Float2U badge_top_left = preview_logical_position(preview,
+            Float2U(preview.viewport_size.x - BADGE_WIDTH - BADGE_MARGIN,
+                preview.viewport_size.y - BADGE_HEIGHT - BADGE_MARGIN));
+        RectF badge(badge_top_left.x, badge_top_left.y,
+            BADGE_WIDTH / preview.zoom, BADGE_HEIGHT / preview.zoom);
+        GUI::DrawCommand background;
+        background.type = GUI::DrawCommandType::rounded_rect;
+        background.rect_reference = GUI::DrawCommandRectReference::layer;
+        background.rect = badge;
+        background.color = Float4U(0.08f, 0.08f, 0.08f, 0.82f);
+        background.radius = 5.0f / preview.zoom;
+        context->draw(background);
+
+        String label;
+        f32 percentage = preview.zoom * 100.0f;
+        if(abs(percentage - round(percentage)) < 0.01f)
+            strprintf(label, "%d%%", (i32)round(percentage));
+        else strprintf(label, "%.1f%%", percentage);
+        GUI::DrawCommand text;
+        text.type = GUI::DrawCommandType::text;
+        text.rect_reference = GUI::DrawCommandRectReference::layer;
+        text.rect = badge;
+        text.color = Float4U(1.0f);
+        text.font = Name("default");
+        text.font_size = 13.0f / preview.zoom;
+        text.horizontal_alignment = VG::TextAlignment::center;
+        text.vertical_alignment = VG::TextAlignment::center;
+        text.text = move(label);
+        context->draw(text);
+    }
+
+    void draw_preview_node_background(GUI::IContext* context)
+    {
+        GUI::DrawCommand background;
+        background.type = GUI::DrawCommandType::rect;
+        background.rect_reference = GUI::DrawCommandRectReference::element;
+        background.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+        background.color = Float4U(0.08f, 0.09f, 0.11f, 0.35f);
+        context->draw(background);
+    }
+
+    void draw_preview_node_border(GUI::IContext* context, f32 zoom)
+    {
+        f32 thickness = 1.5f / zoom;
+        const Float4U color(0.86f, 0.88f, 0.92f, 0.9f);
+        GUI::DrawCommand border;
+        border.type = GUI::DrawCommandType::rect;
+        border.rect_reference = GUI::DrawCommandRectReference::element;
+        border.color = color;
+
+        border.rect = RectF(0.0f, 0.0f, 0.0f, thickness);
+        border.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 0.0f);
+        context->draw(border);
+        border.rect = RectF(0.0f, -thickness, 0.0f, thickness);
+        border.rect_layout_scale = Float4U(0.0f, 1.0f, 1.0f, 0.0f);
+        context->draw(border);
+        border.rect = RectF(0.0f, 0.0f, thickness, 0.0f);
+        border.rect_layout_scale = Float4U(0.0f, 0.0f, 0.0f, 1.0f);
+        context->draw(border);
+        border.rect = RectF(-thickness, 0.0f, thickness, 0.0f);
+        border.rect_layout_scale = Float4U(1.0f, 0.0f, 0.0f, 1.0f);
+        context->draw(border);
+    }
+
+    GUI::ElementHandle build_preview_resize_handle(GUI::IContext* context,
+        PreviewState& preview)
+    {
+        GUI::ElementHandle handle = context->begin_element(
+            context->make_id("preview.node.resize_handle"));
+        f32 handle_size = min(PREVIEW_RESIZE_HANDLE_SIZE / preview.zoom,
+            min(preview.node_size.x, preview.node_size.y) * 0.5f);
+        GUI::LayoutConfig layout = fixed_layout(handle_size, handle_size);
+        context->set_layout_config(handle, layout);
+        GUI::Interactable interactable;
+        interactable.pointer_hit_behavior = GUI::PointerHitBehavior::target;
+        set_flags(interactable.flags, GUI::InteractableFlag::hoverable);
+        set_flags(interactable.flags, GUI::InteractableFlag::activatable);
+        context->set_interactable(handle, interactable);
+
+        GUI::InteractionState interaction = context->get_interaction_state(handle.id);
+        GUI::DrawCommand background;
+        background.type = GUI::DrawCommandType::rounded_rect;
+        background.rect_reference = GUI::DrawCommandRectReference::element;
+        background.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+        background.color = preview.resizing ? Float4U(1.0f, 0.42f, 0.50f, 1.0f) :
+            interaction.hovered ? Float4U(1.0f, 0.55f, 0.61f, 1.0f) :
+            Float4U(0.96f, 0.34f, 0.44f, 1.0f);
+        background.radius = 2.0f / preview.zoom;
+        context->draw(background);
+        context->end_element();
+        return handle;
+    }
+
+    bool process_preview_resize(PreviewState& preview,
+        const GUI::ElementHandle& handle)
+    {
+        bool changed = false;
+        for(const GUI::RoutedInputEvent& routed :
+            preview.context->get_routed_input_events(handle.id))
+        {
+            const GUI::InputEvent& event = routed.event;
+            if(event.type == GUI::InputEventType::pointer_down &&
+                event.button == GUI::PointerButton::left)
+            {
+                preview.resizing = true;
+                preview.resize_pointer = event.position;
+                preview.resize_start_size = preview.node_size;
+                continue;
+            }
+            if(!preview.resizing) continue;
+            if(event.type == GUI::InputEventType::pointer_move ||
+                (event.type == GUI::InputEventType::pointer_up &&
+                    event.button == GUI::PointerButton::left))
+            {
+                Float2U size(
+                    preview.resize_start_size.x + event.position.x -
+                        preview.resize_pointer.x,
+                    preview.resize_start_size.y + event.position.y -
+                        preview.resize_pointer.y);
+                size.x = round(clamp(size.x, PREVIEW_MIN_NODE_SIZE,
+                    PREVIEW_MAX_NODE_SIZE));
+                size.y = round(clamp(size.y, PREVIEW_MIN_NODE_SIZE,
+                    PREVIEW_MAX_NODE_SIZE));
+                if(size != preview.node_size)
+                {
+                    preview.node_size = size;
+                    changed = true;
+                }
+            }
+            if(event.type == GUI::InputEventType::pointer_up &&
+                event.button == GUI::PointerButton::left)
+            {
+                preview.resizing = false;
+            }
+        }
+        if(preview.resizing &&
+            !preview.context->is_pointer_button_down(GUI::PointerButton::left))
+        {
+            preview.resizing = false;
+        }
+        return changed;
+    }
+
+    RV draw_hierarchy_drop(GUI::IContext* context, const GUI::ElementHandle&,
+        GUI::DrawPhase, void* userdata)
+    {
+        HierarchyDragState* drag = (HierarchyDragState*)userdata;
+        if(!drag || !drag->dragging || drag->drop_mode == HierarchyDropMode::none)
+            return ok;
+        const Float4U color(0.96f, 0.34f, 0.44f, 1.0f);
+        if(drag->drop_mode == HierarchyDropMode::child)
+        {
+            GUI::DrawCommand highlight;
+            highlight.type = GUI::DrawCommandType::rounded_rect;
+            highlight.rect_reference = GUI::DrawCommandRectReference::layer;
+            highlight.rect = drag->feedback_rect;
+            highlight.color = Float4U(color.x, color.y, color.z, 0.22f);
+            highlight.radius = 4.0f;
+            context->draw(highlight);
+            return ok;
+        }
+
+        f32 y = drag->drop_mode == HierarchyDropMode::before ?
+            drag->feedback_rect.offset_y :
+            drag->feedback_rect.offset_y + drag->feedback_rect.height;
+        f32 left = drag->feedback_rect.offset_x + 8.0f +
+            (f32)drag->feedback_depth * 16.0f;
+        f32 right = drag->feedback_rect.offset_x + drag->feedback_rect.width - 8.0f;
+        GUI::DrawCommand line;
+        line.type = GUI::DrawCommandType::line;
+        line.rect_reference = GUI::DrawCommandRectReference::layer;
+        line.rect = RectF(left, y, 0.0f, 0.0f);
+        line.point1 = Float2U(max(right, left), y);
+        line.color = color;
+        line.line_width = 2.0f;
+        context->draw(line);
+        return ok;
+    }
+
     DocumentView* EditorApp::find_document(u64 id)
     {
         for(DocumentView& document : documents)
@@ -416,6 +799,96 @@ namespace
         if(documents.empty()) return nullptr;
         selected_document = clamp(selected_document, 0, (i32)documents.size() - 1);
         return &documents[(usize)selected_document];
+    }
+
+    void EditorApp::collect_preview_input(DocumentView& document,
+        const GUI::ElementHandle& preview_host, const RectF& preview_rect,
+        const GUI::FrameDesc& editor_frame, PreviewInput& preview_input)
+    {
+        preview_input.document_id = document.id;
+        if(!preview_host.id || preview_rect.width <= 0.0f || preview_rect.height <= 0.0f)
+            return;
+        PreviewState& preview = document.preview;
+        preview.pending_viewport_size = Float2U(preview_rect.width,
+            preview_rect.height);
+        f32 render_scale_x = editor_frame.logical_size.x > 0.0f ?
+            (f32)editor_frame.render_size.x / editor_frame.logical_size.x : 1.0f;
+        f32 render_scale_y = editor_frame.logical_size.y > 0.0f ?
+            (f32)editor_frame.render_size.y / editor_frame.logical_size.y : 1.0f;
+        preview.pending_render_size = UInt2U(
+            (u32)max(1.0f, round(preview_rect.width * render_scale_x)),
+            (u32)max(1.0f, round(preview_rect.height * render_scale_y)));
+        for(const GUI::RoutedInputEvent& routed :
+            gui->get_routed_input_events(preview_host.id))
+        {
+            GUI::InputEvent event = routed.event;
+            Float2U surface_position;
+            if(routed.has_element_position)
+            {
+                surface_position.x = routed.element_position.x / preview_rect.width *
+                    preview.viewport_size.x;
+                surface_position.y = routed.element_position.y / preview_rect.height *
+                    preview.viewport_size.y;
+            }
+
+            if(event.type == GUI::InputEventType::pointer_down &&
+                event.button == GUI::PointerButton::middle && routed.has_element_position)
+            {
+                preview.panning = true;
+                preview.pan_pointer = surface_position;
+                gui->capture_pointer(preview_host.id);
+                continue;
+            }
+            if(event.type == GUI::InputEventType::pointer_up &&
+                event.button == GUI::PointerButton::middle)
+            {
+                preview.panning = false;
+                gui->release_pointer_capture(preview_host.id);
+                continue;
+            }
+            if(event.type == GUI::InputEventType::pointer_move && preview.panning &&
+                routed.has_element_position)
+            {
+                preview.pan.x += surface_position.x - preview.pan_pointer.x;
+                preview.pan.y += surface_position.y - preview.pan_pointer.y;
+                preview.pan_pointer = surface_position;
+                continue;
+            }
+            if(event.type == GUI::InputEventType::pointer_wheel &&
+                routed.has_element_position)
+            {
+                preview.zoom_wheel_accumulator += event.wheel_delta.y;
+                i32 zoom_direction = 0;
+                if(preview.zoom_wheel_accumulator >= 1.0f) zoom_direction = 1;
+                else if(preview.zoom_wheel_accumulator <= -1.0f) zoom_direction = -1;
+                if(!zoom_direction) continue;
+                preview.zoom_wheel_accumulator = 0.0f;
+                i32 current_level = (i32)preview_zoom_level_index(preview.zoom);
+                i32 new_level = clamp(current_level + zoom_direction, 0,
+                    (i32)PREVIEW_ZOOM_LEVEL_COUNT - 1);
+                f32 new_zoom = PREVIEW_ZOOM_LEVELS[new_level];
+                if(new_zoom == preview.zoom) continue;
+                Float2U logical_position = preview_logical_position(preview,
+                    surface_position);
+                Float2U center((f32)PREVIEW_LAYOUT_WIDTH * 0.5f,
+                    (f32)PREVIEW_LAYOUT_HEIGHT * 0.5f);
+                preview.pan.x = surface_position.x - center.x -
+                    new_zoom * (logical_position.x - center.x);
+                preview.pan.y = surface_position.y - center.y -
+                    new_zoom * (logical_position.y - center.y);
+                preview.zoom = new_zoom;
+                continue;
+            }
+
+            if(routed.has_element_position)
+                event.position = preview_logical_position(preview, surface_position);
+            preview_input.events.push_back(move(event));
+        }
+        if(preview.panning && !gui->is_pointer_button_down(GUI::PointerButton::middle))
+        {
+            preview.panning = false;
+            gui->release_pointer_capture(preview_host.id);
+        }
     }
 
     void EditorApp::place_document_panel(u64 document_id, u64 target_document_id)
@@ -946,6 +1419,217 @@ namespace
             refresh_snapshot(document);
     }
 
+    void EditorApp::update_hierarchy_drop(DocumentView& document,
+        const UIHandles& handles, const Float2U& pointer_position)
+    {
+        HierarchyDragState& drag = document.hierarchy_drag;
+        drag.drop_mode = HierarchyDropMode::none;
+        drag.target_node = Guid();
+        drag.target_parent = Guid();
+        drag.target_index = 0;
+        if(!document.snapshot || !drag.dragging) return;
+
+        auto set_reorder_target = [&](const NodeHit& hit,
+            HierarchyDropMode mode, const RectF& feedback_rect)
+        {
+            if(hit.parent == Guid()) return false;
+            usize target_index = hit.sibling_index +
+                (mode == HierarchyDropMode::after ? 1 : 0);
+            if(subtree_contains(*document.snapshot, drag.source, hit.parent))
+                return false;
+            Guid old_parent;
+            usize old_index = 0;
+            if(!find_parent_info(*document.snapshot, drag.source, old_parent,
+                old_index)) return false;
+            usize adjusted_index = target_index;
+            if(old_parent == hit.parent && old_index < adjusted_index)
+                --adjusted_index;
+            if(old_parent == hit.parent && old_index == adjusted_index)
+                return false;
+            drag.drop_mode = mode;
+            drag.target_node = hit.node;
+            drag.target_parent = hit.parent;
+            drag.target_index = target_index;
+            drag.feedback_rect = feedback_rect;
+            drag.feedback_depth = hit.depth;
+            return true;
+        };
+
+        for(const NodeHit& hit : handles.nodes)
+        {
+            RectF screen_rect = item_screen_rect(gui, hit.element);
+            RectF screen_clip = item_screen_rect(gui, hit.element, true);
+            if(!point_in_rect(screen_rect, pointer_position) ||
+                !point_in_rect(screen_clip, pointer_position)) continue;
+
+            HierarchyDropMode mode = HierarchyDropMode::child;
+            if(hit.node != document.snapshot->root)
+            {
+                f32 local_y = pointer_position.y - screen_rect.offset_y;
+                f32 edge_size = min(6.0f, screen_rect.height * 0.25f);
+                if(local_y <= edge_size) mode = HierarchyDropMode::before;
+                else if(local_y >= screen_rect.height - edge_size)
+                    mode = HierarchyDropMode::after;
+            }
+
+            if(mode != HierarchyDropMode::child)
+            {
+                set_reorder_target(hit, mode,
+                    EditorGUI::get_item_rect(gui, hit.element));
+                return;
+            }
+            if(hit.node == drag.source) return;
+            const GameGUI::NodeRecord* target = GameGUI::find_node(
+                *document.snapshot, hit.node);
+            if(!target || subtree_contains(*document.snapshot, drag.source,
+                hit.node)) return;
+            Guid old_parent;
+            usize old_index = 0;
+            if(!find_parent_info(*document.snapshot, drag.source, old_parent,
+                old_index)) return;
+            usize target_index = target->children.size();
+            usize adjusted_index = target_index;
+            if(old_parent == hit.node && old_index < adjusted_index) --adjusted_index;
+            if(old_parent == hit.node && old_index == adjusted_index)
+                return;
+
+            drag.drop_mode = mode;
+            drag.target_node = hit.node;
+            drag.target_parent = hit.node;
+            drag.target_index = target_index;
+            drag.feedback_rect = EditorGUI::get_item_rect(gui, hit.element);
+            drag.feedback_depth = hit.depth;
+            return;
+        }
+
+        for(usize i = 1; i < handles.nodes.size(); ++i)
+        {
+            const NodeHit& previous = handles.nodes[i - 1];
+            const NodeHit& next = handles.nodes[i];
+            RectF previous_rect = item_screen_rect(gui, previous.element);
+            RectF next_rect = item_screen_rect(gui, next.element);
+            RectF next_clip = item_screen_rect(gui, next.element, true);
+            f32 gap_top = previous_rect.offset_y + previous_rect.height;
+            f32 gap_bottom = next_rect.offset_y;
+            if(gap_bottom < gap_top || pointer_position.y < gap_top ||
+                pointer_position.y > gap_bottom ||
+                pointer_position.x < next_rect.offset_x ||
+                pointer_position.x >= next_rect.offset_x + next_rect.width ||
+                !point_in_rect(next_clip, pointer_position)) continue;
+            set_reorder_target(next, HierarchyDropMode::before,
+                EditorGUI::get_item_rect(gui, next.element));
+            return;
+        }
+    }
+
+    bool EditorApp::apply_hierarchy_drop(DocumentView& document)
+    {
+        HierarchyDragState& drag = document.hierarchy_drag;
+        if(!document.snapshot || drag.drop_mode == HierarchyDropMode::none)
+            return false;
+        Guid old_parent;
+        usize old_index = 0;
+        if(!find_parent_info(*document.snapshot, drag.source, old_parent, old_index))
+            return false;
+        usize target_index = drag.target_index;
+        if(old_parent == drag.target_parent && old_index < target_index)
+            --target_index;
+        if(old_parent == drag.target_parent && old_index == target_index)
+            return false;
+
+        Guid source = drag.source;
+        Guid target_parent = drag.target_parent;
+        Variant command(VariantType::object);
+        command["kind"] = "move_node";
+        command["node"] = guid_string(source).c_str();
+        command["parent"] = guid_string(target_parent).c_str();
+        command["index"] = (u64)target_index;
+        if(old_parent != target_parent)
+        {
+            command["slot"] = "";
+            command["attachment"] = Variant();
+        }
+        Variant params = editing_params(document);
+        params["commands"] = Variant(VariantType::array);
+        params["commands"].push_back(move(command));
+        params["label"] = old_parent == target_parent ? "Reorder node" :
+            "Reparent node";
+        drag = HierarchyDragState();
+        Variant result;
+        if(invoke(GameGUIEditor::APPLY_COMMANDS_URL, params, result))
+        {
+            document.selected_node = source;
+            refresh_snapshot(document);
+        }
+        return true;
+    }
+
+    bool EditorApp::process_hierarchy_interactions(DocumentView& document,
+        const UIHandles& handles)
+    {
+        if(!document.snapshot) return false;
+        HierarchyDragState& drag = document.hierarchy_drag;
+        for(const NodeHit& hit : handles.nodes)
+        {
+            if(EditorGUI::is_item_right_clicked(gui, hit.element))
+            {
+                document.selected_node = hit.node;
+                document.inspector_revision = 0;
+                drag = HierarchyDragState();
+                GUI::id_t popup_id = hierarchy_context_popup_id(gui, document.id);
+                if(hit.node != document.snapshot->root)
+                {
+                    document.hierarchy_context_node = hit.node;
+                    document.hierarchy_context_position = gui->get_pointer_position();
+                    EditorGUI::open_popup(gui, popup_id);
+                }
+                else
+                {
+                    document.hierarchy_context_node = Guid();
+                    EditorGUI::close_popup(gui, popup_id);
+                }
+                break;
+            }
+            for(const GUI::RoutedInputEvent& routed :
+                gui->get_routed_input_events(hit.element.id))
+            {
+                const GUI::InputEvent& event = routed.event;
+                if(event.type == GUI::InputEventType::pointer_down &&
+                    event.button == GUI::PointerButton::left)
+                {
+                    document.selected_node = hit.node;
+                    document.inspector_revision = 0;
+                    drag = HierarchyDragState();
+                    if(hit.node != document.snapshot->root)
+                    {
+                        drag.source = hit.node;
+                        drag.press_position = event.position;
+                        drag.pressed = true;
+                    }
+                }
+            }
+        }
+        if(!drag.pressed) return false;
+        Float2U pointer_position = gui->get_pointer_position();
+        f32 delta_x = pointer_position.x - drag.press_position.x;
+        f32 delta_y = pointer_position.y - drag.press_position.y;
+        if(!drag.dragging && delta_x * delta_x + delta_y * delta_y >= 16.0f)
+            drag.dragging = true;
+        if(drag.dragging) update_hierarchy_drop(document, handles, pointer_position);
+        if(gui->is_pointer_button_down(GUI::PointerButton::left)) return false;
+        if(drag.dragging)
+        {
+            bool applied = apply_hierarchy_drop(document);
+            if(!applied) drag = HierarchyDragState();
+            return applied;
+        }
+        else
+        {
+            drag = HierarchyDragState();
+        }
+        return false;
+    }
+
     void EditorApp::process_interactions(const UIHandles& handles)
     {
         for(usize i = 0; i < documents.size(); ++i)
@@ -965,6 +1649,7 @@ namespace
         if(document)
         {
             apply_inspector_changes(*document);
+            if(process_hierarchy_interactions(*document, handles)) return;
             for(const NodeHit& hit : handles.nodes)
             {
                 if(EditorGUI::is_item_clicked(gui, hit.element))
@@ -985,19 +1670,55 @@ namespace
                 return;
             }
 
-            if(EditorGUI::is_item_clicked(gui, handles.delete_node) &&
-                document->snapshot && document->selected_node != document->snapshot->root)
+            if(EditorGUI::is_item_clicked(gui, handles.set_root_node) &&
+                document->snapshot && document->hierarchy_context_node != Guid() &&
+                document->hierarchy_context_node != document->snapshot->root)
             {
+                Guid node = document->hierarchy_context_node;
+                EditorGUI::close_popup(gui,
+                    hierarchy_context_popup_id(gui, document->id));
+                document->hierarchy_context_node = Guid();
+                Variant command(VariantType::object);
+                command["kind"] = "set_root";
+                command["node"] = guid_string(node).c_str();
+                Variant params = editing_params(*document);
+                params["commands"] = Variant(VariantType::array);
+                params["commands"].push_back(move(command));
+                params["label"] = "Set root node";
+                Variant result;
+                if(invoke(GameGUIEditor::APPLY_COMMANDS_URL, params, result))
+                {
+                    document->selected_node = node;
+                    refresh_snapshot(*document);
+                }
+                return;
+            }
+
+            if(EditorGUI::is_item_clicked(gui, handles.delete_node) &&
+                document->snapshot && document->hierarchy_context_node != Guid() &&
+                document->hierarchy_context_node != document->snapshot->root)
+            {
+                Guid node = document->hierarchy_context_node;
+                Guid parent;
+                usize sibling_index = 0;
+                find_parent_info(*document->snapshot, node, parent, sibling_index);
+                EditorGUI::close_popup(gui,
+                    hierarchy_context_popup_id(gui, document->id));
+                document->hierarchy_context_node = Guid();
                 Variant command(VariantType::object);
                 command["kind"] = "remove_node";
-                command["node"] = guid_string(document->selected_node).c_str();
+                command["node"] = guid_string(node).c_str();
                 Variant params = editing_params(*document);
                 params["commands"] = Variant(VariantType::array);
                 params["commands"].push_back(move(command));
                 params["label"] = "Delete node";
                 Variant result;
                 if(invoke(GameGUIEditor::APPLY_COMMANDS_URL, params, result))
+                {
+                    document->selected_node = parent;
                     refresh_snapshot(*document);
+                }
+                return;
             }
 
             for(const TypeHit& hit : handles.types)
@@ -1079,6 +1800,8 @@ namespace
                     width = framebuffer_size.x;
                     height = framebuffer_size.y;
                 }
+                for(DocumentView& document : documents)
+                    luexp(apply_preview_surface_size(document));
                 UInt2U logical_size = window->get_size();
                 GUI::FrameDesc frame;
                 frame.logical_size = Float2U((f32)logical_size.x, (f32)logical_size.y);
@@ -1101,24 +1824,11 @@ namespace
                 }
 
                 PreviewInput preview_input;
-                preview_input.document_id = handles.document_id;
                 RectF preview_rect = EditorGUI::get_item_rect(gui, handles.preview_host);
-                if(handles.preview_host.id && preview_rect.width > 0.0f && preview_rect.height > 0.0f)
-                {
-                    for(const GUI::RoutedInputEvent& routed :
-                        gui->get_routed_input_events(handles.preview_host.id))
-                    {
-                        GUI::InputEvent event = routed.event;
-                        if(routed.has_element_position)
-                        {
-                            event.position.x = routed.element_position.x / preview_rect.width *
-                                (f32)PREVIEW_WIDTH;
-                            event.position.y = routed.element_position.y / preview_rect.height *
-                                (f32)PREVIEW_HEIGHT;
-                        }
-                        preview_input.events.push_back(move(event));
-                    }
-                }
+                DocumentView* input_document = find_document(handles.document_id);
+                if(input_document)
+                    collect_preview_input(*input_document, handles.preview_host,
+                        preview_rect, frame, preview_input);
                 luexp(GUIWindow::update_text_input(&input_adapter));
                 luexp(gui->generate_draw_commands());
 
@@ -1202,21 +1912,33 @@ int luna_main(int argc, const char* argv[])
 namespace
 {
     void EditorApp::build_hierarchy_node(DocumentView& document, const Guid& node_id,
-        u32 depth, UIHandles& handles)
+        const Guid& parent, usize sibling_index, u32 depth, UIHandles& handles)
     {
         const GameGUI::NodeRecord* node = GameGUI::find_node(*document.snapshot, node_id);
         if(!node) return;
         String label;
         const c8* name = node->name.empty() ? "Unnamed Node" : node->name.c_str();
         strprintf(label, "%s", name);
-        GUI::LayoutConfig layout = fill_width(26.0f);
-        layout.padding.x = 8.0f + (f32)depth * 16.0f;
-        GUI::ElementHandle item = EditorGUI::selectable(gui,
+        EditorGUI::TreeNodeFlag flags = EditorGUI::TreeNodeFlag::open_on_arrow;
+        if(node->children.empty()) flags |= EditorGUI::TreeNodeFlag::leaf;
+        if(document.selected_node == node_id) flags |= EditorGUI::TreeNodeFlag::selected;
+        GUI::ElementHandle item;
+        bool open = EditorGUI::tree_node(gui,
             guid_gui_id(gui->make_id("hierarchy.nodes"), node_id), label.c_str(),
-            document.selected_node == node_id, layout);
-        handles.nodes.push_back(NodeHit{node_id, item});
-        for(const GameGUI::ChildLink& child : node->children)
-            build_hierarchy_node(document, child.child, depth + 1, handles);
+            flags, depth, fill_width(26.0f), EditorGUI::DisclosureDesc(), &item);
+        GUI::Interactable interactable;
+        interactable.pointer_hit_behavior = GUI::PointerHitBehavior::target;
+        set_flags(interactable.flags, GUI::InteractableFlag::hoverable);
+        set_flags(interactable.flags, GUI::InteractableFlag::activatable);
+        set_flags(interactable.flags, GUI::InteractableFlag::focusable);
+        gui->set_interactable(item, interactable);
+        handles.nodes.push_back(NodeHit{node_id, parent, sibling_index, depth, item});
+        if(open)
+        {
+            for(usize i = 0; i < node->children.size(); ++i)
+                build_hierarchy_node(document, node->children[i].child, node_id, i,
+                    depth + 1, handles);
+        }
     }
 
     void EditorApp::build_hierarchy_panel(UIHandles& handles)
@@ -1225,28 +1947,50 @@ namespace
             "Hierarchy")) return;
         GUI::ElementHandle root = EditorGUI::begin_v_layout(gui,
             gui->make_id("hierarchy.root"), "Hierarchy Root", fill_layout());
-        GUI::ElementHandle toolbar = EditorGUI::begin_h_layout(gui,
-            gui->make_id("hierarchy.toolbar"), "Hierarchy Toolbar", fill_width(34.0f));
         EditorGUI::text(gui, gui->make_id("hierarchy.title"), "Node Tree",
-            grow_width(30.0f));
-        handles.delete_node = EditorGUI::text_button(gui,
-            gui->make_id("hierarchy.delete"), "Delete", fixed_layout(72.0f, 28.0f));
-        GUI::FlexLayoutDesc toolbar_layout;
-        toolbar_layout.axis = GUI::LayoutAxis::x;
-        toolbar_layout.cross_alignment = GUI::FlexAlignment::center;
-        toolbar_layout.main_axis_gap = 6.0f;
-        EditorGUI::end_h_layout(gui, toolbar, toolbar_layout);
+            fill_width(30.0f));
         EditorGUI::ScrollViewDesc scroll_desc;
         scroll_desc.horizontal = false;
         EditorGUI::begin_scroll_view(gui, gui->make_id("hierarchy.scroll"),
             "Hierarchy Scroll", fill_layout(), scroll_desc);
         DocumentView* document = active_document();
         if(document && document->snapshot)
-            build_hierarchy_node(*document, document->snapshot->root, 0, handles);
+            build_hierarchy_node(*document, document->snapshot->root, Guid(), 0, 0,
+                handles);
         EditorGUI::end_scroll_view(gui);
         GUI::FlexLayoutDesc root_layout;
         root_layout.main_axis_gap = 4.0f;
+        if(document)
+        {
+            GUI::DrawConfig hierarchy_draw;
+            hierarchy_draw.name = Name("game_gui_editor.hierarchy.drop");
+            hierarchy_draw.callback = draw_hierarchy_drop;
+            hierarchy_draw.userdata = &document->hierarchy_drag;
+            hierarchy_draw.phases = GUI::DrawPhaseFlag::after_children;
+            gui->set_draw_config(root, hierarchy_draw);
+        }
         EditorGUI::end_v_layout(gui, root, root_layout);
+        if(document)
+        {
+            GUI::id_t popup_id = hierarchy_context_popup_id(gui, document->id);
+            EditorGUI::PopupDesc popup_desc;
+            popup_desc.position = document->hierarchy_context_position;
+            popup_desc.layout = fixed_layout(180.0f, 74.0f);
+            GUI::ElementHandle popup;
+            if(EditorGUI::begin_popup(gui, popup_id, popup_desc, &popup))
+            {
+                handles.set_root_node = EditorGUI::menu_item(gui,
+                    GUI::make_scoped_id(popup_id, "set_root"), "Set as Root");
+                handles.delete_node = EditorGUI::menu_item(gui,
+                    GUI::make_scoped_id(popup_id, "delete"), "Delete Node");
+                lupanic_if_failed(EditorGUI::end_popup(gui, popup,
+                    RectF(0.0f, 0.0f, 180.0f, 74.0f)));
+            }
+            else if(!EditorGUI::is_popup_open(gui, popup_id))
+            {
+                document->hierarchy_context_node = Guid();
+            }
+        }
         EditorGUI::end_dock_panel(gui);
     }
 
@@ -1312,14 +2056,21 @@ namespace
                 "Document Preview", fill_layout());
             RV preview_result = ensure_preview(document);
             if(failed(preview_result)) error_message = explain(preview_result.errcode());
-            handles.preview_host = EditorGUI::begin_button(gui,
+            handles.preview_host = EditorGUI::begin_v_layout(gui,
                 GUI::make_scoped_id(content_scope, "preview.host"),
                 "Interactive GameGUI Preview", fill_layout());
+            GUI::Interactable preview_interactable;
+            preview_interactable.pointer_hit_behavior = GUI::PointerHitBehavior::target;
+            set_flags(preview_interactable.flags, GUI::InteractableFlag::hoverable);
+            set_flags(preview_interactable.flags, GUI::InteractableFlag::activatable);
+            gui->set_interactable(handles.preview_host, preview_interactable);
             EditorGUI::ImageDesc image;
             image.flags = EditorGUI::ImageFlag::flip_y;
             EditorGUI::image(gui, GUI::make_scoped_id(content_scope, "preview.image"),
                 document.preview.target, fill_layout(), image);
-            EditorGUI::end_button(gui);
+            GUI::FlexLayoutDesc preview_layout;
+            preview_layout.clip_children = true;
+            EditorGUI::end_v_layout(gui, handles.preview_host, preview_layout);
             EditorGUI::end_v_layout(gui, root);
             EditorGUI::end_dock_panel(gui);
         }
@@ -1629,6 +2380,7 @@ namespace
             luset(cmdbuf, device->new_command_buffer(queue));
             luset(blit, RHIUtility::new_blit_context(device, swap_chain->get_desc().format));
             luset(renderer, GUI::new_renderer(device));
+            luset(preview_renderer, GUI::new_renderer(device));
             gui = GUI::new_context();
             luexp(gui->register_font("default", Font::get_default_font()));
             EditorGUI::register_style_schemas(gui);
@@ -1689,6 +2441,35 @@ namespace
         return ok;
     }
 
+    RV EditorApp::apply_preview_surface_size(DocumentView& document)
+    {
+        lutry
+        {
+            PreviewState& preview = document.preview;
+            UInt2U render_size = preview.pending_render_size;
+            if(!render_size.x || !render_size.y)
+                render_size = UInt2U(PREVIEW_LAYOUT_WIDTH, PREVIEW_LAYOUT_HEIGHT);
+            bool recreate_target = !preview.target ||
+                preview.target->get_desc().width != render_size.x ||
+                preview.target->get_desc().height != render_size.y;
+            if(recreate_target)
+            {
+                Ref<RHI::ITexture> target;
+                luset(target, RHI::get_main_device()->new_texture(
+                    RHI::MemoryType::local, RHI::TextureDesc::tex2d(
+                        RHI::Format::rgba8_unorm,
+                        RHI::TextureUsageFlag::color_attachment |
+                            RHI::TextureUsageFlag::read_texture,
+                        render_size.x, render_size.y, 1, 1)));
+                preview.target = move(target);
+            }
+            preview.viewport_size = preview.pending_viewport_size;
+            preview.render_size = render_size;
+        }
+        lucatchret;
+        return ok;
+    }
+
     RV EditorApp::ensure_preview(DocumentView& document)
     {
         lutry
@@ -1706,7 +2487,8 @@ namespace
                         RHI::Format::rgba8_unorm,
                         RHI::TextureUsageFlag::color_attachment |
                             RHI::TextureUsageFlag::read_texture,
-                        PREVIEW_WIDTH, PREVIEW_HEIGHT, 1, 1)));
+                        document.preview.render_size.x,
+                        document.preview.render_size.y, 1, 1)));
             }
             if(!document.preview.instance || document.preview.revision != document.revision)
             {
@@ -1733,27 +2515,100 @@ namespace
         {
             luexp(ensure_preview(document));
             GUI::FrameDesc frame;
-            frame.logical_size = Float2U((f32)PREVIEW_WIDTH, (f32)PREVIEW_HEIGHT);
-            frame.render_size = UInt2U(PREVIEW_WIDTH, PREVIEW_HEIGHT);
+            frame.logical_size = document.preview.viewport_size;
+            frame.render_size = document.preview.render_size;
             frame.delta_time = 1.0f / 60.0f;
             document.preview.context->begin_frame(frame);
             document.preview.context->add_input_events(input);
             document.preview.context->push_layer(
-                document.preview.context->make_id("preview.root.layer"));
-            lulet(root, document.preview.instance->build(document.preview.context));
+                document.preview.context->make_id("preview.background.layer"));
+            document.preview.context->begin_element(
+                document.preview.context->make_id("preview.background"));
+            build_preview_background(document.preview.context, document.preview);
+            document.preview.context->end_element();
             document.preview.context->pop_layer();
+            document.preview.context->push_layer(
+                document.preview.context->make_id("preview.root.layer"));
+            GUI::ElementHandle preview_node = document.preview.context->begin_element(
+                document.preview.context->make_id("preview.node"));
+            document.preview.context->set_element_debug_name(preview_node,
+                Name("GameGUI Preview Parent"));
+            document.preview.context->set_layout_config(preview_node,
+                fixed_layout(document.preview.node_size.x,
+                    document.preview.node_size.y));
+            draw_preview_node_background(document.preview.context);
+            lulet(root, document.preview.instance->build(document.preview.context));
             if(root.id)
             {
-                luexp(document.preview.context->apply_layout(root,
-                    RectF(0.0f, 0.0f, (f32)PREVIEW_WIDTH, (f32)PREVIEW_HEIGHT)));
+                const GUI::Element* root_element =
+                    document.preview.context->get_element(root.index);
+                if(root_element && root_element->id == root.id)
+                {
+                    GUI::LayoutConfig root_layout = root_element->layout;
+                    root_layout.margin = Float4U(0.0f);
+                    document.preview.context->set_layout_config(root, root_layout);
+                }
             }
+            GUI::ElementHandle resize_handle = build_preview_resize_handle(
+                document.preview.context, document.preview);
+            draw_preview_node_border(document.preview.context,
+                document.preview.zoom);
+            document.preview.context->end_element();
+            document.preview.context->pop_layer();
+
+            GUI::CanvasLayoutItem preview_items[2];
+            usize preview_item_count = 0;
+            if(root.id)
+            {
+                GUI::CanvasLayoutItem& root_item =
+                    preview_items[preview_item_count++];
+                root_item.element_id = root.id;
+                root_item.anchor_min = Float2U(0.0f);
+                root_item.anchor_max = Float2U(1.0f);
+                root_item.offset = Float4U(0.0f);
+            }
+            GUI::CanvasLayoutItem& resize_item =
+                preview_items[preview_item_count++];
+            resize_item.element_id = resize_handle.id;
+            resize_item.anchor_min = Float2U(1.0f);
+            resize_item.anchor_max = Float2U(1.0f);
+            resize_item.offset = Float4U(0.0f);
+            resize_item.pivot = Float2U(1.0f);
+            GUI::CanvasLayoutDesc preview_layout;
+            preview_layout.items = Span<const GUI::CanvasLayoutItem>(preview_items,
+                preview_item_count);
+            preview_layout.clip_children = true;
+            GUI::LayoutCallbackConfig preview_layout_config;
+            preview_layout_config.algorithm = Name("game_gui_editor.preview_parent");
+            preview_layout_config.callback = GUI::layout_canvas;
+            preview_layout_config.userdata = &preview_layout;
+            document.preview.context->set_layout_callback_config(preview_node,
+                preview_layout_config);
+
+            document.preview.context->push_layer(
+                document.preview.context->make_id("preview.overlay.layer"));
+            document.preview.context->begin_element(
+                document.preview.context->make_id("preview.overlay"));
+            build_preview_overlay(document.preview.context, document.preview);
+            document.preview.context->end_element();
+            document.preview.context->pop_layer();
+            luexp(document.preview.context->apply_layout(preview_node,
+                RectF(0.0f, 0.0f, document.preview.node_size.x,
+                    document.preview.node_size.y)));
             document.preview.context->route_input();
+            bool preview_resized = process_preview_resize(document.preview,
+                resize_handle);
             luexp(document.preview.instance->resolve_interactions(
                 document.preview.context));
-            if(root.id && document.preview.instance->relayout_requested())
+            if(preview_resized ||
+                document.preview.instance->relayout_requested())
             {
-                luexp(document.preview.context->apply_layout(root,
-                    RectF(0.0f, 0.0f, (f32)PREVIEW_WIDTH, (f32)PREVIEW_HEIGHT)));
+                document.preview.context->set_layout_config(preview_node,
+                    fixed_layout(document.preview.node_size.x,
+                        document.preview.node_size.y));
+                luexp(document.preview.context->apply_layout(preview_node,
+                    RectF(0.0f, 0.0f, document.preview.node_size.x,
+                        document.preview.node_size.y)));
             }
             luexp(document.preview.context->generate_draw_commands());
         }
@@ -1770,10 +2625,34 @@ namespace
             {
                 GUI::RenderTargetDesc preview_target(preview_document->preview.target);
                 preview_target.color_load_op = RHI::LoadOp::clear;
-                preview_target.color_clear_value = Float4U(0.055f, 0.065f, 0.08f, 1.0f);
+                preview_target.color_clear_value = Float4U(0.26f, 0.26f, 0.26f, 1.0f);
                 preview_target.color_final_state = RHI::TextureStateFlag::shader_read_ps;
-                luexp(renderer->render(preview_document->preview.context, cmdbuf,
-                    preview_target));
+                const PreviewState& preview = preview_document->preview;
+                Float2U center((f32)PREVIEW_LAYOUT_WIDTH * 0.5f,
+                    (f32)PREVIEW_LAYOUT_HEIGHT * 0.5f);
+                f32 translation_x = center.x + preview.pan.x - preview.zoom * center.x;
+                f32 translation_y = center.y + preview.pan.y - preview.zoom * center.y;
+                Float4x4 canvas_transform(
+                    preview.zoom, 0.0f, 0.0f, 0.0f,
+                    0.0f, preview.zoom, 0.0f, 0.0f,
+                    0.0f, 0.0f, 1.0f, 0.0f,
+                    translation_x, translation_y, 0.0f, 1.0f);
+                Float4x4 projection = ProjectionMatrix::make_orthographic_off_center(
+                    0.0f, preview.viewport_size.x, preview.viewport_size.y,
+                    0.0f, 0.0f, 1.0f);
+                GUI::RenderSurfaceDesc preview_surface;
+                preview_surface.use_custom_transform = true;
+                preview_surface.surface_to_clip = mul(canvas_transform, projection);
+                if(preview.zoom == 1.0f && preview.pan == Float2U(0.0f))
+                {
+                    luexp(preview_renderer->render(preview_document->preview.context,
+                        cmdbuf, preview_target));
+                }
+                else
+                {
+                    luexp(preview_renderer->render(preview_document->preview.context,
+                        cmdbuf, preview_target, preview_surface));
+                }
             }
             GUI::RenderTargetDesc editor_target(gui_target);
             editor_target.color_load_op = RHI::LoadOp::clear;

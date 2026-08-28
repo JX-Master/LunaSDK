@@ -317,6 +317,36 @@ namespace Luna
                     created_nodes.push_back(node_id);
                     return ok;
                 }
+                if(kind == Name("set_root"))
+                {
+                    lulet(node, guid_param(command["node"], "set_root.node"));
+                    if(node == document.root)
+                        return set_error(E_BAD_ARGUMENTS, "The GameGUI node is already the root.");
+                    GameGUI::NodeRecord* new_root = GameGUI::find_node(document, node);
+                    if(!new_root)
+                        return set_error(E_NOT_FOUND, "The new root GameGUI node does not exist.");
+                    GameGUI::NodeRecord* old_parent = nullptr;
+                    GameGUI::ChildLink* old_link = find_parent_link(document, node,
+                        &old_parent);
+                    if(!old_link || !old_parent)
+                    {
+                        return set_error(E_NOT_FOUND,
+                            "The new root GameGUI node is not attached to the document tree.");
+                    }
+                    for(usize i = 0; i < old_parent->children.size(); ++i)
+                    {
+                        if(old_parent->children[i].child == node)
+                        {
+                            old_parent->children.erase(old_parent->children.begin() + i);
+                            break;
+                        }
+                    }
+                    GameGUI::ChildLink old_root_link;
+                    old_root_link.child = document.root;
+                    new_root->children.push_back(move(old_root_link));
+                    document.root = node;
+                    return ok;
+                }
                 if(kind == Name("remove_node"))
                 {
                     lulet(node, guid_param(command["node"], "remove_node.node"));

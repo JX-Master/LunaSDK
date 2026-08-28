@@ -111,6 +111,108 @@ namespace
         lupanic_if_failed(decode_guid(edit["created_nodes"][0].c_str(),
             edit["created_nodes"][0].str().size(), child));
 
+        Variant insert_parent(VariantType::object);
+        insert_parent["kind"] = "insert_node";
+        insert_parent["parent"] = guid_string(root).c_str();
+        insert_parent["type"] = guid_string(GameGUI::get_flex_node_type()).c_str();
+        insert_parent["name"] = "Container";
+        Variant parent_inserted = invoke(frontend, GameGUIEditor::APPLY_COMMANDS_URL,
+            command_batch(edit, move(insert_parent), "Insert container"));
+        Guid container;
+        lupanic_if_failed(decode_guid(parent_inserted["created_nodes"][0].c_str(),
+            parent_inserted["created_nodes"][0].str().size(), container));
+
+        Variant insert_sibling(VariantType::object);
+        insert_sibling["kind"] = "insert_node";
+        insert_sibling["parent"] = guid_string(root).c_str();
+        insert_sibling["type"] = guid_string(GameGUI::get_text_node_type()).c_str();
+        insert_sibling["name"] = "Sibling Text";
+        Variant sibling_inserted = invoke(frontend, GameGUIEditor::APPLY_COMMANDS_URL,
+            command_batch(parent_inserted, move(insert_sibling), "Insert sibling"));
+        Guid sibling;
+        lupanic_if_failed(decode_guid(sibling_inserted["created_nodes"][0].c_str(),
+            sibling_inserted["created_nodes"][0].str().size(), sibling));
+
+        Variant reorder(VariantType::object);
+        reorder["kind"] = "move_node";
+        reorder["node"] = guid_string(child).c_str();
+        reorder["parent"] = guid_string(root).c_str();
+        reorder["index"] = (u64)2;
+        Variant reordered = invoke(frontend, GameGUIEditor::APPLY_COMMANDS_URL,
+            command_batch(sibling_inserted, move(reorder), "Reorder child"));
+        snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
+            document_params(reordered));
+        document_result = GameGUI::decode_document(snapshot["document"]);
+        lutest(document_result.valid());
+        const GameGUI::NodeRecord* reordered_root = GameGUI::find_node(
+            *document_result.get(), root);
+        lutest(reordered_root && reordered_root->children.size() == 3);
+        lutest(reordered_root->children[0].child == container);
+        lutest(reordered_root->children[1].child == sibling);
+        lutest(reordered_root->children[2].child == child);
+
+        Variant reparent(VariantType::object);
+        reparent["kind"] = "move_node";
+        reparent["node"] = guid_string(child).c_str();
+        reparent["parent"] = guid_string(container).c_str();
+        reparent["index"] = (u64)0;
+        edit = invoke(frontend, GameGUIEditor::APPLY_COMMANDS_URL,
+            command_batch(reordered, move(reparent), "Reparent child"));
+        snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
+            document_params(edit));
+        document_result = GameGUI::decode_document(snapshot["document"]);
+        lutest(document_result.valid());
+        const GameGUI::NodeRecord* reparented_root = GameGUI::find_node(
+            *document_result.get(), root);
+        const GameGUI::NodeRecord* reparented_container = GameGUI::find_node(
+            *document_result.get(), container);
+        lutest(reparented_root && reparented_root->children.size() == 2);
+        lutest(reparented_container && reparented_container->children.size() == 1);
+        lutest(reparented_container->children[0].child == child);
+
+        Variant set_root(VariantType::object);
+        set_root["kind"] = "set_root";
+        set_root["node"] = guid_string(child).c_str();
+        Variant root_changed = invoke(frontend, GameGUIEditor::APPLY_COMMANDS_URL,
+            command_batch(edit, move(set_root), "Set root node"));
+        snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
+            document_params(root_changed));
+        document_result = GameGUI::decode_document(snapshot["document"]);
+        lutest(document_result.valid());
+        lutest(document_result.get()->root == child);
+        const GameGUI::NodeRecord* promoted_root = GameGUI::find_node(
+            *document_result.get(), child);
+        const GameGUI::NodeRecord* demoted_root = GameGUI::find_node(
+            *document_result.get(), root);
+        const GameGUI::NodeRecord* detached_container = GameGUI::find_node(
+            *document_result.get(), container);
+        lutest(promoted_root && promoted_root->children.size() == 1);
+        lutest(promoted_root->children[0].child == root);
+        lutest(demoted_root && demoted_root->children.size() == 2);
+        lutest(demoted_root->children[0].child == container);
+        lutest(demoted_root->children[1].child == sibling);
+        lutest(detached_container && detached_container->children.empty());
+
+        Variant root_undone = invoke(frontend, GameGUIEditor::UNDO_URL,
+            document_params(root_changed));
+        snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
+            document_params(root_undone));
+        document_result = GameGUI::decode_document(snapshot["document"]);
+        lutest(document_result.valid());
+        lutest(document_result.get()->root == root);
+        const GameGUI::NodeRecord* restored_container = GameGUI::find_node(
+            *document_result.get(), container);
+        lutest(restored_container && restored_container->children.size() == 1);
+        lutest(restored_container->children[0].child == child);
+
+        edit = invoke(frontend, GameGUIEditor::REDO_URL,
+            document_params(root_undone));
+        snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
+            document_params(edit));
+        document_result = GameGUI::decode_document(snapshot["document"]);
+        lutest(document_result.valid());
+        lutest(document_result.get()->root == child);
+
         Variant stale_command = set_property_command(child, "text", "stale");
         auto stale = frontend->invoke(GameGUIEditor::APPLY_COMMANDS_URL,
             command_batch(first, move(stale_command), "Stale edit"));
