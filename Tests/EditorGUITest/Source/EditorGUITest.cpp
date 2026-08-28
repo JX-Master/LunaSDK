@@ -248,12 +248,115 @@ namespace
         return ok;
     }
 
+    void verify_input_text_direction_navigation(GUI::IContext* context)
+    {
+        String value("\xE7\x94\xB2\xE4\xB9\x99");
+        auto build_frame = [&]()
+        {
+            GUI::FrameDesc frame;
+            frame.logical_size = Float2U(320.0f, 120.0f);
+            frame.render_size = UInt2U(320, 120);
+            frame.delta_time = 1.0f / 60.0f;
+            context->begin_frame(frame);
+            context->push_layer(1, Float2U(0.0f));
+            GUI::LayoutConfig root_layout;
+            root_layout.width.kind = GUI::SizeKind::percent;
+            root_layout.width.value = 1.0f;
+            root_layout.height.kind = GUI::SizeKind::percent;
+            root_layout.height.value = 1.0f;
+            GUI::ElementHandle root = EditorGUI::begin_v_layout(
+                context, context->make_id("input.navigation.test.root"),
+                "Input navigation test", root_layout);
+            GUI::LayoutConfig control_layout;
+            control_layout.width.kind = GUI::SizeKind::percent;
+            control_layout.width.value = 1.0f;
+            control_layout.height.kind = GUI::SizeKind::fixed;
+            control_layout.height.value = 40.0f;
+            GUI::ElementHandle input = EditorGUI::input_text(
+                context, context->make_id("input.navigation.test.value"), value,
+                control_layout);
+            EditorGUI::text_button(context, context->make_id("input.navigation.test.sibling"),
+                "Sibling", control_layout);
+            GUI::FlexLayoutDesc flex;
+            flex.axis = GUI::LayoutAxis::y;
+            flex.cross_alignment = GUI::FlexAlignment::stretch;
+            EditorGUI::end_v_layout(context, root, flex);
+            context->pop_layer();
+            lupanic_if_failed(EditorGUI::layout_tree(
+                context, root, RectF(0.0f, 0.0f, 320.0f, 120.0f)));
+            return input;
+        };
+
+        GUI::ElementHandle input = build_frame();
+        GUI::NavigationConfig navigation = context->get_navigation_config(input);
+        luassert(navigation.left == GUI::NavigationMode::callback);
+        luassert(navigation.right == GUI::NavigationMode::callback);
+        luassert(navigation.up == GUI::NavigationMode::callback);
+        luassert(navigation.down == GUI::NavigationMode::callback);
+        luassert(navigation.forward == GUI::NavigationMode::automatic);
+        context->focus_element(input.id);
+        context->route_input();
+        EditorGUI::resolve_interactions(context);
+
+        auto apply_direction = [&](GUI::NavigationDirection direction, const c8* text)
+        {
+            input = build_frame();
+            GUI::InputEvent navigation_event;
+            navigation_event.type = GUI::InputEventType::navigation_dpad;
+            navigation_event.navigation_direction = direction;
+            context->add_input_event(navigation_event);
+            GUI::InputEvent event;
+            event.type = GUI::InputEventType::text_utf8;
+            event.text = text;
+            context->add_input_event(event);
+            context->route_input();
+            EditorGUI::resolve_interactions(context);
+            luassert(context->focused_element() == input.id);
+        };
+
+        apply_direction(GUI::NavigationDirection::right, "X");
+        apply_direction(GUI::NavigationDirection::up, "Y");
+        apply_direction(GUI::NavigationDirection::down, "Z");
+        apply_direction(GUI::NavigationDirection::left, "W");
+        luassert(!strcmp(value.c_str(), "Y\xE7\x94\xB2X\xE4\xB9\x99WZ"));
+
+        input = build_frame();
+        GUI::InputEvent home;
+        home.type = GUI::InputEventType::key_down;
+        home.key = KeyCode::home;
+        context->add_input_event(home);
+        GUI::InputEvent home_text;
+        home_text.type = GUI::InputEventType::text_utf8;
+        home_text.text = "H";
+        context->add_input_event(home_text);
+        context->route_input();
+        EditorGUI::resolve_interactions(context);
+        luassert(context->focused_element() == input.id);
+        luassert(!strcmp(value.c_str(), "Y\xE7\x94\xB2X\xE4\xB9\x99WHZ"));
+
+        input = build_frame();
+        GUI::InputEvent end;
+        end.type = GUI::InputEventType::key_down;
+        end.key = KeyCode::end;
+        context->add_input_event(end);
+        GUI::InputEvent end_text;
+        end_text.type = GUI::InputEventType::text_utf8;
+        end_text.text = "E";
+        context->add_input_event(end_text);
+        context->route_input();
+        EditorGUI::resolve_interactions(context);
+        luassert(context->focused_element() == input.id);
+        luassert(!strcmp(value.c_str(), "Y\xE7\x94\xB2X\xE4\xB9\x99WHEZ"));
+        context->focus_element(0);
+    }
+
     RV run_demo(const DemoOptions& options)
     {
         lutry
         {
             DemoApp app;
             luexp(init_demo(app, options));
+            verify_input_text_direction_navigation(app.gui);
             GUIWindow::GUIWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;

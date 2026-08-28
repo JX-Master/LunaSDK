@@ -134,6 +134,47 @@ namespace Luna
                 return test_flags(value, flag);
             }
 
+            static bool navigate_input_text(GUI::IContext*,
+                const GUI::NavigationRequest& request, void* userdata)
+            {
+                TextInputData* data = (TextInputData*)userdata;
+                if(!data || !data->value || !data->state ||
+                    request.event_type != GUI::InputEventType::navigation_dpad)
+                {
+                    return false;
+                }
+                String& value = *data->value;
+                TextInputState& state = *data->state;
+                state.cursor = clamp_cursor(value, state.cursor);
+                if(!has_modifier(request.event.modifiers, GUI::KeyModifierFlag::shift))
+                {
+                    state.selection_anchor = USIZE_MAX;
+                }
+                else if(state.selection_anchor == USIZE_MAX)
+                {
+                    state.selection_anchor = state.cursor;
+                }
+                switch(request.direction)
+                {
+                case GUI::NavigationDirection::left:
+                    state.cursor = previous_cursor(value, state.cursor);
+                    break;
+                case GUI::NavigationDirection::right:
+                    state.cursor = next_cursor(value, state.cursor);
+                    break;
+                case GUI::NavigationDirection::up:
+                    state.cursor = 0;
+                    break;
+                case GUI::NavigationDirection::down:
+                    state.cursor = value.size();
+                    break;
+                default:
+                    return false;
+                }
+                state.blink_time = 0.0f;
+                return true;
+            }
+
             static String filter_single_line_text(const String& value)
             {
                 String result;
@@ -358,13 +399,6 @@ namespace Luna
                             }
                             else changed = true;
                         }
-                        else if(event.key == KeyCode::left || event.key == KeyCode::right)
-                        {
-                            if(!has_modifier(event.modifiers, GUI::KeyModifierFlag::shift)) state.selection_anchor = USIZE_MAX;
-                            else if(state.selection_anchor == USIZE_MAX) state.selection_anchor = state.cursor;
-                            state.cursor = event.key == KeyCode::left ? previous_cursor(value, state.cursor) :
-                                next_cursor(value, state.cursor);
-                        }
                         else if(event.key == KeyCode::enter || event.key == KeyCode::esc)
                         {
                             context->focus_element(0);
@@ -407,6 +441,14 @@ namespace Luna
             data->read_only = desc.read_only;
             data->font = Internal::resolve_font(context, element);
             data->state = state.get();
+            GUI::NavigationConfig navigation;
+            navigation.left = GUI::NavigationMode::callback;
+            navigation.right = GUI::NavigationMode::callback;
+            navigation.up = GUI::NavigationMode::callback;
+            navigation.down = GUI::NavigationMode::callback;
+            navigation.callback = Internal::navigate_input_text;
+            navigation.userdata = data;
+            context->set_navigation_config(element, navigation);
             GUI::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.input_text");
             callbacks.measure_callback = Internal::measure_input_text;
