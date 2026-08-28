@@ -10,6 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_EDITOR_GUI_API LUNA_EXPORT
 #include "Internal.hpp"
+#include <Luna/Runtime/Unicode.hpp>
 #include <Luna/VG/TextArranger.hpp>
 #include <cstring>
 
@@ -369,6 +370,45 @@ namespace Luna
             {
                 f32 padding = style_scalar(context, element, "gui.tab.padding_x", 14.0f);
                 return dock_tab_label_width(context, element, label, font_size) + padding * 2.0f;
+            }
+
+            static String dock_tab_display_label(GUI::IContext* context,
+                const GUI::ElementHandle& element, const c8* label, f32 font_size, f32 available_width)
+            {
+                String single_line = label ? label : "";
+                for(usize i = 0; i < single_line.size(); ++i)
+                {
+                    if(single_line[i] == '\r' || single_line[i] == '\n') single_line[i] = ' ';
+                }
+                if(single_line.empty() || available_width <= 0.0f) return String();
+                if(dock_tab_label_width(context, element, single_line.c_str(), font_size) <=
+                    available_width)
+                {
+                    return single_line;
+                }
+
+                const c8* ellipsis = "\xE2\x80\xA6";
+                String result(ellipsis);
+                usize cursor = 0;
+                while(cursor < single_line.size())
+                {
+                    usize num_bytes = 0;
+                    if(failed(utf8_decode_char(single_line.c_str() + cursor,
+                        single_line.size() - cursor, &num_bytes)) || !num_bytes)
+                    {
+                        num_bytes = 1;
+                    }
+                    cursor += num_bytes;
+                    String candidate(single_line.c_str(), cursor);
+                    candidate.append(ellipsis);
+                    if(dock_tab_label_width(context, element, candidate.c_str(), font_size) >
+                        available_width)
+                    {
+                        break;
+                    }
+                    result = move(candidate);
+                }
+                return result;
             }
 
             static f32 dock_tab_width_scale(GUI::IContext* context,
@@ -748,29 +788,34 @@ namespace Luna
                             RectF(0.0f, 0.0f, panel_width, max(title_height - 1.0f, 0.0f)), title_bar_color);
                     }
 
-                    auto draw_tab = [&](const RectF& tab_rect, const c8* label, bool selected, bool reserve_close)
+                    auto draw_tab = [&](const RectF& tab_rect, const c8* label, bool selected)
                     {
                         if(selected && desc.active_title_bar_color.w > 0.0f)
                         {
                             draw_rect(context, GUI::DrawCommandType::rect, tab_rect,
                                 desc.active_title_bar_color);
                         }
-                        f32 close_reserve = reserve_close ? title_height * 0.72f : 0.0f;
                         RectF text_rect(tab_rect.offset_x + text_padding, 0.0f,
-                            max(tab_rect.width - text_padding * 2.0f - close_reserve, 0.0f), title_height);
-                        draw_text(context, element, text_rect, label, style_color(context, element,
+                            max(tab_rect.width - text_padding * 2.0f, 0.0f), title_height);
+                        String display_label = dock_tab_display_label(context, element, label,
+                            font_size, text_rect.width);
+                        draw_rect(context, GUI::DrawCommandType::push_clip, text_rect, Float4U());
+                        draw_text(context, element, text_rect, display_label.c_str(),
+                            style_color(context, element,
                             selected && !floating ? "gui.focus" : selected ? "gui.text.color" : "gui.text.secondary",
                             selected ? Float4U(0.72f, 0.38f, 0.40f, 1.0f) :
                             Float4U(0.65f, 0.68f, 0.72f, 1.0f)), font_size,
                             GUI::DrawCommandRectReference::element);
+                        draw_rect(context, GUI::DrawCommandType::pop_clip, RectF(), Float4U());
                     };
 
                     u32 leaf_index = floating ? U32_MAX : find_panel_leaf(state, panel.id);
+                    f32 tab_bar_width = max(panel_width - (panel.close.id ? title_height : 0.0f), 0.0f);
                     if(leaf_index < state.nodes.size() && !state.nodes[leaf_index].tabs.empty())
                     {
                         DockTreeNode& leaf = state.nodes[leaf_index];
                         f32 width_scale = dock_tab_width_scale(context, element, action, leaf,
-                            font_size, panel_width);
+                            font_size, tab_bar_width);
                         f32 x = 0.0f;
                         f32 target_indicator_x = 0.0f;
                         f32 target_indicator_width = 0.0f;
@@ -781,8 +826,7 @@ namespace Luna
                             f32 width = dock_tab_width(context, element, label, font_size) * width_scale;
                             RectF tab_rect(x, 0.0f, width, desc.title_bar_height);
                             bool selected = tab == leaf.selected_tab;
-                            draw_tab(tab_rect, label, selected,
-                                selected && panel.close.id && i + 1 == leaf.tabs.size());
+                            draw_tab(tab_rect, label, selected);
                             if(selected)
                             {
                                 f32 indicator_inset = min(10.0f, tab_rect.width * 0.25f);
@@ -812,8 +856,8 @@ namespace Luna
                     }
                     else
                     {
-                        draw_tab(RectF(0.0f, 0.0f, panel_width, desc.title_bar_height), panel.label,
-                            true, panel.close.id);
+                        draw_tab(RectF(0.0f, 0.0f, tab_bar_width, desc.title_bar_height),
+                            panel.label, true);
                     }
                 }
                 f32 border = max(desc.border_size, 0.0f);
@@ -932,16 +976,8 @@ namespace Luna
                     if(panel.title.id && has_pointer_event(context, panel.title.id,
                         GUI::InputEventType::pointer_down, &event))
                     {
-                        raise_panel(context, state, panel);
-                        state.drag_panel = panel.id;
-                        state.drag_start_pointer = event.position;
-                        state.drag_start_rect = persistent->floating_rect;
-                        state.drop_target = U32_MAX;
-                        state.drop_target_available = false;
-                        state.drop_direction = DockDropDirection::none;
-                        state.drag_mode = persistent->mode == DockPanelMode::floating ?
-                            DockDragMode::floating_move : DockDragMode::docked_title;
-
+                        id_t drag_panel = panel.id;
+                        DockPanelPersistentData* drag_persistent = persistent;
                         if(persistent->mode == DockPanelMode::docking)
                         {
                             u32 leaf_index = find_panel_leaf(state, panel.id);
@@ -950,10 +986,12 @@ namespace Luna
                                 DockTreeNode& leaf = state.nodes[leaf_index];
                                 const GUI::Element* panel_element = context->get_element(panel.root.index);
                                 f32 panel_width = panel_element ? panel_element->layout_result.rect.width : 0.0f;
+                                f32 tab_bar_width = max(panel_width -
+                                    (panel.close.id ? panel.desc.title_bar_height : 0.0f), 0.0f);
                                 f32 font_size = style_scalar(context, panel.title,
                                     "gui.menu_item.font_size", 13.0f);
                                 f32 width_scale = dock_tab_width_scale(context, panel.title,
-                                    action, leaf, font_size, panel_width);
+                                    action, leaf, font_size, tab_bar_width);
                                 for(const GUI::RoutedInputEvent& routed : context->get_routed_input_events(panel.title.id))
                                 {
                                     if(routed.event.type != GUI::InputEventType::pointer_down || !routed.has_element_position) continue;
@@ -966,6 +1004,12 @@ namespace Luna
                                             routed.element_position.x < x + width)
                                         {
                                             leaf.selected_tab = tab;
+                                            DockPanelPersistentData* tab_persistent = find_panel(state, tab);
+                                            if(tab_persistent)
+                                            {
+                                                drag_panel = tab;
+                                                drag_persistent = tab_persistent;
+                                            }
                                             break;
                                         }
                                         x += width;
@@ -974,6 +1018,15 @@ namespace Luna
                                 }
                             }
                         }
+                        raise_panel(context, state, panel);
+                        state.drag_panel = drag_panel;
+                        state.drag_start_pointer = event.position;
+                        state.drag_start_rect = drag_persistent->floating_rect;
+                        state.drop_target = U32_MAX;
+                        state.drop_target_available = false;
+                        state.drop_direction = DockDropDirection::none;
+                        state.drag_mode = drag_persistent->mode == DockPanelMode::floating ?
+                            DockDragMode::floating_move : DockDragMode::docked_title;
                     }
                     if(panel.resize.id && has_pointer_event(context, panel.resize.id,
                         GUI::InputEventType::pointer_down, &event))
