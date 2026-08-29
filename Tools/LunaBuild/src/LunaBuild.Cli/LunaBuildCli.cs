@@ -568,7 +568,10 @@ public static class LunaBuildCli
         return makeSystem.BuildAsync(
             workspace,
             graph,
-            options: new MakeSystemBuildOptions(forceRebuild)).GetAwaiter().GetResult();
+            options: new MakeSystemBuildOptions(forceRebuild)
+            {
+                Progress = Console.WriteLine,
+            }).GetAwaiter().GetResult();
     }
 
     private static int RunProcess(string executable, IReadOnlyList<string> arguments)

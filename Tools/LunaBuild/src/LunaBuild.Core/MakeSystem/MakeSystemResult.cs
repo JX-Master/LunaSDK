@@ -5,7 +5,10 @@ public sealed record MakeSystemResult(
     int ActionsExecuted,
     bool UpToDate);
 
-public sealed record MakeSystemBuildOptions(bool ForceRebuild = false);
+public sealed record MakeSystemBuildOptions(bool ForceRebuild = false)
+{
+    public Action<string>? Progress { get; init; }
+}
 
 public sealed record MakeSystemCleanResult(
     int NodesVisited,

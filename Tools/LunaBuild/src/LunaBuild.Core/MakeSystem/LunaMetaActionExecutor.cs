@@ -10,6 +10,12 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
         _actionTimeout = actionTimeout ?? TimeSpan.FromMinutes(5);
     }
 
+    public override string GetDescription(MakeActionContext context)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        return $"generating metadata for {payload.Required("target")}";
+    }
+
     public override async Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
         var payload = ActionPayload.Parse(context.ActionPayload);
