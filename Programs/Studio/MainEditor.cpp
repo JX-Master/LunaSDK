@@ -616,6 +616,9 @@ namespace Luna
 #endif
         Window::set_event_handler(nullptr, nullptr);
         unregister_profiler_callback(m_memory_profiler_callback_handle);
+        // Destroying the scheduler waits for all asynchronous asset loads before the
+        // asset registry is closed by run_main_editor.
+        m_job_scheduler.reset();
     }
     RV MainEditor::save_all()
     {
@@ -668,7 +671,7 @@ namespace Luna
     {
         lutry
         {
-            luexp(Asset::save_asset(asset));
+            luexp(Asset::save_asset_data_unit(asset, Name()));
             mark_asset_as_saved(asset);
         }
         lucatchret;
@@ -741,13 +744,18 @@ namespace Luna
             {
                 luexp(main_editor->update());
             }
-            main_editor->close();
         }
         lucatch
         {
-            auto _ = Window::message_box(explain(luerr), "Editor Crashed.", {"OK"}, Window::MessageBoxIcon::error);
+            String error_message = explain(luerr);
+            main_editor->close();
+            g_main_editor = nullptr;
+            Asset::close();
+            auto _ = Window::message_box(error_message.c_str(), "Editor Crashed.", {"OK"}, Window::MessageBoxIcon::error);
             return;
         }
+        main_editor->close();
+        g_main_editor = nullptr;
         Asset::close();
     }
 

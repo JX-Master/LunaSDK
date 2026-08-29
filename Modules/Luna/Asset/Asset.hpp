@@ -25,8 +25,9 @@ namespace Luna
         //! @{
         
         //! Represents one handle that identifies one asset entry in process scope.
-        //! @details An asset is one block of application data that is stored on one asset file. 
-        //! Every asset is identified by one asset GUID. The asset GUID is generated and assigned 
+        //! @details An asset is one logical group of application data identified by one GUID and one shared path.
+        //! Its data is divided into one main data unit and zero or more independently managed named data units.
+        //! Every asset is identified by one asset GUID. The asset GUID is generated and assigned
         //! to one asset when the asset is created, and cannot be changed after the asset is created. 
         //! The asset handle is the runtime representation of asset GUID. Every GUID has one unique asset handle, 
         //! which can be fetched by @ref get_asset, the asset handle will be valid until 
@@ -69,53 +70,59 @@ namespace Luna
             }
         };
 
-        //! Identifies the asset state.
-        enum class AssetState
+        //! Identifies the state of one asset data unit.
+        enum class AssetDataUnitState
         {
-            //! The asset handle is not registered. This asset should be registered first by
+            //! The containing asset is not registered. The asset should be registered first by
             //! calling @ref register_asset or @ref new_asset.
             unregistered = 0,
-            //! The asset data is not loaded.
+            //! The asset data unit object is not loaded.
             unloaded = 1,
-            //! The asset data is loading.
+            //! The asset data unit object is loading.
             loading = 2,
-            //! The asset data is loaded.
+            //! The asset data unit object is loaded.
             loaded = 3
         };
 
-        //! Describes one asset type.
-        struct AssetTypeDesc
+        //! Describes one asset loader.
+        //! @details Operations on different data units may invoke callbacks concurrently. If multiple data units refer
+        //! to the same mutable data object, the loader or caller is responsible for synchronizing access to that object.
+        struct AssetLoaderDesc
         {
-            //! The asset type name.
+            //! The globally unique asset loader name.
             Name name;
             //! The userdata object. The object will be kept by the asset system and provided to every callback function.
             ObjRef userdata;
-            //! Called when one asset data object with data loaded from the specified file is being requested. The 
+            //! Called when one asset data unit object with data loaded from the specified file is being requested. The
             //! user should create a new asset data object and load asset data from the specified file to the object.
-            //! @details This function can be `nullptr`. If this function is `nullptr`, this asset type does not support 
+            //! @details This function can be `nullptr`. If this function is `nullptr`, this asset loader does not support
             //! loading asset data from file, and such requests failed with @ref E_NOT_SUPPORTED.
             //! @param[in] userdata The userdata.
             //! @param[in] asset The asset handle of the asset being loaded.
+            //! @param[in] data_unit The ID of the data unit being loaded. This is empty for the main data unit.
             //! @param[in] path The VFS path to load asset data from.
             //! @return Returns the loaded asset data object.
-            R<ObjRef>(*on_load_asset)(object_t userdata, asset_t asset, const Path& path) = nullptr;
-            //! Called when one asset data object with default asset data is being requested. The user should create a 
+            R<ObjRef>(*on_load_asset_data_unit)(object_t userdata, asset_t asset, const Name& data_unit, const Path& path) = nullptr;
+            //! Called when one asset data unit object with default asset data is being requested. The user should create a
             //! new asset data object and load default asset data to the object.
-            //! @details This function can be `nullptr`. If this function is `nullptr`, this asset type does not support 
+            //! @details This function can be `nullptr`. If this function is `nullptr`, this asset loader does not support
             //! loading default asset data, and such requests failed with @ref E_NOT_SUPPORTED.
             //! @param[in] userdata The userdata.
             //! @param[in] asset The asset handle of the asset being loaded.
+            //! @param[in] data_unit The ID of the data unit being loaded. This is empty for the main data unit.
             //! @return Returns the created asset data object with default asset data.
-            R<ObjRef>(*on_load_asset_default_data)(object_t userdata, asset_t asset) = nullptr;
-            //! Called when the asset data is being saved.
+            R<ObjRef>(*on_load_asset_data_unit_default_data)(object_t userdata, asset_t asset, const Name& data_unit) = nullptr;
+            //! Called when one asset data unit is being saved.
             //! @param[in] userdata The userdata.
             //! @param[in] asset The asset handle of the asset being saved.
+            //! @param[in] data_unit The ID of the data unit being saved. This is empty for the main data unit.
             //! @param[in] path The VFS path to save asset data to.
             //! @param[in] data The asset data object to save.
-            RV(*on_save_asset)(object_t userdata, asset_t asset, const Path& path, object_t data) = nullptr;
-            //! Called when a new asset data object is set to the specified asset.
+            RV(*on_save_asset_data_unit)(object_t userdata, asset_t asset,
+                const Name& data_unit, const Path& path, object_t data) = nullptr;
+            //! Called when a new data object is set to one asset data unit.
             //! @details This function is called before the set operation happens, so the user can call 
-            //! @ref get_asset_data on `asset` to get the existing asset data object (if any).
+            //! @ref get_asset_data_unit_object on `asset` and `data_unit` to get the existing asset data object (if any).
             //!  
             //! If this function fails, the new asset data object will not be set, that the existing asset data object
             //! is not changed.
@@ -124,28 +131,62 @@ namespace Luna
             //! does nothing and returns success directly.
             //! @param[in] userdata The userdata.
             //! @param[in] asset The asset handle of the asset to set new asset data object.
+            //! @param[in] data_unit The ID of the data unit being set. This is empty for the main data unit.
             //! @param[in] data The new asset data object to set.
-            //! This can be `nullptr` if the user calls @ref set_asset_data with `data` equals to `nullptr`. In such case,
+            //! This can be `nullptr` if the user calls @ref set_asset_data_unit_object with `data` equals to `nullptr`. In such case,
             //! this function behaves like unloading existing asset data object.
-            RV(*on_set_asset_data)(object_t userdata, asset_t asset, object_t data) = nullptr;
-            //! Called when assets referred by the specified asset is required.
+            RV(*on_set_asset_data_unit)(object_t userdata, asset_t asset, const Name& data_unit, object_t data) = nullptr;
+            //! Called when assets referred by the specified asset data unit are required.
             //! @param[in] userdata The userdata.
             //! @param[in] asset The asset handle of the asset to be queried.
+            //! @param[in] data_unit The ID of the data unit being queried. This is empty for the main data unit.
             //! @param[out] referred_assets Returns the assets referred by this asset.
             //! This vector may not be empty when this function is called. If this vector is not empty, the returned
             //! assets shall be pushed to the end of this vector, and existing elements shall not be modified.
-            void(*on_get_referred_assets)(object_t userdata, asset_t asset, Vector<asset_t>& referred_assets) = nullptr;
+            void(*on_get_referred_assets)(object_t userdata, asset_t asset,
+                const Name& data_unit, Vector<asset_t>& referred_assets) = nullptr;
         };
+
+        //! Describes one asset type.
+        struct AssetTypeDesc
+        {
+            //! The asset type name.
+            Name name;
+            //! The name of the asset loader used by the main data unit of assets of this type.
+            Name main_data_unit_loader;
+        };
+
+        //! Describes one named asset data unit.
+        //! @details The main data unit is represented by an empty ID and is implicitly provided by the asset type.
+        //! Only named data units are stored explicitly in asset metadata.
+        struct [[Luna::struct("{8AE4D56B-E4ED-40D9-9652-DC0B19124720}")]] AssetDataUnitDesc
+        {
+            //! The data unit ID. This must not be empty for named data units.
+            [[Luna::property]] Name id;
+            //! The name of the asset loader used to manage the data unit.
+            [[Luna::property]] Name loader;
+        };
+
+        //! Registers one asset loader so asset data units can use it.
+        //! @details If one asset loader with the same name already exists, the existing descriptor is replaced.
+        //! Operations that have already resolved a loader descriptor keep their own copy until the callback returns.
+        //! @param[in] desc The asset loader descriptor.
+        //! @par Valid Usage
+        //! * `desc.name` must not be empty.
+        LUNA_ASSET_API void register_asset_loader(const AssetLoaderDesc& desc);
 
         //! Registers one asset type so the asset system can handle the asset of that type.
         //! @details If one asset type with the same name already exists, the existing asset type
         //! will be replaced with the new asset type.
         //! @param[in] desc The asset type descriptor.
+        //! @par Valid Usage
+        //! * `desc.name` and `desc.main_data_unit_loader` must not be empty.
         LUNA_ASSET_API void register_asset_type(const AssetTypeDesc& desc);
 
         //! Gets the asset handle from one asset GUID. If the asset entry with the specified GUID does not exist, this 
         //! function creates one new asset entry with the specified GUID and returns the handle to the new created asset entry.
-        //! @details Asset handles created by @ref get_asset is in unregistered state ( @ref get_asset_state returns @ref AssetState::unregistered). 
+        //! @details Asset handles created by @ref get_asset are in unregistered state
+        //! (@ref get_asset_data_unit_state returns @ref AssetDataUnitState::unregistered for their main data units).
         //! The user should call @ref register_asset on the handle to register the asset before she can really use the asset. The user can also 
         //! call @ref new_asset to create and register asset in one call.
         //! @param[in] guid The asset GUID to fetch. If this is (0, 0), the system generates a random asset GUID, so
@@ -190,18 +231,22 @@ namespace Luna
         //! from asset meta file; if `allow_overwrite` is `false`, the system discards the new asset metadata and does not change the 
         //! asset metadata in the system if the specified asset already exists in the system.
         //! If `path` specifies one directory, this parameter is applied to all assets in that directory.
+        //! @retval E_ASSET_DATA_UNIT_BUSY Existing metadata cannot be reconciled because an affected data unit is
+        //! loaded or busy, or because an asset path is changing while an operation is active.
         LUNA_ASSET_API RV load_assets_meta(const Path& path, bool allow_overwrite = true);
 
         //! Loads asset metadata from asset's metadata file.
         //! @param[in] asset The asset handle of the asset to operate.
         //! @par Valid Usage
         //! * `asset` must have a valid VFS path.
+        //! @retval E_ASSET_DATA_UNIT_BUSY The asset or one of its data units is busy.
         LUNA_ASSET_API RV load_asset_meta(asset_t asset);
 
         //! Saves asset's metadata to asset's metadata file.
         //! @param[in] asset The asset handle of the asset to operate.
         //! @par Valid Usage
         //! * `asset` must have a valid VFS path.
+        //! @retval E_ASSET_DATA_UNIT_BUSY The asset or one of its data units is busy.
         LUNA_ASSET_API RV save_asset_meta(asset_t asset);
 
         //! Gets one asset by path.
@@ -245,11 +290,18 @@ namespace Luna
         //! @details This function will only changes asset's metadata in system, it will not save the modified metadata
         //! to metadata file. The user should call @ref save_asset_meta after this to save the modified metadata 
         //! back to file if needed.
+        //! Named data units and their loaded objects are not changed.
         //! @param[in] asset The asset handle of the asset to operate.
         //! @param[in] type The new asset type to set.
+        //! @par Valid Usage
+        //! * `type` must not be empty.
+        //! * The main data unit must be unloaded and have no operation in progress.
+        //! * The asset must not be undergoing maintenance.
         LUNA_ASSET_API void set_asset_type(asset_t asset, const Name& type);
 
         //! Get filenames of all files associated to the specified asset.
+        //! @details Associated files follow the asset-file naming convention: the asset filename itself, or the asset
+        //! filename followed by an extension. Files outside this convention are not returned.
         //! @param[in] asset The asset handle of the asset to query.
         //! @param[out] filenames Returns filenames of all files associated to the specified asset. 
         //! Existing elements in the array will be preserved.
@@ -258,9 +310,9 @@ namespace Luna
         //! Deletes one asset and all of its associated files.
         //! @details This function performs the following tasks:
         //! 1. Delete all files fetched from @ref get_asset_files.
-        //! 2. Set asset path, type and data object to empty.
-        //! The asset handle will still be valid after this operation, but the asset state will 
-        //! be set to @ref AssetState::unregistered, and all operations to the asset is invalid.
+        //! 2. Clear the asset path, type, data-unit descriptors, and all loaded data objects.
+        //! The asset handle will still be valid after this operation, but the main data unit state will
+        //! be set to @ref AssetDataUnitState::unregistered, and all operations on the asset are invalid.
         //! @param[in] asset The asset handle of the asset to operate.
         LUNA_ASSET_API RV delete_asset(asset_t asset);
 
@@ -282,74 +334,161 @@ namespace Luna
         //! @param[in] new_path The path of the new asset.
         //! @param[in] guid The GUID of the new asset. This will be provided to @ref get_asset as-is.
         //! Is this is 0, the asset GUID of the new asset is generated automatically.
-        //! @return Returns the new created asset. The asset is in @ref AssetState::unloaded state if it is newly created.
+        //! @return Returns the new created asset. Every data unit of a newly created copy is unloaded.
         LUNA_ASSET_API R<asset_t> copy_asset(asset_t asset, const Path& new_path, const Guid& guid = Guid(0, 0));
 
-        //! Gets the asset data object.
-        //! @param[in] asset The asset handle of the asset to query.
-        //! @return Returns the asset data, or `nullptr` if the asset data is not loaded or loading.
-        LUNA_ASSET_API ObjRef get_asset_data(asset_t asset);
+        //! Adds one named data unit to the asset.
+        //! @details The loader name is stored without requiring the loader to be registered. The loader is resolved
+        //! when an operation on the data unit is requested.
+        //! @param[in] asset The asset handle of the asset to modify.
+        //! @param[in] desc The named data unit descriptor. `desc.id` and `desc.loader` must not be empty.
+        //! @retval E_BAD_ARGUMENTS `desc.id` or `desc.loader` is empty.
+        //! @retval E_ASSET_DATA_UNIT_ALREADY_EXISTS A data unit with the same ID already exists.
+        //! @retval E_ASSET_NOT_REGISTERED The asset is not registered.
+        //! @retval E_ASSET_DATA_UNIT_BUSY The asset is undergoing maintenance.
+        LUNA_ASSET_API RV add_asset_data_unit(asset_t asset, const AssetDataUnitDesc& desc);
 
-        //! Gets the asset data object.
+        //! Removes one named data unit from the asset.
+        //! @details The main data unit cannot be removed. A named data unit must be unloaded and idle before removal.
+        //! This function modifies in-memory metadata only; it does not remove files.
+        //! @param[in] asset The asset handle of the asset to modify.
+        //! @param[in] data_unit The non-empty ID of the named data unit to remove.
+        //! @retval E_ASSET_DATA_UNIT_NOT_FOUND The specified data unit does not exist.
+        //! @retval E_ASSET_DATA_UNIT_BUSY The specified data unit is loaded or has an operation in progress,
+        //! or the containing asset is undergoing maintenance.
+        //! @retval E_BAD_ARGUMENTS `data_unit` is empty.
+        //! @retval E_ASSET_NOT_REGISTERED The asset is not registered.
+        LUNA_ASSET_API RV remove_asset_data_unit(asset_t asset, const Name& data_unit);
+
+        //! Enumerates data units of one asset.
+        //! @details The implicit main data unit is appended first with an empty ID. Named data units are then appended
+        //! in ascending ID order. Existing elements in `out_data_units` are preserved.
         //! @param[in] asset The asset handle of the asset to query.
-        //! @param[in] block_until_loaded If the asset is not loaded and this is `true`, this call blocks the current thread 
-        //! until the asset data is loaded, then returns the loaded asset data. Note that this may cause application freeze 
-        //! if improperly used.
-        //! @return Returns the asset data, or `nullptr` if the asset data is not loaded or failed to load.
+        //! @param[out] out_data_units The vector that receives data unit descriptors.
+        //! @retval E_UNKNOWN_ASSET_TYPE The asset type required to resolve the main loader is not registered.
+        //! @retval E_ASSET_NOT_REGISTERED The asset is not registered.
+        LUNA_ASSET_API RV get_asset_data_units(asset_t asset, Vector<AssetDataUnitDesc>& out_data_units);
+
+        //! Gets the loader name assigned to one asset data unit.
+        //! @param[in] asset The asset handle of the asset to query.
+        //! @param[in] data_unit The data unit ID, or an empty name for the main data unit.
+        //! @return Returns the assigned loader name.
+        //! @retval E_ASSET_DATA_UNIT_NOT_FOUND The specified named data unit does not exist.
+        //! @retval E_UNKNOWN_ASSET_TYPE The asset type required to resolve the main loader is not registered.
+        //! @retval E_ASSET_NOT_REGISTERED The asset is not registered.
+        LUNA_ASSET_API R<Name> get_asset_data_unit_loader(asset_t asset, const Name& data_unit);
+
+        //! Gets one asset data unit object.
+        //! @param[in] asset The asset handle of the asset to query.
+        //! @param[in] data_unit The data unit ID, or an empty name for the main data unit.
+        //! @return Returns the data object, or `nullptr` if the data unit is not loaded.
+        //! @retval E_ASSET_DATA_UNIT_NOT_FOUND The specified named data unit does not exist.
+        //! @retval E_BAD_ARGUMENTS `asset` is null.
+        LUNA_ASSET_API R<ObjRef> get_asset_data_unit_object(asset_t asset, const Name& data_unit);
+
+        //! Gets one typed asset data unit object.
+        //! @param[in] asset The asset handle of the asset to query.
+        //! @param[in] data_unit The data unit ID, or an empty name for the main data unit.
+        //! @return Returns the typed data unit object, or `nullptr` if it is not loaded or cannot be cast to `_Ty`.
+        //! @retval E_ASSET_DATA_UNIT_NOT_FOUND The specified named data unit does not exist.
+        //! @retval E_BAD_ARGUMENTS `asset` is null.
         template <typename _Ty>
-        Ref<_Ty> get_asset_data(asset_t asset)
+        R<Ref<_Ty>> get_asset_data_unit_object(asset_t asset, const Name& data_unit)
         {
-            return Ref<_Ty>(get_asset_data(asset));
+            auto data = get_asset_data_unit_object(asset, data_unit);
+            if(failed(data)) return data.errcode();
+            return Ref<_Ty>(data.get());
         }
 
-        //! Sets the asset data object.
+        //! Sets one asset data unit object.
         //! @param[in] asset The asset handle of the asset to operate.
-        //! @param[in] data The asset data to set. If this is `nullptr`, the asset data will be cleared, and the asset will be in 
-        //! @ref AssetState::unloaded state.
+        //! @param[in] data_unit The data unit ID, or an empty name for the main data unit.
+        //! @param[in] data The data object to set, or `nullptr` to unload the data unit.
+        //! @retval E_ASSET_DATA_UNIT_NOT_FOUND The specified named data unit does not exist.
+        //! @retval E_ASSET_DATA_UNIT_BUSY The data unit or containing asset is busy.
+        //! @retval E_UNKNOWN_ASSET_LOADER The loader assigned to the data unit is not registered.
+        //! @retval E_UNKNOWN_ASSET_TYPE The main data unit's asset type is not registered.
+        //! @retval E_ASSET_NOT_REGISTERED The asset is not registered or the registry is closing.
+        //! @retval E_BAD_ARGUMENTS `asset` is null.
+        //! @return Errors returned by `on_set_asset_data_unit` are propagated without changing the data object.
         //! @par Valid Usage
         //! * If `data` is not `nullptr`, it must be a valid pointer to a boxed instance.
-        LUNA_ASSET_API RV set_asset_data(asset_t asset, object_t data);
+        LUNA_ASSET_API RV set_asset_data_unit_object(asset_t asset, const Name& data_unit, object_t data);
 
-        //! Creates one asset data object for the asset by loading data from asset file.
-        //! @details This function loads the asset data synchronously. To load asset data asynchronously, call
-        //! this function in the thread you want to use for asset loading, like a background thread or a 
-        //! worker thread in job system.
+        //! Loads or reloads one asset data unit from the asset file.
+        //! @details This function loads synchronously. To load asynchronously, call it from a background thread or job.
+        //! If loading or the loader callback fails during forced reload, the previously loaded data object is preserved.
         //! @param[in] asset The asset handle of the asset to operate.
-        //! @param[in] force_reload If this is `true`, this function always loads the asset data from file even if the asset is 
-        //! in loaded state, and the existing asset data object will be replaced with new asset data object.
-        //! If this is `false`, this function returns directly if the asset is already in loaded state, and the existing asset data 
-        //! object will not be changed.
-        LUNA_ASSET_API RV load_asset(asset_t asset, bool force_reload = false);
+        //! @param[in] data_unit The data unit ID, or an empty name for the main data unit.
+        //! @param[in] force_reload Whether to load again when the data unit is already loaded.
+        //! @retval E_ASSET_DATA_UNIT_NOT_FOUND The specified named data unit does not exist.
+        //! @retval E_ASSET_DATA_UNIT_BUSY The data unit or containing asset is busy.
+        //! @retval E_UNKNOWN_ASSET_LOADER The loader assigned to the data unit is not registered.
+        //! @retval E_UNKNOWN_ASSET_TYPE The main data unit's asset type is not registered.
+        //! @retval E_EMPTY_ASSET_PATH The asset path is empty.
+        //! @retval E_ASSET_NOT_REGISTERED The asset is not registered or the registry is closing.
+        //! @retval E_BAD_ARGUMENTS `asset` is null.
+        //! @retval E_NOT_SUPPORTED The loader does not provide a file-load callback.
+        //! @retval E_BAD_DATA The loader returned a null data object.
+        //! @return Other errors returned by `on_load_asset_data_unit` are propagated.
+        LUNA_ASSET_API RV load_asset_data_unit(asset_t asset, const Name& data_unit, bool force_reload = false);
 
-        //! Creates one asset data object for the asset by loading default asset data.
+        //! Loads or reloads one asset data unit with default data.
+        //! @details If loading or the loader callback fails during forced reload, the previously loaded data object is preserved.
         //! @param[in] asset The asset handle of the asset to operate.
-        //! @param[in] force_reload If this is `true`, this function always loads the asset data even if the asset is 
-        //! in loaded state, and the existing asset data object will be replaced with new asset data object.
-        //! If this is `false`, this function returns directly if the asset is already in loaded state, and the existing asset data 
-        //! object will not be changed.
-        LUNA_ASSET_API RV load_asset_default_data(asset_t asset, bool force_reload = false);
+        //! @param[in] data_unit The data unit ID, or an empty name for the main data unit.
+        //! @param[in] force_reload Whether to load again when the data unit is already loaded.
+        //! @retval E_ASSET_DATA_UNIT_NOT_FOUND The specified named data unit does not exist.
+        //! @retval E_ASSET_DATA_UNIT_BUSY The data unit or containing asset is busy.
+        //! @retval E_UNKNOWN_ASSET_LOADER The loader assigned to the data unit is not registered.
+        //! @retval E_UNKNOWN_ASSET_TYPE The main data unit's asset type is not registered.
+        //! @retval E_ASSET_NOT_REGISTERED The asset is not registered or the registry is closing.
+        //! @retval E_BAD_ARGUMENTS `asset` is null.
+        //! @retval E_NOT_SUPPORTED The loader does not provide a default-data callback.
+        //! @retval E_BAD_DATA The loader returned a null data object.
+        //! @return Other errors returned by `on_load_asset_data_unit_default_data` are propagated.
+        LUNA_ASSET_API RV load_asset_data_unit_default_data(asset_t asset, const Name& data_unit, bool force_reload = false);
 
-        //! Gets the asset state.
+        //! Gets the state of one asset data unit.
         //! @param[in] asset The asset handle of the asset to query.
-        //! @return Returns the asset state of the specified asset.
-        LUNA_ASSET_API AssetState get_asset_state(asset_t asset);
+        //! @param[in] data_unit The data unit ID, or an empty name for the main data unit.
+        //! @return Returns the state of the specified data unit.
+        //! @retval E_ASSET_DATA_UNIT_NOT_FOUND The specified named data unit does not exist.
+        //! @retval E_BAD_ARGUMENTS `asset` is null.
+        LUNA_ASSET_API R<AssetDataUnitState> get_asset_data_unit_state(asset_t asset, const Name& data_unit);
 
-        //! Saves the asset data to files.
-        //! @details This function saves the asset data synchronously. To save asset data asynchronously, call
-        //! this function in the thread you want to use for asset saving, like a background thread or a 
-        //! worker thread in job system.
+        //! Saves one asset data unit to files.
+        //! @details This function saves synchronously. To save asynchronously, call it from a background thread or job.
+        //! Data units are saved independently; this function does not save metadata.
         //! @param[in] asset The asset handle of the asset to operate.
-        LUNA_ASSET_API RV save_asset(asset_t asset);
+        //! @param[in] data_unit The data unit ID, or an empty name for the main data unit.
+        //! @retval E_ASSET_DATA_UNIT_NOT_LOADED The specified data unit has no loaded data object.
+        //! @retval E_ASSET_DATA_UNIT_NOT_FOUND The specified named data unit does not exist.
+        //! @retval E_ASSET_DATA_UNIT_BUSY The data unit or containing asset is busy.
+        //! @retval E_UNKNOWN_ASSET_LOADER The loader assigned to the data unit is not registered.
+        //! @retval E_UNKNOWN_ASSET_TYPE The main data unit's asset type is not registered.
+        //! @retval E_EMPTY_ASSET_PATH The asset path is empty.
+        //! @retval E_ASSET_NOT_REGISTERED The asset is not registered or the registry is closing.
+        //! @retval E_BAD_ARGUMENTS `asset` is null.
+        //! @retval E_NOT_SUPPORTED The loader does not provide a save callback.
+        //! @return Other errors returned by `on_save_asset_data_unit` are propagated.
+        LUNA_ASSET_API RV save_asset_data_unit(asset_t asset, const Name& data_unit);
 
-        //! Gets referred assets of the specified asset.
+        //! Gets referred assets of one asset data unit.
         //! @param[in] asset The handle of the asset to query.
-        //! @param[out] out_referred_assets Returns the referred assets of the specified asset.
-        //! If this vector is not empty, the returned assets will be pushed to the end of the vector, and existing
-        //! elements will not be modified.
-        LUNA_ASSET_API void get_referred_assets(asset_t asset, Vector<asset_t>& out_referred_assets);
+        //! @param[in] data_unit The data unit ID, or an empty name for the main data unit.
+        //! @param[out] out_referred_assets Returns the referred assets. Existing elements are preserved.
+        //! @details This function returns without changing `out_referred_assets` if the asset, data unit, type, or loader is invalid,
+        //! or if another operation is in progress on the data unit.
+        LUNA_ASSET_API void get_asset_data_unit_referred_assets(asset_t asset, const Name& data_unit,
+            Vector<asset_t>& out_referred_assets);
 
         //! Closes the asset registry.
-        //! @details This call removes all registered assets and asset types, and invalidates all asset handles.
+        //! @details This call removes all registered assets, asset types, and asset loaders, and invalidates all asset handles.
+        //! @par Valid Usage
+        //! * Before calling this function, the caller must stop new Asset API submissions and wait until all Asset API
+        //! calls and asset loader callbacks have returned.
+        //! * The caller must not submit new Asset API calls until this function returns.
         LUNA_ASSET_API void close();
 
         //! @}
@@ -378,10 +517,18 @@ namespace Luna
         inline constexpr ResultCode E_ASSET_ALREADY_REGISTERED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -4);
         //! The asset path is empty.
         inline constexpr ResultCode E_EMPTY_ASSET_PATH = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -5);
-        //! The asset data has not been loaded.
-        inline constexpr ResultCode E_ASSET_DATA_NOT_LOADED = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -6);
-        //! The asset data is being loaded by another thread.
-        inline constexpr ResultCode E_ASSET_DATA_LOADING = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -7);
+        //! The specified asset data unit object has not been loaded.
+        inline constexpr ResultCode E_ASSET_DATA_UNIT_NOT_LOADED =
+            make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -6);
+        //! The asset loader is not registered.
+        inline constexpr ResultCode E_UNKNOWN_ASSET_LOADER = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -8);
+        //! The specified asset data unit does not exist.
+        inline constexpr ResultCode E_ASSET_DATA_UNIT_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -9);
+        //! An asset data unit with the specified ID already exists.
+        inline constexpr ResultCode E_ASSET_DATA_UNIT_ALREADY_EXISTS =
+            make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -10);
+        //! The specified asset data unit is loaded, has an operation in progress, or the containing asset is undergoing maintenance.
+        inline constexpr ResultCode E_ASSET_DATA_UNIT_BUSY = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -11);
 
         //! @}
     }

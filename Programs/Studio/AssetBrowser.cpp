@@ -219,9 +219,9 @@ namespace Luna
             auto asset = Asset::new_asset(new_asset_path, type);
             if(succeeded(asset))
             {
-                if(succeeded(Asset::load_asset_default_data(asset.get())))
+                if(succeeded(Asset::load_asset_data_unit_default_data(asset.get(), Name())))
                 {
-                    auto _ = Asset::save_asset(asset.get());
+                    auto _ = Asset::save_asset_data_unit(asset.get(), Name());
                 }
                 editing_buf = new_asset_path.back().c_str();
                 editing_asset_name = new_asset_path.back();
@@ -561,11 +561,12 @@ namespace Luna
                                 m_editor->m_editors.push_back(edit);
                             }
 
-                            if(Asset::get_asset_state(asset.get()) == Asset::AssetState::unloaded)
+                            auto state = Asset::get_asset_data_unit_state(asset.get(), Name());
+                            if(succeeded(state) && state.get() == Asset::AssetDataUnitState::unloaded)
                             {
-                                async_load_asset(asset.get());
+                                async_load_asset(asset.get(), Name());
                             }
-                            Float4U state_color = Asset::get_asset_state(asset.get()) == Asset::AssetState::loaded ?
+                            Float4U state_color = succeeded(state) && state.get() == Asset::AssetDataUnitState::loaded ?
                                 Color::green() : Color::yellow();
                             gui_draw_relative_rect(context, RectF(padding + m_tile_size - 16.0f, padding + m_tile_size - 16.0f,
                                 12.0f, 12.0f), state_color, 6.0f);
@@ -723,21 +724,23 @@ namespace Luna
     struct AssetLoadTask
     {
         Asset::asset_t asset;
+        Name data_unit;
     };
     void async_load_asset_func(JobSystem::IJobScheduler* scheduler, void* params)
     {
         AssetLoadTask* task = (AssetLoadTask*)params;
-        auto r = Asset::load_asset(task->asset);
+        auto r = Asset::load_asset_data_unit(task->asset, task->data_unit);
         if(failed(r))
         {
             log_error("Studio", "Failed to load asset %s: %s", Asset::get_asset_path(task->asset).encode().c_str(), explain(r.errcode()));
         }
         memdelete(task);
     }
-    void async_load_asset(Asset::asset_t asset)
+    void async_load_asset(Asset::asset_t asset, const Name& data_unit)
     {
         AssetLoadTask* task = memnew<AssetLoadTask>();
         task->asset = asset;
+        task->data_unit = data_unit;
         g_main_editor->m_job_scheduler->submit_job(async_load_asset_func, task);
     }
 }

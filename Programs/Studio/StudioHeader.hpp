@@ -37,7 +37,7 @@ namespace Luna
     }
 
     template <typename _Ty>
-    inline R<ObjRef> load_json_asset(object_t userdata, Asset::asset_t asset, const Path& path)
+    inline R<ObjRef> load_json_asset(object_t userdata, Asset::asset_t asset, const Name& data_unit, const Path& path)
     {
         ObjRef ret;
         lutry
@@ -53,7 +53,7 @@ namespace Luna
     }
 
     template <typename _Ty>
-    inline R<ObjRef> create_default_object(object_t userdata, Asset::asset_t asset)
+    inline R<ObjRef> create_default_object(object_t userdata, Asset::asset_t asset, const Name& data_unit)
     {
         return ObjRef(new_object<_Ty>().object());
     }
@@ -73,7 +73,7 @@ namespace Luna
     }
 
     template <typename _Ty>
-    inline RV save_json_asset(object_t userdata, Asset::asset_t asset, const Path& path, object_t data)
+    inline RV save_json_asset(object_t userdata, Asset::asset_t asset, const Name& data_unit, const Path& path, object_t data)
     {
         lutry
         {
@@ -86,16 +86,26 @@ namespace Luna
         return ok;
     }
     
-    void async_load_asset(Asset::asset_t asset);
+    void async_load_asset(Asset::asset_t asset, const Name& data_unit);
 
     template <typename _Ty>
-    inline Ref<_Ty> get_asset_or_async_load_if_not_ready(Asset::asset_t asset)
+    inline Ref<_Ty> get_asset_or_async_load_if_not_ready(Asset::asset_t asset, const Name& data_unit)
     {
-        if(asset && Asset::get_asset_state(asset) == Asset::AssetState::unloaded)
+        if(!asset)
         {
-            async_load_asset(asset);
+            return nullptr;
         }
-        return Asset::get_asset_data<_Ty>(asset);
+        auto state = Asset::get_asset_data_unit_state(asset, data_unit);
+        if(succeeded(state) && state.get() == Asset::AssetDataUnitState::unloaded)
+        {
+            async_load_asset(asset, data_unit);
+        }
+        auto data = Asset::get_asset_data_unit_object(asset, data_unit);
+        if(failed(data))
+        {
+            return nullptr;
+        }
+        return Ref<_Ty>(data.get());
     }
 
 }

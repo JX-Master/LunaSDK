@@ -10,8 +10,7 @@
 #pragma once
 #include "../Asset.hpp"
 #include <Luna/Runtime/SpinLock.hpp>
-#include <Luna/Runtime/Mutex.hpp>
-#include <Luna/Runtime/Signal.hpp>
+#include <Luna/Runtime/HashMap.hpp>
 #include "AssetMetaFile.generated.hpp"
 namespace Luna
 {
@@ -19,8 +18,25 @@ namespace Luna
     {
         struct [[luna::struct("{93C04F6C-BC6C-4586-8CB2-7DF1B249DA21}")]] AssetMetaFile
         {
+            [[Luna::property]] u32 format_version = 1;
             [[Luna::property]] Guid guid;
             [[Luna::property]] Name type;
+            [[Luna::property]] Vector<Asset::AssetDataUnitDesc> data_units;
+        };
+        enum class AssetDataUnitOperation : u8
+        {
+            none = 0,
+            loading = 1,
+            setting = 2,
+            saving = 3,
+            querying_referred_assets = 4
+        };
+        struct AssetDataUnitEntry
+        {
+            Name loader;
+            ObjRef data;
+            AssetDataUnitOperation operation = AssetDataUnitOperation::none;
+            u64 revision = 0;
         };
         // Maps to `asset_t`
         struct AssetEntry
@@ -28,18 +44,10 @@ namespace Luna
             Guid guid;
             Name type;
             Path path;
-            ObjRef data;
-            bool loading;
+            AssetDataUnitEntry main_data_unit;
+            HashMap<Name, AssetDataUnitEntry> data_units;
+            bool maintenance = false;
             SpinLock lock;
-            AssetEntry() :
-                loading(false) {}
-            void reset()
-            {
-                type.reset();
-                path.clear();
-                data.reset();
-                loading = false;
-            }
         };
         void init_asset_registry();
         void close_asset_registry();

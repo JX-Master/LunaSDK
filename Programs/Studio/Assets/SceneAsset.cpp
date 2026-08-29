@@ -83,14 +83,17 @@ namespace Luna
         register_struct_type<Scene>();
         set_serializable<Scene>();
         {
-            Asset::AssetTypeDesc desc;
-            desc.name = get_scene_asset_type();
-            desc.on_load_asset = load_json_asset<Scene>;
-            desc.on_save_asset = save_json_asset<Scene>;
-            desc.on_load_asset_default_data = create_default_object<Scene>;
-            desc.on_set_asset_data = nullptr;
-            desc.userdata = nullptr;
-            Asset::register_asset_type(desc);
+            Asset::AssetLoaderDesc loader_desc;
+            loader_desc.name = "Studio.Scene.Main";
+            loader_desc.on_load_asset_data_unit = load_json_asset<Scene>;
+            loader_desc.on_save_asset_data_unit = save_json_asset<Scene>;
+            loader_desc.on_load_asset_data_unit_default_data = create_default_object<Scene>;
+            Asset::register_asset_loader(loader_desc);
+
+            Asset::AssetTypeDesc type_desc;
+            type_desc.name = get_scene_asset_type();
+            type_desc.main_data_unit_loader = loader_desc.name;
+            Asset::register_asset_type(type_desc);
         }
     }
 }
