@@ -49,7 +49,7 @@ namespace Luna
         return ok;
     }
 
-    static R<ObjRef> load_static_mesh_asset(object_t userdata, Asset::asset_t asset, const Path& path)
+    static R<ObjRef> load_static_mesh_asset(object_t userdata, Asset::asset_t asset, const Name& data_unit, const Path& path)
     {
         ObjRef ret;
         lutry
@@ -76,12 +76,14 @@ namespace Luna
         set_serializable<MeshPiece>();
         register_struct_type<MeshAsset>();
         set_serializable<MeshAsset>();
-        Asset::AssetTypeDesc desc;
-        desc.name = get_static_mesh_asset_type();
-        desc.on_load_asset = load_static_mesh_asset;
-        desc.on_save_asset = nullptr;
-        desc.on_set_asset_data = nullptr;
-        desc.userdata = nullptr;
-        Asset::register_asset_type(desc);
+        Asset::AssetLoaderDesc loader_desc;
+        loader_desc.name = "Studio.StaticMesh.Main";
+        loader_desc.on_load_asset_data_unit = load_static_mesh_asset;
+        Asset::register_asset_loader(loader_desc);
+
+        Asset::AssetTypeDesc type_desc;
+        type_desc.name = get_static_mesh_asset_type();
+        type_desc.main_data_unit_loader = loader_desc.name;
+        Asset::register_asset_type(type_desc);
     }
 }

@@ -439,7 +439,7 @@ namespace Luna
                 luexp(Image::write_dds_file(f, image));
                 f.reset();
             }
-            luexp(Asset::load_asset(asset));
+            luexp(Asset::load_asset_data_unit(asset, Name()));
         }
         lucatch
         {

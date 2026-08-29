@@ -62,8 +62,9 @@ namespace Luna
         context->push_data_scope(context->make_id((GUI::id_t)(usize)this));
         GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("model_editor"), "Model Editor", layout);
 
-        Ref<Model> model = get_asset_or_async_load_if_not_ready<Model>(m_model);
-        if(!model || (Asset::get_asset_state(m_model) != Asset::AssetState::loaded))
+        Ref<Model> model = get_asset_or_async_load_if_not_ready<Model>(m_model, Name());
+        auto state = Asset::get_asset_data_unit_state(m_model, Name());
+        if(!model || failed(state) || state.get() != Asset::AssetDataUnitState::loaded)
         {
             EditorGUI::text(context, context->make_id("not_loaded"), "Model Asset is not loaded.", fixed_height(24.0f));
         }
@@ -74,7 +75,7 @@ namespace Luna
             {
                 lutry
                 {
-                    luexp(Asset::save_asset(m_model));
+                    luexp(Asset::save_asset_data_unit(m_model, Name()));
                 }
                 lucatch
                 {
@@ -86,7 +87,7 @@ namespace Luna
             gui_edit_asset_path(context, "Mesh Asset", model->mesh, m_mesh_name, "Failed to set mesh asset reference");
             if(model->mesh)
             {
-                Ref<Mesh> mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
+                Ref<Mesh> mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh, Name());
                 if(mesh)
                 {
                     char mesh_info[64];

@@ -39,6 +39,8 @@ namespace Luna
         }
         LUNA_ASSET_API void register_asset_type(const AssetTypeDesc& desc)
         {
+            lucheck_msg(!desc.name.empty(), "Asset type name must not be empty!");
+            lucheck_msg(!desc.main_data_unit_loader.empty(), "Main data unit loader name must not be empty!");
             MutexGuard g(g_asset_types_mutex);
             g_asset_types.insert_or_assign(desc);
         }

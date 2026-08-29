@@ -43,8 +43,9 @@ namespace Luna
         context->push_data_scope(context->make_id((GUI::id_t)(usize)this));
         GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("material_editor"), "Material Editor", layout);
 
-        Ref<Material> mat = get_asset_or_async_load_if_not_ready<Material>(m_material);
-        if(!mat || (Asset::get_asset_state(m_material) != Asset::AssetState::loaded))
+        Ref<Material> mat = get_asset_or_async_load_if_not_ready<Material>(m_material, Name());
+        auto state = Asset::get_asset_data_unit_state(m_material, Name());
+        if(!mat || failed(state) || state.get() != Asset::AssetDataUnitState::loaded)
         {
             EditorGUI::text(context, context->make_id("not_loaded"), "Material Asset is not loaded.", fixed_height(24.0f));
         }
@@ -55,7 +56,7 @@ namespace Luna
             {
                 lutry
                 {
-                    luexp(Asset::save_asset(m_material));
+                    luexp(Asset::save_asset_data_unit(m_material, Name()));
                 }
                 lucatch
                 {

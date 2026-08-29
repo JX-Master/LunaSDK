@@ -205,12 +205,12 @@ namespace Luna
                     ActorInfo* info = ECS::get_cluster_components_data<ActorInfo>(cluster, chunk);
                     for(usize i = 0; i < num_chunk_entities; ++i)
                     {
-                        auto model = get_asset_or_async_load_if_not_ready<Model>(renderer[i].model);
+                        auto model = get_asset_or_async_load_if_not_ready<Model>(renderer[i].model, Name());
                         if (!model)
                         {
                             continue;
                         }
-                        auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
+                        auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh, Name());
                         if (!mesh)
                         {
                             continue;
@@ -226,7 +226,7 @@ namespace Luna
                             mat_params.emissive_intensity = 1.0f;
                             if(i < model->materials.size())
                             {
-                                auto mat = get_asset_or_async_load_if_not_ready<Material>(model->materials[i]);
+                                auto mat = get_asset_or_async_load_if_not_ready<Material>(model->materials[i], Name());
                                 if(mat)
                                 {
                                     mat_params.emissive_intensity = mat->emissive_intensity;

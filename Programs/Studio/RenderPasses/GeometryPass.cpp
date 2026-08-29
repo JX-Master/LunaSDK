@@ -135,7 +135,7 @@ namespace Luna
             for (usize i = 0; i < mesh_render_params.size(); ++i)
             {
                 auto model = mesh_render_params[i].model;
-                auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
+                auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh, Name());
 
                 u32 num_pieces = (u32)mesh->pieces.size();
 
@@ -149,15 +149,15 @@ namespace Luna
 
                     if (j < model->materials.size())
                     {
-                        auto mat = get_asset_or_async_load_if_not_ready<Material>(model->materials[j]);
+                        auto mat = get_asset_or_async_load_if_not_ready<Material>(model->materials[j], Name());
                         if (mat)
                         {
                             // Set material for this piece.
-                            Ref<ITexture> mat_base_color_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->base_color);
-                            Ref<ITexture> mat_roughness_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->roughness);
-                            Ref<ITexture> mat_normal_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->normal);
-                            Ref<ITexture> mat_metallic_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->metallic);
-                            Ref<ITexture> mat_emissive_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->emissive);
+                            Ref<ITexture> mat_base_color_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->base_color, Name());
+                            Ref<ITexture> mat_roughness_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->roughness, Name());
+                            Ref<ITexture> mat_normal_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->normal, Name());
+                            Ref<ITexture> mat_metallic_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->metallic, Name());
+                            Ref<ITexture> mat_emissive_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->emissive, Name());
                             if (mat_base_color_tex)
                             {
                                 base_color_tex = mat_base_color_tex;
@@ -214,7 +214,7 @@ namespace Luna
             for (usize i = 0; i < mesh_render_params.size(); ++i)
             {
                 auto model = mesh_render_params[i].model;
-                auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
+                auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh, Name());
                 cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
                     mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
                 cmdbuf->set_index_buffer({mesh->ib, 0, (u32)(mesh->ib_count * sizeof(u32)), Format::r32_uint});
@@ -230,15 +230,15 @@ namespace Luna
 
                     if (j < model->materials.size())
                     {
-                        auto mat = get_asset_or_async_load_if_not_ready<Material>(model->materials[j]);
+                        auto mat = get_asset_or_async_load_if_not_ready<Material>(model->materials[j], Name());
                         if (mat)
                         {
                             // Set material for this piece.
-                            Ref<ITexture> mat_base_color_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->base_color);
-                            Ref<ITexture> mat_roughness_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->roughness);
-                            Ref<ITexture> mat_normal_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->normal);
-                            Ref<ITexture> mat_metallic_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->metallic);
-                            Ref<ITexture> mat_emissive_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->emissive);
+                            Ref<ITexture> mat_base_color_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->base_color, Name());
+                            Ref<ITexture> mat_roughness_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->roughness, Name());
+                            Ref<ITexture> mat_normal_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->normal, Name());
+                            Ref<ITexture> mat_metallic_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->metallic, Name());
+                            Ref<ITexture> mat_emissive_tex = get_asset_or_async_load_if_not_ready<ITexture>(mat->emissive, Name());
                             if (mat_base_color_tex)
                             {
                                 base_color_tex = mat_base_color_tex;
