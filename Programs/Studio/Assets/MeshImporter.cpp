@@ -264,7 +264,7 @@ namespace Luna
             auto json_data = VariantUtils::write_json(data);
             luexp(f->write(json_data.data(), json_data.size()));
             f.reset();
-            luexp(Asset::load_asset(asset));
+            luexp(Asset::load_asset_data_unit(asset, Name()));
         }
         lucatch
         {

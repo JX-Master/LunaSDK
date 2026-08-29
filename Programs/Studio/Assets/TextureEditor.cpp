@@ -49,7 +49,7 @@ namespace Luna
         }
         context->push_data_scope(context->make_id((GUI::id_t)(usize)this));
         GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("texture_editor"), "Texture Editor", layout);
-        Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(m_tex);
+        Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(m_tex, Name());
         if(!tex)
         {
             EditorGUI::text(context, context->make_id("unavailable"), "Texture Unavailable.", fixed_height_layout(28.0f));
@@ -64,9 +64,10 @@ namespace Luna
 
     static void on_draw_tex_tile_gui(GUI::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
     {
-        if(Asset::get_asset_state(asset) == Asset::AssetState::loaded)
+        auto state = Asset::get_asset_data_unit_state(asset, Name());
+        if(succeeded(state) && state.get() == Asset::AssetDataUnitState::loaded)
         {
-            Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
+            Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset, Name());
             if(tex)
             {
                 GUI::DrawCommand command;
@@ -90,9 +91,10 @@ namespace Luna
     static void on_draw_tex_tile_preview_gui(GUI::IContext* context, object_t userdata, Asset::asset_t asset,
         const RectF& relative_rect)
     {
-        if(Asset::get_asset_state(asset) == Asset::AssetState::loaded)
+        auto state = Asset::get_asset_data_unit_state(asset, Name());
+        if(succeeded(state) && state.get() == Asset::AssetDataUnitState::loaded)
         {
-            Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
+            Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset, Name());
             if(tex)
             {
                 GUI::DrawCommand command;

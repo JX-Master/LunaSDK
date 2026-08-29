@@ -234,7 +234,7 @@ namespace Luna
 
     void SceneEditor::on_add_actor(usize actor_index)
     {
-        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
+        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene, Name());
         auto& scene_actor = s->actors[actor_index];
         Vector<typeinfo_t> components;
         components.reserve(scene_actor.components.size());
@@ -356,7 +356,7 @@ namespace Luna
 
     void SceneEditor::draw_actor_list(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
-        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
+        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene, Name());
         GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("actor_list"), "Actor List", layout);
         GUI::ElementHandle header = EditorGUI::begin_h_layout(context, context->make_id("header"), "Actor List Header",
             gui_fixed_height(30.0f));
@@ -442,7 +442,7 @@ namespace Luna
 
     void SceneEditor::draw_scene_settings(GUI::IContext* context, const GUI::LayoutConfig& layout)
     {
-        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
+        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene, Name());
         GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("scene_settings"), "Scene Settings",
             layout);
         EditorGUI::text(context, context->make_id("title"), "Scene Settings", gui_fixed_height(24.0f));
@@ -467,7 +467,7 @@ namespace Luna
     {
         lutry
         {
-            Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
+            Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene, Name());
             GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("scene_view"), "Scene View", layout);
             EditorGUI::text(context, context->make_id("title"), "Scene", gui_fixed_height(24.0f));
 
@@ -604,7 +604,7 @@ namespace Luna
                     params.world_to_view = camera_actor->get_world_to_local_matrix();
                     params.view_to_world = camera_actor->get_local_to_world_matrix();
                     params.view_to_proj = camera_component->get_projection_matrix();
-                    params.skybox = get_asset_or_async_load_if_not_ready<RHI::ITexture>(s->settings.skybox);
+                    params.skybox = get_asset_or_async_load_if_not_ready<RHI::ITexture>(s->settings.skybox, Name());
                     params.camera_exposure = s->settings.exposure;
                     params.camera_fov = camera_component->fov;
                     params.camera_type = camera_component->type;
@@ -742,7 +742,7 @@ namespace Luna
         GUI::ElementHandle content = EditorGUI::begin_v_layout(context, context->make_id("content"),
             "Components Grid Content", gui_fill());
 
-        Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
+        Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene, Name());
         if(!s)
         {
             EditorGUI::text(context, context->make_id("loading"), "Scene Loading", gui_fixed_height(24.0f));
@@ -905,7 +905,7 @@ namespace Luna
         GUI::ElementHandle root = EditorGUI::begin_v_layout(context, context->make_id("scene_editor"), "Scene Editor",
             layout);
 
-        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
+        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene, Name());
         if(!s)
         {
             EditorGUI::text(context, context->make_id("asset_unloaded"), "Asset Unloaded", gui_fixed_height(30.0f));
@@ -918,11 +918,13 @@ namespace Luna
             s->add_to_world(&m_world);
             m_world_initialized = true;
         }
-        if(Asset::get_asset_state(m_scene) == Asset::AssetState::unloaded)
+        auto state = Asset::get_asset_data_unit_state(m_scene, Name());
+        if(succeeded(state) && state.get() == Asset::AssetDataUnitState::unloaded)
         {
-            auto _ = Asset::load_asset(m_scene);
+            auto _ = Asset::load_asset_data_unit(m_scene, Name());
+            state = Asset::get_asset_data_unit_state(m_scene, Name());
         }
-        if(Asset::get_asset_state(m_scene) != Asset::AssetState::loaded)
+        if(failed(state) || state.get() != Asset::AssetDataUnitState::loaded)
         {
             EditorGUI::text(context, context->make_id("scene_loading"), "Scene Loading", gui_fixed_height(30.0f));
             EditorGUI::end_v_layout(context, root, gui_linear(GUI::LayoutAxis::y, 6.0f));
@@ -952,7 +954,7 @@ namespace Luna
         {
             lutry
             {
-                luexp(Asset::save_asset(m_scene));
+                luexp(Asset::save_asset_data_unit(m_scene, Name()));
             }
             lucatch
             {

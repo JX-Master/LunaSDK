@@ -24,7 +24,9 @@ namespace Luna
     }
     void DiffAssetEditingOp::execute()
     {
-        ObjRef data = Asset::get_asset_data(target_asset);
+        auto data_result = Asset::get_asset_data_unit_object(target_asset, Name());
+        if(failed(data_result)) return;
+        ObjRef data = data_result.get();
         if(!data) return;
         Variant data_var = serialize(data.type(), data.get()).get();
         VariantUtils::patch(data_var, delta);
@@ -32,7 +34,9 @@ namespace Luna
     }
     void DiffAssetEditingOp::revert()
     {
-        ObjRef data = Asset::get_asset_data(target_asset);
+        auto data_result = Asset::get_asset_data_unit_object(target_asset, Name());
+        if(failed(data_result)) return;
+        ObjRef data = data_result.get();
         if(!data) return;
         Variant data_var = serialize(data.type(), data.get()).get();
         VariantUtils::revert(data_var, delta);
