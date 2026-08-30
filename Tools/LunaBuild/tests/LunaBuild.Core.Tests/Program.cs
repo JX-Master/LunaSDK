@@ -408,7 +408,7 @@ internal static class Program
             {
               "sdk": {
                 "version": "9.0.100",
-                "rollForward": "latestFeature"
+                "rollForward": "major"
               }
             }
             """);

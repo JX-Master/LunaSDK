@@ -231,6 +231,7 @@ public static class ProjectGenerator
               <PropertyGroup>
                 <OutputType>Exe</OutputType>
                 <TargetFramework>net9.0</TargetFramework>
+                <RollForward>Major</RollForward>
                 <ImplicitUsings>enable</ImplicitUsings>
                 <Nullable>enable</Nullable>
                 <AssemblyName>lunabuild</AssemblyName>
@@ -255,7 +256,7 @@ public static class ProjectGenerator
             {
               "sdk": {
                 "version": "9.0.100",
-                "rollForward": "latestFeature"
+                "rollForward": "major"
               }
             }
             """ + "\n";
