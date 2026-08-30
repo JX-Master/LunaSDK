@@ -92,12 +92,20 @@ public sealed class MakeSystemBackend
             }
         }
 
-        var actionsToRun = buildInfos.Count(info => info.NeedsBuild && !string.IsNullOrWhiteSpace(info.Node.Command));
-        if(actionsToRun == 0)
+        var commandsToRun = buildInfos
+            .Where(info => info.NeedsBuild && !string.IsNullOrWhiteSpace(info.Node.Command))
+            .ToArray();
+        if(commandsToRun.Length == 0)
         {
             cache.Save();
             return new MakeSystemResult(orderedNodes.Count, 0, UpToDate: true);
         }
+
+        foreach(var info in commandsToRun)
+        {
+            info.Action = PrepareAction(workspace, graph, validated, info.Node);
+        }
+        var totalTasks = commandsToRun.Count(info => info.Action!.Description is not null);
 
         foreach(var info in buildInfos.Where(info => info.NeedsBuild))
         {
@@ -114,6 +122,7 @@ public sealed class MakeSystemBackend
 
         var finishedNodes = buildInfos.Count(info => !info.NeedsBuild);
         var executedActions = 0;
+        var nextTaskIndex = 0;
         while(finishedNodes < buildInfos.Length)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -131,7 +140,25 @@ public sealed class MakeSystemBackend
                 info.Scheduled = true;
             }
 
-            await Task.WhenAll(ready.Select(info => ExecuteNodeAsync(workspace, graph, validated, cache, info, cancellationToken)));
+            var runningTasks = new List<Task>(ready.Length);
+            foreach(var info in ready)
+            {
+                int? taskIndex = null;
+                if(info.Action?.Description is not null)
+                {
+                    taskIndex = ++nextTaskIndex;
+                }
+                runningTasks.Add(ExecuteNodeAsync(
+                    workspace,
+                    validated,
+                    cache,
+                    info,
+                    taskIndex,
+                    totalTasks,
+                    options.Progress,
+                    cancellationToken));
+            }
+            await Task.WhenAll(runningTasks);
             foreach(var info in ready)
             {
                 info.Finished = true;
@@ -209,10 +236,12 @@ public sealed class MakeSystemBackend
 
     private async Task ExecuteNodeAsync(
         BuildWorkspace workspace,
-        BuildGraph graph,
         ValidatedGraph validated,
         MakeSystemCache cache,
         BuildInfo info,
+        int? taskIndex,
+        int totalTasks,
+        Action<string>? progress,
         CancellationToken cancellationToken)
     {
         var node = info.Node;
@@ -222,6 +251,43 @@ public sealed class MakeSystemBackend
             return;
         }
 
+        var action = info.Action ?? throw new MakeSystemException($"Action for node `{node.Id}` was not prepared.");
+        var context = action.Context;
+
+        try
+        {
+            if(taskIndex is not null)
+            {
+                progress?.Invoke($"[{taskIndex}/{totalTasks}]{action.Description}");
+            }
+            await action.Executor.ExecuteAsync(context, cancellationToken);
+            foreach(var output in NodeOutputs(workspace, validated, node))
+            {
+                if(!File.Exists(output))
+                {
+                    throw new MakeSystemException($"Action `{context.ActionKind}` for node `{node.Id}` did not produce output `{output}`.");
+                }
+            }
+            UpdateCache(workspace, validated, cache, node);
+        }
+        catch(Exception ex) when(ex is not OperationCanceledException)
+        {
+            if(ex.Message.Contains("Make action context:", StringComparison.Ordinal))
+            {
+                throw;
+            }
+            throw new MakeSystemException(
+                $"{ex.Message}{Environment.NewLine}{Environment.NewLine}{FormatActionContext(context)}",
+                ex);
+        }
+    }
+
+    private PreparedAction PrepareAction(
+        BuildWorkspace workspace,
+        BuildGraph graph,
+        ValidatedGraph validated,
+        BuildGraphNode node)
+    {
         var actionKind = BuildActionKind.Extract(node.Command);
         var executor = ResolveExecutor(actionKind, node.Id);
         var context = new MakeActionContext(
@@ -229,22 +295,18 @@ public sealed class MakeSystemBackend
             graph,
             node,
             actionKind,
-            node.Command,
+            node.Command!,
             node.Dependencies.Select(id => validated.NodesById[id]).ToArray(),
             node.Outputs.Select(id => validated.NodesById[id]).ToArray(),
             node.Depfiles.Select(id => validated.NodesById[id]).ToArray());
-
         try
         {
-            await executor.ExecuteAsync(context, cancellationToken);
-            foreach(var output in NodeOutputs(workspace, validated, node))
+            var description = executor.GetDescription(context);
+            if(description is not null && string.IsNullOrWhiteSpace(description))
             {
-                if(!File.Exists(output))
-                {
-                    throw new MakeSystemException($"Action `{actionKind}` for node `{node.Id}` did not produce output `{output}`.");
-                }
+                throw new MakeSystemException($"Action `{actionKind}` for node `{node.Id}` returned an empty description.");
             }
-            UpdateCache(workspace, validated, cache, node);
+            return new PreparedAction(context, executor, description);
         }
         catch(Exception ex) when(ex is not OperationCanceledException)
         {
@@ -584,6 +646,11 @@ public sealed class MakeSystemBackend
 
     private sealed record ValidatedGraph(Dictionary<string, BuildGraphNode> NodesById);
 
+    private sealed record PreparedAction(
+        MakeActionContext Context,
+        IMakeActionExecutor Executor,
+        string? Description);
+
     private sealed class BuildInfo
     {
         public BuildInfo(BuildGraphNode node)
@@ -597,6 +664,7 @@ public sealed class MakeSystemBackend
         public bool Finished { get; set; }
         public int RemainingDependencies { get; set; }
         public List<BuildInfo> Dependents { get; } = new();
+        public PreparedAction? Action { get; set; }
     }
 }
 
@@ -610,6 +678,8 @@ public abstract class KnownActionExecutor : IMakeActionExecutor
     public string ActionKind { get; }
 
     public bool CanExecute(string actionKind) => string.Equals(ActionKind, actionKind, StringComparison.Ordinal);
+
+    public virtual string? GetDescription(MakeActionContext context) => context.ActionKind;
 
     public abstract Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken);
 }

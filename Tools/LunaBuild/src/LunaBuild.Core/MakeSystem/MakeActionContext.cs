@@ -17,5 +17,7 @@ public interface IMakeActionExecutor
 {
     bool CanExecute(string actionKind);
 
+    string? GetDescription(MakeActionContext context) => context.ActionKind;
+
     Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken);
 }

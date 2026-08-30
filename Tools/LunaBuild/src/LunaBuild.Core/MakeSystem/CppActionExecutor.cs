@@ -21,6 +21,17 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         return actionKind is "cpp.compile" or "rc.compile" or "cpp.link.shared" or "cpp.link.static" or "cpp.link.executable";
     }
 
+    public string GetDescription(MakeActionContext context)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        return context.ActionKind switch
+        {
+            "cpp.compile" or "rc.compile" => $"compiling {PayloadFileName(context, payload, "source")}",
+            "cpp.link.shared" or "cpp.link.static" or "cpp.link.executable" => $"linking {PayloadFileName(context, payload, "output")}",
+            _ => context.ActionKind,
+        };
+    }
+
     public Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
         return context.ActionKind switch
@@ -705,6 +716,11 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         return value.Contains(' ') || value.Contains('\t') || value.Contains('"')
             ? "\"" + value.Replace("\"", "\\\"") + "\""
             : value;
+    }
+
+    private static string PayloadFileName(MakeActionContext context, ActionPayload payload, string name)
+    {
+        return Path.GetFileName(context.Workspace.ResolveRepositoryPath(payload.Required(name)));
     }
 
     private static string RuntimeFlag(string value)

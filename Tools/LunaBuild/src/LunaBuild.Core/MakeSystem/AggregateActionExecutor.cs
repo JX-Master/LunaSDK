@@ -7,6 +7,8 @@ public sealed class AggregateActionExecutor : IMakeActionExecutor
         return actionKind is "target.cpp" or "target.dotnet" or "target.external" or "target.inspect";
     }
 
+    public string? GetDescription(MakeActionContext context) => null;
+
     public Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
         return Task.CompletedTask;

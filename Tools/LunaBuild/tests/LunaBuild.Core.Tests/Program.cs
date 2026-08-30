@@ -23,6 +23,9 @@ internal static class Program
             ("custom imported build roots own the final rules assembly", CustomImportedBuildRoot),
             ("projects cannot share one build root", DuplicateBuildRoot),
             ("dotnet builds honor the requested configuration", DotNetBuildConfiguration),
+            ("cpp actions describe their input and output files", CppActionDescriptions),
+            ("make system reports indexed task progress", IndexedTaskProgress),
+            ("aggregate actions execute without task progress", AggregateActionsDoNotReportProgress),
             ("application targets produce native executable graphs", ApplicationTargetGraph),
             ("apple deployment settings affect layout and commands", AppleDeploymentSettings),
         };
@@ -458,6 +461,155 @@ internal static class Program
         True(File.Exists(Path.Combine(root, expectedOutput)), "release .NET output exists");
     }
 
+    private static void CppActionDescriptions()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("CppActionDescriptions");
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault();
+        var executor = new CppActionExecutor();
+
+        var compilePayload = string.Join('\n',
+            "kind=cpp.compile",
+            "source=Source/Nested/alpha.cpp");
+        var compileContext = ActionContext(workspace, options, "cpp.compile", compilePayload, "obj/alpha.o");
+        Equal("compiling alpha.cpp", executor.GetDescription(compileContext), "compile action description");
+
+        var linkPayload = string.Join('\n',
+            "kind=cpp.link.shared",
+            "output=bin/alpha.dll");
+        var linkContext = ActionContext(workspace, options, "cpp.link.shared", linkPayload, "bin/alpha.dll");
+        Equal("linking alpha.dll", executor.GetDescription(linkContext), "link action description");
+    }
+
+    private static void IndexedTaskProgress()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("IndexedTaskProgress");
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault();
+        var firstPath = "out/first.txt";
+        var secondPath = "out/second.txt";
+        var first = TestFileActionNode(firstPath, "compiling alpha.cpp", delayMilliseconds: 40);
+        var second = TestFileActionNode(secondPath, "linking alpha.dll", delayMilliseconds: 1);
+        var target = new BuildGraphNode(
+            Id: "target://Test",
+            Kind: BuildGraphNodeKind.Virtual,
+            Path: null,
+            Command: "kind=target.inspect\nname=Test",
+            Dependencies: new[] { first.Id, second.Id },
+            OrderOnlyDependencies: Array.Empty<string>(),
+            Outputs: Array.Empty<string>(),
+            Depfiles: Array.Empty<string>());
+        var graph = new BuildGraph(2, options, new[] { first, second, target }, new[] { target.Id });
+        var progress = new List<string>();
+        var makeSystem = new MakeSystemBackend(
+            new IMakeActionExecutor[] { new TestFileActionExecutor(), new AggregateActionExecutor() },
+            maxParallelism: 2);
+        var buildOptions = new MakeSystemBuildOptions
+        {
+            Progress = progress.Add,
+        };
+
+        var result = makeSystem.BuildAsync(
+                workspace,
+                graph,
+                options: buildOptions)
+            .GetAwaiter()
+            .GetResult();
+
+        Equal(3, result.ActionsExecuted, "executed command count includes the aggregate action");
+        Equal(2, progress.Count, "progress line count");
+        Equal("[1/2]compiling alpha.cpp", progress[0], "first progress line");
+        Equal("[2/2]linking alpha.dll", progress[1], "second progress line");
+        True(File.Exists(workspace.ResolveRepositoryPath(firstPath)), "first test action output");
+        True(File.Exists(workspace.ResolveRepositoryPath(secondPath)), "second test action output");
+
+        progress.Clear();
+        var upToDate = makeSystem.BuildAsync(workspace, graph, options: buildOptions).GetAwaiter().GetResult();
+        True(upToDate.UpToDate, "second test action build is up to date");
+        Equal(0, upToDate.ActionsExecuted, "up-to-date action count");
+        Equal(0, progress.Count, "up-to-date progress line count");
+    }
+
+    private static void AggregateActionsDoNotReportProgress()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("AggregateActions");
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault();
+        var target = new BuildGraphNode(
+            Id: "target://AggregateOnly",
+            Kind: BuildGraphNodeKind.Virtual,
+            Path: null,
+            Command: "kind=target.inspect\nname=AggregateOnly",
+            Dependencies: Array.Empty<string>(),
+            OrderOnlyDependencies: Array.Empty<string>(),
+            Outputs: Array.Empty<string>(),
+            Depfiles: Array.Empty<string>());
+        var graph = new BuildGraph(2, options, new[] { target }, new[] { target.Id });
+        var progress = new List<string>();
+        var makeSystem = new MakeSystemBackend(new[] { new AggregateActionExecutor() });
+        var buildOptions = new MakeSystemBuildOptions
+        {
+            Progress = progress.Add,
+        };
+
+        var first = makeSystem.BuildAsync(workspace, graph, options: buildOptions).GetAwaiter().GetResult();
+        True(!first.UpToDate, "aggregate-only first build updates the cache");
+        Equal(1, first.ActionsExecuted, "aggregate-only executed command count");
+        Equal(0, progress.Count, "aggregate-only progress line count");
+
+        var second = makeSystem.BuildAsync(workspace, graph, options: buildOptions).GetAwaiter().GetResult();
+        True(second.UpToDate, "aggregate-only second build is up to date");
+        Equal(0, progress.Count, "up-to-date aggregate progress line count");
+    }
+
+    private static MakeActionContext ActionContext(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        string actionKind,
+        string payload,
+        string path)
+    {
+        var node = new BuildGraphNode(
+            Id: BuildGraphIds.File(path),
+            Kind: BuildGraphNodeKind.File,
+            Path: path,
+            Command: payload,
+            Dependencies: Array.Empty<string>(),
+            OrderOnlyDependencies: Array.Empty<string>(),
+            Outputs: Array.Empty<string>(),
+            Depfiles: Array.Empty<string>());
+        var graph = new BuildGraph(2, options, new[] { node }, new[] { node.Id });
+        return new MakeActionContext(
+            workspace,
+            graph,
+            node,
+            actionKind,
+            payload,
+            Array.Empty<BuildGraphNode>(),
+            Array.Empty<BuildGraphNode>(),
+            Array.Empty<BuildGraphNode>());
+    }
+
+    private static BuildGraphNode TestFileActionNode(string path, string description, int delayMilliseconds)
+    {
+        return new BuildGraphNode(
+            Id: BuildGraphIds.File(path),
+            Kind: BuildGraphNodeKind.File,
+            Path: path,
+            Command: string.Join('\n',
+                "kind=test.file",
+                $"output={path}",
+                $"description={description}",
+                $"delay={delayMilliseconds}"),
+            Dependencies: Array.Empty<string>(),
+            OrderOnlyDependencies: Array.Empty<string>(),
+            Outputs: Array.Empty<string>(),
+            Depfiles: Array.Empty<string>());
+    }
+
     private static BuildSession CreateSession(string root)
     {
         return BuildSession.Create(new BuildWorkspace(root), definition =>
@@ -681,6 +833,41 @@ internal static class Program
         {
             Kind = BuildTargetKind.Application;
             Sources("app.cpp");
+        }
+    }
+
+    private sealed class TestFileActionExecutor : KnownActionExecutor
+    {
+        public TestFileActionExecutor()
+            : base("test.file")
+        {
+        }
+
+        public override string GetDescription(MakeActionContext context)
+        {
+            return RequiredPayloadValue(context.ActionPayload, "description");
+        }
+
+        public override async Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
+        {
+            var delay = int.Parse(RequiredPayloadValue(context.ActionPayload, "delay"));
+            var output = context.Workspace.ResolveRepositoryPath(RequiredPayloadValue(context.ActionPayload, "output"));
+            await Task.Delay(delay, cancellationToken);
+            Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+            await File.WriteAllTextAsync(output, "generated", cancellationToken);
+        }
+
+        private static string RequiredPayloadValue(string payload, string name)
+        {
+            var prefix = name + "=";
+            foreach(var line in payload.Split('\n'))
+            {
+                if(line.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    return line[prefix.Length..];
+                }
+            }
+            throw new InvalidOperationException($"Missing test action payload value: {name}");
         }
     }
 }

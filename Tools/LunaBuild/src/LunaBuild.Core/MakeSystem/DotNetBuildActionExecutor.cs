@@ -10,6 +10,13 @@ public sealed class DotNetBuildActionExecutor : KnownActionExecutor
         _actionTimeout = actionTimeout ?? TimeSpan.FromMinutes(5);
     }
 
+    public override string GetDescription(MakeActionContext context)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        var project = context.Workspace.ResolveRepositoryPath(payload.Required("project"));
+        return $"building {Path.GetFileName(project)}";
+    }
+
     public override async Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
         var payload = ActionPayload.Parse(context.ActionPayload);

@@ -9,6 +9,14 @@ public sealed class BinaryEmbedHeaderActionExecutor : KnownActionExecutor
     {
     }
 
+    public override string GetDescription(MakeActionContext context)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        var source = context.Workspace.ResolveRepositoryPath(payload.Required("source"));
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
+        return $"embedding {Path.GetFileName(source)} into {Path.GetFileName(output)}";
+    }
+
     public override Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
         var payload = ActionPayload.Parse(context.ActionPayload);

@@ -7,6 +7,14 @@ public sealed class FileCopyActionExecutor : KnownActionExecutor
     {
     }
 
+    public override string GetDescription(MakeActionContext context)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        var source = context.Workspace.ResolveRepositoryPath(payload.Required("source"));
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
+        return $"copying {Path.GetFileName(source)} to {Path.GetFileName(output)}";
+    }
+
     public override Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
         var payload = ActionPayload.Parse(context.ActionPayload);
