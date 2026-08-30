@@ -26,6 +26,7 @@ namespace Luna
             constexpr Window::application_menu_item_id_t MENU_ITEM_CLOSE = 5;
             constexpr Window::application_menu_item_id_t MENU_ITEM_UNDO = 6;
             constexpr Window::application_menu_item_id_t MENU_ITEM_REDO = 7;
+            constexpr Window::application_menu_item_id_t MENU_ITEM_COOK = 8;
 
             Window::ApplicationMenuItemDesc menu_command(const c8* title,
                 Window::application_menu_item_id_t id, KeyCode shortcut_key = KeyCode::unknown,
@@ -103,6 +104,7 @@ namespace Luna
                     menu_command("Save", MENU_ITEM_SAVE, KeyCode::s, Window::KeyModifierFlag::system),
                     menu_command("Save As...", MENU_ITEM_SAVE_AS, KeyCode::s,
                         Window::KeyModifierFlag::system | Window::KeyModifierFlag::shift),
+                    menu_command("Cook", MENU_ITEM_COOK),
                     menu_separator(),
                     menu_command("Close", MENU_ITEM_CLOSE, KeyCode::w, Window::KeyModifierFlag::system),
                 };
@@ -110,7 +112,8 @@ namespace Luna
                 bool has_document = document != nullptr;
                 file_items[3].state = menu_item_state(has_document);
                 file_items[4].state = menu_item_state(has_document);
-                file_items[6].state = menu_item_state(has_document);
+                file_items[5].state = menu_item_state(document && !document->asset_path.empty());
+                file_items[7].state = menu_item_state(has_document);
 
                 Window::ApplicationMenuItemDesc edit_items[] =
                 {
@@ -124,7 +127,7 @@ namespace Luna
                 Window::ApplicationMenuItemDesc main_items[] =
                 {
                     menu_submenu(APP_NAME, Span<const Window::ApplicationMenuItemDesc>(app_items, 9)),
-                    menu_submenu("File", Span<const Window::ApplicationMenuItemDesc>(file_items, 7)),
+                    menu_submenu("File", Span<const Window::ApplicationMenuItemDesc>(file_items, 8)),
                     menu_submenu("Edit", Span<const Window::ApplicationMenuItemDesc>(edit_items, 2)),
                     menu_submenu(nullptr, {}, Window::ApplicationMenuItemRole::window_menu),
                     menu_submenu(nullptr, {}, Window::ApplicationMenuItemRole::help_menu),
@@ -135,6 +138,7 @@ namespace Luna
                 {
                     luexp(Window::set_application_menu(desc));
                     application_menu_has_document = has_document;
+                    application_menu_can_cook = document && !document->asset_path.empty();
                     application_menu_can_undo = document && document->can_undo;
                     application_menu_can_redo = document && document->can_redo;
                 }
@@ -148,6 +152,7 @@ namespace Luna
                 bool has_document = document != nullptr;
                 bool can_undo = document && document->can_undo;
                 bool can_redo = document && document->can_redo;
+                bool can_cook = document && !document->asset_path.empty();
                 lutry
                 {
                     if(has_document != application_menu_has_document)
@@ -157,6 +162,12 @@ namespace Luna
                         luexp(Window::set_application_menu_item_state(MENU_ITEM_SAVE_AS, state));
                         luexp(Window::set_application_menu_item_state(MENU_ITEM_CLOSE, state));
                         application_menu_has_document = has_document;
+                    }
+                    if(can_cook != application_menu_can_cook)
+                    {
+                        luexp(Window::set_application_menu_item_state(MENU_ITEM_COOK,
+                            menu_item_state(can_cook)));
+                        application_menu_can_cook = can_cook;
                     }
                     if(can_undo != application_menu_can_undo)
                     {
@@ -195,6 +206,12 @@ namespace Luna
                 {
                     DocumentView* document = active_document();
                     if(document) save(*document, true);
+                    break;
+                }
+                case MENU_ITEM_COOK:
+                {
+                    DocumentView* document = active_document();
+                    if(document) cook(*document);
                     break;
                 }
                 case MENU_ITEM_CLOSE:

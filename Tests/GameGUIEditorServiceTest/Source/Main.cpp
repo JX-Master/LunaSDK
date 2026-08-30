@@ -15,6 +15,7 @@
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/VFS/VFS.hpp>
+#include <Luna/VariantUtils/JSON.hpp>
 #include <cstring>
 
 using namespace Luna;
@@ -23,9 +24,11 @@ using namespace Luna;
 
 namespace
 {
+    usize g_authoring_migration_count = 0;
     constexpr const c8* MOUNT_PATH = "/GameGUIEditorServiceTest";
     constexpr const c8* SAVE_PATH = "/GameGUIEditorServiceTest/SavedDocument";
     constexpr const c8* SOURCE_PATH = "/GameGUIEditorServiceTest/UnknownSource";
+    constexpr const c8* COOK_PATH = "/GameGUIEditorServiceTest/CookedDocument";
 
     String guid_string(const Guid& guid)
     {
@@ -78,6 +81,73 @@ namespace
         lutest(succeeded(result) || result.errcode() == E_NOT_FOUND);
     }
 
+    R<Ref<GameGUI::Document>> decode_snapshot(const Variant& data)
+    {
+        lutry
+        {
+            lulet(authoring, GameGUIEditor::decode_authoring_document(data));
+            return GameGUIEditor::cook_authoring_document(*authoring);
+        }
+        lucatchret;
+        return E_FAILURE;
+    }
+
+    R<GUI::ElementHandle> build_test_node(GameGUI::BuildContext& context,
+        const GameGUI::NodeRecord& node, object_t userdata)
+    {
+        GUI::ElementHandle element = context.gui()->begin_element(context.make_id("element"));
+        context.gui()->end_element();
+        return element;
+    }
+
+    RV migrate_test_node(Variant& properties, u32 from_version, u32 to_version,
+        object_t userdata)
+    {
+        lutest(from_version == 1 && to_version == 2);
+        properties["migrated"] = true;
+        ++g_authoring_migration_count;
+        return ok;
+    }
+
+    void authoring_migration_test()
+    {
+        Guid type = random_guid();
+        GameGUI::NodeTypeDesc runtime;
+        runtime.type = type;
+        runtime.name = "GameGUIEditorServiceTest.Migrated";
+        runtime.build = build_test_node;
+        lupanic_if_failed(GameGUI::register_node_type(runtime));
+
+        GameGUIEditor::AuthoringNodeTypeDesc authoring;
+        authoring.type = type;
+        authoring.name = runtime.name;
+        authoring.display_name = "Migrated Test Node";
+        authoring.category = "Test";
+        authoring.current_version = 2;
+        authoring.migrate = migrate_test_node;
+        lupanic_if_failed(GameGUIEditor::register_authoring_node_type(authoring));
+
+        GameGUIEditor::AuthoringNodeRecord root;
+        root.id = random_guid();
+        root.type = type;
+        root.type_version = 1;
+        Ref<GameGUIEditor::AuthoringDocument> source =
+            new_object<GameGUIEditor::AuthoringDocument>();
+        source->root = root.id;
+        source->nodes.push_back(root);
+        auto encoded = GameGUIEditor::encode_authoring_document(*source);
+        lutest(encoded.valid());
+        auto decoded = GameGUIEditor::decode_authoring_document(encoded.get());
+        lutest(decoded.valid());
+        lutest(g_authoring_migration_count == 1);
+        lutest(decoded.get()->nodes[0].type_version == 2);
+        lutest(decoded.get()->nodes[0].properties["migrated"].boolean());
+        auto cooked = GameGUIEditor::cook_authoring_document(*decoded.get());
+        lutest(cooked.valid() && cooked.get()->nodes.size() == 1);
+        lutest(cooked.get()->nodes[0].properties["migrated"].boolean());
+        lupanic_if_failed(GameGUI::unregister_node_type(type));
+    }
+
     void service_history_test(GameGUIEditor::Service& service)
     {
         Frontend::IFrontend* frontend = service.frontend();
@@ -93,7 +163,7 @@ namespace
 
         Variant snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
             document_params(first));
-        auto document_result = GameGUI::decode_document(snapshot["document"]);
+        auto document_result = decode_snapshot(snapshot["document"]);
         lutest(document_result.valid());
         Ref<GameGUI::Document> document = document_result.get();
         Guid root = document->root;
@@ -142,7 +212,7 @@ namespace
             command_batch(sibling_inserted, move(reorder), "Reorder child"));
         snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
             document_params(reordered));
-        document_result = GameGUI::decode_document(snapshot["document"]);
+        document_result = decode_snapshot(snapshot["document"]);
         lutest(document_result.valid());
         const GameGUI::NodeRecord* reordered_root = GameGUI::find_node(
             *document_result.get(), root);
@@ -160,7 +230,7 @@ namespace
             command_batch(reordered, move(reparent), "Reparent child"));
         snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
             document_params(edit));
-        document_result = GameGUI::decode_document(snapshot["document"]);
+        document_result = decode_snapshot(snapshot["document"]);
         lutest(document_result.valid());
         const GameGUI::NodeRecord* reparented_root = GameGUI::find_node(
             *document_result.get(), root);
@@ -177,7 +247,7 @@ namespace
             command_batch(edit, move(set_root), "Set root node"));
         snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
             document_params(root_changed));
-        document_result = GameGUI::decode_document(snapshot["document"]);
+        document_result = decode_snapshot(snapshot["document"]);
         lutest(document_result.valid());
         lutest(document_result.get()->root == child);
         const GameGUI::NodeRecord* promoted_root = GameGUI::find_node(
@@ -197,7 +267,7 @@ namespace
             document_params(root_changed));
         snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
             document_params(root_undone));
-        document_result = GameGUI::decode_document(snapshot["document"]);
+        document_result = decode_snapshot(snapshot["document"]);
         lutest(document_result.valid());
         lutest(document_result.get()->root == root);
         const GameGUI::NodeRecord* restored_container = GameGUI::find_node(
@@ -209,7 +279,7 @@ namespace
             document_params(root_undone));
         snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
             document_params(edit));
-        document_result = GameGUI::decode_document(snapshot["document"]);
+        document_result = decode_snapshot(snapshot["document"]);
         lutest(document_result.valid());
         lutest(document_result.get()->root == child);
 
@@ -230,7 +300,7 @@ namespace
             document_params(second_text));
         snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
             document_params(undone));
-        document_result = GameGUI::decode_document(snapshot["document"]);
+        document_result = decode_snapshot(snapshot["document"]);
         lutest(document_result.valid());
         lutest(GameGUI::find_node(*document_result.get(), child)->properties["text"].str() ==
             Name("Text"));
@@ -238,7 +308,7 @@ namespace
             document_params(undone));
         snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
             document_params(redone));
-        document_result = GameGUI::decode_document(snapshot["document"]);
+        document_result = decode_snapshot(snapshot["document"]);
         lutest(!strcmp(GameGUI::find_node(*document_result.get(), child)->properties["text"].c_str(),
             "Second"));
 
@@ -251,6 +321,19 @@ namespace
             document_params(branch));
         lutest(!cannot_redo.valid());
 
+        Variant save_as = document_params(branch);
+        save_as["path"] = COOK_PATH;
+        Variant saved = invoke(frontend, GameGUIEditor::SAVE_AS_URL, save_as);
+        invoke(frontend, GameGUIEditor::COOK_URL, document_params(saved));
+        auto cooked_asset_result = Asset::get_asset_by_path(COOK_PATH);
+        lutest(cooked_asset_result.valid());
+        Asset::asset_t cooked_asset = cooked_asset_result.get();
+        lupanic_if_failed(Asset::set_asset_data_unit_object(cooked_asset, Name(), nullptr));
+        lupanic_if_failed(Asset::load_asset_data_unit(cooked_asset, Name()));
+        auto cooked_document = Asset::get_asset_data_unit_object<GameGUI::Document>(
+            cooked_asset, Name());
+        lutest(cooked_document.valid() && cooked_document.get());
+
         auto refused_close = frontend->invoke(GameGUIEditor::CLOSE_DOCUMENT_URL,
             document_params(second));
         lutest(!refused_close.valid());
@@ -261,22 +344,36 @@ namespace
 
     void asset_boundary_test(GameGUIEditor::Service& service)
     {
-        GameGUI::NodeRecord unknown;
+        GameGUIEditor::AuthoringNodeRecord unknown;
         unknown.id = random_guid();
         unknown.type = random_guid();
         unknown.type_version = 19;
         unknown.name = "Unsupported";
         unknown.properties = Variant(VariantType::object);
         unknown.properties["opaque"] = "preserve";
-        Ref<GameGUI::Document> source = new_object<GameGUI::Document>();
+        Ref<GameGUIEditor::AuthoringDocument> source =
+            new_object<GameGUIEditor::AuthoringDocument>();
         source->root = unknown.id;
         source->nodes.push_back(unknown);
         auto source_asset_result = Asset::new_asset(SOURCE_PATH,
             GameGUI::get_asset_type(), false);
         lutest(source_asset_result.valid());
         Asset::asset_t source_asset = source_asset_result.get();
-        lupanic_if_failed(Asset::set_asset_data(source_asset, source.object()));
-        lupanic_if_failed(Asset::save_asset(source_asset));
+        auto encoded_source = GameGUIEditor::encode_authoring_document(*source);
+        lutest(encoded_source.valid());
+        Path source_path(SOURCE_PATH);
+        source_path.append_extension("json");
+        {
+            auto source_file = VFS::open_file(source_path, FileOpenFlag::write,
+                FileCreationMode::create_always);
+            lutest(source_file.valid());
+            VariantUtils::JSONWriteOptions json_options;
+            json_options.indent = true;
+            json_options.encode_blobs = false;
+            json_options.allow_non_finite_numbers = false;
+            lupanic_if_failed(VariantUtils::write_json(source_file.get(), encoded_source.get(),
+                json_options));
+        }
 
         Variant open_params(VariantType::object);
         open_params["asset_guid"] = guid_string(Asset::get_asset_guid(source_asset)).c_str();
@@ -299,21 +396,33 @@ namespace
             save_as_params);
         lutest(!saved["dirty"].boolean());
 
-        Ref<GameGUI::Document> registry_source =
-            Asset::get_asset_data<GameGUI::Document>(source_asset);
-        lutest(registry_source && registry_source->nodes[0].name == Name("Unsupported"));
+        auto registry_source = Asset::get_asset_data_unit_object<
+            GameGUIEditor::AuthoringDocument>(source_asset,
+                GameGUIEditor::get_authoring_data_unit());
+        lutest(registry_source.valid() && registry_source.get() &&
+            registry_source.get()->nodes[0].name == Name("Unsupported"));
 
         auto saved_asset_result = Asset::get_asset_by_path(SAVE_PATH);
         lutest(saved_asset_result.valid());
         Asset::asset_t saved_asset = saved_asset_result.get();
-        lutest(Asset::get_asset_state(saved_asset) == Asset::AssetState::unloaded);
-        lupanic_if_failed(Asset::load_asset(saved_asset, true));
-        Ref<GameGUI::Document> loaded = Asset::get_asset_data<GameGUI::Document>(saved_asset);
+        lupanic_if_failed(Asset::set_asset_data_unit_object(saved_asset,
+            GameGUIEditor::get_authoring_data_unit(), nullptr));
+        lupanic_if_failed(Asset::load_asset_data_unit(saved_asset,
+            GameGUIEditor::get_authoring_data_unit(), true));
+        auto loaded_result = Asset::get_asset_data_unit_object<
+            GameGUIEditor::AuthoringDocument>(saved_asset,
+                GameGUIEditor::get_authoring_data_unit());
+        lutest(loaded_result.valid());
+        Ref<GameGUIEditor::AuthoringDocument> loaded = loaded_result.get();
         lutest(loaded && loaded->nodes.size() == 1);
         lutest(loaded->nodes[0].type == unknown.type);
         lutest(loaded->nodes[0].type_version == 19);
         lutest(loaded->nodes[0].properties["opaque"] == unknown.properties["opaque"]);
         lutest(loaded->nodes[0].name == Name("Renamed unsupported"));
+
+        auto cannot_cook = service.frontend()->invoke(GameGUIEditor::COOK_URL,
+            document_params(saved));
+        lutest(!cannot_cook.valid());
 
         Variant close_params = document_params(saved);
         invoke(service.frontend(), GameGUIEditor::CLOSE_DOCUMENT_URL, close_params);
@@ -336,12 +445,17 @@ int main()
         auto service_result = GameGUIEditor::new_service();
         lutest(service_result.valid());
         UniquePtr<GameGUIEditor::Service> service = move(service_result.get());
+        authoring_migration_test();
         service_history_test(*service);
         asset_boundary_test(*service);
     }
     remove_file_if_present("/GameGUIEditorServiceTest/UnknownSource.json");
+    remove_file_if_present("/GameGUIEditorServiceTest/UnknownSource.meta");
     remove_file_if_present("/GameGUIEditorServiceTest/SavedDocument.json");
     remove_file_if_present("/GameGUIEditorServiceTest/SavedDocument.meta");
+    remove_file_if_present("/GameGUIEditorServiceTest/CookedDocument.json");
+    remove_file_if_present("/GameGUIEditorServiceTest/CookedDocument.cooked");
+    remove_file_if_present("/GameGUIEditorServiceTest/CookedDocument.meta");
     lupanic_if_failed(VFS::unmount(MOUNT_PATH));
     Luna::close();
     return 0;

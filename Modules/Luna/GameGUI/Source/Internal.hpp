@@ -10,6 +10,7 @@
 #pragma once
 #include "../GameGUI.hpp"
 #include <Luna/Runtime/Guid.hpp>
+#include <Luna/Runtime/Stream.hpp>
 
 namespace Luna
 {
@@ -17,6 +18,8 @@ namespace Luna
     {
         void get_direct_referred_assets(const Document& document,
             Vector<Asset::asset_t>& assets);
+        R<Ref<Document>> read_cooked_document(IStream* stream);
+        RV write_cooked_document(IStream* stream, const Document& document);
         void close_node_registry();
     }
 }

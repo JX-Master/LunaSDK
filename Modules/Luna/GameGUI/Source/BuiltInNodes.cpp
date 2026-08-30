@@ -290,21 +290,6 @@ namespace Luna
                 return element;
             }
 
-            Variant make_schema(const c8* kind)
-            {
-                Variant schema(VariantType::object);
-                schema["kind"] = kind;
-                schema["properties"] = Variant(VariantType::object);
-                return schema;
-            }
-
-            Variant make_default_layout(f32 height = -1.0f)
-            {
-                Variant properties(VariantType::object);
-                if(height >= 0.0f) properties["height"] = height;
-                return properties;
-            }
-
             RV register_if_missing(const NodeTypeDesc& desc)
             {
                 auto existing = get_node_type(desc.type);
@@ -327,12 +312,6 @@ namespace Luna
                 NodeTypeDesc desc;
                 desc.type = FLEX_NODE_TYPE;
                 desc.name = "Flex";
-                desc.display_name = "Flex Layout";
-                desc.category = "Layout";
-                desc.property_schema = make_schema("flex");
-                desc.slot_schema = make_schema("ordered_children");
-                desc.layout_schema = make_schema("layout_properties");
-                desc.default_properties = make_default_layout();
                 desc.validate = validate_properties_object;
                 desc.build = build_flex;
                 luexp(register_if_missing(desc));
@@ -340,12 +319,6 @@ namespace Luna
                 desc = NodeTypeDesc();
                 desc.type = CANVAS_NODE_TYPE;
                 desc.name = "Canvas";
-                desc.display_name = "Canvas Layout";
-                desc.category = "Layout";
-                desc.property_schema = make_schema("canvas");
-                desc.slot_schema = make_schema("canvas_children");
-                desc.layout_schema = make_schema("canvas_attachment");
-                desc.default_properties = make_default_layout();
                 desc.validate = validate_properties_object;
                 desc.build = build_canvas;
                 luexp(register_if_missing(desc));
@@ -353,13 +326,6 @@ namespace Luna
                 desc = NodeTypeDesc();
                 desc.type = PANEL_NODE_TYPE;
                 desc.name = "Panel";
-                desc.display_name = "Panel";
-                desc.category = "Visual";
-                desc.property_schema = make_schema("panel");
-                desc.slot_schema = make_schema("ordered_children");
-                desc.style_schema = make_schema("panel_style");
-                desc.default_properties = make_default_layout();
-                desc.default_properties["color"] = Variant(VariantType::array);
                 desc.validate = validate_properties_object;
                 desc.build = build_panel;
                 luexp(register_if_missing(desc));
@@ -367,12 +333,6 @@ namespace Luna
                 desc = NodeTypeDesc();
                 desc.type = TEXT_NODE_TYPE;
                 desc.name = "Text";
-                desc.display_name = "Text";
-                desc.category = "Visual";
-                desc.property_schema = make_schema("text");
-                desc.style_schema = make_schema("text_style");
-                desc.default_properties = make_default_layout(24.0f);
-                desc.default_properties["text"] = "Text";
                 desc.validate = validate_properties_object;
                 desc.build = build_text;
                 luexp(register_if_missing(desc));
@@ -380,13 +340,6 @@ namespace Luna
                 desc = NodeTypeDesc();
                 desc.type = BUTTON_NODE_TYPE;
                 desc.name = "Button";
-                desc.display_name = "Button";
-                desc.category = "Input";
-                desc.property_schema = make_schema("button");
-                desc.event_schema = make_schema("action");
-                desc.style_schema = make_schema("button_style");
-                desc.default_properties = make_default_layout(32.0f);
-                desc.default_properties["text"] = "Button";
                 desc.validate = validate_properties_object;
                 desc.build = build_button;
                 desc.resolve = resolve_button;
@@ -395,10 +348,6 @@ namespace Luna
                 desc = NodeTypeDesc();
                 desc.type = ASSET_INSTANCE_NODE_TYPE;
                 desc.name = "AssetInstance";
-                desc.display_name = "Asset Instance";
-                desc.category = "Composition";
-                desc.property_schema = make_schema("asset_instance");
-                desc.default_properties = make_default_layout();
                 desc.validate = validate_asset_instance;
                 desc.prepare = prepare_asset_instance;
                 desc.build = build_asset_instance;

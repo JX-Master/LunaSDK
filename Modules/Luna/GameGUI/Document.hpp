@@ -19,9 +19,6 @@ namespace Luna
 {
     namespace GameGUI
     {
-        //! Current GameGUI document format version.
-        inline constexpr u32 CURRENT_DOCUMENT_FORMAT_VERSION = 1;
-
         //! Describes the severity of one document or instance diagnostic.
         enum class DiagnosticSeverity : u8
         {
@@ -64,32 +61,24 @@ namespace Luna
             Guid id;
             //! Stable registered node type ID.
             Guid type;
-            //! Serialized version of the node type payload.
-            u32 type_version = 1;
             //! Optional author-facing node name.
             Name name;
-            //! Canonical raw property payload.
-            //! @remark This payload remains intact when the corresponding node provider is unavailable.
+            //! Current cooked property payload.
             Variant properties = Variant(VariantType::object);
             //! Ordered outgoing child edges.
             Vector<ChildLink> children;
         };
 
-        //! Stores one retained GameGUI semantic node tree.
-        //! @remark Only semantic authoring data is serialized. Runtime element handles, instance state and prepared
-        //! caches are never stored in this object.
+        //! Stores one current cooked GameGUI semantic node tree.
+        //! @remark Runtime element handles, instance state and prepared caches are never stored in this object.
         struct Document
         {
             lustruct("Luna::GameGUI::Document", "{318C604E-37FB-453E-BF7E-FA5532EEFF27}");
 
-            //! Document format version.
-            u32 format_version = CURRENT_DOCUMENT_FORMAT_VERSION;
             //! Asset-local root node ID.
             Guid root;
             //! Flat canonical node records.
             Vector<NodeRecord> nodes;
-            //! Forward-compatible document-level payload.
-            Variant extensions;
         };
 
         //! Gets the Asset type name used by GameGUI documents.
@@ -113,20 +102,6 @@ namespace Luna
         //! @param[out] diagnostics Optional destination for all validation errors.
         //! @return Returns success only when the document is a single rooted tree.
         LUNA_GAME_GUI_API RV validate_document(const Document& document,
-            Vector<Diagnostic>* diagnostics = nullptr);
-
-        //! Encodes one document into its canonical Variant representation.
-        //! @param[in] document The document to encode.
-        //! @return Returns the encoded document.
-        //! @remark The returned value contains only persistent authoring data and is suitable for
-        //! JSON serialization, editor snapshots and protocol transport.
-        LUNA_GAME_GUI_API R<Variant> encode_document(const Document& document);
-
-        //! Decodes one canonical Variant representation into a document.
-        //! @param[in] data The canonical document data.
-        //! @param[out] diagnostics Optional destination for migration and validation diagnostics.
-        //! @return Returns a validated document while preserving unsupported node records.
-        LUNA_GAME_GUI_API R<Ref<Document>> decode_document(const Variant& data,
             Vector<Diagnostic>* diagnostics = nullptr);
 
     }

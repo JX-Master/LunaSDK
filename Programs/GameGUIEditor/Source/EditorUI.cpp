@@ -36,7 +36,7 @@ namespace Luna
             void EditorApp::build_hierarchy_node(DocumentView& document, const Guid& node_id,
                 const Guid& parent, usize sibling_index, u32 depth, UIHandles& handles)
             {
-                const GameGUI::NodeRecord* node = GameGUI::find_node(*document.snapshot, node_id);
+                const AuthoringNodeRecord* node = find_authoring_node(*document.snapshot, node_id);
                 if(!node) return;
                 String label;
                 const c8* name = node->name.empty() ? "Unnamed Node" : node->name.c_str();
@@ -223,13 +223,17 @@ namespace Luna
                     save_as_desc.enabled = document != nullptr;
                     handles.save_as_document = EditorGUI::menu_item(gui,
                         gui->make_id("main_menu.file.save_as"), "Save As...", false, save_as_desc);
+                    EditorGUI::MenuItemDesc cook_desc;
+                    cook_desc.enabled = document && !document->asset_path.empty();
+                    handles.cook_document = EditorGUI::menu_item(gui,
+                        gui->make_id("main_menu.file.cook"), "Cook", false, cook_desc);
                     EditorGUI::menu_separator(gui, gui->make_id("main_menu.file.close_separator"));
                     EditorGUI::MenuItemDesc close_desc;
                     close_desc.enabled = document != nullptr;
                     handles.close_document = EditorGUI::menu_item(gui,
                         gui->make_id("main_menu.file.close"), "Close", false, close_desc);
                     lupanic_if_failed(EditorGUI::end_menu(gui,
-                        RectF(0.0f, 0.0f, 230.0f, 180.0f)));
+                        RectF(0.0f, 0.0f, 230.0f, 210.0f)));
                 }
 
                 if(EditorGUI::begin_menu(gui, gui->make_id("main_menu.edit"), "Edit"))
@@ -269,7 +273,7 @@ namespace Luna
                 {
                     rebuild_inspector(*document);
                 }
-                const GameGUI::NodeRecord* node = GameGUI::find_node(*document->snapshot,
+                const AuthoringNodeRecord* node = find_authoring_node(*document->snapshot,
                     document->selected_node);
                 if(node)
                 {

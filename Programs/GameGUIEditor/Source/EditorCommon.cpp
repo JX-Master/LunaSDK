@@ -158,23 +158,23 @@ namespace Luna
                 return result;
             }
 
-            bool subtree_contains(const GameGUI::Document& document, const Guid& root,
+            bool subtree_contains(const AuthoringDocument& document, const Guid& root,
                 const Guid& node)
             {
                 if(root == node) return true;
-                const GameGUI::NodeRecord* record = GameGUI::find_node(document, root);
+                const AuthoringNodeRecord* record = find_authoring_node(document, root);
                 if(!record) return false;
-                for(const GameGUI::ChildLink& child : record->children)
+                for(const AuthoringChildLink& child : record->children)
                 {
                     if(subtree_contains(document, child.child, node)) return true;
                 }
                 return false;
             }
 
-            bool find_parent_info(const GameGUI::Document& document, const Guid& node,
+            bool find_parent_info(const AuthoringDocument& document, const Guid& node,
                 Guid& parent, usize& sibling_index)
             {
-                for(const GameGUI::NodeRecord& candidate : document.nodes)
+                for(const AuthoringNodeRecord& candidate : document.nodes)
                 {
                     for(usize i = 0; i < candidate.children.size(); ++i)
                     {

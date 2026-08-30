@@ -12,6 +12,6 @@ public sealed class GameGUITestTargetRules : TargetRules
         Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("Source/**.cpp");
-        DependsOn("Runtime", "GameGUI", "VariantUtils");
+        DependsOn("Runtime", "GameGUI");
     }
 }

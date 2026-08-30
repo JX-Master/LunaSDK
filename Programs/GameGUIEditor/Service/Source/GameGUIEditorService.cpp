@@ -15,8 +15,6 @@
 #include <Luna/Runtime/Guid.hpp>
 #include <Luna/Runtime/HashMap.hpp>
 #include <Luna/Runtime/Random.hpp>
-#include <Luna/VariantUtils/JSON.hpp>
-#include <Luna/VFS/VFS.hpp>
 
 namespace Luna
 {
@@ -26,7 +24,7 @@ namespace Luna
         {
             struct HistoryEntry
             {
-                Ref<GameGUI::Document> document;
+                Ref<AuthoringDocument> document;
                 u64 state_id = 0;
                 Name label;
                 Name coalesce_key;
@@ -44,7 +42,7 @@ namespace Luna
                 u64 revision = 1;
                 Vector<GameGUI::Diagnostic> diagnostics;
 
-                Ref<GameGUI::Document> document() const
+                Ref<AuthoringDocument> document() const
                 {
                     return history[history_index].document;
                 }
@@ -82,9 +80,9 @@ namespace Luna
                 return result;
             }
 
-            Ref<GameGUI::Document> clone_document(const GameGUI::Document& source)
+            Ref<AuthoringDocument> clone_document(const AuthoringDocument& source)
             {
-                Ref<GameGUI::Document> result = new_object<GameGUI::Document>();
+                Ref<AuthoringDocument> result = new_object<AuthoringDocument>();
                 result->format_version = source.format_version;
                 result->root = source.root;
                 result->nodes = source.nodes;
@@ -115,10 +113,23 @@ namespace Luna
             void refresh_diagnostics(DocumentState& state)
             {
                 state.diagnostics.clear();
-                RV validation = GameGUI::validate_document(*state.document(), &state.diagnostics);
-                if(failed(validation)) return;
+                auto cooked = cook_authoring_document(*state.document(), &state.diagnostics);
+                if(!cooked.valid())
+                {
+                    bool has_error = false;
+                    for(const GameGUI::Diagnostic& diagnostic : state.diagnostics)
+                        has_error = has_error || diagnostic.severity == GameGUI::DiagnosticSeverity::error;
+                    if(!has_error)
+                    {
+                        GameGUI::Diagnostic diagnostic;
+                        diagnostic.severity = GameGUI::DiagnosticSeverity::error;
+                        diagnostic.message = explain(cooked.errcode());
+                        state.diagnostics.push_back(move(diagnostic));
+                    }
+                    return;
+                }
                 GameGUI::InstanceDesc desc;
-                desc.document = state.document();
+                desc.document = cooked.get();
                 desc.source_asset = state.asset;
                 Ref<GameGUI::IInstance> instance = GameGUI::new_instance(desc);
                 RV prepared = instance->prepare();
@@ -159,23 +170,23 @@ namespace Luna
                 return result;
             }
 
-            R<GameGUI::NodeRecord*> find_required_node(GameGUI::Document& document,
+            R<AuthoringNodeRecord*> find_required_node(AuthoringDocument& document,
                 const Variant& value)
             {
                 auto id_result = guid_param(value, "command.node");
                 if(!id_result.valid()) return id_result.errcode();
                 Guid id = id_result.get();
-                GameGUI::NodeRecord* node = GameGUI::find_node(document, id);
+                AuthoringNodeRecord* node = find_authoring_node(document, id);
                 if(!node) return set_error(E_NOT_FOUND, "The GameGUI node does not exist.");
                 return node;
             }
 
-            GameGUI::ChildLink* find_parent_link(GameGUI::Document& document,
-                const Guid& child, GameGUI::NodeRecord** parent = nullptr)
+            AuthoringChildLink* find_parent_link(AuthoringDocument& document,
+                const Guid& child, AuthoringNodeRecord** parent = nullptr)
             {
-                for(GameGUI::NodeRecord& candidate : document.nodes)
+                for(AuthoringNodeRecord& candidate : document.nodes)
                 {
-                    for(GameGUI::ChildLink& link : candidate.children)
+                    for(AuthoringChildLink& link : candidate.children)
                     {
                         if(link.child == child)
                         {
@@ -187,13 +198,13 @@ namespace Luna
                 return nullptr;
             }
 
-            void collect_subtree(const GameGUI::Document& document, const Guid& node,
+            void collect_subtree(const AuthoringDocument& document, const Guid& node,
                 Vector<Guid>& nodes)
             {
                 nodes.push_back(node);
-                const GameGUI::NodeRecord* record = GameGUI::find_node(document, node);
+                const AuthoringNodeRecord* record = find_authoring_node(document, node);
                 if(!record) return;
-                for(const GameGUI::ChildLink& child : record->children)
+                for(const AuthoringChildLink& child : record->children)
                 {
                     collect_subtree(document, child.child, nodes);
                 }
@@ -208,7 +219,7 @@ namespace Luna
                 return false;
             }
 
-            RV insert_child(GameGUI::NodeRecord& parent, GameGUI::ChildLink&& link,
+            RV insert_child(AuthoringNodeRecord& parent, AuthoringChildLink&& link,
                 usize index)
             {
                 if(index > parent.children.size())
@@ -219,7 +230,7 @@ namespace Luna
                 return ok;
             }
 
-            RV apply_command(GameGUI::Document& document, const Variant& command,
+            RV apply_command(AuthoringDocument& document, const Variant& command,
                 Vector<Guid>& created_nodes)
             {
                 lutry
@@ -274,10 +285,10 @@ namespace Luna
                 if(kind == Name("insert_node"))
                 {
                     lulet(parent_id, guid_param(command["parent"], "insert_node.parent"));
-                    GameGUI::NodeRecord* parent = GameGUI::find_node(document, parent_id);
+                    AuthoringNodeRecord* parent = find_authoring_node(document, parent_id);
                     if(!parent) return set_error(E_NOT_FOUND, "The insertion parent does not exist.");
                     lulet(type, guid_param(command["type"], "insert_node.type"));
-                    auto descriptor = GameGUI::get_node_type(type);
+                    auto descriptor = get_authoring_node_type(type);
                     if(!descriptor.valid())
                     {
                         return set_error(E_NOT_FOUND,
@@ -293,11 +304,11 @@ namespace Luna
                     else
                     {
                         do node_id = random_guid();
-                        while(GameGUI::find_node(document, node_id));
+                        while(find_authoring_node(document, node_id));
                     }
-                    if(GameGUI::find_node(document, node_id))
+                    if(find_authoring_node(document, node_id))
                         return set_error(E_ALREADY_EXISTS, "The inserted GameGUI node ID already exists.");
-                    GameGUI::NodeRecord node;
+                    AuthoringNodeRecord node;
                     node.id = node_id;
                     node.type = type;
                     node.type_version = descriptor.get().current_version;
@@ -306,7 +317,7 @@ namespace Luna
                         command["properties"] : descriptor.get().default_properties;
                     if(node.properties.type() != VariantType::object)
                         node.properties = Variant(VariantType::object);
-                    GameGUI::ChildLink link;
+                    AuthoringChildLink link;
                     link.child = node_id;
                     link.slot = command["slot"].str();
                     if(command.contains("attachment")) link.attachment = command["attachment"];
@@ -322,11 +333,11 @@ namespace Luna
                     lulet(node, guid_param(command["node"], "set_root.node"));
                     if(node == document.root)
                         return set_error(E_BAD_ARGUMENTS, "The GameGUI node is already the root.");
-                    GameGUI::NodeRecord* new_root = GameGUI::find_node(document, node);
+                    AuthoringNodeRecord* new_root = find_authoring_node(document, node);
                     if(!new_root)
                         return set_error(E_NOT_FOUND, "The new root GameGUI node does not exist.");
-                    GameGUI::NodeRecord* old_parent = nullptr;
-                    GameGUI::ChildLink* old_link = find_parent_link(document, node,
+                    AuthoringNodeRecord* old_parent = nullptr;
+                    AuthoringChildLink* old_link = find_parent_link(document, node,
                         &old_parent);
                     if(!old_link || !old_parent)
                     {
@@ -341,7 +352,7 @@ namespace Luna
                             break;
                         }
                     }
-                    GameGUI::ChildLink old_root_link;
+                    AuthoringChildLink old_root_link;
                     old_root_link.child = document.root;
                     new_root->children.push_back(move(old_root_link));
                     document.root = node;
@@ -352,8 +363,8 @@ namespace Luna
                     lulet(node, guid_param(command["node"], "remove_node.node"));
                     if(node == document.root)
                         return set_error(E_BAD_ARGUMENTS, "The root GameGUI node cannot be removed.");
-                    GameGUI::NodeRecord* parent = nullptr;
-                    GameGUI::ChildLink* link = find_parent_link(document, node, &parent);
+                    AuthoringNodeRecord* parent = nullptr;
+                    AuthoringChildLink* link = find_parent_link(document, node, &parent);
                     if(!link || !parent)
                         return set_error(E_NOT_FOUND, "The removed GameGUI node does not exist.");
                     for(usize i = 0; i < parent->children.size(); ++i)
@@ -366,9 +377,9 @@ namespace Luna
                     }
                     Vector<Guid> removed;
                     collect_subtree(document, node, removed);
-                    Vector<GameGUI::NodeRecord> kept;
+                    Vector<AuthoringNodeRecord> kept;
                     kept.reserve(document.nodes.size() - removed.size());
-                    for(GameGUI::NodeRecord& record : document.nodes)
+                    for(AuthoringNodeRecord& record : document.nodes)
                     {
                         if(!contains_guid(removed, record.id)) kept.push_back(move(record));
                     }
@@ -381,14 +392,14 @@ namespace Luna
                     lulet(new_parent_id, guid_param(command["parent"], "move_node.parent"));
                     if(node == document.root)
                         return set_error(E_BAD_ARGUMENTS, "The root GameGUI node cannot be moved.");
-                    GameGUI::NodeRecord* new_parent = GameGUI::find_node(document, new_parent_id);
+                    AuthoringNodeRecord* new_parent = find_authoring_node(document, new_parent_id);
                     if(!new_parent)
                         return set_error(E_NOT_FOUND, "The new GameGUI parent does not exist.");
-                    GameGUI::NodeRecord* old_parent = nullptr;
-                    GameGUI::ChildLink* old_link = find_parent_link(document, node, &old_parent);
+                    AuthoringNodeRecord* old_parent = nullptr;
+                    AuthoringChildLink* old_link = find_parent_link(document, node, &old_parent);
                     if(!old_link || !old_parent)
                         return set_error(E_NOT_FOUND, "The moved GameGUI node does not exist.");
-                    GameGUI::ChildLink link = *old_link;
+                    AuthoringChildLink link = *old_link;
                     if(command.contains("slot")) link.slot = command["slot"].str();
                     if(command.contains("attachment")) link.attachment = command["attachment"];
                     for(usize i = 0; i < old_parent->children.size(); ++i)
@@ -406,7 +417,7 @@ namespace Luna
                 if(kind == Name("set_attachment"))
                 {
                     lulet(node, guid_param(command["node"], "set_attachment.node"));
-                    GameGUI::ChildLink* link = find_parent_link(document, node);
+                    AuthoringChildLink* link = find_parent_link(document, node);
                     if(!link)
                         return set_error(E_NOT_FOUND, "The attached GameGUI node does not exist.");
                     if(command.contains("slot")) link->slot = command["slot"].str();
@@ -420,27 +431,7 @@ namespace Luna
                 return E_FAILURE;
             }
 
-            RV write_document(const Path& path, const GameGUI::Document& document)
-            {
-                lutry
-                {
-                    luexp(GameGUI::validate_document(document));
-                    lulet(data, GameGUI::encode_document(document));
-                    Path json_path = path;
-                    json_path.append_extension("json");
-                    lulet(file, VFS::open_file(json_path, FileOpenFlag::write,
-                        FileCreationMode::create_always));
-                    VariantUtils::JSONWriteOptions options;
-                    options.indent = true;
-                    options.encode_blobs = false;
-                    options.allow_non_finite_numbers = false;
-                    luexp(VariantUtils::write_json(file, data, options));
-                }
-                lucatchret;
-                return ok;
-            }
-
-            Variant node_type_variant(const GameGUI::NodeTypeDesc& desc)
+            Variant node_type_variant(const AuthoringNodeTypeDesc& desc)
             {
                 Variant result(VariantType::object);
                 result["type"] = guid_string(desc.type).c_str();
@@ -454,7 +445,8 @@ namespace Luna
                 result["style_schema"] = desc.style_schema;
                 result["layout_schema"] = desc.layout_schema;
                 result["default_properties"] = desc.default_properties;
-                result["nested_document"] = desc.nested_document;
+                auto runtime = GameGUI::get_node_type(desc.type);
+                result["nested_document"] = runtime.valid() && runtime.get().nested_document;
                 return result;
             }
         }
@@ -499,7 +491,7 @@ namespace Luna
                 return ok;
             }
 
-            DocumentState* add_document(const Ref<GameGUI::Document>& source, const c8* title,
+            DocumentState* add_document(const Ref<AuthoringDocument>& source, const c8* title,
                 Asset::asset_t asset, bool saved)
             {
                 UniquePtr<DocumentState> state(memnew<DocumentState>());
@@ -523,15 +515,15 @@ namespace Luna
 
             R<Variant> create(const Variant& params)
             {
-                GameGUI::NodeRecord root;
+                AuthoringNodeRecord root;
                 root.id = random_guid();
                 root.type = GameGUI::get_flex_node_type();
-                auto descriptor = GameGUI::get_node_type(root.type);
+                auto descriptor = get_authoring_node_type(root.type);
                 if(!descriptor.valid()) return descriptor.errcode();
                 root.type_version = descriptor.get().current_version;
                 root.name = "Root";
                 root.properties = descriptor.get().default_properties;
-                Ref<GameGUI::Document> document = new_object<GameGUI::Document>();
+                Ref<AuthoringDocument> document = new_object<AuthoringDocument>();
                 document->root = root.id;
                 document->nodes.push_back(move(root));
                 String title;
@@ -570,12 +562,16 @@ namespace Luna
                         luthrow(set_error(E_BAD_ARGUMENTS,
                             "Open requires either asset_guid or path."));
                     }
-                    if(Asset::get_asset_state(asset) == Asset::AssetState::unregistered)
+                    auto main_state = Asset::get_asset_data_unit_state(asset, Name());
+                    if(!main_state.valid() ||
+                        main_state.get() == Asset::AssetDataUnitState::unregistered)
                         luthrow(set_error(E_NOT_FOUND, "The GameGUI asset is not registered."));
                     if(Asset::get_asset_type(asset) != GameGUI::get_asset_type())
                         luthrow(set_error(E_BAD_ARGUMENTS, "The selected asset is not a GameGUI document."));
-                    luexp(Asset::load_asset(asset));
-                    Ref<GameGUI::Document> source = Asset::get_asset_data<GameGUI::Document>(asset);
+                    luexp(ensure_authoring_data_unit(asset));
+                    luexp(Asset::load_asset_data_unit(asset, get_authoring_data_unit()));
+                    lulet(source, Asset::get_asset_data_unit_object<AuthoringDocument>(asset,
+                        get_authoring_data_unit()));
                     if(!source) luthrow(set_error(E_BAD_DATA, "The GameGUI asset has no document data."));
                     DocumentState* state = add_document(source,
                         Asset::get_asset_name(asset).c_str(), asset, true);
@@ -602,7 +598,7 @@ namespace Luna
                 {
                     lulet(state, get_document(params));
                     Variant result = metadata_variant(*state);
-                    lulet(document, GameGUI::encode_document(*state->document()));
+                    lulet(document, encode_authoring_document(*state->document()));
                     result["document"] = move(document);
                     return result;
                 }
@@ -619,13 +615,13 @@ namespace Luna
                     const Variant& commands = params["commands"];
                     if(commands.type() != VariantType::array || commands.empty())
                         luthrow(set_error(E_BAD_ARGUMENTS, "commands must be a non-empty array."));
-                    Ref<GameGUI::Document> edited = clone_document(*state->document());
+                    Ref<AuthoringDocument> edited = clone_document(*state->document());
                     Vector<Guid> created;
                     for(const Variant& command : commands.values())
                     {
                         luexp(apply_command(*edited, command, created));
                     }
-                    luexp(GameGUI::validate_document(*edited));
+                    luexp(validate_authoring_document(*edited));
                     Name coalesce_key = params["coalesce_key"].str();
                     bool coalesce = !coalesce_key.empty() && state->history_index > 0 &&
                         state->history_index + 1 == state->history.size() &&
@@ -706,7 +702,10 @@ namespace Luna
                     if(!state->asset)
                         luthrow(set_error(E_BAD_CALLING_TIME,
                             "An untitled GameGUI document must be saved with SaveAs."));
-                    luexp(write_document(Asset::get_asset_path(state->asset), *state->document()));
+                    luexp(ensure_authoring_data_unit(state->asset));
+                    luexp(Asset::set_asset_data_unit_object(state->asset,
+                        get_authoring_data_unit(), state->document().object()));
+                    luexp(Asset::save_asset_data_unit(state->asset, get_authoring_data_unit()));
                     state->saved_state = state->history_state();
                     ++state->revision;
                     return metadata_variant(*state);
@@ -735,7 +734,10 @@ namespace Luna
                     if(open_document != asset_documents.end() && open_document->second != state->id)
                         luthrow(set_error(E_ALREADY_EXISTS,
                             "The SaveAs asset is already open in another document."));
-                    luexp(write_document(path, *state->document()));
+                    luexp(ensure_authoring_data_unit(asset));
+                    luexp(Asset::set_asset_data_unit_object(asset, get_authoring_data_unit(),
+                        state->document().object()));
+                    luexp(Asset::save_asset_data_unit(asset, get_authoring_data_unit()));
                     if(state->asset) asset_documents.erase(Asset::get_asset_guid(state->asset));
                     state->asset = asset;
                     asset_documents.insert_or_assign(guid, state->id);
@@ -780,12 +782,31 @@ namespace Luna
                 return E_FAILURE;
             }
 
+            R<Variant> cook(const Variant& params)
+            {
+                lutry
+                {
+                    lulet(state, get_document(params));
+                    luexp(check_revision(*state, params));
+                    if(!state->asset)
+                        luthrow(set_error(E_BAD_CALLING_TIME,
+                            "An untitled GameGUI document must be saved before cooking."));
+                    Vector<GameGUI::Diagnostic> diagnostics;
+                    lulet(cooked, cook_authoring_document(*state->document(), &diagnostics));
+                    luexp(Asset::set_asset_data_unit_object(state->asset, Name(), cooked.object()));
+                    luexp(Asset::save_asset_data_unit(state->asset, Name()));
+                    return metadata_variant(*state);
+                }
+                lucatchret;
+                return E_FAILURE;
+            }
+
             R<Variant> node_types(const Variant& params)
             {
-                Vector<GameGUI::NodeTypeDesc> descriptors;
-                GameGUI::get_node_types(descriptors);
+                Vector<AuthoringNodeTypeDesc> descriptors;
+                get_authoring_node_types(descriptors);
                 Variant result(VariantType::array);
-                for(const GameGUI::NodeTypeDesc& descriptor : descriptors)
+                for(const AuthoringNodeTypeDesc& descriptor : descriptors)
                     result.push_back(node_type_variant(descriptor));
                 return result;
             }
@@ -813,6 +834,8 @@ namespace Luna
                         [this](Frontend::IFrontend*, const Variant& params) { return save(params); }));
                     luexp(frontend->set_resource_function(SAVE_AS_URL,
                         [this](Frontend::IFrontend*, const Variant& params) { return save_as(params); }));
+                    luexp(frontend->set_resource_function(COOK_URL,
+                        [this](Frontend::IFrontend*, const Variant& params) { return cook(params); }));
                     luexp(frontend->set_resource_function(CLOSE_DOCUMENT_URL,
                         [this](Frontend::IFrontend*, const Variant& params) { return close(params); }));
                     luexp(frontend->set_resource_function(GET_NODE_TYPES_URL,
@@ -843,6 +866,8 @@ namespace Luna
 
         LUNA_GAME_GUI_EDITOR_SERVICE_API R<UniquePtr<Service>> new_service()
         {
+            RV authoring_result = initialize_authoring();
+            if(failed(authoring_result)) return authoring_result.errcode();
             void* memory = memalloc(sizeof(Service), alignof(Service));
             UniquePtr<Service> service(new (memory) Service());
             RV result = service->init();

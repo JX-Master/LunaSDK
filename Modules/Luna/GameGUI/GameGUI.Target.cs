@@ -11,6 +11,6 @@ public sealed class GameGUITargetRules : TargetRules
         Headers("*.hpp", "Source/**.hpp");
         MetaHeaders("Instance.hpp", "Source/InstanceInternal.hpp");
         Sources("Source/**.cpp");
-        DependsOn("Runtime", "GUI", "Asset", "VariantUtils", "VFS");
+        DependsOn("Runtime", "GUI", "Asset", "VFS");
     }
 }

@@ -93,14 +93,16 @@ namespace Luna
                 Variant snapshot;
                 if(!invoke(GameGUIEditor::GET_SNAPSHOT_URL, params, snapshot)) return false;
                 update_metadata(document, snapshot);
-                auto decoded = GameGUI::decode_document(snapshot["document"]);
+                auto decoded = decode_authoring_document(snapshot["document"]);
                 if(!decoded.valid())
                 {
                     error_message = explain(decoded.errcode());
                     return false;
                 }
                 document.snapshot = decoded.get();
-                if(!GameGUI::find_node(*document.snapshot, document.selected_node))
+                auto cooked = cook_authoring_document(*document.snapshot);
+                document.cooked_snapshot = cooked.valid() ? cooked.get() : Ref<GameGUI::Document>();
+                if(!find_authoring_node(*document.snapshot, document.selected_node))
                     document.selected_node = document.snapshot->root;
                 document.inspector_revision = 0;
                 document.preview.revision = 0;
@@ -198,7 +200,7 @@ namespace Luna
             void EditorApp::rebuild_inspector(DocumentView& document)
             {
                 if(!document.snapshot) return;
-                const GameGUI::NodeRecord* node = GameGUI::find_node(*document.snapshot,
+                const AuthoringNodeRecord* node = find_authoring_node(*document.snapshot,
                     document.selected_node);
                 if(!node) return;
                 document.node_name = node->name.c_str();
@@ -282,6 +284,13 @@ namespace Luna
                 }
                 Variant metadata;
                 if(invoke(url, params, metadata)) refresh_snapshot(document);
+            }
+
+            void EditorApp::cook(DocumentView& document)
+            {
+                Variant metadata;
+                if(invoke(GameGUIEditor::COOK_URL, editing_params(document), metadata))
+                    update_metadata(document, metadata);
             }
 
             void EditorApp::remove_document_view(u64 id)

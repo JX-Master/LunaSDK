@@ -81,9 +81,6 @@ namespace Luna
             void* m_impl;
         };
 
-        //! Migrates a known node property payload by one or more versions.
-        using NodeMigrateCallback = RV(*)(Variant& properties, u32 from_version, u32 to_version,
-            object_t userdata);
         //! Validates the payload of one known node.
         using NodeValidateCallback = RV(*)(const NodeRecord& node, object_t userdata);
         //! Compiles one known raw node payload into optional typed immutable data.
@@ -108,26 +105,6 @@ namespace Luna
             Guid type;
             //! Stable programmatic type name.
             Name name;
-            //! Author-facing display name.
-            Name display_name;
-            //! Author-facing category.
-            Name category;
-            //! Current property payload version.
-            u32 current_version = 1;
-            //! Property schema consumed by editors and external tools.
-            Variant property_schema;
-            //! Event schema consumed by editors and external tools.
-            Variant event_schema;
-            //! Child slot schema consumed by editors and external tools.
-            Variant slot_schema;
-            //! Style usage schema consumed by editors and external tools.
-            Variant style_schema;
-            //! Parent-layout attachment schema consumed by editors and external tools.
-            Variant layout_schema;
-            //! Default canonical property payload.
-            Variant default_properties;
-            //! Optional payload migration callback.
-            NodeMigrateCallback migrate = nullptr;
             //! Optional known-node validation callback.
             NodeValidateCallback validate = nullptr;
             //! Optional typed immutable cache construction callback.

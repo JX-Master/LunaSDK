@@ -71,7 +71,7 @@ namespace Luna
         //! node state.
         struct [[Luna::interface("{73CC35BC-7056-41D1-9DF4-8C827C79E94A}")]] IInstance : virtual Interface
         {
-            //! Validates, migrates and prepares all known nodes and loaded nested
+            //! Validates and prepares all known nodes and loaded nested
             //! dependencies.
             //! @remark This is the only phase that resolves the nested dependency graph.
             //! It performs no file I/O. Unsupported node types are diagnosed and retained

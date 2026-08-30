@@ -55,7 +55,7 @@ namespace Luna
             void EditorApp::apply_inspector_changes(DocumentView& document)
             {
                 if(!document.snapshot) return;
-                const GameGUI::NodeRecord* node = GameGUI::find_node(*document.snapshot,
+                const AuthoringNodeRecord* node = find_authoring_node(*document.snapshot,
                     document.selected_node);
                 if(!node) return;
                 Variant commands(VariantType::array);
@@ -155,7 +155,7 @@ namespace Luna
                         return;
                     }
                     if(hit.node == drag.source) return;
-                    const GameGUI::NodeRecord* target = GameGUI::find_node(
+                    const AuthoringNodeRecord* target = find_authoring_node(
                         *document.snapshot, hit.node);
                     if(!target || subtree_contains(*document.snapshot, drag.source,
                         hit.node)) return;
@@ -338,6 +338,7 @@ namespace Luna
 
                     if(EditorGUI::is_item_clicked(gui, handles.save_document)) save(*document, false);
                     if(EditorGUI::is_item_clicked(gui, handles.save_as_document)) save(*document, true);
+                    if(EditorGUI::is_item_clicked(gui, handles.cook_document)) cook(*document);
                     if(EditorGUI::is_item_clicked(gui, handles.undo)) undo_document(*document);
                     if(EditorGUI::is_item_clicked(gui, handles.redo)) redo_document(*document);
                     if(EditorGUI::is_item_clicked(gui, handles.close_document))

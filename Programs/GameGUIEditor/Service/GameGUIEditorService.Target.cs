@@ -9,6 +9,7 @@ public sealed class GameGUIEditorServiceTargetRules : TargetRules
             rulesPath: "Programs/GameGUIEditor/Service/GameGUIEditorService.Target.cs")
     {
         Headers("*.hpp", "Source/**.hpp");
+        MetaHeaders("Authoring.hpp");
         Sources("Source/**.cpp");
         DependsOn("Runtime", "GameGUI", "Asset", "Frontend", "VariantUtils", "VFS");
     }

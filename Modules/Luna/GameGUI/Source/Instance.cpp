@@ -73,14 +73,15 @@ namespace Luna
             {
                 return desc.resource_resolver.resolve(desc.resource_resolver.userdata.get(), asset);
             }
-            if (Asset::get_asset_state(asset) != Asset::AssetState::loaded)
+            auto state = Asset::get_asset_data_unit_state(asset, Name());
+            if (!state.valid() || state.get() != Asset::AssetDataUnitState::loaded)
             {
                 return set_error(E_NOT_FOUND, "GameGUI resource resolution requires already loaded asset data.");
             }
-            ObjRef data = Asset::get_asset_data(asset);
-            if (!data)
+            auto data = Asset::get_asset_data_unit_object(asset, Name());
+            if (!data.valid() || !data.get())
                 return E_NOT_FOUND;
-            return data;
+            return data.get();
         }
 
         R<PreparedDocument*> Internal::Instance::prepare_document(const Ref<Document>& source, const Guid& asset_guid,
@@ -136,36 +137,7 @@ namespace Luna
                         continue;
                     }
                     NodeTypeDesc type = move(type_result.get());
-                    if (serialized_node.type_version > type.current_version)
-                    {
-                        add_diagnostic(DiagnosticSeverity::error, serialized_node.id,
-                                       "The GameGUI node payload is newer than its registered provider.");
-                        prepared_node.type = move(type);
-                        u32 node_index = (u32)prepared_document->nodes.size();
-                        prepared_document->node_indices.insert(make_pair(serialized_node.id, node_index));
-                        prepared_document->nodes.push_back(move(prepared_node));
-                        continue;
-                    }
                     prepared_node.type = move(type);
-                    if (prepared_node.record.type_version < prepared_node.type.current_version)
-                    {
-                        if (!prepared_node.type.migrate)
-                        {
-                            add_diagnostic(DiagnosticSeverity::error, serialized_node.id,
-                                           "The GameGUI node requires a migration callback.");
-                            u32 node_index = (u32)prepared_document->nodes.size();
-                            prepared_document->node_indices.insert(make_pair(serialized_node.id, node_index));
-                            prepared_document->nodes.push_back(move(prepared_node));
-                            continue;
-                        }
-                        while (prepared_node.record.type_version < prepared_node.type.current_version)
-                        {
-                            u32 from_version = prepared_node.record.type_version;
-                            luexp(prepared_node.type.migrate(prepared_node.record.properties, from_version,
-                                                             from_version + 1, prepared_node.type.userdata.get()));
-                            ++prepared_node.record.type_version;
-                        }
-                    }
                     if (prepared_node.type.validate)
                     {
                         luexp(prepared_node.type.validate(prepared_node.record, prepared_node.type.userdata.get()));

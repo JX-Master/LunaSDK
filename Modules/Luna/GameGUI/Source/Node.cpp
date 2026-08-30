@@ -25,18 +25,10 @@ namespace Luna
 
         LUNA_GAME_GUI_API RV register_node_type(const NodeTypeDesc& desc)
         {
-            if(desc.type == Guid() || desc.name.empty() || desc.current_version == 0 || !desc.build)
+            if(desc.type == Guid() || desc.name.empty() || !desc.build)
             {
                 return set_error(E_BAD_ARGUMENTS,
-                    "GameGUI node descriptors require a non-zero type, name, current version and build callback.");
-            }
-            if(desc.property_schema.valid() && desc.property_schema.type() != VariantType::object)
-            {
-                return set_error(E_BAD_ARGUMENTS, "GameGUI property schema must be an object.");
-            }
-            if(desc.default_properties.valid() && desc.default_properties.type() != VariantType::object)
-            {
-                return set_error(E_BAD_ARGUMENTS, "GameGUI default properties must be an object.");
+                    "GameGUI node descriptors require a non-zero type, name and build callback.");
             }
             LockGuard guard(g_node_registry_lock);
             if(g_node_types.find(desc.type) != g_node_types.end()) return E_ALREADY_EXISTS;

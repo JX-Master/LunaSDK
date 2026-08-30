@@ -15,7 +15,6 @@
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/VFS/VFS.hpp>
-#include <Luna/VariantUtils/JSON.hpp>
 
 using namespace Luna;
 using namespace Luna::GameGUI;
@@ -24,10 +23,8 @@ using namespace Luna::GameGUI;
 
 namespace
 {
-    usize g_migration_count = 0;
     usize g_state_build_count = 0;
     constexpr const c8* g_document_asset_path = "/GameGUITest/DocumentAsset";
-    constexpr const c8* g_legacy_asset_path = "/GameGUITest/LegacyAsset";
 
     NodeRecord make_node(const Guid& type, const c8* name = "")
     {
@@ -47,95 +44,44 @@ namespace
         return document;
     }
 
-    void write_asset_source(const Path& asset_path, const Variant& data)
-    {
-        Path document_path = asset_path;
-        document_path.append_extension("json");
-        auto file = VFS::open_file(document_path, FileOpenFlag::write,
-            FileCreationMode::create_always);
-        lutest(file.valid());
-        VariantUtils::JSONWriteOptions options;
-        options.indent = true;
-        options.encode_blobs = false;
-        options.allow_non_finite_numbers = false;
-        lupanic_if_failed(VariantUtils::write_json(file.get(), data, options));
-    }
-
     void delete_asset_source(const Path& asset_path)
     {
         Path document_path = asset_path;
-        document_path.append_extension("json");
+        document_path.append_extension("cooked");
         lupanic_if_failed(VFS::delete_file(document_path));
     }
 
     void document_asset_test()
     {
-        NodeRecord unknown = make_node(random_guid(), "UnknownProviderNode");
-        unknown.type_version = 7;
-        unknown.properties["future_property"] = "preserve-me";
-        unknown.properties["nested"] = Variant(VariantType::object);
-        unknown.properties["nested"]["value"] = (u64)42;
-        Ref<Document> source = make_single_node_document(unknown);
-        source->extensions = Variant(VariantType::object);
-        source->extensions["vendor"] = "test";
+        NodeRecord root = make_node(get_flex_node_type(), "Root");
+        root.properties["gap"] = 12.0;
+        root.properties["nested"] = Variant(VariantType::object);
+        root.properties["nested"]["value"] = (u64)42;
+        Ref<Document> source = make_single_node_document(root);
 
         auto asset_result = Asset::new_asset(g_document_asset_path, get_asset_type(), false);
         lutest(asset_result.valid());
         Asset::asset_t asset = asset_result.get();
-        lupanic_if_failed(Asset::set_asset_data(asset, source.object()));
-        lupanic_if_failed(Asset::save_asset(asset));
-        lupanic_if_failed(Asset::set_asset_data(asset, nullptr));
-        lupanic_if_failed(Asset::load_asset(asset));
-        Ref<Document> loaded = Asset::get_asset_data<Document>(asset);
+        lupanic_if_failed(Asset::set_asset_data_unit_object(asset, Name(), source.object()));
+        lupanic_if_failed(Asset::save_asset_data_unit(asset, Name()));
+        lupanic_if_failed(Asset::set_asset_data_unit_object(asset, Name(), nullptr));
+        lupanic_if_failed(Asset::load_asset_data_unit(asset, Name()));
+        auto loaded_result = Asset::get_asset_data_unit_object<Document>(asset, Name());
+        lutest(loaded_result.valid());
+        Ref<Document> loaded = loaded_result.get();
         lutest(loaded);
         lutest(loaded->nodes.size() == 1);
-        lutest(loaded->nodes[0].type == unknown.type);
-        lutest(loaded->nodes[0].type_version == 7);
-        lutest(loaded->nodes[0].properties == unknown.properties);
-        lutest(loaded->extensions == source->extensions);
+        lutest(loaded->nodes[0].type == root.type);
+        lutest(loaded->nodes[0].properties == root.properties);
 
         loaded->nodes[0].properties["unsaved"] = true;
-        lupanic_if_failed(Asset::load_asset(asset, true));
-        loaded = Asset::get_asset_data<Document>(asset);
+        lupanic_if_failed(Asset::load_asset_data_unit(asset, Name(), true));
+        loaded_result = Asset::get_asset_data_unit_object<Document>(asset, Name());
+        lutest(loaded_result.valid());
+        loaded = loaded_result.get();
         lutest(loaded && !loaded->nodes[0].properties.contains("unsaved"));
 
-        InstanceDesc unsupported_desc;
-        unsupported_desc.document = loaded;
-        unsupported_desc.source_asset = asset;
-        Ref<IInstance> unsupported_instance = new_instance(unsupported_desc);
-        lutest(succeeded(unsupported_instance->prepare()));
-        lutest(!unsupported_instance->get_diagnostics().empty());
-        Ref<GUI::IContext> unsupported_gui = GUI::new_context();
-        GUI::FrameDesc unsupported_frame;
-        unsupported_frame.logical_size = Float2U(10.0f, 10.0f);
-        unsupported_gui->begin_frame(unsupported_frame);
-        unsupported_gui->push_layer(1);
-        auto unsupported_root = unsupported_instance->build(unsupported_gui);
-        unsupported_gui->pop_layer();
-        lutest(unsupported_root.valid() && unsupported_root.get().id == 0);
-
-        Variant legacy(VariantType::object);
-        legacy["format_version"] = (u64)0;
-        legacy["root"] = "147503c9-2e13-4854-a5f2-e85639273cad";
-        Variant legacy_node(VariantType::object);
-        legacy_node["id"] = "147503c9-2e13-4854-a5f2-e85639273cad";
-        legacy_node["type"] = "ef366550-5d4b-4b63-9bf7-bcb59c4ad74a";
-        legacy_node["name"] = "LegacyNode";
-        legacy_node["properties"] = Variant(VariantType::object);
-        legacy_node["children"] = Variant(VariantType::array);
-        legacy["nodes"] = Variant(VariantType::array);
-        legacy["nodes"].push_back(move(legacy_node));
-        write_asset_source(g_legacy_asset_path, legacy);
-        auto legacy_asset_result = Asset::new_asset(g_legacy_asset_path, get_asset_type(), false);
-        lutest(legacy_asset_result.valid());
-        lupanic_if_failed(Asset::load_asset(legacy_asset_result.get()));
-        Ref<Document> migrated = Asset::get_asset_data<Document>(legacy_asset_result.get());
-        lutest(migrated);
-        lutest(migrated->format_version == CURRENT_DOCUMENT_FORMAT_VERSION);
-        lutest(migrated->nodes.size() == 1 && migrated->nodes[0].type_version == 1);
-
         delete_asset_source(g_document_asset_path);
-        delete_asset_source(g_legacy_asset_path);
     }
 
     void topology_validation_test()
@@ -158,14 +104,6 @@ namespace
         lutest(failed(validate_document(*document)));
     }
 
-    RV migrate_test_node(Variant& properties, u32 from_version, u32 to_version, object_t userdata)
-    {
-        lutest(from_version == 1 && to_version == 2);
-        properties["migrated"] = true;
-        ++g_migration_count;
-        return ok;
-    }
-
     R<Any> prepare_test_node(const NodeRecord& node, object_t userdata)
     {
         Any data;
@@ -182,8 +120,6 @@ namespace
 
     R<GUI::ElementHandle> build_test_node(BuildContext& context, const NodeRecord& node, object_t userdata)
     {
-        lutest(node.type_version == 2);
-        lutest(node.properties["migrated"].boolean());
         lutest(context.prepared_data().as<u64>() && *context.prepared_data().as<u64>() == 123);
         Variant& state = context.state();
         state["build_count"] = state["build_count"].unum() + 1;
@@ -199,15 +135,12 @@ namespace
         return ok;
     }
 
-    void registry_migration_and_state_test()
+    void registry_and_state_test()
     {
         Guid type = random_guid();
         NodeTypeDesc desc;
         desc.type = type;
         desc.name = "GameGUITest.StatefulNode";
-        desc.current_version = 2;
-        desc.property_schema = Variant(VariantType::object);
-        desc.migrate = migrate_test_node;
         desc.prepare = prepare_test_node;
         desc.create_state = create_test_state;
         desc.build = build_test_node;
@@ -216,14 +149,12 @@ namespace
         lutest(failed(register_node_type(desc)));
 
         NodeRecord node = make_node(type);
-        node.type_version = 1;
         Ref<Document> document = make_single_node_document(node);
         InstanceDesc instance_desc;
         instance_desc.document = document;
         instance_desc.instance_scope = 0x12345678;
         Ref<IInstance> instance = new_instance(instance_desc);
         lupanic_if_failed(instance->prepare());
-        lutest(g_migration_count == 1);
 
         Ref<GUI::IContext> gui = GUI::new_context();
         GUI::FrameDesc frame;
@@ -364,7 +295,7 @@ namespace
     {
         auto asset = Asset::new_asset(Path(), get_asset_type(), false);
         lutest(asset.valid());
-        lupanic_if_failed(Asset::set_asset_data(asset.get(), document.object()));
+        lupanic_if_failed(Asset::set_asset_data_unit_object(asset.get(), Name(), document.object()));
         return asset.get();
     }
 
@@ -405,7 +336,7 @@ namespace
 
         Asset::asset_t parent_asset = make_dynamic_document_asset(document);
         Vector<Asset::asset_t> references;
-        Asset::get_referred_assets(parent_asset, references);
+        Asset::get_asset_data_unit_referred_assets(parent_asset, Name(), references);
         lutest(references.size() == 1 && references[0] == nested_asset);
 
         InstanceDesc desc;
@@ -485,7 +416,7 @@ int main()
     lupanic_if_failed(mount_result);
     document_asset_test();
     topology_validation_test();
-    registry_migration_and_state_test();
+    registry_and_state_test();
     button_action_test();
     canvas_layout_test();
     nested_asset_test();

@@ -8,6 +8,7 @@
 * @date 2026/8/26
 */
 #pragma once
+#include "Authoring.hpp"
 #include <Luna/Frontend/Frontend.hpp>
 #include <Luna/Runtime/UniquePtr.hpp>
 
@@ -37,6 +38,8 @@ namespace Luna
         inline constexpr const c8* SAVE_URL = "/GameGUIEditor/Documents/Save";
         //! Stable Frontend URL used to save and bind a document to a path.
         inline constexpr const c8* SAVE_AS_URL = "/GameGUIEditor/Documents/SaveAs";
+        //! Stable Frontend URL used to cook the current authoring snapshot into the main data unit.
+        inline constexpr const c8* COOK_URL = "/GameGUIEditor/Documents/Cook";
         //! Stable Frontend URL used to close one document.
         inline constexpr const c8* CLOSE_DOCUMENT_URL = "/GameGUIEditor/Documents/Close";
         //! Stable Frontend URL used to enumerate registered GameGUI node schemas.

@@ -382,8 +382,14 @@ namespace Luna
                     }
                     if(!document.preview.instance || document.preview.revision != document.revision)
                     {
+                        if(!document.cooked_snapshot)
+                        {
+                            document.preview.instance.reset();
+                            document.preview.revision = document.revision;
+                            return ok;
+                        }
                         GameGUI::InstanceDesc desc;
-                        desc.document = document.snapshot;
+                        desc.document = document.cooked_snapshot;
                         desc.instance_scope = GUI::make_scoped_id(GUI::DEFAULT_DATA_SCOPE,
                             document.id);
                         if(document.asset_guid != Guid())
@@ -427,7 +433,9 @@ namespace Luna
                         fixed_layout(document.preview.node_size.x,
                             document.preview.node_size.y));
                     draw_preview_node_background(document.preview.context);
-                    lulet(root, document.preview.instance->build(document.preview.context));
+                    GUI::ElementHandle root;
+                    if(document.preview.instance)
+                        luset(root, document.preview.instance->build(document.preview.context));
                     if(root.id)
                     {
                         const GUI::Element* root_element =
@@ -488,10 +496,11 @@ namespace Luna
                     document.preview.context->route_input();
                     bool preview_resized = process_preview_resize(document.preview,
                         resize_handle);
-                    luexp(document.preview.instance->resolve_interactions(
-                        document.preview.context));
-                    if(preview_resized ||
-                        document.preview.instance->relayout_requested())
+                    if(document.preview.instance)
+                        luexp(document.preview.instance->resolve_interactions(
+                            document.preview.context));
+                    if(preview_resized || (document.preview.instance &&
+                        document.preview.instance->relayout_requested()))
                     {
                         document.preview.context->set_layout_config(preview_node,
                             fixed_layout(document.preview.node_size.x,

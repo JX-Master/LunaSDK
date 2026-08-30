@@ -2,7 +2,7 @@
 Proposed.
 
 ## Last updated
-2026/8/27
+2026/8/29
 
 ## Background
 LunaSDK separates its current GUI infrastructure into two layers. `GUI` is the low-level, data-oriented foundation
@@ -53,8 +53,8 @@ GameGUIEditor GUI           --> EditorGUI --> GUI
 CLI/MCP adapter             --> GameGUIEditorService
 ```
 
-`GameGUI` directly depends on `GUI`, `Asset`, `VariantUtils`, `VFS` and `Runtime`; its document codec uses
-`VariantUtils` JSON and VFS streams. It must not depend on `EditorGUI`. `GameGUIEditorService` depends on `GameGUI`,
+`GameGUI` directly depends on `GUI`, `Asset`, `VFS` and `Runtime`; its loader reads and writes the current cooked
+runtime representation. It must not depend on `EditorGUI` or authoring-format compatibility code. `GameGUIEditorService` depends on `GameGUI`,
 `Asset`, `Frontend`, `VariantUtils` and `VFS`, but not on `EditorGUI`, `Window` or swap-chain state. The
 `GameGUIEditor` application uses EditorGUI for its own editor chrome and GameGUI for previews. An optional protocol
 adapter depends on `MCP` to expose selected service operations through standard IO or Streamable HTTP.
@@ -63,13 +63,28 @@ GameGUI may own persistent semantic nodes, compiled node data and per-instance s
 low-level GUI context, execution tree, layout engine, input router or renderer. Each frame, GameGUI submits one or
 more GUI elements for every semantic node that contributes content to that frame.
 
-### GameGUI asset document
-Register one stable GameGUI asset type with the Asset module. A GameGUI asset is stored as JSON and contains a
-versioned semantic node document rather than serialized `GUI::Element` records.
+### GameGUI asset data units
+Register one stable GameGUI asset type with the Asset module. Following
+[[ADR-0014 Introduce multiple data units to assets]], each GameGUI asset uses two data units with the same asset GUID
+and path:
+
+1. The implicit main data unit uses the `Luna.GameGUI.Runtime` loader and stores the cooked runtime document.
+2. The named `Authoring` data unit uses the `Luna.GameGUIEditor.Authoring` loader and stores versioned JSON source.
+
+The initial physical-file convention is `<asset>.cooked` for the compact binary main unit and `<asset>.json` for the
+human-readable Authoring unit. The cooked stream has a fixed identifying magic but no compatibility version field;
+the cooker and runtime codec change together.
+
+The main data unit contains only the latest semantic node representation expected by the matching GameGUI code. It
+has no document-format or node-payload version fields, migration callbacks, editor schemas, extension records or
+unknown-provider preservation contract. Loading still performs integrity and topology validation. Because runtime
+assets and code are cooked and shipped together, incompatible authoring data never reaches this loader.
+
+The `Authoring` unit contains the canonical editor source model:
 
 The canonical document model contains:
 
-1. A document format version.
+1. An authoring document format version.
 2. The stable GUID of the root node.
 3. A flat collection of node records addressed by stable node GUID.
 4. Optional extension data that older editors can preserve without interpreting.
@@ -92,34 +107,43 @@ type GUID, version, properties and children for an unknown node type so that ope
 optional node provider does not destroy its data. Runtime instantiation reports a diagnostic when a required node type
 is unavailable.
 
-GameGUI owns one document codec shared by its Asset type callbacks and GameGUIEditor. The Asset integration uses the
-codec to load and save registered GameGUI assets, while the editor can use the same codec with VFS to persist a working
-copy without temporarily replacing the Asset registry's published data.
+GameGUI owns only the current cooked codec and main-unit loader. GameGUIEditorService owns the authoring codec,
+authoring loader, migrations, unknown-record preservation and cooking operation. Saving an editor document writes the
+`Authoring` unit only. Cooking validates and migrates a snapshot, rejects unsupported node types, produces a current
+`GameGUI::Document`, and writes the main unit. Preview cooking happens in memory and never publishes the dirty preview
+snapshot into the main Asset data unit. Source and cooked saves are intentionally independent; cooked data is derived
+and can always be rebuilt.
+
+GameGUIEditorService exposes both document-snapshot cooking and a headless asset cooking helper so an asset cooking
+pipeline can rebuild the main unit from the loaded Authoring unit. ADR-0014 does not provide a shipping-strip
+operation: packaging must deliberately include the main data and emit metadata without the `Authoring` descriptor or
+source file. It must not blindly package every path returned by generic asset-file enumeration.
 
 The document owns persistent semantic data only. GUI element handles, callback pointers, RHI pointers, interaction
 state, selection, editor history and preview state are never serialized into the asset.
 
-### Node type registry and schema
-GameGUI provides a public node-type registry. Every node type descriptor contains:
+### Runtime node registry and editor schema
+GameGUI provides a public runtime node-type registry. Every runtime node type descriptor contains:
 
-1. A stable type GUID, programmatic name, display name and category.
-2. The current node-type schema version.
-3. Property, event, child-slot, style-usage and parent-layout attachment schema.
-4. Default property construction.
-5. Stepwise property migration and validation.
-6. Per-instance state construction and the frame-generation callback.
-7. Direct asset-reference collection.
+1. A stable type GUID and programmatic name.
+2. Current-payload validation and optional typed-cache preparation.
+3. Per-instance state construction and the frame-generation callback.
+4. Direct asset-reference collection.
 
-User modules may register additional node types without modifying GameGUI or GameGUIEditor. Duplicate stable type
-identities are errors rather than silent replacement. Reflection metadata and property attributes may supply default
-property schema, but node structure, slots, events, migration and generation remain explicit GameGUI metadata.
+GameGUIEditorService provides the corresponding authoring node-type registry. Its descriptors contain display name,
+category, current authoring payload version, schemas, default properties and stepwise migration. The editor descriptor
+refers to the same stable node type GUID but is not linked into runtime-only applications.
 
-Loading always performs raw JSON decoding, document-format migration and generic topology validation. Topology
+User modules may register matching runtime and editor descriptors without modifying either framework. Duplicate stable
+type identities are errors rather than silent replacement. Reflection metadata and property attributes may generate
+default editor schemas, while custom editor adapters may provide richer controls. Neither schema nor EditorGUI draw
+callbacks are stored in the GameGUI runtime registry.
+
+Authoring loading performs raw JSON decoding, document-format migration and generic topology validation. Topology
 validation rejects duplicate node GUIDs, missing roots or children, multiple parents and cycles in the document tree.
-Only nodes with a registered provider and a supported schema version undergo node-type migration and typed-cache
-construction. Unknown node types and nodes newer than the installed provider remain as raw records and do not prevent
-the document from being published for editing and lossless round trips; runtime instance preparation reports them and
-does not generate the unsupported subtree.
+Only nodes with a registered editor provider and a supported schema version undergo node-type migration. Unknown node
+types and nodes newer than the installed provider remain raw records and do not prevent lossless editor round trips.
+Cooking rejects them, so runtime instance preparation receives only current payloads.
 
 ### Nested GameGUI assets
 A built-in asset-instance node stores the stable GUID of another GameGUI asset as a canonical string in its
@@ -138,7 +162,7 @@ GameGUI registers direct referred-asset enumeration for nested GameGUI assets an
 descriptors. The Asset module does not recursively load this graph. Hosts explicitly load or reload the required
 assets before instance generation; GameGUI does not synchronously load dependencies from the render or GUI-build path.
 
-Asset refresh is explicit. `Asset::load_asset(asset, true)` or an equivalent host operation replaces the registered
+Asset refresh is explicit. `Asset::load_asset_data_unit(asset, Name(), true)` or an equivalent host operation replaces the registered
 asset data, after which the host rebuilds or rebinds affected GameGUI instances. Automatic file watching, implicit
 reload, asset revision notifications and live instance patching are outside the initial design.
 
@@ -212,10 +236,11 @@ GUI adapter decides which tab becomes active. The editor may keep several differ
 determined by whether the current history state equals the saved history state, so undoing back to the save point
 restores a clean document.
 
-Opening copies the loaded definition into service-owned editable state. Frontend queries expose immutable snapshots
-tagged with the document revision for preview generation; no adapter receives the mutable working copy. Edits and saves
-do not mutate GameGUI definitions already published in the Asset registry. Save writes the asset file and advances the
-document's save point; runtime users adopt the new definition only through the explicit reload and instance
+Opening loads and copies the `Authoring` data unit into service-owned editable state. Frontend queries expose immutable
+snapshots tagged with the document revision for preview generation; no adapter receives the mutable working copy.
+Edits and source saves do not mutate GameGUI definitions already published in the main data unit. Save writes the
+`Authoring` unit and advances the document's save point. An explicit cook writes the main unit; runtime users adopt the
+new definition only through the explicit reload and instance
 rebuild/rebind path. This keeps live preview responsive without introducing implicit runtime hot reload.
 
 Edits are expressed as semantic commands addressed by document ID and stable node GUID. Structural edits, property
@@ -241,7 +266,7 @@ protocol.
 
 ### GameGUIEditor GUI and preview
 The GUI application uses EditorGUI DockSpace or tabs for multiple open documents. Its hierarchy, node palette,
-property inspector and validation views consume GameGUI node schemas rather than hard-coded knowledge of built-in
+property inspector and validation views consume GameGUIEditor authoring node schemas rather than hard-coded knowledge of built-in
 node C++ types. All mutations pass through the service command surface.
 
 Each open document owns independent preview state. When its preview is visible, the GUI adapter lazily creates or
@@ -257,7 +282,8 @@ Expected benefits:
 
 1. Games and mobile applications gain a retained, asset-backed GUI model without coupling to EditorGUI visuals.
 2. GUI remains the only low-level execution, layout, input and rendering runtime.
-3. Stable node identities and schemas support visual editing, automation, migration and custom node providers.
+3. Stable node identities and editor-only schemas support visual editing, automation, migration and custom providers
+   without increasing runtime registry or asset size.
 4. Nested assets allow reusable interface composition without copying source trees.
 5. AaaS gives the GUI, CLI and MCP adapters one tested editing behavior.
 6. Per-document history and save points make simultaneous asset editing predictable.
@@ -267,8 +293,7 @@ Costs and risks:
 1. The semantic tree and generated GUI tree are intentionally different representations and require a compiler,
    identity mapping and diagnostics.
 2. Complete frame generation has CPU cost and needs large-tree benchmarks and frame-storage discipline.
-3. Versioned raw properties, custom node providers and unknown-node preservation make loading and validation more
-   complex than ordinary reflected structure serialization.
+3. Maintaining separate authoring and cooked representations requires explicit cooking and stale-output diagnostics.
 4. Nested assets require explicit dependency loading and cycle diagnostics because Asset does not provide them.
 5. Separate preview contexts and render targets increase editor GPU memory and require a dedicated input bridge.
 6. The selected single-input-stream model does not support concurrent touch points or simultaneous input modes.
@@ -374,5 +399,7 @@ framework, service boundary and preview lifecycle are sufficiently stable. This 
 define the initial contract during that period.
 
 ## Version history
+* **2026/8/29** Renumbered to ADR-0015 after ADR-0014 was assigned to Asset data units; split each GameGUI asset into
+  an editor-owned versioned `Authoring` unit and a latest-only cooked main unit.
 * **2026/8/27** Renumbered from ADR-0012 to ADR-0014 after restoring the approved application-menu and message-box ADR numbers.
 * **2026/8/25** Proposed.

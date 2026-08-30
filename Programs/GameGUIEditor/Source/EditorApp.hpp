@@ -110,7 +110,8 @@ namespace Luna
                 bool can_undo = false;
                 bool can_redo = false;
                 bool panel_open = true;
-                Ref<GameGUI::Document> snapshot;
+                Ref<AuthoringDocument> snapshot;
+                Ref<GameGUI::Document> cooked_snapshot;
                 Variant diagnostics;
                 Guid selected_node;
                 u64 inspector_revision = 0;
@@ -156,6 +157,7 @@ namespace Luna
                 GUI::ElementHandle open_document;
                 GUI::ElementHandle save_document;
                 GUI::ElementHandle save_as_document;
+                GUI::ElementHandle cook_document;
                 GUI::ElementHandle close_document;
                 GUI::ElementHandle undo;
                 GUI::ElementHandle redo;
@@ -200,6 +202,7 @@ namespace Luna
                 i32 max_frames = -1;
 #if defined(LUNA_PLATFORM_MACOS)
                 bool application_menu_has_document = false;
+                bool application_menu_can_cook = false;
                 bool application_menu_can_undo = false;
                 bool application_menu_can_redo = false;
 #endif
@@ -248,6 +251,7 @@ namespace Luna
                 bool confirm_exit();
                 void request_close(DocumentView& document, bool discard);
                 void save(DocumentView& document, bool save_as);
+                void cook(DocumentView& document);
                 void undo_document(DocumentView& document);
                 void redo_document(DocumentView& document);
 #if defined(LUNA_PLATFORM_MACOS)
@@ -271,9 +275,9 @@ namespace Luna
             bool point_in_rect(const RectF& rect, const Float2U& point);
             RectF item_screen_rect(GUI::IContext* context,
                 const GUI::ElementHandle& item, bool clip_rect = false);
-            bool subtree_contains(const GameGUI::Document& document, const Guid& root,
+            bool subtree_contains(const AuthoringDocument& document, const Guid& root,
                 const Guid& node);
-            bool find_parent_info(const GameGUI::Document& document, const Guid& node,
+            bool find_parent_info(const AuthoringDocument& document, const Guid& node,
                 Guid& parent, usize& sibling_index);
             Variant editing_params(const DocumentView& document);
             RV draw_hierarchy_drop(GUI::IContext* context,
