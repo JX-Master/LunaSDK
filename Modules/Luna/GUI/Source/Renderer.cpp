@@ -437,8 +437,12 @@ namespace Luna
                     BufferDesc(BufferUsageFlag::vertex_buffer, sizeof(vertices))));
                 luset(m_sdf_index_buffer, m_device->new_buffer(MemoryType::upload,
                     BufferDesc(BufferUsageFlag::index_buffer, sizeof(indices))));
+                usize sdf_frame_buffer_size = align_upper(
+                    sizeof(SDFFrameBuffer),
+                    m_device->check_feature(DeviceFeature::uniform_buffer_data_alignment).
+                        uniform_buffer_data_alignment);
                 luset(m_sdf_frame_buffer, m_device->new_buffer(MemoryType::upload,
-                    BufferDesc(BufferUsageFlag::uniform_buffer, sizeof(SDFFrameBuffer))));
+                    BufferDesc(BufferUsageFlag::uniform_buffer, sdf_frame_buffer_size)));
                 void* mapped_data = nullptr;
                 luexp(m_sdf_vertex_buffer->map(0, 0, &mapped_data));
                 memcpy(mapped_data, vertices, sizeof(vertices));
@@ -1532,7 +1536,8 @@ namespace Luna
                     SDFProgramPage& color_page = m_sdf_color_pages[pair.color_page];
                     luexp(pair.descriptor_set->update_descriptors({
                         WriteDescriptorSet::uniform_buffer_view(0,
-                            BufferViewDesc::uniform_buffer(m_sdf_frame_buffer, 0, sizeof(SDFFrameBuffer))),
+                            BufferViewDesc::uniform_buffer(m_sdf_frame_buffer, 0,
+                                (u32)m_sdf_frame_buffer->get_desc().size)),
                         WriteDescriptorSet::read_buffer_view(1,
                             BufferViewDesc::structured_buffer(shape_page.buffer, 0,
                                 shape_page.num_floats, sizeof(f32))),
