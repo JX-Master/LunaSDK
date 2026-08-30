@@ -27,6 +27,7 @@ internal static class Program
             ("make system reports indexed task progress", IndexedTaskProgress),
             ("aggregate actions execute without task progress", AggregateActionsDoNotReportProgress),
             ("application targets produce native executable graphs", ApplicationTargetGraph),
+            ("MSVC UTF-8 compilation is enabled by default and configurable", MsvcUtf8CompilationOption),
             ("apple deployment settings affect layout and commands", AppleDeploymentSettings),
         };
 
@@ -656,6 +657,49 @@ internal static class Program
         True(windowsLink.Command!.Contains("application=true", StringComparison.Ordinal), "Windows application link marker");
     }
 
+    private static void MsvcUtf8CompilationOption()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("MsvcUtf8");
+        Write(root, "app.cpp", "const char* text = \"中文\"; int main() { return text[0] == 0; }");
+        Write(root, "App.Target.cs", string.Empty);
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault() with
+        {
+            Platform = BuildPlatform.Windows,
+            Architecture = "x64",
+            RhiApi = RhiApi.D3D12,
+        };
+
+        var defaultTarget = new ApplicationTargetRules().ToDefinition(
+            workspace, options, "Host", "utf8-default", isHostProject: true);
+        True(defaultTarget.EnableMsvcUtf8, "MSVC UTF-8 default");
+        var defaultGraph = new CppTargetGraphGenerator().Generate(
+            workspace, options, new[] { defaultTarget }, defaultTarget.QualifiedName);
+        var defaultCompile = defaultGraph.Nodes.Single(
+            node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.compile");
+        True(defaultCompile.Command!.Contains("msvc_utf8=True", StringComparison.Ordinal),
+            "enabled MSVC UTF-8 action identity");
+        var defaultCommandsPath = Path.Combine(root, "compile_commands.default.json");
+        CompileCommandsWriter.Write(workspace, defaultGraph, defaultCommandsPath);
+        True(File.ReadAllText(defaultCommandsPath).Contains("/utf-8", StringComparison.Ordinal),
+            "default MSVC UTF-8 compiler argument");
+
+        var disabledTarget = new ApplicationTargetRules(enableMsvcUtf8: false).ToDefinition(
+            workspace, options, "Host", "utf8-disabled", isHostProject: true);
+        True(!disabledTarget.EnableMsvcUtf8, "disabled MSVC UTF-8 target option");
+        var disabledGraph = new CppTargetGraphGenerator().Generate(
+            workspace, options, new[] { disabledTarget }, disabledTarget.QualifiedName);
+        var disabledCompile = disabledGraph.Nodes.Single(
+            node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.compile");
+        True(disabledCompile.Command!.Contains("msvc_utf8=False", StringComparison.Ordinal),
+            "disabled MSVC UTF-8 action identity");
+        var disabledCommandsPath = Path.Combine(root, "compile_commands.disabled.json");
+        CompileCommandsWriter.Write(workspace, disabledGraph, disabledCommandsPath);
+        True(!File.ReadAllText(disabledCommandsPath).Contains("/utf-8", StringComparison.Ordinal),
+            "disabled MSVC UTF-8 compiler argument");
+    }
+
     private static void AppleDeploymentSettings()
     {
         using var scope = new TestScope();
@@ -828,11 +872,15 @@ internal static class Program
 
     private sealed class ApplicationTargetRules : TargetRules
     {
-        public ApplicationTargetRules()
+        public ApplicationTargetRules(bool? enableMsvcUtf8 = null)
             : base("App", ".", "App.Target.cs")
         {
             Kind = BuildTargetKind.Application;
             Sources("app.cpp");
+            if(enableMsvcUtf8.HasValue)
+            {
+                MsvcUtf8(enableMsvcUtf8.Value);
+            }
         }
     }
 

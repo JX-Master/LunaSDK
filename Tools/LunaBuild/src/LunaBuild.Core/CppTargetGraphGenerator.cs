@@ -1331,6 +1331,10 @@ public sealed class CppTargetGraphGenerator
         {
             lines.Add($"runtime={target.MsvcRuntimeLibrary}");
         }
+        if(options.Platform == BuildPlatform.Windows)
+        {
+            lines.Add($"msvc_utf8={target.EnableMsvcUtf8}");
+        }
         lines.AddRange(target.Defines.Select(define => $"define={define}"));
         lines.AddRange(dependencyOutputs
             .SelectMany(output => output.PublicDefines)

@@ -25,6 +25,7 @@ public abstract class TargetRules
     private BuildWorkspace? _currentWorkspace;
     private BuildOptions? _currentOptions;
     private string? _msvcRuntimeLibrary;
+    private bool _enableMsvcUtf8 = true;
     private bool _enableRtti = true;
     private string? _appleBundleIdentifier;
     private string? _appleBundleDisplayName;
@@ -171,6 +172,11 @@ public abstract class TargetRules
     protected void MsvcRuntimeLibrary(string runtimeLibrary)
     {
         _msvcRuntimeLibrary = runtimeLibrary;
+    }
+
+    protected void MsvcUtf8(bool enabled)
+    {
+        _enableMsvcUtf8 = enabled;
     }
 
     protected void Rtti(bool enabled)
@@ -335,6 +341,7 @@ public abstract class TargetRules
                 Kind: Kind,
                 Category: Category,
                 MsvcRuntimeLibrary: _msvcRuntimeLibrary,
+                EnableMsvcUtf8: _enableMsvcUtf8,
                 EnableRtti: _enableRtti,
                 DotNetProjectFile: _dotNetProject is null
                     ? null
@@ -390,6 +397,7 @@ public abstract class TargetRules
             SupportedPlatforms: _supportedPlatforms.ToArray(),
             Category: Category,
             MsvcRuntimeLibrary: _msvcRuntimeLibrary,
+            EnableMsvcUtf8: _enableMsvcUtf8,
             EnableRtti: _enableRtti,
             AppleBundleIdentifier: _appleBundleIdentifier,
             AppleBundleDisplayName: _appleBundleDisplayName,
@@ -426,6 +434,7 @@ public abstract class TargetRules
         }
         Category = state.Category;
         _msvcRuntimeLibrary = state.MsvcRuntimeLibrary;
+        _enableMsvcUtf8 = state.EnableMsvcUtf8;
         _enableRtti = state.EnableRtti;
         _appleBundleIdentifier = state.AppleBundleIdentifier;
         _appleBundleDisplayName = state.AppleBundleDisplayName;
@@ -471,6 +480,7 @@ public abstract class TargetRules
         BuildPlatform[] SupportedPlatforms,
         BuildTargetCategory Category,
         string? MsvcRuntimeLibrary,
+        bool EnableMsvcUtf8,
         bool EnableRtti,
         string? AppleBundleIdentifier,
         string? AppleBundleDisplayName,

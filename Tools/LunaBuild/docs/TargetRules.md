@@ -227,6 +227,19 @@ SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Lin
 `inspect` and graph generation filter unsupported targets before dependency
 resolution.
 
+## Compiler Options
+
+MSVC receives `/utf-8` by default so both the source and execution character
+sets use UTF-8. A target can explicitly opt out when it must preserve the MSVC
+code-page behavior:
+
+```csharp
+MsvcUtf8(false);
+```
+
+This option only affects MSVC compilation. Changing it is part of the compile
+action identity and therefore invalidates previously compiled object files.
+
 ## Project Build Properties
 
 Project-specific build switches should be declared in a `*.Project.cs` file,
