@@ -25,6 +25,7 @@ internal static class Program
             ("dotnet builds honor the requested configuration", DotNetBuildConfiguration),
             ("cpp actions describe their input and output files", CppActionDescriptions),
             ("make system reports indexed task progress", IndexedTaskProgress),
+            ("make system releases dependents without batch barriers", AsyncDagScheduling),
             ("aggregate actions execute without task progress", AggregateActionsDoNotReportProgress),
             ("application targets produce native executable graphs", ApplicationTargetGraph),
             ("MSVC UTF-8 compilation is enabled by default and configurable", MsvcUtf8CompilationOption),
@@ -657,6 +658,48 @@ internal static class Program
         True(windowsLink.Command!.Contains("application=true", StringComparison.Ordinal), "Windows application link marker");
     }
 
+    private static void AsyncDagScheduling()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("AsyncDagScheduling");
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault();
+        var slow = TestFileActionNode("out/slow.txt", "slow", delayMilliseconds: 300);
+        var fast = TestFileActionNode("out/fast.txt", "fast", delayMilliseconds: 30);
+        var dependent = TestFileActionNode("out/dependent.txt", "dependent", delayMilliseconds: 10) with
+        {
+            Dependencies = new[] { fast.Id },
+        };
+        var graph = new BuildGraph(2, options, new[] { slow, fast, dependent }, new[] { slow.Id, dependent.Id });
+
+        var events = new List<string>();
+        var eventsLock = new object();
+        void Record(string value)
+        {
+            lock(eventsLock)
+            {
+                events.Add(value);
+            }
+        }
+
+        var executor = new TestFileActionExecutor(
+            onStarted: description => Record("start:" + description),
+            onFinished: description => Record("finish:" + description));
+        var makeSystem = new MakeSystemBackend(new[] { executor }, maxParallelism: 2);
+        makeSystem.BuildAsync(workspace, graph).GetAwaiter().GetResult();
+
+        int EventIndex(string value)
+        {
+            lock(eventsLock)
+            {
+                return events.IndexOf(value);
+            }
+        }
+
+        True(EventIndex("finish:fast") < EventIndex("start:dependent"), "dependent waits for its own prerequisite");
+        True(EventIndex("start:dependent") < EventIndex("finish:slow"), "dependent starts before an unrelated slow task finishes");
+    }
+
     private static void MsvcUtf8CompilationOption()
     {
         using var scope = new TestScope();
@@ -886,9 +929,14 @@ internal static class Program
 
     private sealed class TestFileActionExecutor : KnownActionExecutor
     {
-        public TestFileActionExecutor()
+        private readonly Action<string>? _onStarted;
+        private readonly Action<string>? _onFinished;
+
+        public TestFileActionExecutor(Action<string>? onStarted = null, Action<string>? onFinished = null)
             : base("test.file")
         {
+            _onStarted = onStarted;
+            _onFinished = onFinished;
         }
 
         public override string GetDescription(MakeActionContext context)
@@ -898,11 +946,14 @@ internal static class Program
 
         public override async Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
         {
+            var description = RequiredPayloadValue(context.ActionPayload, "description");
             var delay = int.Parse(RequiredPayloadValue(context.ActionPayload, "delay"));
             var output = context.Workspace.ResolveRepositoryPath(RequiredPayloadValue(context.ActionPayload, "output"));
+            _onStarted?.Invoke(description);
             await Task.Delay(delay, cancellationToken);
             Directory.CreateDirectory(Path.GetDirectoryName(output)!);
             await File.WriteAllTextAsync(output, "generated", cancellationToken);
+            _onFinished?.Invoke(description);
         }
 
         private static string RequiredPayloadValue(string payload, string name)

@@ -87,9 +87,13 @@ internal static class ProcessRunner
         {
             await process.WaitForExitAsync(timeoutCts.Token);
         }
-        catch(OperationCanceledException) when(!cancellationToken.IsCancellationRequested)
+        catch(OperationCanceledException)
         {
             TryKill(process);
+            if(cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             throw new TimeoutException($"Process timed out after {timeout.TotalSeconds:0}s: {fileName} {FormatArguments(argumentString, argumentList)}");
         }
 
@@ -112,7 +116,7 @@ internal static class ProcessRunner
         }
         catch
         {
-            // Best effort cleanup after timeout.
+            // Best effort cleanup after timeout or build cancellation.
         }
     }
 }

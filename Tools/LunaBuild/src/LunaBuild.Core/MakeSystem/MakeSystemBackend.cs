@@ -123,55 +123,78 @@ public sealed class MakeSystemBackend
         var finishedNodes = buildInfos.Count(info => !info.NeedsBuild);
         var executedActions = 0;
         var nextTaskIndex = 0;
-        while(finishedNodes < buildInfos.Length)
+        var ready = new Queue<BuildInfo>(buildInfos.Where(
+            info => info.NeedsBuild && info.RemainingDependencies == 0));
+        var running = new List<(BuildInfo Info, Task Task)>(_maxParallelism);
+        using var schedulerCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var ready = buildInfos
-                .Where(info => info.NeedsBuild && !info.Scheduled && info.RemainingDependencies == 0)
-                .Take(_maxParallelism)
-                .ToArray();
-            if(ready.Length == 0)
+            while(finishedNodes < buildInfos.Length)
             {
-                throw new MakeSystemException("Internal MakeSystem scheduler deadlock.");
-            }
+                schedulerCancellation.Token.ThrowIfCancellationRequested();
+                while(ready.Count > 0 && running.Count < _maxParallelism)
+                {
+                    var info = ready.Dequeue();
+                    info.Scheduled = true;
 
-            foreach(var info in ready)
-            {
-                info.Scheduled = true;
-            }
+                    int? taskIndex = null;
+                    if(info.Action?.Description is not null)
+                    {
+                        taskIndex = ++nextTaskIndex;
+                    }
+                    var task = ExecuteNodeAsync(
+                        workspace,
+                        validated,
+                        cache,
+                        info,
+                        taskIndex,
+                        totalTasks,
+                        options.Progress,
+                        schedulerCancellation.Token);
+                    running.Add((info, task));
+                }
 
-            var runningTasks = new List<Task>(ready.Length);
-            foreach(var info in ready)
-            {
-                int? taskIndex = null;
-                if(info.Action?.Description is not null)
+                if(running.Count == 0)
                 {
-                    taskIndex = ++nextTaskIndex;
+                    throw new MakeSystemException("Internal MakeSystem scheduler deadlock.");
                 }
-                runningTasks.Add(ExecuteNodeAsync(
-                    workspace,
-                    validated,
-                    cache,
-                    info,
-                    taskIndex,
-                    totalTasks,
-                    options.Progress,
-                    cancellationToken));
-            }
-            await Task.WhenAll(runningTasks);
-            foreach(var info in ready)
-            {
-                info.Finished = true;
-                ++finishedNodes;
-                if(!string.IsNullOrWhiteSpace(info.Node.Command))
+
+                await Task.WhenAny(running.Select(entry => entry.Task));
+                var completed = running.Where(entry => entry.Task.IsCompleted).ToArray();
+                foreach(var entry in completed)
                 {
-                    ++executedActions;
-                }
-                foreach(var dependent in info.Dependents)
-                {
-                    --dependent.RemainingDependencies;
+                    await entry.Task;
+                    running.Remove(entry);
+
+                    var info = entry.Info;
+                    info.Finished = true;
+                    ++finishedNodes;
+                    if(!string.IsNullOrWhiteSpace(info.Node.Command))
+                    {
+                        ++executedActions;
+                    }
+                    foreach(var dependent in info.Dependents)
+                    {
+                        if(--dependent.RemainingDependencies == 0)
+                        {
+                            ready.Enqueue(dependent);
+                        }
+                    }
                 }
             }
+        }
+        catch
+        {
+            schedulerCancellation.Cancel();
+            try
+            {
+                await Task.WhenAll(running.Select(entry => entry.Task));
+            }
+            catch
+            {
+                // Preserve the exception that stopped scheduling after all running actions exit.
+            }
+            throw;
         }
 
         cache.Save();
