@@ -272,12 +272,20 @@ public sealed class CppTargetGraphGenerator
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
-            var linkDependencyIds = objectIds.Concat(dependencyTargetIds).Concat(dependencyLinkInputIds).Concat(explicitLinkInputIds).ToArray();
+            var isStaticArchive = !target.Kind.ProducesNativeExecutable() && !_options.Shared;
+            // Static archive contents are a build-system invariant, not a target
+            // option: an archive contains only object files produced by that target.
+            var linkInputIds = isStaticArchive
+                ? objectIds.ToArray()
+                : objectIds.Concat(dependencyLinkInputIds).Concat(explicitLinkInputIds).ToArray();
+            var linkDependencyIds = isStaticArchive
+                ? objectIds.ToArray()
+                : objectIds.Concat(dependencyTargetIds).Concat(dependencyLinkInputIds).Concat(explicitLinkInputIds).ToArray();
             AddNode(new BuildGraphNode(
                 Id: binaryId,
                 Kind: BuildGraphNodeKind.File,
                 Path: _workspace.ToRepositoryRelativePath(binaryPath),
-                Command: BuildLinkCommandDescription(_workspace, _options, target, dependencyFrameworks, binaryPath, objectIds.Concat(dependencyLinkInputIds).Concat(explicitLinkInputIds).ToArray()),
+                Command: BuildLinkCommandDescription(_workspace, _options, target, dependencyFrameworks, binaryPath, linkInputIds),
                 Dependencies: linkDependencyIds,
                 OrderOnlyDependencies: Array.Empty<string>(),
                 Outputs: sideOutputIds,
@@ -293,7 +301,10 @@ public sealed class CppTargetGraphGenerator
                 Kind: BuildGraphNodeKind.Virtual,
                 Path: _workspace.ToRepositoryRelativePath(target.Directory),
                 Command: BuildTargetCommandDescription(_workspace, _options, target, sourceFiles.Length),
-                Dependencies: new[] { binaryId }.Concat(runtimeFileIds).ToArray(),
+                Dependencies: new[] { binaryId }
+                    .Concat(isStaticArchive ? dependencyTargetIds : Array.Empty<string>())
+                    .Concat(runtimeFileIds)
+                    .ToArray(),
                 OrderOnlyDependencies: Array.Empty<string>(),
                 Outputs: Array.Empty<string>(),
                 Depfiles: Array.Empty<string>()));
@@ -303,6 +314,7 @@ public sealed class CppTargetGraphGenerator
                 binaryId,
                 new[] { linkInputId }
                     .Concat(dependencyLinkInputIds)
+                    .Concat(isStaticArchive ? explicitLinkInputIds : Array.Empty<string>())
                     .Distinct(StringComparer.Ordinal)
                     .ToArray(),
                 target.Options.GlobalIncludeDirectories

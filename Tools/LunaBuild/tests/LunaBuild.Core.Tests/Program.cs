@@ -18,6 +18,7 @@ internal static class Program
             ("import cycles are rejected", ImportCycle),
             ("sibling project targets are not visible", SiblingVisibility),
             ("native link configurations must be compatible", LinkCompatibility),
+            ("static archives contain only their own objects", StaticArchivesContainOnlyOwnObjects),
             ("shared dependencies already beside consumers are not copied onto themselves", SameDirectoryRuntimeStaging),
             ("symlink imports use canonical project identity", CanonicalSymlinkIdentity),
             ("rule edits invalidate the compiled rules cache", RulesCacheInvalidation),
@@ -703,6 +704,88 @@ internal static class Program
         True(EventIndex("start:dependent") < EventIndex("finish:slow"), "dependent starts before an unrelated slow task finishes");
     }
 
+    private static void StaticArchivesContainOnlyOwnObjects()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("StaticArchivesContainOnlyOwnObjects");
+        Write(root, "leaf.cpp", "int leaf() { return 1; }");
+        Write(root, "middle.cpp", "int middle() { return leaf(); }");
+        Write(root, "app.cpp", "int main() { return middle(); }");
+
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault() with { Shared = false };
+        var leaf = new NativeGraphTargetRules(
+            "Leaf",
+            "leaf.cpp",
+            BuildTargetKind.StaticLibrary)
+            .ToDefinition(workspace, options, "Host", "static", isHostProject: true);
+        var middle = new NativeGraphTargetRules(
+            "Middle",
+            "middle.cpp",
+            BuildTargetKind.StaticLibrary,
+            dependencies: new[] { leaf.QualifiedName })
+            .ToDefinition(workspace, options, "Host", "static", isHostProject: true);
+        var app = new NativeGraphTargetRules(
+            "App",
+            "app.cpp",
+            BuildTargetKind.Executable,
+            dependencies: new[] { middle.QualifiedName })
+            .ToDefinition(workspace, options, "Host", "static", isHostProject: true);
+
+        var graph = new CppTargetGraphGenerator().Generate(
+            workspace,
+            options,
+            new[] { leaf, middle, app },
+            app.QualifiedName);
+        var leafArchive = LinkNode(graph, "cpp.link.static", leaf.QualifiedName);
+        var middleArchive = LinkNode(graph, "cpp.link.static", middle.QualifiedName);
+        var executable = LinkNode(graph, "cpp.link.executable", app.QualifiedName);
+        var leafObject = CompileNode(graph, leaf.QualifiedName);
+        var middleObject = CompileNode(graph, middle.QualifiedName);
+        var appObject = CompileNode(graph, app.QualifiedName);
+
+        SequenceEqual(new[] { leafObject.Id }, LinkInputs(leafArchive), "leaf archive inputs");
+        SequenceEqual(new[] { middleObject.Id }, LinkInputs(middleArchive), "middle archive inputs");
+        SequenceEqual(new[] { leafObject.Id }, leafArchive.Dependencies, "leaf archive dependencies");
+        SequenceEqual(new[] { middleObject.Id }, middleArchive.Dependencies, "middle archive dependencies");
+
+        var middleTarget = graph.Nodes.Single(node => node.Id == BuildGraphIds.Target(middle.QualifiedName));
+        True(middleTarget.Dependencies.Contains(BuildGraphIds.Target(leaf.QualifiedName), StringComparer.Ordinal),
+            "middle target waits for its dependency target without adding it to the archive");
+
+        var expectedExecutableInputs = new[] { appObject.Id, middleArchive.Id, leafArchive.Id };
+        SequenceEqual(
+            expectedExecutableInputs.Order(StringComparer.OrdinalIgnoreCase),
+            LinkInputs(executable).Order(StringComparer.OrdinalIgnoreCase),
+            "final executable receives dependent archives rather than dependent objects");
+        SequenceEqual(
+            expectedExecutableInputs,
+            executable.Dependencies.Where(id => id != BuildGraphIds.Target(middle.QualifiedName)),
+            "final executable dependency order");
+    }
+
+    private static BuildGraphNode LinkNode(BuildGraph graph, string kind, string targetName)
+    {
+        return graph.Nodes.Single(node => node.Command is not null &&
+            BuildActionKind.Extract(node.Command) == kind &&
+            node.Command.Split('\n').Contains("target=" + targetName, StringComparer.Ordinal));
+    }
+
+    private static BuildGraphNode CompileNode(BuildGraph graph, string targetName)
+    {
+        return graph.Nodes.Single(node => node.Command is not null &&
+            BuildActionKind.Extract(node.Command) == "cpp.compile" &&
+            node.Command.Split('\n').Contains("target=" + targetName, StringComparer.Ordinal));
+    }
+
+    private static IReadOnlyList<string> LinkInputs(BuildGraphNode node)
+    {
+        return node.Command!.Split('\n')
+            .Where(line => line.StartsWith("input=", StringComparison.Ordinal))
+            .Select(line => line["input=".Length..])
+            .ToArray();
+    }
+
     private static void ActionExecutorInitialization()
     {
         using var scope = new TestScope();
@@ -925,6 +1008,17 @@ internal static class Program
         }
     }
 
+    private static void SequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual, string message)
+    {
+        var expectedArray = expected.ToArray();
+        var actualArray = actual.ToArray();
+        if(!expectedArray.SequenceEqual(actualArray))
+        {
+            throw new InvalidOperationException(
+                $"Assertion failed: {message}. Expected `[{string.Join(", ", expectedArray)}]`, got `[{string.Join(", ", actualArray)}]`.");
+        }
+    }
+
     private static void Throws<T>(Action action, string messageFragment, string message)
         where T : Exception
     {
@@ -982,6 +1076,24 @@ internal static class Program
             if(enableMsvcUtf8.HasValue)
             {
                 MsvcUtf8(enableMsvcUtf8.Value);
+            }
+        }
+    }
+
+    private sealed class NativeGraphTargetRules : TargetRules
+    {
+        public NativeGraphTargetRules(
+            string name,
+            string source,
+            BuildTargetKind kind,
+            IReadOnlyList<string>? dependencies = null)
+            : base(name, ".", name + ".Target.cs")
+        {
+            Kind = kind;
+            Sources(source);
+            if(dependencies is not null)
+            {
+                DependsOn(dependencies.ToArray());
             }
         }
     }
