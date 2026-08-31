@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LunaBuild.Core;
 using LunaBuild.Core.MakeSystem;
 
@@ -25,10 +26,12 @@ internal static class Program
             ("dotnet builds honor the requested configuration", DotNetBuildConfiguration),
             ("cpp actions describe their input and output files", CppActionDescriptions),
             ("make system reports indexed task progress", IndexedTaskProgress),
+            ("make system initializes each action executor once", ActionExecutorInitialization),
             ("make system releases dependents without batch barriers", AsyncDagScheduling),
             ("aggregate actions execute without task progress", AggregateActionsDoNotReportProgress),
             ("application targets produce native executable graphs", ApplicationTargetGraph),
             ("MSVC UTF-8 compilation is enabled by default and configurable", MsvcUtf8CompilationOption),
+            ("MSVC environment capture normalizes duplicate path keys", MsvcEnvironmentCapture),
             ("apple deployment settings affect layout and commands", AppleDeploymentSettings),
         };
 
@@ -700,6 +703,62 @@ internal static class Program
         True(EventIndex("start:dependent") < EventIndex("finish:slow"), "dependent starts before an unrelated slow task finishes");
     }
 
+    private static void ActionExecutorInitialization()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("ActionExecutorInitialization");
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault();
+        var first = TestFileActionNode("out/first.txt", "first", delayMilliseconds: 5);
+        var second = TestFileActionNode("out/second.txt", "second", delayMilliseconds: 5);
+        var graph = new BuildGraph(2, options, new[] { first, second }, new[] { first.Id, second.Id });
+        var initializeCount = 0;
+        var initialized = false;
+        var executor = new TestFileActionExecutor(
+            onStarted: _ => True(initialized, "action starts after executor initialization"),
+            onInitialize: actions =>
+            {
+                ++initializeCount;
+                Equal(2, actions.Count, "initialized action count");
+                initialized = true;
+            });
+        var makeSystem = new MakeSystemBackend(new[] { executor }, maxParallelism: 2);
+
+        makeSystem.BuildAsync(workspace, graph).GetAwaiter().GetResult();
+        Equal(1, initializeCount, "single initialization for multiple actions");
+
+        makeSystem.BuildAsync(workspace, graph).GetAwaiter().GetResult();
+        Equal(1, initializeCount, "up-to-date build skips initialization");
+    }
+
+    private static void MsvcEnvironmentCapture()
+    {
+        var environment = MsvcToolchainLocator.ParseEnvironmentOutput("""
+            ignored setup output
+            __LUNABUILD_MSVC_ENVIRONMENT__
+            PATH=C:\MSVC\bin;C:\Windows
+            Path=C:\stale
+            INCLUDE=C:\SDK\include=value
+            """);
+        Equal("C:\\MSVC\\bin;C:\\Windows", environment["PATH"], "uppercase vcvars PATH wins");
+        Equal("C:\\SDK\\include=value", environment["INCLUDE"], "environment value preserves equals signs");
+
+        var reversed = MsvcToolchainLocator.ParseEnvironmentOutput("""
+            __LUNABUILD_MSVC_ENVIRONMENT__
+            Path=C:\stale
+            PATH=C:\MSVC\bin
+            """);
+        Equal("C:\\MSVC\\bin", reversed["PATH"], "uppercase PATH wins regardless of output order");
+
+        var startInfo = new ProcessStartInfo();
+        ProcessRunner.ApplyEnvironmentVariables(startInfo, environment);
+        var pathKeys = startInfo.Environment.Keys
+            .Where(key => key.Equals("PATH", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        Equal(1, pathKeys.Length, "child process receives one normalized PATH entry");
+        Equal("C:\\MSVC\\bin;C:\\Windows", startInfo.Environment[pathKeys[0]], "child process receives captured PATH");
+    }
+
     private static void MsvcUtf8CompilationOption()
     {
         using var scope = new TestScope();
@@ -931,12 +990,23 @@ internal static class Program
     {
         private readonly Action<string>? _onStarted;
         private readonly Action<string>? _onFinished;
+        private readonly Action<IReadOnlyList<MakeActionContext>>? _onInitialize;
 
-        public TestFileActionExecutor(Action<string>? onStarted = null, Action<string>? onFinished = null)
+        public TestFileActionExecutor(
+            Action<string>? onStarted = null,
+            Action<string>? onFinished = null,
+            Action<IReadOnlyList<MakeActionContext>>? onInitialize = null)
             : base("test.file")
         {
             _onStarted = onStarted;
             _onFinished = onFinished;
+            _onInitialize = onInitialize;
+        }
+
+        public override Task InitializeAsync(IReadOnlyList<MakeActionContext> actions, CancellationToken cancellationToken)
+        {
+            _onInitialize?.Invoke(actions);
+            return Task.CompletedTask;
         }
 
         public override string GetDescription(MakeActionContext context)

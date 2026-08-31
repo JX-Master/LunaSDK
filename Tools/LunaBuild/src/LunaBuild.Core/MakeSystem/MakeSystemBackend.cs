@@ -106,6 +106,7 @@ public sealed class MakeSystemBackend
             info.Action = PrepareAction(workspace, graph, validated, info.Node);
         }
         var totalTasks = commandsToRun.Count(info => info.Action!.Description is not null);
+        await InitializeExecutorsAsync(commandsToRun.Select(info => info.Action!), cancellationToken);
 
         foreach(var info in buildInfos.Where(info => info.NeedsBuild))
         {
@@ -340,6 +341,17 @@ public sealed class MakeSystemBackend
             throw new MakeSystemException(
                 $"{ex.Message}{Environment.NewLine}{Environment.NewLine}{FormatActionContext(context)}",
                 ex);
+        }
+    }
+
+    private static async Task InitializeExecutorsAsync(
+        IEnumerable<PreparedAction> actions,
+        CancellationToken cancellationToken)
+    {
+        foreach(var group in actions.GroupBy(action => action.Executor))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await group.Key.InitializeAsync(group.Select(action => action.Context).ToArray(), cancellationToken);
         }
     }
 
@@ -703,6 +715,8 @@ public abstract class KnownActionExecutor : IMakeActionExecutor
     public bool CanExecute(string actionKind) => string.Equals(ActionKind, actionKind, StringComparison.Ordinal);
 
     public virtual string? GetDescription(MakeActionContext context) => context.ActionKind;
+
+    public virtual Task InitializeAsync(IReadOnlyList<MakeActionContext> actions, CancellationToken cancellationToken) => Task.CompletedTask;
 
     public abstract Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken);
 }

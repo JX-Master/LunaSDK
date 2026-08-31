@@ -12,9 +12,10 @@ internal static class ProcessRunner
         string arguments,
         string workingDirectory,
         TimeSpan timeout,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? environmentVariables = null)
     {
-        return await RunAsync(fileName, arguments, null, workingDirectory, timeout, cancellationToken);
+        return await RunAsync(fileName, arguments, null, workingDirectory, timeout, cancellationToken, environmentVariables);
     }
 
     public static async Task<ProcessRunResult> RunAsync(
@@ -22,9 +23,10 @@ internal static class ProcessRunner
         IReadOnlyList<string> arguments,
         string workingDirectory,
         TimeSpan timeout,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? environmentVariables = null)
     {
-        return await RunAsync(fileName, null, arguments, workingDirectory, timeout, cancellationToken);
+        return await RunAsync(fileName, null, arguments, workingDirectory, timeout, cancellationToken, environmentVariables);
     }
 
     private static async Task<ProcessRunResult> RunAsync(
@@ -33,7 +35,8 @@ internal static class ProcessRunner
         IReadOnlyList<string>? argumentList,
         string workingDirectory,
         TimeSpan timeout,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? environmentVariables)
     {
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(timeout);
@@ -61,21 +64,29 @@ internal static class ProcessRunner
         {
             startInfo.Arguments = argumentString ?? string.Empty;
         }
+        ApplyEnvironmentVariables(startInfo, environmentVariables);
 
         using var process = new Process();
         process.StartInfo = startInfo;
+        var outputLock = new object();
         process.OutputDataReceived += (_, e) =>
         {
             if(e.Data is not null)
             {
-                output.AppendLine(e.Data);
+                lock(outputLock)
+                {
+                    output.AppendLine(e.Data);
+                }
             }
         };
         process.ErrorDataReceived += (_, e) =>
         {
             if(e.Data is not null)
             {
-                output.AppendLine(e.Data);
+                lock(outputLock)
+                {
+                    output.AppendLine(e.Data);
+                }
             }
         };
 
@@ -97,7 +108,31 @@ internal static class ProcessRunner
             throw new TimeoutException($"Process timed out after {timeout.TotalSeconds:0}s: {fileName} {FormatArguments(argumentString, argumentList)}");
         }
 
-        return new ProcessRunResult(process.ExitCode, output.ToString());
+        lock(outputLock)
+        {
+            return new ProcessRunResult(process.ExitCode, output.ToString());
+        }
+    }
+
+    internal static void ApplyEnvironmentVariables(
+        ProcessStartInfo startInfo,
+        IReadOnlyDictionary<string, string>? environmentVariables)
+    {
+        if(environmentVariables is null)
+        {
+            return;
+        }
+
+        foreach(var variable in environmentVariables)
+        {
+            foreach(var existingKey in startInfo.Environment.Keys
+                .Where(key => key.Equals(variable.Key, StringComparison.OrdinalIgnoreCase))
+                .ToArray())
+            {
+                startInfo.Environment.Remove(existingKey);
+            }
+            startInfo.Environment[variable.Key] = variable.Value;
+        }
     }
 
     private static string FormatArguments(string? argumentString, IReadOnlyList<string>? argumentList)

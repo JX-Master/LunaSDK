@@ -1,17 +1,95 @@
 namespace LunaBuild.Core.MakeSystem;
 
-internal sealed record MsvcToolchain(string VcVarsBat, string ClExe, string LinkExe, string LibExe);
+using System.Collections.ObjectModel;
+
+internal sealed record MsvcToolchain(
+    string VcVarsBat,
+    string ClExe,
+    string LinkExe,
+    string LibExe,
+    string RcExe,
+    IReadOnlyDictionary<string, string> EnvironmentVariables);
 
 internal static class MsvcToolchainLocator
 {
-    public static MsvcToolchain Locate()
+    private const string EnvironmentMarker = "__LUNABUILD_MSVC_ENVIRONMENT__";
+
+    public static async Task<MsvcToolchain> LocateAsync(
+        string workingDirectory,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var vcvars = LocateVcVarsBat();
+        var command = $"call {QuoteForCmd(vcvars)} >nul && echo {EnvironmentMarker} && set";
+        var result = await ProcessRunner.RunAsync(
+            "cmd.exe",
+            $"/d /s /c \"{command}\"",
+            workingDirectory,
+            timeout,
+            cancellationToken);
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException(
+                $"Failed to initialize the MSVC environment with `{vcvars}` (exit code {result.ExitCode})." +
+                Environment.NewLine + result.Output.TrimEnd());
+        }
+
+        var environmentVariables = ParseEnvironmentOutput(result.Output);
+        var vcToolsInstallDir = RequireEnvironmentVariable(environmentVariables, "VCToolsInstallDir", vcvars);
+        var windowsSdkBin = RequireEnvironmentVariable(environmentVariables, "WindowsSdkVerBinPath", vcvars);
+        var vcBin = Path.Combine(vcToolsInstallDir, "bin", "Hostx64", "x64");
+        return new MsvcToolchain(
+            vcvars,
+            RequireTool(Path.Combine(vcBin, "cl.exe"), "C++ compiler"),
+            RequireTool(Path.Combine(vcBin, "link.exe"), "linker"),
+            RequireTool(Path.Combine(vcBin, "lib.exe"), "library manager"),
+            RequireTool(Path.Combine(windowsSdkBin, "x64", "rc.exe"), "resource compiler"),
+            environmentVariables);
+    }
+
+    internal static IReadOnlyDictionary<string, string> ParseEnvironmentOutput(string output)
+    {
+        var environmentVariables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var foundMarker = false;
+        foreach(var rawLine in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var line = rawLine.TrimEnd();
+            if(!foundMarker)
+            {
+                foundMarker = line.Equals(EnvironmentMarker, StringComparison.Ordinal);
+                continue;
+            }
+
+            var separator = line.IndexOf('=');
+            if(separator <= 0)
+            {
+                continue;
+            }
+            var name = line[..separator];
+            var value = line[(separator + 1)..];
+            if(!environmentVariables.TryAdd(name, value) && name.Equals("PATH", StringComparison.Ordinal))
+            {
+                // Windows environments may contain both PATH and Path. vcvars updates
+                // the canonical uppercase entry, so it must win over a stale alias.
+                environmentVariables[name] = value;
+            }
+        }
+
+        if(!foundMarker || environmentVariables.Count == 0)
+        {
+            throw new MakeSystemException("vcvars64.bat completed without returning an MSVC environment.");
+        }
+        return new ReadOnlyDictionary<string, string>(environmentVariables);
+    }
+
+    private static string LocateVcVarsBat()
     {
         foreach(var vsRoot in CandidateVisualStudioRoots().Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            var toolchain = TryCreateToolchain(vsRoot);
-            if(toolchain is not null)
+            var vcvars = Path.Combine(vsRoot, "VC", "Auxiliary", "Build", "vcvars64.bat");
+            if(File.Exists(vcvars))
             {
-                return toolchain;
+                return vcvars;
             }
         }
 
@@ -19,30 +97,32 @@ internal static class MsvcToolchainLocator
             "Cannot locate MSVC x64 toolchain. Install Visual Studio 2022 or later with the C++ x64/x86 build tools workload.");
     }
 
-    private static MsvcToolchain? TryCreateToolchain(string vsRoot)
+    private static string RequireEnvironmentVariable(
+        IReadOnlyDictionary<string, string> environmentVariables,
+        string name,
+        string vcvars)
     {
-        var vcvars = Path.Combine(vsRoot, "VC", "Auxiliary", "Build", "vcvars64.bat");
-        var toolsRoot = Path.Combine(vsRoot, "VC", "Tools", "MSVC");
-        if(!File.Exists(vcvars) || !Directory.Exists(toolsRoot))
+        if(environmentVariables.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value))
         {
-            return null;
+            return value;
         }
+        throw new MakeSystemException($"`{vcvars}` did not define the required environment variable `{name}`.");
+    }
 
-        var version = Directory.GetDirectories(toolsRoot)
-            .OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault();
-        if(version is null)
+    private static string RequireTool(string path, string description)
+    {
+        if(File.Exists(path))
         {
-            return null;
+            return path;
         }
+        throw new MakeSystemException($"MSVC {description} was not found: {path}");
+    }
 
-        var bin = Path.Combine(version, "bin", "Hostx64", "x64");
-        var cl = Path.Combine(bin, "cl.exe");
-        var link = Path.Combine(bin, "link.exe");
-        var lib = Path.Combine(bin, "lib.exe");
-        return File.Exists(cl) && File.Exists(link) && File.Exists(lib)
-            ? new MsvcToolchain(vcvars, cl, link, lib)
-            : null;
+    private static string QuoteForCmd(string value)
+    {
+        return value.Contains(' ') || value.Contains('\t')
+            ? $"\"{value}\""
+            : value;
     }
 
     private static IEnumerable<string> CandidateVisualStudioRoots()

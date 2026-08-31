@@ -5,4 +5,7 @@
     <Nullable>enable</Nullable>
     <NuGetAudit>false</NuGetAudit>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="LunaBuild.Core.Tests" />
+  </ItemGroup>
 </Project>
