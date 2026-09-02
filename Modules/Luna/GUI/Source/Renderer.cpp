@@ -653,13 +653,10 @@ namespace Luna
                 m_compiled_sdf_color_floats.insert(m_compiled_sdf_color_floats.end(),
                     context_color_floats.begin(), context_color_floats.end());
                 Vector<ClipState> clip_stack;
-                RHI::SamplerDesc nearest_sampler_desc;
-                nearest_sampler_desc.min_filter = RHI::Filter::nearest;
-                nearest_sampler_desc.mag_filter = RHI::Filter::nearest;
-                nearest_sampler_desc.mip_filter = RHI::Filter::nearest;
-                nearest_sampler_desc.address_u = RHI::TextureAddressMode::clamp;
-                nearest_sampler_desc.address_v = RHI::TextureAddressMode::clamp;
-                nearest_sampler_desc.address_w = RHI::TextureAddressMode::clamp;
+                RHI::SamplerDesc nearest_sampler_desc(
+                    RHI::Filter::nearest, RHI::Filter::nearest, RHI::Filter::nearest,
+                    RHI::TextureAddressMode::clamp, RHI::TextureAddressMode::clamp,
+                    RHI::TextureAddressMode::clamp);
                 u32 first_pending_vg_call = 0;
 
                 auto flush_pending_vg = [&]()
