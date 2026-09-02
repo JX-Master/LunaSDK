@@ -115,11 +115,12 @@ namespace Luna
                 return ok;
             }
 
-            static RV draw_tab_bar(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_tab_bar(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 TabAction* action = (TabAction*)userdata;
-                if(!action || !action->state || action->state->header_ids.empty()) return ok;
+                if(!action || !action->state || action->state->header_ids.empty()) return paint_order_id;
                 f32 header_height = style_scalar(context, element, "gui.tab.height", 32.0f);
                 const GUI::Element* tab_bar = context->get_element(element.index);
                 f32 scale = tab_bar ? tab_width_scale(context, element, *action, tab_bar->layout_result.rect.width) : 1.0f;
@@ -130,7 +131,7 @@ namespace Luna
                 command.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 0.0f);
                 command.color = style_color(context, element, "gui.tab_bar.background",
                     Float4U(0.08f, 0.10f, 0.13f, 1.0f));
-                context->draw(command);
+                context->draw(command, paint_order_id);
 
                 i32 left_index = clamp((i32)floor(action->state->animated_index), 0,
                     (i32)action->state->header_ids.size() - 1);
@@ -153,15 +154,16 @@ namespace Luna
                 command.color = style_color(context, element, "gui.tab.selected",
                     Float4U(0.16f, 0.35f, 0.58f, 1.0f));
                 command.radius = 4.0f;
-                context->draw(command);
-                return ok;
+                context->draw(command, paint_order_id + 1);
+                return paint_order_id + 1;
             }
 
-            static RV draw_tab_header(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_tab_header(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 TabHeaderData* data = (TabHeaderData*)userdata;
-                if(!data) return ok;
+                if(!data) return paint_order_id;
                 GUI::InteractionState interaction = context->get_interaction_state(element.id);
                 bool selected = data->selected_index && *data->selected_index == data->index;
                 if(data->enabled && interaction.hovered && !selected)
@@ -171,7 +173,7 @@ namespace Luna
                     background.rect_reference = GUI::DrawCommandRectReference::element;
                     background.color = style_color(context, element, "gui.tab.hovered",
                         Float4U(0.13f, 0.19f, 0.27f, 1.0f));
-                    context->draw(background);
+                    context->draw(background, paint_order_id);
                 }
                 GUI::DrawCommand text;
                 text.type = GUI::DrawCommandType::text;
@@ -184,8 +186,8 @@ namespace Luna
                     style_color(context, element, "gui.text.disabled", Float4U(0.48f, 0.52f, 0.58f, 1.0f));
                 text.horizontal_alignment = VG::TextAlignment::center;
                 text.vertical_alignment = VG::TextAlignment::center;
-                context->draw(text);
-                return ok;
+                context->draw(text, paint_order_id + 1);
+                return paint_order_id + 1;
             }
 
             bool resolve_tab_action(GUI::IContext* context, TabAction& action)
@@ -225,6 +227,8 @@ namespace Luna
         {
             luassert(context && id && selected_index);
             GUI::ElementHandle bar = Internal::begin_element(context, id, "Tab Bar", layout);
+            // The layout callback clips the header and content child subtrees to disjoint rectangles.
+            context->set_child_paint_order_mode(bar, GUI::ChildPaintOrderMode::shared);
             Ref<Internal::TabState> state = Internal::widget_state<Internal::TabState>(context, id);
             state->header_ids.clear();
             state->header_labels.clear();

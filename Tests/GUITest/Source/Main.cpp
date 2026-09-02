@@ -71,15 +71,16 @@ namespace
             Float4x4U(Float4x4::identity()), hit));
     }
 
-    RV draw_blur_planning_sample(GUI::IContext* context,
-        const GUI::ElementHandle&, GUI::DrawPhase, void*)
+    R<GUI::paint_order_id_t> draw_blur_planning_sample(GUI::IContext* context,
+        const GUI::ElementHandle&, GUI::DrawPhase,
+        GUI::paint_order_id_t paint_order_id, void*)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::backdrop_blur;
         command.rect_reference =
             GUI::DrawCommandRectReference::element;
-        context->draw(command);
-        return ok;
+        context->draw(command, paint_order_id);
+        return paint_order_id;
     }
 
     RV run_blur_planning_case(GUITestApp& app, u32 size,

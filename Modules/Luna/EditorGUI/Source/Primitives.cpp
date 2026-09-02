@@ -122,13 +122,14 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_text(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_text(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 TextData* data = (TextData*)userdata;
                 if(!data)
                 {
-                    return ok;
+                    return paint_order_id;
                 }
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::text;
@@ -140,8 +141,8 @@ namespace Luna
                 command.color = resolve_text_color(context, element, data->desc);
                 command.horizontal_alignment = text_alignment(data->desc.horizontal_alignment);
                 command.vertical_alignment = text_alignment(data->desc.vertical_alignment);
-                context->draw(command);
-                return ok;
+                context->draw(command, paint_order_id);
+                return paint_order_id;
             }
 
             struct ImageData
@@ -163,13 +164,14 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_image(GUI::IContext* context, const GUI::ElementHandle&,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_image(GUI::IContext* context,
+                const GUI::ElementHandle&, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 ImageData* data = (ImageData*)userdata;
                 if(!data || !data->texture)
                 {
-                    return ok;
+                    return paint_order_id;
                 }
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::image;
@@ -183,8 +185,8 @@ namespace Luna
                     swap(command.min_texcoord.y, command.max_texcoord.y);
                 }
                 command.nearest_sampler = test_flags(data->desc.flags, ImageFlag::nearest);
-                context->draw(command);
-                return ok;
+                context->draw(command, paint_order_id);
+                return paint_order_id;
             }
 
             struct ShapeData
@@ -206,18 +208,19 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_shape(GUI::IContext* context, const GUI::ElementHandle&,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_shape(GUI::IContext* context,
+                const GUI::ElementHandle&, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 ShapeData* data = (ShapeData*)userdata;
-                if(!data || !data->shape.buffer || !data->shape.num_commands) return ok;
+                if(!data || !data->shape.buffer || !data->shape.num_commands) return paint_order_id;
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::shape;
                 command.rect_reference = GUI::DrawCommandRectReference::element;
                 command.color = data->desc.tint;
                 command.shape = data->shape;
-                context->draw(command);
-                return ok;
+                context->draw(command, paint_order_id);
+                return paint_order_id;
             }
 
             struct ProgressData
@@ -238,13 +241,14 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_progress(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_progress(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 ProgressData* data = (ProgressData*)userdata;
                 if(!data)
                 {
-                    return ok;
+                    return paint_order_id;
                 }
                 f32 radius = style_scalar(context, element, "gui.progress.radius", 4.0f);
                 GUI::DrawCommand command;
@@ -252,7 +256,7 @@ namespace Luna
                 command.rect_reference = GUI::DrawCommandRectReference::element;
                 command.color = style_color(context, element, "gui.progress.border", Float4U(0.24f, 0.29f, 0.35f, 1.0f));
                 command.radius = radius;
-                context->draw(command);
+                context->draw(command, paint_order_id);
                 const RectF inner_rect(1.0f, 1.0f, -2.0f, -2.0f);
                 const f32 inner_radius = max(radius - 1.0f, 0.0f);
                 const f32 softness = style_scalar(context, element, "gui.shadow.softness", 5.0f);
@@ -272,10 +276,12 @@ namespace Luna
                 track_effects[2].shadow_desc.softness = softness * 0.4f;
                 track_effects[2].shadow_desc.mode = GUI::ShadowMode::inner;
                 if(RV result = draw_rounded_rect_effects(context, element, inner_rect, Float4U(),
-                    inner_radius, Span<const RoundedRectEffect>(track_effects, 3)); failed(result))
+                    inner_radius, Span<const RoundedRectEffect>(track_effects, 3),
+                    paint_order_id + 1); failed(result))
                 {
-                    return result;
+                    return result.errcode();
                 }
+                GUI::paint_order_id_t max_paint_order_id = paint_order_id + 1;
                 if(data->fraction > 0.0f)
                 {
                     RectF fill_rect(1.0f, 1.0f, -2.0f * data->fraction, -2.0f);
@@ -292,10 +298,12 @@ namespace Luna
                     fill_effects[1].shadow_desc.softness = 1.0f;
                     fill_effects[1].shadow_desc.mode = GUI::ShadowMode::inner;
                     if(RV result = draw_rounded_rect_effects(context, element, fill_rect, fill_scale,
-                        inner_radius, Span<const RoundedRectEffect>(fill_effects, 2)); failed(result))
+                        inner_radius, Span<const RoundedRectEffect>(fill_effects, 2),
+                        paint_order_id + 2); failed(result))
                     {
-                        return result;
+                        return result.errcode();
                     }
+                    max_paint_order_id = paint_order_id + 2;
                 }
                 if(data->show_overlay)
                 {
@@ -308,9 +316,10 @@ namespace Luna
                     text_command.horizontal_alignment = VG::TextAlignment::center;
                     text_command.vertical_alignment = VG::TextAlignment::center;
                     text_command.text = data->overlay ? data->overlay : "";
-                    context->draw(text_command);
+                    context->draw(text_command, paint_order_id + 3);
+                    max_paint_order_id = paint_order_id + 3;
                 }
-                return ok;
+                return max_paint_order_id;
             }
         }
 

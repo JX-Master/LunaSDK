@@ -37,11 +37,12 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_drag(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_drag(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 DragData* data = (DragData*)userdata;
-                if(!data) return ok;
+                if(!data) return paint_order_id;
                 GUI::InteractionState interaction = context->get_interaction_state(element.id);
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::rounded_rect;
@@ -53,7 +54,7 @@ namespace Luna
                     (interaction.hovered ? Float4U(0.14f, 0.21f, 0.30f, 1.0f) :
                     Float4U(0.11f, 0.15f, 0.21f, 1.0f))));
                 command.radius = 4.0f;
-                context->draw(command);
+                context->draw(command, paint_order_id);
                 c8 value[64];
                 if(data->float_value) snprintf(value, sizeof(value), "%.3f", *data->float_value);
                 else snprintf(value, sizeof(value), "%d", data->int_value ? *data->int_value : 0);
@@ -67,8 +68,8 @@ namespace Luna
                     "gui.text.disabled", Float4U(0.48f, 0.52f, 0.58f, 1.0f));
                 command.horizontal_alignment = VG::TextAlignment::begin;
                 command.vertical_alignment = VG::TextAlignment::center;
-                context->draw(command);
-                return ok;
+                context->draw(command, paint_order_id + 1);
+                return paint_order_id + 1;
             }
 
             template <typename T>
@@ -176,6 +177,7 @@ namespace Luna
                 const GUI::LayoutConfig& layout, Function&& function)
             {
                 GUI::ElementHandle group = begin_h_layout(context, id, "Vector Drag", layout);
+                context->set_child_paint_order_mode(group, GUI::ChildPaintOrderMode::shared);
                 for(u32 i = 0; i < count; ++i)
                 {
                     GUI::LayoutConfig child;

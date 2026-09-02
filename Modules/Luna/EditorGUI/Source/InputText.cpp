@@ -210,11 +210,12 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_input_text(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_input_text(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 TextInputData* data = (TextInputData*)userdata;
-                if(!data || !data->value || !data->state) return ok;
+                if(!data || !data->value || !data->state) return paint_order_id;
                 bool focused = context->focused_element() == element.id;
                 f32 radius = style_scalar(context, element, "gui.input.radius", 4.0f);
                 f32 padding = style_scalar(context, element, "gui.input.padding_x", 8.0f);
@@ -226,13 +227,13 @@ namespace Luna
                 command.color = style_color(context, element, focused ? "gui.input.border_focused" : "gui.input.border",
                     focused ? Float4U(0.12f, 0.55f, 0.86f, 1.0f) : Float4U(0.20f, 0.27f, 0.36f, 1.0f));
                 command.radius = radius;
-                context->draw(command);
+                context->draw(command, paint_order_id);
                 command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
                 command.color = style_color(context, element, focused ? "gui.input.background_focused" :
                     "gui.input.background", focused ? Float4U(0.11f, 0.15f, 0.21f, 1.0f) :
                     Float4U(0.08f, 0.10f, 0.13f, 1.0f));
                 command.radius = max(radius - 1.0f, 0.0f);
-                context->draw(command);
+                context->draw(command, paint_order_id + 1);
                 command = GUI::DrawCommand();
                 command.type = GUI::DrawCommandType::shadow;
                 command.rect_reference = GUI::DrawCommandRectReference::element;
@@ -243,7 +244,7 @@ namespace Luna
                 command.shadow.offset = Float2U(1.5f, 1.5f);
                 command.shadow.softness = 2.5f;
                 command.shadow.mode = GUI::ShadowMode::inner;
-                context->draw(command);
+                context->draw(command, paint_order_id + 2);
 
                 usize selection_begin = 0;
                 usize selection_end = 0;
@@ -256,7 +257,7 @@ namespace Luna
                     command.rect = RectF(begin_x, 4.0f, end_x - begin_x, -8.0f);
                     command.color = style_color(context, element, "gui.input.selection",
                         Float4U(0.16f, 0.42f, 0.70f, 0.75f));
-                    context->draw(command);
+                    context->draw(command, paint_order_id + 3);
                 }
 
                 command = GUI::DrawCommand();
@@ -270,7 +271,7 @@ namespace Luna
                     style_color(context, element, "gui.text.disabled", Float4U(0.48f, 0.52f, 0.58f, 1.0f));
                 if(data->value->empty() && data->placeholder) command.color.w *= 0.55f;
                 command.vertical_alignment = VG::TextAlignment::center;
-                context->draw(command);
+                context->draw(command, paint_order_id + 4);
 
                 if(focused && !data->read_only && fmod(data->state->blink_time, 1.0f) < 0.55f)
                 {
@@ -282,9 +283,10 @@ namespace Luna
                     command.point1 = Float2U(x, -5.0f);
                     command.rect_layout_scale = Float4U(0.0f, 0.0f, 0.0f, 1.0f);
                     command.color = style_color(context, element, "gui.input.cursor", Float4U(0.80f, 0.92f, 1.0f, 1.0f));
-                    context->draw(command);
+                    context->draw(command, paint_order_id + 5);
+                    return paint_order_id + 5;
                 }
-                return ok;
+                return paint_order_id + 4;
             }
 
             bool resolve_input_text_action(GUI::IContext* context, TextInputAction& action)

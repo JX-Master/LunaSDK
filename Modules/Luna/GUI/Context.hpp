@@ -274,11 +274,20 @@ namespace Luna
             //! elements without delayed draw behavior.
             virtual DrawConfig get_draw_config(const ElementHandle& element) const = 0;
 
+            //! Sets how Paint Order ranges are allocated to an element's direct child subtrees.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @param[in] mode The child Paint Order allocation mode.
+            //! @remark @ref ChildPaintOrderMode::shared may be used only when the complete painted extents of the
+            //! direct child subtrees are independent. Invalid handles are ignored.
+            virtual void set_child_paint_order_mode(const ElementHandle& element,
+                ChildPaintOrderMode mode) = 0;
+
             //! Enables backdrop capture at one element's painter entry.
             //! @param[in] element The element handle returned by @ref begin_element.
             //! @param[in] desc The capture and filtering configuration.
             //! @remark Command generation inserts the capture before the element's @ref DrawPhase::before_children
-            //! callback. Invalid handles are ignored.
+            //! callback. The capture owns an exclusive Paint Order ID, so the callback receives the following ID.
+            //! Invalid handles are ignored.
             virtual void set_backdrop_blur_capture(const ElementHandle& element,
                 const BackdropBlurCaptureDesc& desc) = 0;
 
@@ -333,8 +342,17 @@ namespace Luna
             //! Records or emits one primitive draw command.
             //! @param[in] command The command to append to the current layer and current element.
             //! @remark During element construction this records a static command at the current painter-order
-            //! position. During a draw callback this emits a generated command for the callback's element.
+            //! position. During a draw callback this is the strict-order compatibility path: every invocation uses
+            //! the next available Paint Order ID and ends the enclosing shared run.
             virtual void draw(const DrawCommand& command) = 0;
+
+            //! Emits one primitive draw command at an explicit Paint Order ID.
+            //! @param[in] command The command to emit for the callback's current element.
+            //! @param[in] paint_order_id The frame-local Paint Order ID assigned to the command.
+            //! @remark This overload may be called only during a draw callback. The ID must not be lower than the
+            //! first Paint Order ID passed to that callback phase. Equal IDs explicitly permit the renderer to group
+            //! otherwise compatible commands.
+            virtual void draw(const DrawCommand& command, paint_order_id_t paint_order_id) = 0;
 
             //! Records one primitive draw command for a specific element.
             //! @param[in] element The element that owns the draw command.

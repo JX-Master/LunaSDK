@@ -11,6 +11,8 @@
 #define LUNA_GUI_API LUNA_EXPORT
 #include "RendererImpl.hpp"
 #include <Luna/Runtime/Math/Transform.hpp>
+#include <Luna/Runtime/Hash.hpp>
+#include <Luna/Runtime/HashMap.hpp>
 #include <Luna/Runtime/Time.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/VG/Shapes.hpp>
@@ -18,6 +20,7 @@
 #include <BackdropBlurCS.hpp>
 #include <SDFVS.hpp>
 #include <SDFPS.hpp>
+#include <algorithm>
 #include <cmath>
 
 namespace Luna
@@ -240,9 +243,137 @@ namespace Luna
 
             struct ClipState
             {
-                RectF rect;
-                RectF rounded_rect;
+                RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                RectF rounded_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
                 Float4U rounded_radii = Float4U(0.0f);
+            };
+
+            enum class ResolvedDrawEventType : u8
+            {
+                draw,
+                backdrop_capture
+            };
+
+            bool vg_sampler_desc_equal(const RHI::SamplerDesc& lhs,
+                const RHI::SamplerDesc& rhs)
+            {
+                return lhs.min_filter == rhs.min_filter &&
+                    lhs.mag_filter == rhs.mag_filter &&
+                    lhs.mip_filter == rhs.mip_filter &&
+                    lhs.address_u == rhs.address_u &&
+                    lhs.address_v == rhs.address_v &&
+                    lhs.address_w == rhs.address_w &&
+                    lhs.anisotropy_enable == rhs.anisotropy_enable &&
+                    lhs.compare_enable == rhs.compare_enable &&
+                    lhs.compare_function == rhs.compare_function &&
+                    lhs.border_color == rhs.border_color &&
+                    lhs.max_anisotropy == rhs.max_anisotropy &&
+                    lhs.min_lod == rhs.min_lod && lhs.max_lod == rhs.max_lod;
+            }
+
+            usize vg_sampler_desc_hash(const RHI::SamplerDesc& sampler, usize seed)
+            {
+                seed = memhash<usize>(&sampler.min_filter, sizeof(sampler.min_filter), seed);
+                seed = memhash<usize>(&sampler.mag_filter, sizeof(sampler.mag_filter), seed);
+                seed = memhash<usize>(&sampler.mip_filter, sizeof(sampler.mip_filter), seed);
+                seed = memhash<usize>(&sampler.address_u, sizeof(sampler.address_u), seed);
+                seed = memhash<usize>(&sampler.address_v, sizeof(sampler.address_v), seed);
+                seed = memhash<usize>(&sampler.address_w, sizeof(sampler.address_w), seed);
+                seed = memhash<usize>(&sampler.anisotropy_enable,
+                    sizeof(sampler.anisotropy_enable), seed);
+                seed = memhash<usize>(&sampler.compare_enable,
+                    sizeof(sampler.compare_enable), seed);
+                seed = memhash<usize>(&sampler.compare_function,
+                    sizeof(sampler.compare_function), seed);
+                seed = memhash<usize>(&sampler.border_color,
+                    sizeof(sampler.border_color), seed);
+                seed = memhash<usize>(&sampler.max_anisotropy,
+                    sizeof(sampler.max_anisotropy), seed);
+                f32 min_lod = sampler.min_lod == 0.0f ? 0.0f : sampler.min_lod;
+                f32 max_lod = sampler.max_lod == 0.0f ? 0.0f : sampler.max_lod;
+                seed = memhash<usize>(&min_lod, sizeof(min_lod), seed);
+                return memhash<usize>(&max_lod, sizeof(max_lod), seed);
+            }
+
+            struct ResolvedDrawEvent
+            {
+                ResolvedDrawEventType type = ResolvedDrawEventType::draw;
+                paint_order_id_t paint_order_id = INVALID_PAINT_ORDER_ID;
+                u32 submission_index = 0;
+                u32 command_index = U32_MAX;
+                u32 capture_index = U32_MAX;
+                ClipState clip;
+                ClipState overflow_clip;
+            };
+
+            struct VGBatchKey
+            {
+                VG::IShapeBuffer* shape_buffer = nullptr;
+                RHI::ITexture* texture = nullptr;
+                RHI::SamplerDesc sampler;
+
+                VGBatchKey() :
+                    sampler(RHI::Filter::linear, RHI::Filter::linear,
+                        RHI::Filter::linear, RHI::TextureAddressMode::repeat,
+                        RHI::TextureAddressMode::repeat,
+                        RHI::TextureAddressMode::repeat) {}
+
+                bool operator==(const VGBatchKey& rhs) const
+                {
+                    return shape_buffer == rhs.shape_buffer &&
+                        texture == rhs.texture &&
+                        vg_sampler_desc_equal(sampler, rhs.sampler);
+                }
+            };
+
+            struct PreparedBatchKey
+            {
+                RenderBatchType type = RenderBatchType::vg;
+                VGBatchKey vg;
+                u32 sdf_page_pair = U32_MAX;
+
+                bool operator==(const PreparedBatchKey& rhs) const
+                {
+                    if(type != rhs.type) return false;
+                    if(type == RenderBatchType::vg) return vg == rhs.vg;
+                    return sdf_page_pair == rhs.sdf_page_pair;
+                }
+            };
+
+            struct PreparedBatchKeyHash
+            {
+                usize operator()(const PreparedBatchKey& key) const
+                {
+                    usize result = memhash<usize>(&key.type, sizeof(key.type));
+                    if(key.type == RenderBatchType::vg)
+                    {
+                        result = memhash<usize>(&key.vg.shape_buffer,
+                            sizeof(key.vg.shape_buffer), result);
+                        result = memhash<usize>(&key.vg.texture,
+                            sizeof(key.vg.texture), result);
+                        return vg_sampler_desc_hash(key.vg.sampler, result);
+                    }
+                    return memhash<usize>(&key.sdf_page_pair,
+                        sizeof(key.sdf_page_pair), result);
+                }
+            };
+
+            struct PreparedDraw
+            {
+                PreparedBatchKey key;
+                u32 command_index = U32_MAX;
+                u32 capture_index = U32_MAX;
+                RectF resolved_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                ClipState clip;
+                SDFDrawDesc sdf;
+                Float2U sdf_evaluation_origin = Float2U(0.0f);
+                RectF sdf_raster_domain = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            };
+
+            struct PreparedBatch
+            {
+                PreparedBatchKey key;
+                Vector<u32> draw_indices;
             };
 
             bool has_rounded_clip(const ClipState& clip)
@@ -510,81 +641,143 @@ namespace Luna
                 Span<const DrawCommand> commands = context->get_draw_commands();
                 Span<const f32> context_shape_floats = context->get_sdf_shape_floats();
                 Span<const f32> context_color_floats = context->get_sdf_color_floats();
-                Vector<u32> command_capture_indices;
-                command_capture_indices.resize(commands.size());
-                for(u32& index : command_capture_indices) index = U32_MAX;
                 Vector<u32> element_capture_indices;
                 element_capture_indices.resize(elements.size());
                 for(u32& index : element_capture_indices) index = U32_MAX;
+                Vector<paint_order_id_t> capture_paint_orders;
+                Vector<ResolvedDrawEvent> resolved_events;
+                resolved_events.reserve(commands.size());
                 m_num_backdrop_captures = 0;
 
+                Vector<u32> layer_command_positions;
+                layer_command_positions.resize(layers.size());
+                for(u32& position : layer_command_positions) position = 0;
                 Vector<ClipState> capture_clip_stack;
-                for(u32 layer_index = 0; layer_index < layers.size(); ++layer_index)
+                u32 lexical_layer = U32_MAX;
+                for(u32 command_index = 0; command_index < commands.size(); ++command_index)
                 {
-                    capture_clip_stack.clear();
-                    const Layer& layer = layers[layer_index];
-                    for(u32 command_index : layer.draw_command_indices)
+                    const DrawCommand& command = commands[command_index];
+                    if(command.layer >= layers.size())
                     {
-                        if(command_index >= commands.size()) continue;
-                        const DrawCommand& command = commands[command_index];
-                        RectF resolved_rect = resolve_draw_rect(command, elements);
-                        RectF element_clip;
-                        if(command.element != INVALID_ELEMENT && command.element < elements.size())
+                        return set_error(E_BAD_DATA,
+                            "A GUI command refers to an invalid owning layer.");
+                    }
+                    if(command.layer != lexical_layer)
+                    {
+                        if(!capture_clip_stack.empty())
                         {
-                            element_clip = to_screen_rect(layers, layer_index,
-                                elements[command.element].layout_result.clip_rect);
+                            return set_error(E_BAD_DATA,
+                                "A GUI clip scope cannot cross an owning layer boundary.");
                         }
-                        if(command.type == DrawCommandType::push_clip)
+                        if(lexical_layer != U32_MAX && command.layer < lexical_layer)
                         {
-                            RectF requested_clip = to_screen_rect(layers, layer_index, resolved_rect);
-                            ClipState pushed_clip = capture_clip_stack.empty() ?
-                                ClipState() : capture_clip_stack.back();
-                            pushed_clip.rect = merge_clip_rect(pushed_clip.rect, element_clip);
-                            pushed_clip.rect = merge_clip_rect(pushed_clip.rect, requested_clip);
-                            if(command.radius > 0.0f)
-                            {
-                                pushed_clip.rounded_rect = requested_clip;
-                                pushed_clip.rounded_radii = Float4U(command.radius);
-                            }
-                            capture_clip_stack.push_back(pushed_clip);
-                            continue;
+                            return set_error(E_BAD_DATA,
+                                "The lexical GUI command stream is not ordered by owning layer.");
                         }
-                        if(command.type == DrawCommandType::pop_clip)
+                        lexical_layer = command.layer;
+                    }
+                    u32 layer_index = command.layer;
+                    u32& layer_command_position = layer_command_positions[layer_index];
+                    const Layer& layer = layers[layer_index];
+                    if(layer_command_position >= layer.draw_command_indices.size() ||
+                        layer.draw_command_indices[layer_command_position] != command_index)
+                    {
+                        return set_error(E_BAD_DATA,
+                            "A GUI command is missing from its owning layer's lexical index.");
+                    }
+                    ++layer_command_position;
+                    RectF resolved_rect = resolve_draw_rect(command, elements);
+                    RectF element_clip(0.0f, 0.0f, 0.0f, 0.0f);
+                    if(command.element != INVALID_ELEMENT && command.element < elements.size())
+                    {
+                        element_clip = to_screen_rect(layers, layer_index,
+                            elements[command.element].layout_result.clip_rect);
+                    }
+                    if(command.type == DrawCommandType::push_clip)
+                    {
+                        RectF requested_clip = to_screen_rect(layers, layer_index, resolved_rect);
+                        ClipState pushed_clip = capture_clip_stack.empty() ?
+                            ClipState() : capture_clip_stack.back();
+                        pushed_clip.rect = merge_clip_rect(pushed_clip.rect, element_clip);
+                        pushed_clip.rect = merge_clip_rect(pushed_clip.rect, requested_clip);
+                        if(command.radius > 0.0f)
                         {
-                            if(!capture_clip_stack.empty()) capture_clip_stack.pop_back();
-                            continue;
+                            pushed_clip.rounded_rect = requested_clip;
+                            pushed_clip.rounded_radii = Float4U(command.radius);
                         }
-                        if(command.type == DrawCommandType::backdrop_blur_capture)
+                        capture_clip_stack.push_back(pushed_clip);
+                        continue;
+                    }
+                    if(command.type == DrawCommandType::pop_clip)
+                    {
+                        if(capture_clip_stack.empty())
                         {
-                            if(command.element == INVALID_ELEMENT ||
-                                command.element >= elements.size())
-                            {
-                                return set_error(E_BAD_DATA,
-                                    "A backdrop capture marker must belong to an element.");
-                            }
-                            if(m_num_backdrop_captures >= m_backdrop_captures.size())
-                            {
-                                m_backdrop_captures.push_back(BackdropCapture());
-                            }
-                            u32 capture_index = m_num_backdrop_captures++;
-                            BackdropCapture& capture = m_backdrop_captures[capture_index];
-                            capture.element = command.element;
-                            capture.desc = command.backdrop_blur_capture;
-                            capture.consumer_bounds = RectF();
-                            capture.source_rect = RectF();
-                            capture.used = false;
-                            element_capture_indices[command.element] = capture_index;
-                            command_capture_indices[command_index] = capture_index;
-                            continue;
+                            return set_error(E_BAD_DATA,
+                                "A GUI clip pop has no matching lexical clip push.");
                         }
-                        if(command.type != DrawCommandType::backdrop_blur) continue;
+                        capture_clip_stack.pop_back();
+                        continue;
+                    }
+                    if(command.paint_order_id == INVALID_PAINT_ORDER_ID)
+                    {
+                        return set_error(E_BAD_DATA,
+                            "Every drawable GUI command must have a valid Paint Order ID.");
+                    }
+                    if(command.type == DrawCommandType::backdrop_blur_capture)
+                    {
+                        if(command.element == INVALID_ELEMENT ||
+                            command.element >= elements.size())
+                        {
+                            return set_error(E_BAD_DATA,
+                                "A backdrop capture marker must belong to an element.");
+                        }
+                        if(m_num_backdrop_captures >= m_backdrop_captures.size())
+                        {
+                            m_backdrop_captures.push_back(BackdropCapture());
+                        }
+                        u32 capture_index = m_num_backdrop_captures++;
+                        BackdropCapture& capture = m_backdrop_captures[capture_index];
+                        capture.element = command.element;
+                        capture.desc = command.backdrop_blur_capture;
+                        capture.consumer_bounds = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                        capture.source_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                        capture.used = false;
+                        element_capture_indices[command.element] = capture_index;
+                        capture_paint_orders.push_back(command.paint_order_id);
+                        ResolvedDrawEvent event;
+                        event.type = ResolvedDrawEventType::backdrop_capture;
+                        event.paint_order_id = command.paint_order_id;
+                        event.submission_index = command_index;
+                        event.command_index = command_index;
+                        event.capture_index = capture_index;
+                        resolved_events.push_back(event);
+                        continue;
+                    }
+
+                    ClipState clip = capture_clip_stack.empty() ?
+                        ClipState() : capture_clip_stack.back();
+                    clip.rect = merge_clip_rect(clip.rect, element_clip);
+                    ClipState overflow_clip = capture_clip_stack.empty() ?
+                        ClipState() : capture_clip_stack.back();
+                    RectF inherited_clip(0.0f, 0.0f, 0.0f, 0.0f);
+                    if(command.element != INVALID_ELEMENT && command.element < elements.size())
+                    {
+                        u32 parent = elements[command.element].parent;
+                        if(parent != INVALID_ELEMENT && parent < elements.size())
+                        {
+                            inherited_clip = to_screen_rect(layers, layer_index,
+                                elements[parent].layout_result.clip_rect);
+                        }
+                    }
+                    u32 capture_index = U32_MAX;
+                    if(command.type == DrawCommandType::backdrop_blur)
+                    {
                         if(command.element == INVALID_ELEMENT || command.element >= elements.size())
                         {
                             return set_error(E_BAD_DATA,
                                 "A backdrop blur draw command must belong to an element.");
                         }
                         u32 source_element = command.element;
-                        u32 capture_index = U32_MAX;
                         while(source_element != INVALID_ELEMENT && source_element < elements.size())
                         {
                             capture_index = element_capture_indices[source_element];
@@ -596,11 +789,13 @@ namespace Luna
                             return set_error(E_BAD_DATA,
                                 "A backdrop blur draw command has no preceding self-or-ancestor capture.");
                         }
-                        command_capture_indices[command_index] = capture_index;
+                        if(capture_index >= capture_paint_orders.size() ||
+                            command.paint_order_id <= capture_paint_orders[capture_index])
+                        {
+                            return set_error(E_BAD_DATA,
+                                "A backdrop blur consumer must have a Paint Order ID greater than its capture.");
+                        }
                         RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
-                        ClipState clip = capture_clip_stack.empty() ?
-                            ClipState() : capture_clip_stack.back();
-                        clip.rect = merge_clip_rect(clip.rect, element_clip);
                         if(has_clip(clip.rect))
                         {
                             screen_rect = intersect_rect(screen_rect, clip.rect);
@@ -612,6 +807,30 @@ namespace Luna
                             capture.consumer_bounds =
                                 union_rect(capture.consumer_bounds, screen_rect);
                         }
+                    }
+
+                    overflow_clip.rect = merge_clip_rect(overflow_clip.rect, inherited_clip);
+                    ResolvedDrawEvent event;
+                    event.paint_order_id = command.paint_order_id;
+                    event.submission_index = command_index;
+                    event.command_index = command_index;
+                    event.capture_index = capture_index;
+                    event.clip = clip;
+                    event.overflow_clip = overflow_clip;
+                    resolved_events.push_back(event);
+                }
+                if(!capture_clip_stack.empty())
+                {
+                    return set_error(E_BAD_DATA,
+                        "A GUI clip push has no matching lexical clip pop.");
+                }
+                for(u32 layer_index = 0; layer_index < layers.size(); ++layer_index)
+                {
+                    if(layer_command_positions[layer_index] !=
+                        layers[layer_index].draw_command_indices.size())
+                    {
+                        return set_error(E_BAD_DATA,
+                            "A GUI layer contains a stale lexical command index.");
                     }
                 }
 
@@ -652,11 +871,23 @@ namespace Luna
                     context_shape_floats.begin(), context_shape_floats.end());
                 m_compiled_sdf_color_floats.insert(m_compiled_sdf_color_floats.end(),
                     context_color_floats.begin(), context_color_floats.end());
-                Vector<ClipState> clip_stack;
+                if(resolved_events.size() > 1)
+                {
+                    std::stable_sort(resolved_events.begin(), resolved_events.end(),
+                        [](const ResolvedDrawEvent& lhs, const ResolvedDrawEvent& rhs)
+                        {
+                            return lhs.paint_order_id < rhs.paint_order_id;
+                        });
+                }
+
                 RHI::SamplerDesc nearest_sampler_desc(
                     RHI::Filter::nearest, RHI::Filter::nearest, RHI::Filter::nearest,
                     RHI::TextureAddressMode::clamp, RHI::TextureAddressMode::clamp,
                     RHI::TextureAddressMode::clamp);
+                RHI::SamplerDesc default_sampler_desc(
+                    RHI::Filter::linear, RHI::Filter::linear, RHI::Filter::linear,
+                    RHI::TextureAddressMode::repeat, RHI::TextureAddressMode::repeat,
+                    RHI::TextureAddressMode::repeat);
                 u32 first_pending_vg_call = 0;
 
                 auto flush_pending_vg = [&]()
@@ -705,19 +936,20 @@ namespace Luna
                     return state_index;
                 };
 
-                auto emit_sdf = [&](const SDFDrawDesc& desc, const Float2U& evaluation_origin,
-                    const RectF& raster_domain, const ClipState& clip)
+                auto append_sdf_instance = [&](const PreparedDraw& draw)
                 {
+                    const SDFDrawDesc& desc = draw.sdf;
+                    const Float2U& evaluation_origin = draw.sdf_evaluation_origin;
+                    const RectF& raster_domain = draw.sdf_raster_domain;
+                    const ClipState& clip = draw.clip;
                     const RectF& clip_rect = clip.rect;
-                    if(!desc.shape.floats.valid() || !desc.color.floats.valid()) return;
-                    u32 shape_page = desc.shape.floats.first_float / SDF_PROGRAM_PAGE_FLOATS;
-                    u32 color_page = desc.color.floats.first_float / SDF_PROGRAM_PAGE_FLOATS;
+                    if(!desc.shape.floats.valid() || !desc.color.floats.valid()) return false;
                     u32 local_shape_first = desc.shape.floats.first_float % SDF_PROGRAM_PAGE_FLOATS;
                     u32 local_color_first = desc.color.floats.first_float % SDF_PROGRAM_PAGE_FLOATS;
                     if(local_shape_first + desc.shape.floats.num_floats > SDF_PROGRAM_PAGE_FLOATS ||
                         local_color_first + desc.color.floats.num_floats > SDF_PROGRAM_PAGE_FLOATS)
                     {
-                        return;
+                        return false;
                     }
                     RectF shape_rect(evaluation_origin.x + desc.shape.bounds.offset_x,
                         evaluation_origin.y + desc.shape.bounds.offset_y,
@@ -735,7 +967,7 @@ namespace Luna
                     if(!rect_visible(draw_rect) ||
                         (has_clip(clip_rect) && !rect_visible(intersect_rect(draw_rect, clip_rect))))
                     {
-                        return;
+                        return false;
                     }
                     SDFInstance instance;
                     instance.draw_rect = Float4U(draw_rect.offset_x, draw_rect.offset_y,
@@ -747,334 +979,507 @@ namespace Luna
                         (desc.color.floats.num_floats << SDF_INSTANCE_COLOR_FLOAT_COUNT_SHIFT);
                     instance.program_data = UInt4U(local_shape_first, local_color_first,
                         packed_program_data, resolve_sdf_state(clip));
-                    flush_pending_vg();
-                    m_draw_list->draw_call_barrier();
-                    u32 pair_index = get_page_pair(shape_page, color_page);
-                    u32 instance_index = (u32)m_sdf_instances.size();
                     m_sdf_instances.push_back(instance);
-                    if(!m_render_batches.empty() && m_render_batches.back().type == RenderBatchType::sdf &&
-                        m_render_batches.back().resource_index == pair_index &&
-                        m_render_batches.back().first + m_render_batches.back().count == instance_index)
+                    return true;
+                };
+
+                auto make_vg_key = [&](VG::IShapeBuffer* shape_buffer,
+                    RHI::ITexture* texture, const RHI::SamplerDesc& sampler)
+                {
+                    PreparedBatchKey key;
+                    key.type = RenderBatchType::vg;
+                    key.vg.shape_buffer = shape_buffer;
+                    key.vg.texture = texture;
+                    key.vg.sampler = sampler;
+                    return key;
+                };
+
+                auto append_prepared_sdf = [&](Vector<PreparedDraw>& draws,
+                    u32 command_index, const SDFDrawDesc& desc,
+                    const Float2U& evaluation_origin, const RectF& raster_domain,
+                    const ClipState& clip)
+                {
+                    if(!desc.shape.floats.valid() || !desc.color.floats.valid()) return;
+                    u32 shape_page = desc.shape.floats.first_float / SDF_PROGRAM_PAGE_FLOATS;
+                    u32 color_page = desc.color.floats.first_float / SDF_PROGRAM_PAGE_FLOATS;
+                    PreparedDraw draw;
+                    draw.key.type = RenderBatchType::sdf;
+                    draw.key.sdf_page_pair = get_page_pair(shape_page, color_page);
+                    draw.command_index = command_index;
+                    draw.clip = clip;
+                    draw.sdf = desc;
+                    draw.sdf_evaluation_origin = evaluation_origin;
+                    draw.sdf_raster_domain = raster_domain;
+                    draws.push_back(draw);
+                };
+
+                auto prepare_draw = [&](const ResolvedDrawEvent& event,
+                    Vector<PreparedDraw>& draws)
+                {
+                    if(event.command_index >= commands.size()) return;
+                    const DrawCommand& command = commands[event.command_index];
+                    if(command.layer >= layers.size()) return;
+                    u32 layer_index = command.layer;
+                    const Layer& layer = layers[layer_index];
+                    RectF resolved_rect = resolve_draw_rect(command, elements);
+                    const RectF& clip_rect = event.clip.rect;
+
+                    if(command.type == DrawCommandType::backdrop_blur)
                     {
-                        ++m_render_batches.back().count;
+                        u32 capture_index = event.capture_index;
+                        if(capture_index >= m_num_backdrop_captures ||
+                            !m_backdrop_captures[capture_index].used)
+                        {
+                            return;
+                        }
+                        RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
+                        if((has_clip(clip_rect) &&
+                            !rect_visible(intersect_rect(screen_rect, clip_rect))) ||
+                            !rect_visible(screen_rect))
+                        {
+                            return;
+                        }
+                        PreparedDraw draw;
+                        draw.key = make_vg_key(nullptr,
+                            m_backdrop_captures[capture_index].blur_textures[1],
+                            default_sampler_desc);
+                        draw.command_index = event.command_index;
+                        draw.capture_index = capture_index;
+                        draw.resolved_rect = resolved_rect;
+                        draw.clip = event.clip;
+                        draws.push_back(draw);
+                        return;
                     }
-                    else
+
+                    if(command.type == DrawCommandType::rect ||
+                        command.type == DrawCommandType::gradient_rect ||
+                        command.type == DrawCommandType::rounded_rect ||
+                        command.type == DrawCommandType::shadow)
                     {
-                        m_render_batches.push_back({RenderBatchType::sdf, instance_index, 1, pair_index});
+                        RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
+                        if(!rect_visible(screen_rect)) return;
+                        Vector<f32> shape_floats;
+                        if(command.type == DrawCommandType::rounded_rect ||
+                            command.type == DrawCommandType::shadow)
+                        {
+                            sdf_shape_add_rounded_rectangle(shape_floats,
+                                RectF(0.0f, 0.0f, screen_rect.width, screen_rect.height),
+                                Float4U(max(command.radius, 0.0f)));
+                        }
+                        else
+                        {
+                            sdf_shape_add_rectangle(shape_floats,
+                                RectF(0.0f, 0.0f, screen_rect.width, screen_rect.height));
+                        }
+                        SDFDrawDesc desc;
+                        if(!append_shape_program(m_compiled_sdf_shape_floats,
+                            shape_floats.cspan(), desc.shape)) return;
+                        Vector<f32> color_floats;
+                        if(command.type == DrawCommandType::gradient_rect)
+                        {
+                            sdf_color_add_bilinear_gradient(color_floats,
+                                RectF(0.0f, 0.0f, screen_rect.width, screen_rect.height),
+                                command.color, command.color_top_right,
+                                command.color_bottom_right, command.color_bottom_left);
+                        }
+                        else if(command.type == DrawCommandType::shadow)
+                        {
+                            SDFClipDesc shadow_clip = command.shadow.mode == ShadowMode::inner ?
+                                SDFClipDesc::outer(0.0f) : SDFClipDesc::inner(0.0f);
+                            sdf_color_add_shadow(color_floats, command.color,
+                                command.shadow.offset, command.shadow.softness,
+                                command.shadow.spread, shadow_clip);
+                        }
+                        else
+                        {
+                            sdf_color_add_solid(color_floats, command.color);
+                        }
+                        if(!append_color_program(m_compiled_sdf_color_floats,
+                            color_floats.cspan(), desc.color)) return;
+                        const ClipState& sdf_clip = command.type == DrawCommandType::shadow &&
+                            command.shadow.mode == ShadowMode::outer ?
+                            event.overflow_clip : event.clip;
+                        append_prepared_sdf(draws, event.command_index, desc,
+                            Float2U(screen_rect.offset_x, screen_rect.offset_y),
+                            screen_rect, sdf_clip);
+                        return;
+                    }
+
+                    if(command.type == DrawCommandType::sdf)
+                    {
+                        SDFDrawDesc desc = command.sdf;
+                        if(!resolve_context_program(context_shape_floats,
+                            command.sdf.shape.floats, desc.shape,
+                            validate_sdf_shape_program) ||
+                            !resolve_context_program(context_color_floats,
+                            command.sdf.color.floats, desc.color,
+                            validate_sdf_color_program))
+                        {
+                            return;
+                        }
+                        RectF screen_anchor = to_screen_rect(layers, layer_index, resolved_rect);
+                        const ClipState& sdf_clip = desc.color.may_paint_outside ?
+                            event.overflow_clip : event.clip;
+                        append_prepared_sdf(draws, event.command_index, desc,
+                            Float2U(screen_anchor.offset_x, screen_anchor.offset_y),
+                            screen_anchor, sdf_clip);
+                        return;
+                    }
+
+                    PreparedDraw draw;
+                    draw.command_index = event.command_index;
+                    draw.resolved_rect = resolved_rect;
+                    draw.clip = event.clip;
+                    switch(command.type)
+                    {
+                    case DrawCommandType::image:
+                    {
+                        RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
+                        if((has_clip(clip_rect) &&
+                            !rect_visible(intersect_rect(screen_rect, clip_rect))) ||
+                            !rect_visible(screen_rect) || !color_visible(command.color))
+                        {
+                            return;
+                        }
+                        draw.key = make_vg_key(nullptr, command.texture,
+                            command.nearest_sampler ? nearest_sampler_desc : default_sampler_desc);
+                        break;
+                    }
+                    case DrawCommandType::line:
+                    {
+                        if(!color_visible(command.color) || command.line_width <= 0.0f) return;
+                        Float2U resolved_p0 = resolve_draw_point0(command, elements);
+                        Float2U resolved_p1 = resolve_draw_point1(command, elements);
+                        Float2U p0(layer.screen_position.x + resolved_p0.x,
+                            layer.screen_position.y + resolved_p0.y);
+                        Float2U p1(layer.screen_position.x + resolved_p1.x,
+                            layer.screen_position.y + resolved_p1.y);
+                        f32 margin = max(command.line_width, 1.0f);
+                        RectF bounds(min(p0.x, p1.x) - margin,
+                            min(p0.y, p1.y) - margin,
+                            max(abs(p1.x - p0.x) + margin * 2.0f, 1.0f),
+                            max(abs(p1.y - p0.y) + margin * 2.0f, 1.0f));
+                        if(has_clip(clip_rect) &&
+                            !rect_visible(intersect_rect(bounds, clip_rect))) return;
+                        draw.key = make_vg_key(nullptr, nullptr, default_sampler_desc);
+                        break;
+                    }
+                    case DrawCommandType::text:
+                    {
+                        if(command.text.empty() || command.font_size <= 0.0f ||
+                            !color_visible(command.color)) return;
+                        RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
+                        if((has_clip(clip_rect) &&
+                            !rect_visible(intersect_rect(screen_rect, clip_rect))) ||
+                            !rect_visible(screen_rect)) return;
+                        draw.key = make_vg_key(m_font_atlas->get_shape_buffer(),
+                            nullptr, default_sampler_desc);
+                        break;
+                    }
+                    case DrawCommandType::shape:
+                    {
+                        if(!command.shape.buffer || command.shape.num_commands == 0 ||
+                            !rect_visible(command.shape.bounds) || !rect_visible(resolved_rect) ||
+                            !color_visible(command.color)) return;
+                        RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
+                        if(has_clip(clip_rect) &&
+                            !rect_visible(intersect_rect(screen_rect, clip_rect))) return;
+                        const RHI::SamplerDesc& sampler = command.shape.texture &&
+                            command.nearest_sampler ? nearest_sampler_desc : default_sampler_desc;
+                        draw.key = make_vg_key(command.shape.buffer,
+                            command.shape.texture, sampler);
+                        break;
+                    }
+                    default:
+                        return;
+                    }
+                    draws.push_back(draw);
+                };
+
+                auto emit_vg = [&](const PreparedDraw& draw)
+                {
+                    if(draw.command_index >= commands.size()) return;
+                    const DrawCommand& command = commands[draw.command_index];
+                    if(command.layer >= layers.size()) return;
+                    const Layer& layer = layers[command.layer];
+                    const RectF& resolved_rect = draw.resolved_rect;
+                    RectF vg_clip = has_clip(draw.clip.rect) ?
+                        to_vg_rect(frame_desc, draw.clip.rect) :
+                        RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                    m_draw_list->set_clip_rect(vg_clip);
+                    RectF vg_rounded_clip = has_rounded_clip(draw.clip) ?
+                        to_vg_rect(frame_desc, draw.clip.rounded_rect) :
+                        RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                    m_draw_list->set_rounded_clip_rect(vg_rounded_clip,
+                        draw.clip.rounded_radii);
+                    m_draw_list->set_texture(nullptr);
+                    m_draw_list->set_shape_buffer(nullptr);
+                    m_draw_list->set_sampler(nullptr);
+
+                    switch(command.type)
+                    {
+                    case DrawCommandType::backdrop_blur:
+                    {
+                        if(draw.capture_index >= m_num_backdrop_captures) break;
+                        const BackdropCapture& capture = m_backdrop_captures[draw.capture_index];
+                        RectF screen_rect = to_screen_rect(layers, command.layer, resolved_rect);
+                        const RectF& source_rect = capture.source_rect;
+                        f32 min_u = (screen_rect.offset_x - source_rect.offset_x) /
+                            source_rect.width;
+                        f32 max_u = (screen_rect.offset_x + screen_rect.width -
+                            source_rect.offset_x) / source_rect.width;
+                        f32 min_v = (screen_rect.offset_y - source_rect.offset_y) /
+                            source_rect.height;
+                        f32 max_v = (screen_rect.offset_y + screen_rect.height -
+                            source_rect.offset_y) / source_rect.height;
+                        RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
+                        m_draw_list->set_texture(capture.blur_textures[1]);
+                        auto& points = m_draw_list->get_shape_buffer()->get_shape_points(true);
+                        u32 begin = (u32)points.size();
+                        if(command.radius > 0.0f)
+                        {
+                            VG::ShapeBuilder::add_rounded_rectangle_filled(points,
+                                0.0f, 0.0f, vg_rect.width, vg_rect.height,
+                                command.radius);
+                        }
+                        else
+                        {
+                            VG::ShapeBuilder::add_rectangle_filled(points,
+                                0.0f, 0.0f, vg_rect.width, vg_rect.height);
+                        }
+                        u32 end = (u32)points.size();
+                        m_draw_list->draw_shape(begin, end - begin,
+                            Float2U(vg_rect.offset_x, vg_rect.offset_y),
+                            Float2U(vg_rect.offset_x + vg_rect.width,
+                                vg_rect.offset_y + vg_rect.height),
+                            Float2U(0.0f), Float2U(vg_rect.width, vg_rect.height),
+                            Float4U(1.0f), Float2U(min_u, max_v),
+                            Float2U(max_u, min_v));
+                        break;
+                    }
+                    case DrawCommandType::image:
+                    {
+                        RectF screen_rect = to_screen_rect(layers, command.layer, resolved_rect);
+                        RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
+                        m_draw_list->set_texture(command.texture);
+                        if(command.nearest_sampler) m_draw_list->set_sampler(&nearest_sampler_desc);
+                        auto& points = m_draw_list->get_shape_buffer()->get_shape_points(true);
+                        u32 begin = (u32)points.size();
+                        VG::ShapeBuilder::add_rectangle_filled(points, 0.0f, 0.0f,
+                            vg_rect.width, vg_rect.height);
+                        u32 end = (u32)points.size();
+                        m_draw_list->draw_shape(begin, end - begin,
+                            Float2U(vg_rect.offset_x, vg_rect.offset_y),
+                            Float2U(vg_rect.offset_x + vg_rect.width,
+                                vg_rect.offset_y + vg_rect.height),
+                            Float2U(0.0f), Float2U(vg_rect.width, vg_rect.height),
+                            command.color, command.min_texcoord, command.max_texcoord);
+                        break;
+                    }
+                    case DrawCommandType::line:
+                    {
+                        Float2U resolved_p0 = resolve_draw_point0(command, elements);
+                        Float2U resolved_p1 = resolve_draw_point1(command, elements);
+                        Float2U p0(layer.screen_position.x + resolved_p0.x,
+                            layer.screen_position.y + resolved_p0.y);
+                        Float2U p1(layer.screen_position.x + resolved_p1.x,
+                            layer.screen_position.y + resolved_p1.y);
+                        f32 margin = max(command.line_width, 1.0f);
+                        f32 dx = abs(p1.x - p0.x);
+                        f32 dy = abs(p1.y - p0.y);
+                        RectF bounds(min(p0.x, p1.x) - margin,
+                            min(p0.y, p1.y) - margin,
+                            max(dx + margin * 2.0f, 1.0f),
+                            max(dy + margin * 2.0f, 1.0f));
+                        RectF vg_rect = to_vg_rect(frame_desc, bounds);
+                        auto& points = m_draw_list->get_shape_buffer()->get_shape_points(true);
+                        u32 begin = (u32)points.size();
+                        Float2U local_p0(p0.x - bounds.offset_x,
+                            bounds.height - (p0.y - bounds.offset_y));
+                        Float2U local_p1(p1.x - bounds.offset_x,
+                            bounds.height - (p1.y - bounds.offset_y));
+                        VG::ShapeBuilder::add_line(points, local_p0.x, local_p0.y,
+                            local_p1.x, local_p1.y, command.line_width);
+                        u32 end = (u32)points.size();
+                        m_draw_list->draw_shape(begin, end - begin,
+                            Float2U(vg_rect.offset_x, vg_rect.offset_y),
+                            Float2U(vg_rect.offset_x + vg_rect.width,
+                                vg_rect.offset_y + vg_rect.height),
+                            Float2U(0.0f), Float2U(vg_rect.width, vg_rect.height),
+                            command.color, Float2U(0.0f), Float2U(1.0f));
+                        break;
+                    }
+                    case DrawCommandType::text:
+                    {
+                        RectF screen_rect = to_screen_rect(layers, command.layer, resolved_rect);
+                        FontDesc font = context->get_font(command.font);
+                        if(!font.font)
+                        {
+                            font.font = Font::get_default_font();
+                            font.font_index = 0;
+                        }
+                        VG::TextArrangeSection section;
+                        section.font_file = font.font;
+                        section.font_index = font.font_index;
+                        section.font_size = command.font_size;
+                        section.color = command.color;
+                        section.num_chars = command.text.size();
+                        RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
+                        VG::TextArrangeResult arranged = VG::arrange_text(
+                            command.text.c_str(), command.text.size(),
+                            Span<const VG::TextArrangeSection>(&section, 1), vg_rect,
+                            command.vertical_alignment, command.horizontal_alignment);
+                        VG::commit_text_arrange_result(arranged,
+                            Span<const VG::TextArrangeSection>(&section, 1),
+                            m_font_atlas, m_draw_list);
+                        break;
+                    }
+                    case DrawCommandType::shape:
+                    {
+                        RectF screen_rect = to_screen_rect(layers, command.layer, resolved_rect);
+                        RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
+                        m_draw_list->set_shape_buffer(command.shape.buffer);
+                        m_draw_list->set_texture(command.shape.texture);
+                        if(command.shape.texture && command.nearest_sampler)
+                            m_draw_list->set_sampler(&nearest_sampler_desc);
+                        Float2U shape_min(command.shape.bounds.offset_x,
+                            command.shape.bounds.offset_y + command.shape.bounds.height);
+                        Float2U shape_max(command.shape.bounds.offset_x +
+                            command.shape.bounds.width, command.shape.bounds.offset_y);
+                        m_draw_list->draw_shape(command.shape.first_command,
+                            command.shape.num_commands,
+                            Float2U(vg_rect.offset_x, vg_rect.offset_y),
+                            Float2U(vg_rect.offset_x + vg_rect.width,
+                                vg_rect.offset_y + vg_rect.height),
+                            shape_min, shape_max, command.color,
+                            command.min_texcoord, command.max_texcoord);
+                        break;
+                    }
+                    default:
+                        break;
                     }
                 };
 
-                for(u32 layer_index = 0; layer_index < layers.size(); ++layer_index)
+                usize event_begin = 0;
+                while(event_begin < resolved_events.size())
                 {
-                    const Layer& layer = layers[layer_index];
-                    clip_stack.clear();
-                    for(u32 command_index : layer.draw_command_indices)
+                    usize event_end = event_begin + 1;
+                    paint_order_id_t paint_order_id =
+                        resolved_events[event_begin].paint_order_id;
+                    while(event_end < resolved_events.size() &&
+                        resolved_events[event_end].paint_order_id == paint_order_id)
                     {
-                        if(command_index >= commands.size()) continue;
-                        const DrawCommand& command = commands[command_index];
-                        RectF resolved_rect = resolve_draw_rect(command, elements);
-                        RectF element_clip;
-                        RectF inherited_clip;
-                        if(command.element != INVALID_ELEMENT && command.element < elements.size())
-                        {
-                            const Element& element = elements[command.element];
-                            element_clip = to_screen_rect(layers, layer_index, element.layout_result.clip_rect);
-                            if(element.parent != INVALID_ELEMENT && element.parent < elements.size())
-                            {
-                                inherited_clip = to_screen_rect(layers, layer_index,
-                                    elements[element.parent].layout_result.clip_rect);
-                            }
-                        }
-                        if(command.type == DrawCommandType::push_clip)
-                        {
-                            RectF requested_clip = to_screen_rect(layers, layer_index, resolved_rect);
-                            ClipState pushed_clip = clip_stack.empty() ? ClipState() : clip_stack.back();
-                            pushed_clip.rect = merge_clip_rect(pushed_clip.rect, element_clip);
-                            pushed_clip.rect = merge_clip_rect(pushed_clip.rect, requested_clip);
-                            if(command.radius > 0.0f)
-                            {
-                                pushed_clip.rounded_rect = requested_clip;
-                                pushed_clip.rounded_radii = Float4U(command.radius);
-                            }
-                            clip_stack.push_back(pushed_clip);
-                            continue;
-                        }
-                        if(command.type == DrawCommandType::pop_clip)
-                        {
-                            if(!clip_stack.empty()) clip_stack.pop_back();
-                            continue;
-                        }
-                        if(command.type == DrawCommandType::backdrop_blur_capture)
-                        {
-                            u32 capture_index = command_capture_indices[command_index];
-                            if(capture_index < m_num_backdrop_captures &&
-                                m_backdrop_captures[capture_index].used)
-                            {
-                                flush_pending_vg();
-                                m_draw_list->draw_call_barrier();
-                                m_render_batches.push_back({
-                                    RenderBatchType::backdrop_capture, 0, 0, capture_index});
-                            }
-                            continue;
-                        }
+                        ++event_end;
+                    }
 
-                        ClipState clip = clip_stack.empty() ? ClipState() : clip_stack.back();
-                        clip.rect = merge_clip_rect(clip.rect, element_clip);
-                        RectF clip_rect = clip.rect;
-                        auto visual_overflow_clip = [&]()
+                    bool has_capture_event = false;
+                    for(usize event_index = event_begin;
+                        event_index < event_end; ++event_index)
+                    {
+                        if(resolved_events[event_index].type ==
+                            ResolvedDrawEventType::backdrop_capture)
                         {
-                            ClipState overflow_clip = clip_stack.empty() ? ClipState() : clip_stack.back();
-                            overflow_clip.rect = merge_clip_rect(overflow_clip.rect, inherited_clip);
-                            return overflow_clip;
-                        };
-                        RectF vg_clip = has_clip(clip_rect) ? to_vg_rect(frame_desc, clip_rect) : RectF();
-                        m_draw_list->set_clip_rect(vg_clip);
-                        RectF vg_rounded_clip = has_rounded_clip(clip) ?
-                            to_vg_rect(frame_desc, clip.rounded_rect) : RectF();
-                        m_draw_list->set_rounded_clip_rect(vg_rounded_clip, clip.rounded_radii);
-                        m_draw_list->set_texture(nullptr);
-                        m_draw_list->set_shape_buffer(nullptr);
-                        m_draw_list->set_sampler(nullptr);
-
-                        if(command.type == DrawCommandType::backdrop_blur)
-                        {
-                            u32 capture_index = command_capture_indices[command_index];
-                            if(capture_index >= m_num_backdrop_captures ||
-                                !m_backdrop_captures[capture_index].used)
-                            {
-                                continue;
-                            }
-                            RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
-                            if((has_clip(clip_rect) &&
-                                !rect_visible(intersect_rect(screen_rect, clip_rect))) ||
-                                !rect_visible(screen_rect))
-                            {
-                                continue;
-                            }
-                            const BackdropCapture& capture =
-                                m_backdrop_captures[capture_index];
-                            const RectF& source_rect = capture.source_rect;
-                            f32 min_u = (screen_rect.offset_x - source_rect.offset_x) /
-                                source_rect.width;
-                            f32 max_u = (screen_rect.offset_x + screen_rect.width -
-                                source_rect.offset_x) / source_rect.width;
-                            f32 min_v = (screen_rect.offset_y - source_rect.offset_y) /
-                                source_rect.height;
-                            f32 max_v = (screen_rect.offset_y + screen_rect.height -
-                                source_rect.offset_y) / source_rect.height;
-                            RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
-                            m_draw_list->set_texture(capture.blur_textures[1]);
-                            auto& points =
-                                m_draw_list->get_shape_buffer()->get_shape_points(true);
-                            u32 begin = (u32)points.size();
-                            if(command.radius > 0.0f)
-                            {
-                                VG::ShapeBuilder::add_rounded_rectangle_filled(points,
-                                    0.0f, 0.0f, vg_rect.width, vg_rect.height,
-                                    command.radius);
-                            }
-                            else
-                            {
-                                VG::ShapeBuilder::add_rectangle_filled(points,
-                                    0.0f, 0.0f, vg_rect.width, vg_rect.height);
-                            }
-                            u32 end = (u32)points.size();
-                            m_draw_list->draw_shape(begin, end - begin,
-                                Float2U(vg_rect.offset_x, vg_rect.offset_y),
-                                Float2U(vg_rect.offset_x + vg_rect.width,
-                                    vg_rect.offset_y + vg_rect.height),
-                                Float2U(0.0f), Float2U(vg_rect.width, vg_rect.height),
-                                Float4U(1.0f), Float2U(min_u, max_v),
-                                Float2U(max_u, min_v));
-                            continue;
-                        }
-
-                        if(command.type == DrawCommandType::rect ||
-                            command.type == DrawCommandType::gradient_rect ||
-                            command.type == DrawCommandType::rounded_rect ||
-                            command.type == DrawCommandType::shadow)
-                        {
-                            RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
-                            if(!rect_visible(screen_rect)) continue;
-                            Vector<f32> shape_floats;
-                            if(command.type == DrawCommandType::rounded_rect || command.type == DrawCommandType::shadow)
-                            {
-                                sdf_shape_add_rounded_rectangle(shape_floats,
-                                    RectF(0.0f, 0.0f, screen_rect.width, screen_rect.height),
-                                    Float4U(max(command.radius, 0.0f)));
-                            }
-                            else
-                            {
-                                sdf_shape_add_rectangle(shape_floats,
-                                    RectF(0.0f, 0.0f, screen_rect.width, screen_rect.height));
-                            }
-                            SDFDrawDesc desc;
-                            if(!append_shape_program(m_compiled_sdf_shape_floats,
-                                shape_floats.cspan(), desc.shape))
-                                continue;
-                            Vector<f32> color_floats;
-                            if(command.type == DrawCommandType::gradient_rect)
-                            {
-                                sdf_color_add_bilinear_gradient(color_floats,
-                                    RectF(0.0f, 0.0f, screen_rect.width, screen_rect.height), command.color,
-                                    command.color_top_right, command.color_bottom_right,
-                                    command.color_bottom_left);
-                            }
-                            else if(command.type == DrawCommandType::shadow)
-                            {
-                                SDFClipDesc shadow_clip = command.shadow.mode == ShadowMode::inner ?
-                                    SDFClipDesc::outer(0.0f) : SDFClipDesc::inner(0.0f);
-                                sdf_color_add_shadow(color_floats, command.color, command.shadow.offset,
-                                    command.shadow.softness, command.shadow.spread, shadow_clip);
-                            }
-                            else
-                            {
-                                sdf_color_add_solid(color_floats, command.color);
-                            }
-                            if(!append_color_program(m_compiled_sdf_color_floats,
-                                color_floats.cspan(), desc.color))
-                                continue;
-                            ClipState sdf_clip = command.type == DrawCommandType::shadow &&
-                                command.shadow.mode == ShadowMode::outer ? visual_overflow_clip() : clip;
-                            emit_sdf(desc, Float2U(screen_rect.offset_x, screen_rect.offset_y),
-                                screen_rect, sdf_clip);
-                            continue;
-                        }
-
-                        if(command.type == DrawCommandType::sdf)
-                        {
-                            SDFDrawDesc desc = command.sdf;
-                            if(!resolve_context_program(context_shape_floats, command.sdf.shape.floats,
-                                desc.shape, validate_sdf_shape_program) ||
-                                !resolve_context_program(context_color_floats, command.sdf.color.floats,
-                                    desc.color, validate_sdf_color_program))
-                            {
-                                continue;
-                            }
-                            RectF screen_anchor = to_screen_rect(layers, layer_index, resolved_rect);
-                            ClipState sdf_clip = desc.color.may_paint_outside ?
-                                visual_overflow_clip() : clip;
-                            emit_sdf(desc, Float2U(screen_anchor.offset_x, screen_anchor.offset_y),
-                                screen_anchor, sdf_clip);
-                            continue;
-                        }
-
-                        switch(command.type)
-                        {
-                        case DrawCommandType::image:
-                        {
-                            RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
-                            if((has_clip(clip_rect) && !rect_visible(intersect_rect(screen_rect, clip_rect))) ||
-                                !rect_visible(screen_rect) || !color_visible(command.color))
-                            {
-                                break;
-                            }
-                            RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
-                            m_draw_list->set_texture(command.texture);
-                            if(command.nearest_sampler) m_draw_list->set_sampler(&nearest_sampler_desc);
-                            auto& points = m_draw_list->get_shape_buffer()->get_shape_points(true);
-                            u32 begin = (u32)points.size();
-                            VG::ShapeBuilder::add_rectangle_filled(points, 0.0f, 0.0f,
-                                vg_rect.width, vg_rect.height);
-                            u32 end = (u32)points.size();
-                            m_draw_list->draw_shape(begin, end - begin,
-                                Float2U(vg_rect.offset_x, vg_rect.offset_y),
-                                Float2U(vg_rect.offset_x + vg_rect.width, vg_rect.offset_y + vg_rect.height),
-                                Float2U(0.0f), Float2U(vg_rect.width, vg_rect.height), command.color,
-                                command.min_texcoord, command.max_texcoord);
-                            break;
-                        }
-                        case DrawCommandType::line:
-                        {
-                            if(!color_visible(command.color) || command.line_width <= 0.0f) break;
-                            Float2U resolved_p0 = resolve_draw_point0(command, elements);
-                            Float2U resolved_p1 = resolve_draw_point1(command, elements);
-                            Float2U p0(layer.screen_position.x + resolved_p0.x,
-                                layer.screen_position.y + resolved_p0.y);
-                            Float2U p1(layer.screen_position.x + resolved_p1.x,
-                                layer.screen_position.y + resolved_p1.y);
-                            f32 margin = max(command.line_width, 1.0f);
-                            f32 dx = abs(p1.x - p0.x);
-                            f32 dy = abs(p1.y - p0.y);
-                            RectF bounds(min(p0.x, p1.x) - margin, min(p0.y, p1.y) - margin,
-                                max(dx + margin * 2.0f, 1.0f), max(dy + margin * 2.0f, 1.0f));
-                            if(has_clip(clip_rect) && !rect_visible(intersect_rect(bounds, clip_rect))) break;
-                            RectF vg_rect = to_vg_rect(frame_desc, bounds);
-                            auto& points = m_draw_list->get_shape_buffer()->get_shape_points(true);
-                            u32 begin = (u32)points.size();
-                            Float2U local_p0(p0.x - bounds.offset_x, bounds.height - (p0.y - bounds.offset_y));
-                            Float2U local_p1(p1.x - bounds.offset_x, bounds.height - (p1.y - bounds.offset_y));
-                            VG::ShapeBuilder::add_line(points, local_p0.x, local_p0.y,
-                                local_p1.x, local_p1.y, command.line_width);
-                            u32 end = (u32)points.size();
-                            m_draw_list->draw_shape(begin, end - begin,
-                                Float2U(vg_rect.offset_x, vg_rect.offset_y),
-                                Float2U(vg_rect.offset_x + vg_rect.width, vg_rect.offset_y + vg_rect.height),
-                                Float2U(0.0f), Float2U(vg_rect.width, vg_rect.height), command.color,
-                                Float2U(0.0f), Float2U(1.0f));
-                            break;
-                        }
-                        case DrawCommandType::text:
-                        {
-                            if(command.text.empty() || command.font_size <= 0.0f || !color_visible(command.color))
-                                break;
-                            RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
-                            if((has_clip(clip_rect) && !rect_visible(intersect_rect(screen_rect, clip_rect))) ||
-                                !rect_visible(screen_rect)) break;
-                            FontDesc font = context->get_font(command.font);
-                            if(!font.font)
-                            {
-                                font.font = Font::get_default_font();
-                                font.font_index = 0;
-                            }
-                            VG::TextArrangeSection section;
-                            section.font_file = font.font;
-                            section.font_index = font.font_index;
-                            section.font_size = command.font_size;
-                            section.color = command.color;
-                            section.num_chars = command.text.size();
-                            RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
-                            VG::TextArrangeResult arranged = VG::arrange_text(command.text.c_str(), command.text.size(),
-                                Span<const VG::TextArrangeSection>(&section, 1), vg_rect,
-                                command.vertical_alignment, command.horizontal_alignment);
-                            VG::commit_text_arrange_result(arranged,
-                                Span<const VG::TextArrangeSection>(&section, 1), m_font_atlas,
-                                m_draw_list);
-                            break;
-                        }
-                        case DrawCommandType::shape:
-                        {
-                            if(!command.shape.buffer || command.shape.num_commands == 0 ||
-                                !rect_visible(command.shape.bounds) || !rect_visible(resolved_rect) ||
-                                !color_visible(command.color)) break;
-                            RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
-                            if(has_clip(clip_rect) && !rect_visible(intersect_rect(screen_rect, clip_rect))) break;
-                            RectF vg_rect = to_vg_rect(frame_desc, screen_rect);
-                            m_draw_list->set_shape_buffer(command.shape.buffer);
-                            m_draw_list->set_texture(command.shape.texture);
-                            if(command.shape.texture && command.nearest_sampler)
-                                m_draw_list->set_sampler(&nearest_sampler_desc);
-                            Float2U shape_min(command.shape.bounds.offset_x,
-                                command.shape.bounds.offset_y + command.shape.bounds.height);
-                            Float2U shape_max(command.shape.bounds.offset_x + command.shape.bounds.width,
-                                command.shape.bounds.offset_y);
-                            m_draw_list->draw_shape(command.shape.first_command, command.shape.num_commands,
-                                Float2U(vg_rect.offset_x, vg_rect.offset_y),
-                                Float2U(vg_rect.offset_x + vg_rect.width, vg_rect.offset_y + vg_rect.height),
-                                shape_min, shape_max, command.color,
-                                command.min_texcoord, command.max_texcoord);
-                            break;
-                        }
-                        default:
+                            has_capture_event = true;
                             break;
                         }
                     }
+                    if(has_capture_event)
+                    {
+                        if(event_end - event_begin != 1)
+                        {
+                            return set_error(E_BAD_DATA,
+                                "A backdrop capture must own an exclusive Paint Order ID.");
+                        }
+                        const ResolvedDrawEvent& event = resolved_events[event_begin];
+                        if(event.capture_index < m_num_backdrop_captures &&
+                            m_backdrop_captures[event.capture_index].used)
+                        {
+                            flush_pending_vg();
+                            m_draw_list->draw_call_barrier();
+                            m_render_batches.push_back({
+                                RenderBatchType::backdrop_capture, 0, 0,
+                                event.capture_index});
+                        }
+                        event_begin = event_end;
+                        continue;
+                    }
+
+                    Vector<PreparedDraw> prepared_draws;
+                    prepared_draws.reserve(event_end - event_begin);
+                    for(usize event_index = event_begin;
+                        event_index < event_end; ++event_index)
+                    {
+                        prepare_draw(resolved_events[event_index], prepared_draws);
+                    }
+
+                    HashMap<PreparedBatchKey, u32, PreparedBatchKeyHash> batch_indices;
+                    Vector<PreparedBatch> batches;
+                    for(u32 draw_index = 0; draw_index < prepared_draws.size(); ++draw_index)
+                    {
+                        const PreparedBatchKey& key = prepared_draws[draw_index].key;
+                        auto iter = batch_indices.find(key);
+                        u32 batch_index;
+                        if(iter == batch_indices.end())
+                        {
+                            batch_index = (u32)batches.size();
+                            PreparedBatch batch;
+                            batch.key = key;
+                            batches.push_back(move(batch));
+                            batch_indices.insert(make_pair(key, batch_index));
+                        }
+                        else
+                        {
+                            batch_index = iter->second;
+                        }
+                        batches[batch_index].draw_indices.push_back(draw_index);
+                    }
+
+                    for(const PreparedBatch& batch : batches)
+                    {
+                        if(batch.key.type == RenderBatchType::vg)
+                        {
+                            for(u32 draw_index : batch.draw_indices)
+                            {
+                                emit_vg(prepared_draws[draw_index]);
+                            }
+                            continue;
+                        }
+
+                        u32 first_instance = (u32)m_sdf_instances.size();
+                        for(u32 draw_index : batch.draw_indices)
+                        {
+                            append_sdf_instance(prepared_draws[draw_index]);
+                        }
+                        u32 instance_count = (u32)m_sdf_instances.size() - first_instance;
+                        if(instance_count)
+                        {
+                            flush_pending_vg();
+                            m_draw_list->draw_call_barrier();
+                            if(!m_render_batches.empty() &&
+                                m_render_batches.back().type == RenderBatchType::sdf &&
+                                m_render_batches.back().resource_index ==
+                                    batch.key.sdf_page_pair &&
+                                m_render_batches.back().first +
+                                    m_render_batches.back().count == first_instance)
+                            {
+                                m_render_batches.back().count += instance_count;
+                            }
+                            else
+                            {
+                                m_render_batches.push_back({RenderBatchType::sdf,
+                                    first_instance, instance_count,
+                                    batch.key.sdf_page_pair});
+                            }
+                        }
+                    }
+                    event_begin = event_end;
                 }
                 m_draw_list->set_texture(nullptr);
                 m_draw_list->set_shape_buffer(nullptr);
                 m_draw_list->set_sampler(nullptr);
-                m_draw_list->set_clip_rect(RectF());
-                m_draw_list->set_rounded_clip_rect(RectF(), Float4U(0.0f));
+                m_draw_list->set_clip_rect(RectF(0.0f, 0.0f, 0.0f, 0.0f));
+                m_draw_list->set_rounded_clip_rect(
+                    RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.0f));
                 flush_pending_vg();
                 luexp(m_draw_list->compile());
                 m_counters.vg_draw_call_count = (u32)m_draw_list->get_draw_calls().size();

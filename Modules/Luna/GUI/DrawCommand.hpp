@@ -89,12 +89,14 @@ namespace Luna
         //! commands for the element currently being generated.
         //! @param[in] element The element being generated.
         //! @param[in] phase The painter-order traversal phase being generated.
+        //! @param[in] paint_order_id The first Paint Order ID available to this callback phase.
         //! @param[in] userdata User data stored in @ref DrawConfig.
-        //! @return Returns success or failure code.
+        //! @return Returns the maximum Paint Order ID used or reserved by this callback, or a failure code.
         //! @remark Draw callbacks run after layout and input routing. They must not mutate the element tree, layout,
         //! interaction state, or application data. The callback and userdata must remain valid until draw command
-        //! generation finishes.
-        using DrawCallback = RV(*)(IContext* context, const ElementHandle& element, DrawPhase phase, void* userdata);
+        //! generation finishes. A callback that emits nothing and reserves no IDs returns @p paint_order_id unchanged.
+        using DrawCallback = R<paint_order_id_t>(*)(IContext* context, const ElementHandle& element,
+            DrawPhase phase, paint_order_id_t paint_order_id, void* userdata);
 
         //! Describes delayed draw behavior attached to one typeless element.
         struct DrawConfig
@@ -171,6 +173,9 @@ namespace Luna
             u32 layer = INVALID_LAYER;
             //! Owning element index, or @ref INVALID_ELEMENT when the command is not element-scoped.
             u32 element = INVALID_ELEMENT;
+            //! Frame-local Paint Order ID used to order and batch this command, or @ref INVALID_PAINT_ORDER_ID before
+            //! command generation assigns an ID.
+            paint_order_id_t paint_order_id = INVALID_PAINT_ORDER_ID;
             //! Destination rectangle or clip rectangle in layer coordinates.
             RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             //! Coordinate reference used by @ref rect.

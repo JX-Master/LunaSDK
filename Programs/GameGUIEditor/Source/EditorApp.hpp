@@ -280,8 +280,9 @@ namespace Luna
             bool find_parent_info(const AuthoringDocument& document, const Guid& node,
                 Guid& parent, usize& sibling_index);
             Variant editing_params(const DocumentView& document);
-            RV draw_hierarchy_drop(GUI::IContext* context,
-                const GUI::ElementHandle& element, GUI::DrawPhase phase, void* userdata);
+            R<GUI::paint_order_id_t> draw_hierarchy_drop(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase phase,
+                GUI::paint_order_id_t paint_order_id, void* userdata);
         }
     }
 }

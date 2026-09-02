@@ -95,7 +95,8 @@ namespace Luna
 
             RV draw_rounded_rect_effects(GUI::IContext* context,
                 const GUI::ElementHandle& element, const RectF& rect,
-                const Float4U& rect_layout_scale, f32 radius, Span<const RoundedRectEffect> effects);
+                const Float4U& rect_layout_scale, f32 radius, Span<const RoundedRectEffect> effects,
+                GUI::paint_order_id_t paint_order_id);
 
             VG::TextAlignment text_alignment(TextAlignment alignment);
             f32 smooth_step(f32 current, f32 target, f32 speed, f32 delta_time);

@@ -214,7 +214,7 @@ namespace Luna
             }
 
             static void draw_rect(GUI::IContext* context, GUI::DrawCommandType type, const RectF& rect,
-                const Float4U& color, f32 radius = 0.0f)
+                const Float4U& color, GUI::paint_order_id_t paint_order_id, f32 radius = 0.0f)
             {
                 GUI::DrawCommand command;
                 command.type = type;
@@ -222,11 +222,12 @@ namespace Luna
                 command.rect = rect;
                 command.color = color;
                 command.radius = radius;
-                context->draw(command);
+                context->draw(command, paint_order_id);
             }
 
             static void draw_gradient(GUI::IContext* context, const RectF& rect, const Float4U& top_left,
-                const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left)
+                const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left,
+                GUI::paint_order_id_t paint_order_id)
             {
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::gradient_rect;
@@ -236,10 +237,11 @@ namespace Luna
                 command.color_top_right = top_right;
                 command.color_bottom_right = bottom_right;
                 command.color_bottom_left = bottom_left;
-                context->draw(command);
+                context->draw(command, paint_order_id);
             }
 
-            static void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color)
+            static void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color,
+                GUI::paint_order_id_t paint_order_id)
             {
                 const Float2U points[] =
                 {
@@ -256,12 +258,13 @@ namespace Luna
                     command.point1 = points[(i + 1) & 3];
                     command.color = color;
                     command.line_width = 1.0f;
-                    context->draw(command);
+                    context->draw(command, paint_order_id);
                 }
             }
 
             static void draw_label(GUI::IContext* context, const RectF& rect, const c8* text,
-                const Float4U& color, f32 font_size, VG::TextAlignment alignment = VG::TextAlignment::begin)
+                const Float4U& color, f32 font_size, GUI::paint_order_id_t paint_order_id,
+                VG::TextAlignment alignment = VG::TextAlignment::begin)
             {
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::text;
@@ -273,13 +276,13 @@ namespace Luna
                 command.color = color;
                 command.horizontal_alignment = alignment;
                 command.vertical_alignment = VG::TextAlignment::center;
-                context->draw(command);
+                context->draw(command, paint_order_id);
             }
 
             static void draw_swatch(GUI::IContext* context, const RectF& rect, const Float4U& color,
-                const Float4U& border)
+                const Float4U& border, GUI::paint_order_id_t paint_order_id)
             {
-                draw_rect(context, GUI::DrawCommandType::rounded_rect, rect, border, 3.0f);
+                draw_rect(context, GUI::DrawCommandType::rounded_rect, rect, border, paint_order_id, 3.0f);
                 RectF inner(rect.offset_x + 1.0f, rect.offset_y + 1.0f, max(rect.width - 2.0f, 1.0f),
                     max(rect.height - 2.0f, 1.0f));
                 constexpr f32 cell_size = 8.0f;
@@ -294,10 +297,11 @@ namespace Luna
                             min(cell_size, inner.height - (f32)y * cell_size));
                         draw_rect(context, GUI::DrawCommandType::rect, cell,
                             (x + y) & 1 ? Float4U(0.20f, 0.23f, 0.28f, 1.0f) :
-                            Float4U(0.40f, 0.44f, 0.50f, 1.0f));
+                            Float4U(0.40f, 0.44f, 0.50f, 1.0f), paint_order_id + 1);
                     }
                 }
-                draw_rect(context, GUI::DrawCommandType::rounded_rect, inner, color, 2.0f);
+                draw_rect(context, GUI::DrawCommandType::rounded_rect, inner, color,
+                    paint_order_id + 2, 2.0f);
             }
 
             static bool rect_contains(const RectF& rect, const Float2U& point)
@@ -317,33 +321,37 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_color_preview(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_color_preview(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 PreviewData* data = (PreviewData*)userdata;
-                if(!data) return ok;
+                if(!data) return paint_order_id;
                 GUI::InteractionState interaction = context->get_interaction_state(element.id);
                 Float4U border = style_color(context, element, "gui.color_edit.border", Float4U(0.24f, 0.30f, 0.38f, 1.0f));
                 Float4U background = style_color(context, element, data->enabled && interaction.hovered ?
                     "gui.color_edit.background_hovered" : "gui.color_edit.background", data->enabled && interaction.hovered ?
                     Float4U(0.13f, 0.19f, 0.27f, 1.0f) : Float4U(0.10f, 0.13f, 0.18f, 1.0f));
                 f32 radius = style_scalar(context, element, "gui.color_edit.radius", 4.0f);
-                draw_rect(context, GUI::DrawCommandType::rounded_rect, RectF(), border, radius);
+                draw_rect(context, GUI::DrawCommandType::rounded_rect, RectF(), border,
+                    paint_order_id, radius);
                 draw_rect(context, GUI::DrawCommandType::rounded_rect, RectF(1.0f, 1.0f, -2.0f, -2.0f), background,
-                    max(radius - 1.0f, 0.0f));
-                draw_swatch(context, RectF(6.0f, 4.0f, 22.0f, 22.0f), read_color(data->binding), border);
+                    paint_order_id + 1, max(radius - 1.0f, 0.0f));
+                draw_swatch(context, RectF(6.0f, 4.0f, 22.0f, 22.0f), read_color(data->binding), border,
+                    paint_order_id + 2);
                 draw_label(context, RectF(36.0f, 0.0f, -44.0f, 0.0f), data->hex,
                     style_color(context, element, data->enabled ? "gui.text.color" : "gui.text.disabled",
                     data->enabled ? Float4U(0.86f, 0.88f, 0.92f, 1.0f) : Float4U(0.48f, 0.52f, 0.58f, 1.0f)),
-                    style_scalar(context, element, "gui.text.font_size", 15.0f));
-                return ok;
+                    style_scalar(context, element, "gui.text.font_size", 15.0f), paint_order_id + 2);
+                return paint_order_id + 4;
             }
 
-            static RV draw_color_picker(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_color_picker(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 PickerData* data = (PickerData*)userdata;
-                if(!data || !data->state) return ok;
+                if(!data || !data->state) return paint_order_id;
                 PickerGeometry geometry;
                 Float4U color = read_color(data->binding);
                 i32 axis = clamp(data->state->axis, 0, 5);
@@ -352,9 +360,11 @@ namespace Luna
                 if(axis == 0)
                 {
                     Float4U hue = hsv_to_rgb(bar, 1.0f, 1.0f, 1.0f);
-                    draw_gradient(context, geometry.square, Float4U(1.0f), hue, hue, Float4U(1.0f));
+                    draw_gradient(context, geometry.square, Float4U(1.0f), hue, hue, Float4U(1.0f),
+                        paint_order_id);
                     draw_gradient(context, geometry.square, Float4U(0.0f), Float4U(0.0f),
-                        Float4U(0.0f, 0.0f, 0.0f, 1.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f));
+                        Float4U(0.0f, 0.0f, 0.0f, 1.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f),
+                        paint_order_id + 1);
                 }
                 else if(axis < 3)
                 {
@@ -366,17 +376,19 @@ namespace Luna
                             geometry.square.width * (x1 - x0) + 0.5f, geometry.square.height);
                         Float4U left = color_from_picker(axis, x0, 1.0f, bar, 1.0f);
                         Float4U right = color_from_picker(axis, x1, 1.0f, bar, 1.0f);
-                        draw_gradient(context, segment, left, right, right, left);
+                        draw_gradient(context, segment, left, right, right, left, paint_order_id);
                         if(axis == 1)
                         {
                             draw_gradient(context, segment, Float4U(0.0f), Float4U(0.0f),
-                                Float4U(0.0f, 0.0f, 0.0f, 1.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f));
+                                Float4U(0.0f, 0.0f, 0.0f, 1.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f),
+                                paint_order_id + 1);
                         }
                         else
                         {
                             Float4U gray(bar, bar, bar, 1.0f);
                             draw_gradient(context, segment, Float4U(gray.x, gray.y, gray.z, 0.0f),
-                                Float4U(gray.x, gray.y, gray.z, 0.0f), gray, gray);
+                                Float4U(gray.x, gray.y, gray.z, 0.0f), gray, gray,
+                                paint_order_id + 1);
                         }
                     }
                 }
@@ -384,10 +396,10 @@ namespace Luna
                 {
                     draw_gradient(context, geometry.square, color_from_picker(axis, 0.0f, 1.0f, bar, 1.0f),
                         color_from_picker(axis, 1.0f, 1.0f, bar, 1.0f), color_from_picker(axis, 1.0f, 0.0f, bar, 1.0f),
-                        color_from_picker(axis, 0.0f, 0.0f, bar, 1.0f));
+                        color_from_picker(axis, 0.0f, 0.0f, bar, 1.0f), paint_order_id);
                 }
                 Float4U border = style_color(context, element, "gui.color_picker.border", Float4U(0.24f, 0.30f, 0.38f, 1.0f));
-                draw_outline(context, geometry.square, border);
+                draw_outline(context, geometry.square, border, paint_order_id + 2);
                 if(axis == 0)
                 {
                     for(u32 i = 0; i < 6; ++i)
@@ -398,23 +410,23 @@ namespace Luna
                             geometry.bar.width, geometry.bar.height * (y1 - y0) + 0.5f);
                         Float4U top = hsv_to_rgb(y0, 1.0f, 1.0f, 1.0f);
                         Float4U bottom = hsv_to_rgb(y1, 1.0f, 1.0f, 1.0f);
-                        draw_gradient(context, segment, top, top, bottom, bottom);
+                        draw_gradient(context, segment, top, top, bottom, bottom, paint_order_id);
                     }
                 }
                 else
                 {
                     Float4U top = color_from_picker(axis, x, y, 1.0f, 1.0f);
                     Float4U bottom = color_from_picker(axis, x, y, 0.0f, 1.0f);
-                    draw_gradient(context, geometry.bar, top, top, bottom, bottom);
+                    draw_gradient(context, geometry.bar, top, top, bottom, bottom, paint_order_id);
                 }
-                draw_outline(context, geometry.bar, border);
+                draw_outline(context, geometry.bar, border, paint_order_id + 2);
                 f32 cursor_x = geometry.square.offset_x + x * geometry.square.width;
                 f32 cursor_y = geometry.square.offset_y + (1.0f - y) * geometry.square.height;
                 Float4U cursor = style_color(context, element, "gui.color_picker.cursor", Float4U(1.0f));
                 draw_rect(context, GUI::DrawCommandType::rounded_rect, RectF(cursor_x - 8.0f, cursor_y - 8.0f, 16.0f, 16.0f),
-                    cursor, 8.0f);
+                    cursor, paint_order_id + 3, 8.0f);
                 draw_rect(context, GUI::DrawCommandType::rounded_rect, RectF(cursor_x - 5.0f, cursor_y - 5.0f, 10.0f, 10.0f),
-                    color, 5.0f);
+                    color, paint_order_id + 4, 5.0f);
                 f32 bar_y = geometry.bar.offset_y + (axis == 0 ? bar : (1.0f - bar)) * geometry.bar.height;
                 GUI::DrawCommand marker;
                 marker.type = GUI::DrawCommandType::line;
@@ -423,16 +435,17 @@ namespace Luna
                 marker.point1 = Float2U(geometry.bar.offset_x + geometry.bar.width + 5.0f, bar_y);
                 marker.color = cursor;
                 marker.line_width = 2.0f;
-                context->draw(marker);
+                context->draw(marker, paint_order_id + 3);
                 Float4U text_color = style_color(context, element, "gui.text.color", Float4U(0.86f, 0.88f, 0.92f, 1.0f));
                 f32 text_size = style_scalar(context, element, "gui.text.font_size", 15.0f);
                 draw_label(context, RectF(geometry.current.offset_x, geometry.current.offset_y - 26.0f,
-                    geometry.current.width, 22.0f), "Current", text_color, text_size);
-                draw_swatch(context, geometry.current, color, border);
+                    geometry.current.width, 22.0f), "Current", text_color, text_size, paint_order_id + 3);
+                draw_swatch(context, geometry.current, color, border, paint_order_id + 2);
                 draw_label(context, RectF(geometry.original.offset_x, geometry.original.offset_y - 26.0f,
-                    geometry.original.width, 22.0f), "Original", text_color, text_size);
-                draw_swatch(context, geometry.original, data->state->original_valid ? data->state->original : color, border);
-                return ok;
+                    geometry.original.width, 22.0f), "Original", text_color, text_size, paint_order_id + 3);
+                draw_swatch(context, geometry.original, data->state->original_valid ? data->state->original : color,
+                    border, paint_order_id + 2);
+                return paint_order_id + 4;
             }
 
             static void build_channel_row(GUI::IContext* context, id_t id, const c8* const* labels,

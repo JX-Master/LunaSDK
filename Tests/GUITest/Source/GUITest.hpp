@@ -102,16 +102,22 @@ namespace Luna::GUITest
         GUI::CanvasLayoutDesc* desc);
     void add_canvas_item(Vector<GUI::CanvasLayoutItem>& items, GUI::id_t id, f32 x, f32 y);
 
-    void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 radius = 0.0f);
+    void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 radius = 0.0f,
+        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
     void draw_shadow(GUI::IContext* context, const RectF& rect, const Float4U& color,
-        f32 radius, const GUI::ShadowDesc& desc);
+        f32 radius, const GUI::ShadowDesc& desc,
+        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
     void draw_gradient_rect(GUI::IContext* context, const RectF& rect, const Float4U& top_left,
-        const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left);
+        const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left,
+        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
     void draw_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
-        const Float4U& color, f32 width = 1.0f);
-    void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 width = 1.0f);
+        const Float4U& color, f32 width = 1.0f,
+        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
+    void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 width = 1.0f,
+        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
     void draw_text(GUI::IContext* context, const RectF& rect, const c8* text, f32 size,
-        const Float4U& color, VG::TextAlignment alignment = VG::TextAlignment::begin);
+        const Float4U& color, VG::TextAlignment alignment = VG::TextAlignment::begin,
+        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
     void bullet(GUI::IContext* context, f32 x, f32 y, const c8* text);
 
     GUI::ElementHandle begin_panel(GUI::IContext* context, GUI::id_t id, const c8* title,
@@ -121,8 +127,9 @@ namespace Luna::GUITest
     bool circle_hit_test(const GUI::IContext*, const GUI::ElementHitTestRequest& request, void*);
     void set_interactable(GUI::IContext* context, const GUI::ElementHandle& element,
         GUI::PointerHitBehavior hit_behavior, GUI::InteractableFlag flags);
-    RV draw_sheet_callback(GUI::IContext* context, const GUI::ElementHandle& element,
-        GUI::DrawPhase phase, void* userdata);
+    R<GUI::paint_order_id_t> draw_sheet_callback(GUI::IContext* context,
+        const GUI::ElementHandle& element, GUI::DrawPhase phase,
+        GUI::paint_order_id_t paint_order_id, void* userdata);
 
     void build_slide_header(GUI::IContext* context, const SheetState& state);
     void build_pointer_input_slice(GUI::IContext* context, SheetState& state);

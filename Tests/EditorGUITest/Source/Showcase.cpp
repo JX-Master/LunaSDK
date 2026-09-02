@@ -145,11 +145,12 @@ namespace Luna
                 context->draw(command);
             }
 
-            RV draw_sdf_swatch(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            R<GUI::paint_order_id_t> draw_sdf_swatch(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 const GUI::Element* element_data = context->get_element(element.index);
-                if(!element_data) return ok;
+                if(!element_data) return paint_order_id;
                 const RectF& element_rect = element_data->layout_result.rect;
                 f32 width = max(element_rect.width, 1.0f);
                 f32 height = max(element_rect.height, 1.0f);
@@ -195,7 +196,7 @@ namespace Luna
                     command.rect_reference = GUI::DrawCommandRectReference::element;
                     command.sdf.shape = shape.get();
                     command.sdf.color = color.get();
-                    context->draw(command);
+                    context->draw(command, paint_order_id);
                     return ok;
                 };
 
@@ -220,19 +221,22 @@ namespace Luna
                         Float2U(width * 0.5f, height * 0.5f), -PI_DIV_TWO,
                         Span<const GUI::SDFGradientStop>(stops, 3));
                 }
-                return submit_color(color_floats);
+                RV result = submit_color(color_floats);
+                if(failed(result)) return result.errcode();
+                return paint_order_id;
             }
 
-            RV finish_rounded_children_clip(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            R<GUI::paint_order_id_t> finish_rounded_children_clip(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 f32 radius = (f32)(usize)userdata;
                 GUI::DrawCommand pop_clip;
                 pop_clip.type = GUI::DrawCommandType::pop_clip;
-                context->draw(pop_clip);
+                context->draw(pop_clip, paint_order_id);
 
                 const GUI::Element* element_data = context->get_element(element.index);
-                if(!element_data) return ok;
+                if(!element_data) return paint_order_id;
                 const RectF& rect = element_data->layout_result.rect;
                 f32 width = max(rect.width, 1.0f);
                 f32 height = max(rect.height, 1.0f);
@@ -248,7 +252,7 @@ namespace Luna
                     command.rect_reference = GUI::DrawCommandRectReference::element;
                     command.sdf.shape = shape.get();
                     command.sdf.color = color.get();
-                    context->draw(command);
+                    context->draw(command, paint_order_id + 1);
                     return ok;
                 };
 
@@ -259,7 +263,9 @@ namespace Luna
                 Vector<f32> border_color;
                 GUI::sdf_color_add_solid(border_color, style_color(context, "gui.border.strong"),
                     GUI::SDFClipDesc::stroke(1.0f));
-                return submit(border_shape, border_color);
+                RV result = submit(border_shape, border_color);
+                if(failed(result)) return result.errcode();
+                return paint_order_id + 1;
             }
 
             GUI::ElementHandle sdf_swatch(GUI::IContext* context, EditorGUI::id_t element_id,

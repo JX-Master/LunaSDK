@@ -52,7 +52,7 @@ namespace Luna
             }
 
             static void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& scale,
-                const Float4U& color, f32 radius)
+                const Float4U& color, f32 radius, GUI::paint_order_id_t paint_order_id)
             {
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::rounded_rect;
@@ -61,11 +61,12 @@ namespace Luna
                 command.rect_layout_scale = scale;
                 command.color = color;
                 command.radius = radius;
-                context->draw(command);
+                context->draw(command, paint_order_id);
             }
 
             static void draw_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
-                const Float4U& scale, const Float4U& color, f32 width)
+                const Float4U& scale, const Float4U& color, f32 width,
+                GUI::paint_order_id_t paint_order_id)
             {
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::line;
@@ -75,14 +76,15 @@ namespace Luna
                 command.rect_layout_scale = scale;
                 command.color = color;
                 command.line_width = width;
-                context->draw(command);
+                context->draw(command, paint_order_id);
             }
 
-            static RV draw_choice(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_choice(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 ChoiceData* data = (ChoiceData*)userdata;
-                if(!data || !data->state) return ok;
+                if(!data || !data->state) return paint_order_id;
                 f32 selected = data->state->selected;
                 Float4U text_color = data->enabled ? style_color(context, element, "gui.text.color",
                     Float4U(0.86f, 0.88f, 0.92f, 1.0f)) : style_color(context, element, "gui.text.disabled",
@@ -99,7 +101,10 @@ namespace Luna
                     transparent_hovered.w = 0.0f;
                     Float4U color = mix_color(transparent_hovered, hovered, data->state->hovered);
                     color = mix_color(color, background, selected);
-                    if(color.w > 0.001f) draw_rect(context, RectF(), Float4U(), color, 4.0f);
+                    if(color.w > 0.001f)
+                    {
+                        draw_rect(context, RectF(), Float4U(), color, 4.0f, paint_order_id);
+                    }
                     label_offset = 8.0f;
                 }
                 else if(data->kind == ChoiceKind::checkbox)
@@ -113,12 +118,13 @@ namespace Luna
                     const f32 half = indicator_size * 0.5f;
                     const f32 inset = indicator_size >= 20.0f ? 3.0f : 2.0f;
                     draw_rect(context, RectF(0.0f, -half, indicator_size, indicator_size),
-                        Float4U(0.0f, 0.5f, 0.0f, 0.0f), border, 3.0f);
+                        Float4U(0.0f, 0.5f, 0.0f, 0.0f), border, 3.0f, paint_order_id);
                     draw_rect(context, RectF(inset, -half + inset, indicator_size - inset * 2.0f,
                         indicator_size - inset * 2.0f),
                         Float4U(0.0f, 0.5f, 0.0f, 0.0f),
                         mix_color(style_color(context, element, "gui.choice.background",
-                            Float4U(0.08f, 0.10f, 0.13f, 1.0f)), fill, selected), 2.0f);
+                            Float4U(0.08f, 0.10f, 0.13f, 1.0f)), fill, selected), 2.0f,
+                        paint_order_id + 1);
                     if(selected > 0.02f)
                     {
                         Float4U mark = style_color(context, element, "gui.choice.mark", Float4U(1.0f));
@@ -126,10 +132,12 @@ namespace Luna
                         const f32 scale = indicator_size / 16.0f;
                         draw_line(context, Float2U(4.0f * scale, -1.0f * scale),
                             Float2U(7.0f * scale, 3.0f * scale),
-                            Float4U(0.0f, 0.5f, 0.0f, 0.5f), mark, 2.0f);
+                            Float4U(0.0f, 0.5f, 0.0f, 0.5f), mark, 2.0f,
+                            paint_order_id + 2);
                         draw_line(context, Float2U(7.0f * scale, 3.0f * scale),
                             Float2U(13.0f * scale, -4.0f * scale),
-                            Float4U(0.0f, 0.5f, 0.0f, 0.5f), mark, 2.0f);
+                            Float4U(0.0f, 0.5f, 0.0f, 0.5f), mark, 2.0f,
+                            paint_order_id + 2);
                     }
                 }
                 else if(data->kind == ChoiceKind::radio)
@@ -140,11 +148,12 @@ namespace Luna
                     const f32 half = indicator_size * 0.5f;
                     const f32 inset = indicator_size >= 20.0f ? 3.0f : 2.0f;
                     draw_rect(context, RectF(0.0f, -half, indicator_size, indicator_size),
-                        Float4U(0.0f, 0.5f, 0.0f, 0.0f), border, half);
+                        Float4U(0.0f, 0.5f, 0.0f, 0.0f), border, half, paint_order_id);
                     draw_rect(context, RectF(inset, -half + inset, indicator_size - inset * 2.0f,
                         indicator_size - inset * 2.0f),
                         Float4U(0.0f, 0.5f, 0.0f, 0.0f), style_color(context, element,
-                        "gui.choice.background", Float4U(0.08f, 0.10f, 0.13f, 1.0f)), half - inset);
+                        "gui.choice.background", Float4U(0.08f, 0.10f, 0.13f, 1.0f)), half - inset,
+                        paint_order_id + 1);
                     if(selected > 0.02f)
                     {
                         Float4U fill = style_color(context, element, "gui.choice.accent",
@@ -152,7 +161,8 @@ namespace Luna
                         fill.w *= selected;
                         const f32 dot = indicator_size * 0.38f;
                         draw_rect(context, RectF((indicator_size - dot) * 0.5f, -dot * 0.5f, dot, dot),
-                            Float4U(0.0f, 0.5f, 0.0f, 0.0f), fill, dot * 0.5f);
+                            Float4U(0.0f, 0.5f, 0.0f, 0.0f), fill, dot * 0.5f,
+                            paint_order_id + 2);
                     }
                 }
                 else
@@ -181,7 +191,7 @@ namespace Luna
                     const f32 inner_track_radius = switch_size.y * 0.5f - 1.0f;
                     draw_rect(context, track_rect, track_scale,
                         style_color(context, element, "gui.choice.border", Float4U(0.55f, 0.64f, 0.76f, 1.0f)),
-                        switch_size.y * 0.5f);
+                        switch_size.y * 0.5f, paint_order_id);
                     RoundedRectEffect track_effects[2];
                     track_effects[0].color = mix_color(off, on, selected);
                     u32 num_track_effects = 1;
@@ -198,9 +208,9 @@ namespace Luna
                     }
                     if(RV result = draw_rounded_rect_effects(context, element, inner_track_rect, track_scale,
                         inner_track_radius, Span<const RoundedRectEffect>(track_effects,
-                            num_track_effects)); failed(result))
+                            num_track_effects), paint_order_id + 1); failed(result))
                     {
-                        return result;
+                        return result.errcode();
                     }
                     const RectF knob_rect(4.0f + knob_travel * selected, knob_size * -0.5f,
                         knob_size, knob_size);
@@ -222,9 +232,9 @@ namespace Luna
                     knob_effects[num_knob_effects++].color = knob;
                     if(RV result = draw_rounded_rect_effects(context, element, knob_rect, knob_scale,
                         knob_size * 0.5f, Span<const RoundedRectEffect>(knob_effects,
-                            num_knob_effects)); failed(result))
+                            num_knob_effects), paint_order_id + 2); failed(result))
                     {
-                        return result;
+                        return result.errcode();
                     }
                 }
                 GUI::DrawCommand text;
@@ -237,8 +247,8 @@ namespace Luna
                 text.color = text_color;
                 text.horizontal_alignment = VG::TextAlignment::begin;
                 text.vertical_alignment = VG::TextAlignment::center;
-                context->draw(text);
-                return ok;
+                context->draw(text, paint_order_id + 3);
+                return paint_order_id + 3;
             }
 
             bool resolve_choice_action(GUI::IContext* context, ChoiceAction& action)

@@ -513,6 +513,17 @@ namespace Luna
             bool subtree_double_clicked = false;
         };
 
+        //! Specifies how Paint Order ranges are allocated to direct child subtrees.
+        enum class ChildPaintOrderMode : u8
+        {
+            //! Assigns every child a non-overlapping Paint Order range in submission order.
+            sequential,
+            //! Lets direct child subtrees reuse one initial Paint Order ID.
+            //! @remark Select this only when the complete painted extents of the children are independent. A Paint
+            //! Order barrier ends the current shared run.
+            shared
+        };
+
         //! One typeless GUI element record.
         //! @remark Element behavior is defined by attached data and external algorithms, not by inheritance or virtual methods.
         struct Element
@@ -533,6 +544,8 @@ namespace Luna
             u32 prev_sibling = INVALID_ELEMENT;
             //! Element depth in its layer tree.
             u32 depth = 0;
+            //! Paint Order allocation mode used for direct child subtrees.
+            ChildPaintOrderMode child_paint_order_mode = ChildPaintOrderMode::sequential;
             //! Style bound to this element.
             Name style;
             //! Human-readable debug name.
@@ -566,6 +579,12 @@ namespace Luna
             u32 root = INVALID_ELEMENT;
             //! Draw command indexes emitted by this layer.
             Vector<u32> draw_command_indices;
+            //! First frame-local Paint Order ID allocated to this layer, or @ref INVALID_PAINT_ORDER_ID before draw
+            //! command generation and when the generated layer is empty.
+            paint_order_id_t first_paint_order_id = INVALID_PAINT_ORDER_ID;
+            //! Maximum frame-local Paint Order ID allocated to this layer, or @ref INVALID_PAINT_ORDER_ID before draw
+            //! command generation and when the generated layer is empty.
+            paint_order_id_t max_paint_order_id = INVALID_PAINT_ORDER_ID;
             //! Human-readable debug name.
             Name debug_name;
         };

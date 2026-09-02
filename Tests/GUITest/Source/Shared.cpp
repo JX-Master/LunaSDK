@@ -11,6 +11,13 @@
 
 namespace Luna::GUITest
 {
+    static void submit_draw_command(GUI::IContext* context, const GUI::DrawCommand& command,
+        GUI::paint_order_id_t paint_order_id)
+    {
+        if(paint_order_id == GUI::INVALID_PAINT_ORDER_ID) context->draw(command);
+        else context->draw(command, paint_order_id);
+    }
+
     GUI::LayoutConfig fixed_layout(f32 width, f32 height)
     {
         GUI::LayoutConfig layout;
@@ -42,7 +49,8 @@ namespace Luna::GUITest
         items.push_back(item);
     }
 
-    void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 radius)
+    void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 radius,
+        GUI::paint_order_id_t paint_order_id)
     {
         GUI::DrawCommand command;
         command.type = radius > 0.0f ? GUI::DrawCommandType::rounded_rect : GUI::DrawCommandType::rect;
@@ -50,11 +58,11 @@ namespace Luna::GUITest
         command.rect = rect;
         command.color = color;
         command.radius = radius;
-        context->draw(command);
+        submit_draw_command(context, command, paint_order_id);
     }
 
     void draw_shadow(GUI::IContext* context, const RectF& rect, const Float4U& color,
-        f32 radius, const GUI::ShadowDesc& desc)
+        f32 radius, const GUI::ShadowDesc& desc, GUI::paint_order_id_t paint_order_id)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::shadow;
@@ -63,11 +71,12 @@ namespace Luna::GUITest
         command.color = color;
         command.radius = radius;
         command.shadow = desc;
-        context->draw(command);
+        submit_draw_command(context, command, paint_order_id);
     }
 
     void draw_gradient_rect(GUI::IContext* context, const RectF& rect, const Float4U& top_left,
-        const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left)
+        const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left,
+        GUI::paint_order_id_t paint_order_id)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::gradient_rect;
@@ -77,11 +86,11 @@ namespace Luna::GUITest
         command.color_top_right = top_right;
         command.color_bottom_right = bottom_right;
         command.color_bottom_left = bottom_left;
-        context->draw(command);
+        submit_draw_command(context, command, paint_order_id);
     }
 
     void draw_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
-        const Float4U& color, f32 width)
+        const Float4U& color, f32 width, GUI::paint_order_id_t paint_order_id)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::line;
@@ -90,23 +99,24 @@ namespace Luna::GUITest
         command.point1 = end;
         command.color = color;
         command.line_width = width;
-        context->draw(command);
+        submit_draw_command(context, command, paint_order_id);
     }
 
-    void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 width)
+    void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 width,
+        GUI::paint_order_id_t paint_order_id)
     {
         draw_line(context, Float2U(rect.offset_x, rect.offset_y),
-            Float2U(rect.offset_x + rect.width, rect.offset_y), color, width);
+            Float2U(rect.offset_x + rect.width, rect.offset_y), color, width, paint_order_id);
         draw_line(context, Float2U(rect.offset_x + rect.width, rect.offset_y),
-            Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height), color, width);
+            Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height), color, width, paint_order_id);
         draw_line(context, Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height),
-            Float2U(rect.offset_x, rect.offset_y + rect.height), color, width);
+            Float2U(rect.offset_x, rect.offset_y + rect.height), color, width, paint_order_id);
         draw_line(context, Float2U(rect.offset_x, rect.offset_y + rect.height),
-            Float2U(rect.offset_x, rect.offset_y), color, width);
+            Float2U(rect.offset_x, rect.offset_y), color, width, paint_order_id);
     }
 
     void draw_text(GUI::IContext* context, const RectF& rect, const c8* text, f32 size,
-        const Float4U& color, VG::TextAlignment alignment)
+        const Float4U& color, VG::TextAlignment alignment, GUI::paint_order_id_t paint_order_id)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::text;
@@ -118,7 +128,7 @@ namespace Luna::GUITest
         command.horizontal_alignment = alignment;
         command.vertical_alignment = VG::TextAlignment::begin;
         command.text = text ? text : "";
-        context->draw(command);
+        submit_draw_command(context, command, paint_order_id);
     }
 
     void bullet(GUI::IContext* context, f32 x, f32 y, const c8* text)
@@ -167,8 +177,9 @@ namespace Luna::GUITest
         context->set_interactable(element, interactable);
     }
 
-    RV draw_sheet_callback(GUI::IContext* context, const GUI::ElementHandle& element,
-        GUI::DrawPhase phase, void* userdata)
+    R<GUI::paint_order_id_t> draw_sheet_callback(GUI::IContext* context,
+        const GUI::ElementHandle& element, GUI::DrawPhase phase,
+        GUI::paint_order_id_t paint_order_id, void* userdata)
     {
         (void)element;
         (void)userdata;
@@ -179,15 +190,16 @@ namespace Luna::GUITest
             shadow.softness = 18.0f;
             shadow.spread = 1.0f;
             draw_shadow(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT),
-                Float4U(0.0f, 0.0f, 0.0f, 0.24f), 2.0f, shadow);
+                Float4U(0.0f, 0.0f, 0.0f, 0.24f), 2.0f, shadow, paint_order_id);
             draw_rect(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT),
-                Float4U(1.0f, 1.0f, 1.0f, 1.0f));
+                Float4U(1.0f, 1.0f, 1.0f, 1.0f), 0.0f, paint_order_id + 1);
+            return paint_order_id + 1;
         }
         else
         {
             draw_outline(context, RectF(0.0f, 0.0f, SHEET_WIDTH, SHEET_HEIGHT),
-                Float4U(0.74f, 0.74f, 0.74f, 1.0f), 1.0f);
+                Float4U(0.74f, 0.74f, 0.74f, 1.0f), 1.0f, paint_order_id);
         }
-        return ok;
+        return paint_order_id;
     }
 }

@@ -161,6 +161,7 @@ namespace Luna
             struct ScrollAction
             {
                 GUI::id_t id = 0;
+                GUI::id_t scrollbar_group_id = 0;
                 GUI::id_t horizontal_bar_id = 0;
                 GUI::id_t vertical_bar_id = 0;
                 ScrollViewDesc desc;

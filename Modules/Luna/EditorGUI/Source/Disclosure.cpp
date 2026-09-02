@@ -40,7 +40,7 @@ namespace Luna
             }
 
             static void disclosure_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
-                const Float4U& color, f32 width)
+                const Float4U& color, f32 width, GUI::paint_order_id_t paint_order_id)
             {
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::line;
@@ -50,14 +50,15 @@ namespace Luna
                 command.rect_layout_scale = Float4U(0.0f, 0.5f, 0.0f, 0.5f);
                 command.color = color;
                 command.line_width = width;
-                context->draw(command);
+                context->draw(command, paint_order_id);
             }
 
-            static RV draw_disclosure(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_disclosure(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 DisclosureData* data = (DisclosureData*)userdata;
-                if(!data || !data->state) return ok;
+                if(!data || !data->state) return paint_order_id;
                 GUI::InteractionState interaction = context->get_interaction_state(element.id);
                 if(data->header || data->selected || (data->enabled && interaction.hovered))
                 {
@@ -71,7 +72,7 @@ namespace Luna
                         Float4U(0.16f, 0.19f, 0.24f, 1.0f)) : style_color(context, element,
                         "gui.choice.hovered", Float4U(0.13f, 0.19f, 0.27f, 1.0f));
                     background.radius = 4.0f;
-                    context->draw(background);
+                    context->draw(background, paint_order_id);
                 }
                 f32 x = data->header ? 8.0f : 4.0f + 18.0f * (f32)data->indent_depth;
                 Float4U icon = data->enabled ? style_color(context, element, "gui.disclosure.icon",
@@ -86,17 +87,21 @@ namespace Luna
                     dot.rect_layout_scale = Float4U(0.0f, 0.5f, 0.0f, 0.0f);
                     dot.color = icon;
                     dot.radius = 2.5f;
-                    context->draw(dot);
+                    context->draw(dot, paint_order_id + 1);
                 }
                 else if(data->state->animation > 0.5f)
                 {
-                    disclosure_line(context, Float2U(x + 3.0f, -2.0f), Float2U(x + 8.0f, 3.0f), icon, 1.8f);
-                    disclosure_line(context, Float2U(x + 8.0f, 3.0f), Float2U(x + 13.0f, -2.0f), icon, 1.8f);
+                    disclosure_line(context, Float2U(x + 3.0f, -2.0f), Float2U(x + 8.0f, 3.0f), icon, 1.8f,
+                        paint_order_id + 1);
+                    disclosure_line(context, Float2U(x + 8.0f, 3.0f), Float2U(x + 13.0f, -2.0f), icon, 1.8f,
+                        paint_order_id + 1);
                 }
                 else
                 {
-                    disclosure_line(context, Float2U(x + 5.0f, -5.0f), Float2U(x + 11.0f, 0.0f), icon, 1.8f);
-                    disclosure_line(context, Float2U(x + 11.0f, 0.0f), Float2U(x + 5.0f, 5.0f), icon, 1.8f);
+                    disclosure_line(context, Float2U(x + 5.0f, -5.0f), Float2U(x + 11.0f, 0.0f), icon, 1.8f,
+                        paint_order_id + 1);
+                    disclosure_line(context, Float2U(x + 11.0f, 0.0f), Float2U(x + 5.0f, 5.0f), icon, 1.8f,
+                        paint_order_id + 1);
                 }
                 GUI::DrawCommand text;
                 text.type = GUI::DrawCommandType::text;
@@ -110,8 +115,8 @@ namespace Luna
                     "gui.text.disabled", Float4U(0.48f, 0.52f, 0.58f, 1.0f));
                 text.horizontal_alignment = VG::TextAlignment::begin;
                 text.vertical_alignment = VG::TextAlignment::center;
-                context->draw(text);
-                return ok;
+                context->draw(text, paint_order_id + 1);
+                return paint_order_id + 1;
             }
 
             bool resolve_disclosure_action(GUI::IContext* context, DisclosureAction& action)

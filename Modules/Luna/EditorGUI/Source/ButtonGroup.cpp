@@ -38,7 +38,8 @@ namespace Luna
 
             static RV draw_button_group_item_surface(GUI::IContext* context,
                 const GUI::ElementHandle& element, const RectF& rect, const Float4U& rect_layout_scale,
-                f32 radius, const Float4U& color, bool selected)
+                f32 radius, const Float4U& color, bool selected,
+                GUI::paint_order_id_t paint_order_id)
             {
                 RoundedRectEffect effects[3];
                 u32 num_effects = 0;
@@ -63,14 +64,15 @@ namespace Luna
                     highlight.shadow_desc.mode = GUI::ShadowMode::inner;
                 }
                 return draw_rounded_rect_effects(context, element, rect, rect_layout_scale,
-                    radius, Span<const RoundedRectEffect>(effects, num_effects));
+                    radius, Span<const RoundedRectEffect>(effects, num_effects), paint_order_id);
             }
 
-            static RV draw_button_group(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_button_group(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 ButtonGroupData* data = (ButtonGroupData*)userdata;
-                if(!data || !data->item_count) return ok;
+                if(!data || !data->item_count) return paint_order_id;
                 f32 radius = style_scalar(context, element, "gui.group.radius", 5.0f);
                 f32 item_inset = style_scalar(context, element, "gui.group.padding", 2.0f) + 1.0f;
                 f32 item_radius = style_scalar(context, element, "gui.group.selected_radius",
@@ -80,9 +82,9 @@ namespace Luna
                 border.color = style_color(context, element, "gui.group.border",
                     Float4U(0.24f, 0.30f, 0.38f, 1.0f));
                 if(RV result = draw_rounded_rect_effects(context, element, RectF(), Float4U(), radius,
-                    Span<const RoundedRectEffect>(&border, 1)); failed(result))
+                    Span<const RoundedRectEffect>(&border, 1), paint_order_id); failed(result))
                 {
-                    return result;
+                    return result.errcode();
                 }
 
                 RoundedRectEffect inner_effects[2];
@@ -97,9 +99,9 @@ namespace Luna
                 if(RV result = draw_rounded_rect_effects(context, element,
                     RectF(1.0f, 1.0f, -2.0f, -2.0f),
                     Float4U(), max(radius - 1.0f, 0.0f),
-                    Span<const RoundedRectEffect>(inner_effects, 2)); failed(result))
+                    Span<const RoundedRectEffect>(inner_effects, 2), paint_order_id + 1); failed(result))
                 {
-                    return result;
+                    return result.errcode();
                 }
 
                 auto draw_item_surface = [&](f32 position, const Float4U& color, bool selected) -> RV
@@ -109,7 +111,7 @@ namespace Luna
                         -item_inset * item_width * 2.0f, -item_inset * 2.0f);
                     Float4U item_scale(position * item_width, 0.0f, item_width, 0.0f);
                     return draw_button_group_item_surface(context, element, item_rect, item_scale,
-                        item_radius, color, selected);
+                        item_radius, color, selected, paint_order_id + 2);
                 };
 
                 i32 hovered_item = -1;
@@ -133,7 +135,7 @@ namespace Luna
                         style_color(context, element, "gui.group.hovered",
                             Float4U(0.13f, 0.19f, 0.27f, 1.0f)), false); failed(result))
                     {
-                        return result;
+                        return result.errcode();
                     }
                 }
 
@@ -144,7 +146,7 @@ namespace Luna
                     if(RV result = draw_item_surface(data->state->animated_index,
                         selected_color, true); failed(result))
                     {
-                        return result;
+                        return result.errcode();
                     }
                 }
                 else if(data->selected_items)
@@ -155,19 +157,20 @@ namespace Luna
                         {
                             if(RV result = draw_item_surface((f32)i, selected_color, true); failed(result))
                             {
-                                return result;
+                                return result.errcode();
                             }
                         }
                     }
                 }
-                return ok;
+                return paint_order_id + 2;
             }
 
-            static RV draw_button_group_item(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_button_group_item(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 ButtonGroupItemData* data = (ButtonGroupItemData*)userdata;
-                if(!data) return ok;
+                if(!data) return paint_order_id;
                 bool selected = data->selected ? *data->selected :
                     (data->selected_index && *data->selected_index == (i32)data->item_index);
                 GUI::DrawCommand text;
@@ -183,8 +186,8 @@ namespace Luna
                         style_color(context, element, "gui.button.text", Float4U(1.0f)));
                 text.horizontal_alignment = VG::TextAlignment::center;
                 text.vertical_alignment = VG::TextAlignment::center;
-                context->draw(text);
-                return ok;
+                context->draw(text, paint_order_id);
+                return paint_order_id;
             }
 
             bool resolve_button_group_multi_action(GUI::IContext* context, ButtonGroupMultiAction& action)
@@ -226,6 +229,7 @@ namespace Luna
             layout_callbacks.callback = GUI::layout_flex;
             layout_callbacks.userdata = flex;
             context->set_layout_callback_config(group, layout_callbacks);
+            context->set_child_paint_order_mode(group, GUI::ChildPaintOrderMode::shared);
 
             Ref<Internal::ButtonGroupState> state = Internal::widget_state<Internal::ButtonGroupState>(context, id);
             Internal::ButtonGroupData* group_data = Internal::allocate_frame<Internal::ButtonGroupData>(context);
@@ -293,6 +297,7 @@ namespace Luna
             callbacks.callback = GUI::layout_flex;
             callbacks.userdata = flex;
             context->set_layout_callback_config(group, callbacks);
+            context->set_child_paint_order_mode(group, GUI::ChildPaintOrderMode::shared);
 
             Internal::ButtonGroupData* group_data = Internal::allocate_frame<Internal::ButtonGroupData>(context);
             group_data->item_count = items.size();

@@ -16,12 +16,13 @@ namespace Luna
     {
         namespace Internal
         {
-            RV draw_hierarchy_drop(GUI::IContext* context, const GUI::ElementHandle&,
-                GUI::DrawPhase, void* userdata)
+            R<GUI::paint_order_id_t> draw_hierarchy_drop(GUI::IContext* context,
+                const GUI::ElementHandle&, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 HierarchyDragState* drag = (HierarchyDragState*)userdata;
                 if(!drag || !drag->dragging || drag->drop_mode == HierarchyDropMode::none)
-                    return ok;
+                    return paint_order_id;
                 const Float4U color(0.96f, 0.34f, 0.44f, 1.0f);
                 if(drag->drop_mode == HierarchyDropMode::child)
                 {
@@ -31,8 +32,8 @@ namespace Luna
                     highlight.rect = drag->feedback_rect;
                     highlight.color = Float4U(color.x, color.y, color.z, 0.22f);
                     highlight.radius = 4.0f;
-                    context->draw(highlight);
-                    return ok;
+                    context->draw(highlight, paint_order_id);
+                    return paint_order_id;
                 }
 
                 f32 y = drag->drop_mode == HierarchyDropMode::before ?
@@ -48,8 +49,8 @@ namespace Luna
                 line.point1 = Float2U(max(right, left), y);
                 line.color = color;
                 line.line_width = 2.0f;
-                context->draw(line);
-                return ok;
+                context->draw(line, paint_order_id);
+                return paint_order_id;
             }
 
             void EditorApp::apply_inspector_changes(DocumentView& document)

@@ -350,6 +350,236 @@ namespace
         context->focus_element(0);
     }
 
+    R<GUI::paint_order_id_t> draw_invalid_mixed_paint_order(GUI::IContext* context,
+        const GUI::ElementHandle&, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id, void*)
+    {
+        GUI::DrawCommand command;
+        command.type = GUI::DrawCommandType::rect;
+        context->draw(command, paint_order_id + 1);
+        context->draw(command);
+        return paint_order_id;
+    }
+
+    void verify_paint_order_generation(GUI::IContext* context)
+    {
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(640.0f, 240.0f);
+        frame.render_size = UInt2U(640, 240);
+        frame.delta_time = 1.0f / 60.0f;
+        context->begin_frame(frame);
+
+        GUI::LayoutConfig root_layout;
+        root_layout.width.kind = GUI::SizeKind::fixed;
+        root_layout.width.value = 240.0f;
+        root_layout.height.kind = GUI::SizeKind::fixed;
+        root_layout.height.value = 48.0f;
+        GUI::LayoutConfig button_layout;
+        button_layout.width.kind = GUI::SizeKind::fixed;
+        button_layout.width.value = 96.0f;
+        button_layout.height.kind = GUI::SizeKind::fixed;
+        button_layout.height.value = 40.0f;
+
+        const GUI::id_t empty_layer_id = context->make_id("paint_order.empty.layer");
+        context->push_layer(empty_layer_id, Float2U(0.0f));
+        context->pop_layer();
+
+        const GUI::id_t shared_layer_id = context->make_id("paint_order.shared.layer");
+        const GUI::id_t shared_button_a_id = context->make_id("paint_order.shared.button.a");
+        const GUI::id_t shared_button_b_id = context->make_id("paint_order.shared.button.b");
+        const GUI::id_t shared_capture_id = context->make_id("paint_order.shared.capture");
+        context->push_layer(shared_layer_id, Float2U(0.0f));
+        GUI::ElementHandle shared_root = EditorGUI::begin_h_layout(context,
+            context->make_id("paint_order.shared.root"), "Shared button row", root_layout);
+        context->set_child_paint_order_mode(shared_root, GUI::ChildPaintOrderMode::shared);
+        GUI::ElementHandle shared_button_a = EditorGUI::text_button(context,
+            shared_button_a_id, "First", button_layout);
+        GUI::ElementHandle shared_button_b = EditorGUI::text_button(context,
+            shared_button_b_id, "Second", button_layout);
+        GUI::LayoutConfig empty_element_layout;
+        empty_element_layout.width.kind = GUI::SizeKind::fixed;
+        empty_element_layout.height.kind = GUI::SizeKind::fixed;
+        GUI::ElementHandle legacy_scope = context->begin_element(
+            context->make_id("paint_order.shared.legacy_scope"));
+        context->set_layout_config(legacy_scope, empty_element_layout);
+        GUI::ElementHandle legacy_child = context->begin_element(
+            context->make_id("paint_order.shared.legacy_child"));
+        context->set_layout_config(legacy_child, empty_element_layout);
+        GUI::DrawCommand legacy_command;
+        legacy_command.type = GUI::DrawCommandType::line;
+        legacy_command.rect_reference = GUI::DrawCommandRectReference::element;
+        legacy_command.point1 = Float2U(1.0f, 1.0f);
+        context->draw_for_element(shared_button_a, legacy_command);
+        context->end_element();
+        context->end_element();
+        GUI::ElementHandle shared_capture = context->begin_element(shared_capture_id);
+        context->set_layout_config(shared_capture, empty_element_layout);
+        GUI::BackdropBlurCaptureDesc shared_capture_desc;
+        shared_capture_desc.softness = 1.0f;
+        context->set_backdrop_blur_capture(shared_capture, shared_capture_desc);
+        context->end_element();
+        GUI::FlexLayoutDesc shared_flex;
+        shared_flex.main_axis_gap = 8.0f;
+        shared_flex.cross_alignment = GUI::FlexAlignment::center;
+        EditorGUI::end_h_layout(context, shared_root, shared_flex);
+        context->pop_layer();
+
+        const GUI::id_t sequential_layer_id = context->make_id("paint_order.sequential.layer");
+        const GUI::id_t overlap_button_a_id = context->make_id("paint_order.overlap.button.a");
+        const GUI::id_t overlap_button_b_id = context->make_id("paint_order.overlap.button.b");
+        context->push_layer(sequential_layer_id, Float2U(0.0f, 64.0f));
+        GUI::ElementHandle overlap_root = EditorGUI::begin_canvas_layout(context,
+            context->make_id("paint_order.overlap.root"), "Overlapping buttons", root_layout);
+        GUI::ElementHandle overlap_button_a = EditorGUI::text_button(context,
+            overlap_button_a_id, "Below", button_layout);
+        GUI::ElementHandle overlap_button_b = EditorGUI::text_button(context,
+            overlap_button_b_id, "Above", button_layout);
+        GUI::CanvasLayoutItem overlap_items[2];
+        overlap_items[0].element_id = overlap_button_a_id;
+        overlap_items[1].element_id = overlap_button_b_id;
+        GUI::CanvasLayoutDesc overlap_canvas;
+        overlap_canvas.items = Span<const GUI::CanvasLayoutItem>(overlap_items, 2);
+        EditorGUI::end_canvas_layout(context, overlap_root, overlap_canvas);
+        context->pop_layer();
+
+        const GUI::id_t capture_layer_id = context->make_id("paint_order.capture.layer");
+        context->push_layer(capture_layer_id, Float2U(0.0f, 128.0f));
+        GUI::ElementHandle captured_button = EditorGUI::text_button(context,
+            context->make_id("paint_order.capture.button"), "Captured", button_layout);
+        GUI::BackdropBlurCaptureDesc capture;
+        capture.softness = 4.0f;
+        context->set_backdrop_blur_capture(captured_button, capture);
+        context->pop_layer();
+
+        lupanic_if_failed(EditorGUI::layout_tree(context, shared_root,
+            RectF(0.0f, 0.0f, 240.0f, 48.0f)));
+        lupanic_if_failed(EditorGUI::layout_tree(context, overlap_root,
+            RectF(0.0f, 0.0f, 240.0f, 48.0f)));
+        lupanic_if_failed(EditorGUI::layout_tree(context, captured_button,
+            RectF(0.0f, 0.0f, 96.0f, 40.0f)));
+        lupanic_if_failed(context->generate_draw_commands());
+
+        GUI::ElementHandle shared_text_a = context->find_element_handle(
+            GUI::make_scoped_id(shared_button_a_id, "text"));
+        GUI::ElementHandle shared_text_b = context->find_element_handle(
+            GUI::make_scoped_id(shared_button_b_id, "text"));
+        GUI::ElementHandle overlap_text_a = context->find_element_handle(
+            GUI::make_scoped_id(overlap_button_a_id, "text"));
+        GUI::paint_order_id_t shared_surface_a[2] = {
+            GUI::INVALID_PAINT_ORDER_ID, GUI::INVALID_PAINT_ORDER_ID };
+        GUI::paint_order_id_t shared_surface_b[2] = {
+            GUI::INVALID_PAINT_ORDER_ID, GUI::INVALID_PAINT_ORDER_ID };
+        GUI::paint_order_id_t shared_text_a_order = GUI::INVALID_PAINT_ORDER_ID;
+        GUI::paint_order_id_t shared_text_b_order = GUI::INVALID_PAINT_ORDER_ID;
+        GUI::paint_order_id_t overlap_a_max = GUI::INVALID_PAINT_ORDER_ID;
+        GUI::paint_order_id_t overlap_b_first = GUI::INVALID_PAINT_ORDER_ID;
+        GUI::paint_order_id_t shared_capture_order = GUI::INVALID_PAINT_ORDER_ID;
+        GUI::paint_order_id_t legacy_order = GUI::INVALID_PAINT_ORDER_ID;
+        GUI::paint_order_id_t capture_order = GUI::INVALID_PAINT_ORDER_ID;
+        GUI::paint_order_id_t captured_surface_order = GUI::INVALID_PAINT_ORDER_ID;
+        u32 shared_surface_a_count = 0;
+        u32 shared_surface_b_count = 0;
+        for(const GUI::DrawCommand& command : context->get_draw_commands())
+        {
+            if(command.element == shared_button_a.index && command.type == GUI::DrawCommandType::sdf &&
+                shared_surface_a_count < 2)
+                shared_surface_a[shared_surface_a_count++] = command.paint_order_id;
+            if(command.element == shared_button_b.index && command.type == GUI::DrawCommandType::sdf &&
+                shared_surface_b_count < 2)
+                shared_surface_b[shared_surface_b_count++] = command.paint_order_id;
+            if(command.element == shared_text_a.index && command.type == GUI::DrawCommandType::text)
+                shared_text_a_order = command.paint_order_id;
+            if(command.element == shared_text_b.index && command.type == GUI::DrawCommandType::text)
+                shared_text_b_order = command.paint_order_id;
+            if((command.element == overlap_button_a.index || command.element == overlap_text_a.index) &&
+                (overlap_a_max == GUI::INVALID_PAINT_ORDER_ID || command.paint_order_id > overlap_a_max))
+                overlap_a_max = command.paint_order_id;
+            if(command.element == overlap_button_b.index && command.type == GUI::DrawCommandType::sdf &&
+                overlap_b_first == GUI::INVALID_PAINT_ORDER_ID)
+                overlap_b_first = command.paint_order_id;
+            if(command.element == shared_capture.index &&
+                command.type == GUI::DrawCommandType::backdrop_blur_capture)
+                shared_capture_order = command.paint_order_id;
+            if(command.element == shared_button_a.index && command.type == GUI::DrawCommandType::line)
+                legacy_order = command.paint_order_id;
+            if(command.element == captured_button.index &&
+                command.type == GUI::DrawCommandType::backdrop_blur_capture)
+                capture_order = command.paint_order_id;
+            if(command.element == captured_button.index && command.type == GUI::DrawCommandType::sdf &&
+                captured_surface_order == GUI::INVALID_PAINT_ORDER_ID)
+                captured_surface_order = command.paint_order_id;
+        }
+        luassert(shared_surface_a_count == 2 && shared_surface_b_count == 2);
+        luassert(shared_surface_a[0] == shared_surface_b[0]);
+        luassert(shared_surface_a[1] == shared_surface_b[1]);
+        luassert(shared_text_a_order == shared_text_b_order);
+        luassert(shared_surface_a[0] < shared_surface_a[1] &&
+            shared_surface_a[1] < shared_text_a_order);
+        luassert(legacy_order == shared_text_a_order + 1);
+        luassert(shared_capture_order == legacy_order + 1);
+        u32 shared_capture_event_count = 0;
+        for(const GUI::DrawCommand& command : context->get_draw_commands())
+        {
+            if(command.paint_order_id == shared_capture_order) ++shared_capture_event_count;
+        }
+        luassert(shared_capture_event_count == 1);
+        luassert(overlap_a_max != GUI::INVALID_PAINT_ORDER_ID &&
+            overlap_b_first == overlap_a_max + 1);
+
+        const GUI::Layer* empty_layer = nullptr;
+        const GUI::Layer* shared_layer = nullptr;
+        const GUI::Layer* sequential_layer = nullptr;
+        const GUI::Layer* capture_layer = nullptr;
+        for(const GUI::Layer& layer : context->get_layers())
+        {
+            if(layer.id == empty_layer_id) empty_layer = &layer;
+            else if(layer.id == shared_layer_id) shared_layer = &layer;
+            else if(layer.id == sequential_layer_id) sequential_layer = &layer;
+            else if(layer.id == capture_layer_id) capture_layer = &layer;
+        }
+        luassert(empty_layer && shared_layer && sequential_layer && capture_layer);
+        luassert(empty_layer->first_paint_order_id == GUI::INVALID_PAINT_ORDER_ID &&
+            empty_layer->max_paint_order_id == GUI::INVALID_PAINT_ORDER_ID);
+        luassert(shared_layer->first_paint_order_id == 0);
+        luassert(sequential_layer->first_paint_order_id == shared_layer->max_paint_order_id + 1);
+        luassert(capture_layer->first_paint_order_id == sequential_layer->max_paint_order_id + 1);
+        luassert(capture_order == capture_layer->first_paint_order_id);
+        luassert(captured_surface_order == capture_order + 1);
+
+        luassert(context->bring_layer_to_front(shared_layer_id));
+        lupanic_if_failed(context->generate_draw_commands());
+        empty_layer = nullptr;
+        shared_layer = nullptr;
+        sequential_layer = nullptr;
+        capture_layer = nullptr;
+        for(const GUI::Layer& layer : context->get_layers())
+        {
+            if(layer.id == empty_layer_id) empty_layer = &layer;
+            else if(layer.id == shared_layer_id) shared_layer = &layer;
+            else if(layer.id == sequential_layer_id) sequential_layer = &layer;
+            else if(layer.id == capture_layer_id) capture_layer = &layer;
+        }
+        luassert(empty_layer && shared_layer && sequential_layer && capture_layer);
+        luassert(empty_layer->first_paint_order_id == GUI::INVALID_PAINT_ORDER_ID &&
+            empty_layer->max_paint_order_id == GUI::INVALID_PAINT_ORDER_ID);
+        luassert(sequential_layer->first_paint_order_id == 0);
+        luassert(capture_layer->first_paint_order_id == sequential_layer->max_paint_order_id + 1);
+        luassert(shared_layer->first_paint_order_id == capture_layer->max_paint_order_id + 1);
+
+        context->begin_frame(frame);
+        context->push_layer(context->make_id("paint_order.invalid.layer"), Float2U(0.0f));
+        GUI::ElementHandle invalid_element = context->begin_element(
+            context->make_id("paint_order.invalid.element"));
+        context->set_layout_config(invalid_element, button_layout);
+        GUI::DrawConfig invalid_draw;
+        invalid_draw.callback = draw_invalid_mixed_paint_order;
+        context->set_draw_config(invalid_element, invalid_draw);
+        context->end_element();
+        context->pop_layer();
+        lupanic_if_failed(EditorGUI::layout_tree(context, invalid_element,
+            RectF(0.0f, 0.0f, 96.0f, 40.0f)));
+        luassert(failed(context->generate_draw_commands()));
+    }
+
     RV run_demo(const DemoOptions& options)
     {
         lutry
@@ -357,6 +587,7 @@ namespace
             DemoApp app;
             luexp(init_demo(app, options));
             verify_input_text_direction_navigation(app.gui);
+            verify_paint_order_generation(app.gui);
             GUIWindow::GUIWindowInputAdapter input_adapter;
             input_adapter.window = app.window;
             input_adapter.gui = app.gui;
