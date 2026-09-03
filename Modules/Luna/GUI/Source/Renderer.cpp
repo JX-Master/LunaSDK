@@ -1054,12 +1054,19 @@ namespace Luna
                     if(command.type == DrawCommandType::rect ||
                         command.type == DrawCommandType::gradient_rect ||
                         command.type == DrawCommandType::rounded_rect ||
+                        command.type == DrawCommandType::rounded_rect_stroke ||
                         command.type == DrawCommandType::shadow)
                     {
+                        if(command.type == DrawCommandType::rounded_rect_stroke &&
+                            command.line_width <= 0.0f)
+                        {
+                            return;
+                        }
                         RectF screen_rect = to_screen_rect(layers, layer_index, resolved_rect);
                         if(!rect_visible(screen_rect)) return;
                         Vector<f32> shape_floats;
                         if(command.type == DrawCommandType::rounded_rect ||
+                            command.type == DrawCommandType::rounded_rect_stroke ||
                             command.type == DrawCommandType::shadow)
                         {
                             sdf_shape_add_rounded_rectangle(shape_floats,
@@ -1090,14 +1097,21 @@ namespace Luna
                                 command.shadow.offset, command.shadow.softness,
                                 command.shadow.spread, shadow_clip);
                         }
+                        else if(command.type == DrawCommandType::rounded_rect_stroke)
+                        {
+                            sdf_color_add_solid(color_floats, command.color,
+                                SDFClipDesc::stroke(command.line_width));
+                        }
                         else
                         {
                             sdf_color_add_solid(color_floats, command.color);
                         }
                         if(!append_color_program(m_compiled_sdf_color_floats,
                             color_floats.cspan(), desc.color)) return;
-                        const ClipState& sdf_clip = command.type == DrawCommandType::shadow &&
-                            command.shadow.mode == ShadowMode::outer ?
+                        const ClipState& sdf_clip =
+                            command.type == DrawCommandType::rounded_rect_stroke ||
+                            (command.type == DrawCommandType::shadow &&
+                                command.shadow.mode == ShadowMode::outer) ?
                             event.overflow_clip : event.clip;
                         append_prepared_sdf(draws, event.command_index, desc,
                             Float2U(screen_rect.offset_x, screen_rect.offset_y),

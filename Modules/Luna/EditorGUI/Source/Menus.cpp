@@ -136,30 +136,6 @@ namespace Luna
             context->set_draw_config(element, draw);
         }
 
-        static R<GUI::paint_order_id_t> draw_menu_bar(GUI::IContext* context,
-            const GUI::ElementHandle& element, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id,
-            void*)
-        {
-            draw_menu_rect(context, Internal::style_color(context, element, "gui.menu_bar.background",
-                Float4U(0.08f, 0.10f, 0.13f, 1.0f)), paint_order_id);
-            return paint_order_id;
-        }
-
-        static R<GUI::paint_order_id_t> draw_menu_separator(GUI::IContext* context,
-            const GUI::ElementHandle& element, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id,
-            void*)
-        {
-            GUI::DrawCommand line;
-            line.type = GUI::DrawCommandType::rect;
-            line.rect_reference = GUI::DrawCommandRectReference::element;
-            line.rect = RectF(8.0f, 0.0f, -16.0f, 1.0f);
-            line.rect_layout_scale = Float4U(0.0f, 0.5f, 1.0f, 0.0f);
-            line.color = Internal::style_color(context, element, "gui.menu_separator.color",
-                Float4U(0.24f, 0.30f, 0.38f, 1.0f));
-            context->draw(line, paint_order_id);
-            return paint_order_id;
-        }
-
         static void close_menu_stack(GUI::IContext* context)
         {
             Ref<Internal::FrameState> frame = Internal::frame_state(context);
@@ -216,10 +192,14 @@ namespace Luna
             GUI::ElementHandle bar = Internal::begin_element(context, id, label ? label : "Menu Bar",
                 resolved_layout);
             context->set_child_paint_order_mode(bar, GUI::ChildPaintOrderMode::shared);
-            GUI::DrawConfig draw;
-            draw.name = Name("gui.menu_bar");
-            draw.callback = draw_menu_bar;
-            context->set_draw_config(bar, draw);
+            GUI::ElementVisualEffect visual;
+            visual.command.type = GUI::DrawCommandType::rect;
+            visual.command.rect_reference = GUI::DrawCommandRectReference::element;
+            visual.command.color = Internal::style_color(context, bar, "gui.menu_bar.background",
+                Float4U(0.08f, 0.10f, 0.13f, 1.0f));
+            GUI::ElementVisualConfig visual_config;
+            visual_config.before_children = Span<const GUI::ElementVisualEffect>(&visual, 1);
+            lupanic_if_failed(context->set_element_visual_config(bar, visual_config));
             Internal::MenuBarBuildScope scope;
             scope.root = bar;
             scope.gap = desc.gap >= 0.0f ? desc.gap :
@@ -380,10 +360,16 @@ namespace Luna
                     "gui.control.small_height", 28.0f) * 0.32f;
             }
             GUI::ElementHandle separator = Internal::begin_element(context, id, "Menu Separator", resolved);
-            GUI::DrawConfig draw;
-            draw.name = Name("gui.menu_separator");
-            draw.callback = draw_menu_separator;
-            context->set_draw_config(separator, draw);
+            GUI::ElementVisualEffect visual;
+            visual.command.type = GUI::DrawCommandType::rect;
+            visual.command.rect_reference = GUI::DrawCommandRectReference::element;
+            visual.command.rect = RectF(8.0f, 0.0f, -16.0f, 1.0f);
+            visual.command.rect_layout_scale = Float4U(0.0f, 0.5f, 1.0f, 0.0f);
+            visual.command.color = Internal::style_color(context, separator,
+                "gui.menu_separator.color", Float4U(0.24f, 0.30f, 0.38f, 1.0f));
+            GUI::ElementVisualConfig visual_config;
+            visual_config.before_children = Span<const GUI::ElementVisualEffect>(&visual, 1);
+            lupanic_if_failed(context->set_element_visual_config(separator, visual_config));
             context->end_element();
             return separator;
         }

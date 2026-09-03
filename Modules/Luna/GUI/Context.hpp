@@ -41,7 +41,7 @@ namespace Luna
         //! Owns GUI frame data, layers, elements, input events, state objects, styles and draw commands.
         //! @remark GUI contexts are widget-free. High-level immediate API packages operate on this interface to
         //! submit typeless elements and primitive draw commands.
-        struct [[Luna::interface("{B56703A9-96A0-459C-A49E-493032990121}")]] IContext : virtual Interface
+        struct [[Luna::interface("{AB812697-F6D5-470B-B779-1EAD09F2723E}")]] IContext : virtual Interface
         {
             //! Begins a new frame and resets per-frame element, layer, input and draw command storage.
             //! @param[in] desc The frame description supplied by the host.
@@ -273,6 +273,24 @@ namespace Luna
             //! @return Returns the attached configuration, or a default configuration for invalid handles and
             //! elements without delayed draw behavior.
             virtual DrawConfig get_draw_config(const ElementHandle& element) const = 0;
+
+            //! Sets ordered static visual effects for an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @param[in] config The static effects to copy into context-owned frame storage.
+            //! @return Returns success, or @ref E_BAD_DATA if an effect contains a structural command.
+            //! @remark Effects are emitted at consecutive Paint Order IDs in list order. The configuration may be
+            //! replaced until draw-command generation starts. Invalid handles are ignored successfully.
+            virtual RV set_element_visual_config(const ElementHandle& element,
+                const ElementVisualConfig& config) = 0;
+
+            //! Gets static visual effects attached to an element.
+            //! @param[in] element The element handle returned by @ref begin_element.
+            //! @return Returns the attached configuration, or an empty configuration for invalid handles and
+            //! elements without static effects.
+            //! @remark The returned spans are invalidated by the next visual configuration mutation or
+            //! @ref begin_frame call.
+            virtual ElementVisualConfig get_element_visual_config(
+                const ElementHandle& element) const = 0;
 
             //! Sets how Paint Order ranges are allocated to an element's direct child subtrees.
             //! @param[in] element The element handle returned by @ref begin_element.

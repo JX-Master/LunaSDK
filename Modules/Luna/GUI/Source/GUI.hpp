@@ -48,6 +48,19 @@ namespace Luna
             u32 index = U32_MAX;
         };
 
+        struct ElementVisualEffectRange
+        {
+            u32 first_effect = 0;
+            u32 num_effects = 0;
+        };
+
+        struct ElementPaintConfig
+        {
+            DrawConfig draw;
+            ElementVisualEffectRange before_children;
+            ElementVisualEffectRange after_children;
+        };
+
         struct [[Luna::struct("{5D63E090-946C-4941-8452-F11277682199}")]] ScrollViewportHistoryState
         {
             RectF visible_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
@@ -65,7 +78,8 @@ namespace Luna
             Vector<LayoutCallbackConfig> m_layout_callback_configs;
             Vector<NavigationConfig> m_navigation_configs;
             Vector<ElementHitTestConfig> m_hit_test_configs;
-            Vector<DrawConfig> m_draw_configs;
+            Vector<ElementPaintConfig> m_paint_configs;
+            Vector<ElementVisualEffect> m_visual_effects;
             Vector<BackdropBlurCaptureDesc> m_backdrop_blur_captures;
             Vector<Vector<DrawOperation>> m_layer_draw_operations;
             Vector<DrawCommand> m_draw_commands;
@@ -161,6 +175,10 @@ namespace Luna
             virtual void set_element_debug_name(const ElementHandle& element, const Name& name) override;
             virtual void set_draw_config(const ElementHandle& element, const DrawConfig& config) override;
             virtual DrawConfig get_draw_config(const ElementHandle& element) const override;
+            virtual RV set_element_visual_config(const ElementHandle& element,
+                const ElementVisualConfig& config) override;
+            virtual ElementVisualConfig get_element_visual_config(
+                const ElementHandle& element) const override;
             virtual void set_child_paint_order_mode(const ElementHandle& element,
                 ChildPaintOrderMode mode) override;
             virtual void set_backdrop_blur_capture(const ElementHandle& element,
@@ -221,6 +239,9 @@ namespace Luna
             void deliver_input_event(id_t id, const InputEvent& event);
             void append_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command,
                 paint_order_id_t paint_order_id);
+            RV emit_element_visual_effects(u32 layer_index, u32 element_index, DrawPhase phase,
+                paint_order_id_t paint_order_id, paint_order_id_t& max_paint_order_id,
+                bool& has_output);
             void reset_generated_draw_commands();
             RV invoke_draw_callback(u32 layer_index, u32 element_index, DrawPhase phase,
                 paint_order_id_t paint_order_id, paint_order_id_t first_barrier_paint_order_id,

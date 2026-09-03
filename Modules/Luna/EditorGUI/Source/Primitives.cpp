@@ -122,33 +122,9 @@ namespace Luna
                 return result;
             }
 
-            static R<GUI::paint_order_id_t> draw_text(GUI::IContext* context,
-                const GUI::ElementHandle& element, GUI::DrawPhase,
-                GUI::paint_order_id_t paint_order_id, void* userdata)
-            {
-                TextData* data = (TextData*)userdata;
-                if(!data)
-                {
-                    return paint_order_id;
-                }
-                GUI::DrawCommand command;
-                command.type = GUI::DrawCommandType::text;
-                command.rect_reference = GUI::DrawCommandRectReference::element;
-                command.rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-                command.text = data->text ? data->text : "";
-                command.font = resolve_font_id(context, element, data->desc);
-                command.font_size = resolve_font_size(context, element, data->desc);
-                command.color = resolve_text_color(context, element, data->desc);
-                command.horizontal_alignment = text_alignment(data->desc.horizontal_alignment);
-                command.vertical_alignment = text_alignment(data->desc.vertical_alignment);
-                context->draw(command, paint_order_id);
-                return paint_order_id;
-            }
-
             struct ImageData
             {
                 RHI::ITexture* texture = nullptr;
-                ImageDesc desc;
             };
 
             static GUI::MeasureResult measure_image(GUI::IContext*, const GUI::ElementHandle&,
@@ -164,35 +140,9 @@ namespace Luna
                 return result;
             }
 
-            static R<GUI::paint_order_id_t> draw_image(GUI::IContext* context,
-                const GUI::ElementHandle&, GUI::DrawPhase,
-                GUI::paint_order_id_t paint_order_id, void* userdata)
-            {
-                ImageData* data = (ImageData*)userdata;
-                if(!data || !data->texture)
-                {
-                    return paint_order_id;
-                }
-                GUI::DrawCommand command;
-                command.type = GUI::DrawCommandType::image;
-                command.rect_reference = GUI::DrawCommandRectReference::element;
-                command.texture = data->texture;
-                command.color = data->desc.tint;
-                command.min_texcoord = data->desc.min_texcoord;
-                command.max_texcoord = data->desc.max_texcoord;
-                if(test_flags(data->desc.flags, ImageFlag::flip_y))
-                {
-                    swap(command.min_texcoord.y, command.max_texcoord.y);
-                }
-                command.nearest_sampler = test_flags(data->desc.flags, ImageFlag::nearest);
-                context->draw(command, paint_order_id);
-                return paint_order_id;
-            }
-
             struct ShapeData
             {
                 GUI::ShapeDesc shape;
-                ShapeWidgetDesc desc;
             };
 
             static GUI::MeasureResult measure_shape(GUI::IContext*, const GUI::ElementHandle&,
@@ -206,21 +156,6 @@ namespace Luna
                         max(data->shape.bounds.height, 0.0f));
                 }
                 return result;
-            }
-
-            static R<GUI::paint_order_id_t> draw_shape(GUI::IContext* context,
-                const GUI::ElementHandle&, GUI::DrawPhase,
-                GUI::paint_order_id_t paint_order_id, void* userdata)
-            {
-                ShapeData* data = (ShapeData*)userdata;
-                if(!data || !data->shape.buffer || !data->shape.num_commands) return paint_order_id;
-                GUI::DrawCommand command;
-                command.type = GUI::DrawCommandType::shape;
-                command.rect_reference = GUI::DrawCommandRectReference::element;
-                command.color = data->desc.tint;
-                command.shape = data->shape;
-                context->draw(command, paint_order_id);
-                return paint_order_id;
             }
 
             struct ProgressData
@@ -335,11 +270,18 @@ namespace Luna
             layout_callbacks.measure_callback = Internal::measure_text;
             layout_callbacks.userdata = data;
             context->set_layout_callback_config(element, layout_callbacks);
-            GUI::DrawConfig draw;
-            draw.name = Name("gui.text");
-            draw.callback = Internal::draw_text;
-            draw.userdata = data;
-            context->set_draw_config(element, draw);
+            GUI::ElementVisualEffect visual;
+            visual.command.type = GUI::DrawCommandType::text;
+            visual.command.rect_reference = GUI::DrawCommandRectReference::element;
+            visual.command.text = data->text ? data->text : "";
+            visual.command.font = Internal::resolve_font_id(context, element, desc);
+            visual.command.font_size = Internal::resolve_font_size(context, element, desc);
+            visual.command.color = Internal::resolve_text_color(context, element, desc);
+            visual.command.horizontal_alignment = Internal::text_alignment(desc.horizontal_alignment);
+            visual.command.vertical_alignment = Internal::text_alignment(desc.vertical_alignment);
+            GUI::ElementVisualConfig visual_config;
+            visual_config.before_children = Span<const GUI::ElementVisualEffect>(&visual, 1);
+            lupanic_if_failed(context->set_element_visual_config(element, visual_config));
             context->end_element();
             return element;
         }
@@ -350,17 +292,29 @@ namespace Luna
             GUI::ElementHandle element = Internal::begin_element(context, id, "Image", layout);
             Internal::ImageData* data = Internal::allocate_frame<Internal::ImageData>(context);
             data->texture = texture;
-            data->desc = desc;
             GUI::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.image");
             callbacks.measure_callback = Internal::measure_image;
             callbacks.userdata = data;
             context->set_layout_callback_config(element, callbacks);
-            GUI::DrawConfig draw;
-            draw.name = Name("gui.image");
-            draw.callback = Internal::draw_image;
-            draw.userdata = data;
-            context->set_draw_config(element, draw);
+            if(texture)
+            {
+                GUI::ElementVisualEffect visual;
+                visual.command.type = GUI::DrawCommandType::image;
+                visual.command.rect_reference = GUI::DrawCommandRectReference::element;
+                visual.command.texture = texture;
+                visual.command.color = desc.tint;
+                visual.command.min_texcoord = desc.min_texcoord;
+                visual.command.max_texcoord = desc.max_texcoord;
+                if(test_flags(desc.flags, ImageFlag::flip_y))
+                {
+                    swap(visual.command.min_texcoord.y, visual.command.max_texcoord.y);
+                }
+                visual.command.nearest_sampler = test_flags(desc.flags, ImageFlag::nearest);
+                GUI::ElementVisualConfig visual_config;
+                visual_config.before_children = Span<const GUI::ElementVisualEffect>(&visual, 1);
+                lupanic_if_failed(context->set_element_visual_config(element, visual_config));
+            }
             context->end_element();
             return element;
         }
@@ -371,17 +325,22 @@ namespace Luna
             GUI::ElementHandle element = Internal::begin_element(context, id, "Shape", layout);
             Internal::ShapeData* data = Internal::allocate_frame<Internal::ShapeData>(context);
             data->shape = value;
-            data->desc = desc;
             GUI::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.shape");
             callbacks.measure_callback = Internal::measure_shape;
             callbacks.userdata = data;
             context->set_layout_callback_config(element, callbacks);
-            GUI::DrawConfig draw;
-            draw.name = Name("gui.shape");
-            draw.callback = Internal::draw_shape;
-            draw.userdata = data;
-            context->set_draw_config(element, draw);
+            if(value.buffer && value.num_commands)
+            {
+                GUI::ElementVisualEffect visual;
+                visual.command.type = GUI::DrawCommandType::shape;
+                visual.command.rect_reference = GUI::DrawCommandRectReference::element;
+                visual.command.color = desc.tint;
+                visual.command.shape = value;
+                GUI::ElementVisualConfig visual_config;
+                visual_config.before_children = Span<const GUI::ElementVisualEffect>(&visual, 1);
+                lupanic_if_failed(context->set_element_visual_config(element, visual_config));
+            }
             context->end_element();
             return element;
         }

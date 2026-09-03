@@ -15,6 +15,7 @@
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/VFS/VFS.hpp>
+#include <cstring>
 
 using namespace Luna;
 using namespace Luna::GameGUI;
@@ -224,6 +225,95 @@ namespace
         lutest(actions[0].node == button.id);
         lutest(actions[0].source_id != 0);
         lutest(actions[0].payload.unum() == 99);
+        GUI::ElementVisualConfig visual_config = gui->get_element_visual_config(root.get());
+        lutest(visual_config.before_children.size() == 2);
+        lutest(!gui->get_draw_config(root.get()).callback);
+        lupanic_if_failed(gui->generate_draw_commands());
+        Span<const GUI::DrawCommand> commands = gui->get_draw_commands();
+        lutest(commands.size() == 2);
+        lutest(commands[0].type == GUI::DrawCommandType::rounded_rect);
+        lutest(commands[1].type == GUI::DrawCommandType::text);
+        lutest(commands[0].paint_order_id + 1 == commands[1].paint_order_id);
+        lutest(gui->get_performance_counters().draw_callback_count == 0);
+    }
+
+    void element_visual_effect_test()
+    {
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(100.0f, 100.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        GUI::ElementHandle root = gui->begin_element(1);
+        GUI::ElementVisualEffect root_before[3];
+        root_before[0].command.type = GUI::DrawCommandType::rect;
+        root_before[0].command.rect_reference = GUI::DrawCommandRectReference::element;
+        root_before[0].command.color = Float4U(1.0f, 0.0f, 0.0f, 1.0f);
+        root_before[1].command.type = GUI::DrawCommandType::rounded_rect_stroke;
+        root_before[1].command.rect_reference = GUI::DrawCommandRectReference::element;
+        root_before[1].command.color = Float4U(0.0f, 1.0f, 0.0f, 1.0f);
+        root_before[1].command.radius = 4.0f;
+        root_before[1].command.line_width = 2.0f;
+        root_before[2].command.type = GUI::DrawCommandType::rounded_rect_stroke;
+        root_before[2].command.rect_reference = GUI::DrawCommandRectReference::element;
+        root_before[2].command.rect = RectF(2.0f, 2.0f, -4.0f, -4.0f);
+        root_before[2].command.color = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+        root_before[2].command.radius = 2.0f;
+        root_before[2].command.line_width = 1.0f;
+        GUI::ElementVisualEffect root_after;
+        root_after.command.type = GUI::DrawCommandType::text;
+        root_after.command.rect_reference = GUI::DrawCommandRectReference::element;
+        root_after.command.text = "after";
+        GUI::ElementVisualConfig root_config;
+        root_config.before_children = Span<const GUI::ElementVisualEffect>(root_before, 3);
+        root_config.after_children = Span<const GUI::ElementVisualEffect>(&root_after, 1);
+        lupanic_if_failed(gui->set_element_visual_config(root, root_config));
+
+        GUI::ElementHandle child = gui->begin_element(2);
+        GUI::ElementVisualEffect child_visual;
+        child_visual.command.type = GUI::DrawCommandType::image;
+        child_visual.command.rect_reference = GUI::DrawCommandRectReference::element;
+        GUI::ElementVisualConfig child_config;
+        child_config.before_children = Span<const GUI::ElementVisualEffect>(&child_visual, 1);
+        lupanic_if_failed(gui->set_element_visual_config(child, child_config));
+        gui->end_element();
+        gui->end_element();
+        gui->pop_layer();
+
+        root_before[0].command.color = Float4U(0.0f);
+        root_after.command.text = "mutated";
+        GUI::ElementVisualConfig stored = gui->get_element_visual_config(root);
+        lutest(stored.before_children.size() == 3);
+        lutest(stored.after_children.size() == 1);
+        lutest(stored.before_children[0].command.color.x == 1.0f);
+        lutest(!strcmp(stored.after_children[0].command.text.c_str(), "after"));
+        lupanic_if_failed(gui->set_element_visual_config(root, stored));
+        stored = gui->get_element_visual_config(root);
+        lutest(stored.before_children.size() == 3 && stored.after_children.size() == 1);
+
+        GUI::ElementVisualEffect structural;
+        structural.command.type = GUI::DrawCommandType::push_clip;
+        GUI::ElementVisualConfig invalid_config;
+        invalid_config.before_children = Span<const GUI::ElementVisualEffect>(&structural, 1);
+        lutest(failed(gui->set_element_visual_config(root, invalid_config)));
+        lutest(gui->get_element_visual_config(root).before_children.size() == 3);
+
+        lupanic_if_failed(gui->generate_draw_commands());
+        Span<const GUI::DrawCommand> commands = gui->get_draw_commands();
+        lutest(commands.size() == 5);
+        lutest(commands[0].type == GUI::DrawCommandType::rect && commands[0].element == root.index);
+        lutest(commands[1].type == GUI::DrawCommandType::rounded_rect_stroke &&
+            commands[1].element == root.index);
+        lutest(commands[2].type == GUI::DrawCommandType::rounded_rect_stroke &&
+            commands[2].element == root.index && commands[2].line_width == 1.0f);
+        lutest(commands[3].type == GUI::DrawCommandType::image && commands[3].element == child.index);
+        lutest(commands[4].type == GUI::DrawCommandType::text && commands[4].element == root.index);
+        for(usize i = 0; i < commands.size(); ++i)
+        {
+            lutest(commands[i].paint_order_id == i);
+            lutest(commands[i].layer == 0);
+        }
+        lutest(gui->get_performance_counters().draw_callback_count == 0);
     }
 
     Variant make_float2(f64 x, f64 y)
@@ -417,6 +507,7 @@ int main()
     document_asset_test();
     topology_validation_test();
     registry_and_state_test();
+    element_visual_effect_test();
     button_action_test();
     canvas_layout_test();
     nested_asset_test();

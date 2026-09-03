@@ -52,7 +52,9 @@ namespace Luna
             //! does not draw pixels.
             backdrop_blur_capture,
             //! Draws the nearest self-or-ancestor backdrop capture through the command rectangle.
-            backdrop_blur
+            backdrop_blur,
+            //! Draws a centered analytic rounded-rectangle stroke.
+            rounded_rect_stroke
         };
 
         //! Identifies the coordinate space used by a draw command rectangle.
@@ -199,7 +201,7 @@ namespace Luna
             //! @remark A positive value makes a @ref DrawCommandType::push_clip command establish an additional
             //! rounded clip rectangle until its matching @ref DrawCommandType::pop_clip command.
             f32 radius = 0.0f;
-            //! Line width for line commands.
+            //! Line width for line and rounded-rectangle stroke commands.
             f32 line_width = 1.0f;
             //! Font ID used by text commands.
             Name font;
@@ -230,6 +232,25 @@ namespace Luna
             //! element or layer coordinate space selected by @ref rect_reference. Its resolved extent is also the
             //! finite raster domain when the color program does not enable outer clipping.
             SDFDrawDesc sdf;
+        };
+
+        //! Describes one static visual effect attached to an element.
+        //! @remark The command must be drawable. GUI Core overwrites its layer, element and Paint Order metadata
+        //! when draw commands are generated.
+        struct ElementVisualEffect
+        {
+            //! Drawable command template emitted for this effect.
+            DrawCommand command;
+        };
+
+        //! Describes ordered static visuals attached to an element.
+        //! @remark @ref IContext::set_element_visual_config copies both spans into context-owned frame storage.
+        struct ElementVisualConfig
+        {
+            //! Effects emitted before the element's child subtrees and before its before-children draw callback.
+            Span<const ElementVisualEffect> before_children;
+            //! Effects emitted after the element's child subtrees and before its after-children draw callback.
+            Span<const ElementVisualEffect> after_children;
         };
     }
 }
