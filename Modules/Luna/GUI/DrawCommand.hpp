@@ -67,9 +67,9 @@ namespace Luna
         //! Identifies one point in an element's painter-order traversal.
         enum class DrawPhase : u8
         {
-            //! Runs before the element's statically recorded commands and child elements.
+            //! Runs before the element's child elements.
             before_children,
-            //! Runs after the element's statically recorded commands and child elements.
+            //! Runs after the element's child elements.
             after_children
         };
 

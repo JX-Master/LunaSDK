@@ -41,7 +41,7 @@ namespace Luna
         //! Owns GUI frame data, layers, elements, input events, state objects, styles and draw commands.
         //! @remark GUI contexts are widget-free. High-level immediate API packages operate on this interface to
         //! submit typeless elements and primitive draw commands.
-        struct [[Luna::interface("{B5B4D4D6-EFAB-4EB8-9D6B-DA10722CB5FD}")]] IContext : virtual Interface
+        struct [[Luna::interface("{B56703A9-96A0-459C-A49E-493032990121}")]] IContext : virtual Interface
         {
             //! Begins a new frame and resets per-frame element, layer, input and draw command storage.
             //! @param[in] desc The frame description supplied by the host.
@@ -300,9 +300,9 @@ namespace Luna
             //! Generates the final draw command stream for the current element trees.
             //! @return Returns success or failure code.
             //! @remark Generation traverses layers from bottom to top and elements in painter order. Element draw
-            //! callbacks run at their configured phases, while commands recorded through @ref draw and
-            //! @ref draw_for_element retain their build-time positions. Call this after layout, input routing, and
-            //! higher-level package state resolution when complete commands must be inspected before compilation.
+            //! callbacks run at their configured phases and submit commands with explicit Paint Order IDs. Call this
+            //! after layout, input routing, and higher-level package state resolution when complete commands must be
+            //! inspected before compilation.
             virtual RV generate_draw_commands() = 0;
 
             //! Gets the latest generated draw commands in frame submission order.
@@ -316,15 +316,15 @@ namespace Luna
             //! Validates and appends one standalone shape program to context-owned frame storage.
             //! @param[in] floats Complete prefix shape expression.
             //! @return Returns the stored program with its context-relative float range, or a format error.
-            //! @remark Programs appended during element construction remain available to recorded commands. Programs
-            //! appended from draw callbacks are regenerated with the final draw command stream.
+            //! @remark Programs appended during element construction remain available to later draw callbacks.
+            //! Programs appended from draw callbacks are regenerated with the final draw command stream.
             virtual R<SDFShapeProgram> append_sdf_shape_program(Span<const f32> floats) = 0;
 
             //! Validates and appends one standalone color program to context-owned frame storage.
             //! @param[in] floats Complete color program.
             //! @return Returns the stored program with its context-relative float range, or a format error.
-            //! @remark Programs appended during element construction remain available to recorded commands. Programs
-            //! appended from draw callbacks are regenerated with the final draw command stream.
+            //! @remark Programs appended during element construction remain available to later draw callbacks.
+            //! Programs appended from draw callbacks are regenerated with the final draw command stream.
             virtual R<SDFColorProgram> append_sdf_color_program(Span<const f32> floats) = 0;
 
             //! Gets the shape program floats associated with the latest generated command stream.
@@ -339,27 +339,13 @@ namespace Luna
             //! command generation or @ref begin_frame call.
             virtual Span<const f32> get_sdf_color_floats() const = 0;
 
-            //! Records or emits one primitive draw command.
-            //! @param[in] command The command to append to the current layer and current element.
-            //! @remark During element construction this records a static command at the current painter-order
-            //! position. During a draw callback this is the strict-order compatibility path: every invocation uses
-            //! the next available Paint Order ID and ends the enclosing shared run.
-            virtual void draw(const DrawCommand& command) = 0;
-
             //! Emits one primitive draw command at an explicit Paint Order ID.
             //! @param[in] command The command to emit for the callback's current element.
             //! @param[in] paint_order_id The frame-local Paint Order ID assigned to the command.
-            //! @remark This overload may be called only during a draw callback. The ID must not be lower than the
+            //! @remark This function may be called only during a draw callback. The ID must not be lower than the
             //! first Paint Order ID passed to that callback phase. Equal IDs explicitly permit the renderer to group
-            //! otherwise compatible commands.
+            //! otherwise compatible commands. Every draw command must declare its Paint Order explicitly.
             virtual void draw(const DrawCommand& command, paint_order_id_t paint_order_id) = 0;
-
-            //! Records one primitive draw command for a specific element.
-            //! @param[in] element The element that owns the draw command.
-            //! @param[in] command The command to append to the element's layer.
-            //! @remark This is useful for layout-dependent commands that are emitted after the element build scope
-            //! has ended. Invalid handles are ignored.
-            virtual void draw_for_element(const ElementHandle& element, const DrawCommand& command) = 0;
 
             //! Registers one font that can be referenced by text draw commands.
             //! @param[in] id The stable font ID used by @ref DrawCommand::font.

@@ -189,8 +189,10 @@ namespace Luna
 
     void run_main_editor(const Path& project_path);
 
-    void draw_asset_tile(GUI::IContext* context, Asset::asset_t asset, const RectF& draw_rect);
-    void draw_asset_tile_preview(GUI::IContext* context, Asset::asset_t asset, const RectF& relative_rect);
+    R<GUI::paint_order_id_t> draw_asset_tile(GUI::IContext* context, Asset::asset_t asset,
+        const RectF& draw_rect, GUI::paint_order_id_t paint_order_id);
+    R<GUI::paint_order_id_t> draw_asset_tile_preview(GUI::IContext* context, Asset::asset_t asset,
+        const RectF& relative_rect, GUI::paint_order_id_t paint_order_id);
 
     extern MainEditor* g_main_editor;
 }

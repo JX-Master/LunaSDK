@@ -1215,6 +1215,8 @@ namespace Luna
             luassert(context && id);
             GUI::ElementHandle root = Internal::begin_element(context, id,
                 label ? label : "Dock Space", layout);
+            // Docked panels are clipped to disjoint leaf rectangles; splitters draw in the parent overlay phase.
+            context->set_child_paint_order_mode(root, GUI::ChildPaintOrderMode::shared);
             GUI::Interactable interactable;
             interactable.pointer_hit_behavior = GUI::PointerHitBehavior::target;
             set_flags(interactable.flags, GUI::InteractableFlag::hoverable);

@@ -119,7 +119,9 @@ for(const GUI::DrawCommand& command : context->get_draw_commands())
 }
 ```
 
-Call `generate_draw_commands` first when delayed draw callbacks are used and the final command stream is required.
+Call `generate_draw_commands` first when the generated command stream is required. Draw callbacks run during
+generation, and every generated command then has its owning element and explicit Paint Order ID. The returned span is
+in lexical submission order; inspect `DrawCommand::paint_order_id` for render ordering.
 
 ### Attach debug names
 ```cpp

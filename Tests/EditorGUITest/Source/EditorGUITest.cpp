@@ -350,13 +350,12 @@ namespace
         context->focus_element(0);
     }
 
-    R<GUI::paint_order_id_t> draw_invalid_mixed_paint_order(GUI::IContext* context,
+    R<GUI::paint_order_id_t> draw_invalid_returned_paint_order(GUI::IContext* context,
         const GUI::ElementHandle&, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id, void*)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::rect;
         context->draw(command, paint_order_id + 1);
-        context->draw(command);
         return paint_order_id;
     }
 
@@ -398,19 +397,6 @@ namespace
         GUI::LayoutConfig empty_element_layout;
         empty_element_layout.width.kind = GUI::SizeKind::fixed;
         empty_element_layout.height.kind = GUI::SizeKind::fixed;
-        GUI::ElementHandle legacy_scope = context->begin_element(
-            context->make_id("paint_order.shared.legacy_scope"));
-        context->set_layout_config(legacy_scope, empty_element_layout);
-        GUI::ElementHandle legacy_child = context->begin_element(
-            context->make_id("paint_order.shared.legacy_child"));
-        context->set_layout_config(legacy_child, empty_element_layout);
-        GUI::DrawCommand legacy_command;
-        legacy_command.type = GUI::DrawCommandType::line;
-        legacy_command.rect_reference = GUI::DrawCommandRectReference::element;
-        legacy_command.point1 = Float2U(1.0f, 1.0f);
-        context->draw_for_element(shared_button_a, legacy_command);
-        context->end_element();
-        context->end_element();
         GUI::ElementHandle shared_capture = context->begin_element(shared_capture_id);
         context->set_layout_config(shared_capture, empty_element_layout);
         GUI::BackdropBlurCaptureDesc shared_capture_desc;
@@ -473,7 +459,6 @@ namespace
         GUI::paint_order_id_t overlap_a_max = GUI::INVALID_PAINT_ORDER_ID;
         GUI::paint_order_id_t overlap_b_first = GUI::INVALID_PAINT_ORDER_ID;
         GUI::paint_order_id_t shared_capture_order = GUI::INVALID_PAINT_ORDER_ID;
-        GUI::paint_order_id_t legacy_order = GUI::INVALID_PAINT_ORDER_ID;
         GUI::paint_order_id_t capture_order = GUI::INVALID_PAINT_ORDER_ID;
         GUI::paint_order_id_t captured_surface_order = GUI::INVALID_PAINT_ORDER_ID;
         u32 shared_surface_a_count = 0;
@@ -499,8 +484,6 @@ namespace
             if(command.element == shared_capture.index &&
                 command.type == GUI::DrawCommandType::backdrop_blur_capture)
                 shared_capture_order = command.paint_order_id;
-            if(command.element == shared_button_a.index && command.type == GUI::DrawCommandType::line)
-                legacy_order = command.paint_order_id;
             if(command.element == captured_button.index &&
                 command.type == GUI::DrawCommandType::backdrop_blur_capture)
                 capture_order = command.paint_order_id;
@@ -514,8 +497,7 @@ namespace
         luassert(shared_text_a_order == shared_text_b_order);
         luassert(shared_surface_a[0] < shared_surface_a[1] &&
             shared_surface_a[1] < shared_text_a_order);
-        luassert(legacy_order == shared_text_a_order + 1);
-        luassert(shared_capture_order == legacy_order + 1);
+        luassert(shared_capture_order == shared_text_a_order + 1);
         u32 shared_capture_event_count = 0;
         for(const GUI::DrawCommand& command : context->get_draw_commands())
         {
@@ -571,7 +553,7 @@ namespace
             context->make_id("paint_order.invalid.element"));
         context->set_layout_config(invalid_element, button_layout);
         GUI::DrawConfig invalid_draw;
-        invalid_draw.callback = draw_invalid_mixed_paint_order;
+        invalid_draw.callback = draw_invalid_returned_paint_order;
         context->set_draw_config(invalid_element, invalid_draw);
         context->end_element();
         context->pop_layer();

@@ -158,8 +158,8 @@ namespace Luna
                 return element;
             }
 
-            void draw_panel(BuildContext& context, const GUI::ElementHandle& element,
-                const Variant& properties, const Float4U& default_color = Float4U(1.0f))
+            void draw_panel(GUI::IContext* context, const Variant& properties,
+                const Float4U& default_color, GUI::paint_order_id_t paint_order_id)
             {
                 GUI::DrawCommand draw;
                 draw.type = GUI::DrawCommandType::rounded_rect;
@@ -167,7 +167,19 @@ namespace Luna
                 draw.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
                 draw.color = get_float4(properties["color"], default_color);
                 draw.radius = get_number(properties, "radius", 0.0f);
-                context.gui()->draw_for_element(element, draw);
+                context->draw(draw, paint_order_id);
+            }
+
+            R<GUI::paint_order_id_t> draw_panel_callback(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase phase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
+            {
+                (void)element;
+                (void)phase;
+                const Variant& properties = *(const Variant*)userdata;
+                draw_panel(context, properties, Float4U(0.22f, 0.22f, 0.22f, 1.0f),
+                    paint_order_id);
+                return paint_order_id;
             }
 
             R<GUI::ElementHandle> build_panel(BuildContext& context, const NodeRecord& node,
@@ -177,15 +189,19 @@ namespace Luna
                 set_common_element_data(context, element, node);
                 GUI::FlexLayoutDesc layout;
                 context.set_flex_layout(element, layout);
-                draw_panel(context, element, node.properties, Float4U(0.22f, 0.22f, 0.22f, 1.0f));
+                GUI::DrawConfig draw;
+                draw.name = Name("GameGUI.Panel");
+                draw.callback = draw_panel_callback;
+                draw.userdata = (void*)&node.properties;
+                context.gui()->set_draw_config(element, draw);
                 RV children_result = context.build_children();
                 context.gui()->end_element();
                 if(!children_result.valid()) return children_result.errcode();
                 return element;
             }
 
-            void draw_text(BuildContext& context, const GUI::ElementHandle& element,
-                const Variant& properties)
+            void draw_text(GUI::IContext* context, const Variant& properties,
+                GUI::paint_order_id_t paint_order_id)
             {
                 GUI::DrawCommand draw;
                 draw.type = GUI::DrawCommandType::text;
@@ -195,7 +211,34 @@ namespace Luna
                 draw.font = properties["font"].str();
                 draw.font_size = get_number(properties, "font_size", 16.0f);
                 draw.text = properties["text"].c_str();
-                context.gui()->draw_for_element(element, draw);
+                context->draw(draw, paint_order_id);
+            }
+
+            R<GUI::paint_order_id_t> draw_text_callback(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase phase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
+            {
+                (void)element;
+                (void)phase;
+                draw_text(context, *(const Variant*)userdata, paint_order_id);
+                return paint_order_id;
+            }
+
+            R<GUI::paint_order_id_t> draw_button_callback(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase phase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
+            {
+                (void)element;
+                (void)phase;
+                if(paint_order_id + 1 == GUI::INVALID_PAINT_ORDER_ID)
+                {
+                    return set_error(E_OUT_OF_RANGE, "GameGUI button Paint Order ID overflow.");
+                }
+                const Variant& properties = *(const Variant*)userdata;
+                draw_panel(context, properties, Float4U(0.22f, 0.22f, 0.22f, 1.0f),
+                    paint_order_id);
+                draw_text(context, properties, paint_order_id + 1);
+                return paint_order_id + 1;
             }
 
             R<GUI::ElementHandle> build_text(BuildContext& context, const NodeRecord& node,
@@ -203,7 +246,11 @@ namespace Luna
             {
                 GUI::ElementHandle element = context.gui()->begin_element(context.make_id("element"));
                 set_common_element_data(context, element, node);
-                draw_text(context, element, node.properties);
+                GUI::DrawConfig draw;
+                draw.name = Name("GameGUI.Text");
+                draw.callback = draw_text_callback;
+                draw.userdata = (void*)&node.properties;
+                context.gui()->set_draw_config(element, draw);
                 context.gui()->end_element();
                 return element;
             }
@@ -218,8 +265,11 @@ namespace Luna
                     GUI::InteractableFlag::activatable | GUI::InteractableFlag::focusable;
                 interactable.pointer_hit_behavior = GUI::PointerHitBehavior::target;
                 context.gui()->set_interactable(element, interactable);
-                draw_panel(context, element, node.properties, Float4U(0.22f, 0.22f, 0.22f, 1.0f));
-                draw_text(context, element, node.properties);
+                GUI::DrawConfig draw;
+                draw.name = Name("GameGUI.Button");
+                draw.callback = draw_button_callback;
+                draw.userdata = (void*)&node.properties;
+                context.gui()->set_draw_config(element, draw);
                 context.gui()->end_element();
                 return element;
             }

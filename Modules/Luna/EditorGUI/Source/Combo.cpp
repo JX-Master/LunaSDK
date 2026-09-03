@@ -15,7 +15,19 @@ namespace Luna
 {
     namespace EditorGUI
     {
+        struct ComboDrawData
+        {
+            c8* selected = nullptr;
+            Float4U background;
+            Float4U border;
+            Float4U text_color;
+            f32 radius = 0.0f;
+            f32 font_size = 0.0f;
+            bool open = false;
+        };
+
         static void draw_combo_rect(GUI::IContext* context, const Float4U& color, f32 radius,
+            GUI::paint_order_id_t paint_order_id,
             const RectF& rect = RectF(0.0f, 0.0f, 0.0f, 0.0f))
         {
             GUI::DrawCommand command;
@@ -24,11 +36,12 @@ namespace Luna
             command.rect = rect;
             command.color = color;
             command.radius = radius;
-            context->draw(command);
+            context->draw(command, paint_order_id);
         }
 
         static void draw_combo_text(GUI::IContext* context, const RectF& rect, const c8* value,
             const Name& font, const Float4U& color, f32 font_size,
+            GUI::paint_order_id_t paint_order_id,
             VG::TextAlignment alignment = VG::TextAlignment::begin)
         {
             GUI::DrawCommand command;
@@ -41,10 +54,11 @@ namespace Luna
             command.horizontal_alignment = alignment;
             command.vertical_alignment = VG::TextAlignment::center;
             command.text = value ? value : "";
-            context->draw(command);
+            context->draw(command, paint_order_id);
         }
 
-        static void draw_combo_chevron(GUI::IContext* context, const Float4U& color, bool open)
+        static void draw_combo_chevron(GUI::IContext* context, const Float4U& color, bool open,
+            GUI::paint_order_id_t paint_order_id)
         {
             const f32 outer_y = open ? 2.5f : -2.5f;
             const f32 center_y = -outer_y;
@@ -56,10 +70,26 @@ namespace Luna
             line.rect_layout_scale = Float4U(1.0f, 0.5f, 1.0f, 0.5f);
             line.color = color;
             line.line_width = 1.6f;
-            context->draw(line);
+            context->draw(line, paint_order_id);
             line.rect = RectF(-18.0f, center_y, 0.0f, 0.0f);
             line.point1 = Float2U(-13.0f, outer_y);
-            context->draw(line);
+            context->draw(line, paint_order_id);
+        }
+
+        static R<GUI::paint_order_id_t> draw_combo(GUI::IContext* context,
+            const GUI::ElementHandle& element, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id,
+            void* userdata)
+        {
+            ComboDrawData* data = (ComboDrawData*)userdata;
+            if(!data) return paint_order_id;
+            draw_combo_rect(context, data->border, data->radius, paint_order_id);
+            draw_combo_rect(context, data->background, max(data->radius - 1.0f, 0.0f),
+                paint_order_id + 1, RectF(1.0f, 1.0f, -2.0f, -2.0f));
+            Name font = Internal::style_name(context, element, "gui.font");
+            draw_combo_text(context, RectF(12.0f, 0.0f, -44.0f, 0.0f), data->selected,
+                font, data->text_color, data->font_size, paint_order_id + 2);
+            draw_combo_chevron(context, data->text_color, data->open, paint_order_id + 2);
+            return paint_order_id + 2;
         }
 
         LUNA_EDITOR_GUI_API GUI::ElementHandle combo(GUI::IContext* context, id_t id, const c8* label,
@@ -103,13 +133,21 @@ namespace Luna
                 Float4U(0.95f, 0.96f, 0.98f, 1.0f));
             f32 radius = Internal::style_scalar(context, preview, "gui.combo.radius", 4.0f);
             f32 font_size = Internal::style_scalar(context, preview, "gui.combo.font_size", 15.0f);
-            draw_combo_rect(context, border, radius);
-            draw_combo_rect(context, background, max(radius - 1.0f, 0.0f), RectF(1.0f, 1.0f, -2.0f, -2.0f));
             const c8* selected = "";
             if(current_item && *current_item >= 0 && (usize)*current_item < items.size()) selected = items[(usize)*current_item];
-            draw_combo_text(context, RectF(12.0f, 0.0f, -44.0f, 0.0f), selected,
-                Internal::style_name(context, preview, "gui.font"), text_color, font_size);
-            draw_combo_chevron(context, text_color, open);
+            ComboDrawData* draw_data = Internal::allocate_frame<ComboDrawData>(context);
+            draw_data->selected = Internal::copy_frame_string(context, selected);
+            draw_data->background = background;
+            draw_data->border = border;
+            draw_data->text_color = text_color;
+            draw_data->radius = radius;
+            draw_data->font_size = font_size;
+            draw_data->open = open;
+            GUI::DrawConfig draw;
+            draw.name = Name("gui.combo");
+            draw.callback = draw_combo;
+            draw.userdata = draw_data;
+            context->set_draw_config(preview, draw);
             context->end_element();
 
             if(open)
@@ -126,6 +164,13 @@ namespace Luna
                 GUI::ElementHandle popup;
                 if(begin_popup(context, popup_id, popup_desc, &popup))
                 {
+                    GUI::LayoutConfig list_layout;
+                    list_layout.width.kind = GUI::SizeKind::percent;
+                    list_layout.width.value = 1.0f;
+                    GUI::ElementHandle list = begin_v_layout(context,
+                        Internal::derived_id(id, "combo.items"), "Combo Items", list_layout);
+                    // Every package-owned item is clipped to one non-overlapping list row.
+                    context->set_child_paint_order_mode(list, GUI::ChildPaintOrderMode::shared);
                     GUI::LayoutConfig item_layout;
                     item_layout.width.kind = GUI::SizeKind::percent;
                     item_layout.width.value = 1.0f;
@@ -137,6 +182,11 @@ namespace Luna
                         selectable(context, item_id, items[i] ? items[i] : "",
                             current_item && *current_item == (i32)i, item_layout);
                     }
+                    GUI::FlexLayoutDesc list_flex;
+                    list_flex.main_axis_gap = max(Internal::style_scalar(context, popup,
+                        "gui.popup.gap", 4.0f), 0.0f);
+                    list_flex.clip_children = true;
+                    end_v_layout(context, list, list_flex);
                     lupanic_if_failed(end_popup(context, popup, RectF(0.0f, 0.0f, width, height)));
                 }
             }

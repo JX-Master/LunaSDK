@@ -68,6 +68,7 @@ namespace Luna
         bool was_left_down = false;
         f32 display_size = 512.0f;
         RectF image_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+        Vector<GUI::DrawCommand> overlay_commands;
         Float2U control_points[NUM_CURVE_POINTS] =
         {
             Float2U(0.16f, 0.48f),
@@ -87,6 +88,7 @@ namespace Luna
     constexpr GUI::id_t ROOT_ID = 2;
     constexpr GUI::id_t IMAGE_HIT_ID = 100;
     constexpr GUI::id_t RESOLUTION_GROUP_ID = 101;
+    constexpr GUI::id_t OVERLAY_ID = 102;
     constexpr GUI::id_t FIRST_TEXT_ID = 1000;
 
     inline GUI::LayoutConfig fixed_layout(f32 width, f32 height)
@@ -123,7 +125,7 @@ namespace Luna
         return in_bounds(point, rect_min(rect), rect_max(rect));
     }
 
-    void draw_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
+    void append_line(Vector<GUI::DrawCommand>& commands, const Float2U& begin, const Float2U& end,
         const Float4U& color, f32 width)
     {
         GUI::DrawCommand command;
@@ -132,10 +134,10 @@ namespace Luna
         command.point1 = end;
         command.color = color;
         command.line_width = width;
-        context->draw(command);
+        commands.push_back(move(command));
     }
 
-    void draw_circle(GUI::IContext* context, const Float2U& center, f32 radius,
+    void append_circle(Vector<GUI::DrawCommand>& commands, const Float2U& center, f32 radius,
         const Float4U& color)
     {
         GUI::DrawCommand command;
@@ -143,7 +145,20 @@ namespace Luna
         command.rect = RectF(center.x - radius, center.y - radius, radius * 2.0f, radius * 2.0f);
         command.color = color;
         command.radius = radius;
-        context->draw(command);
+        commands.push_back(move(command));
+    }
+
+    R<GUI::paint_order_id_t> draw_curve_overlay(GUI::IContext* context,
+        const GUI::ElementHandle&, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id,
+        void* userdata)
+    {
+        const Vector<GUI::DrawCommand>& commands = *(const Vector<GUI::DrawCommand>*)userdata;
+        if(commands.empty()) return paint_order_id;
+        for(usize i = 0; i < commands.size(); ++i)
+        {
+            context->draw(commands[i], paint_order_id + (GUI::paint_order_id_t)i);
+        }
+        return paint_order_id + (GUI::paint_order_id_t)commands.size() - 1;
     }
 
     inline Float2U curve_point_to_texture(const App& app, const Float2U& point)
@@ -241,7 +256,7 @@ namespace Luna
         return ok;
     }
 
-    void draw_curve_overlay(App& app, const RectF& rect)
+    void build_curve_overlay(App& app, const RectF& rect)
     {
         Float2U p0 = curve_point_to_rect(rect, app.control_points[0]);
         Float2U q0 = curve_point_to_rect(rect, app.control_points[1]);
@@ -255,22 +270,23 @@ namespace Luna
         Float2U c3 = curve_point_to_rect(rect, app.control_points[9]);
         Float4U quad_line_color(0.95f, 0.95f, 1.0f, 0.48f);
         Float4U cubic_line_color(0.95f, 0.80f, 0.30f, 0.48f);
-        draw_line(app.gui, p0, q0, quad_line_color, CONTROL_LINE_WIDTH);
-        draw_line(app.gui, q0, p1, quad_line_color, CONTROL_LINE_WIDTH);
-        draw_line(app.gui, p1, c0, cubic_line_color, CONTROL_LINE_WIDTH);
-        draw_line(app.gui, c0, c1, cubic_line_color, CONTROL_LINE_WIDTH);
-        draw_line(app.gui, c1, p2, cubic_line_color, CONTROL_LINE_WIDTH);
-        draw_line(app.gui, p2, q1, quad_line_color, CONTROL_LINE_WIDTH);
-        draw_line(app.gui, q1, p3, quad_line_color, CONTROL_LINE_WIDTH);
-        draw_line(app.gui, p3, c2, cubic_line_color, CONTROL_LINE_WIDTH);
-        draw_line(app.gui, c2, c3, cubic_line_color, CONTROL_LINE_WIDTH);
-        draw_line(app.gui, c3, p0, cubic_line_color, CONTROL_LINE_WIDTH);
+        append_line(app.overlay_commands, p0, q0, quad_line_color, CONTROL_LINE_WIDTH);
+        append_line(app.overlay_commands, q0, p1, quad_line_color, CONTROL_LINE_WIDTH);
+        append_line(app.overlay_commands, p1, c0, cubic_line_color, CONTROL_LINE_WIDTH);
+        append_line(app.overlay_commands, c0, c1, cubic_line_color, CONTROL_LINE_WIDTH);
+        append_line(app.overlay_commands, c1, p2, cubic_line_color, CONTROL_LINE_WIDTH);
+        append_line(app.overlay_commands, p2, q1, quad_line_color, CONTROL_LINE_WIDTH);
+        append_line(app.overlay_commands, q1, p3, quad_line_color, CONTROL_LINE_WIDTH);
+        append_line(app.overlay_commands, p3, c2, cubic_line_color, CONTROL_LINE_WIDTH);
+        append_line(app.overlay_commands, c2, c3, cubic_line_color, CONTROL_LINE_WIDTH);
+        append_line(app.overlay_commands, c3, p0, cubic_line_color, CONTROL_LINE_WIDTH);
         for(u32 i = 0; i < NUM_CURVE_POINTS; ++i)
         {
             Float4U color = (i == 0 || i == 2 || i == 5 || i == 7) ?
                 Float4U(1.0f, 1.0f, 1.0f, 1.0f) :
                 Float4U(1.0f, 0.78f, 0.18f, 1.0f);
-            draw_circle(app.gui, curve_point_to_rect(rect, app.control_points[i]), CONTROL_POINT_RADIUS, color);
+            append_circle(app.overlay_commands, curve_point_to_rect(rect, app.control_points[i]),
+                CONTROL_POINT_RADIUS, color);
         }
     }
 
@@ -284,6 +300,7 @@ namespace Luna
 
     void build_gui(App& app, const Float2U& surface_size)
     {
+        app.overlay_commands.clear();
         GUI::ElementHandle root = app.gui->begin_element(ROOT_ID);
         set_element_rect(app.gui, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
 
@@ -310,7 +327,15 @@ namespace Luna
         set_element_rect(app.gui, image_hit, app.image_rect);
         if(app.image_rect.width > 1.0f && app.image_rect.height > 1.0f)
         {
-            draw_curve_overlay(app, app.image_rect);
+            build_curve_overlay(app, app.image_rect);
+            GUI::ElementHandle overlay = app.gui->begin_element(OVERLAY_ID);
+            set_element_rect(app.gui, overlay, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
+            GUI::DrawConfig overlay_draw;
+            overlay_draw.name = Name("vg_curve_test.overlay");
+            overlay_draw.callback = draw_curve_overlay;
+            overlay_draw.userdata = &app.overlay_commands;
+            app.gui->set_draw_config(overlay, overlay_draw);
+            app.gui->end_element();
         }
 
         f32 side_x = app.image_rect.offset_x + app.image_rect.width + 24.0f;

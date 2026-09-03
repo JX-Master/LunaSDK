@@ -44,8 +44,11 @@ namespace Luna
                     center.y + (surface_position.y - center.y - preview.pan.y) / preview.zoom);
             }
 
-            void build_preview_background(GUI::IContext* context, const PreviewState& preview)
+            R<GUI::paint_order_id_t> draw_preview_background(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase phase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
+                PreviewState& preview = *(PreviewState*)userdata;
                 Float2U logical_top_left = preview_logical_position(preview, Float2U(0.0f));
                 Float2U logical_bottom_right = preview_logical_position(preview,
                     preview.viewport_size);
@@ -56,7 +59,7 @@ namespace Luna
                     logical_bottom_right.x - logical_top_left.x,
                     logical_bottom_right.y - logical_top_left.y);
                 background.color = Float4U(0.26f, 0.26f, 0.26f, 1.0f);
-                context->draw(background);
+                context->draw(background, paint_order_id);
 
                 f32 grid_size = PREVIEW_GRID_SIZE;
                 while(grid_size * preview.zoom < 12.0f) grid_size *= 2.0f;
@@ -75,7 +78,7 @@ namespace Luna
                     line.color = Float4U(1.0f, 1.0f, 1.0f,
                         (i % 4) ? 0.12f : 0.22f);
                     line.line_width = ((i % 4) ? 1.0f : 1.25f) / preview.zoom;
-                    context->draw(line);
+                    context->draw(line, paint_order_id + 1);
                 }
                 for(i32 i = first_y; i <= last_y; ++i)
                 {
@@ -88,12 +91,16 @@ namespace Luna
                     line.color = Float4U(1.0f, 1.0f, 1.0f,
                         (i % 4) ? 0.12f : 0.22f);
                     line.line_width = ((i % 4) ? 1.0f : 1.25f) / preview.zoom;
-                    context->draw(line);
+                    context->draw(line, paint_order_id + 1);
                 }
+                return paint_order_id + 1;
             }
 
-            void build_preview_overlay(GUI::IContext* context, const PreviewState& preview)
+            R<GUI::paint_order_id_t> draw_preview_overlay(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase phase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
+                PreviewState& preview = *(PreviewState*)userdata;
                 constexpr f32 BADGE_WIDTH = 68.0f;
                 constexpr f32 BADGE_HEIGHT = 26.0f;
                 constexpr f32 BADGE_MARGIN = 8.0f;
@@ -108,7 +115,7 @@ namespace Luna
                 background.rect = badge;
                 background.color = Float4U(0.08f, 0.08f, 0.08f, 0.82f);
                 background.radius = 5.0f / preview.zoom;
-                context->draw(background);
+                context->draw(background, paint_order_id);
 
                 String label;
                 f32 percentage = preview.zoom * 100.0f;
@@ -125,22 +132,26 @@ namespace Luna
                 text.horizontal_alignment = VG::TextAlignment::center;
                 text.vertical_alignment = VG::TextAlignment::center;
                 text.text = move(label);
-                context->draw(text);
+                context->draw(text, paint_order_id + 1);
+                return paint_order_id + 1;
             }
 
-            void draw_preview_node_background(GUI::IContext* context)
+            R<GUI::paint_order_id_t> draw_preview_node(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase phase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
-                GUI::DrawCommand background;
-                background.type = GUI::DrawCommandType::rect;
-                background.rect_reference = GUI::DrawCommandRectReference::element;
-                background.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
-                background.color = Float4U(0.08f, 0.09f, 0.11f, 0.35f);
-                context->draw(background);
-            }
-
-            void draw_preview_node_border(GUI::IContext* context, f32 zoom)
-            {
-                f32 thickness = 1.5f / zoom;
+                PreviewState& preview = *(PreviewState*)userdata;
+                if(phase == GUI::DrawPhase::before_children)
+                {
+                    GUI::DrawCommand background;
+                    background.type = GUI::DrawCommandType::rect;
+                    background.rect_reference = GUI::DrawCommandRectReference::element;
+                    background.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+                    background.color = Float4U(0.08f, 0.09f, 0.11f, 0.35f);
+                    context->draw(background, paint_order_id);
+                    return paint_order_id;
+                }
+                f32 thickness = 1.5f / preview.zoom;
                 const Float4U color(0.86f, 0.88f, 0.92f, 0.9f);
                 GUI::DrawCommand border;
                 border.type = GUI::DrawCommandType::rect;
@@ -149,16 +160,35 @@ namespace Luna
 
                 border.rect = RectF(0.0f, 0.0f, 0.0f, thickness);
                 border.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 0.0f);
-                context->draw(border);
+                context->draw(border, paint_order_id);
                 border.rect = RectF(0.0f, -thickness, 0.0f, thickness);
                 border.rect_layout_scale = Float4U(0.0f, 1.0f, 1.0f, 0.0f);
-                context->draw(border);
+                context->draw(border, paint_order_id);
                 border.rect = RectF(0.0f, 0.0f, thickness, 0.0f);
                 border.rect_layout_scale = Float4U(0.0f, 0.0f, 0.0f, 1.0f);
-                context->draw(border);
+                context->draw(border, paint_order_id);
                 border.rect = RectF(-thickness, 0.0f, thickness, 0.0f);
                 border.rect_layout_scale = Float4U(1.0f, 0.0f, 0.0f, 1.0f);
-                context->draw(border);
+                context->draw(border, paint_order_id);
+                return paint_order_id;
+            }
+
+            R<GUI::paint_order_id_t> draw_preview_resize_handle(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase phase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
+            {
+                PreviewState& preview = *(PreviewState*)userdata;
+                GUI::InteractionState interaction = context->get_interaction_state(element.id);
+                GUI::DrawCommand background;
+                background.type = GUI::DrawCommandType::rounded_rect;
+                background.rect_reference = GUI::DrawCommandRectReference::element;
+                background.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+                background.color = preview.resizing ? Float4U(1.0f, 0.42f, 0.50f, 1.0f) :
+                    interaction.hovered ? Float4U(1.0f, 0.55f, 0.61f, 1.0f) :
+                    Float4U(0.96f, 0.34f, 0.44f, 1.0f);
+                background.radius = 2.0f / preview.zoom;
+                context->draw(background, paint_order_id);
+                return paint_order_id;
             }
 
             GUI::ElementHandle build_preview_resize_handle(GUI::IContext* context,
@@ -176,16 +206,11 @@ namespace Luna
                 set_flags(interactable.flags, GUI::InteractableFlag::activatable);
                 context->set_interactable(handle, interactable);
 
-                GUI::InteractionState interaction = context->get_interaction_state(handle.id);
-                GUI::DrawCommand background;
-                background.type = GUI::DrawCommandType::rounded_rect;
-                background.rect_reference = GUI::DrawCommandRectReference::element;
-                background.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
-                background.color = preview.resizing ? Float4U(1.0f, 0.42f, 0.50f, 1.0f) :
-                    interaction.hovered ? Float4U(1.0f, 0.55f, 0.61f, 1.0f) :
-                    Float4U(0.96f, 0.34f, 0.44f, 1.0f);
-                background.radius = 2.0f / preview.zoom;
-                context->draw(background);
+                GUI::DrawConfig draw;
+                draw.name = Name("game_gui_editor.preview.resize_handle");
+                draw.callback = draw_preview_resize_handle;
+                draw.userdata = &preview;
+                context->set_draw_config(handle, draw);
                 context->end_element();
                 return handle;
             }
@@ -418,9 +443,13 @@ namespace Luna
                     document.preview.context->add_input_events(input);
                     document.preview.context->push_layer(
                         document.preview.context->make_id("preview.background.layer"));
-                    document.preview.context->begin_element(
+                    GUI::ElementHandle background = document.preview.context->begin_element(
                         document.preview.context->make_id("preview.background"));
-                    build_preview_background(document.preview.context, document.preview);
+                    GUI::DrawConfig background_draw;
+                    background_draw.name = Name("game_gui_editor.preview.background");
+                    background_draw.callback = draw_preview_background;
+                    background_draw.userdata = &document.preview;
+                    document.preview.context->set_draw_config(background, background_draw);
                     document.preview.context->end_element();
                     document.preview.context->pop_layer();
                     document.preview.context->push_layer(
@@ -432,7 +461,13 @@ namespace Luna
                     document.preview.context->set_layout_config(preview_node,
                         fixed_layout(document.preview.node_size.x,
                             document.preview.node_size.y));
-                    draw_preview_node_background(document.preview.context);
+                    GUI::DrawConfig preview_node_draw;
+                    preview_node_draw.name = Name("game_gui_editor.preview.node");
+                    preview_node_draw.callback = draw_preview_node;
+                    preview_node_draw.userdata = &document.preview;
+                    preview_node_draw.phases = GUI::DrawPhaseFlag::before_children |
+                        GUI::DrawPhaseFlag::after_children;
+                    document.preview.context->set_draw_config(preview_node, preview_node_draw);
                     GUI::ElementHandle root;
                     if(document.preview.instance)
                         luset(root, document.preview.instance->build(document.preview.context));
@@ -449,8 +484,6 @@ namespace Luna
                     }
                     GUI::ElementHandle resize_handle = build_preview_resize_handle(
                         document.preview.context, document.preview);
-                    draw_preview_node_border(document.preview.context,
-                        document.preview.zoom);
                     document.preview.context->end_element();
                     document.preview.context->pop_layer();
 
@@ -485,9 +518,13 @@ namespace Luna
 
                     document.preview.context->push_layer(
                         document.preview.context->make_id("preview.overlay.layer"));
-                    document.preview.context->begin_element(
+                    GUI::ElementHandle overlay = document.preview.context->begin_element(
                         document.preview.context->make_id("preview.overlay"));
-                    build_preview_overlay(document.preview.context, document.preview);
+                    GUI::DrawConfig overlay_draw;
+                    overlay_draw.name = Name("game_gui_editor.preview.overlay");
+                    overlay_draw.callback = draw_preview_overlay;
+                    overlay_draw.userdata = &document.preview;
+                    document.preview.context->set_draw_config(overlay, overlay_draw);
                     document.preview.context->end_element();
                     document.preview.context->pop_layer();
                     luexp(document.preview.context->apply_layout(preview_node,

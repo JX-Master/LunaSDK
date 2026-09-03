@@ -78,7 +78,7 @@ namespace Luna
             {
                 u32 element = INVALID_ELEMENT;
                 paint_order_id_t base_paint_order_id = INVALID_PAINT_ORDER_ID;
-                paint_order_id_t first_strict_paint_order_id = INVALID_PAINT_ORDER_ID;
+                paint_order_id_t first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
                 paint_order_id_t max_paint_order_id = INVALID_PAINT_ORDER_ID;
                 paint_order_id_t shared_child_paint_order_id = INVALID_PAINT_ORDER_ID;
                 ChildPaintOrderMode child_mode = ChildPaintOrderMode::sequential;
@@ -103,7 +103,6 @@ namespace Luna
             m_hit_test_configs.clear();
             m_draw_configs.clear();
             m_backdrop_blur_captures.clear();
-            m_recorded_draw_commands.clear();
             m_layer_draw_operations.clear();
             m_draw_commands.clear();
             m_recorded_sdf_shape_floats.clear();
@@ -123,12 +122,10 @@ namespace Luna
             m_draw_generation_layer = INVALID_LAYER;
             m_draw_generation_element = INVALID_ELEMENT;
             m_draw_generation_phase_first_paint_order_id = INVALID_PAINT_ORDER_ID;
-            m_draw_generation_phase_first_strict_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
             m_draw_generation_phase_max_paint_order_id = INVALID_PAINT_ORDER_ID;
-            m_draw_generation_phase_explicit_max_paint_order_id = INVALID_PAINT_ORDER_ID;
             m_draw_generation_phase_has_output = false;
             m_draw_generation_phase_has_barrier = false;
-            m_draw_generation_phase_used_legacy_order = false;
             m_draw_generation_error = ResultCode();
             m_generating_draw_commands = false;
             m_draw_commands_generated = false;
@@ -286,11 +283,6 @@ namespace Luna
             {
                 if(element.layer == source) element.layer = destination;
                 else if(element.layer > source) --element.layer;
-            }
-            for(DrawCommand& command : m_recorded_draw_commands)
-            {
-                if(command.layer == source) command.layer = destination;
-                else if(command.layer > source) --command.layer;
             }
             for(u32& layer_index : m_layer_stack)
             {
@@ -915,18 +907,6 @@ namespace Luna
             m_draw_commands.push_back(move(cmd));
         }
 
-        void Context::record_static_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command)
-        {
-            DrawCommand recorded = command;
-            recorded.layer = layer_index;
-            recorded.element = element_index;
-            recorded.paint_order_id = INVALID_PAINT_ORDER_ID;
-            u32 command_index = (u32)m_recorded_draw_commands.size();
-            m_recorded_draw_commands.push_back(move(recorded));
-            m_layer_draw_operations[layer_index].push_back(DrawOperation { DrawOperationType::static_command, command_index });
-            m_draw_commands_generated = false;
-        }
-
         void Context::reset_generated_draw_commands()
         {
             m_draw_commands.clear();
@@ -941,7 +921,7 @@ namespace Luna
         }
 
         RV Context::invoke_draw_callback(u32 layer_index, u32 element_index, DrawPhase phase,
-            paint_order_id_t paint_order_id, paint_order_id_t first_strict_paint_order_id,
+            paint_order_id_t paint_order_id, paint_order_id_t first_barrier_paint_order_id,
             paint_order_id_t& max_paint_order_id, bool& has_output, bool& has_barrier)
         {
             max_paint_order_id = paint_order_id;
@@ -966,31 +946,24 @@ namespace Luna
             m_draw_generation_layer = layer_index;
             m_draw_generation_element = element_index;
             m_draw_generation_phase_first_paint_order_id = paint_order_id;
-            m_draw_generation_phase_first_strict_paint_order_id = first_strict_paint_order_id;
+            m_draw_generation_phase_first_barrier_paint_order_id = first_barrier_paint_order_id;
             m_draw_generation_phase_max_paint_order_id = paint_order_id;
-            m_draw_generation_phase_explicit_max_paint_order_id = INVALID_PAINT_ORDER_ID;
             m_draw_generation_phase_has_output = false;
             m_draw_generation_phase_has_barrier = false;
-            m_draw_generation_phase_used_legacy_order = false;
             m_draw_generation_error = ResultCode();
             ++m_counters.draw_callback_count;
             R<paint_order_id_t> result = config.callback(this,
                 ElementHandle { element.id, element_index, m_generation }, phase, paint_order_id,
                 config.userdata);
             const paint_order_id_t emitted_max = m_draw_generation_phase_max_paint_order_id;
-            const paint_order_id_t explicit_emitted_max =
-                m_draw_generation_phase_explicit_max_paint_order_id;
             const bool emitted = m_draw_generation_phase_has_output;
             const bool emitted_barrier = m_draw_generation_phase_has_barrier;
-            const bool used_legacy_order = m_draw_generation_phase_used_legacy_order;
             const ResultCode generation_error = m_draw_generation_error;
             m_draw_generation_phase_first_paint_order_id = INVALID_PAINT_ORDER_ID;
-            m_draw_generation_phase_first_strict_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
             m_draw_generation_phase_max_paint_order_id = INVALID_PAINT_ORDER_ID;
-            m_draw_generation_phase_explicit_max_paint_order_id = INVALID_PAINT_ORDER_ID;
             m_draw_generation_phase_has_output = false;
             m_draw_generation_phase_has_barrier = false;
-            m_draw_generation_phase_used_legacy_order = false;
             m_draw_generation_error = ResultCode();
             if(failed(generation_error))
             {
@@ -1006,15 +979,14 @@ namespace Luna
                 return set_error(E_BAD_DATA,
                     "A GUI draw callback returned a Paint Order ID below its phase input.");
             }
-            if(explicit_emitted_max != INVALID_PAINT_ORDER_ID &&
-                returned_max < explicit_emitted_max)
+            if(emitted && returned_max < emitted_max)
             {
                 return set_error(E_BAD_DATA,
-                    "A GUI draw callback returned a Paint Order ID below an explicit command it emitted.");
+                    "A GUI draw callback returned a Paint Order ID below a command it emitted.");
             }
             max_paint_order_id = emitted ? max(returned_max, emitted_max) : returned_max;
             has_output = emitted || returned_max > paint_order_id;
-            has_barrier = emitted_barrier || used_legacy_order;
+            has_barrier = emitted_barrier;
             return ok;
         }
 
@@ -1058,12 +1030,10 @@ namespace Luna
                 m_draw_generation_layer = INVALID_LAYER;
                 m_draw_generation_element = INVALID_ELEMENT;
                 m_draw_generation_phase_first_paint_order_id = INVALID_PAINT_ORDER_ID;
-                m_draw_generation_phase_first_strict_paint_order_id = INVALID_PAINT_ORDER_ID;
+                m_draw_generation_phase_first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
                 m_draw_generation_phase_max_paint_order_id = INVALID_PAINT_ORDER_ID;
-                m_draw_generation_phase_explicit_max_paint_order_id = INVALID_PAINT_ORDER_ID;
                 m_draw_generation_phase_has_output = false;
                 m_draw_generation_phase_has_barrier = false;
-                m_draw_generation_phase_used_legacy_order = false;
                 m_draw_generation_error = ResultCode();
                 m_counters.draw_generate_ms = perf_elapsed_ms(generate_begin, get_ticks());
                 return error;
@@ -1086,7 +1056,7 @@ namespace Luna
                     parent.shared_child_paint_order_id = INVALID_PAINT_ORDER_ID;
                     R<paint_order_id_t> first = first_free_paint_order_id(parent);
                     if(failed(first)) return first.errcode();
-                    return max(first.get(), parent.first_strict_paint_order_id);
+                    return max(first.get(), parent.first_barrier_paint_order_id);
                 }
                 if(parent.child_mode == ChildPaintOrderMode::shared)
                 {
@@ -1101,20 +1071,6 @@ namespace Luna
                 return first_free_paint_order_id(parent);
             };
 
-            auto append_legacy_command = [&](PaintFrame& frame, u32 layer_index,
-                u32 element_index, const DrawCommand& command) -> RV
-            {
-                R<paint_order_id_t> order = first_free_paint_order_id(frame);
-                if(failed(order)) return order.errcode();
-                paint_order_id_t strict_order = max(order.get(), frame.first_strict_paint_order_id);
-                append_draw_command(layer_index, element_index, command, strict_order);
-                frame.max_paint_order_id = strict_order;
-                frame.has_output = true;
-                frame.has_barrier = true;
-                frame.shared_child_paint_order_id = INVALID_PAINT_ORDER_ID;
-                return ok;
-            };
-
             paint_order_id_t next_layer_paint_order_id = 0;
             for(u32 layer_index = 0; layer_index < m_layer_draw_operations.size(); ++layer_index)
             {
@@ -1122,7 +1078,7 @@ namespace Luna
                 layer.first_paint_order_id = INVALID_PAINT_ORDER_ID;
                 PaintFrame layer_frame;
                 layer_frame.base_paint_order_id = next_layer_paint_order_id;
-                layer_frame.first_strict_paint_order_id = next_layer_paint_order_id;
+                layer_frame.first_barrier_paint_order_id = next_layer_paint_order_id;
                 layer_frame.max_paint_order_id = next_layer_paint_order_id;
                 Vector<PaintFrame> paint_stack;
                 for(const DrawOperation& operation : m_layer_draw_operations[layer_index])
@@ -1135,13 +1091,13 @@ namespace Luna
                         {
                             const Element& element = m_elements[operation.index];
                             PaintFrame& parent = paint_stack.empty() ? layer_frame : paint_stack.back();
-                            R<paint_order_id_t> first_strict = first_free_paint_order_id(parent);
-                            if(failed(first_strict))
+                            R<paint_order_id_t> first_barrier = first_free_paint_order_id(parent);
+                            if(failed(first_barrier))
                             {
-                                return finish_generation_failure(first_strict.errcode());
+                                return finish_generation_failure(first_barrier.errcode());
                             }
-                            paint_order_id_t inherited_first_strict = max(first_strict.get(),
-                                parent.first_strict_paint_order_id);
+                            paint_order_id_t inherited_first_barrier = max(first_barrier.get(),
+                                parent.first_barrier_paint_order_id);
                             R<paint_order_id_t> first = allocate_child_paint_order_id(parent,
                                 subtree_has_known_barrier[operation.index] != 0);
                             if(failed(first))
@@ -1151,7 +1107,7 @@ namespace Luna
                             PaintFrame frame;
                             frame.element = operation.index;
                             frame.base_paint_order_id = first.get();
-                            frame.first_strict_paint_order_id = inherited_first_strict;
+                            frame.first_barrier_paint_order_id = inherited_first_barrier;
                             frame.max_paint_order_id = first.get();
                             frame.child_mode = element.child_paint_order_mode;
                             paint_stack.push_back(frame);
@@ -1183,11 +1139,11 @@ namespace Luna
                             paint_order_id_t callback_max = callback_order;
                             bool callback_has_output = false;
                             bool callback_has_barrier = false;
-                            paint_order_id_t first_strict_callback_order = current.has_output ?
-                                callback_order : current.first_strict_paint_order_id;
+                            paint_order_id_t first_barrier_callback_order = current.has_output ?
+                                callback_order : current.first_barrier_paint_order_id;
                             result = invoke_draw_callback(layer_index, operation.index,
                                 DrawPhase::before_children, callback_order,
-                                first_strict_callback_order, callback_max,
+                                first_barrier_callback_order, callback_max,
                                 callback_has_output, callback_has_barrier);
                             if(succeeded(result) && callback_has_output)
                             {
@@ -1199,14 +1155,6 @@ namespace Luna
                                 current.has_barrier = true;
                                 current.shared_child_paint_order_id = INVALID_PAINT_ORDER_ID;
                             }
-                        }
-                        break;
-                    case DrawOperationType::static_command:
-                        if(operation.index < m_recorded_draw_commands.size())
-                        {
-                            const DrawCommand& command = m_recorded_draw_commands[operation.index];
-                            PaintFrame& current = paint_stack.empty() ? layer_frame : paint_stack.back();
-                            result = append_legacy_command(current, command.layer, command.element, command);
                         }
                         break;
                     case DrawOperationType::end_element:
@@ -1222,10 +1170,10 @@ namespace Luna
                             paint_order_id_t callback_max = first.get();
                             bool callback_has_output = false;
                             bool callback_has_barrier = false;
-                            paint_order_id_t first_strict_callback_order = max(first.get(),
-                                current.first_strict_paint_order_id);
+                            paint_order_id_t first_barrier_callback_order = max(first.get(),
+                                current.first_barrier_paint_order_id);
                             result = invoke_draw_callback(layer_index, operation.index,
-                                DrawPhase::after_children, first.get(), first_strict_callback_order, callback_max,
+                                DrawPhase::after_children, first.get(), first_barrier_callback_order, callback_max,
                                 callback_has_output, callback_has_barrier);
                             if(succeeded(result) && callback_has_output)
                             {
@@ -1283,50 +1231,14 @@ namespace Luna
             m_draw_generation_layer = INVALID_LAYER;
             m_draw_generation_element = INVALID_ELEMENT;
             m_draw_generation_phase_first_paint_order_id = INVALID_PAINT_ORDER_ID;
-            m_draw_generation_phase_first_strict_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
             m_draw_generation_phase_max_paint_order_id = INVALID_PAINT_ORDER_ID;
-            m_draw_generation_phase_explicit_max_paint_order_id = INVALID_PAINT_ORDER_ID;
             m_draw_generation_phase_has_output = false;
             m_draw_generation_phase_has_barrier = false;
-            m_draw_generation_phase_used_legacy_order = false;
             m_draw_generation_error = ResultCode();
             m_draw_commands_generated = true;
             m_counters.draw_generate_ms = perf_elapsed_ms(generate_begin, get_ticks());
             return ok;
-        }
-
-        void Context::draw(const DrawCommand& command)
-        {
-            lutsassert();
-            if(m_generating_draw_commands)
-            {
-                luassert(m_draw_generation_layer < m_layers.size());
-                luassert(m_draw_generation_phase_first_paint_order_id != INVALID_PAINT_ORDER_ID);
-                luassert(m_draw_generation_phase_first_strict_paint_order_id != INVALID_PAINT_ORDER_ID);
-                if(failed(m_draw_generation_error)) return;
-                paint_order_id_t order = m_draw_generation_phase_first_strict_paint_order_id;
-                if(m_draw_generation_phase_has_output)
-                {
-                    R<paint_order_id_t> next = next_paint_order_id(
-                        m_draw_generation_phase_max_paint_order_id);
-                    if(failed(next))
-                    {
-                        m_draw_generation_error = next.errcode();
-                        return;
-                    }
-                    order = max(order, next.get());
-                }
-                append_draw_command(m_draw_generation_layer, m_draw_generation_element, command, order);
-                m_draw_generation_phase_max_paint_order_id = order;
-                m_draw_generation_phase_has_output = true;
-                m_draw_generation_phase_has_barrier = true;
-                m_draw_generation_phase_used_legacy_order = true;
-                return;
-            }
-            luassert(!m_layer_stack.empty());
-            u32 layer_index = m_layer_stack.back();
-            u32 element_index = m_element_stack.empty() ? INVALID_ELEMENT : m_element_stack.back();
-            record_static_draw_command(layer_index, element_index, command);
         }
 
         void Context::draw(const DrawCommand& command, paint_order_id_t paint_order_id)
@@ -1336,7 +1248,7 @@ namespace Luna
                 "Explicit Paint Order IDs may only be used while GUI draw callbacks are running.");
             luassert(m_draw_generation_layer < m_layers.size());
             luassert(m_draw_generation_phase_first_paint_order_id != INVALID_PAINT_ORDER_ID);
-            luassert(m_draw_generation_phase_first_strict_paint_order_id != INVALID_PAINT_ORDER_ID);
+            luassert(m_draw_generation_phase_first_barrier_paint_order_id != INVALID_PAINT_ORDER_ID);
             if(failed(m_draw_generation_error)) return;
             if(paint_order_id == INVALID_PAINT_ORDER_ID ||
                 paint_order_id < m_draw_generation_phase_first_paint_order_id)
@@ -1345,7 +1257,7 @@ namespace Luna
                 return;
             }
             const bool barrier = is_paint_order_barrier(command.type);
-            if((barrier && paint_order_id < m_draw_generation_phase_first_strict_paint_order_id) ||
+            if((barrier && paint_order_id < m_draw_generation_phase_first_barrier_paint_order_id) ||
                 (m_draw_generation_phase_has_barrier &&
                     paint_order_id <= m_draw_generation_phase_max_paint_order_id) ||
                 (barrier && m_draw_generation_phase_has_output &&
@@ -1358,48 +1270,8 @@ namespace Luna
                 paint_order_id);
             m_draw_generation_phase_max_paint_order_id = max(
                 m_draw_generation_phase_max_paint_order_id, paint_order_id);
-            m_draw_generation_phase_explicit_max_paint_order_id =
-                m_draw_generation_phase_explicit_max_paint_order_id == INVALID_PAINT_ORDER_ID ?
-                paint_order_id : max(m_draw_generation_phase_explicit_max_paint_order_id, paint_order_id);
             m_draw_generation_phase_has_output = true;
             m_draw_generation_phase_has_barrier |= barrier;
-        }
-
-        void Context::draw_for_element(const ElementHandle& element, const DrawCommand& command)
-        {
-            lutsassert();
-            Element* e = mutable_element(element);
-            if(!e || e->layer >= m_layers.size())
-            {
-                return;
-            }
-            if(m_generating_draw_commands)
-            {
-                luassert_msg(e->layer == m_draw_generation_layer,
-                    "A draw callback cannot emit commands into a different layer.");
-                luassert(m_draw_generation_phase_first_paint_order_id != INVALID_PAINT_ORDER_ID);
-                luassert(m_draw_generation_phase_first_strict_paint_order_id != INVALID_PAINT_ORDER_ID);
-                if(failed(m_draw_generation_error)) return;
-                paint_order_id_t order = m_draw_generation_phase_first_strict_paint_order_id;
-                if(m_draw_generation_phase_has_output)
-                {
-                    R<paint_order_id_t> next = next_paint_order_id(
-                        m_draw_generation_phase_max_paint_order_id);
-                    if(failed(next))
-                    {
-                        m_draw_generation_error = next.errcode();
-                        return;
-                    }
-                    order = max(order, next.get());
-                }
-                append_draw_command(e->layer, element.index, command, order);
-                m_draw_generation_phase_max_paint_order_id = order;
-                m_draw_generation_phase_has_output = true;
-                m_draw_generation_phase_has_barrier = true;
-                m_draw_generation_phase_used_legacy_order = true;
-                return;
-            }
-            record_static_draw_command(e->layer, element.index, command);
         }
 
         RectF Context::to_screen_rect(u32 layer_index, const RectF& rect) const

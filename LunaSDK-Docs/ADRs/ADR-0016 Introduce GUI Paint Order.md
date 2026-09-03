@@ -2,13 +2,13 @@
 Approved.
 
 ## Last updated
-2026/9/2
+2026/9/3
 
 ## Background
-GUI currently preserves painter order by replaying each GUI Layer's `begin_element`, `static_command`, and
-`end_element` operations in submission order. The renderer consumes that order immediately while maintaining lexical
-clip state and emitting work to the VG and SDF backends. This guarantees correct composition, but it also prevents
-commands from otherwise independent widget subtrees from being grouped by compatible rendering state.
+Before this decision, GUI preserved painter order by replaying every element and command operation in submission
+order. The renderer consumed that order immediately while maintaining lexical clip state and emitting work to the VG
+and SDF backends. This guaranteed correct composition, but it also prevented commands from otherwise independent
+widget subtrees from being grouped by compatible rendering state.
 
 A common editor interface sequence is:
 
@@ -45,7 +45,8 @@ The required solution must:
 3. Express top-level GUI Layer ordering through the same rendering-order mechanism.
 4. Preserve lexical clip semantics and ordered framebuffer dependencies such as backdrop capture.
 5. Keep GUI's typeless element tree and Context-controlled traversal.
-6. Allow existing static commands and callbacks to migrate incrementally without visual changes.
+6. Require every draw command to declare its Paint Order explicitly, so no hidden strict-order path can interrupt
+   otherwise batchable shared runs.
 7. Avoid release-time geometric overlap analysis.
 
 ## Decision
@@ -93,8 +94,8 @@ the element's children. The `after_children` phase receives the first free Paint
 emits overlays such as focus feedback, splitters, and docking indicators.
 
 Context continues to own element traversal. Draw callbacks do not recursively paint children. This preserves the
-typeless element model, prevents missing or duplicate child traversal, and keeps static operations, phases, clips,
-and backdrop markers under one generation algorithm.
+typeless element model, prevents missing or duplicate child traversal, and keeps phases, clips, and backdrop markers
+under one generation algorithm.
 
 Context validates that a callback does not emit below its input Paint Order ID and that its returned maximum is not
 below any Paint Order ID it emitted. A callback that emits nothing does not advance the enclosing subtree merely by
@@ -120,14 +121,15 @@ A Paint Order barrier ends the current shared run. Backdrop capture and future c
 external ordering dependencies are barriers and own exclusive Paint Order IDs. Normal children following a barrier
 start at a greater Paint Order ID.
 
-### Compatibility for existing operations
-Existing static commands and legacy callback draws without an explicit Paint Order ID remain supported during
-migration. The compatibility path assigns each such operation the next available Paint Order ID in original painter
-order. A legacy operation between shared children closes the current shared run.
+### Explicit Paint Order submission
+`IContext::draw(const DrawCommand&, paint_order_id_t)` is the only draw-command submission entry point. The overload
+without a Paint Order ID and the construction-time `draw_for_element` path are removed because both create implicit
+strict-order barriers that are easy to introduce accidentally and are invisible at the call site.
 
-This path intentionally preserves exact output while providing no new cross-operation batching permission. Hot
-widgets migrate to explicit `draw(command, paint_order_id)` calls and maximum-order returns before their parent
-containers opt into shared Paint Order.
+Drawing that depends on an element's final layout, style, or Paint Order is emitted from its `DrawConfig` callback
+while Context generates the draw-command stream. A caller must pass the callback's current Paint Order ID to every
+draw and return the maximum ID it emitted or reserved. Construction-time drawing is not supported: the final Paint
+Order cannot be known until Context traverses the completed element tree.
 
 ### Clip and backdrop dependencies
 `push_clip` and `pop_clip` are lexical operations, not sortable drawables. The renderer first replays the original
@@ -161,11 +163,12 @@ Because Paint Order IDs are dense, a later implementation may use vector buckets
 `O` is the number of occupied Paint Order IDs. Both approaches avoid geometric overlap analysis.
 
 ### Rollout and validation
-The feature is introduced with every element using sequential child ordering and legacy operations using the strict
-compatibility path. This state must reproduce existing output before shared child ordering is enabled.
+The feature is introduced with every element using sequential child ordering. All draw producers migrate to the
+explicit Paint Order API before shared child ordering is enabled; the public API provides no legacy strict-order
+submission path.
 
-Migration then proceeds through leaf primitives, common widgets, explicitly independent layout containers, and
-special ordered containers. Tests cover shared button backgrounds and text, overlapping canvas children, text-input
+Shared ordering is then enabled only for audited semantic containers whose complete direct-child painted extents are
+guaranteed not to overlap. Tests cover shared button backgrounds and text, overlapping canvas children, text-input
 selection/text/caret ordering, scroll content and scrollbar grouping, dock panels and splitters, independent GUI
 Layer ranges, nested clips, backdrop capture barriers, and `bring_layer_to_front` range regeneration. RenderDoc
 captures and renderer counters verify reductions in draw calls and backend switches without visual regressions.
@@ -179,14 +182,16 @@ Expected benefits:
 3. Existing before/children/after composition maps directly to Paint Order ranges.
 4. Ordered effects remain expressible through distinct IDs and explicit barriers.
 5. The common command-generation path stays linear apart from the initial stable sort.
-6. Migration can be incremental and visually conservative.
+6. Every draw site exposes its ordering decision explicitly; accidental legacy barriers cannot silently regress
+   batching.
 
 Costs and risks:
 
 1. `paint_order_id_t`, child-order policy, and range tracking enlarge GUI's public and internal draw model.
 2. Selecting `shared` incorrectly can change pixels because same-order commands may be reordered.
 3. Renderer compilation becomes multi-stage and temporarily retains resolved draw records.
-4. Static compatibility commands serialize surrounding work until migrated.
+4. Removing the legacy overloads is a source- and ABI-breaking change, so `IContext` receives a newly generated IID;
+   construction-time draw sites must become callbacks, and existing binaries must be rebuilt.
 5. Backdrop capture, custom operations, and future material systems must correctly declare barriers and complete
    batch keys.
 6. Documentation and diagnostics must consistently distinguish structural GUI Layer from Paint Order.
@@ -218,7 +223,7 @@ Costs and risks:
     2. Allows arbitrary per-widget child grouping.
 * Cons:
     1. A callback may omit or paint a child more than once.
-    2. Existing static operations and phase callbacks become substantially harder to preserve.
+    2. Existing phase callbacks become substantially harder to preserve.
     3. It moves structural traversal from GUI Context into high-level package callbacks.
     4. Grouping elements and before/after phases express the required initial cases without transferring ownership.
 
@@ -246,3 +251,5 @@ Layer input semantics, or change the application-owned submission and presentati
 
 ## Version history
 * **2026/9/2** Proposed and approved.
+* **2026/9/3** Removed implicit strict-order draw submission; every draw command now requires an explicit Paint Order
+  ID. Regenerated the public `IContext` IID because removing virtual methods changes its ABI.

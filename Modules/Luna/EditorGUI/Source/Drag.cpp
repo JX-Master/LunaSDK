@@ -177,6 +177,7 @@ namespace Luna
                 const GUI::LayoutConfig& layout, Function&& function)
             {
                 GUI::ElementHandle group = begin_h_layout(context, id, "Vector Drag", layout);
+                // Child clipping below bounds every scalar control to its non-overlapping flex cell.
                 context->set_child_paint_order_mode(group, GUI::ChildPaintOrderMode::shared);
                 for(u32 i = 0; i < count; ++i)
                 {
@@ -190,6 +191,7 @@ namespace Luna
                 }
                 GUI::FlexLayoutDesc flex;
                 flex.main_axis_gap = 6.0f;
+                flex.clip_children = true;
                 end_h_layout(context, group, flex);
                 return group;
             }

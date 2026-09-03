@@ -21,6 +21,7 @@
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/Runtime/UniquePtr.hpp>
 #include <Luna/Window/Event.hpp>
 
 namespace Luna
@@ -147,6 +148,8 @@ namespace Luna
     constexpr GUI::id_t PROJECT_SELECTOR_OPEN_HEADER_ID = 20;
     constexpr GUI::id_t PROJECT_SELECTOR_BROWSE_BUTTON_ID = 21;
     constexpr GUI::id_t PROJECT_SELECTOR_RECENT_VIEW_ID = 22;
+    constexpr GUI::id_t PROJECT_SELECTOR_RECENT_CLIP_PUSH_ID = 23;
+    constexpr GUI::id_t PROJECT_SELECTOR_RECENT_CLIP_POP_ID = 24;
     constexpr GUI::id_t PROJECT_SELECTOR_FIRST_TEXT_ID = 1000;
     constexpr GUI::id_t PROJECT_SELECTOR_FIRST_RECENT_ID = 2000;
     constexpr GUI::id_t PROJECT_SELECTOR_RECENT_STRIDE = 8;
@@ -181,45 +184,77 @@ namespace Luna
             GUI::style_f32x4(fallback)).number;
     }
 
-    static void draw_label(GUI::IContext* context, GUI::id_t id, const RectF& rect, const c8* text,
-        f32 font_size = 16.0f)
+    struct ProjectSelectorDrawData
     {
-        (void)id;
+        GUI::DrawCommand command;
+    };
+
+    using ProjectSelectorDrawStorage = Vector<UniquePtr<ProjectSelectorDrawData>>;
+
+    static R<GUI::paint_order_id_t> draw_project_selector_command(GUI::IContext* context,
+        const GUI::ElementHandle& element, GUI::DrawPhase phase,
+        GUI::paint_order_id_t paint_order_id, void* userdata)
+    {
+        ProjectSelectorDrawData& data = *(ProjectSelectorDrawData*)userdata;
+        context->draw(data.command, paint_order_id);
+        return paint_order_id;
+    }
+
+    static void submit_draw_command(GUI::IContext* context, GUI::id_t id,
+        GUI::DrawCommand&& command, ProjectSelectorDrawStorage& draw_data)
+    {
+        UniquePtr<ProjectSelectorDrawData> data(memnew<ProjectSelectorDrawData>());
+        data->command = move(command);
+        GUI::ElementHandle element = context->begin_element(id);
+        context->set_element_debug_name(element, Name("Project Selector Draw Command"));
+        GUI::DrawConfig draw;
+        draw.name = Name("studio.project_selector.command");
+        draw.callback = draw_project_selector_command;
+        draw.userdata = data.get();
+        context->set_draw_config(element, draw);
+        context->end_element();
+        draw_data.push_back(move(data));
+    }
+
+    static void draw_label(GUI::IContext* context, GUI::id_t id, const RectF& rect,
+        const c8* text, ProjectSelectorDrawStorage& draw_data, f32 font_size = 16.0f)
+    {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::text;
         command.rect = rect;
         command.color = style_color(context, "gui.text.color", Float4U(0.15f, 0.16f, 0.17f, 1.0f));
         command.font_size = font_size;
         command.text = text ? text : "";
-        context->draw(command);
+        submit_draw_command(context, id, move(command), draw_data);
     }
 
     static void draw_rect(GUI::IContext* context, GUI::id_t id, const RectF& rect,
-        const Float4U& color, f32 radius = 0.0f)
+        const Float4U& color, ProjectSelectorDrawStorage& draw_data, f32 radius = 0.0f)
     {
-        (void)id;
         GUI::DrawCommand command;
         command.type = radius > 0.0f ? GUI::DrawCommandType::rounded_rect : GUI::DrawCommandType::rect;
         command.rect = rect;
         command.color = color;
         command.radius = radius;
-        context->draw(command);
+        submit_draw_command(context, id, move(command), draw_data);
     }
 
-    static void push_clip(GUI::IContext* context, const RectF& rect)
+    static void push_clip(GUI::IContext* context, GUI::id_t id, const RectF& rect,
+        ProjectSelectorDrawStorage& draw_data)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::push_clip;
         command.rect = rect;
         command.rect_reference = GUI::DrawCommandRectReference::layer;
-        context->draw(command);
+        submit_draw_command(context, id, move(command), draw_data);
     }
 
-    static void pop_clip(GUI::IContext* context)
+    static void pop_clip(GUI::IContext* context, GUI::id_t id,
+        ProjectSelectorDrawStorage& draw_data)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::pop_clip;
-        context->draw(command);
+        submit_draw_command(context, id, move(command), draw_data);
     }
 
     static GUI::ElementHandle begin_scroll_region(GUI::IContext* context, GUI::id_t id, const RectF& rect)
@@ -235,17 +270,20 @@ namespace Luna
         return element;
     }
 
-    static GUI::ElementHandle build_project_selector_gui(GUI::IContext* context, const Float2U& surface_size, String& project_name,
-        bool& create_dir, const Vector<RecentFileRecord>& recents, f32 recent_scroll)
+    static GUI::ElementHandle build_project_selector_gui(GUI::IContext* context,
+        const Float2U& surface_size, String& project_name, bool& create_dir,
+        const Vector<RecentFileRecord>& recents, f32 recent_scroll,
+        ProjectSelectorDrawStorage& draw_data)
     {
         GUI::ElementHandle root = context->begin_element(PROJECT_SELECTOR_ROOT_ID);
         set_element_rect(context, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
         draw_rect(context, PROJECT_SELECTOR_BACKGROUND_ID, RectF(0.0f, 0.0f, surface_size.x, surface_size.y),
-            style_color(context, "gui.canvas", Float4U(0.92f, 0.93f, 0.92f, 1.0f)), 0.0f);
+            style_color(context, "gui.canvas", Float4U(0.92f, 0.93f, 0.92f, 1.0f)), draw_data, 0.0f);
 
         f32 content_w = max(surface_size.x - 32.0f, 320.0f);
         f32 y = 16.0f;
-        draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID, RectF(16.0f, y, 360.0f, 30.0f), "Luna Studio Project Selector", 20.0f);
+        draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID,
+            RectF(16.0f, y, 360.0f, 30.0f), "Luna Studio Project Selector", draw_data, 20.0f);
         y += 46.0f;
 
         GUI::ElementHandle new_header;
@@ -257,7 +295,8 @@ namespace Luna
         y += 40.0f;
         if(show_new_project)
         {
-            draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 1, RectF(32.0f, y, 160.0f, 30.0f), "Project Name");
+            draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 1,
+                RectF(32.0f, y, 160.0f, 30.0f), "Project Name", draw_data);
             GUI::ElementHandle input = EditorGUI::input_text(context, PROJECT_SELECTOR_NAME_INPUT_ID, project_name,
                 fixed_layout(max(content_w - 190.0f, 160.0f), 30.0f));
             set_element_rect(context, input, RectF(190.0f, y, max(content_w - 190.0f, 160.0f), 30.0f));
@@ -288,19 +327,21 @@ namespace Luna
 
             if(recents.empty())
             {
-                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 2, RectF(32.0f, y, 260.0f, 28.0f), "No recent projects.");
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 2,
+                    RectF(32.0f, y, 260.0f, 28.0f), "No recent projects.", draw_data);
             }
             else
             {
-                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 2, RectF(32.0f, y, 260.0f, 28.0f), "Recent Projects");
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 2,
+                    RectF(32.0f, y, 260.0f, 28.0f), "Recent Projects", draw_data);
                 y += 34.0f;
 
                 f32 recent_h = max(surface_size.y - y - 24.0f, 120.0f);
                 RectF view_rect(32.0f, y, max(content_w - 32.0f, 260.0f), recent_h);
                 GUI::ElementHandle scroll = begin_scroll_region(context, PROJECT_SELECTOR_RECENT_VIEW_ID, view_rect);
                 draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 3, view_rect,
-                    style_color(context, "gui.surface.0", Float4U(0.95f, 0.95f, 0.94f, 1.0f)), 4.0f);
-                push_clip(context, view_rect);
+                    style_color(context, "gui.surface.0", Float4U(0.95f, 0.95f, 0.94f, 1.0f)), draw_data, 4.0f);
+                push_clip(context, PROJECT_SELECTOR_RECENT_CLIP_PUSH_ID, view_rect, draw_data);
 
                 f32 row_h = 34.0f;
                 f32 header_h = 30.0f;
@@ -311,11 +352,16 @@ namespace Luna
                 f32 x = view_rect.offset_x;
                 f32 header_y = view_rect.offset_y - recent_scroll;
                 draw_rect(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 4, RectF(x, header_y, view_rect.width, header_h),
-                    style_color(context, "gui.surface.2", Float4U(0.93f, 0.93f, 0.92f, 1.0f)), 0.0f);
-                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 5, RectF(x + 8.0f, header_y + 2.0f, path_w - 16.0f, 26.0f), "Project");
-                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 6, RectF(x + path_w + 8.0f, header_y + 2.0f, time_w - 16.0f, 26.0f), "Last Used");
-                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 7, RectF(x + path_w + time_w + 8.0f, header_y + 2.0f, open_w - 16.0f, 26.0f), "Open");
-                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 8, RectF(x + path_w + time_w + open_w + 8.0f, header_y + 2.0f, remove_w - 16.0f, 26.0f), "Remove");
+                    style_color(context, "gui.surface.2", Float4U(0.93f, 0.93f, 0.92f, 1.0f)), draw_data, 0.0f);
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 5,
+                    RectF(x + 8.0f, header_y + 2.0f, path_w - 16.0f, 26.0f), "Project", draw_data);
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 6,
+                    RectF(x + path_w + 8.0f, header_y + 2.0f, time_w - 16.0f, 26.0f), "Last Used", draw_data);
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 7,
+                    RectF(x + path_w + time_w + 8.0f, header_y + 2.0f, open_w - 16.0f, 26.0f), "Open", draw_data);
+                draw_label(context, PROJECT_SELECTOR_FIRST_TEXT_ID + 8,
+                    RectF(x + path_w + time_w + open_w + 8.0f, header_y + 2.0f, remove_w - 16.0f, 26.0f),
+                    "Remove", draw_data);
 
                 for(usize i = 0; i < recents.size(); ++i)
                 {
@@ -328,12 +374,17 @@ namespace Luna
                     Float4U row_color = (i % 2) ?
                         style_color(context, "gui.surface.1", Float4U(0.97f, 0.97f, 0.96f, 1.0f)) :
                         style_color(context, "gui.surface.0", Float4U(0.95f, 0.95f, 0.94f, 1.0f));
-                    draw_rect(context, row_base, RectF(x, row_y, view_rect.width, row_h), row_color, 0.0f);
+                    draw_rect(context, row_base, RectF(x, row_y, view_rect.width, row_h),
+                        row_color, draw_data, 0.0f);
                     DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(recents[i].m_last_use_time));
                     String time_text;
                     strprintf(time_text, "%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
-                    draw_label(context, row_base + 1, RectF(x + 8.0f, row_y + 3.0f, path_w - 16.0f, 28.0f), recents[i].m_path.encode().c_str());
-                    draw_label(context, row_base + 2, RectF(x + path_w + 8.0f, row_y + 3.0f, time_w - 16.0f, 28.0f), time_text.c_str());
+                    draw_label(context, row_base + 1,
+                        RectF(x + 8.0f, row_y + 3.0f, path_w - 16.0f, 28.0f),
+                        recents[i].m_path.encode().c_str(), draw_data);
+                    draw_label(context, row_base + 2,
+                        RectF(x + path_w + 8.0f, row_y + 3.0f, time_w - 16.0f, 28.0f),
+                        time_text.c_str(), draw_data);
                     GUI::ElementHandle open = EditorGUI::text_button(context, row_base + 3, "Open",
                         fixed_layout(open_w - 8.0f, 28.0f));
                     set_element_rect(context, open,
@@ -343,7 +394,7 @@ namespace Luna
                     set_element_rect(context, remove,
                         RectF(x + path_w + time_w + open_w + 4.0f, row_y + 3.0f, remove_w - 8.0f, 28.0f));
                 }
-                pop_clip(context);
+                pop_clip(context, PROJECT_SELECTOR_RECENT_CLIP_POP_ID, draw_data);
                 context->end_element();
             }
         }
@@ -384,6 +435,7 @@ namespace Luna
 
             bool create_dir = true;
             f32 recent_scroll = 0.0f;
+            ProjectSelectorDrawStorage draw_data;
 
             while (path.empty())
             {
@@ -420,11 +472,12 @@ namespace Luna
                 frame.render_size = fb_sz;
                 frame.delta_time = 1.0f / 60.0f;
                 gui->begin_frame(frame);
+                draw_data.clear();
                 GUIWindow::update_input(&input_adapter);
 
                 gui->push_layer(PROJECT_SELECTOR_LAYER_ID, Float2U(0.0f));
                 GUI::ElementHandle root = build_project_selector_gui(gui, frame.logical_size, new_solution_name, create_dir,
-                    recents, recent_scroll);
+                    recents, recent_scroll, draw_data);
                 gui->pop_layer();
                 luexp(EditorGUI::layout_tree(gui, root,
                     RectF(0.0f, 0.0f, frame.logical_size.x, frame.logical_size.y)));

@@ -457,6 +457,8 @@ namespace Luna
                 row_layout.height.kind = GUI::SizeKind::fixed;
                 row_layout.height.value = 30.0f;
                 GUI::ElementHandle row = begin_h_layout(context, id, "Color Channels", row_layout);
+                // Channel pairs occupy fixed, disjoint cells and are clipped to those cells below.
+                context->set_child_paint_order_mode(row, GUI::ChildPaintOrderMode::shared);
                 for(u32 i = 0; i < count; ++i)
                 {
                     GUI::LayoutConfig pair_layout;
@@ -466,6 +468,8 @@ namespace Luna
                     pair_layout.height.value = 30.0f;
                     GUI::ElementHandle pair = begin_h_layout(context, GUI::make_scoped_id(id, (u64)i + 1),
                         "Color Channel", pair_layout);
+                    // The label and drag control occupy clipped, non-overlapping cells.
+                    context->set_child_paint_order_mode(pair, GUI::ChildPaintOrderMode::shared);
                     GUI::LayoutConfig label_layout;
                     label_layout.width.kind = GUI::SizeKind::fixed;
                     label_layout.width.value = 20.0f;
@@ -484,12 +488,14 @@ namespace Luna
                     flex.axis = GUI::LayoutAxis::x;
                     flex.cross_alignment = GUI::FlexAlignment::stretch;
                     flex.main_axis_gap = 4.0f;
+                    flex.clip_children = true;
                     end_h_layout(context, pair, flex);
                 }
                 GUI::FlexLayoutDesc flex;
                 flex.axis = GUI::LayoutAxis::x;
                 flex.main_axis_gap = count == 1 ? 0.0f : 9.0f;
                 flex.cross_alignment = GUI::FlexAlignment::stretch;
+                flex.clip_children = true;
                 end_h_layout(context, row, flex);
             }
 

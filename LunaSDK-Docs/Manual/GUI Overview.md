@@ -8,7 +8,7 @@ GUI solves the part of GUI work that is common to multiple GUI packages:
 5. Generate GUI-level draw commands after layout and input, then render them through the integrated SDF and VG backends.
 6. Expose performance counters and direct read-only frame inspection.
 
-GUI does not provide high-level widgets. Controls such as buttons, checkboxes, menus, sliders, color editors, dock panels and inspectors belong to a higher-level package such as `Luna::EditorGUI`. Those packages build GUI elements, attach input data, run layout helpers and install package-owned draw callbacks or static draw commands.
+GUI does not provide high-level widgets. Controls such as buttons, checkboxes, menus, sliders, color editors, dock panels and inspectors belong to a higher-level package such as `Luna::EditorGUI`. Those packages build GUI elements, attach input data, run layout helpers and install package-owned draw callbacks.
 
 This split keeps GUI small and orthogonal. Applications can use only the systems they need, and different immediate API packages can coexist because they submit into the same `GUI::IContext`.
 
@@ -40,7 +40,7 @@ The element tree is typeless. Every node is a `GUI::Element` record with the sam
 Elements do not inherit from widget classes and do not have virtual behavior. Algorithms operate on this data.
 
 ### Layer
-A layer owns one root element tree and an ordered set of generated draw command indexes. Layers are stored from bottom to top. Rendering uses painter's algorithm, while input routing checks top layers first.
+A layer owns one root element tree and an ordered set of generated draw command indexes. Layers are stored from bottom to top. Each non-empty layer receives a frame-local, non-overlapping Paint Order range in that order, while input routing checks top layers first.
 
 Normal content, popups, tooltips, modal panels, drag previews and debug overlays should be represented as layers instead of special widget branches.
 
@@ -87,7 +87,7 @@ The usual frame order is:
 6. Route input.
 7. Resolve higher-level package interactions and update bound application values.
 8. Reapply layout when the package reports that interaction changed layout-dependent state.
-9. Generate draw commands explicitly only when tooling needs to inspect the final stream.
+9. Generate draw commands explicitly only when tooling needs to inspect the generated stream and Paint Order IDs.
 10. Ask the GUI renderer to compile and record the complete render plan.
 
 ```cpp
@@ -124,17 +124,20 @@ luexp(renderer->render(context, command_buffer, target));
 ```
 
 `IRenderer::render` calls `generate_draw_commands` when the command stream is stale. Call
-`IContext::generate_draw_commands` directly only when inspection or other tooling needs the final ordered commands
-before rendering. Widget-bound values and package frame data must remain valid until interaction resolution and draw
-command generation have both finished.
+`IContext::generate_draw_commands` directly only when inspection or other tooling needs the generated commands and
+their Paint Order IDs before rendering. `get_draw_commands` returns lexical submission order; the renderer applies
+Paint Order during compilation. Widget-bound values and package frame data must remain valid until interaction
+resolution and draw command generation have both finished.
 
 High-level packages attach dense `LayoutConfig` input and optional sparse `LayoutCallbackConfig` records while they build elements. `IContext::apply_layout` owns the top-down tree traversal and invokes those callbacks. GUI exposes the primitive helpers used by those callbacks in [[GUI Layout]].
 
 ### Render
-GUI records static commands and delayed element draw callbacks. `IContext::generate_draw_commands` evaluates
-callbacks against final layout and interaction data. `IRenderer::render` then compiles the ordered stream, interleaves
-the SDF and VG backends, performs required resource transitions, and begins and ends every required graphics or
-compute pass.
+GUI generates commands by evaluating element draw callbacks against final layout and interaction data. Every callback
+submits commands with explicit Paint Order IDs and returns the maximum ID it used or reserved.
+`IContext::generate_draw_commands` assigns non-overlapping ranges to GUI Layers and safe sequential ranges to child
+subtrees by default. `IRenderer::render` then resolves lexical state, sorts drawable commands by Paint Order, groups
+equal-order commands by compatible backend state, interleaves the SDF and VG backends, performs required resource
+transitions, and begins and ends every required graphics or compute pass.
 
 The application owns the command buffer, final color and optional depth-stencil textures, submission,
 synchronization and presentation. Call `IRenderer::render` while the command buffer is recording and outside every
@@ -143,6 +146,22 @@ pass. See [[GUI Drawing]] for details.
 ## Examples
 ### A minimal raw element
 ```cpp
+R<GUI::paint_order_id_t> draw_hello(GUI::IContext* context,
+    const GUI::ElementHandle&, GUI::DrawPhase,
+    GUI::paint_order_id_t paint_order_id, void*)
+{
+    GUI::DrawCommand text;
+    text.type = GUI::DrawCommandType::text;
+    text.rect_reference = GUI::DrawCommandRectReference::element;
+    text.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+    text.text = "Hello GUI";
+    text.font = Name("default");
+    text.font_size = 16.0f;
+    text.color = Float4U(1.0f);
+    context->draw(text, paint_order_id);
+    return paint_order_id;
+}
+
 context->push_layer(1, Float2U(0.0f));
 
 GUI::ElementHandle root = context->begin_element(1);
@@ -156,15 +175,10 @@ layout.height.kind = GUI::SizeKind::fixed;
 layout.height.value = 36.0f;
 context->set_layout_config(item, layout);
 
-GUI::DrawCommand text;
-text.type = GUI::DrawCommandType::text;
-text.rect_reference = GUI::DrawCommandRectReference::element;
-text.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
-text.text = "Hello GUI";
-text.font = Name("default");
-text.font_size = 16.0f;
-text.color = Float4U(1.0f);
-context->draw(text);
+GUI::DrawConfig draw_config;
+draw_config.name = Name("example.hello");
+draw_config.callback = draw_hello;
+context->set_draw_config(item, draw_config);
 
 context->end_element();
 context->end_element();

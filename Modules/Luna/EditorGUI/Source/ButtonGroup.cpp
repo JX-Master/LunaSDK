@@ -223,12 +223,14 @@ namespace Luna
             GUI::FlexLayoutDesc* flex = Internal::allocate_frame<GUI::FlexLayoutDesc>(context);
             flex->axis = GUI::LayoutAxis::x;
             flex->cross_alignment = GUI::FlexAlignment::stretch;
+            flex->clip_children = true;
             GUI::LayoutCallbackConfig layout_callbacks;
             layout_callbacks.algorithm = Name("gui.button_group");
             layout_callbacks.measure_callback = GUI::measure_flex;
             layout_callbacks.callback = GUI::layout_flex;
             layout_callbacks.userdata = flex;
             context->set_layout_callback_config(group, layout_callbacks);
+            // Every item is clipped to its non-overlapping flex cell.
             context->set_child_paint_order_mode(group, GUI::ChildPaintOrderMode::shared);
 
             Ref<Internal::ButtonGroupState> state = Internal::widget_state<Internal::ButtonGroupState>(context, id);
@@ -291,12 +293,14 @@ namespace Luna
             GUI::FlexLayoutDesc* flex = Internal::allocate_frame<GUI::FlexLayoutDesc>(context);
             flex->axis = GUI::LayoutAxis::x;
             flex->cross_alignment = GUI::FlexAlignment::stretch;
+            flex->clip_children = true;
             GUI::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.button_group.multi");
             callbacks.measure_callback = GUI::measure_flex;
             callbacks.callback = GUI::layout_flex;
             callbacks.userdata = flex;
             context->set_layout_callback_config(group, callbacks);
+            // Every item is clipped to its non-overlapping flex cell.
             context->set_child_paint_order_mode(group, GUI::ChildPaintOrderMode::shared);
 
             Internal::ButtonGroupData* group_data = Internal::allocate_frame<Internal::ButtonGroupData>(context);

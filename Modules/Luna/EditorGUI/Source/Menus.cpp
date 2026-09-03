@@ -16,18 +16,34 @@ namespace Luna
 {
     namespace EditorGUI
     {
-        static void draw_menu_rect(GUI::IContext* context, const Float4U& color, f32 radius = 0.0f)
+        struct MenuItemDrawData
+        {
+            c8* label = nullptr;
+            c8* shortcut = nullptr;
+            bool selected = false;
+            bool enabled = true;
+            bool top_level = false;
+            bool submenu = false;
+            bool open = false;
+            bool hovered = false;
+            bool active = false;
+            bool draw_text = true;
+        };
+
+        static void draw_menu_rect(GUI::IContext* context, const Float4U& color,
+            GUI::paint_order_id_t paint_order_id, f32 radius = 0.0f)
         {
             GUI::DrawCommand command;
             command.type = radius > 0.0f ? GUI::DrawCommandType::rounded_rect : GUI::DrawCommandType::rect;
             command.rect_reference = GUI::DrawCommandRectReference::element;
             command.color = color;
             command.radius = radius;
-            context->draw(command);
+            context->draw(command, paint_order_id);
         }
 
         static void draw_menu_text(GUI::IContext* context, const RectF& rect, const c8* value,
-            const Float4U& color, f32 size, VG::TextAlignment alignment = VG::TextAlignment::begin)
+            const Float4U& color, f32 size, GUI::paint_order_id_t paint_order_id,
+            VG::TextAlignment alignment = VG::TextAlignment::begin)
         {
             GUI::DrawCommand command;
             command.type = GUI::DrawCommandType::text;
@@ -38,7 +54,7 @@ namespace Luna
             command.horizontal_alignment = alignment;
             command.vertical_alignment = VG::TextAlignment::center;
             command.text = value ? value : "";
-            context->draw(command);
+            context->draw(command, paint_order_id);
         }
 
         static GUI::LayoutConfig menu_item_layout(GUI::IContext* context,
@@ -64,30 +80,84 @@ namespace Luna
             return result;
         }
 
-        static void draw_menu_item(GUI::IContext* context, const GUI::ElementHandle& element,
-            const c8* label, const c8* shortcut, bool selected, bool enabled, bool top_level,
-            bool submenu, bool open, const GUI::InteractionState& interaction)
+        static R<GUI::paint_order_id_t> draw_menu_item(GUI::IContext* context,
+            const GUI::ElementHandle& element, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id,
+            void* userdata)
         {
-            if(enabled && (open || interaction.hovered || interaction.active))
+            MenuItemDrawData* data = (MenuItemDrawData*)userdata;
+            if(!data) return paint_order_id;
+            if(data->enabled && (data->open || data->hovered || data->active))
             {
                 draw_menu_rect(context, Internal::style_color(context, element,
-                    interaction.active || open ? "gui.menu_item.active" : "gui.menu_item.hovered",
-                    interaction.active || open ? Float4U(0.18f, 0.36f, 0.62f, 1.0f) :
+                    data->active || data->open ? "gui.menu_item.active" : "gui.menu_item.hovered",
+                    data->active || data->open ? Float4U(0.18f, 0.36f, 0.62f, 1.0f) :
                     Float4U(0.14f, 0.22f, 0.32f, 1.0f)),
-                    Internal::style_scalar(context, element, "gui.menu_item.radius", 3.0f));
+                    paint_order_id, Internal::style_scalar(context, element, "gui.menu_item.radius", 3.0f));
             }
+            if(!data->draw_text) return paint_order_id;
             Float4U color = Internal::style_color(context, element,
-                enabled ? "gui.menu_item.text" : "gui.menu_item.text_disabled",
-                enabled ? Float4U(0.95f, 0.96f, 0.98f, 1.0f) : Float4U(0.50f, 0.56f, 0.64f, 1.0f));
+                data->enabled ? "gui.menu_item.text" : "gui.menu_item.text_disabled",
+                data->enabled ? Float4U(0.95f, 0.96f, 0.98f, 1.0f) : Float4U(0.50f, 0.56f, 0.64f, 1.0f));
             f32 size = Internal::style_scalar(context, element, "gui.menu_item.font_size", 15.0f);
-            f32 left = top_level ? 10.0f : 30.0f;
-            draw_menu_text(context, RectF(left, 0.0f, top_level ? -20.0f : -94.0f, 0.0f), label, color, size);
-            if(selected && !top_level) draw_menu_text(context, RectF(6.0f, 0.0f, 20.0f, 0.0f), "v", color, size,
+            f32 left = data->top_level ? 10.0f : 30.0f;
+            draw_menu_text(context, RectF(left, 0.0f, data->top_level ? -20.0f : -94.0f, 0.0f),
+                data->label, color, size, paint_order_id + 1);
+            if(data->selected && !data->top_level) draw_menu_text(context,
+                RectF(6.0f, 0.0f, 20.0f, 0.0f), "v", color, size, paint_order_id + 1,
                 VG::TextAlignment::center);
-            if(submenu && !top_level) draw_menu_text(context, RectF(-26.0f, 0.0f, 20.0f, 0.0f), ">", color, size,
+            if(data->submenu && !data->top_level) draw_menu_text(context,
+                RectF(-26.0f, 0.0f, 20.0f, 0.0f), ">", color, size, paint_order_id + 1,
                 VG::TextAlignment::center);
-            else if(shortcut && shortcut[0] && !top_level) draw_menu_text(context,
-                RectF(-88.0f, 0.0f, 78.0f, 0.0f), shortcut, color, size - 1.0f, VG::TextAlignment::end);
+            else if(data->shortcut && data->shortcut[0] && !data->top_level) draw_menu_text(context,
+                RectF(-88.0f, 0.0f, 78.0f, 0.0f), data->shortcut, color, size - 1.0f,
+                paint_order_id + 1, VG::TextAlignment::end);
+            return paint_order_id + 1;
+        }
+
+        static void configure_menu_item_draw(GUI::IContext* context, const GUI::ElementHandle& element,
+            const c8* label, const c8* shortcut, bool selected, bool enabled, bool top_level,
+            bool submenu, bool open, const GUI::InteractionState& interaction, bool draw_text = true)
+        {
+            MenuItemDrawData* data = Internal::allocate_frame<MenuItemDrawData>(context);
+            data->label = Internal::copy_frame_string(context, label);
+            data->shortcut = shortcut ? Internal::copy_frame_string(context, shortcut) : nullptr;
+            data->selected = selected;
+            data->enabled = enabled;
+            data->top_level = top_level;
+            data->submenu = submenu;
+            data->open = open;
+            data->hovered = interaction.hovered;
+            data->active = interaction.active;
+            data->draw_text = draw_text;
+            GUI::DrawConfig draw;
+            draw.name = Name("gui.menu_item");
+            draw.callback = draw_menu_item;
+            draw.userdata = data;
+            context->set_draw_config(element, draw);
+        }
+
+        static R<GUI::paint_order_id_t> draw_menu_bar(GUI::IContext* context,
+            const GUI::ElementHandle& element, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id,
+            void*)
+        {
+            draw_menu_rect(context, Internal::style_color(context, element, "gui.menu_bar.background",
+                Float4U(0.08f, 0.10f, 0.13f, 1.0f)), paint_order_id);
+            return paint_order_id;
+        }
+
+        static R<GUI::paint_order_id_t> draw_menu_separator(GUI::IContext* context,
+            const GUI::ElementHandle& element, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id,
+            void*)
+        {
+            GUI::DrawCommand line;
+            line.type = GUI::DrawCommandType::rect;
+            line.rect_reference = GUI::DrawCommandRectReference::element;
+            line.rect = RectF(8.0f, 0.0f, -16.0f, 1.0f);
+            line.rect_layout_scale = Float4U(0.0f, 0.5f, 1.0f, 0.0f);
+            line.color = Internal::style_color(context, element, "gui.menu_separator.color",
+                Float4U(0.24f, 0.30f, 0.38f, 1.0f));
+            context->draw(line, paint_order_id);
+            return paint_order_id;
         }
 
         static void close_menu_stack(GUI::IContext* context)
@@ -118,14 +188,8 @@ namespace Luna
             GUI::ElementHandle item = Internal::begin_element(context, id,
                 label ? label : "Menu Item", resolved_layout);
             Internal::set_interactable(context, item, desc.enabled);
-            if(desc.enabled && (interaction.hovered || interaction.active))
-            {
-                draw_menu_rect(context, Internal::style_color(context, item,
-                    interaction.active ? "gui.menu_item.active" : "gui.menu_item.hovered",
-                    interaction.active ? Float4U(0.18f, 0.36f, 0.62f, 1.0f) :
-                    Float4U(0.14f, 0.22f, 0.32f, 1.0f)),
-                    Internal::style_scalar(context, item, "gui.menu_item.radius", 3.0f));
-            }
+            configure_menu_item_draw(context, item, nullptr, nullptr, false, desc.enabled,
+                false, false, false, interaction, false);
             GUI::FlexLayoutDesc* flex = Internal::allocate_frame<GUI::FlexLayoutDesc>(context);
             flex->axis = GUI::LayoutAxis::x;
             flex->main_axis_gap = Internal::style_scalar(context, item, "gui.control.content_gap", 8.0f);
@@ -151,8 +215,10 @@ namespace Luna
             }
             GUI::ElementHandle bar = Internal::begin_element(context, id, label ? label : "Menu Bar",
                 resolved_layout);
-            draw_menu_rect(context, Internal::style_color(context, bar, "gui.menu_bar.background",
-                Float4U(0.08f, 0.10f, 0.13f, 1.0f)));
+            GUI::DrawConfig draw;
+            draw.name = Name("gui.menu_bar");
+            draw.callback = draw_menu_bar;
+            context->set_draw_config(bar, draw);
             Internal::MenuBarBuildScope scope;
             scope.root = bar;
             scope.gap = desc.gap >= 0.0f ? desc.gap :
@@ -236,7 +302,8 @@ namespace Luna
             GUI::ElementHandle item = Internal::begin_element(context, id, label ? label : "Menu",
                 menu_item_layout(context, layout, top_level, label));
             Internal::set_interactable(context, item, desc.enabled);
-            draw_menu_item(context, item, label, nullptr, false, desc.enabled, top_level, true, open, interaction);
+            configure_menu_item_draw(context, item, label, nullptr, false, desc.enabled, top_level,
+                true, open, interaction);
             context->end_element();
             if(out_handle) *out_handle = item;
             if(!open) return false;
@@ -283,7 +350,8 @@ namespace Luna
             GUI::ElementHandle item = Internal::begin_element(context, id, label ? label : "Menu Item",
                 menu_item_layout(context, layout, false, label));
             Internal::set_interactable(context, item, desc.enabled);
-            draw_menu_item(context, item, label, desc.shortcut, selected, desc.enabled, false, false, false, interaction);
+            configure_menu_item_draw(context, item, label, desc.shortcut, selected, desc.enabled,
+                false, false, false, interaction);
             context->end_element();
             return item;
         }
@@ -311,14 +379,10 @@ namespace Luna
                     "gui.control.small_height", 28.0f) * 0.32f;
             }
             GUI::ElementHandle separator = Internal::begin_element(context, id, "Menu Separator", resolved);
-            GUI::DrawCommand line;
-            line.type = GUI::DrawCommandType::rect;
-            line.rect_reference = GUI::DrawCommandRectReference::element;
-            line.rect = RectF(8.0f, 0.0f, -16.0f, 1.0f);
-            line.rect_layout_scale = Float4U(0.0f, 0.5f, 1.0f, 0.0f);
-            line.color = Internal::style_color(context, separator, "gui.menu_separator.color",
-                Float4U(0.24f, 0.30f, 0.38f, 1.0f));
-            context->draw(line);
+            GUI::DrawConfig draw;
+            draw.name = Name("gui.menu_separator");
+            draw.callback = draw_menu_separator;
+            context->set_draw_config(separator, draw);
             context->end_element();
             return separator;
         }

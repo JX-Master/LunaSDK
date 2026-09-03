@@ -82,6 +82,9 @@ namespace Luna
             //! @return Returns the generated root element.
             //! @remark An unsupported semantic root returns a successful invalid handle.
             //! An instance can be built at most once for each context generation.
+            //! The instance must remain alive and @ref prepare must not be called again until
+            //! @ref GUI::IContext::generate_draw_commands finishes for this frame, because generated
+            //! GUI callbacks reference the instance's prepared node data.
             virtual R<GUI::ElementHandle> build(GUI::IContext* context) = 0;
             //! Resolves authored actions after @ref GUI::IContext::route_input.
             //! @param[in] context The same context and generation passed to the latest

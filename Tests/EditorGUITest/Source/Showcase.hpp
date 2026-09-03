@@ -10,11 +10,26 @@
 #pragma once
 #include <Luna/EditorGUI/EditorGUI.hpp>
 #include <Luna/RHI/Texture.hpp>
+#include <Luna/Runtime/UniquePtr.hpp>
 
 namespace Luna
 {
     namespace EditorGUITest
     {
+        struct ShowcaseDrawStep
+        {
+            GUI::DrawCommand command;
+            GUI::DrawCallback callback = nullptr;
+            void* userdata = nullptr;
+            bool is_callback = false;
+        };
+
+        struct ShowcaseDrawData
+        {
+            Vector<ShowcaseDrawStep> before_children;
+            Vector<ShowcaseDrawStep> after_children;
+        };
+
         struct ShowcaseState
         {
             i32 section = 0;
@@ -53,6 +68,7 @@ namespace Luna
             Ref<RHI::ITexture> material_concrete;
             Ref<VG::IShapeBuffer> circle_buffer;
             GUI::ShapeDesc circle;
+            Vector<UniquePtr<ShowcaseDrawData>> frame_draw_data;
         };
 
         struct ShowcaseHandles

@@ -9,6 +9,7 @@
 */
 #pragma once
 #include <Luna/GUI/GUI.hpp>
+#include <Luna/Runtime/UniquePtr.hpp>
 #include <Luna/VG/TextArranger.hpp>
 
 namespace Luna::GUITest
@@ -68,6 +69,12 @@ namespace Luna::GUITest
         ID_LAYOUT_DEMO_BASE = 1000
     };
 
+    struct FrameDrawData
+    {
+        Vector<GUI::DrawCommand> before_children;
+        Vector<GUI::DrawCommand> after_children;
+    };
+
     struct SheetState
     {
         u32 slice_index = 0;
@@ -95,29 +102,49 @@ namespace Luna::GUITest
         GUI::CanvasLayoutDesc sdf_canvas;
         Vector<GUI::CanvasLayoutItem> blur_items;
         GUI::CanvasLayoutDesc blur_canvas;
+        Vector<UniquePtr<FrameDrawData>> frame_draw_data;
+        Vector<GUI::ElementHandle> frame_draw_element_stack;
+        Vector<FrameDrawData*> frame_draw_data_stack;
+        Vector<bool> frame_draw_has_children_stack;
     };
+
+    void begin_draw_recording(SheetState& state);
+    void end_draw_recording();
+    GUI::ElementHandle begin_element(GUI::IContext* context, GUI::id_t id);
+    void end_element(GUI::IContext* context);
+    void record_draw_command(GUI::IContext* context, const GUI::DrawCommand& command);
 
     GUI::LayoutConfig fixed_layout(f32 width, f32 height);
     void set_canvas_layout(GUI::IContext* context, const GUI::ElementHandle& element,
         GUI::CanvasLayoutDesc* desc);
     void add_canvas_item(Vector<GUI::CanvasLayoutItem>& items, GUI::id_t id, f32 x, f32 y);
 
-    void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 radius = 0.0f,
-        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
+    void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& color,
+        f32 radius = 0.0f);
+    void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& color,
+        f32 radius, GUI::paint_order_id_t paint_order_id);
     void draw_shadow(GUI::IContext* context, const RectF& rect, const Float4U& color,
-        f32 radius, const GUI::ShadowDesc& desc,
-        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
+        f32 radius, const GUI::ShadowDesc& desc);
+    void draw_shadow(GUI::IContext* context, const RectF& rect, const Float4U& color,
+        f32 radius, const GUI::ShadowDesc& desc, GUI::paint_order_id_t paint_order_id);
+    void draw_gradient_rect(GUI::IContext* context, const RectF& rect, const Float4U& top_left,
+        const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left);
     void draw_gradient_rect(GUI::IContext* context, const RectF& rect, const Float4U& top_left,
         const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left,
-        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
+        GUI::paint_order_id_t paint_order_id);
     void draw_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
-        const Float4U& color, f32 width = 1.0f,
-        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
-    void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 width = 1.0f,
-        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
+        const Float4U& color, f32 width = 1.0f);
+    void draw_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
+        const Float4U& color, f32 width, GUI::paint_order_id_t paint_order_id);
+    void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color,
+        f32 width = 1.0f);
+    void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color,
+        f32 width, GUI::paint_order_id_t paint_order_id);
     void draw_text(GUI::IContext* context, const RectF& rect, const c8* text, f32 size,
-        const Float4U& color, VG::TextAlignment alignment = VG::TextAlignment::begin,
-        GUI::paint_order_id_t paint_order_id = GUI::INVALID_PAINT_ORDER_ID);
+        const Float4U& color, VG::TextAlignment alignment = VG::TextAlignment::begin);
+    void draw_text(GUI::IContext* context, const RectF& rect, const c8* text, f32 size,
+        const Float4U& color, VG::TextAlignment alignment,
+        GUI::paint_order_id_t paint_order_id);
     void bullet(GUI::IContext* context, f32 x, f32 y, const c8* text);
 
     GUI::ElementHandle begin_panel(GUI::IContext* context, GUI::id_t id, const c8* title,

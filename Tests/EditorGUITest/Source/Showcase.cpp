@@ -117,7 +117,115 @@ namespace Luna
                     GUI::style_f32(fallback)).number.x;
             }
 
-            void rounded_rect(GUI::IContext* context, const Float4U& color, f32 radius,
+            R<GUI::paint_order_id_t> draw_showcase_steps(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase phase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
+            {
+                ShowcaseDrawData* data = (ShowcaseDrawData*)userdata;
+                const Vector<ShowcaseDrawStep>& steps = phase == GUI::DrawPhase::before_children ?
+                    data->before_children : data->after_children;
+                GUI::paint_order_id_t max_paint_order_id = paint_order_id;
+                bool has_output = false;
+                for(const ShowcaseDrawStep& step : steps)
+                {
+                    GUI::paint_order_id_t step_paint_order_id = has_output ? max_paint_order_id + 1 :
+                        paint_order_id;
+                    if(step.is_callback)
+                    {
+                        R<GUI::paint_order_id_t> result = step.callback(context, element, phase,
+                            step_paint_order_id, step.userdata);
+                        if(failed(result)) return result.errcode();
+                        max_paint_order_id = max(step_paint_order_id, result.get());
+                    }
+                    else
+                    {
+                        context->draw(step.command, step_paint_order_id);
+                        max_paint_order_id = step_paint_order_id;
+                    }
+                    has_output = true;
+                }
+                return max_paint_order_id;
+            }
+
+            void refresh_showcase_draw_config(GUI::IContext* context,
+                const GUI::ElementHandle& element, ShowcaseDrawData* data)
+            {
+                GUI::DrawConfig draw;
+                draw.name = Name("guitest.composed_draw");
+                draw.callback = draw_showcase_steps;
+                draw.userdata = data;
+                u8 phases = 0;
+                if(!data->before_children.empty()) phases |= (u8)GUI::DrawPhaseFlag::before_children;
+                if(!data->after_children.empty()) phases |= (u8)GUI::DrawPhaseFlag::after_children;
+                draw.phases = (GUI::DrawPhaseFlag)phases;
+                context->set_draw_config(element, draw);
+            }
+
+            ShowcaseDrawData* showcase_draw_data(GUI::IContext* context, ShowcaseState& state,
+                const GUI::ElementHandle& element)
+            {
+                GUI::DrawConfig existing = context->get_draw_config(element);
+                if(existing.callback == draw_showcase_steps)
+                {
+                    return (ShowcaseDrawData*)existing.userdata;
+                }
+
+                UniquePtr<ShowcaseDrawData> owned(memnew<ShowcaseDrawData>());
+                ShowcaseDrawData* data = owned.get();
+                if(existing.callback)
+                {
+                    ShowcaseDrawStep step;
+                    step.callback = existing.callback;
+                    step.userdata = existing.userdata;
+                    step.is_callback = true;
+                    if(test_flags(existing.phases, GUI::DrawPhaseFlag::before_children))
+                    {
+                        data->before_children.push_back(step);
+                    }
+                    if(test_flags(existing.phases, GUI::DrawPhaseFlag::after_children))
+                    {
+                        data->after_children.push_back(step);
+                    }
+                }
+                state.frame_draw_data.push_back(move(owned));
+                refresh_showcase_draw_config(context, element, data);
+                return data;
+            }
+
+            void append_showcase_draw_command(GUI::IContext* context, ShowcaseState& state,
+                const GUI::ElementHandle& element, const GUI::DrawCommand& command,
+                GUI::DrawPhase phase = GUI::DrawPhase::before_children)
+            {
+                ShowcaseDrawData* data = showcase_draw_data(context, state, element);
+                ShowcaseDrawStep step;
+                step.command = command;
+                Vector<ShowcaseDrawStep>& steps = phase == GUI::DrawPhase::before_children ?
+                    data->before_children : data->after_children;
+                steps.push_back(move(step));
+                refresh_showcase_draw_config(context, element, data);
+            }
+
+            void append_showcase_draw_callback(GUI::IContext* context, ShowcaseState& state,
+                const GUI::ElementHandle& element, const GUI::DrawConfig& config)
+            {
+                ShowcaseDrawData* data = showcase_draw_data(context, state, element);
+                ShowcaseDrawStep step;
+                step.callback = config.callback;
+                step.userdata = config.userdata;
+                step.is_callback = true;
+                if(test_flags(config.phases, GUI::DrawPhaseFlag::before_children))
+                {
+                    data->before_children.push_back(step);
+                }
+                if(test_flags(config.phases, GUI::DrawPhaseFlag::after_children))
+                {
+                    data->after_children.push_back(step);
+                }
+                refresh_showcase_draw_config(context, element, data);
+            }
+
+            void rounded_rect(GUI::IContext* context, ShowcaseState& state,
+                const GUI::ElementHandle& element, const Float4U& color, f32 radius,
                 const RectF& rect = RectF())
             {
                 GUI::DrawCommand command;
@@ -126,12 +234,12 @@ namespace Luna
                 command.rect = rect;
                 command.color = color;
                 command.radius = radius;
-                context->draw(command);
+                append_showcase_draw_command(context, state, element, command);
             }
 
-            void rounded_shadow(GUI::IContext* context, const Float4U& color, f32 radius,
-                const Float2U& offset, f32 softness, GUI::ShadowMode mode,
-                const RectF& rect = RectF())
+            void rounded_shadow(GUI::IContext* context, ShowcaseState& state,
+                const GUI::ElementHandle& element, const Float4U& color, f32 radius,
+                const Float2U& offset, f32 softness, GUI::ShadowMode mode, const RectF& rect = RectF())
             {
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::shadow;
@@ -142,7 +250,7 @@ namespace Luna
                 command.shadow.offset = offset;
                 command.shadow.softness = softness;
                 command.shadow.mode = mode;
-                context->draw(command);
+                append_showcase_draw_command(context, state, element, command);
             }
 
             R<GUI::paint_order_id_t> draw_sdf_swatch(GUI::IContext* context,
@@ -281,7 +389,8 @@ namespace Luna
                 return swatch;
             }
 
-            void surface(GUI::IContext* context, const c8* background, f32 radius,
+            void surface(GUI::IContext* context, ShowcaseState& state,
+                const GUI::ElementHandle& element, const c8* background, f32 radius,
                 bool raised = false, bool strong_elevation = false)
             {
                 if(raised)
@@ -294,16 +403,16 @@ namespace Luna
                     if(!strong_elevation) shadow.color.w *= 0.70f;
                     shadow.shadow.offset = strong_elevation ? Float2U(7.0f, 7.0f) : Float2U(4.0f, 5.0f);
                     shadow.shadow.softness = strong_elevation ? 9.0f : 6.0f;
-                    context->draw(shadow);
+                    append_showcase_draw_command(context, state, element, shadow);
                     shadow.color = style_color(context, "gui.shadow.light", Float4U(1.0f, 1.0f, 1.0f, 0.75f));
                     if(!strong_elevation) shadow.color.w *= 0.78f;
                     shadow.shadow.offset = strong_elevation ? Float2U(-7.0f, -7.0f) : Float2U(-4.0f, -4.0f);
                     shadow.shadow.softness = strong_elevation ? 9.0f : 5.0f;
-                    context->draw(shadow);
+                    append_showcase_draw_command(context, state, element, shadow);
                 }
-                rounded_rect(context, style_color(context, "gui.border"), radius);
-                rounded_rect(context, style_color(context, background), max(radius - 1.0f, 0.0f),
-                    RectF(1.0f, 1.0f, -2.0f, -2.0f));
+                rounded_rect(context, state, element, style_color(context, "gui.border"), radius);
+                rounded_rect(context, state, element, style_color(context, background),
+                    max(radius - 1.0f, 0.0f), RectF(1.0f, 1.0f, -2.0f, -2.0f));
             }
 
             EditorGUI::TextDesc text_desc(GUI::IContext* context, f32 size, const c8* color = "gui.text.color")
@@ -340,12 +449,13 @@ namespace Luna
                 return desc;
             }
 
-            void selected_button_surface(GUI::IContext* context)
+            void selected_button_surface(GUI::IContext* context, ShowcaseState& state,
+                const GUI::ElementHandle& element)
             {
                 const f32 radius = style_scalar(context, "gui.button.radius",
                     style_scalar(context, "gui.radius.medium", 9.0f));
-                rounded_rect(context, style_color(context, "gui.accent"), radius);
-                rounded_rect(context, style_color(context, "gui.accent.subtle"),
+                rounded_rect(context, state, element, style_color(context, "gui.accent"), radius);
+                rounded_rect(context, state, element, style_color(context, "gui.accent.subtle"),
                     max(radius - 1.0f, 0.0f), RectF(1.0f, 1.0f, -2.0f, -2.0f));
             }
 
@@ -365,8 +475,9 @@ namespace Luna
                 EditorGUI::end_h_layout(context, row, flex);
             }
 
-            void tree_label(GUI::IContext* context, EditorGUI::id_t element_id, EditorGUI::IconName icon_name,
-                const c8* value, i32 depth, bool expanded, bool has_children, bool selected = false)
+            void tree_label(GUI::IContext* context, ShowcaseState& state, EditorGUI::id_t element_id,
+                EditorGUI::IconName icon_name, const c8* value, i32 depth, bool expanded,
+                bool has_children, bool selected = false)
             {
                 GUI::LayoutConfig layout = fill_width(28.0f);
                 layout.padding.x = 4.0f + (f32)depth * 14.0f;
@@ -374,7 +485,7 @@ namespace Luna
                 GUI::ElementHandle row = EditorGUI::begin_h_layout(context, element_id, value, layout);
                 if(selected)
                 {
-                    rounded_rect(context, style_color(context, "gui.accent.subtle"), 6.0f);
+                    rounded_rect(context, state, row, style_color(context, "gui.accent.subtle"), 6.0f);
                 }
                 if(has_children)
                 {
@@ -405,8 +516,9 @@ namespace Luna
                 EditorGUI::end_h_layout(context, row, flex);
             }
 
-            GUI::ElementHandle icon_button(GUI::IContext* context, EditorGUI::id_t element_id,
-                EditorGUI::IconName icon_name, const c8* value, const GUI::LayoutConfig& layout,
+            GUI::ElementHandle icon_button(GUI::IContext* context, ShowcaseState& state,
+                EditorGUI::id_t element_id, EditorGUI::IconName icon_name, const c8* value,
+                const GUI::LayoutConfig& layout,
                 const EditorGUI::ButtonDesc& desc = EditorGUI::ButtonDesc(), bool show_text = true,
                 EditorGUI::IconWeight weight = EditorGUI::IconWeight::regular, bool selected = false)
             {
@@ -421,7 +533,7 @@ namespace Luna
                 GUI::ElementHandle button = EditorGUI::begin_button(context, element_id, value, resolved_layout, desc);
                 if(selected)
                 {
-                    selected_button_surface(context);
+                    selected_button_surface(context, state, button);
                 }
                 const c8* color = !desc.enabled ? "gui.text.disabled" :
                     (selected ? "gui.accent.active" : "gui.button.text");
@@ -457,12 +569,12 @@ namespace Luna
                 return item;
             }
 
-            GUI::ElementHandle begin_panel(GUI::IContext* context, EditorGUI::id_t element_id,
-                const c8* name, const GUI::LayoutConfig& input, const c8* background = "gui.surface.1",
-                f32 radius = 12.0f, bool raised = true)
+            GUI::ElementHandle begin_panel(GUI::IContext* context, ShowcaseState& state,
+                EditorGUI::id_t element_id, const c8* name, const GUI::LayoutConfig& input,
+                const c8* background = "gui.surface.1", f32 radius = 12.0f, bool raised = true)
             {
                 GUI::ElementHandle panel = EditorGUI::begin_v_layout(context, element_id, name, input);
-                surface(context, background, radius, raised);
+                surface(context, state, panel, background, radius, raised);
                 return panel;
             }
 
@@ -475,20 +587,20 @@ namespace Luna
                 EditorGUI::end_v_layout(context, panel, flex);
             }
 
-            void divider(GUI::IContext* context, EditorGUI::id_t element_id)
+            void divider(GUI::IContext* context, ShowcaseState& state, EditorGUI::id_t element_id)
             {
                 GUI::ElementHandle line = EditorGUI::begin_v_layout(context, element_id, "Divider", fill_width(1.0f));
-                rounded_rect(context, style_color(context, "gui.border"), 0.0f);
+                rounded_rect(context, state, line, style_color(context, "gui.border"), 0.0f);
                 EditorGUI::end_v_layout(context, line);
             }
 
-            void led_label(GUI::IContext* context, EditorGUI::id_t element_id,
-                const c8* value, const c8* color_key, f32 width)
+            void led_label(GUI::IContext* context, ShowcaseState& state,
+                EditorGUI::id_t element_id, const c8* value, const c8* color_key, f32 width)
             {
                 GUI::LayoutConfig layout = fixed(width, 32.0f);
                 layout.padding = Float4U(9.0f, 5.0f, 9.0f, 5.0f);
                 GUI::ElementHandle pill = EditorGUI::begin_h_layout(context, element_id, value, layout);
-                surface(context, "gui.surface.1", 16.0f, true);
+                surface(context, state, pill, "gui.surface.1", 16.0f, true);
                 GUI::ElementHandle indicator = EditorGUI::begin_v_layout(context,
                     GUI::make_scoped_id(element_id, 1), "LED", fixed(10.0f, 10.0f));
                 Float4U led_color = style_color(context, color_key);
@@ -496,15 +608,16 @@ namespace Luna
                 {
                     Float4U glow_color = led_color;
                     glow_color.w *= 0.56f;
-                    rounded_shadow(context, glow_color, 5.0f, Float2U(0.0f), 3.0f,
+                    rounded_shadow(context, state, indicator, glow_color, 5.0f, Float2U(0.0f), 3.0f,
                         GUI::ShadowMode::outer);
                 }
-                rounded_rect(context, style_color(context, "gui.border"), 5.0f);
-                rounded_rect(context, led_color, 4.0f, RectF(1.0f, 1.0f, -2.0f, -2.0f));
+                rounded_rect(context, state, indicator, style_color(context, "gui.border"), 5.0f);
+                rounded_rect(context, state, indicator, led_color, 4.0f,
+                    RectF(1.0f, 1.0f, -2.0f, -2.0f));
                 Float4U highlight = style_color(context, "gui.shadow.inset_light",
                     Float4U(1.0f, 1.0f, 1.0f, 0.7f));
                 highlight.w *= 0.55f;
-                rounded_shadow(context, highlight, 4.0f, Float2U(0.0f, -1.0f), 1.0f,
+                rounded_shadow(context, state, indicator, highlight, 4.0f, Float2U(0.0f, -1.0f), 1.0f,
                     GUI::ShadowMode::inner, RectF(1.0f, 1.0f, -2.0f, -2.0f));
                 EditorGUI::end_v_layout(context, indicator);
                 label(context, GUI::make_scoped_id(element_id, 2), value, grow_x(), 11.0f, "gui.text.secondary");
@@ -538,21 +651,22 @@ namespace Luna
                 EditorGUI::end_h_layout(context, row, flex);
             }
 
-            void card_title(GUI::IContext* context, EditorGUI::id_t parent, const c8* title, const c8* note)
+            void card_title(GUI::IContext* context, ShowcaseState& state, EditorGUI::id_t parent,
+                const c8* title, const c8* note)
             {
                 label(context, GUI::make_scoped_id(parent, 1), title, fill_width(24.0f), 13.0f);
                 label(context, GUI::make_scoped_id(parent, 2), note, fill_width(20.0f), 10.0f, "gui.text.muted");
-                divider(context, GUI::make_scoped_id(parent, 3));
+                divider(context, state, GUI::make_scoped_id(parent, 3));
             }
 
-            GUI::ElementHandle begin_card(GUI::IContext* context, const c8* name,
-                const GUI::LayoutConfig& input, const c8* title, const c8* note)
+            GUI::ElementHandle begin_card(GUI::IContext* context, ShowcaseState& state,
+                const c8* name, const GUI::LayoutConfig& input, const c8* title, const c8* note)
             {
                 GUI::LayoutConfig layout = input;
                 layout.padding = Float4U(16.0f);
-                GUI::ElementHandle card = begin_panel(context, id(context, name), title, layout,
+                GUI::ElementHandle card = begin_panel(context, state, id(context, name), title, layout,
                     "gui.surface.1", style_scalar(context, "gui.radius.large", 14.0f), true);
-                card_title(context, card.id, title, note);
+                card_title(context, state, card.id, title, note);
                 return card;
             }
 
@@ -646,13 +760,13 @@ namespace Luna
                 layout.padding = Float4U(12.0f, 8.0f, 12.0f, 8.0f);
                 GUI::ElementHandle top = EditorGUI::begin_h_layout(context, id(context, "showcase.topbar"),
                     "Top bar", layout);
-                rounded_rect(context, style_color(context, "gui.surface.1"), 0.0f);
+                rounded_rect(context, state, top, style_color(context, "gui.surface.1"), 0.0f);
 
                 GUI::ElementHandle brand = EditorGUI::begin_h_layout(context, id(context, "showcase.brand"),
                     "Brand", fixed(245.0f, height - 16.0f));
                 GUI::ElementHandle logo = EditorGUI::begin_v_layout(context, id(context, "showcase.logo"),
                     "Logo", fixed(40.0f, 40.0f));
-                rounded_rect(context, style_color(context, "gui.accent"), 12.0f);
+                rounded_rect(context, state, logo, style_color(context, "gui.accent"), 12.0f);
                 EditorGUI::icon(context, id(context, "showcase.logo.icon"), EditorGUI::IconName::package, fill(),
                     icon_desc(context, "gui.accent.ink", EditorGUI::IconWeight::duotone, 24.0f));
                 EditorGUI::end_v_layout(context, logo);
@@ -670,13 +784,13 @@ namespace Luna
 
                 GUI::ElementHandle status = EditorGUI::begin_h_layout(context, id(context, "showcase.status"),
                     "System status", grow_x());
-                led_label(context, id(context, "showcase.status.renderer"), "Renderer Online",
+                led_label(context, state, id(context, "showcase.status.renderer"), "Renderer Online",
                     "gui.status.success", 128.0f);
-                led_label(context, id(context, "showcase.status.bake"), "Bake Queue  2",
+                led_label(context, state, id(context, "showcase.status.bake"), "Bake Queue  2",
                     "gui.status.busy", 112.0f);
-                led_label(context, id(context, "showcase.status.sync"), "Remote Sync",
+                led_label(context, state, id(context, "showcase.status.sync"), "Remote Sync",
                     "gui.status.off", 106.0f);
-                led_label(context, id(context, "showcase.status.error"), "Error  1",
+                led_label(context, state, id(context, "showcase.status.error"), "Error  1",
                     "gui.status.error", 86.0f);
                 GUI::FlexLayoutDesc status_flex;
                 status_flex.axis = GUI::LayoutAxis::x;
@@ -703,7 +817,7 @@ namespace Luna
                 accent_layout.padding = Float4U(9.0f, 4.0f, 9.0f, 4.0f);
                 GUI::ElementHandle accent = EditorGUI::begin_h_layout(context, id(context, "showcase.accent"),
                     "Accent", accent_layout);
-                surface(context, "gui.surface.1", 18.0f, false);
+                surface(context, state, accent, "gui.surface.1", 18.0f, false);
                 EditorGUI::ShapeWidgetDesc accent_shape;
                 accent_shape.tint = style_color(context, "gui.accent");
                 EditorGUI::shape(context, id(context, "showcase.accent.swatch"), state.circle,
@@ -731,7 +845,7 @@ namespace Luna
                 layout.padding = Float4U(10.0f, 14.0f, 10.0f, 12.0f);
                 GUI::ElementHandle navigation = EditorGUI::begin_v_layout(context, id(context, "showcase.navigation"),
                     "Navigation", layout);
-                rounded_rect(context, style_color(context, "gui.surface.0"), 0.0f);
+                rounded_rect(context, state, navigation, style_color(context, "gui.surface.0"), 0.0f);
                 icon_label(context, id(context, "showcase.navigation.title"), EditorGUI::IconName::tree_structure,
                     "COMPONENTS", fill_width(34.0f), 16.0f, 10.0f, "gui.text.muted",
                     EditorGUI::IconWeight::bold);
@@ -742,8 +856,8 @@ namespace Luna
                         fill_width(style_scalar(context, "gui.control.height", 40.0f)));
                     if(state.section == i)
                     {
-                        selected_button_surface(context);
-                        rounded_rect(context, style_color(context, "gui.accent"), 1.5f,
+                        selected_button_surface(context, state, handles.navigation[i]);
+                        rounded_rect(context, state, handles.navigation[i], style_color(context, "gui.accent"), 1.5f,
                             RectF(3.0f, 8.0f, 3.0f, -16.0f));
                     }
                     const c8* item_color = state.section == i ? "gui.accent.active" : "gui.text.secondary";
@@ -759,7 +873,7 @@ namespace Luna
                 EditorGUI::end_v_layout(context, spacer);
                 GUI::LayoutConfig footer_layout = fill_width(92.0f);
                 footer_layout.padding = Float4U(12.0f);
-                GUI::ElementHandle footer = begin_panel(context, id(context, "showcase.navigation.footer"),
+                GUI::ElementHandle footer = begin_panel(context, state, id(context, "showcase.navigation.footer"),
                     "Active style", footer_layout, "gui.surface.1", 10.0f);
                 label(context, id(context, "showcase.navigation.footer.label"), "ACTIVE LEAF STYLE",
                     fill_width(18.0f), 9.0f, "gui.text.muted");
@@ -773,14 +887,14 @@ namespace Luna
                 end_panel(context, navigation, 4.0f);
             }
 
-            GUI::ElementHandle style_option(GUI::IContext* context, EditorGUI::id_t element_id,
-                const c8* value, bool selected, const GUI::LayoutConfig& layout)
+            GUI::ElementHandle style_option(GUI::IContext* context, ShowcaseState& state,
+                EditorGUI::id_t element_id, const c8* value, bool selected, const GUI::LayoutConfig& layout)
             {
                 GUI::ElementHandle option = EditorGUI::begin_button(context, element_id, value, layout);
                 if(selected)
                 {
-                    rounded_rect(context, style_color(context, "gui.accent"), 9.0f);
-                    rounded_rect(context, style_color(context, "gui.accent.subtle"), 8.0f,
+                    rounded_rect(context, state, option, style_color(context, "gui.accent"), 9.0f);
+                    rounded_rect(context, state, option, style_color(context, "gui.accent.subtle"), 8.0f,
                         RectF(1.0f, 1.0f, -2.0f, -2.0f));
                 }
                 label(context, GUI::make_scoped_id(element_id, 1), value, grow_x(), 11.0f,
@@ -803,7 +917,7 @@ namespace Luna
                     {
                         i32 option_index = row_index * 2 + column;
                         bool selected = option_index == state.theme * 2 + state.density;
-                        handles.style_options[option_index] = style_option(context,
+                        handles.style_options[option_index] = style_option(context, state,
                             GUI::make_scoped_id(row.id, (u64)column + 1), labels[option_index], selected, grow_x());
                     }
                     GUI::FlexLayoutDesc row_flex;
@@ -824,8 +938,8 @@ namespace Luna
                     name, layout);
                 if(state.selected_asset == index)
                 {
-                    rounded_rect(context, style_color(context, "gui.accent"), 8.0f);
-                    rounded_rect(context, style_color(context, "gui.accent.subtle"), 7.0f,
+                    rounded_rect(context, state, handles.assets[index], style_color(context, "gui.accent"), 8.0f);
+                    rounded_rect(context, state, handles.assets[index], style_color(context, "gui.accent.subtle"), 7.0f,
                         RectF(1.0f, 1.0f, -2.0f, -2.0f));
                 }
                 EditorGUI::image(context, GUI::make_scoped_id(parent, (u64)index + 30), material_texture(state, index),
@@ -848,13 +962,14 @@ namespace Luna
                 editor_layout.padding = Float4U(state.density == 1 ? 12.0f : 10.0f);
                 GUI::ElementHandle editor = EditorGUI::begin_h_layout(context, id(context, "overview.editor"),
                     "DCC editor composition", editor_layout);
-                surface(context, "gui.surface.0", style_scalar(context, "gui.radius.large", 16.0f), true, true);
+                surface(context, state, editor, "gui.surface.0",
+                    style_scalar(context, "gui.radius.large", 16.0f), true, true);
 
                 GUI::LayoutConfig library_layout = fixed(176.0f, 0.0f);
                 library_layout.height.kind = GUI::SizeKind::percent;
                 library_layout.height.value = 1.0f;
                 library_layout.padding = Float4U(10.0f);
-                GUI::ElementHandle library = begin_panel(context, id(context, "overview.library"),
+                GUI::ElementHandle library = begin_panel(context, state, id(context, "overview.library"),
                     "Library", library_layout, "gui.surface.1", 15.0f, false);
                 GUI::ElementHandle library_title = EditorGUI::begin_h_layout(context,
                     id(context, "overview.library.title"), "Scene Hierarchy", fill_width(34.0f));
@@ -862,7 +977,7 @@ namespace Luna
                     fixed(17.0f, 17.0f), icon_desc(context, "gui.text.secondary", EditorGUI::IconWeight::regular, 17.0f));
                 label(context, id(context, "overview.library.title.text"), "Scene Hierarchy",
                     grow_x(), 11.0f);
-                icon_button(context, id(context, "overview.library.add"), EditorGUI::IconName::plus, "Add object",
+                icon_button(context, state, id(context, "overview.library.add"), EditorGUI::IconName::plus, "Add object",
                     fixed(28.0f, 28.0f), EditorGUI::ButtonDesc(), false, EditorGUI::IconWeight::bold);
                 GUI::FlexLayoutDesc library_title_flex;
                 library_title_flex.axis = GUI::LayoutAxis::x;
@@ -883,15 +998,15 @@ namespace Luna
                 search_flex.cross_alignment = GUI::FlexAlignment::center;
                 search_flex.main_axis_gap = 6.0f;
                 EditorGUI::end_h_layout(context, search_row, search_flex);
-                tree_label(context, id(context, "overview.tree.root"), EditorGUI::IconName::package,
+                tree_label(context, state, id(context, "overview.tree.root"), EditorGUI::IconName::package,
                     "Desert_Outpost", 0, true, true);
-                tree_label(context, id(context, "overview.tree.environment"), EditorGUI::IconName::folder_open,
+                tree_label(context, state, id(context, "overview.tree.environment"), EditorGUI::IconName::folder_open,
                     "Environment", 1, true, true);
-                tree_label(context, id(context, "overview.tree.sun"), EditorGUI::IconName::sun,
+                tree_label(context, state, id(context, "overview.tree.sun"), EditorGUI::IconName::sun,
                     "Sun_Light", 2, false, false);
-                tree_label(context, id(context, "overview.tree.ball"), EditorGUI::IconName::bounding_box,
+                tree_label(context, state, id(context, "overview.tree.ball"), EditorGUI::IconName::bounding_box,
                     "Material_Ball", 2, false, false, true);
-                divider(context, id(context, "overview.library.divider"));
+                divider(context, state, id(context, "overview.library.divider"));
                 icon_label(context, id(context, "overview.library.assets"), EditorGUI::IconName::folder_open,
                     "Assets  -  3 items", fill_width(28.0f), 16.0f, 10.0f, "gui.text.secondary");
                 build_asset_row(context, state, handles, library.id, 0, "M_Desert_Sand", "Material - 3.6 MB");
@@ -903,7 +1018,7 @@ namespace Luna
                     "Viewport", grow_x());
                 GUI::ElementHandle toolbar = EditorGUI::begin_h_layout(context, id(context, "overview.viewport.toolbar"),
                     "Viewport toolbar", fill_width(48.0f));
-                rounded_rect(context, style_color(context, "gui.surface.1"), 0.0f);
+                rounded_rect(context, state, toolbar, style_color(context, "gui.surface.1"), 0.0f);
                 GUI::ElementHandle tool_row = EditorGUI::begin_h_layout(context,
                     id(context, "overview.viewport.tools"), "Viewport tools", fixed(184.0f, 40.0f));
                 const EditorGUI::IconName tool_icons[] = {
@@ -914,7 +1029,7 @@ namespace Luna
                 for(i32 tool_index = 0; tool_index < 4; ++tool_index)
                 {
                     EditorGUI::id_t tool_id = GUI::make_scoped_id(tool_row.id, (u64)tool_index + 1);
-                    GUI::ElementHandle tool = icon_button(context, tool_id, tool_icons[tool_index],
+                    GUI::ElementHandle tool = icon_button(context, state, tool_id, tool_icons[tool_index],
                         tool_labels[tool_index], fixed(40.0f, 40.0f), EditorGUI::ButtonDesc(), false,
                         tool_index == state.selected_group ? EditorGUI::IconWeight::bold : EditorGUI::IconWeight::regular,
                         tool_index == state.selected_group);
@@ -931,7 +1046,7 @@ namespace Luna
                 const c8* spaces[] = { "Local", "World" };
                 EditorGUI::button_group(context, id(context, "overview.viewport.space"), Span<const c8*>(spaces, 2),
                     &state.space_mode, fixed(126.0f, 40.0f));
-                icon_button(context, id(context, "overview.viewport.more"), EditorGUI::IconName::dots_three,
+                icon_button(context, state, id(context, "overview.viewport.more"), EditorGUI::IconName::dots_three,
                     "More viewport options", fixed(40.0f, 40.0f), EditorGUI::ButtonDesc(), false,
                     EditorGUI::IconWeight::bold);
                 GUI::FlexLayoutDesc toolbar_flex;
@@ -943,7 +1058,7 @@ namespace Luna
                     grow_y(), flipped_image(0.14f, 0.86f));
                 GUI::LayoutConfig console_layout = fill_width(104.0f);
                 console_layout.padding = Float4U(10.0f, 0.0f, 10.0f, 8.0f);
-                GUI::ElementHandle console = begin_panel(context, id(context, "overview.console"),
+                GUI::ElementHandle console = begin_panel(context, state, id(context, "overview.console"),
                     "Console", console_layout, "gui.surface.1", 0.0f, false);
                 const c8* console_tabs[] = { "Console", "Bake Queue 2", "Messages" };
                 EditorGUI::button_group(context, id(context, "overview.console.tabs"),
@@ -964,7 +1079,7 @@ namespace Luna
                 inspector_layout.height.kind = GUI::SizeKind::percent;
                 inspector_layout.height.value = 1.0f;
                 inspector_layout.padding = Float4U(12.0f);
-                GUI::ElementHandle inspector = begin_panel(context, id(context, "overview.inspector"),
+                GUI::ElementHandle inspector = begin_panel(context, state, id(context, "overview.inspector"),
                     "Inspector", inspector_layout, "gui.surface.1", 15.0f, false);
                 GUI::ElementHandle asset_header = EditorGUI::begin_h_layout(context, id(context, "overview.inspector.asset"),
                     "Selected asset", fill_width(52.0f));
@@ -1005,7 +1120,8 @@ namespace Luna
                 banner_layout.padding = Float4U(28.0f);
                 GUI::ElementHandle banner = EditorGUI::begin_h_layout(context, id(context, "overview.banner"),
                     "Style summary", banner_layout);
-                surface(context, "gui.surface.1", style_scalar(context, "gui.radius.large", 16.0f), true, true);
+                surface(context, state, banner, "gui.surface.1",
+                    style_scalar(context, "gui.radius.large", 16.0f), true, true);
                 GUI::ElementHandle summary = EditorGUI::begin_v_layout(context, id(context, "overview.banner.summary"),
                     "Summary", grow_x(130.0f));
                 label(context, id(context, "overview.banner.active"), "READY  STYLE ACTIVE", fill_width(22.0f),
@@ -1033,7 +1149,7 @@ namespace Luna
                     EditorGUI::IconName::stack);
                 GUI::ElementHandle row;
                 page_two_columns(context, id(context, "primitives.row1"), row, 430.0f);
-                GUI::ElementHandle typography = begin_card(context, "primitives.typography", grow_x(),
+                GUI::ElementHandle typography = begin_card(context, state, "primitives.typography", grow_x(),
                     "Typography", "Semantic roles resolved from the active Style");
                 typography_label(context, id(context, "primitives.type.h1"), "H1  Editor title",
                     fill_width(42.0f), EditorGUI::TypographyRole::heading1);
@@ -1059,7 +1175,7 @@ namespace Luna
                     "Caption  Secondary metadata - 12:45:08", fill_width(22.0f),
                     EditorGUI::TypographyRole::caption);
                 end_panel(context, typography, 4.0f);
-                GUI::ElementHandle progress = begin_card(context, "primitives.progress", grow_x(),
+                GUI::ElementHandle progress = begin_card(context, state, "primitives.progress", grow_x(),
                     "Progress and LED", "Determinate work and semantic status");
                 label(context, id(context, "primitives.progress.label1"), "Baking textures                         68%",
                     fill_width(24.0f), 11.0f, "gui.text.secondary");
@@ -1071,11 +1187,11 @@ namespace Luna
                     fill_width(24.0f), 11.0f, "gui.text.secondary");
                 EditorGUI::progress_bar(context, id(context, "primitives.progress.2"), 0.42f, fill_width(10.0f),
                     progress_desc);
-                led_label(context, id(context, "primitives.led.online"), "Online", "gui.status.success", 100.0f);
-                led_label(context, id(context, "primitives.led.working"), "Working", "gui.status.busy", 100.0f);
+                led_label(context, state, id(context, "primitives.led.online"), "Online", "gui.status.success", 100.0f);
+                led_label(context, state, id(context, "primitives.led.working"), "Working", "gui.status.busy", 100.0f);
                 end_panel(context, progress);
                 end_two_columns(context, row);
-                GUI::ElementHandle sdf_card = begin_card(context, "primitives.sdf", fill_width(220.0f),
+                GUI::ElementHandle sdf_card = begin_card(context, state, "primitives.sdf", fill_width(220.0f),
                     "SDF shape and paint programs", "Linear, radial, conic, CSG, capsule, and analytic shadow");
                 GUI::ElementHandle sdf_row = EditorGUI::begin_h_layout(context, id(context, "primitives.sdf.row"),
                     "SDF swatches", grow_y());
@@ -1088,7 +1204,7 @@ namespace Luna
                 sdf_flex.main_axis_gap = 14.0f;
                 EditorGUI::end_h_layout(context, sdf_row, sdf_flex);
                 end_panel(context, sdf_card);
-                GUI::ElementHandle icon_card = begin_card(context, "primitives.icons", fill_width(220.0f),
+                GUI::ElementHandle icon_card = begin_card(context, state, "primitives.icons", fill_width(220.0f),
                     "Built-in icons", "Phosphor geometry rendered through the shared VG shape buffer");
                 struct IconSample
                 {
@@ -1146,7 +1262,7 @@ namespace Luna
                     EditorGUI::end_h_layout(context, icon_row, icon_flex);
                 }
                 end_panel(context, icon_card);
-                GUI::ElementHandle image_card = begin_card(context, "primitives.image", fill_width(420.0f),
+                GUI::ElementHandle image_card = begin_card(context, state, "primitives.image", fill_width(420.0f),
                     "Image and shape", "Raster material assets and vector primitives");
                 EditorGUI::image(context, id(context, "primitives.image.preview"), state.material_preview,
                     grow_y(), flipped_image(0.05f, 0.95f, 0.08f, 0.92f));
@@ -1160,20 +1276,20 @@ namespace Luna
                     EditorGUI::IconName::cursor_click);
                 GUI::ElementHandle row1;
                 page_two_columns_fit(context, id(context, "buttons.row1"), row1);
-                GUI::ElementHandle states = begin_card(context, "buttons.states", grow(),
+                GUI::ElementHandle states = begin_card(context, state, "buttons.states", grow(),
                     "Button states", "Default, pressed, destructive, and disabled");
-                icon_button(context, id(context, "buttons.primary"), EditorGUI::IconName::lightning,
+                icon_button(context, state, id(context, "buttons.primary"), EditorGUI::IconName::lightning,
                     "Primary", fill_width(44.0f), EditorGUI::ButtonDesc(), true, EditorGUI::IconWeight::fill);
-                icon_button(context, id(context, "buttons.save"), EditorGUI::IconName::floppy_disk,
+                icon_button(context, state, id(context, "buttons.save"), EditorGUI::IconName::floppy_disk,
                     "Save", fill_width(44.0f));
-                icon_button(context, id(context, "buttons.upload"), EditorGUI::IconName::upload_simple,
+                icon_button(context, state, id(context, "buttons.upload"), EditorGUI::IconName::upload_simple,
                     "Upload", fill_width(44.0f));
                 EditorGUI::ButtonDesc disabled;
                 disabled.enabled = false;
-                icon_button(context, id(context, "buttons.disabled"), EditorGUI::IconName::gear_six,
+                icon_button(context, state, id(context, "buttons.disabled"), EditorGUI::IconName::gear_six,
                     "Disabled", fill_width(44.0f), disabled);
                 end_panel(context, states);
-                GUI::ElementHandle groups = begin_card(context, "buttons.groups", grow(),
+                GUI::ElementHandle groups = begin_card(context, state, "buttons.groups", grow(),
                     "Button groups", "Single and multiple selection");
                 const c8* items[] = { "Build", "Run", "Profile", "Ship" };
                 EditorGUI::button_group(context, id(context, "buttons.group.single"), Span<const c8*>(items, 4),
@@ -1184,7 +1300,7 @@ namespace Luna
                 end_two_columns(context, row1);
                 GUI::ElementHandle row2;
                 page_two_columns(context, id(context, "buttons.row2"), row2, 380.0f);
-                GUI::ElementHandle choices = begin_card(context, "buttons.choices", grow_x(),
+                GUI::ElementHandle choices = begin_card(context, state, "buttons.choices", grow_x(),
                     "Selection controls", "Checkbox, radio, and switch");
                 EditorGUI::checkbox(context, id(context, "buttons.checkbox"), "Visible in render", &state.checkbox_value,
                     fill_width(48.0f));
@@ -1197,7 +1313,7 @@ namespace Luna
                 EditorGUI::toggle_switch(context, id(context, "buttons.toggle"), "Live preview", &state.live_preview,
                     fill_width(48.0f));
                 end_panel(context, choices);
-                GUI::ElementHandle disclosure = begin_card(context, "buttons.disclosure", grow_x(),
+                GUI::ElementHandle disclosure = begin_card(context, state, "buttons.disclosure", grow_x(),
                     "Disclosure and tree", "Expanded, selected, and leaf states");
                 EditorGUI::ScrollViewDesc disclosure_scroll_desc;
                 disclosure_scroll_desc.horizontal = false;
@@ -1237,7 +1353,7 @@ namespace Luna
                     EditorGUI::IconName::sliders_horizontal);
                 GUI::ElementHandle row1;
                 page_two_columns(context, id(context, "input.row1"), row1, 330.0f);
-                GUI::ElementHandle fields = begin_card(context, "input.fields", grow_x(),
+                GUI::ElementHandle fields = begin_card(context, state, "input.fields", grow_x(),
                     "Text input", "Editable, read-only, and disabled");
                 EditorGUI::input_text(context, id(context, "input.asset"), state.asset_name, fill_width(48.0f));
                 EditorGUI::TextInputDesc read_only;
@@ -1249,7 +1365,7 @@ namespace Luna
                 EditorGUI::input_text(context, id(context, "input.disabled"), state.readonly_value,
                     fill_width(48.0f), disabled);
                 end_panel(context, fields);
-                GUI::ElementHandle sliders = begin_card(context, "input.sliders", grow_x(),
+                GUI::ElementHandle sliders = begin_card(context, state, "input.sliders", grow_x(),
                     "Slider and drag editors", "Scalar, integer, and vector values");
                 EditorGUI::slider_float(context, id(context, "input.roughness"), &state.roughness, 0.0f, 1.0f,
                     fill_width(48.0f));
@@ -1263,12 +1379,12 @@ namespace Luna
                 end_two_columns(context, row1);
                 GUI::ElementHandle row2;
                 page_two_columns(context, id(context, "input.row2"), row2, 250.0f);
-                GUI::ElementHandle color = begin_card(context, "input.color", grow_x(),
+                GUI::ElementHandle color = begin_card(context, state, "input.color", grow_x(),
                     "Color edit", "RGBA preview and numeric channels");
                 EditorGUI::color_edit4(context, id(context, "input.color.value"), "Preview color", state.preview_color,
                     fill_width(48.0f));
                 end_panel(context, color);
-                GUI::ElementHandle combo = begin_card(context, "input.combo", grow_x(),
+                GUI::ElementHandle combo = begin_card(context, state, "input.combo", grow_x(),
                     "Combo and search", "Popup-ready selector and filtered query");
                 const c8* render_modes[] = { "PBR Metallic Roughness", "Subsurface", "Unlit" };
                 GUI::ElementHandle combo_row = EditorGUI::begin_h_layout(context, id(context, "input.combo.row"),
@@ -1302,7 +1418,7 @@ namespace Luna
                     EditorGUI::IconName::grid_four);
                 GUI::ElementHandle row1;
                 page_two_columns(context, id(context, "layouts.row1"), row1, 300.0f);
-                GUI::ElementHandle flex_card = begin_card(context, "layouts.flex", grow_x(),
+                GUI::ElementHandle flex_card = begin_card(context, state, "layouts.flex", grow_x(),
                     "Flex and grid", "Fixed, growing, and repeated cells");
                 GUI::ElementHandle flex_row = EditorGUI::begin_h_layout(context, id(context, "layouts.flex.row"),
                     "Flex row", fill_width(48.0f));
@@ -1324,7 +1440,7 @@ namespace Luna
                     end_two_columns(context, grid_row);
                 }
                 end_panel(context, flex_card);
-                GUI::ElementHandle assets = begin_card(context, "layouts.assets", grow_x(),
+                GUI::ElementHandle assets = begin_card(context, state, "layouts.assets", grow_x(),
                     "Asset grid", "Image, selection, and metadata");
                 GUI::ElementHandle asset_row = EditorGUI::begin_h_layout(context, id(context, "layouts.assets.row"),
                     "Asset row", grow_y());
@@ -1332,7 +1448,8 @@ namespace Luna
                 {
                     GUI::ElementHandle item = EditorGUI::begin_v_layout(context,
                         GUI::make_scoped_id(asset_row.id, (u64)i + 1), "Asset", grow_x());
-                    surface(context, i == state.selected_asset ? "gui.accent.subtle" : "gui.surface.2", 10.0f, false);
+                    surface(context, state, item,
+                        i == state.selected_asset ? "gui.accent.subtle" : "gui.surface.2", 10.0f, false);
                     EditorGUI::image(context, GUI::make_scoped_id(item.id, 1), material_texture(state, i),
                         grow_y(), flipped_image());
                     const c8* names[] = { "Sand", "Rusted Metal", "Concrete" };
@@ -1344,7 +1461,7 @@ namespace Luna
                 end_two_columns(context, row1);
             }
 
-            void build_scroll_views(GUI::IContext* context)
+            void build_scroll_views(GUI::IContext* context, ShowcaseState& state)
             {
                 section_heading(context, "scroll", "GUITEST - SCROLL VIEWS", "Overlay and reserved scrollbars",
                     "Compact pointer mode favors overlay scrollbars; touch mode keeps broad, visible affordances.",
@@ -1354,7 +1471,7 @@ namespace Luna
                 for(i32 column = 0; column < 2; ++column)
                 {
                     const c8* card_name = column == 0 ? "scroll.overlay" : "scroll.visible";
-                    GUI::ElementHandle card = begin_card(context, card_name, grow_x(),
+                    GUI::ElementHandle card = begin_card(context, state, card_name, grow_x(),
                         column == 0 ? "Dynamic overlay" : "Always visible",
                         column == 0 ? "Appears during interaction" : "Reserves viewport space");
                     EditorGUI::ScrollViewDesc desc;
@@ -1381,8 +1498,9 @@ namespace Luna
                 const c8* status_color;
             };
 
-            void table_cell(GUI::IContext* context, EditorGUI::id_t element_id, const c8* value,
-                bool header, bool status, const c8* status_color)
+            void table_cell(GUI::IContext* context, ShowcaseState& state,
+                EditorGUI::id_t element_id, const c8* value, bool header, bool status,
+                const c8* status_color)
             {
                 GUI::LayoutConfig layout;
                 layout.padding = Float4U(12.0f, 0.0f, 12.0f, 0.0f);
@@ -1395,9 +1513,11 @@ namespace Luna
                     Float4U led = style_color(context, status_color);
                     Float4U glow = led;
                     glow.w *= 0.45f;
-                    rounded_shadow(context, glow, 5.0f, Float2U(), 3.0f, GUI::ShadowMode::outer);
-                    rounded_rect(context, style_color(context, "gui.border"), 5.0f);
-                    rounded_rect(context, led, 4.0f, RectF(1.0f, 1.0f, -2.0f, -2.0f));
+                    rounded_shadow(context, state, indicator, glow, 5.0f, Float2U(), 3.0f,
+                        GUI::ShadowMode::outer);
+                    rounded_rect(context, state, indicator, style_color(context, "gui.border"), 5.0f);
+                    rounded_rect(context, state, indicator, led, 4.0f,
+                        RectF(1.0f, 1.0f, -2.0f, -2.0f));
                     EditorGUI::end_v_layout(context, indicator);
                 }
                 typography_label(context, GUI::make_scoped_id(element_id, 2), value,
@@ -1414,7 +1534,7 @@ namespace Luna
                 section_heading(context, "tables", "GUITEST - TABLES", "Dense, resizable data",
                     "Readable rows, clear selection, subtle hierarchy, and generous splitter hit targets.",
                     EditorGUI::IconName::list_bullets);
-                GUI::ElementHandle card = begin_card(context, "tables.memory", fill_width(470.0f),
+                GUI::ElementHandle card = begin_card(context, state, "tables.memory", fill_width(470.0f),
                     "Memory Profiler", "Visual row states and resize-handle targets");
                 GUI::ElementHandle toolbar = EditorGUI::begin_h_layout(context, id(context, "tables.toolbar"),
                     "Table toolbar", fill_width(44.0f));
@@ -1423,9 +1543,9 @@ namespace Luna
                 EditorGUI::TextInputDesc filter_desc;
                 filter_desc.placeholder = "Filter allocations...";
                 EditorGUI::input_text(context, id(context, "tables.filter"), state.table_filter, grow_x(), filter_desc);
-                icon_button(context, id(context, "tables.snapshot"), EditorGUI::IconName::camera,
+                icon_button(context, state, id(context, "tables.snapshot"), EditorGUI::IconName::camera,
                     "Snapshot", fixed(130.0f, 44.0f));
-                icon_button(context, id(context, "tables.settings"), EditorGUI::IconName::gear_six,
+                icon_button(context, state, id(context, "tables.settings"), EditorGUI::IconName::gear_six,
                     "Table settings", fixed(44.0f, 44.0f), EditorGUI::ButtonDesc(), false);
                 GUI::FlexLayoutDesc toolbar_flex;
                 toolbar_flex.axis = GUI::LayoutAxis::x;
@@ -1442,12 +1562,12 @@ namespace Luna
                 table_desc.fixed_row_height = 48.0f;
                 GUI::ElementHandle table = EditorGUI::begin_table_layout(context, id(context, "tables.grid"),
                     "Memory allocation table", table_layout, table_desc);
-                rounded_rect(context, style_color(context, "gui.border"),
+                rounded_rect(context, state, table, style_color(context, "gui.border"),
                     style_scalar(context, "gui.radius.medium", 9.0f));
-                rounded_rect(context, style_color(context, "gui.surface.1"),
+                rounded_rect(context, state, table, style_color(context, "gui.surface.1"),
                     max(style_scalar(context, "gui.radius.medium", 9.0f) - 1.0f, 0.0f),
                     RectF(1.0f, 1.0f, -2.0f, -2.0f));
-                rounded_rect(context, style_color(context, "gui.surface.2"), 0.0f,
+                rounded_rect(context, state, table, style_color(context, "gui.surface.2"), 0.0f,
                     RectF(1.0f, 1.0f, -2.0f, 48.0f));
 
                 static const f32 COLUMN_WIDTHS[] = { 0.06f, 0.23f, 0.16f, 0.13f, 0.16f, 0.26f };
@@ -1470,7 +1590,7 @@ namespace Luna
                 EditorGUI::begin_table_row(context);
                 for(usize column = 0; column < 6; ++column)
                 {
-                    table_cell(context, GUI::make_scoped_id(table.id, (u64)column + 1),
+                    table_cell(context, state, GUI::make_scoped_id(table.id, (u64)column + 1),
                         HEADERS[column], true, false, nullptr);
                 }
                 EditorGUI::end_table_row(context);
@@ -1479,23 +1599,24 @@ namespace Luna
                     f32 row_y = 50.0f + (f32)row * 49.0f;
                     if((i32)row == state.table_selection)
                     {
-                        rounded_rect(context, style_color(context, "gui.accent.subtle"), 0.0f,
+                        rounded_rect(context, state, table, style_color(context, "gui.accent.subtle"), 0.0f,
                             RectF(1.0f, row_y, -2.0f, 48.0f));
-                        rounded_rect(context, style_color(context, "gui.accent"), 0.0f,
+                        rounded_rect(context, state, table, style_color(context, "gui.accent"), 0.0f,
                             RectF(1.0f, row_y, 3.0f, 48.0f));
                     }
                     else if(row & 1)
                     {
                         Float4U zebra = style_color(context, "gui.surface.2");
                         zebra.w *= 0.52f;
-                        rounded_rect(context, zebra, 0.0f, RectF(1.0f, row_y, -2.0f, 48.0f));
+                        rounded_rect(context, state, table, zebra, 0.0f,
+                            RectF(1.0f, row_y, -2.0f, 48.0f));
                     }
                     EditorGUI::begin_table_row(context);
                     for(usize column = 0; column < 6; ++column)
                     {
                         EditorGUI::id_t cell_id = GUI::make_scoped_id(
                             GUI::make_scoped_id(table.id, (u64)row + 10), (u64)column + 1);
-                        table_cell(context, cell_id, RECORDS[row].cells[column], false,
+                        table_cell(context, state, cell_id, RECORDS[row].cells[column], false,
                             column == 5, RECORDS[row].status_color);
                     }
                     EditorGUI::end_table_row(context);
@@ -1511,7 +1632,7 @@ namespace Luna
                     EditorGUI::IconName::bell);
                 GUI::ElementHandle row;
                 page_two_columns(context, id(context, "overlay.row"), row, 420.0f);
-                GUI::ElementHandle menu_card = begin_card(context, "overlay.menu", grow_x(),
+                GUI::ElementHandle menu_card = begin_card(context, state, "overlay.menu", grow_x(),
                     "Menu bar", "Shortcut, checked, disabled, and separator states");
                 GUI::ElementHandle menu_bar = EditorGUI::begin_menu_bar(context, id(context, "overlay.menu.bar"),
                     "Menu", fill_width(style_scalar(context, "gui.control.height", 32.0f)));
@@ -1530,11 +1651,11 @@ namespace Luna
                 }
                 EditorGUI::end_menu_bar(context, menu_bar);
                 end_panel(context, menu_card);
-                GUI::ElementHandle popup_card = begin_card(context, "overlay.popup", grow_x(),
+                GUI::ElementHandle popup_card = begin_card(context, state, "overlay.popup", grow_x(),
                     "Popup and tooltip", "Independent GUI layers with captured backdrop blur");
-                handles.popup_button = icon_button(context, id(context, "overlay.popup.open"),
+                handles.popup_button = icon_button(context, state, id(context, "overlay.popup.open"),
                     EditorGUI::IconName::squares_four, "Open Popup", fill_width(48.0f));
-                GUI::ElementHandle tooltip_button = icon_button(context, id(context, "overlay.tooltip"),
+                GUI::ElementHandle tooltip_button = icon_button(context, state, id(context, "overlay.tooltip"),
                     EditorGUI::IconName::info, "Hover for tooltip", fill_width(48.0f));
                 EditorGUI::set_item_tooltip(context, id(context, "overlay.tooltip.layer"), tooltip_button,
                     "Available on hover or pointer focus.");
@@ -1548,7 +1669,7 @@ namespace Luna
                     GUI::ElementHandle sample = EditorGUI::begin_v_layout(context,
                         GUI::make_scoped_id(backdrop_source.id, (u64)i + 1),
                         "Backdrop color sample", grow_x(56.0f));
-                    rounded_rect(context, style_color(context, backdrop_colors[i]), 9.0f);
+                    rounded_rect(context, state, sample, style_color(context, backdrop_colors[i]), 9.0f);
                     EditorGUI::end_v_layout(context, sample);
                 }
                 GUI::FlexLayoutDesc backdrop_flex;
@@ -1556,9 +1677,9 @@ namespace Luna
                 backdrop_flex.cross_alignment = GUI::FlexAlignment::stretch;
                 backdrop_flex.main_axis_gap = 6.0f;
                 EditorGUI::end_h_layout(context, backdrop_source, backdrop_flex);
-                led_label(context, id(context, "overlay.notification.success"), "Build complete",
+                led_label(context, state, id(context, "overlay.notification.success"), "Build complete",
                     "gui.status.success", 150.0f);
-                led_label(context, id(context, "overlay.notification.warning"), "2 warnings",
+                led_label(context, state, id(context, "overlay.notification.warning"), "2 warnings",
                     "gui.status.warning", 150.0f);
                 end_panel(context, popup_card);
                 end_two_columns(context, row);
@@ -1571,7 +1692,7 @@ namespace Luna
                     label(context, id(context, "overlay.popup.title"), "Popup layer", fill_width(34.0f), 13.0f);
                     label(context, id(context, "overlay.popup.copy"), "Dismiss with Done or Escape.",
                         fill_width(34.0f), 11.0f, "gui.text.secondary");
-                    icon_button(context, id(context, "overlay.popup.done"), EditorGUI::IconName::check,
+                    icon_button(context, state, id(context, "overlay.popup.done"), EditorGUI::IconName::check,
                         "Done", fill_width(44.0f), EditorGUI::ButtonDesc(), true, EditorGUI::IconWeight::bold);
                     lupanic_if_failed(EditorGUI::end_popup(context, popup, RectF(0.0f, 0.0f, 260.0f, 154.0f)));
                 }
@@ -1596,18 +1717,18 @@ namespace Luna
                 GUI::ElementHandle workspace = EditorGUI::begin_v_layout(context, id(context, "workspace.demo"),
                     "Workspace", fill_width(660.0f));
                 f32 workspace_radius = style_scalar(context, "gui.radius.large", 16.0f);
-                surface(context, "gui.surface.0", workspace_radius, true, true);
+                surface(context, state, workspace, "gui.surface.0", workspace_radius, true, true);
                 GUI::DrawCommand push_workspace_clip;
                 push_workspace_clip.type = GUI::DrawCommandType::push_clip;
                 push_workspace_clip.rect_reference = GUI::DrawCommandRectReference::element;
                 push_workspace_clip.radius = workspace_radius;
-                context->draw(push_workspace_clip);
+                append_showcase_draw_command(context, state, workspace, push_workspace_clip);
                 GUI::DrawConfig workspace_clip;
                 workspace_clip.name = Name("guitest.workspace.rounded_clip");
                 workspace_clip.callback = finish_rounded_children_clip;
                 workspace_clip.userdata = (void*)(usize)(u32)workspace_radius;
                 workspace_clip.phases = GUI::DrawPhaseFlag::after_children;
-                context->set_draw_config(workspace, workspace_clip);
+                append_showcase_draw_callback(context, state, workspace, workspace_clip);
 
                 GUI::ElementHandle reset_layout_item;
                 GUI::ElementHandle menu_bar = EditorGUI::begin_menu_bar(context, id(context, "workspace.menu"),
@@ -1743,11 +1864,11 @@ namespace Luna
                 {
                     GUI::ElementHandle panel = EditorGUI::begin_v_layout(context,
                         id(context, "workspace.hierarchy.content"), "Hierarchy content", grow_y());
-                    tree_label(context, id(context, "workspace.scene"), EditorGUI::IconName::folder_open,
+                    tree_label(context, state, id(context, "workspace.scene"), EditorGUI::IconName::folder_open,
                         "Scene", 0, true, true);
-                    tree_label(context, id(context, "workspace.camera"), EditorGUI::IconName::camera,
+                    tree_label(context, state, id(context, "workspace.camera"), EditorGUI::IconName::camera,
                         "Camera", 1, false, false);
-                    tree_label(context, id(context, "workspace.ball"), EditorGUI::IconName::bounding_box,
+                    tree_label(context, state, id(context, "workspace.ball"), EditorGUI::IconName::bounding_box,
                         "Material Ball", 1, false, false, true);
                     end_panel(context, panel);
                     EditorGUI::end_dock_panel(context);
@@ -1768,7 +1889,7 @@ namespace Luna
                     for(i32 tool_index = 0; tool_index < 3; ++tool_index)
                     {
                         EditorGUI::id_t tool_id = GUI::make_scoped_id(tools.id, (u64)tool_index + 1);
-                        GUI::ElementHandle tool = icon_button(context, tool_id, tool_icons[tool_index],
+                        GUI::ElementHandle tool = icon_button(context, state, tool_id, tool_icons[tool_index],
                             tool_labels[tool_index], fixed(40.0f, 40.0f), EditorGUI::ButtonDesc(), false,
                             tool_index == state.space_mode ? EditorGUI::IconWeight::bold : EditorGUI::IconWeight::regular,
                             tool_index == state.space_mode);
@@ -1897,7 +2018,7 @@ namespace Luna
                 layout.padding = state.section == 0 ? Float4U(18.0f) : Float4U(0.0f);
                 GUI::ElementHandle content = EditorGUI::begin_v_layout(context, id(context, "showcase.content"),
                     "Content", layout);
-                rounded_rect(context, style_color(context, "gui.canvas"), 0.0f);
+                rounded_rect(context, state, content, style_color(context, "gui.canvas"), 0.0f);
                 if(state.section == 0)
                 {
                     build_overview(context, state, handles);
@@ -1915,7 +2036,7 @@ namespace Luna
                     else if(state.section == 2) build_buttons(context, state);
                     else if(state.section == 3) build_input(context, state);
                     else if(state.section == 4) build_layouts(context, state);
-                    else if(state.section == 5) build_scroll_views(context);
+                    else if(state.section == 5) build_scroll_views(context, state);
                     else if(state.section == 6) build_tables(context, state);
                     else if(state.section == 7) build_overlay(context, state, handles);
                     else build_workspace(context, state);
@@ -1962,13 +2083,13 @@ namespace Luna
                 layout.padding = Float4U(14.0f);
                 GUI::ElementHandle panel = EditorGUI::begin_v_layout(context, id(context, "showcase.tokens"),
                     "Style Inspector", layout);
-                rounded_rect(context, style_color(context, "gui.surface.0"), 0.0f);
+                rounded_rect(context, state, panel, style_color(context, "gui.surface.0"), 0.0f);
                 GUI::ElementHandle title = EditorGUI::begin_h_layout(context,
                     id(context, "showcase.tokens.title"), "Style Inspector", fill_width(34.0f));
                 EditorGUI::icon(context, id(context, "showcase.tokens.title.icon"), EditorGUI::IconName::palette,
                     fixed(20.0f, 20.0f), icon_desc(context, "gui.text.color", EditorGUI::IconWeight::duotone, 20.0f));
                 label(context, id(context, "showcase.tokens.title.text"), "Style Inspector", grow_x(), 13.0f);
-                icon_button(context, id(context, "showcase.tokens.settings"), EditorGUI::IconName::gear_six,
+                icon_button(context, state, id(context, "showcase.tokens.settings"), EditorGUI::IconName::gear_six,
                     "Style settings", fixed(30.0f, 30.0f), EditorGUI::ButtonDesc(), false);
                 GUI::FlexLayoutDesc title_flex;
                 title_flex.axis = GUI::LayoutAxis::x;
@@ -1979,7 +2100,7 @@ namespace Luna
                     (state.density == 0 ? "dark.compact" : "dark.touch");
                 label(context, id(context, "showcase.tokens.style"), style_name, fill_width(20.0f),
                     9.0f, "gui.text.muted");
-                divider(context, id(context, "showcase.tokens.divider1"));
+                divider(context, state, id(context, "showcase.tokens.divider1"));
                 label(context, id(context, "showcase.tokens.accent.title"), "ACCENT STATES",
                     fill_width(24.0f), 9.0f, "gui.text.muted");
                 token_row(context, state, id(context, "showcase.tokens.accent"), "Accent", "--accent", "gui.accent");
@@ -1988,7 +2109,7 @@ namespace Luna
                 token_row(context, state, id(context, "showcase.tokens.subtle"), "Subtle", "--accent-soft", "gui.accent.subtle");
                 token_row(context, state, id(context, "showcase.tokens.disabled"), "Disabled", "--accent-disabled", "gui.accent.disabled");
                 token_row(context, state, id(context, "showcase.tokens.focus"), "Focus", "--focus", "gui.focus");
-                divider(context, id(context, "showcase.tokens.divider2"));
+                divider(context, state, id(context, "showcase.tokens.divider2"));
                 label(context, id(context, "showcase.tokens.gray.title"), "GRAY HIERARCHY",
                     fill_width(24.0f), 9.0f, "gui.text.muted");
                 token_row(context, state, id(context, "showcase.tokens.surface0"), "Surface 0", "--surface-0", "gui.surface.0");
@@ -1997,7 +2118,7 @@ namespace Luna
                 token_row(context, state, id(context, "showcase.tokens.surface3"), "Surface 3", "--surface-3", "gui.surface.3");
                 token_row(context, state, id(context, "showcase.tokens.surface4"), "Surface 4", "--surface-4", "gui.surface.4");
                 token_row(context, state, id(context, "showcase.tokens.surface5"), "Surface 5", "--surface-5", "gui.surface.5");
-                divider(context, id(context, "showcase.tokens.divider3"));
+                divider(context, state, id(context, "showcase.tokens.divider3"));
                 label(context, id(context, "showcase.tokens.density.title"), "DENSITY",
                     fill_width(24.0f), 9.0f, "gui.text.muted");
                 c8 density_text[96];
@@ -2013,7 +2134,7 @@ namespace Luna
                     state.density == 1 ? 16 : 10);
                 label(context, id(context, "showcase.tokens.density.gap"), density_text,
                     fill_width(28.0f), 10.0f, "gui.text.secondary");
-                divider(context, id(context, "showcase.tokens.divider4"));
+                divider(context, state, id(context, "showcase.tokens.divider4"));
                 label(context, id(context, "showcase.tokens.note"),
                     "Soft shadow is rendered analytically. Blur surfaces use ordinary alpha in this phase.",
                     fill_width(72.0f), 10.0f, "gui.text.secondary");
@@ -2024,10 +2145,11 @@ namespace Luna
         GUI::ElementHandle build_showcase(GUI::IContext* context, ShowcaseState& state,
             ShowcaseHandles& handles)
         {
+            state.frame_draw_data.clear();
             context->push_layer(1, Float2U(0.0f));
             GUI::ElementHandle root = EditorGUI::begin_v_layout(context, id(context, "showcase.root"),
                 "GUI Design Language Lab", fill());
-            rounded_rect(context, style_color(context, "gui.canvas"), 0.0f);
+            rounded_rect(context, state, root, style_color(context, "gui.canvas"), 0.0f);
             build_top_bar(context, state);
             GUI::ElementHandle body = EditorGUI::begin_h_layout(context, id(context, "showcase.body"),
                 "Application body", grow_y());

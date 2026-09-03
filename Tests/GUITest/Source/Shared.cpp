@@ -11,11 +11,118 @@
 
 namespace Luna::GUITest
 {
+    static SheetState* g_draw_recording_state = nullptr;
+
+    static R<GUI::paint_order_id_t> draw_recorded_commands(GUI::IContext* context,
+        const GUI::ElementHandle&, GUI::DrawPhase phase, GUI::paint_order_id_t paint_order_id,
+        void* userdata)
+    {
+        FrameDrawData* data = (FrameDrawData*)userdata;
+        if(!data) return paint_order_id;
+        const Vector<GUI::DrawCommand>& commands = phase == GUI::DrawPhase::before_children ?
+            data->before_children : data->after_children;
+        if(commands.empty()) return paint_order_id;
+        for(usize i = 0; i < commands.size(); ++i)
+        {
+            context->draw(commands[i], paint_order_id + (GUI::paint_order_id_t)i);
+        }
+        return paint_order_id + (GUI::paint_order_id_t)commands.size() - 1;
+    }
+
     static void submit_draw_command(GUI::IContext* context, const GUI::DrawCommand& command,
         GUI::paint_order_id_t paint_order_id)
     {
-        if(paint_order_id == GUI::INVALID_PAINT_ORDER_ID) context->draw(command);
-        else context->draw(command, paint_order_id);
+        context->draw(command, paint_order_id);
+    }
+
+    void begin_draw_recording(SheetState& state)
+    {
+        luassert(!g_draw_recording_state);
+        state.frame_draw_data.clear();
+        state.frame_draw_element_stack.clear();
+        state.frame_draw_data_stack.clear();
+        state.frame_draw_has_children_stack.clear();
+        g_draw_recording_state = &state;
+    }
+
+    void end_draw_recording()
+    {
+        luassert(g_draw_recording_state);
+        luassert(g_draw_recording_state->frame_draw_element_stack.empty());
+        luassert(g_draw_recording_state->frame_draw_data_stack.empty());
+        luassert(g_draw_recording_state->frame_draw_has_children_stack.empty());
+        g_draw_recording_state = nullptr;
+    }
+
+    GUI::ElementHandle begin_element(GUI::IContext* context, GUI::id_t id)
+    {
+        GUI::ElementHandle element = context->begin_element(id);
+        if(g_draw_recording_state)
+        {
+            if(!g_draw_recording_state->frame_draw_has_children_stack.empty())
+            {
+                FrameDrawData* parent_data =
+                    g_draw_recording_state->frame_draw_data_stack.back();
+                luassert(!parent_data || parent_data->after_children.empty());
+                g_draw_recording_state->frame_draw_has_children_stack.back() = true;
+            }
+            g_draw_recording_state->frame_draw_element_stack.push_back(element);
+            g_draw_recording_state->frame_draw_data_stack.push_back(nullptr);
+            g_draw_recording_state->frame_draw_has_children_stack.push_back(false);
+        }
+        return element;
+    }
+
+    void end_element(GUI::IContext* context)
+    {
+        if(g_draw_recording_state)
+        {
+            luassert(!g_draw_recording_state->frame_draw_element_stack.empty());
+            luassert(!g_draw_recording_state->frame_draw_data_stack.empty());
+            luassert(!g_draw_recording_state->frame_draw_has_children_stack.empty());
+            g_draw_recording_state->frame_draw_element_stack.pop_back();
+            g_draw_recording_state->frame_draw_data_stack.pop_back();
+            g_draw_recording_state->frame_draw_has_children_stack.pop_back();
+        }
+        context->end_element();
+    }
+
+    void record_draw_command(GUI::IContext* context, const GUI::DrawCommand& command)
+    {
+        luassert(g_draw_recording_state);
+        luassert(!g_draw_recording_state->frame_draw_element_stack.empty());
+        luassert(!g_draw_recording_state->frame_draw_has_children_stack.empty());
+        bool after_children = g_draw_recording_state->frame_draw_has_children_stack.back();
+        FrameDrawData*& data = g_draw_recording_state->frame_draw_data_stack.back();
+        if(!data)
+        {
+            GUI::ElementHandle element = g_draw_recording_state->frame_draw_element_stack.back();
+            GUI::DrawConfig existing = context->get_draw_config(element);
+            luassert(!existing.callback);
+            UniquePtr<FrameDrawData> new_data(memnew<FrameDrawData>());
+            data = new_data.get();
+            g_draw_recording_state->frame_draw_data.push_back(move(new_data));
+            GUI::DrawConfig draw;
+            draw.name = Name("gui.test.recorded");
+            draw.callback = draw_recorded_commands;
+            draw.userdata = data;
+            draw.phases = after_children ? GUI::DrawPhaseFlag::after_children :
+                GUI::DrawPhaseFlag::before_children;
+            context->set_draw_config(element, draw);
+        }
+        Vector<GUI::DrawCommand>& commands = after_children ? data->after_children :
+            data->before_children;
+        bool enable_both_phases = commands.empty() &&
+            (!data->before_children.empty() || !data->after_children.empty());
+        commands.push_back(command);
+        if(enable_both_phases)
+        {
+            GUI::ElementHandle element = g_draw_recording_state->frame_draw_element_stack.back();
+            GUI::DrawConfig draw = context->get_draw_config(element);
+            draw.phases = GUI::DrawPhaseFlag::before_children |
+                GUI::DrawPhaseFlag::after_children;
+            context->set_draw_config(element, draw);
+        }
     }
 
     GUI::LayoutConfig fixed_layout(f32 width, f32 height)
@@ -49,8 +156,7 @@ namespace Luna::GUITest
         items.push_back(item);
     }
 
-    void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 radius,
-        GUI::paint_order_id_t paint_order_id)
+    static GUI::DrawCommand make_rect_command(const RectF& rect, const Float4U& color, f32 radius)
     {
         GUI::DrawCommand command;
         command.type = radius > 0.0f ? GUI::DrawCommandType::rounded_rect : GUI::DrawCommandType::rect;
@@ -58,11 +164,22 @@ namespace Luna::GUITest
         command.rect = rect;
         command.color = color;
         command.radius = radius;
-        submit_draw_command(context, command, paint_order_id);
+        return command;
     }
 
-    void draw_shadow(GUI::IContext* context, const RectF& rect, const Float4U& color,
-        f32 radius, const GUI::ShadowDesc& desc, GUI::paint_order_id_t paint_order_id)
+    void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 radius)
+    {
+        record_draw_command(context, make_rect_command(rect, color, radius));
+    }
+
+    void draw_rect(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 radius,
+        GUI::paint_order_id_t paint_order_id)
+    {
+        submit_draw_command(context, make_rect_command(rect, color, radius), paint_order_id);
+    }
+
+    static GUI::DrawCommand make_shadow_command(const RectF& rect, const Float4U& color,
+        f32 radius, const GUI::ShadowDesc& desc)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::shadow;
@@ -71,12 +188,23 @@ namespace Luna::GUITest
         command.color = color;
         command.radius = radius;
         command.shadow = desc;
-        submit_draw_command(context, command, paint_order_id);
+        return command;
     }
 
-    void draw_gradient_rect(GUI::IContext* context, const RectF& rect, const Float4U& top_left,
-        const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left,
-        GUI::paint_order_id_t paint_order_id)
+    void draw_shadow(GUI::IContext* context, const RectF& rect, const Float4U& color,
+        f32 radius, const GUI::ShadowDesc& desc)
+    {
+        record_draw_command(context, make_shadow_command(rect, color, radius, desc));
+    }
+
+    void draw_shadow(GUI::IContext* context, const RectF& rect, const Float4U& color,
+        f32 radius, const GUI::ShadowDesc& desc, GUI::paint_order_id_t paint_order_id)
+    {
+        submit_draw_command(context, make_shadow_command(rect, color, radius, desc), paint_order_id);
+    }
+
+    static GUI::DrawCommand make_gradient_rect_command(const RectF& rect, const Float4U& top_left,
+        const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::gradient_rect;
@@ -86,11 +214,27 @@ namespace Luna::GUITest
         command.color_top_right = top_right;
         command.color_bottom_right = bottom_right;
         command.color_bottom_left = bottom_left;
-        submit_draw_command(context, command, paint_order_id);
+        return command;
     }
 
-    void draw_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
-        const Float4U& color, f32 width, GUI::paint_order_id_t paint_order_id)
+    void draw_gradient_rect(GUI::IContext* context, const RectF& rect, const Float4U& top_left,
+        const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left)
+    {
+        record_draw_command(context,
+            make_gradient_rect_command(rect, top_left, top_right, bottom_right, bottom_left));
+    }
+
+    void draw_gradient_rect(GUI::IContext* context, const RectF& rect, const Float4U& top_left,
+        const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left,
+        GUI::paint_order_id_t paint_order_id)
+    {
+        submit_draw_command(context,
+            make_gradient_rect_command(rect, top_left, top_right, bottom_right, bottom_left),
+            paint_order_id);
+    }
+
+    static GUI::DrawCommand make_line_command(const Float2U& begin, const Float2U& end,
+        const Float4U& color, f32 width)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::line;
@@ -99,7 +243,31 @@ namespace Luna::GUITest
         command.point1 = end;
         command.color = color;
         command.line_width = width;
-        submit_draw_command(context, command, paint_order_id);
+        return command;
+    }
+
+    void draw_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
+        const Float4U& color, f32 width)
+    {
+        record_draw_command(context, make_line_command(begin, end, color, width));
+    }
+
+    void draw_line(GUI::IContext* context, const Float2U& begin, const Float2U& end,
+        const Float4U& color, f32 width, GUI::paint_order_id_t paint_order_id)
+    {
+        submit_draw_command(context, make_line_command(begin, end, color, width), paint_order_id);
+    }
+
+    void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 width)
+    {
+        draw_line(context, Float2U(rect.offset_x, rect.offset_y),
+            Float2U(rect.offset_x + rect.width, rect.offset_y), color, width);
+        draw_line(context, Float2U(rect.offset_x + rect.width, rect.offset_y),
+            Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height), color, width);
+        draw_line(context, Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height),
+            Float2U(rect.offset_x, rect.offset_y + rect.height), color, width);
+        draw_line(context, Float2U(rect.offset_x, rect.offset_y + rect.height),
+            Float2U(rect.offset_x, rect.offset_y), color, width);
     }
 
     void draw_outline(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 width,
@@ -115,8 +283,8 @@ namespace Luna::GUITest
             Float2U(rect.offset_x, rect.offset_y), color, width, paint_order_id);
     }
 
-    void draw_text(GUI::IContext* context, const RectF& rect, const c8* text, f32 size,
-        const Float4U& color, VG::TextAlignment alignment, GUI::paint_order_id_t paint_order_id)
+    static GUI::DrawCommand make_text_command(const RectF& rect, const c8* text, f32 size,
+        const Float4U& color, VG::TextAlignment alignment)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::text;
@@ -128,7 +296,20 @@ namespace Luna::GUITest
         command.horizontal_alignment = alignment;
         command.vertical_alignment = VG::TextAlignment::begin;
         command.text = text ? text : "";
-        submit_draw_command(context, command, paint_order_id);
+        return command;
+    }
+
+    void draw_text(GUI::IContext* context, const RectF& rect, const c8* text, f32 size,
+        const Float4U& color, VG::TextAlignment alignment)
+    {
+        record_draw_command(context, make_text_command(rect, text, size, color, alignment));
+    }
+
+    void draw_text(GUI::IContext* context, const RectF& rect, const c8* text, f32 size,
+        const Float4U& color, VG::TextAlignment alignment, GUI::paint_order_id_t paint_order_id)
+    {
+        submit_draw_command(context, make_text_command(rect, text, size, color, alignment),
+            paint_order_id);
     }
 
     void bullet(GUI::IContext* context, f32 x, f32 y, const c8* text)
@@ -140,7 +321,7 @@ namespace Luna::GUITest
     GUI::ElementHandle begin_panel(GUI::IContext* context, GUI::id_t id, const c8* title,
         f32 width, f32 height)
     {
-        GUI::ElementHandle panel = context->begin_element(id);
+        GUI::ElementHandle panel = begin_element(context, id);
         context->set_layout_config(panel, fixed_layout(width, height));
         draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(1.0f, 1.0f, 1.0f, 1.0f), 0.0f);
         draw_line(context, Float2U(0.0f, 44.0f), Float2U(width, 44.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f), 1.25f);
@@ -151,7 +332,7 @@ namespace Luna::GUITest
 
     void end_panel(GUI::IContext* context)
     {
-        context->end_element();
+        end_element(context);
     }
 
     void panel_label_value(GUI::IContext* context, f32 y, const c8* label, const c8* value)

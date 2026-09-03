@@ -1,14 +1,14 @@
-GUI drawing records primitive GUI-level commands and preserves their painter order across two rendering
+GUI drawing generates primitive GUI-level commands and preserves their declared Paint Order across two rendering
 backends. Analytic geometry, gradients and shadows use the GUI SDF renderer; text, images and arbitrary vector
 paths use VG. Higher-level packages decide which commands represent a widget.
 
 ## Designed functionality
 The drawing system provides a narrow bridge between GUI data and rendering:
 
-1. Record static draw commands and attach optional delayed draw callbacks to elements.
+1. Attach generation-time draw callbacks to elements and submit every command with an explicit Paint Order ID.
 2. Support element-relative and layer-coordinate rectangles.
 3. Draw analytic SDF shapes, CSS-like gradients, strokes and shadows alongside text, images and VG shape ranges.
-4. Generate commands after layout and input routing while preserving element painter order and layer Z order.
+4. Generate commands after layout and input routing while preserving required element and GUI Layer order.
 5. Keep rendering policy outside GUI widgets, because GUI has no widgets.
 
 GUI owns every render/compute pass and target transition needed to execute its final command stream. The
@@ -44,22 +44,42 @@ capsules, four-corner rounded rectangles, strokes, composed shapes, and multi-st
 `DrawPhase::before_children`, `DrawPhase::after_children`, or both phases.
 
 The callback runs after layout and input routing, so it can read final layout rectangles, interaction state,
-state objects and style values. It emits commands by calling `IContext::draw`. It must not mutate the element
-tree, layout, interaction state, or application data.
+state objects and style values. It emits commands by calling
+`IContext::draw(const DrawCommand&, paint_order_id_t)`. Commands cannot be submitted during element construction.
+The callback must not mutate the element tree, layout, interaction state, or application data.
 
 `DrawConfig::userdata` is owned by the caller and must remain valid until command generation finishes. GUI
 stores draw configurations sparsely, so elements without callbacks do not carry callback pointers.
 
-### Painter order
-For each layer, GUI replays element construction as a painter-order operation stream:
+### Paint Order
+`paint_order_id_t` is an unsigned, dense, frame-local ordering coordinate. A lower ID renders before a higher ID.
+Giving commands the same ID explicitly permits the renderer to reorder those commands across complete backend batch
+keys; submission order remains deterministic within one batch key. Use distinct IDs for overlapping primitives
+whose composition order matters.
+
+A draw callback receives the first Paint Order ID available to its phase and returns the maximum ID it emitted or
+reserved. Every `draw` call must pass an ID no lower than the callback input, and the returned maximum must cover all
+IDs emitted by the callback. A callback that emits nothing and reserves no IDs returns its input unchanged.
+
+Each non-empty GUI Layer receives a non-overlapping Paint Order range in bottom-to-top layer order. IDs are
+regenerated with draw commands and have no stable identity across frames. `GUI::Layer` remains a structural object
+for element ownership, coordinates and input priority; it is not a Paint Order ID.
+
+### Element paint traversal
+For each layer, GUI traverses elements in painter order:
 
 1. Invoke the element's `before_children` callback.
-2. Replay static commands recorded at that position.
-3. Generate child elements in construction order.
-4. Invoke the element's `after_children` callback.
+2. Generate child elements according to the element's child Paint Order mode.
+3. Invoke the element's `after_children` callback with the first free ID after the child subtrees.
 
 This lets a container draw its background below children and its border or feedback above children without
 requiring the final layout rectangle during element construction.
+
+`ChildPaintOrderMode::sequential` is the safe default and gives each direct child a non-overlapping range in
+submission order. `ChildPaintOrderMode::shared` gives independent direct child subtrees the same initial ID so their
+compatible commands can batch. Select `shared` only when the complete painted extents of those children cannot
+interfere, including shadows, negative margins, visual overflow, explicit clips and custom drawing. A backdrop
+capture or another Paint Order barrier ends the current shared run.
 
 ### Backdrop capture and drawing
 `BackdropBlurCaptureDesc` is a sparse element attachment. When it is enabled, command generation inserts a
@@ -157,34 +177,14 @@ luexp(context->register_font(Name("default"), Font::get_default_font()));
 ```
 
 ## Programming guide
-### Record a static command during element build
-Outside draw generation, `draw` records a command at the current layer, element, and painter-order position.
+### Attach drawing to an element
+All primitive commands are emitted from a `DrawConfig` callback. Store any command inputs in caller-owned frame data,
+attach that data through `DrawConfig::userdata`, and keep it valid until command generation finishes.
 
 ```cpp
-GUI::DrawCommand bg;
-bg.type = GUI::DrawCommandType::rounded_rect;
-bg.rect_reference = GUI::DrawCommandRectReference::element;
-bg.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
-bg.color = Float4U(0.12f, 0.16f, 0.22f, 1.0f);
-bg.radius = 6.0f;
-context->draw(bg);
-```
-
-### Record a command for a specific element
-Use `draw_for_element` when a command is emitted after the element build scope has ended.
-
-```cpp
-context->draw_for_element(element, bg);
-```
-
-Invalid handles are ignored.
-
-### Attach delayed drawing
-Use a draw callback when rendering depends on final layout, input, state, or style data.
-
-```cpp
-RV draw_button(GUI::IContext* context, const GUI::ElementHandle& element,
-    GUI::DrawPhase phase, void* userdata)
+R<GUI::paint_order_id_t> draw_button(GUI::IContext* context,
+    const GUI::ElementHandle& element, GUI::DrawPhase phase,
+    GUI::paint_order_id_t paint_order_id, void* userdata)
 {
     if(phase == GUI::DrawPhase::before_children)
     {
@@ -196,9 +196,9 @@ RV draw_button(GUI::IContext* context, const GUI::ElementHandle& element,
         background.color = interaction.hovered ? Float4U(0.20f, 0.40f, 0.70f, 1.0f) :
             Float4U(0.12f, 0.16f, 0.22f, 1.0f);
         background.radius = 6.0f;
-        context->draw(background);
+        context->draw(background, paint_order_id);
     }
-    return ok;
+    return paint_order_id;
 }
 
 GUI::DrawConfig draw_config;
@@ -208,12 +208,25 @@ draw_config.phases = GUI::DrawPhaseFlag::before_children;
 context->set_draw_config(button, draw_config);
 ```
 
+If one callback emits overlapping commands that require order, assign increasing IDs and return the last one:
+
+```cpp
+context->draw(background, paint_order_id);
+context->draw(border, paint_order_id + 1);
+return paint_order_id + 1;
+```
+
+Commands that are safe to regroup across backend batch keys may use the same ID. Returning an ID greater than every
+emitted command reserves the intervening range for the enclosing traversal.
+
 Use both phases when one element needs a background below its children and feedback above them:
 
 ```cpp
 draw_config.phases = GUI::DrawPhaseFlag::before_children |
     GUI::DrawPhaseFlag::after_children;
 ```
+
+The remaining primitive examples assume they run inside a draw callback and use its `paint_order_id` parameter.
 
 ### Draw text
 ```cpp
@@ -226,7 +239,7 @@ text.font = Name("default");
 text.font_size = 16.0f;
 text.color = Float4U(0.92f, 0.95f, 1.0f, 1.0f);
 text.text = "Build";
-context->draw(text);
+context->draw(text, paint_order_id);
 ```
 
 ### Draw an image
@@ -238,7 +251,7 @@ image.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
 image.texture = texture;
 image.min_texcoord = Float2U(0.0f, 0.0f);
 image.max_texcoord = Float2U(1.0f, 1.0f);
-context->draw(image);
+context->draw(image, paint_order_id);
 ```
 
 Set `nearest_sampler` when the image should show exact texels, such as low-resolution test textures.
@@ -254,7 +267,7 @@ shape.shape.buffer = icon_shape_buffer;
 shape.shape.first_command = icon_first_command;
 shape.shape.num_commands = icon_num_commands;
 shape.shape.bounds = icon_bounds;
-context->draw(shape);
+context->draw(shape, paint_order_id);
 ```
 
 ### Draw a composed SDF gradient
@@ -281,7 +294,7 @@ ring.type = GUI::DrawCommandType::sdf;
 ring.rect = RectF(40.0f, 20.0f, 0.0f, 0.0f); // Places the local origin.
 ring.sdf.shape = shape_program;
 ring.sdf.color = color_program;
-context->draw(ring);
+context->draw(ring, paint_order_id);
 ```
 
 ### Compose a shadow and fill in one color program
@@ -299,7 +312,7 @@ lulet(effect_program, context->append_sdf_color_program(effect_floats.cspan()));
 
 GUI::DrawCommand shadowed_ring = ring;
 shadowed_ring.sdf.color = effect_program;
-context->draw(shadowed_ring);
+context->draw(shadowed_ring, paint_order_id);
 ```
 
 ### Use clips
@@ -307,16 +320,19 @@ context->draw(shadowed_ring);
 GUI::DrawCommand push;
 push.type = GUI::DrawCommandType::push_clip;
 push.rect = clip_rect;
-context->draw(push);
+context->draw(push, paint_order_id);
 
 // Draw clipped content.
 
 GUI::DrawCommand pop;
 pop.type = GUI::DrawCommandType::pop_clip;
-context->draw(pop);
+context->draw(pop, paint_order_id);
 ```
 
-Use explicit clips only when a command sequence needs a region stricter than the element layout clip. Scroll viewports and layout containers normally receive their base clipping from `LayoutResult::clip_rect` automatically.
+Clip pushes and pops are resolved in lexical submission order before drawable commands are sorted, so they do not
+consume separate Paint Order positions. Use explicit clips only when a command sequence needs a region stricter than
+the element layout clip. Scroll viewports and layout containers normally receive their base clipping from
+`LayoutResult::clip_rect` automatically.
 
 ### Draw a backdrop-filtered surface
 Attach capture configuration to the surface root, then emit `backdrop_blur` before its tint and children:
@@ -327,16 +343,28 @@ capture.softness = 12.0f;
 capture.downsample_level = 1;
 context->set_backdrop_blur_capture(panel, capture);
 
-GUI::DrawCommand backdrop;
-backdrop.type = GUI::DrawCommandType::backdrop_blur;
-backdrop.rect_reference = GUI::DrawCommandRectReference::element;
-backdrop.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
-backdrop.radius = 8.0f;
-context->draw_for_element(panel, backdrop);
+GUI::DrawConfig draw_config;
+draw_config.name = Name("example.backdrop");
+draw_config.callback = [](GUI::IContext* context,
+    const GUI::ElementHandle&, GUI::DrawPhase,
+    GUI::paint_order_id_t paint_order_id,
+    void*) -> R<GUI::paint_order_id_t>
+{
+    GUI::DrawCommand backdrop;
+    backdrop.type = GUI::DrawCommandType::backdrop_blur;
+    backdrop.rect_reference = GUI::DrawCommandRectReference::element;
+    backdrop.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+    backdrop.radius = 8.0f;
+    context->draw(backdrop, paint_order_id);
+    return paint_order_id;
+};
+context->set_draw_config(panel, draw_config);
 ```
 
-The same element may own and consume the capture because lookup starts at self. A regular rounded rectangle drawn
-after `backdrop_blur` supplies the translucent tint; blur capture does not select widget colors.
+Context inserts the capture marker before the element's `before_children` callback and gives the marker an exclusive
+Paint Order ID. The callback receives the following ID, so its backdrop consumer is ordered after the capture. The
+same element may own and consume the capture because lookup starts at self. A regular rounded rectangle drawn after
+`backdrop_blur` at a greater Paint Order ID supplies the translucent tint; blur capture does not select widget colors.
 
 The `EditorGUI` package wires this mechanism into popups, tooltips and floating dock panels. It exposes
 `gui.popup.backdrop_softness`, `gui.tooltip.backdrop_softness` and
@@ -355,6 +383,11 @@ Create one GUI renderer for the RHI device and reuse it. `render` generates comm
 ordered plan, uploads resources, records every target transition, and begins and ends all required render/compute
 passes. Call it while the graphics command buffer is recording and outside every pass. It returns outside every pass
 and does not submit the command buffer.
+
+Compilation first replays lexical commands to resolve clips and backdrop relationships, then stable-sorts drawable
+events by Paint Order ID. Within one equal-order range it groups commands by complete backend batch key in
+first-seen-key order while preserving submission order inside each key. Adjacent compatible batches may be
+coalesced when doing so preserves Paint Order.
 
 ```cpp
 Ref<GUI::IRenderer> renderer;
@@ -381,12 +414,12 @@ accumulated target through compute passes, then resume color drawing in a load/s
 single-sample `tex2d` color target with `color_attachment | read_texture` usage. A non-sampleable swapchain target
 remains valid when no live capture is present.
 
-`generate_draw_commands` remains useful when tooling needs to inspect the final ordered stream. It is idempotent
-until a tree, layout, layer, draw configuration, backdrop capture attachment, or stored program mutation invalidates
-the stream.
+`generate_draw_commands` remains useful when tooling needs to inspect the lexical generated stream and assigned Paint
+Order IDs. It is idempotent until a tree, layout, layer, draw configuration, backdrop capture attachment, or stored
+program mutation invalidates the stream.
 
 ## Examples
-### Button chrome from delayed primitive commands
+### Button chrome from a draw callback
 ```cpp
 GUI::DrawConfig button_draw;
 button_draw.name = Name("editor.button");
