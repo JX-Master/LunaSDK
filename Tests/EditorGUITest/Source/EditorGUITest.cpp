@@ -415,6 +415,7 @@ namespace
         context->push_layer(sequential_layer_id, Float2U(0.0f, 64.0f));
         GUI::ElementHandle overlap_root = EditorGUI::begin_canvas_layout(context,
             context->make_id("paint_order.overlap.root"), "Overlapping buttons", root_layout);
+        context->set_child_paint_order_mode(overlap_root, GUI::ChildPaintOrderMode::sequential);
         GUI::ElementHandle overlap_button_a = EditorGUI::text_button(context,
             overlap_button_a_id, "Below", button_layout);
         GUI::ElementHandle overlap_button_b = EditorGUI::text_button(context,

@@ -215,6 +215,7 @@ namespace Luna
             }
             GUI::ElementHandle bar = Internal::begin_element(context, id, label ? label : "Menu Bar",
                 resolved_layout);
+            context->set_child_paint_order_mode(bar, GUI::ChildPaintOrderMode::shared);
             GUI::DrawConfig draw;
             draw.name = Name("gui.menu_bar");
             draw.callback = draw_menu_bar;

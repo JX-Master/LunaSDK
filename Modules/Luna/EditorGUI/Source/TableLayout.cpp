@@ -209,6 +209,7 @@ namespace Luna
             luassert(context && id);
             GUI::ElementHandle element = Internal::begin_element(context, id,
                 label ? label : "Table Layout", layout);
+            context->set_child_paint_order_mode(element, GUI::ChildPaintOrderMode::shared);
             Ref<Internal::TableState> state = Internal::widget_state<Internal::TableState>(context, id);
             Internal::TableBuildScope scope;
             scope.table = element;

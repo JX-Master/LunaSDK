@@ -21,7 +21,9 @@ namespace Luna
                 const GUI::LayoutConfig& layout)
             {
                 luassert(context && id);
-                return begin_element(context, id, label ? label : "Layout", layout);
+                GUI::ElementHandle element = begin_element(context, id, label ? label : "Layout", layout);
+                context->set_child_paint_order_mode(element, GUI::ChildPaintOrderMode::shared);
+                return element;
             }
 
             void set_flex_layout(GUI::IContext* context, const GUI::ElementHandle& element,

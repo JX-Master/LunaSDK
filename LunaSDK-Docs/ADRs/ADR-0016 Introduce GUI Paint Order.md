@@ -40,7 +40,7 @@ Naming the new ordering coordinate as another kind of Layer would make these dis
 
 The required solution must:
 
-1. Preserve exact rendering for overlapping or otherwise order-dependent content.
+1. Preserve defined composition order for overlapping or otherwise order-dependent content.
 2. Let explicitly independent sibling subtrees share ordering positions so compatible commands can batch.
 3. Express top-level GUI Layer ordering through the same rendering-order mechanism.
 4. Preserve lexical clip semantics and ordered framebuffer dependencies such as backdrop capture.
@@ -108,10 +108,33 @@ Each element declares one `ChildPaintOrderMode` for its direct child subtrees:
 2. `shared` gives every child in the current shared run the same initial Paint Order ID and takes the maximum of the
    ranges returned by those children.
 
-Only a container that guarantees independence of the complete painted extents of its relevant children may select
-`shared`. This guarantee includes shadows, negative margins, visual overflow, explicit clips, and custom drawing; it
-must not be inferred solely from the selected layout algorithm. Debug tooling may diagnose suspicious intersections,
-but release command generation performs no geometric overlap analysis.
+GUI core elements default to `sequential`. Selecting `shared` is a performance-oriented composition contract: the
+container grants permission to group compatible commands across its direct child subtrees. If overlapping content,
+negative margins, visual overflow, explicit clips, shadows, or custom drawing require painter order, the container
+must instead select `sequential`. Release command generation performs no geometric overlap analysis.
+
+Minor differences in ornamental overlap, such as one-pixel antialiasing, border, or soft-shadow intersections, are
+acceptable when the containing package deliberately selects `shared`. This does not relax the requirement for
+semantic content: overlapping text, controls, overlays, or other content whose visible result depends on submission
+order must use distinct Paint Order ranges.
+
+### EditorGUI default container policy
+EditorGUI selects `shared` by default for the following containers:
+
+1. Horizontal and vertical Flex layouts.
+2. Grid layouts.
+3. Canvas layouts.
+4. Table layouts.
+5. Menu bars.
+
+These defaults optimize the common case in which sibling widgets occupy independent layout regions. They are package
+policy rather than a proof derived from the layout algorithm. In particular, Canvas intentionally permits children
+to occupy the same rectangle. A caller that uses Canvas, or any other listed container, for order-dependent overlap
+must explicitly call `set_child_paint_order_mode(container, ChildPaintOrderMode::sequential)`.
+
+This explicit opt-out keeps ordinary EditorGUI construction batchable while leaving overlapping composition visible
+at its call site. Containers outside this list retain their existing audited policy, and raw GUI elements retain the
+core `sequential` default.
 
 Containers that require several ordering groups express them through typeless grouping elements. For example, a
 scroll view uses a sequential content subtree followed by a shared scrollbar group. Dock panels may share one group,
@@ -163,15 +186,22 @@ Because Paint Order IDs are dense, a later implementation may use vector buckets
 `O` is the number of occupied Paint Order IDs. Both approaches avoid geometric overlap analysis.
 
 ### Rollout and validation
-The feature is introduced with every element using sequential child ordering. All draw producers migrate to the
+The feature is introduced with GUI core elements using sequential child ordering. All draw producers migrate to the
 explicit Paint Order API before shared child ordering is enabled; the public API provides no legacy strict-order
 submission path.
 
-Shared ordering is then enabled only for audited semantic containers whose complete direct-child painted extents are
-guaranteed not to overlap. Tests cover shared button backgrounds and text, overlapping canvas children, text-input
-selection/text/caret ordering, scroll content and scrollbar grouping, dock panels and splitters, independent GUI
-Layer ranges, nested clips, backdrop capture barriers, and `bring_layer_to_front` range regeneration. RenderDoc
-captures and renderer counters verify reductions in draw calls and backend switches without visual regressions.
+EditorGUI then enables the default shared-container policy above. Known overlapping compositions, including the
+overlapping Canvas Paint Order test, explicitly select `sequential`. Tests cover shared button backgrounds and text,
+overlapping canvas children, text-input selection/text/caret ordering, scroll content and scrollbar grouping, dock
+panels and splitters, independent GUI Layer ranges, nested clips, backdrop capture barriers, and
+`bring_layer_to_front` range regeneration.
+
+The acceptance comparison between the pre-policy and post-policy EditorGUITest RenderDoc captures produced the same
+1,563 instances and 9,378 indices. `DrawIndexedInstanced` calls decreased from 173 to 36, pipeline-state bindings from
+107 to 19, and graphics root descriptor-table bindings from 637 to 133. The full 1440 by 1024 output comparison found
+1.844% exact pixel differences, while only 0.092% of pixels differed by more than 8 in any 8-bit color channel. The
+larger differences were confined to one-pixel container borders and shadow intersections; no text, icon, image, or
+widget content was missing. This level of ornamental variation is accepted for the EditorGUI shared defaults.
 
 ## Impact
 Expected benefits:
@@ -184,6 +214,7 @@ Expected benefits:
 5. The common command-generation path stays linear apart from the initial stable sort.
 6. Every draw site exposes its ordering decision explicitly; accidental legacy barriers cannot silently regress
    batching.
+7. Common EditorGUI layouts batch efficiently without requiring every application call site to opt in separately.
 
 Costs and risks:
 
@@ -195,6 +226,9 @@ Costs and risks:
 5. Backdrop capture, custom operations, and future material systems must correctly declare barriers and complete
    batch keys.
 6. Documentation and diagnostics must consistently distinguish structural GUI Layer from Paint Order.
+7. EditorGUI's performance-oriented defaults make callers responsible for selecting `sequential` when a listed
+   container uses meaningful overlap.
+8. Reordering translucent ornamental overlap may cause accepted sub-pixel or one-pixel border and shadow differences.
 
 ## Alternatives considered
 
@@ -244,6 +278,17 @@ Costs and risks:
     1. Repeated SDF/VG alternation and state changes produce avoidable draw calls.
     2. It ignores independence already known by containers.
 
+### Keep EditorGUI layout containers sequential and opt in at every call site
+* Status: rejected.
+* Pros:
+    1. Keeps every existing layout conservative unless an application explicitly audits it.
+    2. Avoids any accepted ornamental pixel variation by default.
+* Cons:
+    1. Repeats the same policy decision across most ordinary EditorGUI construction sites.
+    2. Leaves substantial batching gains unavailable unless each application performs a broad manual migration.
+    3. Makes the common independent-sibling case verbose while the less common order-dependent overlap remains
+       implicit.
+
 ## Remarks
 This decision extends the GUI logical and rendering layers introduced by [[ADR-0004 Introduce GUI foundation layer]].
 It changes only rendering-order generation and compilation. It does not introduce widget types into GUI, replace GUI
@@ -253,3 +298,6 @@ Layer input semantics, or change the application-owned submission and presentati
 * **2026/9/2** Proposed and approved.
 * **2026/9/3** Removed implicit strict-order draw submission; every draw command now requires an explicit Paint Order
   ID. Regenerated the public `IContext` IID because removing virtual methods changes its ABI.
+* **2026/9/3** Approved `shared` as the EditorGUI default for Flex, Grid, Canvas, Table, and MenuBar containers after
+  RenderDoc validation. Order-dependent overlap must explicitly select `sequential`; minor ornamental border and
+  shadow differences are accepted.
