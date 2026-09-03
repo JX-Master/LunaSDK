@@ -16,21 +16,39 @@ namespace Luna
     {
         namespace Internal
         {
-            EditorGUI::IconName node_type_icon(const NodeTypeView& type)
+            static EditorGUI::IconName node_type_icon(const NodeTypeView& type)
             {
-                const c8* kind = type.schema.type() == VariantType::object ?
-                    type.schema["kind"].c_str("") : "";
-                if(!strcmp(kind, "flex")) return EditorGUI::IconName::rows;
-                if(!strcmp(kind, "canvas")) return EditorGUI::IconName::frame_corners;
-                if(!strcmp(kind, "panel")) return EditorGUI::IconName::squares_four;
-                if(!strcmp(kind, "text")) return EditorGUI::IconName::cursor_text;
-                if(!strcmp(kind, "button")) return EditorGUI::IconName::cursor_click;
-                if(!strcmp(kind, "asset_instance")) return EditorGUI::IconName::package;
+                if(!strcmp(type.name.c_str(), "Flex")) return EditorGUI::IconName::rows;
+                if(!strcmp(type.name.c_str(), "Canvas")) return EditorGUI::IconName::frame_corners;
+                if(!strcmp(type.name.c_str(), "Panel")) return EditorGUI::IconName::squares_four;
+                if(!strcmp(type.name.c_str(), "Text")) return EditorGUI::IconName::cursor_text;
+                if(!strcmp(type.name.c_str(), "Button")) return EditorGUI::IconName::cursor_click;
+                if(!strcmp(type.name.c_str(), "AssetInstance")) return EditorGUI::IconName::package;
                 if(!strcmp(type.category.c_str(), "Layout")) return EditorGUI::IconName::grid_four;
                 if(!strcmp(type.category.c_str(), "Visual")) return EditorGUI::IconName::eye;
                 if(!strcmp(type.category.c_str(), "Input")) return EditorGUI::IconName::hand_tap;
                 if(!strcmp(type.category.c_str(), "Composition")) return EditorGUI::IconName::stack;
                 return EditorGUI::IconName::plus;
+            }
+
+            static bool parent_flex_stretches_size(const DocumentView& document,
+                const PropertyEditor& property)
+            {
+                if(!document.snapshot || property.target != PropertyTarget::node ||
+                    property.desc.editor != EditingPropertyEditor::size || property.size_mode == 0)
+                    return false;
+                bool width = property.desc.id == Name("width");
+                bool height = property.desc.id == Name("height");
+                if(!width && !height) return false;
+                Guid parent_id;
+                usize sibling_index = 0;
+                if(!find_parent_info(*document.snapshot, document.selected_node,
+                    parent_id, sibling_index)) return false;
+                const AuthoringNodeRecord* parent = find_authoring_node(*document.snapshot,
+                    parent_id);
+                if(!parent || parent->type != GameGUI::get_flex_node_type()) return false;
+                bool horizontal = parent->properties["axis"].str() == Name("x");
+                return (width && !horizontal) || (height && horizontal);
             }
 
             void EditorApp::build_hierarchy_node(DocumentView& document, const Guid& node_id,
@@ -278,60 +296,251 @@ namespace Luna
                 if(node)
                 {
                     String type_name = "Unsupported type";
-                    Variant schema;
                     for(const NodeTypeView& type : node_types)
                     {
                         if(type.type == node->type)
                         {
                             type_name = type.display_name;
-                            schema = type.schema;
                             break;
                         }
                     }
                     EditorGUI::text(gui, gui->make_id("inspector.type"), type_name.c_str(),
                         fill_width(30.0f));
-                    String schema_text;
-                    strprintf(schema_text, "Schema: %s", schema["kind"].c_str("unknown"));
-                    EditorGUI::text(gui, gui->make_id("inspector.schema"), schema_text.c_str(),
-                        fill_width(26.0f));
+                    GUI::ElementHandle name_row = EditorGUI::begin_h_layout(gui,
+                        gui->make_id("inspector.node_name.row"), "Name", fill_width(30.0f));
+                    EditorGUI::text(gui, gui->make_id("inspector.node_name.label"), "Name",
+                        fixed_layout(112.0f, 28.0f));
                     EditorGUI::input_text(gui, gui->make_id("inspector.node_name"),
-                        document->node_name, fill_width(30.0f));
+                        document->node_name, fill_width(28.0f));
+                    EditorGUI::end_h_layout(gui, name_row);
                     EditorGUI::ScrollViewDesc scroll_desc;
                     scroll_desc.horizontal = false;
                     EditorGUI::begin_scroll_view(gui, gui->make_id("inspector.properties.scroll"),
                         "Property Inspector", fill_layout(), scroll_desc);
-                    GUI::id_t property_scope = guid_gui_id(gui->make_id("inspector.properties"),
-                        document->selected_node);
-                    for(PropertyEditor& property : document->property_editors)
+
+                    auto draw_section = [&](EditingPropertySection section, const c8* id,
+                        const c8* label, i32 raw_filter)
                     {
-                        GUI::id_t property_id = GUI::make_scoped_id(property_scope,
-                            property.key.c_str());
-                        GUI::ElementHandle row = EditorGUI::begin_v_layout(gui, property_id,
-                            property.key.c_str(), fill_width(56.0f));
-                        EditorGUI::text(gui, GUI::make_scoped_id(property_id, "label"),
-                            property.key.c_str(), fill_width(22.0f));
-                        if(property.original.type() == VariantType::boolean)
+                        bool has_properties = false;
+                        for(const PropertyEditor& property : document->property_editors)
                         {
-                            EditorGUI::checkbox(gui, GUI::make_scoped_id(property_id, "value"),
-                                "Enabled", &property.boolean, fill_width(28.0f));
+                            if(property.desc.section == section &&
+                                (raw_filter < 0 || property.raw == (raw_filter != 0)))
+                            {
+                                has_properties = true;
+                                break;
+                            }
                         }
-                        else
+                        if(!has_properties && raw_filter != 0) return;
+                        GUI::id_t section_id = gui->make_id(id);
+                        if(!EditorGUI::collapsing_header(gui, section_id, label,
+                            fill_width(30.0f))) return;
+                        if(!has_properties)
                         {
-                            EditorGUI::input_text(gui, GUI::make_scoped_id(property_id, "value"),
-                                property.text, fill_width(28.0f));
+                            String empty_message;
+                            strprintf(empty_message, "No %s fields.", label);
+                            EditorGUI::text(gui, GUI::make_scoped_id(section_id, "empty"),
+                                empty_message.c_str(), fill_width(24.0f));
+                            return;
                         }
-                        EditorGUI::end_v_layout(gui, row);
-                    }
-                    GUI::ElementHandle add_row = EditorGUI::begin_v_layout(gui,
-                        gui->make_id("inspector.add_property.row"), "Add Property", fill_width(86.0f));
-                    EditorGUI::input_text(gui, gui->make_id("inspector.add_property.name"),
-                        document->new_property_name, fill_width(26.0f));
-                    EditorGUI::input_text(gui, gui->make_id("inspector.add_property.value"),
-                        document->new_property_value, fill_width(26.0f));
-                    handles.add_property = EditorGUI::text_button(gui,
-                        gui->make_id("inspector.add_property.button"), "Add JSON Property",
-                        fill_width(28.0f));
-                    EditorGUI::end_v_layout(gui, add_row);
+                        GUI::id_t node_scope = guid_gui_id(section_id,
+                            document->selected_node);
+                        for(usize property_index = 0;
+                            property_index < document->property_editors.size(); ++property_index)
+                        {
+                            PropertyEditor& property =
+                                document->property_editors[property_index];
+                            if(property.desc.section != section ||
+                                (raw_filter >= 0 && property.raw != (raw_filter != 0))) continue;
+                            GUI::id_t target_scope = GUI::make_scoped_id(node_scope,
+                                property.target == PropertyTarget::node ? "node" : "attachment");
+                            GUI::id_t property_id = GUI::make_scoped_id(target_scope,
+                                property.desc.id.c_str());
+                            bool stretched_size = parent_flex_stretches_size(*document, property);
+                            bool stacked = property.desc.editor == EditingPropertyEditor::float2 ||
+                                property.desc.editor == EditingPropertyEditor::float4 ||
+                                property.desc.editor == EditingPropertyEditor::color ||
+                                property.desc.editor == EditingPropertyEditor::size ||
+                                property.desc.editor == EditingPropertyEditor::asset ||
+                                property.desc.editor == EditingPropertyEditor::json;
+                            f32 row_height = property.desc.editor == EditingPropertyEditor::float4 ?
+                                142.0f : (stretched_size ? 86.0f : 58.0f);
+                            GUI::ElementHandle row = stacked ?
+                                EditorGUI::begin_v_layout(gui, property_id,
+                                    property.desc.display_name.c_str(), fill_width(row_height)) :
+                                EditorGUI::begin_h_layout(gui, property_id,
+                                    property.desc.display_name.c_str(), fill_width(32.0f));
+                            EditorGUI::text(gui, GUI::make_scoped_id(property_id, "label"),
+                                property.desc.display_name.c_str(), stacked ?
+                                fill_width(24.0f) : fixed_layout(112.0f, 28.0f));
+                            GUI::ElementHandle control;
+                            f32 minimum = property.desc.bounded ?
+                                (f32)property.desc.minimum : 0.0f;
+                            f32 maximum = property.desc.bounded ?
+                                (f32)property.desc.maximum : 0.0f;
+                            EditorGUI::DragDesc drag_desc;
+                            drag_desc.speed = (f32)property.desc.step;
+                            switch(property.desc.editor)
+                            {
+                            case EditingPropertyEditor::boolean:
+                                control = EditorGUI::checkbox(gui,
+                                    GUI::make_scoped_id(property_id, "value"), "",
+                                    &property.boolean, fill_width(28.0f));
+                                break;
+                            case EditingPropertyEditor::number:
+                                control = EditorGUI::drag_float(gui,
+                                    GUI::make_scoped_id(property_id, "value"), &property.number,
+                                    minimum, maximum, fill_width(28.0f), drag_desc);
+                                break;
+                            case EditingPropertyEditor::string:
+                            case EditingPropertyEditor::name:
+                            case EditingPropertyEditor::json:
+                                control = EditorGUI::input_text(gui,
+                                    GUI::make_scoped_id(property_id, "value"), property.text,
+                                    fill_width(28.0f));
+                                break;
+                            case EditingPropertyEditor::enumeration:
+                            {
+                                Vector<const c8*> items;
+                                items.reserve(property.desc.enumeration_items.size());
+                                for(const EditingEnumItemDesc& item :
+                                    property.desc.enumeration_items)
+                                    items.push_back(item.display_name.c_str());
+                                control = EditorGUI::combo(gui,
+                                    GUI::make_scoped_id(property_id, "value"),
+                                    property.desc.display_name.c_str(), &property.selected_item,
+                                    Span<const c8*>(items.data(), items.size()), fill_width(28.0f));
+                                break;
+                            }
+                            case EditingPropertyEditor::float2:
+                                control = EditorGUI::drag_float2(gui,
+                                    GUI::make_scoped_id(property_id, "value"), property.vector,
+                                    minimum, maximum, fill_width(28.0f), drag_desc);
+                                break;
+                            case EditingPropertyEditor::float4:
+                            {
+                                const c8* side_ids[] = {"left", "top", "right", "bottom"};
+                                const c8* side_labels[] = {"Left", "Top", "Right", "Bottom"};
+                                for(usize side = 0; side < 4; ++side)
+                                {
+                                    GUI::id_t side_id = GUI::make_scoped_id(property_id,
+                                        side_ids[side]);
+                                    GUI::ElementHandle side_row = EditorGUI::begin_h_layout(gui,
+                                        side_id, side_labels[side], fill_width(28.0f));
+                                    GUI::LayoutConfig label_layout = fixed_layout(64.0f, 28.0f);
+                                    label_layout.flex_shrink = 0.0f;
+                                    EditorGUI::text(gui, GUI::make_scoped_id(side_id, "label"),
+                                        side_labels[side], label_layout);
+                                    GUI::ElementHandle side_control = EditorGUI::drag_float(gui,
+                                        GUI::make_scoped_id(side_id, "value"),
+                                        property.vector + side, minimum, maximum,
+                                        fill_width(28.0f), drag_desc);
+                                    if(!control.id) control = side_control;
+                                    EditorGUI::end_h_layout(gui, side_row);
+                                }
+                                break;
+                            }
+                            case EditingPropertyEditor::color:
+                                control = EditorGUI::color_edit4(gui,
+                                    GUI::make_scoped_id(property_id, "value"),
+                                    property.desc.display_name.c_str(), property.vector,
+                                    fill_width(28.0f));
+                                break;
+                            case EditingPropertyEditor::size:
+                            {
+                                GUI::ElementHandle size_row = EditorGUI::begin_h_layout(gui,
+                                    GUI::make_scoped_id(property_id, "value"), "Size",
+                                    fill_width(28.0f));
+                                const c8* modes[] = {"Auto", "Fixed", "Percent"};
+                                GUI::LayoutConfig mode_layout = fixed_layout(112.0f, 28.0f);
+                                mode_layout.flex_shrink = 0.0f;
+                                control = EditorGUI::combo(gui,
+                                    GUI::make_scoped_id(property_id, "mode"), "Size Mode",
+                                    &property.size_mode, Span<const c8*>(modes, 3),
+                                    mode_layout);
+                                if(property.size_mode != 0)
+                                {
+                                    EditorGUI::drag_float(gui,
+                                        GUI::make_scoped_id(property_id, "size"), &property.number,
+                                        minimum, maximum, fill_width(28.0f), drag_desc);
+                                    if(property.size_mode == 2)
+                                    {
+                                        EditorGUI::text(gui,
+                                            GUI::make_scoped_id(property_id, "percent_suffix"), "%",
+                                            fixed_layout(14.0f, 28.0f));
+                                    }
+                                }
+                                GUI::FlexLayoutDesc flex;
+                                flex.main_axis_gap = 4.0f;
+                                EditorGUI::end_h_layout(gui, size_row, flex);
+                                if(stretched_size)
+                                {
+                                    GUI::ElementHandle warning_row = EditorGUI::begin_h_layout(gui,
+                                        GUI::make_scoped_id(property_id, "stretch_warning"),
+                                        "Stretch Warning", fill_width(24.0f));
+                                    EditorGUI::IconDesc icon_desc;
+                                    icon_desc.tint = Float4U(0.957f, 0.678f, 0.184f, 1.0f);
+                                    icon_desc.size = 15.0f;
+                                    EditorGUI::icon(gui,
+                                        GUI::make_scoped_id(property_id, "stretch_warning.icon"),
+                                        EditorGUI::IconName::warning, fixed_layout(18.0f, 22.0f),
+                                        icon_desc);
+                                    String warning;
+                                    strprintf(warning, "Parent Flex Stretch overrides %s.",
+                                        property.desc.display_name.c_str());
+                                    EditorGUI::TextDesc text_desc;
+                                    text_desc.typography = EditorGUI::TypographyRole::caption;
+                                    text_desc.color = icon_desc.tint;
+                                    EditorGUI::text(gui,
+                                        GUI::make_scoped_id(property_id, "stretch_warning.text"),
+                                        warning.c_str(), fill_width(22.0f), text_desc);
+                                    GUI::FlexLayoutDesc warning_flex;
+                                    warning_flex.axis = GUI::LayoutAxis::x;
+                                    warning_flex.cross_alignment = GUI::FlexAlignment::center;
+                                    warning_flex.main_axis_gap = 4.0f;
+                                    EditorGUI::end_h_layout(gui, warning_row, warning_flex);
+                                }
+                                break;
+                            }
+                            case EditingPropertyEditor::asset:
+                            {
+                                GUI::ElementHandle asset_row = EditorGUI::begin_h_layout(gui,
+                                    GUI::make_scoped_id(property_id, "value"), "Asset",
+                                    fill_width(28.0f));
+                                control = EditorGUI::input_text(gui,
+                                    GUI::make_scoped_id(property_id, "asset_guid"), property.text,
+                                    fill_width(28.0f));
+                                PropertyActionHit hit;
+                                hit.property_index = property_index;
+                                hit.element = EditorGUI::text_button(gui,
+                                    GUI::make_scoped_id(property_id, "browse"), "...",
+                                    fixed_layout(32.0f, 28.0f));
+                                handles.browse_assets.push_back(hit);
+                                GUI::FlexLayoutDesc flex;
+                                flex.main_axis_gap = 4.0f;
+                                EditorGUI::end_h_layout(gui, asset_row, flex);
+                                break;
+                            }
+                            }
+                            if(!property.desc.description.empty() && control.id)
+                            {
+                                EditorGUI::set_item_tooltip(gui,
+                                    GUI::make_scoped_id(property_id, "tooltip"), control,
+                                    property.desc.description.c_str());
+                            }
+                            if(stacked) EditorGUI::end_v_layout(gui, row);
+                            else EditorGUI::end_h_layout(gui, row);
+                        }
+                    };
+
+                    draw_section(EditingPropertySection::layout,
+                        "inspector.section.layout", "Layout", 0);
+                    draw_section(EditingPropertySection::style,
+                        "inspector.section.style", "Style", 0);
+                    draw_section(EditingPropertySection::property,
+                        "inspector.section.properties", "Properties", 0);
+                    draw_section(EditingPropertySection::property,
+                        "inspector.section.raw", "Raw / Unknown Properties", 1);
                     EditorGUI::end_scroll_view(gui);
                 }
                 EditorGUI::end_v_layout(gui, root);

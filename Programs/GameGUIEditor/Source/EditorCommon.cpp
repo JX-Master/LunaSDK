@@ -9,7 +9,6 @@
 */
 #include "EditorApp.hpp"
 #include <Luna/VariantUtils/JSON.hpp>
-#include <cstdlib>
 
 namespace Luna
 {
@@ -103,38 +102,111 @@ namespace Luna
                 }
             }
 
+            bool decode_editing_schema(const Variant& value, EditingSchema& schema)
+            {
+                if(value.type() != VariantType::object ||
+                    value["properties"].type() != VariantType::array)
+                    return false;
+                schema.properties.clear();
+                for(const Variant& encoded : value["properties"].values())
+                {
+                    if(encoded.type() != VariantType::object) return false;
+                    EditingPropertyDesc property;
+                    property.id = encoded["id"].str();
+                    property.alternate_id = encoded["alternate_id"].str();
+                    property.display_name = encoded["display_name"].c_str();
+                    property.description = encoded["description"].c_str();
+                    if(property.id.empty() || property.display_name.empty()) return false;
+
+                    Name section = encoded["section"].str();
+                    if(section == Name("layout"))
+                        property.section = EditingPropertySection::layout;
+                    else if(section == Name("style"))
+                        property.section = EditingPropertySection::style;
+                    else if(section == Name("property"))
+                        property.section = EditingPropertySection::property;
+                    else return false;
+
+                    Name editor = encoded["editor"].str();
+                    if(editor == Name("boolean")) property.editor = EditingPropertyEditor::boolean;
+                    else if(editor == Name("number")) property.editor = EditingPropertyEditor::number;
+                    else if(editor == Name("string")) property.editor = EditingPropertyEditor::string;
+                    else if(editor == Name("name")) property.editor = EditingPropertyEditor::name;
+                    else if(editor == Name("enumeration"))
+                        property.editor = EditingPropertyEditor::enumeration;
+                    else if(editor == Name("float2")) property.editor = EditingPropertyEditor::float2;
+                    else if(editor == Name("float4")) property.editor = EditingPropertyEditor::float4;
+                    else if(editor == Name("color")) property.editor = EditingPropertyEditor::color;
+                    else if(editor == Name("size")) property.editor = EditingPropertyEditor::size;
+                    else if(editor == Name("asset")) property.editor = EditingPropertyEditor::asset;
+                    else if(editor == Name("json")) property.editor = EditingPropertyEditor::json;
+                    else return false;
+
+                    property.has_default = encoded["has_default"].boolean();
+                    if(property.has_default) property.default_value = encoded["default_value"];
+                    property.optional = encoded["optional"].boolean(true);
+                    property.bounded = encoded["bounded"].boolean();
+                    property.minimum = encoded["minimum"].fnum();
+                    property.maximum = encoded["maximum"].fnum();
+                    property.step = encoded["step"].fnum(0.1);
+                    property.asset_type = encoded["asset_type"].str();
+                    const Variant& items = encoded["items"];
+                    if(items.valid())
+                    {
+                        if(items.type() != VariantType::array) return false;
+                        for(const Variant& encoded_item : items.values())
+                        {
+                            EditingEnumItemDesc item;
+                            item.value = encoded_item["value"].str();
+                            item.display_name = encoded_item["display_name"].c_str();
+                            if(item.value.empty() || item.display_name.empty()) return false;
+                            property.enumeration_items.push_back(move(item));
+                        }
+                    }
+                    if(property.editor == EditingPropertyEditor::size &&
+                        property.alternate_id.empty()) return false;
+                    if(property.editor == EditingPropertyEditor::enumeration &&
+                        property.enumeration_items.empty()) return false;
+                    schema.properties.push_back(move(property));
+                }
+                return true;
+            }
+
+            Variant make_editor_vector(const f32* values, usize count)
+            {
+                Variant result(VariantType::array);
+                for(usize i = 0; i < count; ++i) result.push_back((f64)values[i]);
+                return result;
+            }
+
             R<Variant> property_value(const PropertyEditor& editor)
             {
-                switch(editor.original.type())
+                switch(editor.desc.editor)
                 {
-                case VariantType::string: return Variant(editor.text.c_str());
-                case VariantType::boolean: return Variant(editor.boolean);
-                case VariantType::number:
-                    if(editor.original.number_type() == VariantNumberType::number_i64)
-                    {
-                        c8* end = nullptr;
-                        i64 value = (i64)strtoll(editor.text.c_str(), &end, 10);
-                        if(!end || *end) return set_error(E_BAD_DATA, "Invalid signed integer property value.");
-                        return Variant(value);
-                    }
-                    if(editor.original.number_type() == VariantNumberType::number_u64)
-                    {
-                        c8* end = nullptr;
-                        u64 value = (u64)strtoull(editor.text.c_str(), &end, 10);
-                        if(!end || *end) return set_error(E_BAD_DATA, "Invalid unsigned integer property value.");
-                        return Variant(value);
-                    }
-                    else
-                    {
-                        c8* end = nullptr;
-                        f64 value = strtod(editor.text.c_str(), &end);
-                        if(!end || *end) return set_error(E_BAD_DATA, "Invalid floating-point property value.");
-                        return Variant(value);
-                    }
-                default:
+                case EditingPropertyEditor::boolean: return Variant(editor.boolean);
+                case EditingPropertyEditor::number: return Variant((f64)editor.number);
+                case EditingPropertyEditor::string:
+                case EditingPropertyEditor::name:
+                case EditingPropertyEditor::asset:
+                    return Variant(editor.text.c_str());
+                case EditingPropertyEditor::enumeration:
+                    if(editor.selected_item < 0 ||
+                        (usize)editor.selected_item >= editor.desc.enumeration_items.size())
+                        return E_BAD_DATA;
+                    return Variant(editor.desc.enumeration_items[(usize)editor.selected_item].value);
+                case EditingPropertyEditor::float2:
+                    return make_editor_vector(editor.vector, 2);
+                case EditingPropertyEditor::float4:
+                case EditingPropertyEditor::color:
+                    return make_editor_vector(editor.vector, 4);
+                case EditingPropertyEditor::size:
+                    return Variant((f64)(editor.size_mode == 2 ?
+                        editor.number * 0.01f : editor.number));
+                case EditingPropertyEditor::json:
                     return VariantUtils::read_json(editor.text.c_str(), editor.text.size(),
                         VariantUtils::JSONReadOptions::strict());
                 }
+                return E_BAD_DATA;
             }
 
             bool point_in_rect(const RectF& rect, const Float2U& point)

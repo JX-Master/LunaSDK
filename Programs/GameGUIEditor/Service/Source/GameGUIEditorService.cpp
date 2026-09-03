@@ -431,6 +431,78 @@ namespace Luna
                 return E_FAILURE;
             }
 
+            const c8* editing_section_name(EditingPropertySection section)
+            {
+                switch(section)
+                {
+                case EditingPropertySection::layout: return "layout";
+                case EditingPropertySection::style: return "style";
+                case EditingPropertySection::property: return "property";
+                }
+                return "property";
+            }
+
+            const c8* editing_editor_name(EditingPropertyEditor editor)
+            {
+                switch(editor)
+                {
+                case EditingPropertyEditor::boolean: return "boolean";
+                case EditingPropertyEditor::number: return "number";
+                case EditingPropertyEditor::string: return "string";
+                case EditingPropertyEditor::name: return "name";
+                case EditingPropertyEditor::enumeration: return "enumeration";
+                case EditingPropertyEditor::float2: return "float2";
+                case EditingPropertyEditor::float4: return "float4";
+                case EditingPropertyEditor::color: return "color";
+                case EditingPropertyEditor::size: return "size";
+                case EditingPropertyEditor::asset: return "asset";
+                case EditingPropertyEditor::json: return "json";
+                }
+                return "json";
+            }
+
+            Variant editing_schema_variant(const EditingSchema& schema)
+            {
+                Variant result(VariantType::object);
+                Variant properties(VariantType::array);
+                for(const EditingPropertyDesc& desc : schema.properties)
+                {
+                    Variant property(VariantType::object);
+                    property["id"] = desc.id;
+                    if(!desc.alternate_id.empty()) property["alternate_id"] = desc.alternate_id;
+                    property["display_name"] = desc.display_name.c_str();
+                    if(!desc.description.empty()) property["description"] = desc.description.c_str();
+                    property["section"] = editing_section_name(desc.section);
+                    property["editor"] = editing_editor_name(desc.editor);
+                    property["has_default"] = desc.has_default;
+                    if(desc.has_default) property["default_value"] = desc.default_value;
+                    property["optional"] = desc.optional;
+                    property["bounded"] = desc.bounded;
+                    if(desc.bounded)
+                    {
+                        property["minimum"] = desc.minimum;
+                        property["maximum"] = desc.maximum;
+                    }
+                    property["step"] = desc.step;
+                    if(!desc.enumeration_items.empty())
+                    {
+                        Variant items(VariantType::array);
+                        for(const EditingEnumItemDesc& item_desc : desc.enumeration_items)
+                        {
+                            Variant item(VariantType::object);
+                            item["value"] = item_desc.value;
+                            item["display_name"] = item_desc.display_name.c_str();
+                            items.push_back(move(item));
+                        }
+                        property["items"] = move(items);
+                    }
+                    if(!desc.asset_type.empty()) property["asset_type"] = desc.asset_type;
+                    properties.push_back(move(property));
+                }
+                result["properties"] = move(properties);
+                return result;
+            }
+
             Variant node_type_variant(const AuthoringNodeTypeDesc& desc)
             {
                 Variant result(VariantType::object);
@@ -439,11 +511,10 @@ namespace Luna
                 result["display_name"] = desc.display_name;
                 result["category"] = desc.category;
                 result["current_version"] = (u64)desc.current_version;
-                result["property_schema"] = desc.property_schema;
-                result["event_schema"] = desc.event_schema;
+                result["property_schema"] = editing_schema_variant(desc.property_schema);
+                result["child_attachment_schema"] =
+                    editing_schema_variant(desc.child_attachment_schema);
                 result["slot_schema"] = desc.slot_schema;
-                result["style_schema"] = desc.style_schema;
-                result["layout_schema"] = desc.layout_schema;
                 result["default_properties"] = desc.default_properties;
                 auto runtime = GameGUI::get_node_type(desc.type);
                 result["nested_document"] = runtime.valid() && runtime.get().nested_document;

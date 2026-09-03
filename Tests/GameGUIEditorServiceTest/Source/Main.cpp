@@ -75,6 +75,76 @@ namespace
         return command;
     }
 
+    const Variant* find_node_type_schema(const Variant& schemas, const c8* name)
+    {
+        for(const Variant& schema : schemas.values())
+        {
+            if(schema["name"].str() == Name(name)) return &schema;
+        }
+        return nullptr;
+    }
+
+    const Variant* find_editing_property(const Variant& schema, const c8* id)
+    {
+        for(const Variant& property : schema["properties"].values())
+        {
+            if(property["id"].str() == Name(id)) return &property;
+        }
+        return nullptr;
+    }
+
+    void editing_schema_test(const Variant& schemas)
+    {
+        lutest(schemas.type() == VariantType::array && schemas.size() >= 6);
+        for(const Variant& node_type : schemas.values())
+        {
+            const Variant& property_schema = node_type["property_schema"];
+            const Variant& attachment_schema = node_type["child_attachment_schema"];
+            lutest(property_schema.type() == VariantType::object &&
+                property_schema["properties"].type() == VariantType::array);
+            lutest(attachment_schema.type() == VariantType::object &&
+                attachment_schema["properties"].type() == VariantType::array);
+            const Variant& properties = property_schema["properties"];
+            for(usize i = 0; i < properties.size(); ++i)
+            {
+                lutest(!properties[i]["id"].str().empty());
+                lutest(!properties[i]["display_name"].str().empty());
+                for(usize j = i + 1; j < properties.size(); ++j)
+                    lutest(properties[i]["id"].str() != properties[j]["id"].str());
+            }
+        }
+
+        const Variant* flex = find_node_type_schema(schemas, "Flex");
+        const Variant* canvas = find_node_type_schema(schemas, "Canvas");
+        const Variant* panel = find_node_type_schema(schemas, "Panel");
+        const Variant* text = find_node_type_schema(schemas, "Text");
+        const Variant* button = find_node_type_schema(schemas, "Button");
+        const Variant* asset_instance = find_node_type_schema(schemas, "AssetInstance");
+        lutest(flex && canvas && panel && text && button && asset_instance);
+
+        const Variant* width = find_editing_property((*flex)["property_schema"], "width");
+        lutest(width && (*width)["section"].str() == Name("layout") &&
+            (*width)["editor"].str() == Name("size") &&
+            (*width)["alternate_id"].str() == Name("width_percent"));
+        const Variant* color = find_editing_property((*panel)["property_schema"], "color");
+        lutest(color && (*color)["section"].str() == Name("style") &&
+            (*color)["editor"].str() == Name("color"));
+        const Variant* content = find_editing_property((*text)["property_schema"], "text");
+        lutest(content && (*content)["section"].str() == Name("property"));
+        const Variant* action = find_editing_property((*button)["property_schema"], "action");
+        lutest(action && (*action)["editor"].str() == Name("name"));
+        const Variant* asset = find_editing_property((*asset_instance)["property_schema"], "asset");
+        lutest(asset && (*asset)["editor"].str() == Name("asset") &&
+            (*asset)["asset_type"].str() == GameGUI::get_asset_type());
+
+        const Variant& canvas_attachment = (*canvas)["child_attachment_schema"];
+        lutest(canvas_attachment["properties"].size() == 4);
+        lutest(find_editing_property(canvas_attachment, "anchor_min"));
+        lutest(find_editing_property(canvas_attachment, "anchor_max"));
+        lutest(find_editing_property(canvas_attachment, "offset"));
+        lutest(find_editing_property(canvas_attachment, "pivot"));
+    }
+
     void remove_file_if_present(const c8* path)
     {
         RV result = VFS::delete_file(path);
@@ -159,7 +229,7 @@ namespace
         Variant listed = invoke(frontend, GameGUIEditor::LIST_DOCUMENTS_URL);
         lutest(listed.type() == VariantType::array && listed.size() == 2);
         Variant schemas = invoke(frontend, GameGUIEditor::GET_NODE_TYPES_URL);
-        lutest(schemas.type() == VariantType::array && schemas.size() >= 6);
+        editing_schema_test(schemas);
 
         Variant snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
             document_params(first));
@@ -184,7 +254,7 @@ namespace
         Variant insert_parent(VariantType::object);
         insert_parent["kind"] = "insert_node";
         insert_parent["parent"] = guid_string(root).c_str();
-        insert_parent["type"] = guid_string(GameGUI::get_flex_node_type()).c_str();
+        insert_parent["type"] = guid_string(GameGUI::get_canvas_node_type()).c_str();
         insert_parent["name"] = "Container";
         Variant parent_inserted = invoke(frontend, GameGUIEditor::APPLY_COMMANDS_URL,
             command_batch(edit, move(insert_parent), "Insert container"));
@@ -239,6 +309,24 @@ namespace
         lutest(reparented_root && reparented_root->children.size() == 2);
         lutest(reparented_container && reparented_container->children.size() == 1);
         lutest(reparented_container->children[0].child == child);
+
+        Variant attachment(VariantType::object);
+        attachment["anchor_min"] = Variant(VariantType::array);
+        attachment["anchor_min"].push_back(0.25);
+        attachment["anchor_min"].push_back(0.5);
+        Variant set_attachment(VariantType::object);
+        set_attachment["kind"] = "set_attachment";
+        set_attachment["node"] = guid_string(child).c_str();
+        set_attachment["attachment"] = move(attachment);
+        edit = invoke(frontend, GameGUIEditor::APPLY_COMMANDS_URL,
+            command_batch(edit, move(set_attachment), "Edit canvas attachment"));
+        snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
+            document_params(edit));
+        document_result = decode_snapshot(snapshot["document"]);
+        lutest(document_result.valid());
+        reparented_container = GameGUI::find_node(*document_result.get(), container);
+        lutest(reparented_container &&
+            reparented_container->children[0].attachment["anchor_min"].size() == 2);
 
         Variant set_root(VariantType::object);
         set_root["kind"] = "set_root";
@@ -296,8 +384,16 @@ namespace
             command_batch(first_text, move(property), "Edit text", "text-edit"));
         lutest(second_text["history_state"] == first_text["history_state"]);
 
+        property = set_property_command(child, "width", 320.0);
+        Variant different_field = invoke(frontend, GameGUIEditor::APPLY_COMMANDS_URL,
+            command_batch(second_text, move(property), "Edit width", "width-edit"));
+        lutest(different_field["history_state"] != second_text["history_state"]);
+        Variant back_to_text = invoke(frontend, GameGUIEditor::UNDO_URL,
+            document_params(different_field));
+        lutest(back_to_text["history_state"] == second_text["history_state"]);
+
         Variant undone = invoke(frontend, GameGUIEditor::UNDO_URL,
-            document_params(second_text));
+            document_params(back_to_text));
         snapshot = invoke(frontend, GameGUIEditor::GET_SNAPSHOT_URL,
             document_params(undone));
         document_result = decode_snapshot(snapshot["document"]);

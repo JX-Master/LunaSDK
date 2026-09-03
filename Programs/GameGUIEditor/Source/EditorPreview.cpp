@@ -44,6 +44,88 @@ namespace Luna
                     center.y + (surface_position.y - center.y - preview.pan.y) / preview.zoom);
             }
 
+            static void enable_preview_node_hit_testing(DocumentView& document)
+            {
+                PreviewState& preview = document.preview;
+                if(!preview.context || !preview.instance) return;
+                for(const GameGUI::GeneratedNodeInfo& generated :
+                    preview.instance->get_generated_nodes())
+                {
+                    GUI::ElementHandle handle = preview.context->find_element_handle(
+                        generated.root_element_id);
+                    const GUI::Element* element = preview.context->get_element(handle.index);
+                    if(!element || element->id != handle.id ||
+                        element->interactable.pointer_hit_behavior !=
+                            GUI::PointerHitBehavior::none)
+                    {
+                        continue;
+                    }
+                    GUI::Interactable interactable = element->interactable;
+                    interactable.pointer_hit_behavior = GUI::PointerHitBehavior::pass_through;
+                    preview.context->set_interactable(handle, interactable);
+                }
+            }
+
+            static bool find_preview_node_from_element(const DocumentView& document,
+                const GUI::Element* element, Guid& node, GUI::id_t& root_element_id)
+            {
+                const PreviewState& preview = document.preview;
+                if(!preview.context || !preview.instance || !document.snapshot) return false;
+                Span<const GameGUI::GeneratedNodeInfo> generated_nodes =
+                    preview.instance->get_generated_nodes();
+                while(element)
+                {
+                    for(const GameGUI::GeneratedNodeInfo& generated : generated_nodes)
+                    {
+                        if(generated.root_element_id == element->id &&
+                            find_authoring_node(*document.snapshot, generated.node))
+                        {
+                            node = generated.node;
+                            root_element_id = generated.root_element_id;
+                            return true;
+                        }
+                    }
+                    if(element->parent == GUI::INVALID_ELEMENT) break;
+                    element = preview.context->get_element(element->parent);
+                }
+                return false;
+            }
+
+            static void select_preview_node(DocumentView& document,
+                const Float2U& position)
+            {
+                PreviewState& preview = document.preview;
+                if(!preview.context || !preview.instance || !document.snapshot) return;
+                Guid selected_node;
+                GUI::id_t selected_element_id = 0;
+                preview.context->hit_test(position, [&](const GUI::HitTestVisit& visit)
+                {
+                    if(selected_node != Guid()) return;
+                    find_preview_node_from_element(document, visit.element_data,
+                        selected_node, selected_element_id);
+                });
+                if(selected_node == Guid()) return;
+                document.selected_node = selected_node;
+                document.inspector_revision = 0;
+                preview.selected_element_id = selected_element_id;
+            }
+
+            static void update_preview_selected_element(DocumentView& document)
+            {
+                PreviewState& preview = document.preview;
+                preview.selected_element_id = 0;
+                if(!preview.instance) return;
+                for(const GameGUI::GeneratedNodeInfo& generated :
+                    preview.instance->get_generated_nodes())
+                {
+                    if(generated.node == document.selected_node)
+                    {
+                        preview.selected_element_id = generated.root_element_id;
+                        return;
+                    }
+                }
+            }
+
             R<GUI::paint_order_id_t> draw_preview_background(GUI::IContext* context,
                 const GUI::ElementHandle& element, GUI::DrawPhase phase,
                 GUI::paint_order_id_t paint_order_id, void* userdata)
@@ -101,6 +183,41 @@ namespace Luna
                 GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 PreviewState& preview = *(PreviewState*)userdata;
+                const GUI::Element* selected = context->find_element(
+                    preview.selected_element_id);
+                const GUI::Element* overlay = context->get_element(element.index);
+                Span<const GUI::Layer> layers = context->get_layers();
+                if(selected && overlay && overlay->id == element.id &&
+                    selected->layer < layers.size() && overlay->layer < layers.size())
+                {
+                    const Float2U& selected_layer = layers[selected->layer].screen_position;
+                    const Float2U& overlay_layer = layers[overlay->layer].screen_position;
+                    RectF rect = selected->layout_result.rect;
+                    rect.offset_x += selected_layer.x - overlay_layer.x;
+                    rect.offset_y += selected_layer.y - overlay_layer.y;
+                    f32 thickness = min(2.0f / preview.zoom,
+                        min(rect.width, rect.height) * 0.5f);
+                    if(thickness > 0.0f)
+                    {
+                        GUI::DrawCommand border;
+                        border.type = GUI::DrawCommandType::rect;
+                        border.rect_reference = GUI::DrawCommandRectReference::layer;
+                        border.color = Float4U(0.96f, 0.34f, 0.44f, 1.0f);
+                        border.rect = RectF(rect.offset_x, rect.offset_y,
+                            rect.width, thickness);
+                        context->draw(border, paint_order_id);
+                        border.rect = RectF(rect.offset_x,
+                            rect.offset_y + rect.height - thickness, rect.width, thickness);
+                        context->draw(border, paint_order_id);
+                        border.rect = RectF(rect.offset_x, rect.offset_y,
+                            thickness, rect.height);
+                        context->draw(border, paint_order_id);
+                        border.rect = RectF(rect.offset_x + rect.width - thickness,
+                            rect.offset_y, thickness, rect.height);
+                        context->draw(border, paint_order_id);
+                        ++paint_order_id;
+                    }
+                }
                 constexpr f32 BADGE_WIDTH = 68.0f;
                 constexpr f32 BADGE_HEIGHT = 26.0f;
                 constexpr f32 BADGE_MARGIN = 8.0f;
@@ -471,6 +588,8 @@ namespace Luna
                     GUI::ElementHandle root;
                     if(document.preview.instance)
                         luset(root, document.preview.instance->build(document.preview.context));
+                    enable_preview_node_hit_testing(document);
+                    update_preview_selected_element(document);
                     if(root.id)
                     {
                         const GUI::Element* root_element =
@@ -530,6 +649,14 @@ namespace Luna
                     luexp(document.preview.context->apply_layout(preview_node,
                         RectF(0.0f, 0.0f, document.preview.node_size.x,
                             document.preview.node_size.y)));
+                    for(const GUI::InputEvent& event : input)
+                    {
+                        if(event.type == GUI::InputEventType::pointer_down &&
+                            event.button == GUI::PointerButton::left)
+                        {
+                            select_preview_node(document, event.position);
+                        }
+                    }
                     document.preview.context->route_input();
                     bool preview_resized = process_preview_resize(document.preview,
                         resize_handle);

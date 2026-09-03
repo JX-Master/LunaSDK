@@ -8,7 +8,7 @@
 * @date 2026/8/28
 */
 #include "EditorApp.hpp"
-#include <Luna/VariantUtils/JSON.hpp>
+#include <Luna/Window/FileDialog.hpp>
 
 namespace Luna
 {
@@ -60,6 +60,21 @@ namespace Luna
                     document.selected_node);
                 if(!node) return;
                 Variant commands(VariantType::array);
+                usize changed_field_count = 0;
+                String coalesce_key;
+                auto mark_changed = [&](const c8* target, const Name& property)
+                {
+                    ++changed_field_count;
+                    if(changed_field_count == 1)
+                    {
+                        coalesce_key = guid_string(node->id);
+                        coalesce_key.append(".");
+                        coalesce_key.append(target);
+                        coalesce_key.append(".");
+                        coalesce_key.append(property.c_str());
+                    }
+                    else coalesce_key.clear();
+                };
                 if(Name(document.node_name.c_str()) != node->name)
                 {
                     Variant command(VariantType::object);
@@ -67,6 +82,22 @@ namespace Luna
                     command["node"] = guid_string(node->id).c_str();
                     command["name"] = document.node_name.c_str();
                     commands.push_back(move(command));
+                    mark_changed("node", "name");
+                }
+
+                Variant attachment(VariantType::object);
+                bool attachment_changed = false;
+                Guid parent_id;
+                usize sibling_index = 0;
+                if(find_parent_info(*document.snapshot, node->id, parent_id, sibling_index))
+                {
+                    const AuthoringNodeRecord* parent = find_authoring_node(*document.snapshot,
+                        parent_id);
+                    if(parent && sibling_index < parent->children.size() &&
+                        parent->children[sibling_index].attachment.type() == VariantType::object)
+                    {
+                        attachment = parent->children[sibling_index].attachment;
+                    }
                 }
                 for(const PropertyEditor& editor : document.property_editors)
                 {
@@ -76,21 +107,66 @@ namespace Luna
                         error_message = explain(value.errcode());
                         continue;
                     }
-                    if(value.get() == editor.original) continue;
+                    bool changed = editor.desc.editor == EditingPropertyEditor::size ?
+                        (editor.size_mode != editor.baseline_size_mode ||
+                        (editor.size_mode != 0 && value.get() != editor.baseline)) :
+                        value.get() != editor.baseline;
+                    if(!changed) continue;
+                    mark_changed(editor.target == PropertyTarget::node ? "node" : "attachment",
+                        editor.desc.id);
+                    if(editor.target == PropertyTarget::attachment)
+                    {
+                        attachment[editor.desc.id] = value.get();
+                        attachment_changed = true;
+                        continue;
+                    }
+                    if(editor.desc.editor == EditingPropertyEditor::size)
+                    {
+                        Variant remove_fixed(VariantType::object);
+                        remove_fixed["kind"] = "remove_property";
+                        remove_fixed["node"] = guid_string(node->id).c_str();
+                        remove_fixed["property"] = editor.desc.id;
+                        commands.push_back(move(remove_fixed));
+                        Variant remove_percent(VariantType::object);
+                        remove_percent["kind"] = "remove_property";
+                        remove_percent["node"] = guid_string(node->id).c_str();
+                        remove_percent["property"] = editor.desc.alternate_id;
+                        commands.push_back(move(remove_percent));
+                        if(editor.size_mode != 0)
+                        {
+                            Variant set_size(VariantType::object);
+                            set_size["kind"] = "set_property";
+                            set_size["node"] = guid_string(node->id).c_str();
+                            set_size["property"] = editor.size_mode == 1 ?
+                                editor.desc.id : editor.desc.alternate_id;
+                            set_size["value"] = value.get();
+                            commands.push_back(move(set_size));
+                        }
+                    }
+                    else
+                    {
+                        Variant command(VariantType::object);
+                        command["kind"] = "set_property";
+                        command["node"] = guid_string(node->id).c_str();
+                        command["property"] = editor.desc.id;
+                        command["value"] = value.get();
+                        commands.push_back(move(command));
+                    }
+                }
+                if(attachment_changed)
+                {
                     Variant command(VariantType::object);
-                    command["kind"] = "set_property";
+                    command["kind"] = "set_attachment";
                     command["node"] = guid_string(node->id).c_str();
-                    command["property"] = editor.key;
-                    command["value"] = value.get();
+                    command["attachment"] = move(attachment);
                     commands.push_back(move(command));
                 }
                 if(commands.empty()) return;
                 Variant params = editing_params(document);
                 params["commands"] = move(commands);
                 params["label"] = "Edit node properties";
-                String coalesce = guid_string(node->id);
-                coalesce.append(".inspector");
-                params["coalesce_key"] = coalesce.c_str();
+                if(changed_field_count == 1)
+                    params["coalesce_key"] = coalesce_key.c_str();
                 Variant metadata;
                 if(invoke(GameGUIEditor::APPLY_COMMANDS_URL, params, metadata))
                     refresh_snapshot(document);
@@ -326,6 +402,42 @@ namespace Luna
                 if(document)
                 {
                     apply_inspector_changes(*document);
+                    for(const PropertyActionHit& hit : handles.browse_assets)
+                    {
+                        if(!EditorGUI::is_item_clicked(gui, hit.element) ||
+                            hit.property_index >= document->property_editors.size()) continue;
+                        PropertyEditor& property =
+                            document->property_editors[hit.property_index];
+                        Window::FileDialogFilter filter;
+                        filter.name = "GameGUI Document";
+                        const c8* extension = "json";
+                        filter.extensions = {&extension, 1};
+                        auto selected_files = Window::open_file_dialog("Select GameGUI Asset",
+                            {&filter, 1}, workspace_root);
+                        if(!selected_files.valid())
+                        {
+                            if(selected_files.errcode() != E_INTERRUPTED)
+                                error_message = explain(selected_files.errcode());
+                            return;
+                        }
+                        if(selected_files.get().empty()) return;
+                        String asset_path;
+                        if(!native_path_to_asset_path(selected_files.get()[0], asset_path)) return;
+                        auto asset = Asset::get_asset_by_path(Path(asset_path.c_str()));
+                        if(!asset.valid())
+                        {
+                            error_message = explain(asset.errcode());
+                            return;
+                        }
+                        if(!property.desc.asset_type.empty() &&
+                            Asset::get_asset_type(asset.get()) != property.desc.asset_type)
+                        {
+                            error_message = "The selected asset has an incompatible type.";
+                            return;
+                        }
+                        property.text = guid_string(Asset::get_asset_guid(asset.get()));
+                        return;
+                    }
                     if(process_hierarchy_interactions(*document, handles)) return;
                     for(const NodeHit& hit : handles.nodes)
                     {
@@ -420,32 +532,6 @@ namespace Luna
                         break;
                     }
 
-                    if(EditorGUI::is_item_clicked(gui, handles.add_property) &&
-                        !document->new_property_name.empty())
-                    {
-                        auto property = VariantUtils::read_json(document->new_property_value.c_str(),
-                            document->new_property_value.size(), VariantUtils::JSONReadOptions::strict());
-                        if(!property.valid()) error_message = explain(property.errcode());
-                        else
-                        {
-                            Variant command(VariantType::object);
-                            command["kind"] = "set_property";
-                            command["node"] = guid_string(document->selected_node).c_str();
-                            command["property"] = document->new_property_name.c_str();
-                            command["value"] = property.get();
-                            Variant params = editing_params(*document);
-                            params["commands"] = Variant(VariantType::array);
-                            params["commands"].push_back(move(command));
-                            params["label"] = "Add property";
-                            Variant result;
-                            if(invoke(GameGUIEditor::APPLY_COMMANDS_URL, params, result))
-                            {
-                                document->new_property_name.clear();
-                                document->new_property_value = "null";
-                                refresh_snapshot(*document);
-                            }
-                        }
-                    }
                 }
 
             }

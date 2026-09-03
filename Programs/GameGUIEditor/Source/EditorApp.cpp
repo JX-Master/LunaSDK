@@ -253,7 +253,14 @@ namespace Luna
                         type.name = value["name"].c_str();
                         type.display_name = value["display_name"].c_str();
                         type.category = value["category"].c_str();
-                        type.schema = value["property_schema"];
+                        if(!decode_editing_schema(value["property_schema"],
+                            type.property_schema) ||
+                            !decode_editing_schema(value["child_attachment_schema"],
+                            type.child_attachment_schema))
+                        {
+                            luthrow(set_error(E_BAD_DATA,
+                                "GameGUIEditor received an invalid editing schema."));
+                        }
                         node_types.push_back(move(type));
                     }
                     if(!create_document()) luthrow(E_FAILURE);

@@ -247,12 +247,201 @@ namespace Luna
                 }
             }
 
-            Variant make_schema(const c8* kind)
+            Variant make_slot_schema(const c8* kind)
             {
                 Variant schema(VariantType::object);
                 schema["kind"] = kind;
-                schema["properties"] = Variant(VariantType::object);
                 return schema;
+            }
+
+            Variant make_float2(f64 x, f64 y)
+            {
+                Variant value(VariantType::array);
+                value.push_back(x);
+                value.push_back(y);
+                return value;
+            }
+
+            Variant make_float4(f64 x, f64 y, f64 z, f64 w)
+            {
+                Variant value(VariantType::array);
+                value.push_back(x);
+                value.push_back(y);
+                value.push_back(z);
+                value.push_back(w);
+                return value;
+            }
+
+            EditingPropertyDesc make_property(const c8* id, const c8* display_name,
+                EditingPropertySection section, EditingPropertyEditor editor)
+            {
+                EditingPropertyDesc property;
+                property.id = id;
+                property.display_name = display_name;
+                property.section = section;
+                property.editor = editor;
+                return property;
+            }
+
+            void set_default(EditingPropertyDesc& property, Variant&& value)
+            {
+                property.default_value = move(value);
+                property.has_default = true;
+            }
+
+            void add_common_layout_schema(EditingSchema& schema)
+            {
+                EditingPropertyDesc property = make_property("width", "Width",
+                    EditingPropertySection::layout, EditingPropertyEditor::size);
+                property.alternate_id = "width_percent";
+                property.step = 1.0;
+                property.description = "Controls automatic, fixed-pixel or parent-relative width.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("height", "Height",
+                    EditingPropertySection::layout, EditingPropertyEditor::size);
+                property.alternate_id = "height_percent";
+                property.step = 1.0;
+                property.description = "Controls automatic, fixed-pixel or parent-relative height.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("margin", "Margin",
+                    EditingPropertySection::layout, EditingPropertyEditor::float4);
+                set_default(property, make_float4(0.0, 0.0, 0.0, 0.0));
+                property.step = 1.0;
+                property.description = "Left, top, right and bottom outer spacing.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("padding", "Padding",
+                    EditingPropertySection::layout, EditingPropertyEditor::float4);
+                set_default(property, make_float4(0.0, 0.0, 0.0, 0.0));
+                property.step = 1.0;
+                property.description = "Left, top, right and bottom inner spacing.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("flex_grow", "Flex Grow",
+                    EditingPropertySection::layout, EditingPropertyEditor::number);
+                set_default(property, Variant(0.0));
+                property.step = 0.1;
+                property.description = "Relative share of positive free space.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("flex_shrink", "Flex Shrink",
+                    EditingPropertySection::layout, EditingPropertyEditor::number);
+                set_default(property, Variant(1.0));
+                property.step = 0.1;
+                property.description = "Relative share of negative free space.";
+                schema.properties.push_back(move(property));
+            }
+
+            void add_flex_layout_schema(EditingSchema& schema)
+            {
+                EditingPropertyDesc property = make_property("axis", "Axis",
+                    EditingPropertySection::layout, EditingPropertyEditor::enumeration);
+                set_default(property, Variant("y"));
+                property.enumeration_items.push_back({"y", "Vertical"});
+                property.enumeration_items.push_back({"x", "Horizontal"});
+                schema.properties.push_back(move(property));
+
+                property = make_property("reverse", "Reverse",
+                    EditingPropertySection::layout, EditingPropertyEditor::boolean);
+                set_default(property, Variant(false));
+                schema.properties.push_back(move(property));
+
+                property = make_property("gap", "Gap",
+                    EditingPropertySection::layout, EditingPropertyEditor::number);
+                set_default(property, Variant(0.0));
+                property.step = 1.0;
+                schema.properties.push_back(move(property));
+
+                property = make_property("line_gap", "Line Gap",
+                    EditingPropertySection::layout, EditingPropertyEditor::number);
+                set_default(property, Variant(0.0));
+                property.step = 1.0;
+                schema.properties.push_back(move(property));
+
+                property = make_property("clip_children", "Clip Children",
+                    EditingPropertySection::layout, EditingPropertyEditor::boolean);
+                set_default(property, Variant(false));
+                schema.properties.push_back(move(property));
+            }
+
+            void add_canvas_layout_schema(EditingSchema& schema)
+            {
+                EditingPropertyDesc property = make_property("clip_children", "Clip Children",
+                    EditingPropertySection::layout, EditingPropertyEditor::boolean);
+                set_default(property, Variant(false));
+                schema.properties.push_back(move(property));
+            }
+
+            void add_canvas_attachment_schema(EditingSchema& schema)
+            {
+                EditingPropertyDesc property = make_property("anchor_min", "Anchor Min",
+                    EditingPropertySection::layout, EditingPropertyEditor::float2);
+                set_default(property, make_float2(0.0, 0.0));
+                property.step = 0.01;
+                property.description = "Normalized minimum anchor in the parent canvas.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("anchor_max", "Anchor Max",
+                    EditingPropertySection::layout, EditingPropertyEditor::float2);
+                set_default(property, make_float2(0.0, 0.0));
+                property.step = 0.01;
+                property.description = "Normalized maximum anchor in the parent canvas.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("offset", "Offset",
+                    EditingPropertySection::layout, EditingPropertyEditor::float4);
+                set_default(property, make_float4(0.0, 0.0, 0.0, 0.0));
+                property.step = 1.0;
+                property.description = "Left, top, right and bottom offsets from the anchors.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("pivot", "Pivot",
+                    EditingPropertySection::layout, EditingPropertyEditor::float2);
+                set_default(property, make_float2(0.0, 0.0));
+                property.step = 0.01;
+                property.description = "Normalized pivot used by canvas placement.";
+                schema.properties.push_back(move(property));
+            }
+
+            void add_panel_style_schema(EditingSchema& schema)
+            {
+                EditingPropertyDesc property = make_property("color", "Color",
+                    EditingPropertySection::style, EditingPropertyEditor::color);
+                set_default(property, make_float4(0.22, 0.22, 0.22, 1.0));
+                schema.properties.push_back(move(property));
+
+                property = make_property("radius", "Corner Radius",
+                    EditingPropertySection::style, EditingPropertyEditor::number);
+                set_default(property, Variant(0.0));
+                property.bounded = true;
+                property.minimum = 0.0;
+                property.maximum = 1024.0;
+                property.step = 1.0;
+                schema.properties.push_back(move(property));
+            }
+
+            void add_text_style_schema(EditingSchema& schema)
+            {
+                EditingPropertyDesc property = make_property("text_color", "Text Color",
+                    EditingPropertySection::style, EditingPropertyEditor::color);
+                set_default(property, make_float4(1.0, 1.0, 1.0, 1.0));
+                schema.properties.push_back(move(property));
+
+                property = make_property("font", "Font",
+                    EditingPropertySection::style, EditingPropertyEditor::name);
+                set_default(property, Variant(""));
+                schema.properties.push_back(move(property));
+
+                property = make_property("font_size", "Font Size",
+                    EditingPropertySection::style, EditingPropertyEditor::number);
+                set_default(property, Variant(16.0));
+                property.bounded = true;
+                property.minimum = 1.0;
+                property.maximum = 512.0;
+                property.step = 1.0;
+                schema.properties.push_back(move(property));
             }
 
             Variant make_default_layout(f32 height = -1.0f)
@@ -271,9 +460,9 @@ namespace Luna
                     desc.name = "Flex";
                     desc.display_name = "Flex Layout";
                     desc.category = "Layout";
-                    desc.property_schema = make_schema("flex");
-                    desc.slot_schema = make_schema("ordered_children");
-                    desc.layout_schema = make_schema("layout_properties");
+                    add_common_layout_schema(desc.property_schema);
+                    add_flex_layout_schema(desc.property_schema);
+                    desc.slot_schema = make_slot_schema("ordered_children");
                     desc.default_properties = make_default_layout();
                     luexp(register_authoring_node_type(desc));
 
@@ -282,9 +471,10 @@ namespace Luna
                     desc.name = "Canvas";
                     desc.display_name = "Canvas Layout";
                     desc.category = "Layout";
-                    desc.property_schema = make_schema("canvas");
-                    desc.slot_schema = make_schema("canvas_children");
-                    desc.layout_schema = make_schema("canvas_attachment");
+                    add_common_layout_schema(desc.property_schema);
+                    add_canvas_layout_schema(desc.property_schema);
+                    add_canvas_attachment_schema(desc.child_attachment_schema);
+                    desc.slot_schema = make_slot_schema("canvas_children");
                     desc.default_properties = make_default_layout();
                     luexp(register_authoring_node_type(desc));
 
@@ -293,11 +483,10 @@ namespace Luna
                     desc.name = "Panel";
                     desc.display_name = "Panel";
                     desc.category = "Visual";
-                    desc.property_schema = make_schema("panel");
-                    desc.slot_schema = make_schema("ordered_children");
-                    desc.style_schema = make_schema("panel_style");
+                    add_common_layout_schema(desc.property_schema);
+                    add_panel_style_schema(desc.property_schema);
+                    desc.slot_schema = make_slot_schema("ordered_children");
                     desc.default_properties = make_default_layout();
-                    desc.default_properties["color"] = Variant(VariantType::array);
                     luexp(register_authoring_node_type(desc));
 
                     desc = AuthoringNodeTypeDesc();
@@ -305,8 +494,14 @@ namespace Luna
                     desc.name = "Text";
                     desc.display_name = "Text";
                     desc.category = "Visual";
-                    desc.property_schema = make_schema("text");
-                    desc.style_schema = make_schema("text_style");
+                    add_common_layout_schema(desc.property_schema);
+                    add_text_style_schema(desc.property_schema);
+                    {
+                        EditingPropertyDesc property = make_property("text", "Text",
+                            EditingPropertySection::property, EditingPropertyEditor::string);
+                        set_default(property, Variant(""));
+                        desc.property_schema.properties.push_back(move(property));
+                    }
                     desc.default_properties = make_default_layout(24.0f);
                     desc.default_properties["text"] = "Text";
                     luexp(register_authoring_node_type(desc));
@@ -316,9 +511,26 @@ namespace Luna
                     desc.name = "Button";
                     desc.display_name = "Button";
                     desc.category = "Input";
-                    desc.property_schema = make_schema("button");
-                    desc.event_schema = make_schema("action");
-                    desc.style_schema = make_schema("button_style");
+                    add_common_layout_schema(desc.property_schema);
+                    add_panel_style_schema(desc.property_schema);
+                    add_text_style_schema(desc.property_schema);
+                    {
+                        EditingPropertyDesc property = make_property("text", "Text",
+                            EditingPropertySection::property, EditingPropertyEditor::string);
+                        set_default(property, Variant(""));
+                        desc.property_schema.properties.push_back(move(property));
+
+                        property = make_property("action", "Action",
+                            EditingPropertySection::property, EditingPropertyEditor::name);
+                        set_default(property, Variant(""));
+                        desc.property_schema.properties.push_back(move(property));
+
+                        property = make_property("action_payload", "Action Payload",
+                            EditingPropertySection::property, EditingPropertyEditor::json);
+                        property.has_default = true;
+                        property.default_value = Variant();
+                        desc.property_schema.properties.push_back(move(property));
+                    }
                     desc.default_properties = make_default_layout(32.0f);
                     desc.default_properties["text"] = "Button";
                     luexp(register_authoring_node_type(desc));
@@ -328,7 +540,15 @@ namespace Luna
                     desc.name = "AssetInstance";
                     desc.display_name = "Asset Instance";
                     desc.category = "Composition";
-                    desc.property_schema = make_schema("asset_instance");
+                    add_common_layout_schema(desc.property_schema);
+                    {
+                        EditingPropertyDesc property = make_property("asset", "Asset",
+                            EditingPropertySection::property, EditingPropertyEditor::asset);
+                        property.asset_type = GameGUI::get_asset_type();
+                        property.optional = false;
+                        property.description = "GUID of the nested GameGUI asset.";
+                        desc.property_schema.properties.push_back(move(property));
+                    }
                     desc.default_properties = make_default_layout();
                     luexp(register_authoring_node_type(desc));
                 }
@@ -353,13 +573,38 @@ namespace Luna
             if(desc.type == Guid() || desc.name.empty() || desc.current_version == 0 ||
                 desc.default_properties.type() != VariantType::object)
                 return E_BAD_ARGUMENTS;
-            const Variant* schemas[] = {&desc.property_schema, &desc.event_schema,
-                &desc.slot_schema, &desc.style_schema, &desc.layout_schema};
-            for(const Variant* schema : schemas)
+            const EditingSchema* schemas[] = {&desc.property_schema,
+                &desc.child_attachment_schema};
+            for(const EditingSchema* schema : schemas)
             {
-                if(schema->valid() && schema->type() != VariantType::object)
-                    return set_error(E_BAD_ARGUMENTS,
-                        "GameGUI authoring schemas must be objects when present.");
+                for(usize i = 0; i < schema->properties.size(); ++i)
+                {
+                    const EditingPropertyDesc& property = schema->properties[i];
+                    if(property.id.empty() || property.display_name.empty())
+                        return set_error(E_BAD_ARGUMENTS,
+                            "GameGUI editing properties require an ID and display name.");
+                    if(property.editor == EditingPropertyEditor::size &&
+                        property.alternate_id.empty())
+                    {
+                        return set_error(E_BAD_ARGUMENTS,
+                            "GameGUI size editors require an alternate percentage property.");
+                    }
+                    if(property.editor == EditingPropertyEditor::enumeration &&
+                        property.enumeration_items.empty())
+                    {
+                        return set_error(E_BAD_ARGUMENTS,
+                            "GameGUI enumeration editors require at least one item.");
+                    }
+                    if(property.bounded && property.maximum < property.minimum)
+                        return set_error(E_BAD_ARGUMENTS,
+                            "GameGUI editing property bounds are reversed.");
+                    for(usize j = i + 1; j < schema->properties.size(); ++j)
+                    {
+                        if(property.id == schema->properties[j].id)
+                            return set_error(E_ALREADY_EXISTS,
+                                "A GameGUI editing schema contains duplicate property IDs.");
+                    }
+                }
             }
             LockGuard guard(g_authoring_registry_lock);
             if(g_authoring_node_types.find(desc.type) != g_authoring_node_types.end())

@@ -373,6 +373,47 @@ namespace
         lutest(placed->layout_result.rect.height == 30.0f);
     }
 
+    void flex_stretch_overrides_explicit_cross_size_test()
+    {
+        NodeRecord root = make_node(get_flex_node_type(), "FlexRoot");
+        NodeRecord fixed = make_node(get_text_node_type(), "FixedText");
+        fixed.properties["width"] = 40.0;
+        fixed.properties["height"] = 30.0;
+        NodeRecord percent = make_node(get_text_node_type(), "PercentText");
+        percent.properties["width_percent"] = 0.5;
+        percent.properties["height"] = 30.0;
+        root.children.push_back(ChildLink{fixed.id});
+        root.children.push_back(ChildLink{percent.id});
+
+        Ref<Document> document = new_object<Document>();
+        document->root = root.id;
+        document->nodes.push_back(root);
+        document->nodes.push_back(fixed);
+        document->nodes.push_back(percent);
+        InstanceDesc desc;
+        desc.document = document;
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(200.0f, 100.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto generated_root = instance->build(gui);
+        gui->pop_layer();
+        lutest(generated_root.valid());
+        lupanic_if_failed(gui->apply_layout(generated_root.get(),
+            RectF(0.0f, 0.0f, 200.0f, 100.0f)));
+
+        const GUI::Element* fixed_element = gui->find_element(
+            instance->make_stable_id(fixed.id, "element"));
+        const GUI::Element* percent_element = gui->find_element(
+            instance->make_stable_id(percent.id, "element"));
+        lutest(fixed_element && fixed_element->layout_result.rect.width == 200.0f);
+        lutest(percent_element && percent_element->layout_result.rect.width == 200.0f);
+    }
+
     Ref<Document> make_nested_text_document()
     {
         NodeRecord text = make_node(get_text_node_type(), "NestedText");
@@ -510,6 +551,7 @@ int main()
     element_visual_effect_test();
     button_action_test();
     canvas_layout_test();
+    flex_stretch_overrides_explicit_cross_size_test();
     nested_asset_test();
     nested_cycle_test();
     lupanic_if_failed(VFS::unmount("/GameGUITest"));

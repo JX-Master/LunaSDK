@@ -75,6 +75,95 @@ namespace Luna
         using AuthoringNodeMigrateCallback = RV(*)(Variant& properties, u32 from_version,
             u32 to_version, object_t userdata);
 
+        //! Identifies the Inspector section that contains one editable property.
+        enum class EditingPropertySection : u8
+        {
+            //! Geometry and layout behavior.
+            layout,
+            //! Visual appearance.
+            style,
+            //! Node-specific content, resources and actions.
+            property
+        };
+
+        //! Identifies the editor used to manipulate one authoring property.
+        enum class EditingPropertyEditor : u8
+        {
+            //! Boolean checkbox.
+            boolean,
+            //! Scalar floating-point drag editor.
+            number,
+            //! UTF-8 text input.
+            string,
+            //! Interned-name text input.
+            name,
+            //! Single-selection enumeration.
+            enumeration,
+            //! Two-component floating-point editor.
+            float2,
+            //! Four-component floating-point editor.
+            float4,
+            //! Four-component normalized color editor.
+            color,
+            //! Auto, fixed or percentage size editor backed by two mutually exclusive properties.
+            size,
+            //! Asset GUID editor.
+            asset,
+            //! Raw JSON value editor.
+            json
+        };
+
+        //! Describes one enumeration item exposed by an editing property.
+        struct EditingEnumItemDesc
+        {
+            //! Value stored in the authoring document.
+            Name value;
+            //! Human-readable item label.
+            String display_name;
+        };
+
+        //! Describes one field in an editor-only property schema.
+        struct EditingPropertyDesc
+        {
+            //! Property name in the target Variant object.
+            Name id;
+            //! Secondary property used by compound editors such as percentage size.
+            Name alternate_id;
+            //! Human-readable field label.
+            String display_name;
+            //! Optional tooltip or help text.
+            String description;
+            //! Inspector section containing this field.
+            EditingPropertySection section = EditingPropertySection::property;
+            //! Editor used to manipulate the field.
+            EditingPropertyEditor editor = EditingPropertyEditor::json;
+            //! Value displayed when the property is absent.
+            Variant default_value;
+            //! Whether @ref default_value is defined, including an explicit null default.
+            bool has_default = false;
+            //! Whether the property may be absent from the authoring document.
+            bool optional = true;
+            //! Whether numeric values are clamped to @ref minimum and @ref maximum.
+            bool bounded = false;
+            //! Inclusive numeric minimum when @ref bounded is true.
+            f64 minimum = 0.0;
+            //! Inclusive numeric maximum when @ref bounded is true.
+            f64 maximum = 0.0;
+            //! Suggested drag increment for numeric editors.
+            f64 step = 0.1;
+            //! Items available to an enumeration editor.
+            Vector<EditingEnumItemDesc> enumeration_items;
+            //! Required asset type for an asset editor. An empty name accepts any type.
+            Name asset_type;
+        };
+
+        //! Ordered collection of fields that edit one Variant object.
+        struct EditingSchema
+        {
+            //! Fields displayed by the Inspector in registration order.
+            Vector<EditingPropertyDesc> properties;
+        };
+
         //! Describes editor-only metadata for one GameGUI node type.
         struct AuthoringNodeTypeDesc
         {
@@ -88,16 +177,12 @@ namespace Luna
             Name category;
             //! Current authoring property payload version.
             u32 current_version = 1;
-            //! Property schema consumed by inspectors.
-            Variant property_schema;
-            //! Event schema consumed by editors and tools.
-            Variant event_schema;
+            //! Schema for values stored in @ref AuthoringNodeRecord::properties.
+            EditingSchema property_schema;
+            //! Schema for child-link attachments owned by nodes of this type.
+            EditingSchema child_attachment_schema;
             //! Child-slot schema consumed by editors and tools.
             Variant slot_schema;
-            //! Style schema consumed by editors and tools.
-            Variant style_schema;
-            //! Parent-layout attachment schema.
-            Variant layout_schema;
             //! Default property payload for newly created nodes.
             Variant default_properties = Variant(VariantType::object);
             //! Optional adjacent-version migration callback.

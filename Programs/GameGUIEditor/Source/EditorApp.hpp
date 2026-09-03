@@ -43,12 +43,29 @@ namespace Luna
             constexpr usize PREVIEW_ZOOM_LEVEL_COUNT =
                 sizeof(PREVIEW_ZOOM_LEVELS) / sizeof(PREVIEW_ZOOM_LEVELS[0]);
 
+            enum class PropertyTarget : u8
+            {
+                node,
+                attachment
+            };
+
             struct PropertyEditor
             {
-                Name key;
+                EditingPropertyDesc desc;
+                PropertyTarget target = PropertyTarget::node;
                 Variant original;
+                Variant alternate_original;
+                Variant baseline;
+                bool original_present = false;
+                bool alternate_present = false;
+                bool raw = false;
                 String text;
                 bool boolean = false;
+                f32 number = 0.0f;
+                f32 vector[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+                i32 selected_item = 0;
+                i32 size_mode = 0;
+                i32 baseline_size_mode = 0;
             };
 
             struct PreviewState
@@ -72,6 +89,7 @@ namespace Luna
                     (f32)PREVIEW_LAYOUT_HEIGHT);
                 Float2U resize_pointer = Float2U(0.0f);
                 Float2U resize_start_size = Float2U(0.0f);
+                GUI::id_t selected_element_id = 0;
                 bool panning = false;
                 bool resizing = false;
             };
@@ -118,8 +136,6 @@ namespace Luna
                 Guid inspector_node;
                 String node_name;
                 Vector<PropertyEditor> property_editors;
-                String new_property_name;
-                String new_property_value = "null";
                 PreviewState preview;
                 HierarchyDragState hierarchy_drag;
                 Guid hierarchy_context_node;
@@ -132,7 +148,8 @@ namespace Luna
                 String name;
                 String display_name;
                 String category;
-                Variant schema;
+                EditingSchema property_schema;
+                EditingSchema child_attachment_schema;
             };
 
             struct NodeHit
@@ -150,6 +167,12 @@ namespace Luna
                 GUI::ElementHandle element;
             };
 
+            struct PropertyActionHit
+            {
+                usize property_index = 0;
+                GUI::ElementHandle element;
+            };
+
             struct UIHandles
             {
                 u64 document_id = 0;
@@ -163,10 +186,10 @@ namespace Luna
                 GUI::ElementHandle redo;
                 GUI::ElementHandle set_root_node;
                 GUI::ElementHandle delete_node;
-                GUI::ElementHandle add_property;
                 GUI::ElementHandle preview_host;
                 Vector<NodeHit> nodes;
                 Vector<TypeHit> types;
+                Vector<PropertyActionHit> browse_assets;
             };
 
             struct PreviewInput
@@ -271,6 +294,7 @@ namespace Luna
             GUI::id_t hierarchy_context_popup_id(GUI::IContext* context,
                 u64 document_id);
             String property_text(const Variant& value);
+            bool decode_editing_schema(const Variant& value, EditingSchema& schema);
             R<Variant> property_value(const PropertyEditor& editor);
             bool point_in_rect(const RectF& rect, const Float2U& point);
             RectF item_screen_rect(GUI::IContext* context,

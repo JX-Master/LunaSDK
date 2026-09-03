@@ -350,6 +350,67 @@ namespace
         context->focus_element(0);
     }
 
+    void verify_drag_direct_input(GUI::IContext* context)
+    {
+        f32 value = 12.5f;
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(200.0f, 60.0f);
+        frame.render_size = UInt2U(200, 60);
+        frame.delta_time = 1.0f / 60.0f;
+        GUI::id_t drag_id = context->make_id("drag.direct_input.value");
+        auto build_frame = [&]()
+        {
+            context->begin_frame(frame);
+            context->push_layer(context->make_id("drag.direct_input.layer"), Float2U(0.0f));
+            GUI::LayoutConfig layout;
+            layout.width.kind = GUI::SizeKind::fixed;
+            layout.width.value = 160.0f;
+            layout.height.kind = GUI::SizeKind::fixed;
+            layout.height.value = 40.0f;
+            GUI::ElementHandle drag = EditorGUI::drag_float(context, drag_id, &value,
+                0.0f, 100.0f, layout);
+            context->pop_layer();
+            lupanic_if_failed(EditorGUI::layout_tree(context, drag,
+                RectF(0.0f, 0.0f, 160.0f, 40.0f)));
+            return drag;
+        };
+
+        GUI::ElementHandle drag = build_frame();
+        GUI::InputEvent event;
+        event.type = GUI::InputEventType::pointer_enter;
+        event.position = Float2U(20.0f, 20.0f);
+        context->add_input_event(event);
+        event.type = GUI::InputEventType::pointer_down;
+        context->add_input_event(event);
+        event.type = GUI::InputEventType::pointer_up;
+        context->add_input_event(event);
+        event.type = GUI::InputEventType::pointer_down;
+        context->add_input_event(event);
+        event.type = GUI::InputEventType::pointer_up;
+        context->add_input_event(event);
+        context->route_input();
+        EditorGUI::resolve_interactions(context);
+
+        drag = build_frame();
+        luassert(context->get_layout_callback_config(drag).algorithm == Name("gui.input_text"));
+        event = GUI::InputEvent();
+        event.type = GUI::InputEventType::text_utf8;
+        event.text = "42.25";
+        context->add_input_event(event);
+        event = GUI::InputEvent();
+        event.type = GUI::InputEventType::key_down;
+        event.key = KeyCode::enter;
+        context->add_input_event(event);
+        context->route_input();
+        EditorGUI::ResolveResult result = EditorGUI::resolve_interactions(context);
+        luassert(result.value_changed);
+        luassert(value == 42.25f);
+
+        drag = build_frame();
+        luassert(context->get_layout_callback_config(drag).algorithm == Name("gui.drag"));
+        context->focus_element(0);
+    }
+
     R<GUI::paint_order_id_t> draw_invalid_returned_paint_order(GUI::IContext* context,
         const GUI::ElementHandle&, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id, void*)
     {
@@ -570,6 +631,7 @@ namespace
             DemoApp app;
             luexp(init_demo(app, options));
             verify_input_text_direction_navigation(app.gui);
+            verify_drag_direct_input(app.gui);
             verify_paint_order_generation(app.gui);
             GUIWindow::GUIWindowInputAdapter input_adapter;
             input_adapter.window = app.window;

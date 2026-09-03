@@ -18,6 +18,119 @@ namespace Luna
     {
         namespace Internal
         {
+            static const NodeTypeView* find_node_type(const Vector<NodeTypeView>& node_types,
+                const Guid& type)
+            {
+                for(const NodeTypeView& node_type : node_types)
+                {
+                    if(node_type.type == type) return &node_type;
+                }
+                return nullptr;
+            }
+
+            static bool schema_contains(const EditingSchema& schema, const Name& property)
+            {
+                for(const EditingPropertyDesc& desc : schema.properties)
+                {
+                    if(desc.id == property || desc.alternate_id == property) return true;
+                }
+                return false;
+            }
+
+            static Variant editor_source_value(const PropertyEditor& editor)
+            {
+                if(editor.original_present) return editor.original;
+                if(editor.desc.has_default) return editor.desc.default_value;
+                return Variant();
+            }
+
+            static void initialize_property_editor(PropertyEditor& editor,
+                const EditingPropertyDesc& desc, PropertyTarget target,
+                const Variant& source)
+            {
+                editor.desc = desc;
+                editor.target = target;
+                editor.original_present = source.type() == VariantType::object &&
+                    source.contains(desc.id);
+                if(editor.original_present) editor.original = source[desc.id];
+                if(!desc.alternate_id.empty())
+                {
+                    editor.alternate_present = source.type() == VariantType::object &&
+                        source.contains(desc.alternate_id);
+                    if(editor.alternate_present)
+                        editor.alternate_original = source[desc.alternate_id];
+                }
+                Variant value = editor_source_value(editor);
+                switch(desc.editor)
+                {
+                case EditingPropertyEditor::boolean:
+                    editor.boolean = value.boolean();
+                    break;
+                case EditingPropertyEditor::number:
+                    editor.number = (f32)value.fnum();
+                    break;
+                case EditingPropertyEditor::string:
+                case EditingPropertyEditor::name:
+                case EditingPropertyEditor::asset:
+                    editor.text = value.c_str();
+                    break;
+                case EditingPropertyEditor::enumeration:
+                {
+                    Name selected = value.str();
+                    editor.selected_item = 0;
+                    for(usize i = 0; i < desc.enumeration_items.size(); ++i)
+                    {
+                        if(desc.enumeration_items[i].value == selected)
+                        {
+                            editor.selected_item = (i32)i;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case EditingPropertyEditor::float2:
+                    for(usize i = 0; i < 2; ++i) editor.vector[i] = 0.0f;
+                    if(value.type() == VariantType::array)
+                    {
+                        for(usize i = 0; i < min<usize>(value.size(), 2); ++i)
+                            editor.vector[i] = (f32)value[i].fnum();
+                    }
+                    break;
+                case EditingPropertyEditor::float4:
+                case EditingPropertyEditor::color:
+                    for(usize i = 0; i < 4; ++i) editor.vector[i] = 0.0f;
+                    if(value.type() == VariantType::array)
+                    {
+                        for(usize i = 0; i < min<usize>(value.size(), 4); ++i)
+                            editor.vector[i] = (f32)value[i].fnum();
+                    }
+                    break;
+                case EditingPropertyEditor::size:
+                    if(editor.original_present)
+                    {
+                        editor.size_mode = 1;
+                        editor.number = (f32)editor.original.fnum();
+                    }
+                    else if(editor.alternate_present)
+                    {
+                        editor.size_mode = 2;
+                        editor.number = (f32)editor.alternate_original.fnum() * 100.0f;
+                    }
+                    else
+                    {
+                        editor.size_mode = 0;
+                        editor.number = 0.0f;
+                    }
+                    editor.baseline_size_mode = editor.size_mode;
+                    break;
+                case EditingPropertyEditor::json:
+                    editor.text = property_text(value);
+                    break;
+                }
+                auto baseline = property_value(editor);
+                editor.baseline = baseline.valid() ? baseline.get() : value;
+            }
+
             DocumentView* EditorApp::find_document(u64 id)
             {
                 for(DocumentView& document : documents)
@@ -205,13 +318,58 @@ namespace Luna
                 if(!node) return;
                 document.node_name = node->name.c_str();
                 document.property_editors.clear();
+                const NodeTypeView* node_type = find_node_type(node_types, node->type);
+                if(node_type)
+                {
+                    for(const EditingPropertyDesc& desc : node_type->property_schema.properties)
+                    {
+                        PropertyEditor editor;
+                        initialize_property_editor(editor, desc, PropertyTarget::node,
+                            node->properties);
+                        document.property_editors.push_back(move(editor));
+                    }
+                }
+
+                Guid parent_id;
+                usize sibling_index = 0;
+                if(find_parent_info(*document.snapshot, node->id, parent_id, sibling_index))
+                {
+                    const AuthoringNodeRecord* parent = find_authoring_node(*document.snapshot,
+                        parent_id);
+                    const NodeTypeView* parent_type = parent ?
+                        find_node_type(node_types, parent->type) : nullptr;
+                    if(parent && parent_type && sibling_index < parent->children.size())
+                    {
+                        const Variant& attachment = parent->children[sibling_index].attachment;
+                        for(const EditingPropertyDesc& desc :
+                            parent_type->child_attachment_schema.properties)
+                        {
+                            PropertyEditor editor;
+                            initialize_property_editor(editor, desc,
+                                PropertyTarget::attachment, attachment);
+                            document.property_editors.push_back(move(editor));
+                        }
+                    }
+                }
+
                 for(const auto& item : node->properties.key_values())
                 {
+                    if(node_type && schema_contains(node_type->property_schema, item.first))
+                        continue;
+                    EditingPropertyDesc desc;
+                    desc.id = item.first;
+                    desc.display_name = item.first.c_str();
+                    desc.description =
+                        "Property not declared by the installed editing schema.";
+                    desc.section = EditingPropertySection::property;
+                    desc.editor = item.second.type() == VariantType::boolean ?
+                        EditingPropertyEditor::boolean :
+                        (item.second.type() == VariantType::string ?
+                        EditingPropertyEditor::string : EditingPropertyEditor::json);
                     PropertyEditor editor;
-                    editor.key = item.first;
-                    editor.original = item.second;
-                    editor.boolean = item.second.boolean();
-                    editor.text = property_text(item.second);
+                    initialize_property_editor(editor, desc, PropertyTarget::node,
+                        node->properties);
+                    editor.raw = true;
                     document.property_editors.push_back(move(editor));
                 }
                 document.inspector_revision = document.revision;
