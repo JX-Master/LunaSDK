@@ -31,6 +31,14 @@ headers and generates `lib/zip_err_str.c` from the downloaded `zip.h` and
 `zipint.h`. This follows the upstream error-table generator without requiring
 CMake. Unchanged generated files retain their timestamps when setup is rerun.
 
+The MSVC configuration enables the UCRT's secure memory/string functions and
+[`_snprintf_s`/`_snwprintf_s`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/snprintf-s-snprintf-s-l-snwprintf-s-snwprintf-s-l).
+Without these capability definitions, libzip's
+compatibility macros expand inside UCRT function declarations and cause syntax
+errors in Windows SDK headers. After updating a configuration template, rerun
+`setup.bat` (or `setup.sh`) to refresh installed headers, including cached SDKs;
+`--force` and clearing the SDK cache are not required.
+
 The `libzip` and `zlib` targets in the repository's `ThirdParty.Target.cs` compile
 the downloaded C sources as static libraries through LunaBuild, including in
 shared-module builds. Store and Deflate are enabled. Optional codecs and AES

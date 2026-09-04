@@ -23,6 +23,15 @@
 #define HAVE__UNLINK 1
 #define HAVE_LOCALTIME_S 1
 #define HAVE_GETSECURITYINFO 1
+#if defined(_MSC_VER)
+/* UCRT supplies these functions. Otherwise compat.h defines fallback macros
+ * that corrupt their declarations when Windows CRT headers are included. */
+#define HAVE__SNPRINTF_S 1
+#define HAVE__SNWPRINTF_S 1
+#define HAVE_MEMCPY_S 1
+#define HAVE_STRERROR_S 1
+#define HAVE_STRNCPY_S 1
+#endif
 #else
 #define SIZEOF_OFF_T 8
 #define HAVE_FILENO 1
