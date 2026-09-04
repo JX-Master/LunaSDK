@@ -16,6 +16,7 @@
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/VFS/VFS.hpp>
+#include <Luna/VFS/NativeFileSystem.hpp>
 #include <Luna/VariantUtils/JSON.hpp>
 #include <cstring>
 
@@ -596,8 +597,11 @@ int main()
     lupanic_if_failed(init_modules());
     document_file_system_test();
     const c8* current_dir = get_current_dir();
-    RV mounted = VFS::mount(VFS::get_platform_filesystem_driver(), current_dir, MOUNT_PATH);
+    auto file_system = VFS::new_native_file_system(current_dir);
     release_current_dir(current_dir);
+    lupanic_if_failed(file_system);
+    RV mounted = VFS::mount(file_system.get(), MOUNT_PATH);
+    file_system.get() = nullptr;
     lupanic_if_failed(mounted);
     {
         auto service_result = GameGUIEditor::new_service();

@@ -592,18 +592,17 @@ namespace Luna
             }
             return res;
         }
-        Result move_file(const c8* from_path, const c8* to_path)
+        Result move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags)
         {
-            FileAttribute attr;
-            if (get_file_attribute(to_path, attr) == Result::success)
+            if(!test_flags(flags, FileMoveFlag::allow_overwrite))
             {
-                return Result::already_exists;
+                // Count symbolic links as existing entries even if their targets are absent.
+                struct stat destination;
+                if(::lstat(to_path, &destination) == 0) return Result::already_exists;
+                if(errno != ENOENT) return encode_errno(errno);
             }
-            int res = ::rename(from_path, to_path);
-            if(res != 0)
-            {
-                return encode_errno(errno);
-            }
+            // POSIX has no copy/delete fallback, regardless of the no_copy option.
+            if(::rename(from_path, to_path) != 0) return encode_errno(errno);
             return Result::success;
         }
         Result delete_file(const c8* path)

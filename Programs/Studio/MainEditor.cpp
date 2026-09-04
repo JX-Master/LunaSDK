@@ -18,6 +18,7 @@
 #include "Assets/Material.hpp"
 
 #include <Luna/VFS/VFS.hpp>
+#include <Luna/VFS/NativeFileSystem.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #if defined(LUNA_PLATFORM_MACOS)
 #include <Luna/Window/ApplicationMenu.hpp>
@@ -369,7 +370,8 @@ namespace Luna
             // Mount Data folder.
             auto mount_path = project_path;
             mount_path.push_back("Data");
-            luexp(VFS::mount(VFS::get_platform_filesystem_driver(), mount_path.encode(PathSeparator::system_preferred).c_str(), "/"));
+            lulet(file_system, VFS::new_native_file_system(mount_path.encode(PathSeparator::system_preferred).c_str()));
+            luexp(VFS::mount(file_system, "/"));
 
             // Load all asset metadata.
             luexp(Asset::load_assets_meta("/"));

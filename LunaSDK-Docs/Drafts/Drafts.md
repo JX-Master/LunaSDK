@@ -14,3 +14,7 @@ Documents in this directory are drafts awaiting review and promotion into the us
 ## Pak
 - [[Pak Files]]
 - [[Editing Pak Files]]
+
+## VFS
+- [[File System Instances]]
+- [[Mounting Pak Files]]

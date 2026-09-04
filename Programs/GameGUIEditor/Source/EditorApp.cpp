@@ -12,6 +12,7 @@
 #include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/VFS/VFS.hpp>
+#include <Luna/VFS/NativeFileSystem.hpp>
 #include <Luna/Window/Event.hpp>
 #if defined(LUNA_PLATFORM_MACOS)
 #include <Luna/Window/ApplicationMenu.hpp>
@@ -203,8 +204,8 @@ namespace Luna
                     const c8* resolved_current_dir = get_current_dir();
                     workspace_root = resolved_current_dir;
                     release_current_dir(resolved_current_dir);
-                    luexp(VFS::mount(VFS::get_platform_filesystem_driver(),
-                        workspace_root.encode(PathSeparator::system_preferred).c_str(), "/"));
+                    lulet(file_system, VFS::new_native_file_system(workspace_root.encode(PathSeparator::system_preferred).c_str()));
+                    luexp(VFS::mount(file_system, "/"));
                     luexp(Asset::load_assets_meta("/", true));
 
                     luset(window, Window::new_window(APP_NAME,

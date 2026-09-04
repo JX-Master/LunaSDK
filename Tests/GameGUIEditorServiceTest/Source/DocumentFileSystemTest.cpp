@@ -12,6 +12,7 @@
 #include <Luna/Runtime/Guid.hpp>
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/VFS/VFS.hpp>
+#include <Luna/VFS/NativeFileSystem.hpp>
 #include <Luna/VariantUtils/JSON.hpp>
 
 using namespace Luna;
@@ -75,7 +76,9 @@ void document_file_system_test()
     Path desktop = child_path(fixture, "Desktop");
     lupanic_if_failed(create_dir(workspace.encode().c_str()));
     lupanic_if_failed(create_dir(desktop.encode().c_str()));
-    lupanic_if_failed(VFS::mount(VFS::get_platform_filesystem_driver(), workspace.encode().c_str(), "/"));
+    auto file_system = VFS::new_native_file_system(workspace.encode().c_str());
+    lupanic_if_failed(file_system);
+    lupanic_if_failed(VFS::mount(file_system.get(), "/"));
     lupanic_if_failed(VFS::create_dir("/__GameGUIEditorExternal_1"));
     Internal::DocumentFileSystem files;
     auto service_result = new_service();

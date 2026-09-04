@@ -23,6 +23,10 @@ namespace Luna
                 case ERROR_PATH_NOT_FOUND: return Result::not_found;
                 case ERROR_TOO_MANY_OPEN_FILES: return Result::out_of_resource;
                 case ERROR_ACCESS_DENIED: return Result::access_denied;
+                case ERROR_SHARING_VIOLATION:
+                case ERROR_LOCK_VIOLATION: return Result::busy;
+                case ERROR_FILE_EXISTS:
+                case ERROR_ALREADY_EXISTS: return Result::already_exists;
                 case ERROR_INVALID_HANDLE: return Result::bad_arguments;
                 case ERROR_NOT_ENOUGH_MEMORY: 
                 case ERROR_OUTOFMEMORY: return Result::out_of_memory;

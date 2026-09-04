@@ -9,8 +9,7 @@
 * @brief The virtual file system API.
 */
 #pragma once
-#include <Luna/Runtime/File.hpp>
-#include <Luna/Runtime/Path.hpp>
+#include "FileSystem.hpp"
 
 #ifndef LUNA_VFS_API
 #define LUNA_VFS_API
@@ -23,26 +22,34 @@ namespace Luna
         //! @addtogroup VFS VFS
         //! Virtual file system (VFS) module provides a virtual and uniform file system across all platforms, so that
         //! the user can use one uniform path and API to open one file on all platforms without caring where the file 
-        //! is actually in. VFS supports user-implemented file system drivers and devices, which allows the file system 
-        //! to be extended to support reading files from zip archives, online server, etc.
+        //! is actually in. VFS mounts independently created IFileSystem instances to
+        //! support native directories, packages and application-defined storage.
         //! @{
         
-        //! Mounts one virtual file device as one directory in the virtual file system.
-        //! @param[in] driver The name of the VFS driver for the virtual file device.
-        //! @param[in] driver_path The path passed to the driver, which is usually the native path mapped to the mount path.
+        //! Mounts an existing filesystem instance as a directory in VFS.
+        //! @param[in] file_system The filesystem instance to retain. Must not be null.
         //! @param[in] mount_path The directory used as the root directory of the mounted file device.
-        //! @param[in] params_type The type of the additional driver parameter object. See driver docs for details.
-        //! @param[in] params_data The pointer to the additional driver parameter object. See driver docs for details.
-        LUNA_VFS_API RV mount(const Name& driver, const c8* driver_path, const Path& mount_path, 
-            typeinfo_t params_type = nullptr, void* params_data = nullptr);
+        //! @details No storage is created or opened here. One instance may have multiple
+        //! mount aliases. Routing uses the longest matching prefix in the same root and
+        //! absolute/relative namespace. Filesystem methods invoked by VFS must not reenter VFS.
+        LUNA_VFS_API RV mount(IFileSystem* file_system, const Path& mount_path);
 
         //! Unmounts the virtual file device in the mounting directory.
         //! @param[in] mount_path The mounting directory specified when mounting or remounting the file device.
+        //! @details Requires all files and directory iterators of this mount to be released.
+        //! Calls IFileSystem::flush before removing the mount; errors retain it for retry.
+        //! The filesystem remains usable through other mounts or caller-held references.
         LUNA_VFS_API RV unmount(const Path& mount_path);
+
+        //! Calls IFileSystem::flush once for each distinct mounted instance and returns
+        //! the first failure with its diagnostic preserved. Later instances are still
+        //! attempted after a failure. Flush a specific instance directly through its interface.
+        LUNA_VFS_API RV flush_all();
 
         //! Changes the mounting directory of the file device.
         //! @param[in] from_path The current mounting directory of the device.
         //! @param[in] to_path The new mounting directory to change to.
+        //! @details An occupied destination returns E_ALREADY_EXISTS.
         LUNA_VFS_API RV remount(const Path& from_path, const Path& to_path);
 
         //! Opens one file.
@@ -112,33 +119,11 @@ namespace Luna
         //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
         LUNA_VFS_API RV create_dir(const Path& path);
 
-        //! Translates one VFS path to one native driver path.
+        //! Translates one VFS path to one native storage path.
         //! @param[in] vfs_path The virtual file system path to translate.
-        //! @return Returns the translated native path of the virtual path. The translated path is driver-specific.
+        //! @return Returns the translated native path, or E_NOT_SUPPORTED if the
+        //! filesystem entry has no independent native path.
         LUNA_VFS_API R<Name> get_native_path(const Path& vfs_path);
-
-        //! Gets the name of the VFS driver that maps platform's native file system to vritual file system.
-        //! @return Returns the name of the platform's native file system driver.
-        LUNA_VFS_API Name get_platform_filesystem_driver();
-
-        //! @}
-    }
-
-    //! @addtogroup VFS
-    //! @{
-    //! @defgroup VFSResultCodes VFS Result Codes
-    //! @}
-
-    namespace VFS
-    {
-        //! @addtogroup VFSResultCodes
-        //! @{
-        
-        //! The VFS error category identifier.
-        inline constexpr errcat_t ERROR_CATEGORY = make_error_category(ErrorDomain::LUNA_SDK, LunaErrorCategory::VFS);
-
-        //! The specified VFS driver is not found.
-        inline constexpr ResultCode E_DRIVER_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::VFS, -1);
 
         //! @}
     }

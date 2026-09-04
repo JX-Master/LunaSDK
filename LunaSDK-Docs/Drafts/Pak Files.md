@@ -65,4 +65,4 @@ Release all file handles before calling `flush` or `discard`; otherwise they ret
 
 ## Current scope
 
-This module supplies standalone package operations. A VFS driver and Asset metadata databases are separate integration work. Pak does not mount itself or discover assets. Encryption, codecs beyond Store/Deflate, symbolic links, native extraction and filesystem permission preservation are not provided.
+This module supplies standalone package operations. VFS provides Pak filesystem instances that can be mounted as virtual directories; see [[Mounting Pak Files]]. Asset metadata databases are a separate integration stage. Pak does not mount itself or discover assets. Encryption, codecs beyond Store/Deflate, symbolic links, native extraction and filesystem permission preservation are not provided.

@@ -10,6 +10,7 @@
 #include "DocumentFileSystem.hpp"
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/VFS/VFS.hpp>
+#include <Luna/VFS/NativeFileSystem.hpp>
 
 namespace Luna
 {
@@ -57,6 +58,7 @@ namespace Luna
                     lulet(attributes, Luna::get_file_attribute(directory.encode().c_str()));
                     if(!test_flags(attributes.attributes, FileAttributeFlag::directory))
                         luthrow(set_error(E_NOT_DIRECTORY, "The selected parent path is not a directory."));
+                    lulet(file_system, VFS::new_native_file_system(directory.encode(PathSeparator::system_preferred).c_str()));
                     Path mount_path;
                     for(;;)
                     {
@@ -67,8 +69,7 @@ namespace Luna
                         auto attributes = VFS::get_file_attribute(mount_path);
                         if(attributes.valid()) continue;
                         if(attributes.errcode() != E_NOT_FOUND) luthrow(attributes.errcode());
-                        RV mounted = VFS::mount(VFS::get_platform_filesystem_driver(),
-                            directory.encode(PathSeparator::system_preferred).c_str(), mount_path);
+                        RV mounted = VFS::mount(file_system, mount_path);
                         if(mounted.errcode() == E_ALREADY_EXISTS) continue;
                         luexp(mounted);
                         break;

@@ -149,17 +149,23 @@ namespace Luna
         //! * @ref Result::bad_platform_call for all errors that cannot be identified.
         Result copy_file(const c8* from_path, const c8* to_path);
 
-        //! Moves the file or directory from the source path to the destination path. This call can also be used to rename a file.
-        //! @param[in] from_path Source file or directory path. If `from_path` does not existm this operation failed with @ref E_NOT_FOUND.
-        //! @param[in] to_path Destination file or directory path. If `to_path` already exists, this operation fails with @ref E_ALREADY_EXISTS
-        //! and the existing file will not be modified.
+        //! Moves or renames a file or directory using native platform operations.
+        //! @param[in] from_path The source path.
+        //! @param[in] to_path The destination path. Its parent directory must exist.
+        //! @param[in] flags Controls replacement and native copy/delete fallback.
+        //! @details The Runtime caller validates arguments and rejects replacement involving directories.
+        //! POSIX always uses rename. Windows permits cross-volume file copying unless
+        //! @ref FileMoveFlag::no_copy is set. Without @ref FileMoveFlag::allow_overwrite,
+        //! an existing destination causes @ref Result::already_exists.
         //! @par Possible Errors
         //! * @ref Result::bad_arguments
         //! * @ref Result::already_exists
         //! * @ref Result::access_denied
         //! * @ref Result::not_found
+        //! * @ref Result::not_supported
+        //! * @ref Result::busy
         //! * @ref Result::bad_platform_call for all errors that cannot be identified.
-        Result move_file(const c8* from_path, const c8* to_path);
+        Result move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags);
 
         //! Deletes the specified file or directory.
         //! @param[in] file_path The file or directory to delete. If this is a non-empty directory, all its contexts will also be deleted.

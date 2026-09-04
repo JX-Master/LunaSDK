@@ -70,6 +70,19 @@ namespace Luna
         open_existing_as_new = 5
     };
 
+    //! Specifies options for moving files and directories.
+    enum class FileMoveFlag : u32
+    {
+        //! Does not overwrite an existing destination. Uses the platform's default move behavior.
+        none = 0x00,
+        //! Allows a file to replace an existing file. Existing directories cannot be overwritten,
+        //! and a directory cannot replace an existing file.
+        allow_overwrite = 0x01,
+        //! Forbids cross-filesystem copy/delete fallback. Returns @ref E_NOT_SUPPORTED for a
+        //! cross-filesystem move instead of copying.
+        no_copy = 0x02,
+    };
+
     //! Specifies file attributes.
     struct FileAttribute
     {
@@ -161,16 +174,30 @@ namespace Luna
     //! * @ref E_BAD_PLATFORM_CALL for all errors that cannot be identified.
     LUNA_RUNTIME_API RV copy_file(const c8* from_path, const c8* to_path);
     //! Moves the file or directory from the source path to the destination path. This call can also be used to rename a file.
-    //! @param[in] from_path Source file or directory path. If `from_path` does not existm this operation failed with @ref E_NOT_FOUND.
-    //! @param[in] to_path Destination file or directory path. If `to_path` already exists, this operation fails with @ref E_ALREADY_EXISTS
-    //! and the existing file will not be modified.
+    //! @param[in] from_path Source file or directory path. If it does not exist, this operation fails with @ref E_NOT_FOUND.
+    //! @param[in] to_path Destination file or directory path. Its parent directory must exist.
+    //! @param[in] flags The move options. By default, an existing destination causes @ref E_ALREADY_EXISTS
+    //! and remains unmodified. @ref FileMoveFlag::allow_overwrite permits replacing an existing file.
+    //! @details Directories can be moved to absent destinations, but cannot participate in replacement.
+    //! Cross-filesystem moves follow native platform support: Windows permits copy/delete fallback for
+    //! files unless @ref FileMoveFlag::no_copy is set; POSIX always requires a native rename.
+    //! Combine @ref FileMoveFlag::allow_overwrite and @ref FileMoveFlag::no_copy to publish a prepared
+    //! file without deleting its destination first or falling back to copying. Native handle-sharing
+    //! rules apply; close handles that prevent the move first. Namespace atomicity and durability follow
+    //! the underlying filesystem; this function does not synchronize file data or promise recovery after power loss.
+    //! @par Valid Usage
+    //! * The paths must identify distinct files or directories.
+    //! * Callers must exclude concurrent changes to the source and destination entries.
     //! @par Possible Errors
     //! * @ref E_BAD_ARGUMENTS
     //! * @ref E_ALREADY_EXISTS
     //! * @ref E_ACCESS_DENIED
     //! * @ref E_NOT_FOUND
+    //! * @ref E_IS_DIRECTORY if either entry is a directory when replacement is requested.
+    //! * @ref E_NOT_SUPPORTED if a cross-filesystem move cannot use a native rename and no fallback is available or allowed.
+    //! * @ref E_BUSY
     //! * @ref E_BAD_PLATFORM_CALL for all errors that cannot be identified.
-    LUNA_RUNTIME_API RV move_file(const c8* from_path, const c8* to_path);
+    LUNA_RUNTIME_API RV move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags = FileMoveFlag::none);
     //! Deletes the specified file or directory.
     //! @param[in] file_path The file or directory to delete.
     //! If this is a directory, it must be empty.
