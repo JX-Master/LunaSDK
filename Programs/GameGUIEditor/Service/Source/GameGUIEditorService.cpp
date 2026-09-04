@@ -454,6 +454,7 @@ namespace Luna
                 case EditingPropertyEditor::float2: return "float2";
                 case EditingPropertyEditor::float4: return "float4";
                 case EditingPropertyEditor::color: return "color";
+                case EditingPropertyEditor::visual_effects: return "visual_effects";
                 case EditingPropertyEditor::size: return "size";
                 case EditingPropertyEditor::asset: return "asset";
                 case EditingPropertyEditor::json: return "json";

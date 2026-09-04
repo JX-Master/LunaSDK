@@ -137,6 +137,8 @@ namespace Luna
                     else if(editor == Name("float2")) property.editor = EditingPropertyEditor::float2;
                     else if(editor == Name("float4")) property.editor = EditingPropertyEditor::float4;
                     else if(editor == Name("color")) property.editor = EditingPropertyEditor::color;
+                    else if(editor == Name("visual_effects"))
+                        property.editor = EditingPropertyEditor::visual_effects;
                     else if(editor == Name("size")) property.editor = EditingPropertyEditor::size;
                     else if(editor == Name("asset")) property.editor = EditingPropertyEditor::asset;
                     else if(editor == Name("json")) property.editor = EditingPropertyEditor::json;
@@ -199,6 +201,8 @@ namespace Luna
                 case EditingPropertyEditor::float4:
                 case EditingPropertyEditor::color:
                     return make_editor_vector(editor.vector, 4);
+                case EditingPropertyEditor::visual_effects:
+                    return encode_visual_effects(editor.visual_effects.cspan());
                 case EditingPropertyEditor::size:
                     return Variant((f64)(editor.size_mode == 2 ?
                         editor.number * 0.01f : editor.number));

@@ -8,6 +8,7 @@
 * @date 2026/8/28
 */
 #pragma once
+#include "DocumentFileSystem.hpp"
 #include "../Service/GameGUIEditorService.hpp"
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/EditorGUI/EditorGUI.hpp>
@@ -49,6 +50,35 @@ namespace Luna
                 attachment
             };
 
+            enum class VisualEffectAction : u8
+            {
+                add,
+                move_up,
+                move_down,
+                remove
+            };
+
+            struct VisualEffectEditor
+            {
+                Variant source;
+                bool supported = true;
+                i32 phase = 0;
+                i32 type = 0;
+                f32 inset[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+                f32 color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+                f32 gradient_colors[3][4] = {
+                    {1.0f, 1.0f, 1.0f, 1.0f},
+                    {1.0f, 1.0f, 1.0f, 1.0f},
+                    {1.0f, 1.0f, 1.0f, 1.0f}
+                };
+                f32 radius = 0.0f;
+                f32 line_width = 1.0f;
+                f32 shadow_offset[2] = {0.0f, 0.0f};
+                f32 shadow_softness = 0.0f;
+                f32 shadow_spread = 0.0f;
+                i32 shadow_mode = 0;
+            };
+
             struct PropertyEditor
             {
                 EditingPropertyDesc desc;
@@ -66,6 +96,7 @@ namespace Luna
                 i32 selected_item = 0;
                 i32 size_mode = 0;
                 i32 baseline_size_mode = 0;
+                Vector<VisualEffectEditor> visual_effects;
             };
 
             struct PreviewState
@@ -173,6 +204,14 @@ namespace Luna
                 GUI::ElementHandle element;
             };
 
+            struct VisualEffectActionHit
+            {
+                usize property_index = 0;
+                usize effect_index = 0;
+                VisualEffectAction action = VisualEffectAction::add;
+                GUI::ElementHandle element;
+            };
+
             struct UIHandles
             {
                 u64 document_id = 0;
@@ -190,6 +229,7 @@ namespace Luna
                 Vector<NodeHit> nodes;
                 Vector<TypeHit> types;
                 Vector<PropertyActionHit> browse_assets;
+                Vector<VisualEffectActionHit> visual_effect_actions;
             };
 
             struct PreviewInput
@@ -218,6 +258,7 @@ namespace Luna
                 bool discard_smoke = false;
                 String workspace_path;
                 Path workspace_root;
+                DocumentFileSystem document_files;
                 String error_message;
                 u32 queue = U32_MAX;
                 u32 width = 0;
@@ -235,7 +276,9 @@ namespace Luna
                 RV resize_target(const UInt2U& size);
                 RV initialize_dock_layout();
                 bool invoke(const c8* url, const Variant& params, Variant& result);
-                bool native_path_to_asset_path(Path native_path, String& asset_path);
+                bool native_path_to_asset_path(Path native_path, String& asset_path,
+                    bool allow_missing = false);
+                void show_file_error(const c8* title);
                 bool create_document();
                 bool open_document();
                 bool refresh_snapshot(DocumentView& document);
@@ -260,6 +303,10 @@ namespace Luna
                 void build_document_panels(UIHandles& handles);
                 void build_inspector_panel(UIHandles& handles);
                 void build_diagnostics_panel();
+                GUI::ElementHandle build_visual_effects_editor(PropertyEditor& property,
+                    usize property_index, GUI::id_t property_id, UIHandles& handles);
+                bool process_visual_effect_actions(DocumentView& document,
+                    const UIHandles& handles);
                 void build_hierarchy_node(DocumentView& document, const Guid& node,
                     const Guid& parent, usize sibling_index, u32 depth, UIHandles& handles);
                 void process_interactions(const UIHandles& handles);
@@ -296,6 +343,10 @@ namespace Luna
             String property_text(const Variant& value);
             bool decode_editing_schema(const Variant& value, EditingSchema& schema);
             R<Variant> property_value(const PropertyEditor& editor);
+            void decode_visual_effects(const Variant& value,
+                Vector<VisualEffectEditor>& effects);
+            Variant encode_visual_effects(Span<const VisualEffectEditor> effects);
+            f32 visual_effects_editor_height(const PropertyEditor& property);
             bool point_in_rect(const RectF& rect, const Float2U& point);
             RectF item_screen_rect(GUI::IContext* context,
                 const GUI::ElementHandle& item, bool clip_rect = false);

@@ -110,7 +110,9 @@ namespace Luna
             //! Asset GUID editor.
             asset,
             //! Raw JSON value editor.
-            json
+            json,
+            //! Ordered static element visual-effect list.
+            visual_effects
         };
 
         //! Describes one enumeration item exposed by an editing property.

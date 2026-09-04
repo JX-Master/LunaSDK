@@ -8,6 +8,7 @@
 * @date 2026/8/28
 */
 #include "EditorApp.hpp"
+#include <Luna/Runtime/Log.hpp>
 #include <Luna/VFS/VFS.hpp>
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
@@ -104,6 +105,9 @@ namespace Luna
                         for(usize i = 0; i < min<usize>(value.size(), 4); ++i)
                             editor.vector[i] = (f32)value[i].fnum();
                     }
+                    break;
+                case EditingPropertyEditor::visual_effects:
+                    decode_visual_effects(value, editor.visual_effects);
                     break;
                 case EditingPropertyEditor::size:
                     if(editor.original_present)
@@ -238,28 +242,35 @@ namespace Luna
                 return true;
             }
 
-            bool EditorApp::native_path_to_asset_path(Path native_path, String& asset_path)
+            void EditorApp::show_file_error(const c8* title)
             {
-                native_path.normalize();
-                if(!native_path.is_subpath_of(workspace_root))
+                // Keep a copy across the native modal event loop and preserve Diagnostics output.
+                String message = error_message;
+                log_error("GameGUIEditor", "%s: %s", title, message.c_str());
+                auto result = Window::message_box(message.c_str(), title, {"OK"},
+                    Window::MessageBoxIcon::error);
+                if(!result.valid())
+                    log_error("GameGUIEditor", "Failed to show the error dialog: %s",
+                        explain(result.errcode()));
+                error_message = move(message);
+            }
+
+            bool EditorApp::native_path_to_asset_path(Path native_path, String& asset_path,
+                bool allow_missing)
+            {
+                auto resolved = document_files.resolve_document_path(workspace_root, native_path);
+                if(!resolved.valid())
                 {
-                    error_message = "GameGUI assets must be stored inside the current workspace.";
+                    error_message = explain(resolved.errcode());
                     return false;
                 }
-                if(!native_path.extension().empty())
+                RV loaded = load_document_meta(resolved.get(), allow_missing);
+                if(failed(loaded))
                 {
-                    if(native_path.extension() != "json")
-                    {
-                        error_message = "GameGUI document files must use the .json extension.";
-                        return false;
-                    }
-                    native_path.remove_extension();
+                    error_message = explain(loaded.errcode());
+                    return false;
                 }
-                Path relative_path;
-                relative_path.assign_relative(workspace_root, native_path);
-                Path vfs_path("/");
-                vfs_path.append(relative_path);
-                asset_path = vfs_path.encode();
+                asset_path = resolved.get().encode();
                 return true;
             }
 
@@ -274,16 +285,27 @@ namespace Luna
                 if(!selected_files.valid())
                 {
                     if(selected_files.errcode() != E_INTERRUPTED)
+                    {
                         error_message = explain(selected_files.errcode());
+                        show_file_error("Open GameGUI Document Failed");
+                    }
                     return false;
                 }
                 if(selected_files.get().empty()) return false;
                 String asset_path;
-                if(!native_path_to_asset_path(selected_files.get()[0], asset_path)) return false;
+                if(!native_path_to_asset_path(selected_files.get()[0], asset_path))
+                {
+                    show_file_error("Open GameGUI Document Failed");
+                    return false;
+                }
                 Variant params(VariantType::object);
                 params["path"] = asset_path.c_str();
                 Variant metadata;
-                if(!invoke(GameGUIEditor::OPEN_DOCUMENT_URL, params, metadata)) return false;
+                if(!invoke(GameGUIEditor::OPEN_DOCUMENT_URL, params, metadata))
+                {
+                    show_file_error("Open GameGUI Document Failed");
+                    return false;
+                }
                 u64 id = metadata["document_id"].unum();
                 for(usize i = 0; i < documents.size(); ++i)
                 {
@@ -425,23 +447,38 @@ namespace Luna
                     {
                         Path current_path(document.asset_path.c_str());
                         current_path.append_extension("json");
-                        initial_path.append(current_path);
+                        auto native_path = VFS::get_native_path(current_path);
+                        if(native_path.valid()) initial_path = native_path.get().c_str();
                     }
                     auto selected_path = Window::save_file_dialog("Save GameGUI Document As",
                         {&filter, 1}, initial_path);
                     if(!selected_path.valid())
                     {
                         if(selected_path.errcode() != E_INTERRUPTED)
+                        {
                             error_message = explain(selected_path.errcode());
+                            show_file_error("Save GameGUI Document Failed");
+                        }
                         return;
                     }
                     String asset_path;
-                    if(!native_path_to_asset_path(selected_path.get(), asset_path)) return;
+                    if(!native_path_to_asset_path(selected_path.get(), asset_path, true))
+                    {
+                        show_file_error("Save GameGUI Document Failed");
+                        return;
+                    }
                     params["path"] = asset_path.c_str();
                     url = GameGUIEditor::SAVE_AS_URL;
                 }
                 Variant metadata;
-                if(invoke(url, params, metadata)) refresh_snapshot(document);
+                if(!invoke(url, params, metadata))
+                {
+                    show_file_error("Save GameGUI Document Failed");
+                    return;
+                }
+                // The savepoint is already committed even if refreshing the view later fails.
+                update_metadata(document, metadata);
+                if(!refresh_snapshot(document)) show_file_error("Document Saved, Refresh Failed");
             }
 
             void EditorApp::cook(DocumentView& document)

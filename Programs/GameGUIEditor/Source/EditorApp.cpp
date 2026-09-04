@@ -112,6 +112,7 @@ namespace Luna
                     Window::set_event_handler(nullptr, nullptr);
                     service.reset();
                     documents.clear();
+                    luexp(document_files.close());
                     luexp(VFS::unmount("/"));
                 }
                 lucatchret;

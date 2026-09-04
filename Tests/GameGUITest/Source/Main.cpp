@@ -15,6 +15,7 @@
 #include <Luna/Runtime/Random.hpp>
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/VFS/VFS.hpp>
+#include <Luna/VG/TextArranger.hpp>
 #include <cstring>
 
 using namespace Luna;
@@ -334,6 +335,103 @@ namespace
         return value;
     }
 
+    void authored_visual_effect_test()
+    {
+        NodeRecord panel = make_node(get_panel_node_type(), "EffectPanel");
+        panel.properties["width"] = 100.0;
+        panel.properties["height"] = 50.0;
+        Variant effects(VariantType::array);
+        Variant shadow(VariantType::object);
+        shadow["phase"] = "before_children";
+        shadow["type"] = "shadow";
+        shadow["inset"] = make_float4(2.0, 3.0, 4.0, 5.0);
+        shadow["color"] = make_float4(0.0, 0.0, 0.0, 0.5);
+        shadow["radius"] = 6.0;
+        shadow["shadow_offset"] = make_float2(7.0, 8.0);
+        shadow["shadow_softness"] = 9.0;
+        shadow["shadow_spread"] = 10.0;
+        effects.push_back(move(shadow));
+        Variant gradient(VariantType::object);
+        gradient["phase"] = "before_children";
+        gradient["type"] = "gradient_rect";
+        gradient["color"] = make_float4(1.0, 0.0, 0.0, 1.0);
+        gradient["color_top_right"] = make_float4(0.0, 1.0, 0.0, 1.0);
+        gradient["color_bottom_right"] = make_float4(0.0, 0.0, 1.0, 1.0);
+        gradient["color_bottom_left"] = make_float4(1.0, 1.0, 1.0, 1.0);
+        effects.push_back(move(gradient));
+        Variant rectangle(VariantType::object);
+        rectangle["phase"] = "after_children";
+        rectangle["type"] = "rect";
+        effects.push_back(move(rectangle));
+        Variant rounded(VariantType::object);
+        rounded["phase"] = "after_children";
+        rounded["type"] = "rounded_rect";
+        rounded["radius"] = 3.0;
+        effects.push_back(move(rounded));
+        Variant stroke(VariantType::object);
+        stroke["phase"] = "after_children";
+        stroke["type"] = "rounded_rect_stroke";
+        stroke["color"] = make_float4(1.0, 0.0, 0.0, 1.0);
+        stroke["radius"] = 4.0;
+        stroke["line_width"] = 2.0;
+        effects.push_back(move(stroke));
+        panel.properties["visual_effects"] = move(effects);
+
+        Ref<Document> document = make_single_node_document(panel);
+        InstanceDesc desc;
+        desc.document = document;
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(100.0f, 50.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto root = instance->build(gui);
+        gui->pop_layer();
+        lutest(root.valid());
+        lupanic_if_failed(gui->apply_layout(root.get(), RectF(0.0f, 0.0f, 100.0f, 50.0f)));
+        GUI::ElementVisualConfig config = gui->get_element_visual_config(root.get());
+        lutest(config.before_children.size() == 3);
+        lutest(config.after_children.size() == 3);
+        lutest(config.before_children[0].command.type == GUI::DrawCommandType::rounded_rect);
+        const GUI::DrawCommand& decoded_shadow = config.before_children[1].command;
+        lutest(decoded_shadow.type == GUI::DrawCommandType::shadow);
+        lutest(decoded_shadow.rect.offset_x == 2.0f &&
+            decoded_shadow.rect.offset_y == 3.0f && decoded_shadow.rect.width == -6.0f &&
+            decoded_shadow.rect.height == -8.0f);
+        lutest(decoded_shadow.shadow.offset.x == 7.0f &&
+            decoded_shadow.shadow.offset.y == 8.0f &&
+            decoded_shadow.shadow.softness == 9.0f &&
+            decoded_shadow.shadow.spread == 10.0f);
+        lutest(config.before_children[2].command.type == GUI::DrawCommandType::gradient_rect);
+        lutest(config.before_children[2].command.color_top_right.y == 1.0f);
+        lutest(config.after_children[0].command.type == GUI::DrawCommandType::rect);
+        lutest(config.after_children[1].command.type == GUI::DrawCommandType::rounded_rect);
+        lutest(config.after_children[1].command.radius == 3.0f);
+        lutest(config.after_children[2].command.type ==
+            GUI::DrawCommandType::rounded_rect_stroke);
+        lupanic_if_failed(gui->generate_draw_commands());
+        Span<const GUI::DrawCommand> commands = gui->get_draw_commands();
+        lutest(commands.size() == 6);
+        lutest(commands[0].type == GUI::DrawCommandType::rounded_rect);
+        lutest(commands[1].type == GUI::DrawCommandType::shadow);
+        lutest(commands[2].type == GUI::DrawCommandType::gradient_rect);
+        lutest(commands[3].type == GUI::DrawCommandType::rect);
+        lutest(commands[4].type == GUI::DrawCommandType::rounded_rect);
+        lutest(commands[5].type == GUI::DrawCommandType::rounded_rect_stroke);
+
+        NodeRecord malformed = make_node(get_flex_node_type(), "MalformedEffect");
+        malformed.properties["visual_effects"] = Variant(VariantType::array);
+        Variant invalid_effect(VariantType::object);
+        invalid_effect["type"] = "rect";
+        malformed.properties["visual_effects"].push_back(move(invalid_effect));
+        InstanceDesc malformed_desc;
+        malformed_desc.document = make_single_node_document(malformed);
+        Ref<IInstance> malformed_instance = new_instance(malformed_desc);
+        lutest(failed(malformed_instance->prepare()));
+    }
+
     void canvas_layout_test()
     {
         NodeRecord canvas = make_node(get_canvas_node_type(), "CanvasRoot");
@@ -412,6 +510,169 @@ namespace
             instance->make_stable_id(percent.id, "element"));
         lutest(fixed_element && fixed_element->layout_result.rect.width == 200.0f);
         lutest(percent_element && percent_element->layout_result.rect.width == 200.0f);
+    }
+
+    RectF layout_text_in_flex(const NodeRecord& text, const c8* axis,
+        const c8* alignment, const Float2U& available = Float2U(400.0f, 300.0f))
+    {
+        NodeRecord root = make_node(get_flex_node_type(), "TextMeasureRoot");
+        root.properties["axis"] = axis;
+        if(alignment) root.properties["cross_alignment"] = alignment;
+        root.children.push_back(ChildLink{text.id});
+        Ref<Document> document = new_object<Document>();
+        document->root = root.id;
+        document->nodes.push_back(root);
+        document->nodes.push_back(text);
+        InstanceDesc desc;
+        desc.document = document;
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+        Ref<GUI::IContext> gui = GUI::new_context();
+        lupanic_if_failed(gui->register_font("registered-font", Font::get_default_font()));
+        GUI::FrameDesc frame;
+        frame.logical_size = available;
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto generated_root = instance->build(gui);
+        gui->pop_layer();
+        lutest(generated_root.valid());
+        lupanic_if_failed(gui->apply_layout(generated_root.get(),
+            RectF(0.0f, 0.0f, available.x, available.y)));
+        const GUI::Element* element = gui->find_element(instance->make_stable_id(text.id, "element"));
+        lutest(element);
+        RectF result = element->layout_result.rect;
+        lupanic_if_failed(gui->generate_draw_commands());
+        lutest(gui->get_draw_commands().size() == 1 &&
+            gui->get_draw_commands()[0].type == GUI::DrawCommandType::text);
+        return result;
+    }
+
+    void text_content_measure_test()
+    {
+        NodeRecord text = make_node(get_text_node_type(), "AutoText");
+        text.properties["text"] = "WWWW";
+        text.properties["font_size"] = 24.0;
+        VG::TextArrangeSection section;
+        section.font_file = Font::get_default_font();
+        section.font_size = 24.0f;
+        section.num_chars = 4;
+        VG::TextArrangeResult arranged = VG::arrange_text("WWWW", 4,
+            Span<const VG::TextArrangeSection>(&section, 1),
+            RectF(0.0f, 0.0f, 400.0f, 300.0f),
+            VG::TextAlignment::end, VG::TextAlignment::begin);
+        f32 natural_width = arranged.bounding_rect.width;
+        f32 natural_height = arranged.bounding_rect.height;
+        lutest(natural_width > 0.0f && natural_height > 0.0f);
+        auto check_near = [](f32 actual, f32 expected)
+        {
+            lutest(actual > expected - 0.001f && actual < expected + 0.001f);
+        };
+
+        for(const c8* axis : {"x", "y"})
+        {
+            bool horizontal = !strcmp(axis, "x");
+            for(const c8* alignment : {"start", "center", "end", "stretch", ""})
+            {
+                bool stretch = !strcmp(alignment, "stretch") || !alignment[0];
+                const c8* configured_alignment = alignment[0] ? alignment : nullptr;
+                RectF rect = layout_text_in_flex(text, axis, configured_alignment);
+                check_near(rect.width, stretch && !horizontal ? 400.0f : natural_width);
+                check_near(rect.height, stretch && horizontal ? 300.0f : natural_height);
+                f32 extra = horizontal ? 300.0f - rect.height : 400.0f - rect.width;
+                f32 offset = !strcmp(alignment, "center") ? extra * 0.5f :
+                    (!strcmp(alignment, "end") ? extra : 0.0f);
+                check_near(horizontal ? rect.offset_y : rect.offset_x, offset);
+
+                NodeRecord fixed = text;
+                fixed.properties["width"] = 80.0;
+                fixed.properties["height"] = 40.0;
+                rect = layout_text_in_flex(fixed, axis, configured_alignment);
+                check_near(rect.width, stretch && !horizontal ? 400.0f : 80.0f);
+                check_near(rect.height, stretch && horizontal ? 300.0f : 40.0f);
+            }
+        }
+
+        // The measured box can be used by the renderer without losing any glyphs.
+        RectF auto_rect = layout_text_in_flex(text, "y", "start");
+        arranged = VG::arrange_text("WWWW", 4, Span<const VG::TextArrangeSection>(&section, 1),
+            auto_rect, VG::TextAlignment::center, VG::TextAlignment::begin);
+        lutest(!arranged.overflow && arranged.lines.size() == 1 &&
+            arranged.lines[0].glyphs.size() == 4);
+
+        text.properties["font"] = "registered-font";
+        check_near(layout_text_in_flex(text, "y", "start").width, natural_width);
+        text.properties["font"] = "missing-font";
+        check_near(layout_text_in_flex(text, "y", "start").width, natural_width);
+        text.properties["font_size"] = 48.0;
+        check_near(layout_text_in_flex(text, "y", "start").width, natural_width * 2.0f);
+        text.properties["font_size"] = 24.0;
+        text.properties["text"] = "WW";
+        check_near(layout_text_in_flex(text, "y", "start").width, natural_width * 0.5f);
+        text.properties["text"] = "WWWW";
+        text.properties["padding"] = make_float4(3.0, 4.0, 5.0, 6.0);
+        RectF padded = layout_text_in_flex(text, "y", "start");
+        check_near(padded.width, natural_width + 8.0f);
+        check_near(padded.height, natural_height + 10.0f);
+        text.properties.erase("padding");
+
+        // Auto height must account for wrapping at an explicit width, without clipping to
+        // the parent's available height while measuring.
+        text.properties["text"] = "WWWWWWWWWWWW";
+        text.properties["width"] = (f64)(natural_width * 0.6f);
+        text.properties["flex_shrink"] = 0.0;
+        RectF wrapped = layout_text_in_flex(text, "y", "start", Float2U(400.0f, 30.0f));
+        lutest(wrapped.height > natural_height * 2.0f);
+        check_near(wrapped.width, natural_width * 0.6f);
+        text.properties.erase("width");
+        text.properties["width_percent"] = (f64)(natural_width * 0.6f / 400.0f);
+        RectF percent = layout_text_in_flex(text, "y", "start", Float2U(400.0f, 30.0f));
+        check_near(percent.width, wrapped.width);
+        check_near(percent.height, wrapped.height);
+        text.properties.erase("width_percent");
+        text.properties["text"] = "";
+        RectF empty = layout_text_in_flex(text, "y", "start");
+        lutest(empty.width == 0.0f && empty.height == 0.0f);
+    }
+
+    void flex_container_properties_test()
+    {
+        NodeRecord root = make_node(get_flex_node_type(), "ConfiguredFlex");
+        root.properties["axis"] = "x";
+        root.properties["reverse"] = true;
+        root.properties["wrap"] = "wrap_reverse";
+        root.properties["main_alignment"] = "space_evenly";
+        root.properties["cross_alignment"] = "center";
+        root.properties["line_alignment"] = "space_around";
+        root.properties["gap"] = 7.0;
+        root.properties["line_gap"] = 11.0;
+        root.properties["clip_children"] = true;
+
+        InstanceDesc desc;
+        desc.document = make_single_node_document(root);
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(200.0f, 100.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto generated_root = instance->build(gui);
+        gui->pop_layer();
+        lutest(generated_root.valid());
+        GUI::LayoutCallbackConfig callbacks =
+            gui->get_layout_callback_config(generated_root.get());
+        lutest(callbacks.algorithm == Name("GameGUI.Flex") && callbacks.userdata);
+        const GUI::FlexLayoutDesc& layout =
+            *reinterpret_cast<const GUI::FlexLayoutDesc*>(callbacks.userdata);
+        lutest(layout.axis == GUI::LayoutAxis::x);
+        lutest(layout.reverse);
+        lutest(layout.wrap == GUI::FlexWrap::wrap_reverse);
+        lutest(layout.main_alignment == GUI::FlexAlignment::space_evenly);
+        lutest(layout.cross_alignment == GUI::FlexAlignment::center);
+        lutest(layout.line_alignment == GUI::FlexAlignment::space_around);
+        lutest(layout.main_axis_gap == 7.0f);
+        lutest(layout.cross_axis_gap == 11.0f);
+        lutest(layout.clip_children);
     }
 
     Ref<Document> make_nested_text_document()
@@ -549,9 +810,12 @@ int main()
     topology_validation_test();
     registry_and_state_test();
     element_visual_effect_test();
+    authored_visual_effect_test();
     button_action_test();
     canvas_layout_test();
     flex_stretch_overrides_explicit_cross_size_test();
+    text_content_measure_test();
+    flex_container_properties_test();
     nested_asset_test();
     nested_cycle_test();
     lupanic_if_failed(VFS::unmount("/GameGUITest"));

@@ -8,6 +8,7 @@
 * @date 2026/8/26
 */
 #include "../../../Programs/GameGUIEditor/Service/GameGUIEditorService.hpp"
+#include "../../../Programs/GameGUIEditor/Source/InspectorLayout.hpp"
 #include <Luna/GameGUI/GameGUI.hpp>
 #include <Luna/Runtime/Assert.hpp>
 #include <Luna/Runtime/Guid.hpp>
@@ -126,6 +127,29 @@ namespace
         lutest(width && (*width)["section"].str() == Name("layout") &&
             (*width)["editor"].str() == Name("size") &&
             (*width)["alternate_id"].str() == Name("width_percent"));
+        const Variant* wrap = find_editing_property((*flex)["property_schema"], "wrap");
+        lutest(wrap && (*wrap)["editor"].str() == Name("enumeration") &&
+            (*wrap)["default_value"].str() == Name("none") && (*wrap)["items"].size() == 3);
+        const Variant* main_alignment = find_editing_property(
+            (*flex)["property_schema"], "main_alignment");
+        lutest(main_alignment && (*main_alignment)["editor"].str() == Name("enumeration") &&
+            (*main_alignment)["default_value"].str() == Name("start") &&
+            (*main_alignment)["items"].size() == 6);
+        const Variant* cross_alignment = find_editing_property(
+            (*flex)["property_schema"], "cross_alignment");
+        lutest(cross_alignment && (*cross_alignment)["editor"].str() == Name("enumeration") &&
+            (*cross_alignment)["default_value"].str() == Name("stretch") &&
+            (*cross_alignment)["items"].size() == 4);
+        const Variant* line_alignment = find_editing_property(
+            (*flex)["property_schema"], "line_alignment");
+        lutest(line_alignment && (*line_alignment)["editor"].str() == Name("enumeration") &&
+            (*line_alignment)["default_value"].str() == Name("start") &&
+            (*line_alignment)["items"].size() == 7);
+        const Variant* visual_effects = find_editing_property(
+            (*flex)["property_schema"], "visual_effects");
+        lutest(visual_effects && (*visual_effects)["section"].str() == Name("style") &&
+            (*visual_effects)["editor"].str() == Name("visual_effects") &&
+            (*visual_effects)["default_value"].type() == VariantType::array);
         const Variant* color = find_editing_property((*panel)["property_schema"], "color");
         lutest(color && (*color)["section"].str() == Name("style") &&
             (*color)["editor"].str() == Name("color"));
@@ -143,6 +167,41 @@ namespace
         lutest(find_editing_property(canvas_attachment, "anchor_max"));
         lutest(find_editing_property(canvas_attachment, "offset"));
         lutest(find_editing_property(canvas_attachment, "pivot"));
+    }
+
+    void inspector_stretch_warning_test()
+    {
+        using GameGUIEditor::Internal::flex_stretches_child_size;
+        GameGUIEditor::AuthoringNodeRecord parent;
+        parent.type = GameGUI::get_flex_node_type();
+        parent.properties = Variant(VariantType::object);
+        lutest(flex_stretches_child_size(parent, "width"));
+        lutest(!flex_stretches_child_size(parent, "height"));
+        for(const c8* axis : {"x", "y"})
+        {
+            parent.properties["axis"] = axis;
+            bool horizontal = !strcmp(axis, "x");
+            for(const c8* alignment : {"start", "center", "end", "space_between",
+                "space_around", "space_evenly"})
+            {
+                parent.properties["cross_alignment"] = alignment;
+                lutest(!flex_stretches_child_size(parent, "width"));
+                lutest(!flex_stretches_child_size(parent, "height"));
+            }
+            for(const c8* alignment : {"stretch", "unknown"})
+            {
+                parent.properties["cross_alignment"] = alignment;
+                lutest(flex_stretches_child_size(parent, "width") == !horizontal);
+                lutest(flex_stretches_child_size(parent, "height") == horizontal);
+            }
+            parent.properties.erase("cross_alignment");
+            lutest(flex_stretches_child_size(parent, "width") == !horizontal);
+            lutest(flex_stretches_child_size(parent, "height") == horizontal);
+        }
+        lutest(!flex_stretches_child_size(parent, "padding"));
+        parent.type = GameGUI::get_canvas_node_type();
+        lutest(!flex_stretches_child_size(parent, "width"));
+        lutest(!flex_stretches_child_size(parent, "height"));
     }
 
     void remove_file_if_present(const c8* path)
@@ -525,6 +584,8 @@ namespace
     }
 }
 
+void document_file_system_test();
+
 int main()
 {
     lupanic_if_failed(Luna::init());
@@ -533,6 +594,7 @@ int main()
         Frontend::module_frontend()
     }));
     lupanic_if_failed(init_modules());
+    document_file_system_test();
     const c8* current_dir = get_current_dir();
     RV mounted = VFS::mount(VFS::get_platform_filesystem_driver(), current_dir, MOUNT_PATH);
     release_current_dir(current_dir);
@@ -542,6 +604,7 @@ int main()
         lutest(service_result.valid());
         UniquePtr<GameGUIEditor::Service> service = move(service_result.get());
         authoring_migration_test();
+        inspector_stretch_warning_test();
         service_history_test(*service);
         asset_boundary_test(*service);
     }

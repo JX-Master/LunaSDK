@@ -8,6 +8,7 @@
 * @date 2026/8/28
 */
 #include "EditorApp.hpp"
+#include "InspectorLayout.hpp"
 #include <cstring>
 
 namespace Luna
@@ -46,9 +47,7 @@ namespace Luna
                     parent_id, sibling_index)) return false;
                 const AuthoringNodeRecord* parent = find_authoring_node(*document.snapshot,
                     parent_id);
-                if(!parent || parent->type != GameGUI::get_flex_node_type()) return false;
-                bool horizontal = parent->properties["axis"].str() == Name("x");
-                return (width && !horizontal) || (height && horizontal);
+                return parent && flex_stretches_child_size(*parent, property.desc.id);
             }
 
             void EditorApp::build_hierarchy_node(DocumentView& document, const Guid& node_id,
@@ -360,11 +359,15 @@ namespace Luna
                             bool stacked = property.desc.editor == EditingPropertyEditor::float2 ||
                                 property.desc.editor == EditingPropertyEditor::float4 ||
                                 property.desc.editor == EditingPropertyEditor::color ||
+                                property.desc.editor == EditingPropertyEditor::visual_effects ||
                                 property.desc.editor == EditingPropertyEditor::size ||
                                 property.desc.editor == EditingPropertyEditor::asset ||
                                 property.desc.editor == EditingPropertyEditor::json;
-                            f32 row_height = property.desc.editor == EditingPropertyEditor::float4 ?
-                                142.0f : (stretched_size ? 86.0f : 58.0f);
+                            f32 row_height = property.desc.editor ==
+                                EditingPropertyEditor::visual_effects ?
+                                visual_effects_editor_height(property) :
+                                (property.desc.editor == EditingPropertyEditor::float4 ?
+                                142.0f : (stretched_size ? 86.0f : 58.0f));
                             GUI::ElementHandle row = stacked ?
                                 EditorGUI::begin_v_layout(gui, property_id,
                                     property.desc.display_name.c_str(), fill_width(row_height)) :
@@ -445,6 +448,10 @@ namespace Luna
                                     GUI::make_scoped_id(property_id, "value"),
                                     property.desc.display_name.c_str(), property.vector,
                                     fill_width(28.0f));
+                                break;
+                            case EditingPropertyEditor::visual_effects:
+                                control = build_visual_effects_editor(property, property_index,
+                                    property_id, handles);
                                 break;
                             case EditingPropertyEditor::size:
                             {

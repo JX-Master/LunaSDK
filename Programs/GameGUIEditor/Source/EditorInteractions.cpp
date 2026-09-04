@@ -401,6 +401,7 @@ namespace Luna
                 if(!document) document = active_document();
                 if(document)
                 {
+                    if(process_visual_effect_actions(*document, handles)) return;
                     apply_inspector_changes(*document);
                     for(const PropertyActionHit& hit : handles.browse_assets)
                     {

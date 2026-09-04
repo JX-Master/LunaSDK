@@ -348,6 +348,50 @@ namespace Luna
                 set_default(property, Variant(false));
                 schema.properties.push_back(move(property));
 
+                property = make_property("wrap", "Wrap",
+                    EditingPropertySection::layout, EditingPropertyEditor::enumeration);
+                set_default(property, Variant("none"));
+                property.enumeration_items.push_back({"none", "No Wrap"});
+                property.enumeration_items.push_back({"wrap", "Wrap"});
+                property.enumeration_items.push_back({"wrap_reverse", "Wrap Reverse"});
+                property.description = "Controls whether children wrap onto additional lines.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("main_alignment", "Main Alignment",
+                    EditingPropertySection::layout, EditingPropertyEditor::enumeration);
+                set_default(property, Variant("start"));
+                property.enumeration_items.push_back({"start", "Start"});
+                property.enumeration_items.push_back({"center", "Center"});
+                property.enumeration_items.push_back({"end", "End"});
+                property.enumeration_items.push_back({"space_between", "Space Between"});
+                property.enumeration_items.push_back({"space_around", "Space Around"});
+                property.enumeration_items.push_back({"space_evenly", "Space Evenly"});
+                property.description = "Distributes children along the primary layout axis.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("cross_alignment", "Cross Alignment",
+                    EditingPropertySection::layout, EditingPropertyEditor::enumeration);
+                set_default(property, Variant("stretch"));
+                property.enumeration_items.push_back({"start", "Start"});
+                property.enumeration_items.push_back({"center", "Center"});
+                property.enumeration_items.push_back({"end", "End"});
+                property.enumeration_items.push_back({"stretch", "Stretch"});
+                property.description = "Aligns children across each flex line.";
+                schema.properties.push_back(move(property));
+
+                property = make_property("line_alignment", "Line Alignment",
+                    EditingPropertySection::layout, EditingPropertyEditor::enumeration);
+                set_default(property, Variant("start"));
+                property.enumeration_items.push_back({"start", "Start"});
+                property.enumeration_items.push_back({"center", "Center"});
+                property.enumeration_items.push_back({"end", "End"});
+                property.enumeration_items.push_back({"stretch", "Stretch"});
+                property.enumeration_items.push_back({"space_between", "Space Between"});
+                property.enumeration_items.push_back({"space_around", "Space Around"});
+                property.enumeration_items.push_back({"space_evenly", "Space Evenly"});
+                property.description = "Distributes wrapped lines along the cross axis.";
+                schema.properties.push_back(move(property));
+
                 property = make_property("gap", "Gap",
                     EditingPropertySection::layout, EditingPropertyEditor::number);
                 set_default(property, Variant(0.0));
@@ -444,6 +488,15 @@ namespace Luna
                 schema.properties.push_back(move(property));
             }
 
+            void add_visual_effects_schema(EditingSchema& schema)
+            {
+                EditingPropertyDesc property = make_property("visual_effects", "Visual Effects",
+                    EditingPropertySection::style, EditingPropertyEditor::visual_effects);
+                set_default(property, Variant(VariantType::array));
+                property.description = "Ordered static visuals emitted before or after child elements.";
+                schema.properties.push_back(move(property));
+            }
+
             Variant make_default_layout(f32 height = -1.0f)
             {
                 Variant properties(VariantType::object);
@@ -462,6 +515,7 @@ namespace Luna
                     desc.category = "Layout";
                     add_common_layout_schema(desc.property_schema);
                     add_flex_layout_schema(desc.property_schema);
+                    add_visual_effects_schema(desc.property_schema);
                     desc.slot_schema = make_slot_schema("ordered_children");
                     desc.default_properties = make_default_layout();
                     luexp(register_authoring_node_type(desc));
@@ -473,6 +527,7 @@ namespace Luna
                     desc.category = "Layout";
                     add_common_layout_schema(desc.property_schema);
                     add_canvas_layout_schema(desc.property_schema);
+                    add_visual_effects_schema(desc.property_schema);
                     add_canvas_attachment_schema(desc.child_attachment_schema);
                     desc.slot_schema = make_slot_schema("canvas_children");
                     desc.default_properties = make_default_layout();
@@ -485,6 +540,7 @@ namespace Luna
                     desc.category = "Visual";
                     add_common_layout_schema(desc.property_schema);
                     add_panel_style_schema(desc.property_schema);
+                    add_visual_effects_schema(desc.property_schema);
                     desc.slot_schema = make_slot_schema("ordered_children");
                     desc.default_properties = make_default_layout();
                     luexp(register_authoring_node_type(desc));
@@ -496,6 +552,7 @@ namespace Luna
                     desc.category = "Visual";
                     add_common_layout_schema(desc.property_schema);
                     add_text_style_schema(desc.property_schema);
+                    add_visual_effects_schema(desc.property_schema);
                     {
                         EditingPropertyDesc property = make_property("text", "Text",
                             EditingPropertySection::property, EditingPropertyEditor::string);
@@ -514,6 +571,7 @@ namespace Luna
                     add_common_layout_schema(desc.property_schema);
                     add_panel_style_schema(desc.property_schema);
                     add_text_style_schema(desc.property_schema);
+                    add_visual_effects_schema(desc.property_schema);
                     {
                         EditingPropertyDesc property = make_property("text", "Text",
                             EditingPropertySection::property, EditingPropertyEditor::string);
@@ -541,6 +599,7 @@ namespace Luna
                     desc.display_name = "Asset Instance";
                     desc.category = "Composition";
                     add_common_layout_schema(desc.property_schema);
+                    add_visual_effects_schema(desc.property_schema);
                     {
                         EditingPropertyDesc property = make_property("asset", "Asset",
                             EditingPropertySection::property, EditingPropertyEditor::asset);

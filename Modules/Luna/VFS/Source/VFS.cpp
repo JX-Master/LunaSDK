@@ -86,6 +86,7 @@ namespace Luna
                     g_mounts.erase(iter);
                     return ok;
                 }
+                ++iter;
             }
             return E_NOT_FOUND;
         }
