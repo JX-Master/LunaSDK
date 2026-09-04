@@ -245,7 +245,7 @@ public sealed class CppTargetGraphGenerator
             var explicitLinkInputIds = target.LinkLibraryFiles
                 .Select(path => AddFileReferenceNode(path))
                 .ToArray();
-            var sideOutputIds = GetLinkSideOutputs(_workspace, _options, binaryPath)
+            var sideOutputIds = GetLinkSideOutputs(_workspace, _options, target, binaryPath)
                 .Select(path =>
                 {
                     var id = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(path));
@@ -272,7 +272,7 @@ public sealed class CppTargetGraphGenerator
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
-            var isStaticArchive = !target.Kind.ProducesNativeExecutable() && !_options.Shared;
+            var isStaticArchive = !target.Kind.ProducesNativeExecutable() && !IsSharedLibrary(_options, target);
             // Static archive contents are a build-system invariant, not a target
             // option: an archive contains only object files produced by that target.
             var linkInputIds = isStaticArchive
@@ -292,7 +292,7 @@ public sealed class CppTargetGraphGenerator
                 Depfiles: Array.Empty<string>()));
 
             var runtimeFileIds = AddRuntimeFileNodes(target, dependencyOutputs.SelectMany(output => output.RuntimeFiles), binaryPath);
-            var linkInputId = !target.Kind.ProducesNativeExecutable() && _options.Shared && _options.Platform == BuildPlatform.Windows
+            var linkInputId = IsSharedLibrary(_options, target) && _options.Platform == BuildPlatform.Windows
                 ? BuildGraphIds.File(_workspace.ToRepositoryRelativePath(Path.ChangeExtension(binaryPath, ".lib")))
                 : binaryId;
             var targetId = BuildGraphIds.Target(target.QualifiedName);
@@ -339,7 +339,7 @@ public sealed class CppTargetGraphGenerator
                     .Concat(dependencyFrameworks)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
-                (!target.Kind.ProducesNativeExecutable() && _options.Shared
+                (IsSharedLibrary(_options, target)
                     ? new[] { binaryPath }
                     : Array.Empty<string>())
                     .Concat(target.RuntimeFiles)
@@ -1204,7 +1204,7 @@ public sealed class CppTargetGraphGenerator
             ? $"lib{target.Name}.so"
             : target.Kind.ProducesNativeExecutable()
             ? $"{target.Name}{ExecutableExtension(options.Platform)}"
-            : $"{options.LibraryPrefix}{target.Name}{(options.Shared ? SharedLibraryExtension(options.Platform) : StaticLibraryExtension(options.Platform))}";
+            : $"{options.LibraryPrefix}{target.Name}{(IsSharedLibrary(options, target) ? SharedLibraryExtension(options.Platform) : StaticLibraryExtension(options.Platform))}";
         return Path.Combine(
             GetTargetConfigurationDirectory(target, options),
             "bin",
@@ -1274,9 +1274,14 @@ public sealed class CppTargetGraphGenerator
         return target.IsHostProject ? directory : Path.Combine(directory, target.ConfigurationId);
     }
 
-    private static IReadOnlyList<string> GetLinkSideOutputs(BuildWorkspace workspace, BuildOptions options, string binaryPath)
+    private static bool IsSharedLibrary(BuildOptions options, BuildTargetDefinition target)
     {
-        if(options.Shared && options.Platform == BuildPlatform.Windows && !binaryPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        return target.Kind == BuildTargetKind.SharedLibrary && options.Shared;
+    }
+
+    private static IReadOnlyList<string> GetLinkSideOutputs(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target, string binaryPath)
+    {
+        if(IsSharedLibrary(options, target) && options.Platform == BuildPlatform.Windows)
         {
             return new[] { Path.ChangeExtension(binaryPath, ".lib") };
         }
@@ -1638,7 +1643,7 @@ public sealed class CppTargetGraphGenerator
     {
         var actionKind = target.Kind.ProducesNativeExecutable()
             ? IsAndroidNativeActivityLibrary(options, target) ? "cpp.link.shared" : "cpp.link.executable"
-            : options.Shared ? "cpp.link.shared" : "cpp.link.static";
+            : IsSharedLibrary(options, target) ? "cpp.link.shared" : "cpp.link.static";
         var lines = new List<string>
         {
             $"kind={actionKind}",

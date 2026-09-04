@@ -19,6 +19,7 @@ internal static class Program
             ("sibling project targets are not visible", SiblingVisibility),
             ("native link configurations must be compatible", LinkCompatibility),
             ("static archives contain only their own objects", StaticArchivesContainOnlyOwnObjects),
+            ("explicit static targets remain static in shared builds", ExplicitStaticTargetsInSharedBuilds),
             ("shared dependencies already beside consumers are not copied onto themselves", SameDirectoryRuntimeStaging),
             ("symlink imports use canonical project identity", CanonicalSymlinkIdentity),
             ("rule edits invalidate the compiled rules cache", RulesCacheInvalidation),
@@ -762,6 +763,32 @@ internal static class Program
             expectedExecutableInputs,
             executable.Dependencies.Where(id => id != BuildGraphIds.Target(middle.QualifiedName)),
             "final executable dependency order");
+    }
+
+    private static void ExplicitStaticTargetsInSharedBuilds()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("ExplicitStaticTargetsInSharedBuilds");
+        Write(root, "dependency.c", "int dependency(void) { return 1; }");
+        Write(root, "module.cpp", "int module() { return 1; }");
+        var workspace = new BuildWorkspace(root);
+        foreach(var platform in new[] { BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux })
+        {
+            var options = BuildOptions.HostDefault() with { Shared = true, Platform = platform };
+            var dependency = new NativeGraphTargetRules("Dependency", "dependency.c", BuildTargetKind.StaticLibrary)
+                .ToDefinition(workspace, options, "Host", "shared", isHostProject: true);
+            var module = new NativeGraphTargetRules("Module", "module.cpp", BuildTargetKind.SharedLibrary,
+                dependencies: new[] { dependency.QualifiedName })
+                .ToDefinition(workspace, options, "Host", "shared", isHostProject: true);
+            var graph = new CppTargetGraphGenerator().Generate(workspace, options, new[] { dependency, module }, module.QualifiedName);
+            var archive = LinkNode(graph, "cpp.link.static", dependency.QualifiedName);
+            var library = LinkNode(graph, "cpp.link.shared", module.QualifiedName);
+            True(archive.Path!.EndsWith(platform == BuildPlatform.Windows ? ".lib" : ".a", StringComparison.Ordinal),
+                "explicit static target has an archive extension");
+            True(archive.Outputs.Count == 0, "static archive has no import-library side output");
+            True(LinkInputs(library).Contains(archive.Id, StringComparer.Ordinal), "shared module links its static dependency");
+            True(library.Outputs.Count == (platform == BuildPlatform.Windows ? 1 : 0), "shared module keeps platform side outputs");
+        }
     }
 
     private static BuildGraphNode LinkNode(BuildGraph graph, string kind, string targetName)

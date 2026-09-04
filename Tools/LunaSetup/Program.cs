@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 return await LunaSetupApp.RunAsync(args);
 
@@ -37,17 +38,23 @@ internal static class LunaSetupApp
 
             var sdksDirectory = Path.Combine(root, "SDKs");
             var markerPath = Path.Combine(sdksDirectory, ".luna-sdk-version");
+            var downloadDirectory = Path.Combine(root, "build", "LunaSetup");
+            Directory.CreateDirectory(downloadDirectory);
             if(!options.Force && IsSdkReady(sdksDirectory, markerPath, platform))
             {
                 Console.WriteLine($"SDKs {SdkVersion}/{platform} already present: {sdksDirectory}");
+                await SourceSdkInstaller.InstallAsync(root, sdksDirectory, downloadDirectory, options.Force);
                 return 0;
             }
 
-            var downloadDirectory = Path.Combine(root, "build", "LunaSetup");
-            Directory.CreateDirectory(downloadDirectory);
             var archivePath = Path.Combine(downloadDirectory, $"SDKs-{SdkVersion}-{platform}.zip");
-
-            var refreshArchive = options.Force || !File.Exists(markerPath) || MissingSdkFiles(sdksDirectory, platform).Count > 0;
+            var legacyArchivePath = Path.Combine(sdksDirectory, $"SDKs-{SdkVersion}-{platform}.zip");
+            if(!options.Force && !IsZipArchiveReady(archivePath) && IsZipArchiveReady(legacyArchivePath))
+            {
+                Console.WriteLine($"Reusing legacy SDK archive: {legacyArchivePath}");
+                File.Copy(legacyArchivePath, archivePath, overwrite: true);
+            }
+            var refreshArchive = options.Force || !IsZipArchiveReady(archivePath);
             await DownloadAsync(url, archivePath, refreshArchive);
 
             if(options.Force && Directory.Exists(sdksDirectory))
@@ -75,6 +82,7 @@ internal static class LunaSetupApp
             ValidateSdkReady(sdksDirectory, platform);
             WriteMarker(markerPath, platform, url);
             Console.WriteLine($"SDKs {SdkVersion}/{platform} installed: {sdksDirectory}");
+            await SourceSdkInstaller.InstallAsync(root, sdksDirectory, downloadDirectory, options.Force);
             return 0;
         }
         catch(Exception ex)
@@ -128,6 +136,20 @@ internal static class LunaSetupApp
         return marker.Contains($"version={SdkVersion}", StringComparison.OrdinalIgnoreCase) &&
             marker.Contains($"platform={platform}", StringComparison.OrdinalIgnoreCase) &&
             MissingSdkFiles(sdksDirectory, platform).Count == 0;
+    }
+
+    private static bool IsZipArchiveReady(string path)
+    {
+        if(!File.Exists(path)) return false;
+        try
+        {
+            using var archive = ZipFile.OpenRead(path);
+            return archive.Entries.Count > 0;
+        }
+        catch(InvalidDataException)
+        {
+            return false;
+        }
     }
 
     private static void ValidateSdkReady(string sdksDirectory, string platform)
@@ -185,12 +207,16 @@ internal static class LunaSetupApp
             .ToArray();
     }
 
-    private static async Task DownloadAsync(string url, string archivePath, bool force)
+    internal static async Task DownloadAsync(string url, string archivePath, bool force, string? sha256 = null)
     {
         if(File.Exists(archivePath) && !force)
         {
-            Console.WriteLine($"Using cached archive: {archivePath}");
-            return;
+            if(sha256 is null || await MatchesHashAsync(archivePath, sha256))
+            {
+                Console.WriteLine($"Using cached archive: {archivePath}");
+                return;
+            }
+            Console.WriteLine($"Cached archive checksum mismatch; downloading again: {archivePath}");
         }
 
         Console.WriteLine($"Downloading {url}");
@@ -201,28 +227,46 @@ internal static class LunaSetupApp
 
         var totalBytes = response.Content.Headers.ContentLength;
         await using var source = await response.Content.ReadAsStreamAsync();
-        await using var destination = File.Create(archivePath);
-
-        var buffer = new byte[1024 * 1024];
-        long downloaded = 0;
-        var stopwatch = Stopwatch.StartNew();
-        while(true)
+        var temporaryPath = archivePath + ".download-" + Guid.NewGuid().ToString("N");
+        try
         {
-            var read = await source.ReadAsync(buffer);
-            if(read == 0)
+            await using(var destination = File.Create(temporaryPath))
             {
-                break;
-            }
-            await destination.WriteAsync(buffer.AsMemory(0, read));
-            downloaded += read;
-            if(stopwatch.ElapsedMilliseconds >= 1000)
-            {
+                var buffer = new byte[1024 * 1024];
+                long downloaded = 0;
+                var stopwatch = Stopwatch.StartNew();
+                while(true)
+                {
+                    var read = await source.ReadAsync(buffer);
+                    if(read == 0) break;
+                    await destination.WriteAsync(buffer.AsMemory(0, read));
+                    downloaded += read;
+                    if(stopwatch.ElapsedMilliseconds >= 1000)
+                    {
+                        PrintProgress(downloaded, totalBytes);
+                        stopwatch.Restart();
+                    }
+                }
                 PrintProgress(downloaded, totalBytes);
-                stopwatch.Restart();
+                Console.WriteLine();
             }
+            if(sha256 is not null && !await MatchesHashAsync(temporaryPath, sha256))
+            {
+                throw new InvalidDataException($"SHA-256 mismatch for {url}; expected {sha256}.");
+            }
+            File.Move(temporaryPath, archivePath, overwrite: true);
         }
-        PrintProgress(downloaded, totalBytes);
-        Console.WriteLine();
+        finally
+        {
+            if(File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
+    }
+
+    private static async Task<bool> MatchesHashAsync(string path, string expected)
+    {
+        await using var stream = File.OpenRead(path);
+        var hash = Convert.ToHexString(await SHA256.HashDataAsync(stream));
+        return string.Equals(hash, expected, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void PrintProgress(long downloaded, long? totalBytes)
@@ -314,7 +358,18 @@ internal static class LunaSetupApp
             var relative = Path.GetRelativePath(sourceDirectory, file);
             var destination = Path.Combine(destinationDirectory, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            File.Copy(file, destination, overwrite: true);
+            // Some platform SDK files are distributed read-only. Permit setup to
+            // refresh its own installed files, then restore that attribute.
+            var readOnly = File.Exists(destination) && (File.GetAttributes(destination) & FileAttributes.ReadOnly) != 0;
+            if(readOnly) File.SetAttributes(destination, File.GetAttributes(destination) & ~FileAttributes.ReadOnly);
+            try
+            {
+                File.Copy(file, destination, overwrite: true);
+            }
+            finally
+            {
+                if(readOnly && File.Exists(destination)) File.SetAttributes(destination, File.GetAttributes(destination) | FileAttributes.ReadOnly);
+            }
         }
     }
 

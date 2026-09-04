@@ -116,6 +116,7 @@ Kind = BuildTargetKind.Executable;
 Current common kinds:
 
 - `SharedLibrary`: Luna SDK modules such as `Runtime`, `RHI`, `Image`.
+- `StaticLibrary`: An archive of the target's own object files, including when the overall build uses shared libraries. Its library dependencies are forwarded to consumers. `SharedLibrary` targets still follow the global `--shared`/`--static` selection.
 - `Executable`: command-line tools and tests that produce a native executable
   such as `.exe` on Windows.
 - `Application`: app-style targets for Windows, macOS, iOS and Android.
