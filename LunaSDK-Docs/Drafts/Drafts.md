@@ -10,3 +10,7 @@ Documents in this directory are drafts awaiting review and promotion into the us
 ## Zip
 - [[Zip Archives]]
 - [[Editing Zip Archives]]
+
+## Pak
+- [[Pak Files]]
+- [[Editing Pak Files]]
