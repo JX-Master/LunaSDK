@@ -18,3 +18,8 @@ Documents in this directory are drafts awaiting review and promotion into the us
 ## VFS
 - [[File System Instances]]
 - [[Mounting Pak Files]]
+
+## Asset
+- [[Asset Databases]]
+- [[Asset Database Format]]
+- [[Converting Asset Metadata]]

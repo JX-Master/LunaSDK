@@ -93,7 +93,10 @@ namespace Luna
         //! * E_ACCESS_DENIED
         //! * E_NOT_FOUND
         //! * E_BAD_PLATFORM_CALL for all errors that cannot be identified.
-        LUNA_VFS_API RV move_file(const Path& from_path, const Path& to_path);
+        //! @param[in] flags Controls file replacement and copy fallback. The default rejects existing destinations.
+        //! @details no_copy forbids streaming fallback. Unsupported replacement of an existing destination
+        //! returns E_NOT_SUPPORTED without deleting it. Replacement requires compatible filesystem implementations.
+        LUNA_VFS_API RV move_file(const Path& from_path, const Path& to_path, FileMoveFlag flags = FileMoveFlag::none);
         //! Deletes the specified file or directory
         //! @param[in] path The file to delete.
         //! If this specifies one directory, the directory must be empty.

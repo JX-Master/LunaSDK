@@ -28,12 +28,12 @@ Opening an existing file for writing copies its complete decoded contents into s
 | --- | --- |
 | `create_dir(path)` | Creates one directory; its parent must exist. |
 | `copy_file(from, to)` | Copies one file's contents and compression selection to a new path using independent staging. |
-| `move_file(from, to)` | Moves one file or a complete directory subtree; the destination must not exist. |
+| `move_file(from, to, flags)` | Moves one file or a complete directory subtree. The default rejects an existing destination; `FileMoveFlag::allow_overwrite` permits replacing an existing file. Directories cannot be replaced. |
 | `delete_file(path)` | Deletes a file or an empty directory. The root cannot be deleted. |
 | `set_file_compression(path, method, level)` | Selects the encoding for the next flush, without immediate recompression. |
 | `get_file_compression(path)` | Returns the current selected method. |
 
-Moving/deleting an open file, moving a subtree with open files, truncating an open file, or changing an open file's compression returns `E_BUSY`. Unrelated paths remain editable. Copying from a file with an active writer is also busy. Directory removal is nonrecursive, and directory moves cannot move a directory into itself. Failed validation leaves the tree unchanged.
+Moving/deleting an open file, replacing an open destination, moving a subtree with open files, truncating an open file, or changing an open file's compression returns `E_BUSY`. Unrelated paths remain editable. Copying from a file with an active writer is also busy. Directory removal is nonrecursive, and directory moves cannot move a directory into itself. Failed validation leaves the tree unchanged. `FileMoveFlag::no_copy` is accepted: moves within one package change its staged namespace without copying file contents.
 
 ### Flush repeatedly
 

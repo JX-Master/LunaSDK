@@ -124,7 +124,7 @@ namespace Luna::VFS
         return m_package->copy_file(pak_path(from_path).c_str(), pak_path(to_path).c_str());
     }
 
-    RV PakFileSystem::move_file(const Path& from_path, const Path& to_path, IFileSystem* to_file_system)
+    RV PakFileSystem::move_file(const Path& from_path, const Path& to_path, IFileSystem* to_file_system, FileMoveFlag flags)
     {
         if(to_file_system && to_file_system != this) return E_NOT_SUPPORTED;
         MutexGuard guard(m_mutex);
@@ -133,7 +133,7 @@ namespace Luna::VFS
         auto to = validate_relative_path(to_path);
         if(failed(to)) return to;
         if(m_pending) return E_BUSY;
-        return m_package->move_file(pak_path(from_path).c_str(), pak_path(to_path).c_str());
+        return m_package->move_file(pak_path(from_path).c_str(), pak_path(to_path).c_str(), flags);
     }
 
     RV PakFileSystem::delete_file(const Path& path)

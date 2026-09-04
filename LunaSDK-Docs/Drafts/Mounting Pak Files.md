@@ -121,7 +121,7 @@ VFS shutdown first releases the underlying files/iterators of all VFS wrappers, 
 
 Unloading the last instance reference discards unsaved edits. Applications using an instance without mounting must flush it explicitly. Release application-held Runtime objects before `Luna::close()`; shutdown invalidation does not make wrappers usable after Runtime ends.
 
-When integrating with Asset, save data and metadata into ordinary files, release file handles, then flush the filesystem or unmount. A mount does not ask Asset to write pending records.
+When integrating with Asset, save data units and runtime metadata, call the Asset database's `flush()`, release file handles, then flush the filesystem or unmount. A mount does not ask Asset to write pending records. See [[Asset Databases]] for opening a centralized database through a Pak mount and for the complete save sequence.
 
 ## Validation
 

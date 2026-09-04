@@ -50,13 +50,15 @@ namespace Luna::VFS
         //! @details E_NOT_SUPPORTED must leave storage unchanged; VFS then attempts
         //! a generic streaming copy. Directory copying is not supported.
         virtual RV copy_file(const Path& from_path, const Path& to_path, IFileSystem* to_file_system = nullptr) { return E_NOT_SUPPORTED; }
-        //! Moves a file or directory without replacing a destination.
+        //! Moves a file or directory with optional file replacement.
         //! @param[in] from_path The source path relative to the root.
         //! @param[in] to_path The destination path relative to the destination root.
         //! @param[in] to_file_system The destination instance. Null selects this instance.
-        //! @details E_NOT_SUPPORTED must leave storage unchanged; VFS then attempts
-        //! a streaming file copy followed by source deletion.
-        virtual RV move_file(const Path& from_path, const Path& to_path, IFileSystem* to_file_system = nullptr) { return E_NOT_SUPPORTED; }
+        //! @param[in] flags The replacement and copy fallback policy. Directories cannot replace existing entries.
+        //! @details E_NOT_SUPPORTED must leave storage unchanged. Unless no_copy is set, VFS may
+        //! attempt a streaming file copy followed by source deletion into an absent destination.
+        virtual RV move_file(const Path& from_path, const Path& to_path, IFileSystem* to_file_system = nullptr,
+            FileMoveFlag flags = FileMoveFlag::none) { return E_NOT_SUPPORTED; }
         //! Deletes a file or an empty directory relative to the root.
         //! @param[in] path The relative file or directory path.
         virtual RV delete_file(const Path& path) { return E_NOT_SUPPORTED; }

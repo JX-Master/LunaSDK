@@ -101,12 +101,14 @@ namespace Luna
             //! @param[in] from_path The source file. An active writer causes E_BUSY.
             //! @param[in] to_path The new file path. Existing nodes cause E_ALREADY_EXISTS.
             virtual RV copy_file(const c8* from_path, const c8* to_path) = 0;
-            //! Moves a file or directory subtree without replacing an existing destination.
+            //! Moves a file or directory subtree, with optional replacement of an existing file.
             //! @param[in] from_path The non-root source path.
             //! @param[in] to_path The new path with an existing parent.
             //! @details Open files in the affected subtree cause E_BUSY. A directory cannot
             //! be moved into itself. Validation failure leaves the tree unchanged.
-            virtual RV move_file(const c8* from_path, const c8* to_path) = 0;
+            //! @param[in] flags Allows file replacement with allow_overwrite. no_copy is always satisfied
+            //! within one package. Replacing directories or entries with open handles is rejected.
+            virtual RV move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags = FileMoveFlag::none) = 0;
             //! Deletes one file or empty directory. The root cannot be deleted.
             //! @param[in] path The path to delete. An open file causes E_BUSY.
             virtual RV delete_file(const c8* path) = 0;

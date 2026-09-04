@@ -69,7 +69,7 @@ namespace Luna::Pak
         R<Ref<IFileIterator>> open_dir(const c8* path) override;
         RV create_dir(const c8* path) override;
         RV copy_file(const c8* from_path, const c8* to_path) override;
-        RV move_file(const c8* from_path, const c8* to_path) override;
+        RV move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags) override;
         RV delete_file(const c8* path) override;
         R<CompressionMethod> get_file_compression(const c8* path) override;
         RV set_file_compression(const c8* path, CompressionMethod method, u32 level) override;

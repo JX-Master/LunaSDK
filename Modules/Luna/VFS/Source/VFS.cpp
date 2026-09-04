@@ -271,9 +271,10 @@ namespace Luna::VFS
         return ok;
     }
 
-    LUNA_VFS_API RV move_file(const Path& from_path, const Path& to_path)
+    LUNA_VFS_API RV move_file(const Path& from_path, const Path& to_path, FileMoveFlag flags)
     {
         if(!g_mutex) return E_BAD_CALLING_TIME;
+        if((flags & ~(FileMoveFlag::allow_overwrite | FileMoveFlag::no_copy)) != FileMoveFlag::none) return E_BAD_ARGUMENTS;
         MutexGuard guard(g_mutex);
         lutry
         {
@@ -282,8 +283,15 @@ namespace Luna::VFS
             lulet(to, route_path(to_path, destination_path));
             MutexGuard source_guard(from->m_mutex);
             MutexGuard destination_guard(to->m_mutex);
-            auto result = from->m_file_system->move_file(source_path, destination_path, to->m_file_system);
+            auto result = from->m_file_system->move_file(source_path, destination_path, to->m_file_system, flags);
             if(succeeded(result) || unwrap_errcode(result.errcode()) != E_NOT_SUPPORTED) return result;
+            if(test_flags(flags, FileMoveFlag::no_copy)) return result;
+            if(test_flags(flags, FileMoveFlag::allow_overwrite))
+            {
+                auto destination = to->m_file_system->get_file_attribute(destination_path);
+                if(succeeded(destination)) return E_NOT_SUPPORTED;
+                if(unwrap_errcode(destination.errcode()) != E_NOT_FOUND) return destination.errcode();
+            }
             luexp(copy_between_file_systems(from->m_file_system, to->m_file_system, source_path, destination_path));
             luexp(from->m_file_system->delete_file(source_path));
         }

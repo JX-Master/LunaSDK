@@ -51,7 +51,7 @@ namespace Luna::VFS
         if(failed(to)) return to.errcode();
         return Luna::copy_file(from.get().c_str(), to.get().c_str());
     }
-    RV NativeFileSystem::move_file(const Path& from_path, const Path& to_path, IFileSystem* to_file_system)
+    RV NativeFileSystem::move_file(const Path& from_path, const Path& to_path, IFileSystem* to_file_system, FileMoveFlag flags)
     {
         Ref<IFileSystem> destination(to_file_system ? to_file_system : this);
         auto native = destination.as<NativeFileSystem>();
@@ -60,7 +60,7 @@ namespace Luna::VFS
         if(failed(from)) return from.errcode();
         auto to = native->resolve(to_path);
         if(failed(to)) return to.errcode();
-        return Luna::move_file(from.get().c_str(), to.get().c_str());
+        return Luna::move_file(from.get().c_str(), to.get().c_str(), flags);
     }
     RV NativeFileSystem::delete_file(const Path& path)
     {

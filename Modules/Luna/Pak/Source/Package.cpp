@@ -415,9 +415,10 @@ namespace Luna::Pak
         return ok;
     }
 
-    RV Package::move_file(const c8* from_path, const c8* to_path)
+    RV Package::move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags)
     {
         MutexGuard guard(m_mutex);
+        if((flags & ~(FileMoveFlag::allow_overwrite | FileMoveFlag::no_copy)) != FileMoveFlag::none) return E_BAD_ARGUMENTS;
         lutry
         {
             luexp(check_open(true));
@@ -426,7 +427,14 @@ namespace Luna::Pak
             lulet(source, find_node(from.name, from.directory));
             if(from.name.empty() || to.name.empty()) return E_BAD_ARGUMENTS;
             if(to.directory && !source->directory) return E_NOT_DIRECTORY;
-            if(m_nodes.find(to.name) != m_nodes.end()) return E_ALREADY_EXISTS;
+            auto destination = m_nodes.find(to.name);
+            if(destination != m_nodes.end())
+            {
+                if(!test_flags(flags, FileMoveFlag::allow_overwrite)) return E_ALREADY_EXISTS;
+                if(!from.name.compare(to.name)) return E_BAD_ARGUMENTS;
+                if(source->directory || destination->second->directory) return E_IS_DIRECTORY;
+                if(destination->second->writer || destination->second->readers) return E_BUSY;
+            }
             if(source->directory && is_descendant(to.name, from.name)) return E_BAD_ARGUMENTS;
             luexp(check_parent(to.name));
             Vector<Pair<String, String>> changes;
@@ -442,6 +450,7 @@ namespace Luna::Pak
             // Move owners out before inserting new keys so rehashing cannot invalidate
             // iterators and no half-updated namespace is observable.
             Vector<Pair<String, UniquePtr<Node>>> nodes;
+            if(destination != m_nodes.end()) m_nodes.erase(destination);
             for(auto& change : changes)
             {
                 auto found = m_nodes.find(change.first);

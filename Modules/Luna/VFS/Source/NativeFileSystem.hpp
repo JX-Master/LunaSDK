@@ -22,7 +22,7 @@ namespace Luna::VFS
         R<FileAttribute> get_file_attribute(const Path& path) override;
         R<Ref<IFileIterator>> open_dir(const Path& path) override;
         RV copy_file(const Path& from_path, const Path& to_path, IFileSystem* to_file_system) override;
-        RV move_file(const Path& from_path, const Path& to_path, IFileSystem* to_file_system) override;
+        RV move_file(const Path& from_path, const Path& to_path, IFileSystem* to_file_system, FileMoveFlag flags) override;
         RV delete_file(const Path& path) override;
         RV create_dir(const Path& path) override;
         R<Name> get_native_path(const Path& path) override;
