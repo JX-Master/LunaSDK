@@ -182,23 +182,24 @@ namespace Luna
                 drag.target_index = 0;
                 if(!document.snapshot || !drag.dragging) return;
 
+                auto can_insert_at = [&](const Guid& parent, usize target_index)
+                {
+                    if(drag.source_type != Guid()) return true;
+                    if(subtree_contains(*document.snapshot, drag.source, parent)) return false;
+                    Guid old_parent;
+                    usize old_index = 0;
+                    if(!find_parent_info(*document.snapshot, drag.source, old_parent,
+                        old_index)) return false;
+                    if(old_parent == parent && old_index < target_index) --target_index;
+                    return old_parent != parent || old_index != target_index;
+                };
                 auto set_reorder_target = [&](const NodeHit& hit,
                     HierarchyDropMode mode, const RectF& feedback_rect)
                 {
                     if(hit.parent == Guid()) return false;
                     usize target_index = hit.sibling_index +
                         (mode == HierarchyDropMode::after ? 1 : 0);
-                    if(subtree_contains(*document.snapshot, drag.source, hit.parent))
-                        return false;
-                    Guid old_parent;
-                    usize old_index = 0;
-                    if(!find_parent_info(*document.snapshot, drag.source, old_parent,
-                        old_index)) return false;
-                    usize adjusted_index = target_index;
-                    if(old_parent == hit.parent && old_index < adjusted_index)
-                        --adjusted_index;
-                    if(old_parent == hit.parent && old_index == adjusted_index)
-                        return false;
+                    if(!can_insert_at(hit.parent, target_index)) return false;
                     drag.drop_mode = mode;
                     drag.target_node = hit.node;
                     drag.target_parent = hit.parent;
@@ -231,20 +232,11 @@ namespace Luna
                             EditorGUI::get_item_rect(gui, hit.element));
                         return;
                     }
-                    if(hit.node == drag.source) return;
                     const AuthoringNodeRecord* target = find_authoring_node(
                         *document.snapshot, hit.node);
-                    if(!target || subtree_contains(*document.snapshot, drag.source,
-                        hit.node)) return;
-                    Guid old_parent;
-                    usize old_index = 0;
-                    if(!find_parent_info(*document.snapshot, drag.source, old_parent,
-                        old_index)) return;
+                    if(!target) return;
                     usize target_index = target->children.size();
-                    usize adjusted_index = target_index;
-                    if(old_parent == hit.node && old_index < adjusted_index) --adjusted_index;
-                    if(old_parent == hit.node && old_index == adjusted_index)
-                        return;
+                    if(!can_insert_at(hit.node, target_index)) return;
 
                     drag.drop_mode = mode;
                     drag.target_node = hit.node;
@@ -280,6 +272,15 @@ namespace Luna
                 HierarchyDragState& drag = document.hierarchy_drag;
                 if(!document.snapshot || drag.drop_mode == HierarchyDropMode::none)
                     return false;
+                if(drag.source_type != Guid())
+                {
+                    Guid type = drag.source_type;
+                    Guid parent = drag.target_parent;
+                    usize index = drag.target_index;
+                    drag = HierarchyDragState();
+                    add_node(document, type, parent, index);
+                    return true;
+                }
                 Guid old_parent;
                 usize old_index = 0;
                 if(!find_parent_info(*document.snapshot, drag.source, old_parent, old_index))
@@ -312,9 +313,32 @@ namespace Luna
                 if(invoke(GameGUIEditor::APPLY_COMMANDS_URL, params, result))
                 {
                     document.selected_node = source;
+                    document.hierarchy_expand_node = target_parent;
                     refresh_snapshot(document);
                 }
                 return true;
+            }
+
+            void EditorApp::add_node(DocumentView& document, const Guid& type,
+                Guid parent, usize index)
+            {
+                Variant command(VariantType::object);
+                command["kind"] = "insert_node";
+                command["parent"] = guid_string(parent).c_str();
+                command["type"] = guid_string(type).c_str();
+                if(index != USIZE_MAX) command["index"] = (u64)index;
+                Variant params = editing_params(document);
+                params["commands"] = Variant(VariantType::array);
+                params["commands"].push_back(move(command));
+                params["label"] = "Add node";
+                Variant result;
+                if(invoke(GameGUIEditor::APPLY_COMMANDS_URL, params, result))
+                {
+                    if(!result["created_nodes"].empty())
+                        decode_guid_string(result["created_nodes"][0], document.selected_node);
+                    document.hierarchy_expand_node = parent;
+                    refresh_snapshot(document);
+                }
             }
 
             bool EditorApp::process_hierarchy_interactions(DocumentView& document,
@@ -322,6 +346,25 @@ namespace Luna
             {
                 if(!document.snapshot) return false;
                 HierarchyDragState& drag = document.hierarchy_drag;
+                bool pressed_this_frame = false;
+                for(const TypeHit& hit : handles.types)
+                {
+                    for(const GUI::RoutedInputEvent& routed :
+                        gui->get_routed_input_events(hit.element.id))
+                    {
+                        const GUI::InputEvent& event = routed.event;
+                        if(event.type == GUI::InputEventType::pointer_down &&
+                            event.button == GUI::PointerButton::left)
+                        {
+                            drag = HierarchyDragState();
+                            drag.source_type = hit.type;
+                            drag.source_element = hit.element.id;
+                            drag.press_position = event.position;
+                            drag.pressed = true;
+                            pressed_this_frame = true;
+                        }
+                    }
+                }
                 for(const NodeHit& hit : handles.nodes)
                 {
                     if(EditorGUI::is_item_right_clicked(gui, hit.element))
@@ -356,25 +399,69 @@ namespace Luna
                             if(hit.node != document.snapshot->root)
                             {
                                 drag.source = hit.node;
+                                drag.source_element = hit.element.id;
                                 drag.press_position = event.position;
                                 drag.pressed = true;
+                                pressed_this_frame = true;
                             }
                         }
                     }
                 }
                 if(!drag.pressed) return false;
+                // Preserve excursions outside the click threshold even if the pointer returns
+                // to its starting position within the same input batch.
+                bool tracking_motion = !pressed_this_frame;
+                for(const GUI::RoutedInputEvent& routed :
+                    gui->get_routed_input_events(drag.source_element))
+                {
+                    const GUI::InputEvent& event = routed.event;
+                    if(event.type == GUI::InputEventType::pointer_down &&
+                        event.button == GUI::PointerButton::left) tracking_motion = true;
+                    if(tracking_motion && (event.type == GUI::InputEventType::pointer_move ||
+                        event.type == GUI::InputEventType::pointer_up))
+                    {
+                        f32 delta_x = event.position.x - drag.press_position.x;
+                        f32 delta_y = event.position.y - drag.press_position.y;
+                        if(delta_x * delta_x + delta_y * delta_y >= 16.0f) drag.dragging = true;
+                    }
+                    if(event.type == GUI::InputEventType::pointer_up &&
+                        event.button == GUI::PointerButton::left) tracking_motion = false;
+                }
+                bool released = false;
                 Float2U pointer_position = gui->get_pointer_position();
+                for(const GUI::InputEvent& event : gui->get_input_events())
+                {
+                    if(event.type == GUI::InputEventType::blur)
+                    {
+                        drag = HierarchyDragState();
+                        return true;
+                    }
+                    if((event.type == GUI::InputEventType::key_down && event.key == KeyCode::esc) ||
+                        event.type == GUI::InputEventType::navigation_back)
+                    {
+                        drag.cancelled = true;
+                        drag.drop_mode = HierarchyDropMode::none;
+                    }
+                    if(event.type == GUI::InputEventType::pointer_up &&
+                        event.button == GUI::PointerButton::left)
+                    {
+                        released = true;
+                        pointer_position = event.position;
+                    }
+                }
                 f32 delta_x = pointer_position.x - drag.press_position.x;
                 f32 delta_y = pointer_position.y - drag.press_position.y;
                 if(!drag.dragging && delta_x * delta_x + delta_y * delta_y >= 16.0f)
                     drag.dragging = true;
-                if(drag.dragging) update_hierarchy_drop(document, handles, pointer_position);
+                if(drag.dragging && !drag.cancelled)
+                    update_hierarchy_drop(document, handles, pointer_position);
                 if(gui->is_pointer_button_down(GUI::PointerButton::left)) return false;
-                if(drag.dragging)
+                if(drag.dragging || drag.cancelled)
                 {
-                    bool applied = apply_hierarchy_drop(document);
-                    if(!applied) drag = HierarchyDragState();
-                    return applied;
+                    if(released && !drag.cancelled) apply_hierarchy_drop(document);
+                    drag = HierarchyDragState();
+                    // A drag released over its palette button must not also insert via click.
+                    return true;
                 }
                 else
                 {
@@ -399,6 +486,10 @@ namespace Luna
 
                 DocumentView* document = find_document(handles.document_id);
                 if(!document) document = active_document();
+                for(DocumentView& view : documents)
+                {
+                    if(&view != document) view.hierarchy_drag = HierarchyDragState();
+                }
                 if(document)
                 {
                     if(process_visual_effect_actions(*document, handles)) return;
@@ -515,21 +606,7 @@ namespace Luna
                     for(const TypeHit& hit : handles.types)
                     {
                         if(!EditorGUI::is_item_clicked(gui, hit.element)) continue;
-                        Variant command(VariantType::object);
-                        command["kind"] = "insert_node";
-                        command["parent"] = guid_string(document->selected_node).c_str();
-                        command["type"] = guid_string(hit.type).c_str();
-                        Variant params = editing_params(*document);
-                        params["commands"] = Variant(VariantType::array);
-                        params["commands"].push_back(move(command));
-                        params["label"] = "Add node";
-                        Variant result;
-                        if(invoke(GameGUIEditor::APPLY_COMMANDS_URL, params, result))
-                        {
-                            if(!result["created_nodes"].empty())
-                                decode_guid_string(result["created_nodes"][0], document->selected_node);
-                            refresh_snapshot(*document);
-                        }
+                        add_node(*document, hit.type, document->selected_node);
                         break;
                     }
 

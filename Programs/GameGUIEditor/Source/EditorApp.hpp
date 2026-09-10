@@ -136,9 +136,13 @@ namespace Luna
             struct HierarchyDragState
             {
                 Guid source;
+                // A nonzero type creates a new node instead of moving an existing source.
+                Guid source_type;
+                GUI::id_t source_element = 0;
                 Float2U press_position = Float2U(0.0f);
                 bool pressed = false;
                 bool dragging = false;
+                bool cancelled = false;
                 HierarchyDropMode drop_mode = HierarchyDropMode::none;
                 Guid target_node;
                 Guid target_parent;
@@ -169,6 +173,7 @@ namespace Luna
                 Vector<PropertyEditor> property_editors;
                 PreviewState preview;
                 HierarchyDragState hierarchy_drag;
+                Guid hierarchy_expand_node;
                 Guid hierarchy_context_node;
                 Float2U hierarchy_context_position = Float2U(0.0f);
             };
@@ -315,6 +320,8 @@ namespace Luna
                 void update_hierarchy_drop(DocumentView& document, const UIHandles& handles,
                     const Float2U& pointer_position);
                 bool apply_hierarchy_drop(DocumentView& document);
+                void add_node(DocumentView& document, const Guid& type, Guid parent,
+                    usize index = USIZE_MAX);
                 void apply_inspector_changes(DocumentView& document);
                 void remove_document_view(u64 id);
                 bool has_dirty_documents() const;

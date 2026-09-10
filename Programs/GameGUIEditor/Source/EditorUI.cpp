@@ -59,6 +59,11 @@ namespace Luna
                 const c8* name = node->name.empty() ? "Unnamed Node" : node->name.c_str();
                 strprintf(label, "%s", name);
                 EditorGUI::TreeNodeFlag flags = EditorGUI::TreeNodeFlag::open_on_arrow;
+                if(document.hierarchy_expand_node == node_id)
+                {
+                    flags |= EditorGUI::TreeNodeFlag::always_open;
+                    document.hierarchy_expand_node = Guid();
+                }
                 if(node->children.empty()) flags |= EditorGUI::TreeNodeFlag::leaf;
                 if(document.selected_node == node_id) flags |= EditorGUI::TreeNodeFlag::selected;
                 GUI::ElementHandle item;
@@ -163,7 +168,8 @@ namespace Luna
                         node_type_icon(type), fixed_layout(20.0f, 20.0f), icon_desc);
                     EditorGUI::end_button(gui);
                     String tooltip;
-                    strprintf(tooltip, "%s / %s", type.category.c_str(), type.display_name.c_str());
+                    strprintf(tooltip, "%s / %s\nClick to add, or drag into the hierarchy.",
+                        type.category.c_str(), type.display_name.c_str());
                     EditorGUI::set_item_tooltip(gui,
                         guid_gui_id(gui->make_id("palette.tooltips"), type.type), item,
                         tooltip.c_str());
