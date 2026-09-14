@@ -16,6 +16,24 @@ Use `get_file_attribute` to fetch the attributes of a specified file or director
 
 Use `copy_file` to copy one file. It does not copy directories. Use `move_file` to move or rename a file or directory. Use `delete_file` to delete a file or an empty directory; a non-empty directory must be emptied first.
 
+`move_file(from, to, flags)` accepts optional `FileMoveFlag` options. Omitting the flags preserves the default behavior: an existing destination causes `E_ALREADY_EXISTS` and remains unchanged.
+
+| Option | Behavior |
+| --- | --- |
+| `none` | Keeps the default move behavior and does not overwrite the destination. |
+| `allow_overwrite` | Allows a file to replace an existing file. Directories cannot replace existing files or be overwritten; moving a directory to an absent destination is still allowed. |
+| `no_copy` | Requires a native move on the same filesystem, without copy/delete fallback. A cross-filesystem move returns `E_NOT_SUPPORTED`. |
+
+Options can be combined with `|`. Windows permits cross-volume file copying unless `no_copy` is set; POSIX always requires a native rename. For example, `move_file(from, to, FileMoveFlag::allow_overwrite)` enables ordinary file replacement. To publish a prepared file on the same filesystem, VFS Pak storage uses:
+
+```cpp
+RV result = move_file("game.pak.tmp", "game.pak",
+    FileMoveFlag::allow_overwrite | FileMoveFlag::no_copy);
+// Check result before treating the prepared file as published.
+```
+
+This combination performs checked native replacement without deleting the original file first or falling back to copying. The destination may also be absent. The source and destination must identify distinct files or directories, and callers must exclude concurrent changes to either entry. Close handles that prevent native moves first. The operation does not synchronize file data or promise power-loss recovery. Without `no_copy`, cross-volume copying follows native platform semantics and does not provide the same publication guarantees.
+
 Use `open_dir` to create a file iterator (`IFileIterator`) that can be used to iterate over files and directories in the specified directory. Use `create_dir` to create a new empty directory on the specified directory.
 
 Use `get_current_dir` and `set_current_dir` to get and set the current working directory of the process. The string returned by `get_current_dir` must be released with `release_current_dir`.

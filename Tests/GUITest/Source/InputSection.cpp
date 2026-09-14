@@ -17,7 +17,7 @@ namespace Luna::GUITest
         void input_sample(GUI::IContext* context, GUI::id_t id, const c8* label,
             const Float4U& color, GUI::PointerHitBehavior behavior, bool circle = false)
         {
-            GUI::ElementHandle element = context->begin_element(id);
+            GUI::ElementHandle element = begin_element(context, id);
             context->set_layout_config(element, fixed_layout(circle ? 132.0f : 220.0f, circle ? 132.0f : 92.0f));
             set_interactable(context, element, behavior,
                 GUI::InteractableFlag::hoverable | GUI::InteractableFlag::activatable |
@@ -43,7 +43,7 @@ namespace Luna::GUITest
                 draw_outline(context, RectF(0.0f, 0.0f, 220.0f, 92.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f), 1.25f);
                 draw_text(context, RectF(14.0f, 32.0f, 192.0f, 30.0f), label, 21.0f, text, VG::TextAlignment::center);
             }
-            context->end_element();
+            end_element(context);
         }
 
         const c8* key_name(KeyCode key)
@@ -200,7 +200,7 @@ namespace Luna::GUITest
 
         void ime_input_element(GUI::IContext* context, SheetState& state)
         {
-            GUI::ElementHandle element = context->begin_element(ID_IME_INPUT);
+            GUI::ElementHandle element = begin_element(context, ID_IME_INPUT);
             context->set_layout_config(element, fixed_layout(560.0f, 68.0f));
             set_interactable(context, element, GUI::PointerHitBehavior::target,
                 GUI::InteractableFlag::hoverable | GUI::InteractableFlag::activatable |
@@ -235,7 +235,7 @@ namespace Luna::GUITest
             {
                 context->request_text_input(element, (i32)state.ime_text.size());
             }
-            context->end_element();
+            end_element(context);
         }
 
         void narrow_bullet(GUI::IContext* context, f32 x, f32 y, const c8* text)
@@ -271,7 +271,7 @@ namespace Luna::GUITest
         void navigation_sample(GUI::IContext* context, GUI::id_t id, const c8* label, SheetState& sheet_state,
             bool submenu_item = false)
         {
-            GUI::ElementHandle element = context->begin_element(id);
+            GUI::ElementHandle element = begin_element(context, id);
             context->set_layout_config(element, fixed_layout(submenu_item ? 260.0f : 154.0f, submenu_item ? 74.0f : 82.0f));
             set_interactable(context, element, GUI::PointerHitBehavior::target,
                 GUI::InteractableFlag::hoverable | GUI::InteractableFlag::activatable |
@@ -299,7 +299,7 @@ namespace Luna::GUITest
             draw_rect(context, RectF(0.0f, 0.0f, width, height), fill, 4.0f);
             draw_outline(context, RectF(0.0f, 0.0f, width, height), Float4U(0.0f, 0.0f, 0.0f, 1.0f), interaction.focused ? 3.0f : 1.25f);
             draw_text(context, RectF(10.0f, height * 0.5f - 14.0f, width - 20.0f, 30.0f), label, 22.0f, text, VG::TextAlignment::center);
-            context->end_element();
+            end_element(context);
         }
 
         bool id_in_range(GUI::id_t id, GUI::id_t begin, u32 count)
@@ -322,7 +322,7 @@ namespace Luna::GUITest
         void pointer_demo_element(GUI::IContext* context, GUI::id_t id, f32 width, f32 height,
             const c8* name, const c8* behavior, GUI::PointerHitBehavior hit_behavior, const c8* note = nullptr)
         {
-            GUI::ElementHandle element = context->begin_element(id);
+            GUI::ElementHandle element = begin_element(context, id);
             context->set_layout_config(element, fixed_layout(width, height));
             if(hit_behavior != GUI::PointerHitBehavior::none)
             {
@@ -338,13 +338,13 @@ namespace Luna::GUITest
             Float4U text = highlighted ? Float4U(1.0f, 1.0f, 1.0f, 1.0f) : Float4U(0.0f, 0.0f, 0.0f, 1.0f);
             draw_rect(context, RectF(0.0f, 0.0f, width, height), fill, 0.0f);
             pointer_label(context, 26.0f, note ? 16.0f : 14.0f, name, behavior, note, text, 23.0f);
-            context->end_element();
+            end_element(context);
         }
     }
 
     void build_pointer_input_slice(GUI::IContext* context, SheetState& state)
     {
-        GUI::ElementHandle panel = context->begin_element(ID_INPUT);
+        GUI::ElementHandle panel = begin_element(context, ID_INPUT);
         context->set_layout_config(panel, fixed_layout(SHEET_WIDTH - 128.0f, 528.0f));
         state.pointer_items.clear();
         add_canvas_item(state.pointer_items, ID_POINTER_BASE_LAYER, 0.0f, 0.0f);
@@ -356,7 +356,7 @@ namespace Luna::GUITest
         add_canvas_item(state.pointer_base_items, ID_POINTER_A, 62.0f, 104.0f);
         add_canvas_item(state.pointer_base_items, ID_POINTER_B, 320.0f, 104.0f);
 
-        GUI::ElementHandle base = context->begin_element(ID_POINTER_BASE_LAYER);
+        GUI::ElementHandle base = begin_element(context, ID_POINTER_BASE_LAYER);
         context->set_layout_config(base, fixed_layout(1160.0f, 290.0f));
         draw_rect(context, RectF(0.0f, 0.0f, 1160.0f, 290.0f), Float4U(0.05f, 0.92f, 0.48f, 1.0f), 0.0f);
         pointer_label(context, 28.0f, 26.0f, "Bottom Layer Element", "PHB: none");
@@ -368,13 +368,13 @@ namespace Luna::GUITest
         state.pointer_base_canvas.default_item = GUI::CanvasLayoutItem();
         state.pointer_base_canvas.clip_children = true;
         set_canvas_layout(context, base, &state.pointer_base_canvas);
-        context->end_element();
+        end_element(context);
 
-        GUI::ElementHandle top = context->begin_element(ID_POINTER_TOP_LAYER);
+        GUI::ElementHandle top = begin_element(context, ID_POINTER_TOP_LAYER);
         context->set_layout_config(top, fixed_layout(608.0f, 264.0f));
         draw_rect(context, RectF(0.0f, 0.0f, 608.0f, 264.0f), Float4U(1.0f, 0.52f, 0.52f, 1.0f), 0.0f);
         pointer_label(context, 32.0f, 28.0f, "Top Layer Element", "PHB: none");
-        context->end_element();
+        end_element(context);
 
         pointer_demo_element(context, ID_POINTER_C, 206.0f, 76.0f, "Element C", "PHB: block",
             GUI::PointerHitBehavior::block);
@@ -408,12 +408,12 @@ namespace Luna::GUITest
         state.pointer_canvas.default_item = GUI::CanvasLayoutItem();
         state.pointer_canvas.clip_children = false;
         set_canvas_layout(context, panel, &state.pointer_canvas);
-        context->end_element();
+        end_element(context);
     }
 
     void build_keyboard_input_slice(GUI::IContext* context, SheetState& state)
     {
-        GUI::ElementHandle panel = context->begin_element(ID_KEYBOARD);
+        GUI::ElementHandle panel = begin_element(context, ID_KEYBOARD);
         context->set_layout_config(panel, fixed_layout(SHEET_WIDTH - 128.0f, 500.0f));
         state.keyboard_items.clear();
         add_canvas_item(state.keyboard_items, ID_IME_INPUT, 704.0f, 286.0f);
@@ -467,12 +467,12 @@ namespace Luna::GUITest
         state.keyboard_canvas.default_item = GUI::CanvasLayoutItem();
         state.keyboard_canvas.clip_children = false;
         set_canvas_layout(context, panel, &state.keyboard_canvas);
-        context->end_element();
+        end_element(context);
     }
 
     void build_navigation_input_slice(GUI::IContext* context, SheetState& state)
     {
-        GUI::ElementHandle panel = context->begin_element(ID_NAVIGATION);
+        GUI::ElementHandle panel = begin_element(context, ID_NAVIGATION);
         context->set_layout_config(panel, fixed_layout(SHEET_WIDTH - 128.0f, 500.0f));
         draw_text(context, RectF(0.0f, 0.0f, 620.0f, 46.0f), "Navigation demo", 32.0f,
             Float4U(0.0f, 0.0f, 0.0f, 1.0f));
@@ -547,6 +547,6 @@ namespace Luna::GUITest
         state.navigation_canvas.default_item = GUI::CanvasLayoutItem();
         state.navigation_canvas.clip_children = false;
         set_canvas_layout(context, panel, &state.navigation_canvas);
-        context->end_element();
+        end_element(context);
     }
 }

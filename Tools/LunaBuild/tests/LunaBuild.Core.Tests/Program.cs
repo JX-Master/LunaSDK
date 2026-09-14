@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LunaBuild.Core;
 using LunaBuild.Core.MakeSystem;
 
@@ -17,6 +18,8 @@ internal static class Program
             ("import cycles are rejected", ImportCycle),
             ("sibling project targets are not visible", SiblingVisibility),
             ("native link configurations must be compatible", LinkCompatibility),
+            ("static archives contain only their own objects", StaticArchivesContainOnlyOwnObjects),
+            ("explicit static targets remain static in shared builds", ExplicitStaticTargetsInSharedBuilds),
             ("shared dependencies already beside consumers are not copied onto themselves", SameDirectoryRuntimeStaging),
             ("symlink imports use canonical project identity", CanonicalSymlinkIdentity),
             ("rule edits invalidate the compiled rules cache", RulesCacheInvalidation),
@@ -25,8 +28,12 @@ internal static class Program
             ("dotnet builds honor the requested configuration", DotNetBuildConfiguration),
             ("cpp actions describe their input and output files", CppActionDescriptions),
             ("make system reports indexed task progress", IndexedTaskProgress),
+            ("make system initializes each action executor once", ActionExecutorInitialization),
+            ("make system releases dependents without batch barriers", AsyncDagScheduling),
             ("aggregate actions execute without task progress", AggregateActionsDoNotReportProgress),
             ("application targets produce native executable graphs", ApplicationTargetGraph),
+            ("MSVC UTF-8 compilation is enabled by default and configurable", MsvcUtf8CompilationOption),
+            ("MSVC environment capture normalizes duplicate path keys", MsvcEnvironmentCapture),
             ("apple deployment settings affect layout and commands", AppleDeploymentSettings),
         };
 
@@ -407,7 +414,7 @@ internal static class Program
             {
               "sdk": {
                 "version": "9.0.100",
-                "rollForward": "latestFeature"
+                "rollForward": "major"
               }
             }
             """);
@@ -656,6 +663,255 @@ internal static class Program
         True(windowsLink.Command!.Contains("application=true", StringComparison.Ordinal), "Windows application link marker");
     }
 
+    private static void AsyncDagScheduling()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("AsyncDagScheduling");
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault();
+        var slow = TestFileActionNode("out/slow.txt", "slow", delayMilliseconds: 300);
+        var fast = TestFileActionNode("out/fast.txt", "fast", delayMilliseconds: 30);
+        var dependent = TestFileActionNode("out/dependent.txt", "dependent", delayMilliseconds: 10) with
+        {
+            Dependencies = new[] { fast.Id },
+        };
+        var graph = new BuildGraph(2, options, new[] { slow, fast, dependent }, new[] { slow.Id, dependent.Id });
+
+        var events = new List<string>();
+        var eventsLock = new object();
+        void Record(string value)
+        {
+            lock(eventsLock)
+            {
+                events.Add(value);
+            }
+        }
+
+        var executor = new TestFileActionExecutor(
+            onStarted: description => Record("start:" + description),
+            onFinished: description => Record("finish:" + description));
+        var makeSystem = new MakeSystemBackend(new[] { executor }, maxParallelism: 2);
+        makeSystem.BuildAsync(workspace, graph).GetAwaiter().GetResult();
+
+        int EventIndex(string value)
+        {
+            lock(eventsLock)
+            {
+                return events.IndexOf(value);
+            }
+        }
+
+        True(EventIndex("finish:fast") < EventIndex("start:dependent"), "dependent waits for its own prerequisite");
+        True(EventIndex("start:dependent") < EventIndex("finish:slow"), "dependent starts before an unrelated slow task finishes");
+    }
+
+    private static void StaticArchivesContainOnlyOwnObjects()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("StaticArchivesContainOnlyOwnObjects");
+        Write(root, "leaf.cpp", "int leaf() { return 1; }");
+        Write(root, "middle.cpp", "int middle() { return leaf(); }");
+        Write(root, "app.cpp", "int main() { return middle(); }");
+
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault() with { Shared = false };
+        var leaf = new NativeGraphTargetRules(
+            "Leaf",
+            "leaf.cpp",
+            BuildTargetKind.StaticLibrary)
+            .ToDefinition(workspace, options, "Host", "static", isHostProject: true);
+        var middle = new NativeGraphTargetRules(
+            "Middle",
+            "middle.cpp",
+            BuildTargetKind.StaticLibrary,
+            dependencies: new[] { leaf.QualifiedName })
+            .ToDefinition(workspace, options, "Host", "static", isHostProject: true);
+        var app = new NativeGraphTargetRules(
+            "App",
+            "app.cpp",
+            BuildTargetKind.Executable,
+            dependencies: new[] { middle.QualifiedName })
+            .ToDefinition(workspace, options, "Host", "static", isHostProject: true);
+
+        var graph = new CppTargetGraphGenerator().Generate(
+            workspace,
+            options,
+            new[] { leaf, middle, app },
+            app.QualifiedName);
+        var leafArchive = LinkNode(graph, "cpp.link.static", leaf.QualifiedName);
+        var middleArchive = LinkNode(graph, "cpp.link.static", middle.QualifiedName);
+        var executable = LinkNode(graph, "cpp.link.executable", app.QualifiedName);
+        var leafObject = CompileNode(graph, leaf.QualifiedName);
+        var middleObject = CompileNode(graph, middle.QualifiedName);
+        var appObject = CompileNode(graph, app.QualifiedName);
+
+        SequenceEqual(new[] { leafObject.Id }, LinkInputs(leafArchive), "leaf archive inputs");
+        SequenceEqual(new[] { middleObject.Id }, LinkInputs(middleArchive), "middle archive inputs");
+        SequenceEqual(new[] { leafObject.Id }, leafArchive.Dependencies, "leaf archive dependencies");
+        SequenceEqual(new[] { middleObject.Id }, middleArchive.Dependencies, "middle archive dependencies");
+
+        var middleTarget = graph.Nodes.Single(node => node.Id == BuildGraphIds.Target(middle.QualifiedName));
+        True(middleTarget.Dependencies.Contains(BuildGraphIds.Target(leaf.QualifiedName), StringComparer.Ordinal),
+            "middle target waits for its dependency target without adding it to the archive");
+
+        var expectedExecutableInputs = new[] { appObject.Id, middleArchive.Id, leafArchive.Id };
+        SequenceEqual(
+            expectedExecutableInputs.Order(StringComparer.OrdinalIgnoreCase),
+            LinkInputs(executable).Order(StringComparer.OrdinalIgnoreCase),
+            "final executable receives dependent archives rather than dependent objects");
+        SequenceEqual(
+            expectedExecutableInputs,
+            executable.Dependencies.Where(id => id != BuildGraphIds.Target(middle.QualifiedName)),
+            "final executable dependency order");
+    }
+
+    private static void ExplicitStaticTargetsInSharedBuilds()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("ExplicitStaticTargetsInSharedBuilds");
+        Write(root, "dependency.c", "int dependency(void) { return 1; }");
+        Write(root, "module.cpp", "int module() { return 1; }");
+        var workspace = new BuildWorkspace(root);
+        foreach(var platform in new[] { BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux })
+        {
+            var options = BuildOptions.HostDefault() with { Shared = true, Platform = platform };
+            var dependency = new NativeGraphTargetRules("Dependency", "dependency.c", BuildTargetKind.StaticLibrary)
+                .ToDefinition(workspace, options, "Host", "shared", isHostProject: true);
+            var module = new NativeGraphTargetRules("Module", "module.cpp", BuildTargetKind.SharedLibrary,
+                dependencies: new[] { dependency.QualifiedName })
+                .ToDefinition(workspace, options, "Host", "shared", isHostProject: true);
+            var graph = new CppTargetGraphGenerator().Generate(workspace, options, new[] { dependency, module }, module.QualifiedName);
+            var archive = LinkNode(graph, "cpp.link.static", dependency.QualifiedName);
+            var library = LinkNode(graph, "cpp.link.shared", module.QualifiedName);
+            True(archive.Path!.EndsWith(platform == BuildPlatform.Windows ? ".lib" : ".a", StringComparison.Ordinal),
+                "explicit static target has an archive extension");
+            True(archive.Outputs.Count == 0, "static archive has no import-library side output");
+            True(LinkInputs(library).Contains(archive.Id, StringComparer.Ordinal), "shared module links its static dependency");
+            True(library.Outputs.Count == (platform == BuildPlatform.Windows ? 1 : 0), "shared module keeps platform side outputs");
+        }
+    }
+
+    private static BuildGraphNode LinkNode(BuildGraph graph, string kind, string targetName)
+    {
+        return graph.Nodes.Single(node => node.Command is not null &&
+            BuildActionKind.Extract(node.Command) == kind &&
+            node.Command.Split('\n').Contains("target=" + targetName, StringComparer.Ordinal));
+    }
+
+    private static BuildGraphNode CompileNode(BuildGraph graph, string targetName)
+    {
+        return graph.Nodes.Single(node => node.Command is not null &&
+            BuildActionKind.Extract(node.Command) == "cpp.compile" &&
+            node.Command.Split('\n').Contains("target=" + targetName, StringComparer.Ordinal));
+    }
+
+    private static IReadOnlyList<string> LinkInputs(BuildGraphNode node)
+    {
+        return node.Command!.Split('\n')
+            .Where(line => line.StartsWith("input=", StringComparison.Ordinal))
+            .Select(line => line["input=".Length..])
+            .ToArray();
+    }
+
+    private static void ActionExecutorInitialization()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("ActionExecutorInitialization");
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault();
+        var first = TestFileActionNode("out/first.txt", "first", delayMilliseconds: 5);
+        var second = TestFileActionNode("out/second.txt", "second", delayMilliseconds: 5);
+        var graph = new BuildGraph(2, options, new[] { first, second }, new[] { first.Id, second.Id });
+        var initializeCount = 0;
+        var initialized = false;
+        var executor = new TestFileActionExecutor(
+            onStarted: _ => True(initialized, "action starts after executor initialization"),
+            onInitialize: actions =>
+            {
+                ++initializeCount;
+                Equal(2, actions.Count, "initialized action count");
+                initialized = true;
+            });
+        var makeSystem = new MakeSystemBackend(new[] { executor }, maxParallelism: 2);
+
+        makeSystem.BuildAsync(workspace, graph).GetAwaiter().GetResult();
+        Equal(1, initializeCount, "single initialization for multiple actions");
+
+        makeSystem.BuildAsync(workspace, graph).GetAwaiter().GetResult();
+        Equal(1, initializeCount, "up-to-date build skips initialization");
+    }
+
+    private static void MsvcEnvironmentCapture()
+    {
+        var environment = MsvcToolchainLocator.ParseEnvironmentOutput("""
+            ignored setup output
+            __LUNABUILD_MSVC_ENVIRONMENT__
+            PATH=C:\MSVC\bin;C:\Windows
+            Path=C:\stale
+            INCLUDE=C:\SDK\include=value
+            """);
+        Equal("C:\\MSVC\\bin;C:\\Windows", environment["PATH"], "uppercase vcvars PATH wins");
+        Equal("C:\\SDK\\include=value", environment["INCLUDE"], "environment value preserves equals signs");
+
+        var reversed = MsvcToolchainLocator.ParseEnvironmentOutput("""
+            __LUNABUILD_MSVC_ENVIRONMENT__
+            Path=C:\stale
+            PATH=C:\MSVC\bin
+            """);
+        Equal("C:\\MSVC\\bin", reversed["PATH"], "uppercase PATH wins regardless of output order");
+
+        var startInfo = new ProcessStartInfo();
+        ProcessRunner.ApplyEnvironmentVariables(startInfo, environment);
+        var pathKeys = startInfo.Environment.Keys
+            .Where(key => key.Equals("PATH", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        Equal(1, pathKeys.Length, "child process receives one normalized PATH entry");
+        Equal("C:\\MSVC\\bin;C:\\Windows", startInfo.Environment[pathKeys[0]], "child process receives captured PATH");
+    }
+
+    private static void MsvcUtf8CompilationOption()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("MsvcUtf8");
+        Write(root, "app.cpp", "const char* text = \"中文\"; int main() { return text[0] == 0; }");
+        Write(root, "App.Target.cs", string.Empty);
+        var workspace = new BuildWorkspace(root);
+        var options = BuildOptions.HostDefault() with
+        {
+            Platform = BuildPlatform.Windows,
+            Architecture = "x64",
+            RhiApi = RhiApi.D3D12,
+        };
+
+        var defaultTarget = new ApplicationTargetRules().ToDefinition(
+            workspace, options, "Host", "utf8-default", isHostProject: true);
+        True(defaultTarget.EnableMsvcUtf8, "MSVC UTF-8 default");
+        var defaultGraph = new CppTargetGraphGenerator().Generate(
+            workspace, options, new[] { defaultTarget }, defaultTarget.QualifiedName);
+        var defaultCompile = defaultGraph.Nodes.Single(
+            node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.compile");
+        True(defaultCompile.Command!.Contains("msvc_utf8=True", StringComparison.Ordinal),
+            "enabled MSVC UTF-8 action identity");
+        var defaultCommandsPath = Path.Combine(root, "compile_commands.default.json");
+        CompileCommandsWriter.Write(workspace, defaultGraph, defaultCommandsPath);
+        True(File.ReadAllText(defaultCommandsPath).Contains("/utf-8", StringComparison.Ordinal),
+            "default MSVC UTF-8 compiler argument");
+
+        var disabledTarget = new ApplicationTargetRules(enableMsvcUtf8: false).ToDefinition(
+            workspace, options, "Host", "utf8-disabled", isHostProject: true);
+        True(!disabledTarget.EnableMsvcUtf8, "disabled MSVC UTF-8 target option");
+        var disabledGraph = new CppTargetGraphGenerator().Generate(
+            workspace, options, new[] { disabledTarget }, disabledTarget.QualifiedName);
+        var disabledCompile = disabledGraph.Nodes.Single(
+            node => node.Command is not null && BuildActionKind.Extract(node.Command) == "cpp.compile");
+        True(disabledCompile.Command!.Contains("msvc_utf8=False", StringComparison.Ordinal),
+            "disabled MSVC UTF-8 action identity");
+        var disabledCommandsPath = Path.Combine(root, "compile_commands.disabled.json");
+        CompileCommandsWriter.Write(workspace, disabledGraph, disabledCommandsPath);
+        True(!File.ReadAllText(disabledCommandsPath).Contains("/utf-8", StringComparison.Ordinal),
+            "disabled MSVC UTF-8 compiler argument");
+    }
+
     private static void AppleDeploymentSettings()
     {
         using var scope = new TestScope();
@@ -779,6 +1035,17 @@ internal static class Program
         }
     }
 
+    private static void SequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual, string message)
+    {
+        var expectedArray = expected.ToArray();
+        var actualArray = actual.ToArray();
+        if(!expectedArray.SequenceEqual(actualArray))
+        {
+            throw new InvalidOperationException(
+                $"Assertion failed: {message}. Expected `[{string.Join(", ", expectedArray)}]`, got `[{string.Join(", ", actualArray)}]`.");
+        }
+    }
+
     private static void Throws<T>(Action action, string messageFragment, string message)
         where T : Exception
     {
@@ -828,19 +1095,57 @@ internal static class Program
 
     private sealed class ApplicationTargetRules : TargetRules
     {
-        public ApplicationTargetRules()
+        public ApplicationTargetRules(bool? enableMsvcUtf8 = null)
             : base("App", ".", "App.Target.cs")
         {
             Kind = BuildTargetKind.Application;
             Sources("app.cpp");
+            if(enableMsvcUtf8.HasValue)
+            {
+                MsvcUtf8(enableMsvcUtf8.Value);
+            }
+        }
+    }
+
+    private sealed class NativeGraphTargetRules : TargetRules
+    {
+        public NativeGraphTargetRules(
+            string name,
+            string source,
+            BuildTargetKind kind,
+            IReadOnlyList<string>? dependencies = null)
+            : base(name, ".", name + ".Target.cs")
+        {
+            Kind = kind;
+            Sources(source);
+            if(dependencies is not null)
+            {
+                DependsOn(dependencies.ToArray());
+            }
         }
     }
 
     private sealed class TestFileActionExecutor : KnownActionExecutor
     {
-        public TestFileActionExecutor()
+        private readonly Action<string>? _onStarted;
+        private readonly Action<string>? _onFinished;
+        private readonly Action<IReadOnlyList<MakeActionContext>>? _onInitialize;
+
+        public TestFileActionExecutor(
+            Action<string>? onStarted = null,
+            Action<string>? onFinished = null,
+            Action<IReadOnlyList<MakeActionContext>>? onInitialize = null)
             : base("test.file")
         {
+            _onStarted = onStarted;
+            _onFinished = onFinished;
+            _onInitialize = onInitialize;
+        }
+
+        public override Task InitializeAsync(IReadOnlyList<MakeActionContext> actions, CancellationToken cancellationToken)
+        {
+            _onInitialize?.Invoke(actions);
+            return Task.CompletedTask;
         }
 
         public override string GetDescription(MakeActionContext context)
@@ -850,11 +1155,14 @@ internal static class Program
 
         public override async Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
         {
+            var description = RequiredPayloadValue(context.ActionPayload, "description");
             var delay = int.Parse(RequiredPayloadValue(context.ActionPayload, "delay"));
             var output = context.Workspace.ResolveRepositoryPath(RequiredPayloadValue(context.ActionPayload, "output"));
+            _onStarted?.Invoke(description);
             await Task.Delay(delay, cancellationToken);
             Directory.CreateDirectory(Path.GetDirectoryName(output)!);
             await File.WriteAllTextAsync(output, "generated", cancellationToken);
+            _onFinished?.Invoke(description);
         }
 
         private static string RequiredPayloadValue(string payload, string name)

@@ -24,6 +24,7 @@
 #include <Luna/AHI/Adapter.hpp>
 #include <Luna/AHI/AHI.hpp>
 #include <Luna/Runtime/Log.hpp>
+#include <Luna/Runtime/UniquePtr.hpp>
 #include <Luna/Window/Event.hpp>
 
 #include <Luna/Window/AppMain.hpp>
@@ -213,6 +214,11 @@ void on_capture_data(const void* src_buffer, const AHI::WaveFormat& format, u32 
 
 namespace Luna
 {
+    struct FrameDrawData
+    {
+        GUI::DrawCommand command;
+    };
+
     struct App
     {
         Ref<Window::IWindow> window;
@@ -223,6 +229,7 @@ namespace Luna
         Vector<Ref<AHI::IAdapter>> playback_adapters;
         Vector<Ref<AHI::IAdapter>> capture_adapters;
         Vector<AudioSource> audio_sources;
+        Vector<UniquePtr<FrameDrawData>> frame_draw_data;
         Ref<AHI::IDevice> device;
         u32 width = 0;
         u32 height = 0;
@@ -230,6 +237,7 @@ namespace Luna
 
     constexpr GUI::id_t DEFAULT_LAYER_ID = 1;
     constexpr GUI::id_t ROOT_ID = 2;
+    constexpr GUI::id_t BACKGROUND_ID = 3;
     constexpr GUI::id_t ADAPTERS_HEADER_ID = 10;
     constexpr GUI::id_t PLAYBACK_COMBO_ID = 11;
     constexpr GUI::id_t CAPTURE_COMBO_ID = 12;
@@ -280,13 +288,37 @@ namespace Luna
         set_element_rect(context, element, rect);
     }
 
-    void draw_solid_rect(GUI::IContext* context, const RectF& rect, const Float4U& color)
+    R<GUI::paint_order_id_t> draw_frame_command(GUI::IContext* context,
+        const GUI::ElementHandle&, GUI::DrawPhase, GUI::paint_order_id_t paint_order_id,
+        void* userdata)
     {
+        FrameDrawData* data = (FrameDrawData*)userdata;
+        context->draw(data->command, paint_order_id);
+        return paint_order_id;
+    }
+
+    void draw_solid_rect(App& app, GUI::id_t id, const RectF& rect, const RectF& clip_rect,
+        const Float4U& color)
+    {
+        UniquePtr<FrameDrawData> data(memnew<FrameDrawData>());
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::rect;
         command.rect = rect;
         command.color = color;
-        context->draw(command);
+        data->command = move(command);
+        GUI::ElementHandle element = app.gui->begin_element(id);
+        GUI::LayoutResult layout;
+        layout.rect = rect;
+        layout.clip_rect = clip_rect;
+        layout.content_size = Float2U(rect.width, rect.height);
+        app.gui->set_layout_result(element, layout);
+        GUI::DrawConfig draw;
+        draw.name = Name("ahi_test.rect");
+        draw.callback = draw_frame_command;
+        draw.userdata = data.get();
+        app.gui->set_draw_config(element, draw);
+        app.gui->end_element();
+        app.frame_draw_data.push_back(move(data));
     }
 
     GUI::ElementHandle build_gui(App& app, const Float2U& surface_size,
@@ -295,7 +327,8 @@ namespace Luna
         GUI::IContext* context = app.gui;
         GUI::ElementHandle root = context->begin_element(ROOT_ID);
         set_element_rect(context, root, RectF(0.0f, 0.0f, surface_size.x, surface_size.y));
-        draw_solid_rect(context, RectF(0.0f, 0.0f, surface_size.x, surface_size.y),
+        const RectF surface_rect(0.0f, 0.0f, surface_size.x, surface_size.y);
+        draw_solid_rect(app, BACKGROUND_ID, surface_rect, surface_rect,
             style_color(context, "gui.canvas", Float4U(0.92f, 0.93f, 0.92f, 1.0f)));
 
         f32 y = 16.0f;
@@ -410,7 +443,8 @@ namespace Luna
                             Float4U row_color = (i % 2) ?
                                 style_color(context, "gui.surface.1", Float4U(0.97f, 0.97f, 0.96f, 1.0f)) :
                                 style_color(context, "gui.surface.0", Float4U(0.95f, 0.95f, 0.94f, 1.0f));
-                            draw_solid_rect(context, RectF(table_x, row_y, table_w, 34.0f), row_color);
+                            draw_solid_rect(app, FIRST_SOURCE_ID + (GUI::id_t)i * SOURCE_ID_STRIDE,
+                                RectF(table_x, row_y, table_w, 34.0f), surface_rect, row_color);
                             draw_label(context, FIRST_SOURCE_ID + (GUI::id_t)i * SOURCE_ID_STRIDE + 1,
                                 RectF(table_x + 8.0f, row_y + 4.0f, 120.0f, 26.0f), "Audio Source");
                             EditorGUI::DragDesc drag_desc;
@@ -512,6 +546,7 @@ namespace Luna
                 frame.render_size = fb_sz;
                 frame.delta_time = 1.0f / 60.0f;
                 app.gui->begin_frame(frame);
+                app.frame_draw_data.clear();
                 GUIWindow::update_input(&input_adapter);
 
                 static i32 current_playback_adapter = 0;

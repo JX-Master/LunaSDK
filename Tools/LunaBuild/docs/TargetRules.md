@@ -116,6 +116,7 @@ Kind = BuildTargetKind.Executable;
 Current common kinds:
 
 - `SharedLibrary`: Luna SDK modules such as `Runtime`, `RHI`, `Image`.
+- `StaticLibrary`: An archive of the target's own object files, including when the overall build uses shared libraries. Its library dependencies are forwarded to consumers. `SharedLibrary` targets still follow the global `--shared`/`--static` selection.
 - `Executable`: command-line tools and tests that produce a native executable
   such as `.exe` on Windows.
 - `Application`: app-style targets for Windows, macOS, iOS and Android.
@@ -226,6 +227,19 @@ SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Lin
 
 `inspect` and graph generation filter unsupported targets before dependency
 resolution.
+
+## Compiler Options
+
+MSVC receives `/utf-8` by default so both the source and execution character
+sets use UTF-8. A target can explicitly opt out when it must preserve the MSVC
+code-page behavior:
+
+```csharp
+MsvcUtf8(false);
+```
+
+This option only affects MSVC compilation. Changing it is part of the compile
+action identity and therefore invalidates previously compiled object files.
 
 ## Project Build Properties
 

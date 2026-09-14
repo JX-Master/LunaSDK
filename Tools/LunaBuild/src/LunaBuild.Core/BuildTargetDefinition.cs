@@ -69,6 +69,7 @@ public sealed record BuildTargetDefinition(
     BuildTargetKind Kind,
     BuildTargetCategory Category,
     string? MsvcRuntimeLibrary,
+    bool EnableMsvcUtf8,
     bool EnableRtti,
     string? DotNetProjectFile,
     string? DotNetOutputFile,

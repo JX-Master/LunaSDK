@@ -35,7 +35,9 @@ context->pop_data_scope();
 
 It does not store a widget kind. A text label, hit-test box, layout container or image region is still the same `Element` type.
 
-Draw commands store their owning dense element index. Delayed callbacks and `draw_for_element` can interleave commands owned by different elements. Call `IContext::generate_draw_commands()` first, then filter `IContext::get_draw_commands()` by `DrawCommand::element` when the actual command set is needed.
+Draw commands store their owning dense element index. Context assigns that ownership while it invokes the element's
+draw callback; commands cannot be submitted during element construction. Call `IContext::generate_draw_commands()`
+first, then filter `IContext::get_draw_commands()` by `DrawCommand::element` when the actual command set is needed.
 
 ### Element handle
 `GUI::ElementHandle` is returned by `begin_element`. It stores stable ID, dense index and generation. Handles are frame-local. Do not keep a handle for use after the next `begin_frame`; keep the stable ID instead. The stable ID is intentionally kept in the handle so APIs can validate that the dense index still points at the same element and so callers can use the returned handle as a stable interaction/state key without another lookup.
@@ -50,11 +52,14 @@ A data scope participates in ID generation but does not affect topology. It is u
 2. Screen-space layer origin.
 3. Root element index.
 4. Ordered draw command indexes.
-5. Human-readable debug name.
+5. The first and maximum Paint Order IDs allocated to the layer for the generated frame.
+6. Human-readable debug name.
 
 The first element created after `push_layer` becomes the root of that layer. Every element must belong to one layer.
 
-Layer-local positions use the layer origin as `(0, 0)`. Screen positions are converted by adding the layer origin. `Layer::draw_command_indices` is the authoritative command order for a layer.
+Layer-local positions use the layer origin as `(0, 0)`. Screen positions are converted by adding the layer origin.
+`Layer::draw_command_indices` stores the layer's lexical command indexes; drawable execution order is determined by
+the commands' Paint Order IDs.
 
 One context and frame describe one logical surface. Layers do not carry independent projection or surface transforms. Use separate contexts and render preparations for surfaces that must be transformed independently.
 
@@ -78,7 +83,27 @@ context->end_element();
 context->pop_layer();
 ```
 
-Layers are appended in bottom-to-top order. Later layers render above earlier layers and receive input first.
+Layers are appended in bottom-to-top order. Each non-empty layer receives a Paint Order range after the preceding
+non-empty layer, so later layers render above earlier layers and receive input first. Empty layers consume no Paint
+Order ID. Paint Order IDs are regenerated with draw commands and are not stable across frames.
+
+### Select child Paint Order allocation
+Direct child subtrees use `ChildPaintOrderMode::sequential` by default. Context gives each child a non-overlapping
+Paint Order range in submission order, which is safe when children may overlap or otherwise depend on painter order.
+
+An audited container may select `ChildPaintOrderMode::shared` when the complete painted extents of its relevant
+direct children are independent:
+
+```cpp
+context->set_child_paint_order_mode(container,
+    GUI::ChildPaintOrderMode::shared);
+```
+
+Children in one shared run receive the same initial Paint Order ID. This lets compatible commands from several
+children batch together. The independence guarantee must include shadows, negative margins, visual overflow,
+explicit clips and custom drawing; using a flex or grid layout alone is not sufficient proof. A backdrop capture or
+another Paint Order barrier ends the shared run, and following children start at a greater ID. Use typeless grouping
+elements when one container needs several independently ordered groups.
 
 ### Build element topology
 `begin_element` creates a child of the current element, or the layer root if the layer has no root yet. `end_element` returns to the parent.

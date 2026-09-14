@@ -23,7 +23,7 @@
     "bell-slash", "lightning", "spinner-gap", "play", "pause", "stop", "record", "power",
     "prohibit", "sun", "moon", "speaker-high", "speaker-slash", "heart", "star", "user", "users",
     "cursor", "cursor-click", "cursor-text", "hand-tap", "mouse", "selection", "bounding-box",
-    "frame-corners", "crop", "crosshair", "camera", "palette", "house", "calendar", "clock",
+    "frame-corners", "crop", "crosshair", "camera", "palette", "martini", "house", "calendar", "clock",
     "globe", "wifi-high", "bluetooth", "game-controller", "map-trifold"
   ],
   "weights": {
@@ -35,7 +35,7 @@
     "fill": [
       "check-circle", "x-circle", "warning-circle", "bell", "bell-slash", "play", "pause", "stop",
       "record", "heart", "star", "eye", "eye-slash", "folder", "folder-open", "lock", "lock-open",
-      "lightning", "sun", "moon"
+      "lightning", "sun", "moon", "martini"
     ],
     "duotone": ["package"]
   }

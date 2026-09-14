@@ -42,7 +42,8 @@ static void CreatesProject()
         Contains(projectRoot, "SampleApp.Project.cs", "project.ImportProject(\"../../LunaSDK\")");
         Contains(projectRoot, "SampleApp.Target.cs", "DependsOn(\"LunaSDK.Runtime\")");
         Contains(projectRoot, "LunaBuild.csproj", "<LunaSdkRoot>../../LunaSDK</LunaSdkRoot>");
-        Contains(projectRoot, "global.json", "\"rollForward\": \"latestFeature\"");
+        Contains(projectRoot, "LunaBuild.csproj", "<RollForward>Major</RollForward>");
+        Contains(projectRoot, "global.json", "\"rollForward\": \"major\"");
     });
 }
 

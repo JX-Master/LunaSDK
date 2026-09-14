@@ -161,6 +161,7 @@ namespace Luna
             struct ScrollAction
             {
                 GUI::id_t id = 0;
+                GUI::id_t scrollbar_group_id = 0;
                 GUI::id_t horizontal_bar_id = 0;
                 GUI::id_t vertical_bar_id = 0;
                 ScrollViewDesc desc;
@@ -431,9 +432,14 @@ namespace Luna
             struct [[Luna::struct("{29355D28-48C6-457F-A396-F0459D4CC029}")]] DragState
             {
                 bool dragging = false;
+                bool editing = false;
+                bool select_all = false;
                 f32 start_pointer_x = 0.0f;
                 f32 start_float = 0.0f;
                 i32 start_int = 0;
+                f32 edit_original_float = 0.0f;
+                i32 edit_original_int = 0;
+                String edit_text;
             };
 
             struct [[Luna::struct("{47C7A918-1B06-4351-B5DE-14469AF613B3}")]] TextInputState

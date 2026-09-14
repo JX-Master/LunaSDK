@@ -58,8 +58,16 @@ namespace Luna
                 }
                 f32 right_inset = action->desc.scrollbar_mode == ScrollBarMode::dynamic_overlay ? 2.0f : 0.0f;
                 f32 bottom_inset = right_inset;
-                for(u32 child_index = content_index == GUI::INVALID_ELEMENT ? GUI::INVALID_ELEMENT :
-                    context->get_element(content_index)->next_sibling;
+                const GUI::Element* scrollbar_group = context->find_element(action->scrollbar_group_id);
+                if(scrollbar_group)
+                {
+                    GUI::LayoutResult group_result;
+                    group_result.rect = rect;
+                    group_result.clip_rect = viewport->layout_result.clip_rect;
+                    group_result.content_size = Float2U(rect.width, rect.height);
+                    context->set_layout_result(context->find_element_handle(action->scrollbar_group_id), group_result);
+                }
+                for(u32 child_index = scrollbar_group ? scrollbar_group->first_child : GUI::INVALID_ELEMENT;
                     child_index != GUI::INVALID_ELEMENT;)
                 {
                     const GUI::Element* child = context->get_element(child_index);
@@ -90,21 +98,22 @@ namespace Luna
                 return ok;
             }
 
-            static RV draw_scrollbar(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_scrollbar(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 ScrollbarData* data = (ScrollbarData*)userdata;
-                if(!data || !data->state) return ok;
+                if(!data || !data->state) return paint_order_id;
                 const GUI::Element* viewport = context->find_element(data->viewport_id);
                 const GUI::Element* bar = context->find_element(element.id);
-                if(!viewport || !bar) return ok;
+                if(!viewport || !bar) return paint_order_id;
                 f32 visibility = data->mode == ScrollBarMode::always_visible ? 1.0f : data->state->visibility;
                 Float2U viewport_size(viewport->layout_result.rect.width - viewport->layout.padding.x -
                     viewport->layout.padding.z, viewport->layout_result.rect.height - viewport->layout.padding.y -
                     viewport->layout.padding.w);
                 f32 content = data->vertical ? viewport->layout_result.content_size.y : viewport->layout_result.content_size.x;
                 f32 visible = data->vertical ? viewport_size.y : viewport_size.x;
-                if(visibility <= 0.001f || content <= visible + 0.5f) return ok;
+                if(visibility <= 0.001f || content <= visible + 0.5f) return paint_order_id;
                 GUI::InteractionState interaction = context->get_interaction_state(element.id);
                 f32 thickness = interaction.hovered || interaction.active ? SCROLLBAR_SIZE - 2.0f : 4.0f;
                 f32 track_length = data->vertical ? bar->layout_result.rect.height : bar->layout_result.rect.width;
@@ -121,7 +130,7 @@ namespace Luna
                         Float4U(0.04f, 0.05f, 0.07f, 0.72f));
                     command.color.w *= visibility;
                     command.radius = SCROLLBAR_SIZE * 0.5f;
-                    context->draw(command);
+                    context->draw(command, paint_order_id);
                 }
                 command.type = GUI::DrawCommandType::rounded_rect;
                 command.color = style_color(context, element, "gui.scrollbar.thumb",
@@ -132,8 +141,8 @@ namespace Luna
                 else
                     command.rect = RectF(thumb_offset, (SCROLLBAR_SIZE - thickness) * 0.5f, thumb_length, thickness);
                 command.radius = thickness * 0.5f;
-                context->draw(command);
-                return ok;
+                context->draw(command, paint_order_id + 1);
+                return paint_order_id + 1;
             }
 
             static bool contains(const RectF& rect, const Float2U& point)
@@ -237,6 +246,7 @@ namespace Luna
             Ref<Internal::ScrollState> state = Internal::widget_state<Internal::ScrollState>(context, id);
             Internal::ScrollAction* action = Internal::allocate_frame<Internal::ScrollAction>(context);
             action->id = id;
+            action->scrollbar_group_id = GUI::make_scoped_id(id, "scrollbar_group");
             action->horizontal_bar_id = GUI::make_scoped_id(id, "horizontal_scrollbar");
             action->vertical_bar_id = GUI::make_scoped_id(id, "vertical_scrollbar");
             action->desc = desc;
@@ -274,6 +284,14 @@ namespace Luna
             content_flex.axis = GUI::LayoutAxis::y;
             content_flex.cross_alignment = GUI::FlexAlignment::stretch;
             Internal::set_flex_layout(context, scope.content, content_flex, GUI::LayoutAxis::y);
+            GUI::LayoutConfig group_layout;
+            group_layout.width.kind = GUI::SizeKind::percent;
+            group_layout.width.value = 1.0f;
+            group_layout.height.kind = GUI::SizeKind::percent;
+            group_layout.height.value = 1.0f;
+            GUI::ElementHandle scrollbar_group = Internal::begin_element(context,
+                scope.data->scrollbar_group_id, "Scrollbars", group_layout);
+            context->set_child_paint_order_mode(scrollbar_group, GUI::ChildPaintOrderMode::shared);
             auto add_bar = [&](id_t bar_id, bool vertical, bool enabled)
             {
                 GUI::LayoutConfig layout;
@@ -306,6 +324,7 @@ namespace Luna
             {
                 add_bar(scope.data->vertical_bar_id, true, visible);
             }
+            context->end_element();
             context->end_element();
             Internal::add_action(context, Internal::ActionType::scroll_view, scope.viewport.id, scope.data);
         }

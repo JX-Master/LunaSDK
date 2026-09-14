@@ -200,49 +200,44 @@ namespace Luna
         LUNA_ASSET_API RV register_asset(asset_t asset, const Name& type);
 
         //! Creates a new asset by specifying the path and type of the asset.
-        //! @details This function performs the following options to create a new asset:
-        //! 1. Checks whether one asset with the specified path exists, and returns the existing asset if any.
-        //! 2. Call @ref get_asset with GUID (0, 0) to generate a new asset entry.
-        //! 3. Call @ref register_asset to register the asset with the specified type.
-        //! 4. Sets the path of the asset.
-        //! 5. If `save_meta_to_file` is `true`, saves asset metadata.
-        //! 6. Returns the created asset.
+        //! @details Returns the existing registered asset when its path is already present.
+        //! Otherwise generates a new GUID, saves metadata if requested, then publishes the registration.
+        //! A metadata save failure does not publish a partial registration.
         //! @param[in] path The path to place the new created asset.
-        //! If the asset with the specified path is already registered, this call does nothing and returnes
+        //! If the asset with the specified path is already registered, this call does nothing and returns
         //! the registered asset directly.
         //! 
         //! This parameter can be empty (`Path()`), in such case, the asset is created as one dynamic asset that
         //! cannot be saved to files. If this is empty, path duplication check will be skipped.
         //! @param[in] type The type of the asset.
-        //! @param[in] save_meta_to_file Whether to create one metadata file for the new asset and saves 
-        //! metadta to the file.
+        //! @param[in] save_meta Whether to write metadata to the selected database (or a legacy sidecar).
+        //! Single-file databases stage this record until their explicit flush.
         //! @return Returns the asset handle of the new created asset.
         //! @par Valid Usage
-        //! * If `save_meta_to_file` is `true`, `path` must not be empty.
-        LUNA_ASSET_API R<asset_t> new_asset(const Path& path, const Name& type, bool save_meta_to_file = true);
+        //! * If `save_meta` is `true`, `path` must not be empty.
+        LUNA_ASSET_API R<asset_t> new_asset(const Path& path, const Name& type, bool save_meta = true);
 
-        //! Loads or reloads assets' metadata by reading asset metadata files.
-        //! @param[in] path The path of the asset or direcotry.
-        //! If `path` specifies one asset, the system loads the asset metadata by opening its meta file and reading from it.
-        //! If `path` specifies one directory, the system loads assets metadata for all assets in the directory recursively, every
-        //! asset metadata is loaded as if `load_assets_meta` is called for that particular asset.
-        //! @param[in] allow_overwrite Specify the behavior when the specified asset already exists in the system.
-        //! If `allow_overwrite` is `true`, the system will overwrite the asset metadata in the system using new asset metadata loaded
-        //! from asset meta file; if `allow_overwrite` is `false`, the system discards the new asset metadata and does not change the 
-        //! asset metadata in the system if the specified asset already exists in the system.
-        //! If `path` specifies one directory, this parameter is applied to all assets in that directory.
-        //! @retval E_ASSET_DATA_UNIT_BUSY Existing metadata cannot be reconciled because an affected data unit is
-        //! loaded or busy, or because an asset path is changing while an operation is active.
+        //! Discovers asset metadata at a path or beneath a directory.
+        //! @details Registered database roots use their logical record snapshots. Other paths use sidecars.
+        //! The complete batch is validated before registration; failure leaves the registry unchanged.
+        //! Centralized discovery does not scan directories or open payload files. Use reload_asset_database
+        //! to refresh a centralized provider from external storage.
+        //! @param[in] path The asset or directory VFS path.
+        //! @param[in] allow_overwrite Whether existing compatible registrations may be updated.
+        //! Ownership conflicts and duplicate batch GUIDs/paths are errors even when overwriting is disabled.
+        //! @retval E_ASSET_DATA_UNIT_BUSY An affected data unit prevents metadata reconciliation.
         LUNA_ASSET_API RV load_assets_meta(const Path& path, bool allow_overwrite = true);
 
-        //! Loads asset metadata from asset's metadata file.
+        //! Loads asset metadata from its database logical view, or from its legacy sidecar.
         //! @param[in] asset The asset handle of the asset to operate.
         //! @par Valid Usage
         //! * `asset` must have a valid VFS path.
         //! @retval E_ASSET_DATA_UNIT_BUSY The asset or one of its data units is busy.
         LUNA_ASSET_API RV load_asset_meta(asset_t asset);
 
-        //! Saves asset's metadata to asset's metadata file.
+        //! Saves runtime metadata to its database, or to its legacy sidecar.
+        //! @details Single-file databases stage record updates until IAssetDatabase::flush. This function
+        //! does not save any data unit or flush a VFS filesystem. An old metadata location is removed after a successful relocation.
         //! @param[in] asset The asset handle of the asset to operate.
         //! @par Valid Usage
         //! * `asset` must have a valid VFS path.
@@ -265,13 +260,9 @@ namespace Luna
         LUNA_ASSET_API Path get_asset_path(asset_t asset);
 
         //! Sets the asset VFS path.
-        //! @details This function only changes the asset's metadata in the system, it will not save the modified metadata
-        //! to metadata file, it will also not move any asset file on VFS. The user should move asset files manually before
-        //! calling this function, and call @ref save_asset_meta manually after this function. 
-        //! 
-        //! The user can get files that should be moved by @ref get_asset_files. The user can also call @ref move_asset
-        //! to move asset files, change asset path and save asset metadata to file in one call, which is preferred if the user
-        //! does not need to perform custom copy tasks.
+        //! @details Changes the runtime path only. Move payloads manually, then call save_asset_meta to relocate
+        //! the persistent record from its last saved path, including between database providers.
+        //! Use get_asset_files to enumerate payloads, or move_asset to perform the complete operation.
         //! @param[in] asset The asset handle of the asset to operate.
         //! @param[in] path The new asset VFS path to set.
         LUNA_ASSET_API RV set_asset_path(asset_t asset, const Path& path);
@@ -287,9 +278,7 @@ namespace Luna
         LUNA_ASSET_API Name get_asset_type(asset_t asset);
 
         //! Sets the asset type.
-        //! @details This function will only changes asset's metadata in system, it will not save the modified metadata
-        //! to metadata file. The user should call @ref save_asset_meta after this to save the modified metadata 
-        //! back to file if needed.
+        //! @details Changes runtime metadata only. Call save_asset_meta to persist the modified type through its provider.
         //! Named data units and their loaded objects are not changed.
         //! @param[in] asset The asset handle of the asset to operate.
         //! @param[in] type The new asset type to set.
@@ -304,36 +293,35 @@ namespace Luna
         //! filename followed by an extension. Files outside this convention are not returned.
         //! @param[in] asset The asset handle of the asset to query.
         //! @param[out] filenames Returns filenames of all files associated to the specified asset. 
-        //! Existing elements in the array will be preserved.
+        //! Existing elements in the array will be preserved. Metadata files (including sidecars and shared databases)
+        //! are excluded; database implementations own their maintenance.
         LUNA_ASSET_API RV get_asset_files(asset_t asset, Vector<Name>& filenames);
 
         //! Deletes one asset and all of its associated files.
         //! @details This function performs the following tasks:
         //! 1. Delete all files fetched from @ref get_asset_files.
-        //! 2. Clear the asset path, type, data-unit descriptors, and all loaded data objects.
+        //! 2. Remove the database record, then clear the path, type, descriptors and loaded objects.
+        //! Read-only databases reject this operation before deleting payloads. Physical multi-file deletion is not transactional.
         //! The asset handle will still be valid after this operation, but the main data unit state will
         //! be set to @ref AssetDataUnitState::unregistered, and all operations on the asset are invalid.
         //! @param[in] asset The asset handle of the asset to operate.
         LUNA_ASSET_API RV delete_asset(asset_t asset);
 
         //! Moves all asset associated files to a new destination.
-        //! @details This function performs the following tasks:
-        //! 1. Moves all files fetched from @ref get_asset_files from old path to new path.
-        //! 2. Changes path in asset metadata.
-        //! 3. Saves modified asset metadata to asset metadata file.
+        //! @details Moves payloads from get_asset_files, transfers the persistent record, then updates the runtime path.
+        //! The GUID is preserved. Read-only source or destination databases reject mutation before moving payloads.
+        //! Completed file moves are rolled back where possible on error; rollback failures are reported.
         //! @param[in] asset The asset handle of the asset to operate.
         //! @param[in] new_path The new path of the asset.
         LUNA_ASSET_API RV move_asset(asset_t asset, const Path& new_path);
 
         //! Makes a duplication of the specified asset.
-        //! @details This function performs the following tasks:
-        //! 1. Copies all data files fetched from @ref get_asset_files from old path to new path.
-        //! 2. Creates a new asset or gets the asset with the provided GUID by calling @ref get_asset.
-        //! 3. Sets the new asset metadata, and saves the metadata to asset metadata file.
+        //! @details Copies payloads from get_asset_files, writes metadata through the destination provider,
+        //! then publishes a new registration. Completed copies are removed where possible after a later failure.
         //! @param[in] asset The asset handle of the asset to operate.
         //! @param[in] new_path The path of the new asset.
         //! @param[in] guid The GUID of the new asset. This will be provided to @ref get_asset as-is.
-        //! Is this is 0, the asset GUID of the new asset is generated automatically.
+        //! If this is zero, a new GUID is generated. A nonzero GUID must refer to an unregistered placeholder.
         //! @return Returns the new created asset. Every data unit of a newly created copy is unloaded.
         LUNA_ASSET_API R<asset_t> copy_asset(asset_t asset, const Path& new_path, const Guid& guid = Guid(0, 0));
 
@@ -485,6 +473,9 @@ namespace Luna
 
         //! Closes the asset registry.
         //! @details This call removes all registered assets, asset types, and asset loaders, and invalidates all asset handles.
+        //! Registered metadata databases are flushed before removal; failures are logged.
+        //! Call flush_asset_databases before close to handle save failures explicitly.
+        //! This does not implicitly save runtime metadata descriptors or data-unit objects.
         //! @par Valid Usage
         //! * Before calling this function, the caller must stop new Asset API submissions and wait until all Asset API
         //! calls and asset loader callbacks have returned.
@@ -507,7 +498,7 @@ namespace Luna
         //! The Asset error category identifier.
         inline constexpr errcat_t ERROR_CATEGORY = make_error_category(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET);
 
-        //! The asset metadata file was not found.
+        //! The asset metadata record was not found in its database or sidecar file.
         inline constexpr ResultCode E_META_FILE_NOT_FOUND = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -1);
         //! The asset type is not registered.
         inline constexpr ResultCode E_UNKNOWN_ASSET_TYPE = make_error_code(ErrorDomain::LUNA_SDK, LunaErrorCategory::ASSET, -2);

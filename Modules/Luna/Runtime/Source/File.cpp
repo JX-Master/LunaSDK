@@ -53,9 +53,27 @@ namespace Luna
     {
         return encode_platform_result(Platform::copy_file(from_path, to_path));
     }
-    LUNA_RUNTIME_API RV move_file(const c8* from_path, const c8* to_path)
+    LUNA_RUNTIME_API RV move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags)
     {
-        return encode_platform_result(Platform::move_file(from_path, to_path));
+        if(!from_path || !to_path || !from_path[0] || !to_path[0]) return E_BAD_ARGUMENTS;
+        if((flags & ~(FileMoveFlag::allow_overwrite | FileMoveFlag::no_copy)) != FileMoveFlag::none) return E_BAD_ARGUMENTS;
+        if(test_flags(flags, FileMoveFlag::allow_overwrite))
+        {
+            if(!strcmp(from_path, to_path)) return E_BAD_ARGUMENTS;
+            lutry
+            {
+                lulet(source, get_file_attribute(from_path));
+                auto destination = get_file_attribute(to_path);
+                if(succeeded(destination))
+                {
+                    if(test_flags(source.attributes, FileAttributeFlag::directory) ||
+                        test_flags(destination.get().attributes, FileAttributeFlag::directory)) return E_IS_DIRECTORY;
+                }
+                else if(unwrap_errcode(destination.errcode()) != E_NOT_FOUND) return destination.errcode();
+            }
+            lucatchret;
+        }
+        return encode_platform_result(Platform::move_file(from_path, to_path, flags));
     }
     LUNA_RUNTIME_API RV delete_file(const c8* filename)
     {

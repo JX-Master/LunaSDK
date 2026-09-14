@@ -71,15 +71,16 @@ namespace
             Float4x4U(Float4x4::identity()), hit));
     }
 
-    RV draw_blur_planning_sample(GUI::IContext* context,
-        const GUI::ElementHandle&, GUI::DrawPhase, void*)
+    R<GUI::paint_order_id_t> draw_blur_planning_sample(GUI::IContext* context,
+        const GUI::ElementHandle&, GUI::DrawPhase,
+        GUI::paint_order_id_t paint_order_id, void*)
     {
         GUI::DrawCommand command;
         command.type = GUI::DrawCommandType::backdrop_blur;
         command.rect_reference =
             GUI::DrawCommandRectReference::element;
-        context->draw(command);
-        return ok;
+        context->draw(command, paint_order_id);
+        return paint_order_id;
     }
 
     RV run_blur_planning_case(GUITestApp& app, u32 size,
@@ -254,7 +255,7 @@ namespace
             add_sdf_slice_items(state);
         }
 
-        GUI::ElementHandle sheet = context->begin_element(ID_SHEET);
+        GUI::ElementHandle sheet = begin_element(context, ID_SHEET);
         context->set_layout_config(sheet, fixed_layout(SHEET_WIDTH, SHEET_HEIGHT));
         GUI::DrawConfig sheet_draw;
         sheet_draw.name = Name("gui.test.sheet");
@@ -292,7 +293,7 @@ namespace
         state.sheet_canvas.default_item = GUI::CanvasLayoutItem();
         state.sheet_canvas.clip_children = false;
         set_canvas_layout(context, sheet, &state.sheet_canvas);
-        context->end_element();
+        end_element(context);
     }
 
     GUI::ElementHandle build_frame(GUI::IContext* context, GUITest::SheetState& state)
@@ -305,13 +306,15 @@ namespace
         state.screen_canvas.items = Span<const GUI::CanvasLayoutItem>(&state.screen_item, 1);
         state.screen_canvas.clip_children = false;
 
+        begin_draw_recording(state);
         context->push_layer(1, Float2U(0.0f));
-        GUI::ElementHandle root = context->begin_element(ID_SCREEN_ROOT);
+        GUI::ElementHandle root = begin_element(context, ID_SCREEN_ROOT);
         context->set_layout_config(root, fixed_layout(SHEET_WIDTH, SHEET_HEIGHT));
         build_sheet(context, state);
         set_canvas_layout(context, root, &state.screen_canvas);
-        context->end_element();
+        end_element(context);
         context->pop_layer();
+        end_draw_recording();
         return root;
     }
 

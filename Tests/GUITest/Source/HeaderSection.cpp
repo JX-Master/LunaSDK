@@ -54,7 +54,7 @@ namespace Luna::GUITest
             break;
         }
 
-        GUI::ElementHandle header = context->begin_element(ID_HEADER);
+        GUI::ElementHandle header = begin_element(context, ID_HEADER);
         context->set_layout_config(header, fixed_layout(SHEET_WIDTH - 96.0f, 108.0f));
         draw_text(context, RectF(0.0f, 0.0f, 760.0f, 56.0f), title, 46.0f, Float4U(0.0f, 0.0f, 0.0f, 1.0f));
         draw_text(context, RectF(2.0f, 60.0f, 980.0f, 34.0f), subtitle, 22.0f, Float4U(0.20f, 0.20f, 0.20f, 1.0f));
@@ -67,6 +67,6 @@ namespace Luna::GUITest
             Float4U(0.0f, 0.0f, 0.0f, 1.0f), VG::TextAlignment::end);
         draw_text(context, RectF(SHEET_WIDTH - 420.0f, 62.0f, 320.0f, 28.0f), "Z previous   X next", 18.0f,
             Float4U(0.30f, 0.30f, 0.30f, 1.0f), VG::TextAlignment::end);
-        context->end_element();
+        end_element(context);
     }
 }

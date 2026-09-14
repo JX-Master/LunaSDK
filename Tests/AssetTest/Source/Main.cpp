@@ -23,6 +23,7 @@
 #include <Luna/VariantUtils/JSON.hpp>
 #include <Luna/VariantUtils/VariantUtils.hpp>
 #include <Luna/VFS/VFS.hpp>
+#include <Luna/VFS/NativeFileSystem.hpp>
 #include <cstdlib>
 #include "AssetTest.meta.generated.hpp"
 
@@ -747,8 +748,11 @@ int main()
     Meta::register_AssetTest_types();
 
     String native_test_directory = create_native_test_directory();
-    lupanic_if_failed(VFS::mount(VFS::get_platform_filesystem_driver(),
-        native_test_directory.c_str(), TEST_MOUNT_PATH));
+    {
+        auto file_system = VFS::new_native_file_system(native_test_directory.c_str());
+        lupanic_if_failed(file_system);
+        lupanic_if_failed(VFS::mount(file_system.get(), TEST_MOUNT_PATH));
+    }
 
     register_test_asset_type();
     data_unit_lifecycle_test();

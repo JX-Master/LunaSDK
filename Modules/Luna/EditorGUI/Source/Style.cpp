@@ -331,6 +331,8 @@ namespace Luna
             add("gui.dock_panel.floating.background", GUI::StyleValueType::f32x4,
                 GUI::style_f32x4(Float4U(0.973f, 0.973f, 0.961f, 0.96f)),
                 "Dock Space", "Floating dock panel glass tint.");
+            add("gui.dock_panel.content_padding", GUI::StyleValueType::f32,
+                GUI::style_f32(10.0f), "Dock Space", "Uniform dock panel content padding.");
             add("gui.dock_panel.floating.backdrop_softness",
                 GUI::StyleValueType::f32, GUI::style_f32(0.0f),
                 "Dock Space", "Floating dock panel backdrop blur softness. Zero disables capture.");
@@ -598,6 +600,7 @@ namespace Luna
             set_scalar("gui.tooltip.gap", touch ? 7.0f : 4.0f);
             set_color("gui.dock_panel.floating.background",
                 Float4U(surface1.x, surface1.y, surface1.z, 0.96f));
+            set_scalar("gui.dock_panel.content_padding", touch ? 12.0f : 10.0f);
 
             set_color("gui.combo.background", surface0);
             set_color("gui.combo.background_hovered", surface2);

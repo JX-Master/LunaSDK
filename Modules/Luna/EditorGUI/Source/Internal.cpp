@@ -161,7 +161,8 @@ namespace Luna
 
             RV draw_rounded_rect_effects(GUI::IContext* context,
                 const GUI::ElementHandle& element, const RectF& rect,
-                const Float4U& rect_layout_scale, f32 radius, Span<const RoundedRectEffect> effects)
+                const Float4U& rect_layout_scale, f32 radius, Span<const RoundedRectEffect> effects,
+                GUI::paint_order_id_t paint_order_id)
             {
                 if(!context || effects.empty()) return E_BAD_ARGUMENTS;
                 const GUI::Element* element_data = context->get_element(element.index);
@@ -213,7 +214,7 @@ namespace Luna
                 command.rect_layout_scale = rect_layout_scale;
                 command.sdf.shape = shape.get();
                 command.sdf.color = color.get();
-                context->draw(command);
+                context->draw(command, paint_order_id);
                 return ok;
             }
 

@@ -38,8 +38,9 @@ namespace Luna
                 return RectF(left, top, max(right - left, 0.0f), max(bottom - top, 0.0f));
             }
 
-            static RV draw_table_splitter(GUI::IContext* context,
-                const GUI::ElementHandle& element, GUI::DrawPhase, void*)
+            static R<GUI::paint_order_id_t> draw_table_splitter(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void*)
             {
                 GUI::InteractionState interaction = context->get_interaction_state(element.id);
                 GUI::DrawCommand command;
@@ -51,8 +52,8 @@ namespace Luna
                     interaction.hovered || interaction.active ? "gui.table.separator_hovered" :
                     "gui.table.separator", interaction.hovered || interaction.active ?
                     Float4U(0.10f, 0.55f, 0.90f, 1.0f) : Float4U(0.28f, 0.34f, 0.40f, 0.8f));
-                context->draw(command);
-                return ok;
+                context->draw(command, paint_order_id);
+                return paint_order_id;
             }
 
             static RV layout_table(GUI::IContext* context, const GUI::ElementHandle& element,
@@ -208,6 +209,7 @@ namespace Luna
             luassert(context && id);
             GUI::ElementHandle element = Internal::begin_element(context, id,
                 label ? label : "Table Layout", layout);
+            context->set_child_paint_order_mode(element, GUI::ChildPaintOrderMode::shared);
             Ref<Internal::TableState> state = Internal::widget_state<Internal::TableState>(context, id);
             Internal::TableBuildScope scope;
             scope.table = element;

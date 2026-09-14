@@ -556,20 +556,19 @@ namespace Luna
             }
             return Result::success;
         }
-        Result move_file(const c8* from_path, const c8* to_path)
+        Result move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags)
         {
             lucheck(from_path && to_path);
             wchar_t* from_buffer = utf8_to_wchar_buffered(from_path);
             wchar_t* to_buffer = utf8_to_wchar_buffered(to_path);
-            BOOL r = MoveFileExW(from_buffer, to_buffer, MOVEFILE_COPY_ALLOWED);
+            DWORD native_flags = test_flags(flags, FileMoveFlag::no_copy) ? 0 : MOVEFILE_COPY_ALLOWED;
+            if(test_flags(flags, FileMoveFlag::allow_overwrite)) native_flags |= MOVEFILE_REPLACE_EXISTING;
+            BOOL result = ::MoveFileExW(from_buffer, to_buffer, native_flags);
+            DWORD error = result ? ERROR_SUCCESS : ::GetLastError();
             memfree(from_buffer);
             memfree(to_buffer);
-            if(!r)
-            {
-                DWORD err = ::GetLastError();
-                return translate_last_error(err);
-            }
-            return Result::success;
+            if(error == ERROR_NOT_SAME_DEVICE) return Result::not_supported;
+            return translate_last_error(error);
         }
         static Result delete_single_file(const c8* path)
         {

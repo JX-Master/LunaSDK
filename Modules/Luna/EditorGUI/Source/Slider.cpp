@@ -46,7 +46,8 @@ namespace Luna
             }
 
             static void draw_rounded_rect(GUI::IContext* context, const RectF& rect,
-                const Float4U& scale, const Float4U& color, f32 radius)
+                const Float4U& scale, const Float4U& color, f32 radius,
+                GUI::paint_order_id_t paint_order_id)
             {
                 GUI::DrawCommand command;
                 command.type = GUI::DrawCommandType::rounded_rect;
@@ -55,14 +56,15 @@ namespace Luna
                 command.rect_layout_scale = scale;
                 command.color = color;
                 command.radius = radius;
-                context->draw(command);
+                context->draw(command, paint_order_id);
             }
 
-            static RV draw_slider(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_slider(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 SliderData* data = (SliderData*)userdata;
-                if(!data) return ok;
+                if(!data) return paint_order_id;
                 f32 fraction = slider_fraction(*data);
                 f32 knob_size = style_scalar(context, element, "gui.slider.knob_size", 12.0f);
                 Float4U disabled = style_color(context, element, "gui.slider.disabled",
@@ -71,7 +73,8 @@ namespace Luna
                 const Float4U track_scale(0.0f, 0.5f, 0.0f, 0.0f);
                 draw_rounded_rect(context, track_rect, track_scale,
                     data->enabled ? style_color(context, element, "gui.slider.track",
-                        Float4U(0.07f, 0.09f, 0.12f, 1.0f)) : disabled, 2.0f);
+                        Float4U(0.07f, 0.09f, 0.12f, 1.0f)) : disabled, 2.0f,
+                    paint_order_id);
                 if(fraction > 0.0f)
                 {
                     const RectF fill_rect(knob_size * 0.5f, -2.0f, -knob_size * fraction, 4.0f);
@@ -93,9 +96,10 @@ namespace Luna
                         shadow.shadow_desc.mode = GUI::ShadowMode::inner;
                     }
                     if(RV result = draw_rounded_rect_effects(context, element, fill_rect, fill_scale,
-                        2.0f, Span<const RoundedRectEffect>(fill_effects, num_fill_effects)); failed(result))
+                        2.0f, Span<const RoundedRectEffect>(fill_effects, num_fill_effects),
+                        paint_order_id + 1); failed(result))
                     {
-                        return result;
+                        return result.errcode();
                     }
                 }
                 if(data->enabled)
@@ -115,9 +119,10 @@ namespace Luna
                     track_effects[1].shadow_desc.softness = softness * 0.35f;
                     track_effects[1].shadow_desc.mode = GUI::ShadowMode::inner;
                     if(RV result = draw_rounded_rect_effects(context, element, track_rect, track_scale,
-                        2.0f, Span<const RoundedRectEffect>(track_effects, 2)); failed(result))
+                        2.0f, Span<const RoundedRectEffect>(track_effects, 2),
+                        paint_order_id + 2); failed(result))
                     {
-                        return result;
+                        return result.errcode();
                     }
                 }
                 const RectF knob_rect(-knob_size * fraction, -knob_size * 0.5f, knob_size, knob_size);
@@ -147,11 +152,11 @@ namespace Luna
                         Float4U(0.32f, 0.58f, 0.90f, 1.0f)) : disabled;
                 if(RV result = draw_rounded_rect_effects(context, element, knob_rect, knob_scale,
                     knob_size * 0.5f, Span<const RoundedRectEffect>(knob_effects,
-                        num_knob_effects)); failed(result))
+                        num_knob_effects), paint_order_id + 3); failed(result))
                 {
-                    return result;
+                    return result.errcode();
                 }
-                return ok;
+                return paint_order_id + 3;
             }
 
             static bool resolve_slider_position(GUI::IContext* context, id_t id, f32& fraction)

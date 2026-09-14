@@ -16,6 +16,7 @@ namespace Luna
 {
     namespace Asset
     {
+        struct IAssetDatabase;
         struct [[luna::struct("{93C04F6C-BC6C-4586-8CB2-7DF1B249DA21}")]] AssetMetaFile
         {
             [[Luna::property]] u32 format_version = 1;
@@ -44,6 +45,9 @@ namespace Luna
             Guid guid;
             Name type;
             Path path;
+            // The last saved metadata location can differ from an unsaved runtime path.
+            Path metadata_path;
+            IAssetDatabase* database = nullptr; // Retained by the database registry.
             AssetDataUnitEntry main_data_unit;
             HashMap<Name, AssetDataUnitEntry> data_units;
             bool maintenance = false;

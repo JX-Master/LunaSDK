@@ -11,6 +11,8 @@ public sealed class AssetTargetRules : TargetRules
         Headers("*.hpp", "Source/**.hpp");
         MetaHeaders(
             "Asset.hpp",
+            "Database.hpp",
+            "Source/DatabaseImpl.hpp",
             "Source/AssetMetaFile.hpp");
         Sources("Source/**.cpp");
         DependsOn("Runtime", "VariantUtils", "VFS");

@@ -46,13 +46,17 @@ namespace Luna
             // If `true`, then the current state index must be resolved again.
             bool m_state_index_dirty;
             u32 m_current_state_index;
-            // If `true`, then a new resource draw call must be created.
-            bool m_draw_call_dirty;
+            // If `true`, then a new draw call must be created even if the resource state is unchanged.
+            bool m_force_new_draw_call;
 
-            void new_draw_call()
+            IShapeBuffer* get_effective_shape_buffer()
+            {
+                return m_shape_buffer ? m_shape_buffer.get() : m_internal_shape_buffer.get();
+            }
+            void new_draw_call(IShapeBuffer* shape_buffer)
             {
                 m_draw_calls.emplace_back();
-                m_draw_call_buffers.push_back(m_shape_buffer);
+                m_draw_call_buffers.push_back(shape_buffer);
                 ShapeDrawCall& dc = m_draw_calls.back();
                 dc.texture = m_texture;
                 dc.sampler = m_sampler;
@@ -68,7 +72,23 @@ namespace Luna
                     RHI::TextureAddressMode::repeat,
                     RHI::TextureAddressMode::repeat);
             }
-            
+            static bool sampler_desc_equal(const RHI::SamplerDesc& lhs, const RHI::SamplerDesc& rhs)
+            {
+                return lhs.min_filter == rhs.min_filter &&
+                    lhs.mag_filter == rhs.mag_filter &&
+                    lhs.mip_filter == rhs.mip_filter &&
+                    lhs.address_u == rhs.address_u &&
+                    lhs.address_v == rhs.address_v &&
+                    lhs.address_w == rhs.address_w &&
+                    lhs.anisotropy_enable == rhs.anisotropy_enable &&
+                    lhs.compare_enable == rhs.compare_enable &&
+                    lhs.compare_function == rhs.compare_function &&
+                    lhs.border_color == rhs.border_color &&
+                    lhs.max_anisotropy == rhs.max_anisotropy &&
+                    lhs.min_lod == rhs.min_lod &&
+                    lhs.max_lod == rhs.max_lod;
+            }
+
             ShapeDrawList() :
                 m_instance_buffer_size(0),
                 m_instance_buffer_capacity(0),
@@ -81,7 +101,7 @@ namespace Luna
                 m_rounded_clip_radii(0.0f),
                 m_state_index_dirty(true),
                 m_current_state_index(0),
-                m_draw_call_dirty(false)
+                m_force_new_draw_call(false)
             {
                 m_internal_shape_buffer = new_shape_buffer();
             }
@@ -94,11 +114,7 @@ namespace Luna
             virtual void set_shape_buffer(IShapeBuffer* shape_buffer) override
             {
                 lutsassert();
-                if (m_shape_buffer != shape_buffer)
-                {
-                    m_draw_call_dirty = true;
-                    m_shape_buffer = shape_buffer;
-                }
+                m_shape_buffer = shape_buffer;
             }
             virtual IShapeBuffer* get_shape_buffer() override
             {
@@ -107,11 +123,7 @@ namespace Luna
             virtual void set_texture(RHI::ITexture* tex) override
             {
                 lutsassert();
-                if (m_texture != tex)
-                {
-                    m_draw_call_dirty = true;
-                    m_texture = tex;
-                }
+                m_texture = tex;
             }
             virtual RHI::ITexture* get_texture() override
             {
@@ -129,11 +141,7 @@ namespace Luna
                 {
                     d = *desc;
                 }
-                if (d != m_sampler)
-                {
-                    m_draw_call_dirty = true;
-                    m_sampler = d;
-                }
+                m_sampler = d;
             }
             virtual RHI::SamplerDesc get_sampler() override
             {
@@ -186,7 +194,7 @@ namespace Luna
             virtual void draw_call_barrier() override
             {
                 lutsassert();
-                m_draw_call_dirty = true;
+                m_force_new_draw_call = true;
             }
             virtual void draw_shape(u32 begin_command, u32 num_commands,
                 const Float2U& min_position, const Float2U& max_position,

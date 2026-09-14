@@ -6,7 +6,8 @@ using System.Text.Json;
 
 public sealed class CppActionExecutor : IMakeActionExecutor
 {
-    private readonly Lazy<MsvcToolchain> _msvcToolchain = new(MsvcToolchainLocator.Locate);
+    private readonly object _msvcToolchainLock = new();
+    private Task<MsvcToolchain>? _msvcToolchainTask;
     private readonly ConcurrentDictionary<string, Lazy<AppleClangToolchain>> _appleToolchains = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lazy<AndroidNdkToolchain> _androidToolchain = new(() => AndroidNdkToolchainLocator.Locate());
     private readonly TimeSpan _actionTimeout;
@@ -30,6 +31,20 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             "cpp.link.shared" or "cpp.link.static" or "cpp.link.executable" => $"linking {PayloadFileName(context, payload, "output")}",
             _ => context.ActionKind,
         };
+    }
+
+    public async Task InitializeAsync(IReadOnlyList<MakeActionContext> actions, CancellationToken cancellationToken)
+    {
+        var windowsAction = actions.FirstOrDefault(action => action.Options.Platform == BuildPlatform.Windows);
+        if(windowsAction is null)
+        {
+            return;
+        }
+        if(windowsAction.Workspace.OptionsHostPlatform() != BuildPlatform.Windows)
+        {
+            throw new MakeSystemException("Windows/MSVC C++ actions require a Windows host.");
+        }
+        await GetMsvcToolchainAsync(windowsAction.Workspace, cancellationToken);
     }
 
     public Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
@@ -99,6 +114,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             throw new MakeSystemException("Windows/MSVC C++ compilation requires a Windows host.");
         }
 
+        var toolchain = await GetMsvcToolchainAsync(context.Workspace, cancellationToken);
         var payload = ActionPayload.Parse(context.ActionPayload);
         var source = context.Workspace.ResolveRepositoryPath(payload.Required("source"));
         var output = context.Workspace.ResolveRepositoryPath(payload.Required("object"));
@@ -109,13 +125,13 @@ public sealed class CppActionExecutor : IMakeActionExecutor
 
         var args = CppCommandLineBuilder.BuildMsvcCompileArguments(context.Workspace, context.Options, payload);
         var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "cl", args);
-        var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.ClExe, rsp, cancellationToken);
+        var result = await RunVsToolAsync(context.Workspace, toolchain, toolchain.ClExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException(FormatResponseFileFailure(
                 $"C++ compile failed for {source}",
                 context.Workspace.RootDirectory,
-                _msvcToolchain.Value.ClExe,
+                toolchain.ClExe,
                 rsp,
                 result.Output));
         }
@@ -185,6 +201,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             throw new MakeSystemException("Windows resource compilation requires a Windows/MSVC host and target.");
         }
 
+        var toolchain = await GetMsvcToolchainAsync(context.Workspace, cancellationToken);
         var payload = ActionPayload.Parse(context.ActionPayload);
         var source = context.Workspace.ResolveRepositoryPath(payload.Required("source"));
         var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
@@ -202,13 +219,13 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         args.Add(Quote(source));
 
         var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "rc", args);
-        var result = await RunVsToolAsync(context.Workspace, "rc.exe", rsp, cancellationToken);
+        var result = await RunVsToolAsync(context.Workspace, toolchain, toolchain.RcExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException(FormatResponseFileFailure(
                 $"Resource compile failed for {source}",
                 context.Workspace.RootDirectory,
-                "rc.exe",
+                toolchain.RcExe,
                 rsp,
                 result.Output));
         }
@@ -216,6 +233,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
 
     private async Task LinkMsvcSharedAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
+        var toolchain = await GetMsvcToolchainAsync(context.Workspace, cancellationToken);
         var payload = ActionPayload.Parse(context.ActionPayload);
         var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
@@ -239,13 +257,13 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         args.Add($"/implib:{Quote(importLib)}");
 
         var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "link", args);
-        var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.LinkExe, rsp, cancellationToken);
+        var result = await RunVsToolAsync(context.Workspace, toolchain, toolchain.LinkExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException(FormatResponseFileFailure(
                 $"C++ link failed for {output}",
                 context.Workspace.RootDirectory,
-                _msvcToolchain.Value.LinkExe,
+                toolchain.LinkExe,
                 rsp,
                 result.Output));
         }
@@ -253,6 +271,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
 
     private async Task LinkMsvcStaticAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
+        var toolchain = await GetMsvcToolchainAsync(context.Workspace, cancellationToken);
         var payload = ActionPayload.Parse(context.ActionPayload);
         var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
@@ -265,13 +284,13 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         args.AddRange(LinkInputPaths(context).Select(Quote));
 
         var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "lib", args);
-        var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.LibExe, rsp, cancellationToken);
+        var result = await RunVsToolAsync(context.Workspace, toolchain, toolchain.LibExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException(FormatResponseFileFailure(
                 $"C++ static link failed for {output}",
                 context.Workspace.RootDirectory,
-                _msvcToolchain.Value.LibExe,
+                toolchain.LibExe,
                 rsp,
                 result.Output));
         }
@@ -279,6 +298,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
 
     private async Task LinkMsvcExecutableAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
+        var toolchain = await GetMsvcToolchainAsync(context.Workspace, cancellationToken);
         var payload = ActionPayload.Parse(context.ActionPayload);
         var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
@@ -298,13 +318,13 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         args.AddRange(payload.All("library"));
 
         var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "link", args);
-        var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.LinkExe, rsp, cancellationToken);
+        var result = await RunVsToolAsync(context.Workspace, toolchain, toolchain.LinkExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException(FormatResponseFileFailure(
                 $"C++ executable link failed for {output}",
                 context.Workspace.RootDirectory,
-                _msvcToolchain.Value.LinkExe,
+                toolchain.LinkExe,
                 rsp,
                 result.Output));
         }
@@ -512,10 +532,31 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             .Select(node => context.Workspace.ResolveRepositoryPath(node.Path!));
     }
 
-    private async Task<ProcessRunResult> RunVsToolAsync(BuildWorkspace workspace, string tool, string responseFile, CancellationToken cancellationToken)
+    private Task<MsvcToolchain> GetMsvcToolchainAsync(BuildWorkspace workspace, CancellationToken cancellationToken)
     {
-        var command = $"call {Quote(_msvcToolchain.Value.VcVarsBat)} >nul && {Quote(tool)} @{Quote(responseFile)}";
-        return await ProcessRunner.RunAsync("cmd.exe", $"/d /s /c \"{command}\"", workspace.RootDirectory, _actionTimeout, cancellationToken);
+        lock(_msvcToolchainLock)
+        {
+            return _msvcToolchainTask ??= MsvcToolchainLocator.LocateAsync(
+                workspace.RootDirectory,
+                TimeSpan.FromSeconds(30),
+                cancellationToken);
+        }
+    }
+
+    private Task<ProcessRunResult> RunVsToolAsync(
+        BuildWorkspace workspace,
+        MsvcToolchain toolchain,
+        string tool,
+        string responseFile,
+        CancellationToken cancellationToken)
+    {
+        return ProcessRunner.RunAsync(
+            tool,
+            new[] { "@" + responseFile },
+            workspace.RootDirectory,
+            _actionTimeout,
+            cancellationToken,
+            toolchain.EnvironmentVariables);
     }
 
     private static string FormatResponseFileFailure(string title, string workingDirectory, string tool, string responseFile, string output)

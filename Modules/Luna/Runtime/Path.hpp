@@ -276,6 +276,10 @@ namespace Luna
                     {
                         iter = m_nodes.erase(iter2, iter2 + 2);
                     }
+                    else
+                    {
+                        ++iter;
+                    }
                 }
                 else if ((!strcmp((*iter).c_str(), ".")))
                 {

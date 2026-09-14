@@ -1,0 +1,828 @@
+/*!
+* This file is a portion of LunaSDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+*
+* @file Main.cpp
+* @author JXMaster
+* @date 2026/8/25
+*/
+#include <Luna/GameGUI/GameGUI.hpp>
+#include <Luna/Runtime/Assert.hpp>
+#include <Luna/Runtime/File.hpp>
+#include <Luna/Runtime/Guid.hpp>
+#include <Luna/Runtime/Module.hpp>
+#include <Luna/Runtime/Random.hpp>
+#include <Luna/Runtime/Runtime.hpp>
+#include <Luna/VFS/VFS.hpp>
+#include <Luna/VFS/NativeFileSystem.hpp>
+#include <Luna/VG/TextArranger.hpp>
+#include <cstring>
+
+using namespace Luna;
+using namespace Luna::GameGUI;
+
+#define lutest luassert_always
+
+namespace
+{
+    usize g_state_build_count = 0;
+    constexpr const c8* g_document_asset_path = "/GameGUITest/DocumentAsset";
+
+    NodeRecord make_node(const Guid& type, const c8* name = "")
+    {
+        NodeRecord node;
+        node.id = random_guid();
+        node.type = type;
+        node.name = name;
+        node.properties = Variant(VariantType::object);
+        return node;
+    }
+
+    Ref<Document> make_single_node_document(const NodeRecord& node)
+    {
+        Ref<Document> document = new_object<Document>();
+        document->root = node.id;
+        document->nodes.push_back(node);
+        return document;
+    }
+
+    void delete_asset_source(const Path& asset_path)
+    {
+        Path document_path = asset_path;
+        document_path.append_extension("cooked");
+        lupanic_if_failed(VFS::delete_file(document_path));
+    }
+
+    void document_asset_test()
+    {
+        NodeRecord root = make_node(get_flex_node_type(), "Root");
+        root.properties["gap"] = 12.0;
+        root.properties["nested"] = Variant(VariantType::object);
+        root.properties["nested"]["value"] = (u64)42;
+        Ref<Document> source = make_single_node_document(root);
+
+        auto asset_result = Asset::new_asset(g_document_asset_path, get_asset_type(), false);
+        lutest(asset_result.valid());
+        Asset::asset_t asset = asset_result.get();
+        lupanic_if_failed(Asset::set_asset_data_unit_object(asset, Name(), source.object()));
+        lupanic_if_failed(Asset::save_asset_data_unit(asset, Name()));
+        lupanic_if_failed(Asset::set_asset_data_unit_object(asset, Name(), nullptr));
+        lupanic_if_failed(Asset::load_asset_data_unit(asset, Name()));
+        auto loaded_result = Asset::get_asset_data_unit_object<Document>(asset, Name());
+        lutest(loaded_result.valid());
+        Ref<Document> loaded = loaded_result.get();
+        lutest(loaded);
+        lutest(loaded->nodes.size() == 1);
+        lutest(loaded->nodes[0].type == root.type);
+        lutest(loaded->nodes[0].properties == root.properties);
+
+        loaded->nodes[0].properties["unsaved"] = true;
+        lupanic_if_failed(Asset::load_asset_data_unit(asset, Name(), true));
+        loaded_result = Asset::get_asset_data_unit_object<Document>(asset, Name());
+        lutest(loaded_result.valid());
+        loaded = loaded_result.get();
+        lutest(loaded && !loaded->nodes[0].properties.contains("unsaved"));
+
+        delete_asset_source(g_document_asset_path);
+    }
+
+    void topology_validation_test()
+    {
+        NodeRecord root = make_node(get_flex_node_type());
+        NodeRecord orphan = make_node(get_text_node_type());
+        Ref<Document> document = new_object<Document>();
+        document->root = root.id;
+        document->nodes.push_back(root);
+        document->nodes.push_back(orphan);
+        Vector<Diagnostic> diagnostics;
+        lutest(failed(validate_document(*document, &diagnostics)));
+        lutest(!diagnostics.empty());
+
+        ChildLink link;
+        link.child = orphan.id;
+        document->nodes[0].children.push_back(link);
+        lutest(succeeded(validate_document(*document)));
+        document->nodes[1].children.push_back(ChildLink{root.id});
+        lutest(failed(validate_document(*document)));
+    }
+
+    R<Any> prepare_test_node(const NodeRecord& node, object_t userdata)
+    {
+        Any data;
+        data.emplace<u64>(123);
+        return data;
+    }
+
+    Variant create_test_state(object_t userdata)
+    {
+        Variant state(VariantType::object);
+        state["build_count"] = (u64)40;
+        return state;
+    }
+
+    R<GUI::ElementHandle> build_test_node(BuildContext& context, const NodeRecord& node, object_t userdata)
+    {
+        lutest(context.prepared_data().as<u64>() && *context.prepared_data().as<u64>() == 123);
+        Variant& state = context.state();
+        state["build_count"] = state["build_count"].unum() + 1;
+        g_state_build_count = (usize)state["build_count"].unum();
+        GUI::ElementHandle element = context.gui()->begin_element(context.make_id("element"));
+        context.gui()->end_element();
+        return element;
+    }
+
+    RV resolve_test_node(ResolveContext& context, const NodeRecord& node, object_t userdata)
+    {
+        context.request_relayout();
+        return ok;
+    }
+
+    void registry_and_state_test()
+    {
+        Guid type = random_guid();
+        NodeTypeDesc desc;
+        desc.type = type;
+        desc.name = "GameGUITest.StatefulNode";
+        desc.prepare = prepare_test_node;
+        desc.create_state = create_test_state;
+        desc.build = build_test_node;
+        desc.resolve = resolve_test_node;
+        lupanic_if_failed(register_node_type(desc));
+        lutest(failed(register_node_type(desc)));
+
+        NodeRecord node = make_node(type);
+        Ref<Document> document = make_single_node_document(node);
+        InstanceDesc instance_desc;
+        instance_desc.document = document;
+        instance_desc.instance_scope = 0x12345678;
+        Ref<IInstance> instance = new_instance(instance_desc);
+        lupanic_if_failed(instance->prepare());
+
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(100.0f, 100.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto first = instance->build(gui);
+        gui->pop_layer();
+        lutest(first.valid());
+        lutest(g_state_build_count == 41);
+        GUI::id_t stable_id = first.get().id;
+        lutest(stable_id == instance->make_stable_id(node.id, "element"));
+
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto second = instance->build(gui);
+        gui->pop_layer();
+        lutest(second.valid());
+        lutest(second.get().id == stable_id);
+        lutest(second.get().generation != first.get().generation);
+        lutest(g_state_build_count == 42);
+        lutest(failed(instance->build(gui)));
+        gui->route_input();
+        lupanic_if_failed(instance->resolve_interactions(gui));
+        lutest(instance->relayout_requested());
+        lupanic_if_failed(unregister_node_type(type));
+    }
+
+    void button_action_test()
+    {
+        NodeRecord button = make_node(get_button_node_type(), "ActionButton");
+        button.properties["width"] = 100.0;
+        button.properties["height"] = 50.0;
+        button.properties["text"] = "Run";
+        button.properties["action"] = "run";
+        button.properties["action_payload"] = (u64)99;
+        Ref<Document> document = make_single_node_document(button);
+        InstanceDesc desc;
+        desc.document = document;
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(200.0f, 100.0f);
+        gui->begin_frame(frame);
+        GUI::InputEvent enter;
+        enter.type = GUI::InputEventType::pointer_enter;
+        enter.position = Float2U(10.0f, 10.0f);
+        gui->add_input_event(enter);
+        GUI::InputEvent down = enter;
+        down.type = GUI::InputEventType::pointer_down;
+        gui->add_input_event(down);
+        GUI::InputEvent up = enter;
+        up.type = GUI::InputEventType::pointer_up;
+        gui->add_input_event(up);
+        gui->push_layer(1);
+        auto root = instance->build(gui);
+        gui->pop_layer();
+        lutest(root.valid());
+        lupanic_if_failed(gui->apply_layout(root.get(), RectF(0.0f, 0.0f, 100.0f, 50.0f)));
+        gui->route_input();
+        lupanic_if_failed(instance->resolve_interactions(gui));
+        Span<const Action> actions = instance->get_actions();
+        lutest(actions.size() == 1);
+        lutest(actions[0].name == Name("run"));
+        lutest(actions[0].node == button.id);
+        lutest(actions[0].source_id != 0);
+        lutest(actions[0].payload.unum() == 99);
+        GUI::ElementVisualConfig visual_config = gui->get_element_visual_config(root.get());
+        lutest(visual_config.before_children.size() == 2);
+        lutest(!gui->get_draw_config(root.get()).callback);
+        lupanic_if_failed(gui->generate_draw_commands());
+        Span<const GUI::DrawCommand> commands = gui->get_draw_commands();
+        lutest(commands.size() == 2);
+        lutest(commands[0].type == GUI::DrawCommandType::rounded_rect);
+        lutest(commands[1].type == GUI::DrawCommandType::text);
+        lutest(commands[0].paint_order_id + 1 == commands[1].paint_order_id);
+        lutest(gui->get_performance_counters().draw_callback_count == 0);
+    }
+
+    void element_visual_effect_test()
+    {
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(100.0f, 100.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        GUI::ElementHandle root = gui->begin_element(1);
+        GUI::ElementVisualEffect root_before[3];
+        root_before[0].command.type = GUI::DrawCommandType::rect;
+        root_before[0].command.rect_reference = GUI::DrawCommandRectReference::element;
+        root_before[0].command.color = Float4U(1.0f, 0.0f, 0.0f, 1.0f);
+        root_before[1].command.type = GUI::DrawCommandType::rounded_rect_stroke;
+        root_before[1].command.rect_reference = GUI::DrawCommandRectReference::element;
+        root_before[1].command.color = Float4U(0.0f, 1.0f, 0.0f, 1.0f);
+        root_before[1].command.radius = 4.0f;
+        root_before[1].command.line_width = 2.0f;
+        root_before[2].command.type = GUI::DrawCommandType::rounded_rect_stroke;
+        root_before[2].command.rect_reference = GUI::DrawCommandRectReference::element;
+        root_before[2].command.rect = RectF(2.0f, 2.0f, -4.0f, -4.0f);
+        root_before[2].command.color = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
+        root_before[2].command.radius = 2.0f;
+        root_before[2].command.line_width = 1.0f;
+        GUI::ElementVisualEffect root_after;
+        root_after.command.type = GUI::DrawCommandType::text;
+        root_after.command.rect_reference = GUI::DrawCommandRectReference::element;
+        root_after.command.text = "after";
+        GUI::ElementVisualConfig root_config;
+        root_config.before_children = Span<const GUI::ElementVisualEffect>(root_before, 3);
+        root_config.after_children = Span<const GUI::ElementVisualEffect>(&root_after, 1);
+        lupanic_if_failed(gui->set_element_visual_config(root, root_config));
+
+        GUI::ElementHandle child = gui->begin_element(2);
+        GUI::ElementVisualEffect child_visual;
+        child_visual.command.type = GUI::DrawCommandType::image;
+        child_visual.command.rect_reference = GUI::DrawCommandRectReference::element;
+        GUI::ElementVisualConfig child_config;
+        child_config.before_children = Span<const GUI::ElementVisualEffect>(&child_visual, 1);
+        lupanic_if_failed(gui->set_element_visual_config(child, child_config));
+        gui->end_element();
+        gui->end_element();
+        gui->pop_layer();
+
+        root_before[0].command.color = Float4U(0.0f);
+        root_after.command.text = "mutated";
+        GUI::ElementVisualConfig stored = gui->get_element_visual_config(root);
+        lutest(stored.before_children.size() == 3);
+        lutest(stored.after_children.size() == 1);
+        lutest(stored.before_children[0].command.color.x == 1.0f);
+        lutest(!strcmp(stored.after_children[0].command.text.c_str(), "after"));
+        lupanic_if_failed(gui->set_element_visual_config(root, stored));
+        stored = gui->get_element_visual_config(root);
+        lutest(stored.before_children.size() == 3 && stored.after_children.size() == 1);
+
+        GUI::ElementVisualEffect structural;
+        structural.command.type = GUI::DrawCommandType::push_clip;
+        GUI::ElementVisualConfig invalid_config;
+        invalid_config.before_children = Span<const GUI::ElementVisualEffect>(&structural, 1);
+        lutest(failed(gui->set_element_visual_config(root, invalid_config)));
+        lutest(gui->get_element_visual_config(root).before_children.size() == 3);
+
+        lupanic_if_failed(gui->generate_draw_commands());
+        Span<const GUI::DrawCommand> commands = gui->get_draw_commands();
+        lutest(commands.size() == 5);
+        lutest(commands[0].type == GUI::DrawCommandType::rect && commands[0].element == root.index);
+        lutest(commands[1].type == GUI::DrawCommandType::rounded_rect_stroke &&
+            commands[1].element == root.index);
+        lutest(commands[2].type == GUI::DrawCommandType::rounded_rect_stroke &&
+            commands[2].element == root.index && commands[2].line_width == 1.0f);
+        lutest(commands[3].type == GUI::DrawCommandType::image && commands[3].element == child.index);
+        lutest(commands[4].type == GUI::DrawCommandType::text && commands[4].element == root.index);
+        for(usize i = 0; i < commands.size(); ++i)
+        {
+            lutest(commands[i].paint_order_id == i);
+            lutest(commands[i].layer == 0);
+        }
+        lutest(gui->get_performance_counters().draw_callback_count == 0);
+    }
+
+    Variant make_float2(f64 x, f64 y)
+    {
+        Variant value(VariantType::array);
+        value.push_back(x);
+        value.push_back(y);
+        return value;
+    }
+
+    Variant make_float4(f64 x, f64 y, f64 z, f64 w)
+    {
+        Variant value(VariantType::array);
+        value.push_back(x);
+        value.push_back(y);
+        value.push_back(z);
+        value.push_back(w);
+        return value;
+    }
+
+    void authored_visual_effect_test()
+    {
+        NodeRecord panel = make_node(get_panel_node_type(), "EffectPanel");
+        panel.properties["width"] = 100.0;
+        panel.properties["height"] = 50.0;
+        Variant effects(VariantType::array);
+        Variant shadow(VariantType::object);
+        shadow["phase"] = "before_children";
+        shadow["type"] = "shadow";
+        shadow["inset"] = make_float4(2.0, 3.0, 4.0, 5.0);
+        shadow["color"] = make_float4(0.0, 0.0, 0.0, 0.5);
+        shadow["radius"] = 6.0;
+        shadow["shadow_offset"] = make_float2(7.0, 8.0);
+        shadow["shadow_softness"] = 9.0;
+        shadow["shadow_spread"] = 10.0;
+        effects.push_back(move(shadow));
+        Variant gradient(VariantType::object);
+        gradient["phase"] = "before_children";
+        gradient["type"] = "gradient_rect";
+        gradient["color"] = make_float4(1.0, 0.0, 0.0, 1.0);
+        gradient["color_top_right"] = make_float4(0.0, 1.0, 0.0, 1.0);
+        gradient["color_bottom_right"] = make_float4(0.0, 0.0, 1.0, 1.0);
+        gradient["color_bottom_left"] = make_float4(1.0, 1.0, 1.0, 1.0);
+        effects.push_back(move(gradient));
+        Variant rectangle(VariantType::object);
+        rectangle["phase"] = "after_children";
+        rectangle["type"] = "rect";
+        effects.push_back(move(rectangle));
+        Variant rounded(VariantType::object);
+        rounded["phase"] = "after_children";
+        rounded["type"] = "rounded_rect";
+        rounded["radius"] = 3.0;
+        effects.push_back(move(rounded));
+        Variant stroke(VariantType::object);
+        stroke["phase"] = "after_children";
+        stroke["type"] = "rounded_rect_stroke";
+        stroke["color"] = make_float4(1.0, 0.0, 0.0, 1.0);
+        stroke["radius"] = 4.0;
+        stroke["line_width"] = 2.0;
+        effects.push_back(move(stroke));
+        panel.properties["visual_effects"] = move(effects);
+
+        Ref<Document> document = make_single_node_document(panel);
+        InstanceDesc desc;
+        desc.document = document;
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(100.0f, 50.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto root = instance->build(gui);
+        gui->pop_layer();
+        lutest(root.valid());
+        lupanic_if_failed(gui->apply_layout(root.get(), RectF(0.0f, 0.0f, 100.0f, 50.0f)));
+        GUI::ElementVisualConfig config = gui->get_element_visual_config(root.get());
+        lutest(config.before_children.size() == 3);
+        lutest(config.after_children.size() == 3);
+        lutest(config.before_children[0].command.type == GUI::DrawCommandType::rounded_rect);
+        const GUI::DrawCommand& decoded_shadow = config.before_children[1].command;
+        lutest(decoded_shadow.type == GUI::DrawCommandType::shadow);
+        lutest(decoded_shadow.rect.offset_x == 2.0f &&
+            decoded_shadow.rect.offset_y == 3.0f && decoded_shadow.rect.width == -6.0f &&
+            decoded_shadow.rect.height == -8.0f);
+        lutest(decoded_shadow.shadow.offset.x == 7.0f &&
+            decoded_shadow.shadow.offset.y == 8.0f &&
+            decoded_shadow.shadow.softness == 9.0f &&
+            decoded_shadow.shadow.spread == 10.0f);
+        lutest(config.before_children[2].command.type == GUI::DrawCommandType::gradient_rect);
+        lutest(config.before_children[2].command.color_top_right.y == 1.0f);
+        lutest(config.after_children[0].command.type == GUI::DrawCommandType::rect);
+        lutest(config.after_children[1].command.type == GUI::DrawCommandType::rounded_rect);
+        lutest(config.after_children[1].command.radius == 3.0f);
+        lutest(config.after_children[2].command.type ==
+            GUI::DrawCommandType::rounded_rect_stroke);
+        lupanic_if_failed(gui->generate_draw_commands());
+        Span<const GUI::DrawCommand> commands = gui->get_draw_commands();
+        lutest(commands.size() == 6);
+        lutest(commands[0].type == GUI::DrawCommandType::rounded_rect);
+        lutest(commands[1].type == GUI::DrawCommandType::shadow);
+        lutest(commands[2].type == GUI::DrawCommandType::gradient_rect);
+        lutest(commands[3].type == GUI::DrawCommandType::rect);
+        lutest(commands[4].type == GUI::DrawCommandType::rounded_rect);
+        lutest(commands[5].type == GUI::DrawCommandType::rounded_rect_stroke);
+
+        NodeRecord malformed = make_node(get_flex_node_type(), "MalformedEffect");
+        malformed.properties["visual_effects"] = Variant(VariantType::array);
+        Variant invalid_effect(VariantType::object);
+        invalid_effect["type"] = "rect";
+        malformed.properties["visual_effects"].push_back(move(invalid_effect));
+        InstanceDesc malformed_desc;
+        malformed_desc.document = make_single_node_document(malformed);
+        Ref<IInstance> malformed_instance = new_instance(malformed_desc);
+        lutest(failed(malformed_instance->prepare()));
+    }
+
+    void canvas_layout_test()
+    {
+        NodeRecord canvas = make_node(get_canvas_node_type(), "CanvasRoot");
+        NodeRecord panel = make_node(get_panel_node_type(), "PlacedPanel");
+        panel.properties["width"] = 40.0;
+        panel.properties["height"] = 30.0;
+        ChildLink link;
+        link.child = panel.id;
+        link.attachment = Variant(VariantType::object);
+        link.attachment["anchor_min"] = make_float2(0.0, 0.0);
+        link.attachment["anchor_max"] = make_float2(0.0, 0.0);
+        link.attachment["offset"] = make_float4(10.0, 20.0, 0.0, 0.0);
+        canvas.children.push_back(link);
+        Ref<Document> document = new_object<Document>();
+        document->root = canvas.id;
+        document->nodes.push_back(canvas);
+        document->nodes.push_back(panel);
+
+        InstanceDesc desc;
+        desc.document = document;
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(200.0f, 100.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto root = instance->build(gui);
+        gui->pop_layer();
+        lutest(root.valid());
+        lupanic_if_failed(gui->apply_layout(root.get(), RectF(0.0f, 0.0f, 200.0f, 100.0f)));
+        const GUI::Element* placed = gui->find_element(instance->make_stable_id(panel.id, "element"));
+        lutest(placed);
+        lutest(placed->layout_result.rect.offset_x == 10.0f);
+        lutest(placed->layout_result.rect.offset_y == 20.0f);
+        lutest(placed->layout_result.rect.width == 40.0f);
+        lutest(placed->layout_result.rect.height == 30.0f);
+    }
+
+    void flex_stretch_overrides_explicit_cross_size_test()
+    {
+        NodeRecord root = make_node(get_flex_node_type(), "FlexRoot");
+        NodeRecord fixed = make_node(get_text_node_type(), "FixedText");
+        fixed.properties["width"] = 40.0;
+        fixed.properties["height"] = 30.0;
+        NodeRecord percent = make_node(get_text_node_type(), "PercentText");
+        percent.properties["width_percent"] = 0.5;
+        percent.properties["height"] = 30.0;
+        root.children.push_back(ChildLink{fixed.id});
+        root.children.push_back(ChildLink{percent.id});
+
+        Ref<Document> document = new_object<Document>();
+        document->root = root.id;
+        document->nodes.push_back(root);
+        document->nodes.push_back(fixed);
+        document->nodes.push_back(percent);
+        InstanceDesc desc;
+        desc.document = document;
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(200.0f, 100.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto generated_root = instance->build(gui);
+        gui->pop_layer();
+        lutest(generated_root.valid());
+        lupanic_if_failed(gui->apply_layout(generated_root.get(),
+            RectF(0.0f, 0.0f, 200.0f, 100.0f)));
+
+        const GUI::Element* fixed_element = gui->find_element(
+            instance->make_stable_id(fixed.id, "element"));
+        const GUI::Element* percent_element = gui->find_element(
+            instance->make_stable_id(percent.id, "element"));
+        lutest(fixed_element && fixed_element->layout_result.rect.width == 200.0f);
+        lutest(percent_element && percent_element->layout_result.rect.width == 200.0f);
+    }
+
+    RectF layout_text_in_flex(const NodeRecord& text, const c8* axis,
+        const c8* alignment, const Float2U& available = Float2U(400.0f, 300.0f))
+    {
+        NodeRecord root = make_node(get_flex_node_type(), "TextMeasureRoot");
+        root.properties["axis"] = axis;
+        if(alignment) root.properties["cross_alignment"] = alignment;
+        root.children.push_back(ChildLink{text.id});
+        Ref<Document> document = new_object<Document>();
+        document->root = root.id;
+        document->nodes.push_back(root);
+        document->nodes.push_back(text);
+        InstanceDesc desc;
+        desc.document = document;
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+        Ref<GUI::IContext> gui = GUI::new_context();
+        lupanic_if_failed(gui->register_font("registered-font", Font::get_default_font()));
+        GUI::FrameDesc frame;
+        frame.logical_size = available;
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto generated_root = instance->build(gui);
+        gui->pop_layer();
+        lutest(generated_root.valid());
+        lupanic_if_failed(gui->apply_layout(generated_root.get(),
+            RectF(0.0f, 0.0f, available.x, available.y)));
+        const GUI::Element* element = gui->find_element(instance->make_stable_id(text.id, "element"));
+        lutest(element);
+        RectF result = element->layout_result.rect;
+        lupanic_if_failed(gui->generate_draw_commands());
+        lutest(gui->get_draw_commands().size() == 1 &&
+            gui->get_draw_commands()[0].type == GUI::DrawCommandType::text);
+        return result;
+    }
+
+    void text_content_measure_test()
+    {
+        NodeRecord text = make_node(get_text_node_type(), "AutoText");
+        text.properties["text"] = "WWWW";
+        text.properties["font_size"] = 24.0;
+        VG::TextArrangeSection section;
+        section.font_file = Font::get_default_font();
+        section.font_size = 24.0f;
+        section.num_chars = 4;
+        VG::TextArrangeResult arranged = VG::arrange_text("WWWW", 4,
+            Span<const VG::TextArrangeSection>(&section, 1),
+            RectF(0.0f, 0.0f, 400.0f, 300.0f),
+            VG::TextAlignment::end, VG::TextAlignment::begin);
+        f32 natural_width = arranged.bounding_rect.width;
+        f32 natural_height = arranged.bounding_rect.height;
+        lutest(natural_width > 0.0f && natural_height > 0.0f);
+        auto check_near = [](f32 actual, f32 expected)
+        {
+            lutest(actual > expected - 0.001f && actual < expected + 0.001f);
+        };
+
+        for(const c8* axis : {"x", "y"})
+        {
+            bool horizontal = !strcmp(axis, "x");
+            for(const c8* alignment : {"start", "center", "end", "stretch", ""})
+            {
+                bool stretch = !strcmp(alignment, "stretch") || !alignment[0];
+                const c8* configured_alignment = alignment[0] ? alignment : nullptr;
+                RectF rect = layout_text_in_flex(text, axis, configured_alignment);
+                check_near(rect.width, stretch && !horizontal ? 400.0f : natural_width);
+                check_near(rect.height, stretch && horizontal ? 300.0f : natural_height);
+                f32 extra = horizontal ? 300.0f - rect.height : 400.0f - rect.width;
+                f32 offset = !strcmp(alignment, "center") ? extra * 0.5f :
+                    (!strcmp(alignment, "end") ? extra : 0.0f);
+                check_near(horizontal ? rect.offset_y : rect.offset_x, offset);
+
+                NodeRecord fixed = text;
+                fixed.properties["width"] = 80.0;
+                fixed.properties["height"] = 40.0;
+                rect = layout_text_in_flex(fixed, axis, configured_alignment);
+                check_near(rect.width, stretch && !horizontal ? 400.0f : 80.0f);
+                check_near(rect.height, stretch && horizontal ? 300.0f : 40.0f);
+            }
+        }
+
+        // The measured box can be used by the renderer without losing any glyphs.
+        RectF auto_rect = layout_text_in_flex(text, "y", "start");
+        arranged = VG::arrange_text("WWWW", 4, Span<const VG::TextArrangeSection>(&section, 1),
+            auto_rect, VG::TextAlignment::center, VG::TextAlignment::begin);
+        lutest(!arranged.overflow && arranged.lines.size() == 1 &&
+            arranged.lines[0].glyphs.size() == 4);
+
+        text.properties["font"] = "registered-font";
+        check_near(layout_text_in_flex(text, "y", "start").width, natural_width);
+        text.properties["font"] = "missing-font";
+        check_near(layout_text_in_flex(text, "y", "start").width, natural_width);
+        text.properties["font_size"] = 48.0;
+        check_near(layout_text_in_flex(text, "y", "start").width, natural_width * 2.0f);
+        text.properties["font_size"] = 24.0;
+        text.properties["text"] = "WW";
+        check_near(layout_text_in_flex(text, "y", "start").width, natural_width * 0.5f);
+        text.properties["text"] = "WWWW";
+        text.properties["padding"] = make_float4(3.0, 4.0, 5.0, 6.0);
+        RectF padded = layout_text_in_flex(text, "y", "start");
+        check_near(padded.width, natural_width + 8.0f);
+        check_near(padded.height, natural_height + 10.0f);
+        text.properties.erase("padding");
+
+        // Auto height must account for wrapping at an explicit width, without clipping to
+        // the parent's available height while measuring.
+        text.properties["text"] = "WWWWWWWWWWWW";
+        text.properties["width"] = (f64)(natural_width * 0.6f);
+        text.properties["flex_shrink"] = 0.0;
+        RectF wrapped = layout_text_in_flex(text, "y", "start", Float2U(400.0f, 30.0f));
+        lutest(wrapped.height > natural_height * 2.0f);
+        check_near(wrapped.width, natural_width * 0.6f);
+        text.properties.erase("width");
+        text.properties["width_percent"] = (f64)(natural_width * 0.6f / 400.0f);
+        RectF percent = layout_text_in_flex(text, "y", "start", Float2U(400.0f, 30.0f));
+        check_near(percent.width, wrapped.width);
+        check_near(percent.height, wrapped.height);
+        text.properties.erase("width_percent");
+        text.properties["text"] = "";
+        RectF empty = layout_text_in_flex(text, "y", "start");
+        lutest(empty.width == 0.0f && empty.height == 0.0f);
+    }
+
+    void flex_container_properties_test()
+    {
+        NodeRecord root = make_node(get_flex_node_type(), "ConfiguredFlex");
+        root.properties["axis"] = "x";
+        root.properties["reverse"] = true;
+        root.properties["wrap"] = "wrap_reverse";
+        root.properties["main_alignment"] = "space_evenly";
+        root.properties["cross_alignment"] = "center";
+        root.properties["line_alignment"] = "space_around";
+        root.properties["gap"] = 7.0;
+        root.properties["line_gap"] = 11.0;
+        root.properties["clip_children"] = true;
+
+        InstanceDesc desc;
+        desc.document = make_single_node_document(root);
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(200.0f, 100.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto generated_root = instance->build(gui);
+        gui->pop_layer();
+        lutest(generated_root.valid());
+        GUI::LayoutCallbackConfig callbacks =
+            gui->get_layout_callback_config(generated_root.get());
+        lutest(callbacks.algorithm == Name("GameGUI.Flex") && callbacks.userdata);
+        const GUI::FlexLayoutDesc& layout =
+            *reinterpret_cast<const GUI::FlexLayoutDesc*>(callbacks.userdata);
+        lutest(layout.axis == GUI::LayoutAxis::x);
+        lutest(layout.reverse);
+        lutest(layout.wrap == GUI::FlexWrap::wrap_reverse);
+        lutest(layout.main_alignment == GUI::FlexAlignment::space_evenly);
+        lutest(layout.cross_alignment == GUI::FlexAlignment::center);
+        lutest(layout.line_alignment == GUI::FlexAlignment::space_around);
+        lutest(layout.main_axis_gap == 7.0f);
+        lutest(layout.cross_axis_gap == 11.0f);
+        lutest(layout.clip_children);
+    }
+
+    Ref<Document> make_nested_text_document()
+    {
+        NodeRecord text = make_node(get_text_node_type(), "NestedText");
+        text.properties["height"] = 20.0;
+        text.properties["text"] = "Nested";
+        return make_single_node_document(text);
+    }
+
+    Asset::asset_t make_dynamic_document_asset(const Ref<Document>& document)
+    {
+        auto asset = Asset::new_asset(Path(), get_asset_type(), false);
+        lutest(asset.valid());
+        lupanic_if_failed(Asset::set_asset_data_unit_object(asset.get(), Name(), document.object()));
+        return asset.get();
+    }
+
+    NodeRecord make_asset_instance(Asset::asset_t asset)
+    {
+        NodeRecord node = make_node(get_asset_instance_node_type(), "NestedAsset");
+        c8 buffer[GUID_STRING_LENGTH];
+        lupanic_if_failed(encode_guid(Asset::get_asset_guid(asset), buffer, sizeof(buffer)));
+        String asset_guid(buffer, sizeof(buffer));
+        node.properties["asset"] = asset_guid.c_str();
+        node.properties["height"] = 30.0;
+        return node;
+    }
+
+    void nested_asset_test()
+    {
+        Asset::asset_t unloaded_asset = Asset::get_asset(random_guid());
+        Ref<Document> unloaded_parent = make_single_node_document(make_asset_instance(unloaded_asset));
+        InstanceDesc unloaded_desc;
+        unloaded_desc.document = unloaded_parent;
+        Ref<IInstance> unloaded_instance = new_instance(unloaded_desc);
+        lutest(failed(unloaded_instance->prepare()));
+
+        Ref<Document> nested_document = make_nested_text_document();
+        Asset::asset_t nested_asset = make_dynamic_document_asset(nested_document);
+
+        NodeRecord root = make_node(get_flex_node_type(), "RepeatedMounts");
+        NodeRecord first = make_asset_instance(nested_asset);
+        NodeRecord second = make_asset_instance(nested_asset);
+        root.children.push_back(ChildLink{first.id});
+        root.children.push_back(ChildLink{second.id});
+        Ref<Document> document = new_object<Document>();
+        document->root = root.id;
+        document->nodes.push_back(root);
+        document->nodes.push_back(first);
+        document->nodes.push_back(second);
+        lupanic_if_failed(validate_document(*document));
+
+        Asset::asset_t parent_asset = make_dynamic_document_asset(document);
+        Vector<Asset::asset_t> references;
+        Asset::get_asset_data_unit_referred_assets(parent_asset, Name(), references);
+        lutest(references.size() == 1 && references[0] == nested_asset);
+
+        InstanceDesc desc;
+        desc.document = document;
+        desc.source_asset = parent_asset;
+        desc.instance_scope = 77;
+        Ref<IInstance> instance = new_instance(desc);
+        lupanic_if_failed(instance->prepare());
+        Ref<GUI::IContext> gui = GUI::new_context();
+        GUI::FrameDesc frame;
+        frame.logical_size = Float2U(200.0f, 100.0f);
+        gui->begin_frame(frame);
+        gui->push_layer(1);
+        auto generated_root = instance->build(gui);
+        gui->pop_layer();
+        lutest(generated_root.valid());
+        lutest(gui->get_elements().size() == 5);
+        Span<const GeneratedNodeInfo> generated = instance->get_generated_nodes();
+        lutest(generated.size() == 5);
+        usize nested_text_count = 0;
+        GUI::id_t first_nested_source = 0;
+        for (const GeneratedNodeInfo& info : generated)
+        {
+            if (info.node == nested_document->root)
+            {
+                ++nested_text_count;
+                if (!first_nested_source)
+                    first_nested_source = info.source_id;
+                else
+                    lutest(first_nested_source != info.source_id);
+            }
+            lutest(info.source_id != 0 && info.root_element_id != 0);
+        }
+        lutest(nested_text_count == 2);
+        Span<const GUI::Element> elements = gui->get_elements();
+        for (usize i = 0; i < elements.size(); ++i)
+        {
+            for (usize j = i + 1; j < elements.size(); ++j)
+                lutest(elements[i].id != elements[j].id);
+        }
+        lupanic_if_failed(gui->apply_layout(generated_root.get(), RectF(0.0f, 0.0f, 200.0f, 100.0f)));
+    }
+
+    void nested_cycle_test()
+    {
+        Ref<Document> document_a = new_object<Document>();
+        Ref<Document> document_b = new_object<Document>();
+        Asset::asset_t asset_a = make_dynamic_document_asset(document_a);
+        Asset::asset_t asset_b = make_dynamic_document_asset(document_b);
+        NodeRecord node_a = make_asset_instance(asset_b);
+        NodeRecord node_b = make_asset_instance(asset_a);
+        document_a->root = node_a.id;
+        document_a->nodes.push_back(node_a);
+        document_b->root = node_b.id;
+        document_b->nodes.push_back(node_b);
+
+        InstanceDesc desc;
+        desc.document = document_a;
+        desc.source_asset = asset_a;
+        Ref<IInstance> instance = new_instance(desc);
+        RV result = instance->prepare();
+        lutest(failed(result));
+        lutest(!instance->get_diagnostics().empty());
+        Span<const Diagnostic> diagnostics = instance->get_diagnostics();
+        lutest(diagnostics[diagnostics.size() - 1].asset_mount_chain.size() == 3);
+    }
+}
+
+int main()
+{
+    lupanic_if_failed(Luna::init());
+    lupanic_if_failed(add_modules({module_game_gui()}));
+    lupanic_if_failed(init_modules());
+    const c8* current_dir = get_current_dir();
+    auto file_system = VFS::new_native_file_system(current_dir);
+    release_current_dir(current_dir);
+    lupanic_if_failed(file_system);
+    RV mount_result = VFS::mount(file_system.get(), "/GameGUITest");
+    file_system.get() = nullptr;
+    lupanic_if_failed(mount_result);
+    document_asset_test();
+    topology_validation_test();
+    registry_and_state_test();
+    element_visual_effect_test();
+    authored_visual_effect_test();
+    button_action_test();
+    canvas_layout_test();
+    flex_stretch_overrides_explicit_cross_size_test();
+    text_content_measure_test();
+    flex_container_properties_test();
+    nested_asset_test();
+    nested_cycle_test();
+    lupanic_if_failed(VFS::unmount("/GameGUITest"));
+    Luna::close();
+    return 0;
+}

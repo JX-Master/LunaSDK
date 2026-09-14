@@ -134,6 +134,47 @@ namespace Luna
                 return test_flags(value, flag);
             }
 
+            static bool navigate_input_text(GUI::IContext*,
+                const GUI::NavigationRequest& request, void* userdata)
+            {
+                TextInputData* data = (TextInputData*)userdata;
+                if(!data || !data->value || !data->state ||
+                    request.event_type != GUI::InputEventType::navigation_dpad)
+                {
+                    return false;
+                }
+                String& value = *data->value;
+                TextInputState& state = *data->state;
+                state.cursor = clamp_cursor(value, state.cursor);
+                if(!has_modifier(request.event.modifiers, GUI::KeyModifierFlag::shift))
+                {
+                    state.selection_anchor = USIZE_MAX;
+                }
+                else if(state.selection_anchor == USIZE_MAX)
+                {
+                    state.selection_anchor = state.cursor;
+                }
+                switch(request.direction)
+                {
+                case GUI::NavigationDirection::left:
+                    state.cursor = previous_cursor(value, state.cursor);
+                    break;
+                case GUI::NavigationDirection::right:
+                    state.cursor = next_cursor(value, state.cursor);
+                    break;
+                case GUI::NavigationDirection::up:
+                    state.cursor = 0;
+                    break;
+                case GUI::NavigationDirection::down:
+                    state.cursor = value.size();
+                    break;
+                default:
+                    return false;
+                }
+                state.blink_time = 0.0f;
+                return true;
+            }
+
             static String filter_single_line_text(const String& value)
             {
                 String result;
@@ -169,11 +210,12 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_input_text(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_input_text(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 TextInputData* data = (TextInputData*)userdata;
-                if(!data || !data->value || !data->state) return ok;
+                if(!data || !data->value || !data->state) return paint_order_id;
                 bool focused = context->focused_element() == element.id;
                 f32 radius = style_scalar(context, element, "gui.input.radius", 4.0f);
                 f32 padding = style_scalar(context, element, "gui.input.padding_x", 8.0f);
@@ -185,13 +227,13 @@ namespace Luna
                 command.color = style_color(context, element, focused ? "gui.input.border_focused" : "gui.input.border",
                     focused ? Float4U(0.12f, 0.55f, 0.86f, 1.0f) : Float4U(0.20f, 0.27f, 0.36f, 1.0f));
                 command.radius = radius;
-                context->draw(command);
+                context->draw(command, paint_order_id);
                 command.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
                 command.color = style_color(context, element, focused ? "gui.input.background_focused" :
                     "gui.input.background", focused ? Float4U(0.11f, 0.15f, 0.21f, 1.0f) :
                     Float4U(0.08f, 0.10f, 0.13f, 1.0f));
                 command.radius = max(radius - 1.0f, 0.0f);
-                context->draw(command);
+                context->draw(command, paint_order_id + 1);
                 command = GUI::DrawCommand();
                 command.type = GUI::DrawCommandType::shadow;
                 command.rect_reference = GUI::DrawCommandRectReference::element;
@@ -202,7 +244,7 @@ namespace Luna
                 command.shadow.offset = Float2U(1.5f, 1.5f);
                 command.shadow.softness = 2.5f;
                 command.shadow.mode = GUI::ShadowMode::inner;
-                context->draw(command);
+                context->draw(command, paint_order_id + 2);
 
                 usize selection_begin = 0;
                 usize selection_end = 0;
@@ -215,7 +257,7 @@ namespace Luna
                     command.rect = RectF(begin_x, 4.0f, end_x - begin_x, -8.0f);
                     command.color = style_color(context, element, "gui.input.selection",
                         Float4U(0.16f, 0.42f, 0.70f, 0.75f));
-                    context->draw(command);
+                    context->draw(command, paint_order_id + 3);
                 }
 
                 command = GUI::DrawCommand();
@@ -229,7 +271,7 @@ namespace Luna
                     style_color(context, element, "gui.text.disabled", Float4U(0.48f, 0.52f, 0.58f, 1.0f));
                 if(data->value->empty() && data->placeholder) command.color.w *= 0.55f;
                 command.vertical_alignment = VG::TextAlignment::center;
-                context->draw(command);
+                context->draw(command, paint_order_id + 4);
 
                 if(focused && !data->read_only && fmod(data->state->blink_time, 1.0f) < 0.55f)
                 {
@@ -241,9 +283,10 @@ namespace Luna
                     command.point1 = Float2U(x, -5.0f);
                     command.rect_layout_scale = Float4U(0.0f, 0.0f, 0.0f, 1.0f);
                     command.color = style_color(context, element, "gui.input.cursor", Float4U(0.80f, 0.92f, 1.0f, 1.0f));
-                    context->draw(command);
+                    context->draw(command, paint_order_id + 5);
+                    return paint_order_id + 5;
                 }
-                return ok;
+                return paint_order_id + 4;
             }
 
             bool resolve_input_text_action(GUI::IContext* context, TextInputAction& action)
@@ -358,13 +401,6 @@ namespace Luna
                             }
                             else changed = true;
                         }
-                        else if(event.key == KeyCode::left || event.key == KeyCode::right)
-                        {
-                            if(!has_modifier(event.modifiers, GUI::KeyModifierFlag::shift)) state.selection_anchor = USIZE_MAX;
-                            else if(state.selection_anchor == USIZE_MAX) state.selection_anchor = state.cursor;
-                            state.cursor = event.key == KeyCode::left ? previous_cursor(value, state.cursor) :
-                                next_cursor(value, state.cursor);
-                        }
                         else if(event.key == KeyCode::enter || event.key == KeyCode::esc)
                         {
                             context->focus_element(0);
@@ -407,6 +443,14 @@ namespace Luna
             data->read_only = desc.read_only;
             data->font = Internal::resolve_font(context, element);
             data->state = state.get();
+            GUI::NavigationConfig navigation;
+            navigation.left = GUI::NavigationMode::callback;
+            navigation.right = GUI::NavigationMode::callback;
+            navigation.up = GUI::NavigationMode::callback;
+            navigation.down = GUI::NavigationMode::callback;
+            navigation.callback = Internal::navigate_input_text;
+            navigation.userdata = data;
+            context->set_navigation_config(element, navigation);
             GUI::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.input_text");
             callbacks.measure_callback = Internal::measure_input_text;

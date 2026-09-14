@@ -18,6 +18,7 @@
 #include "Assets/Material.hpp"
 
 #include <Luna/VFS/VFS.hpp>
+#include <Luna/VFS/NativeFileSystem.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #if defined(LUNA_PLATFORM_MACOS)
 #include <Luna/Window/ApplicationMenu.hpp>
@@ -369,7 +370,8 @@ namespace Luna
             // Mount Data folder.
             auto mount_path = project_path;
             mount_path.push_back("Data");
-            luexp(VFS::mount(VFS::get_platform_filesystem_driver(), mount_path.encode(PathSeparator::system_preferred).c_str(), "/"));
+            lulet(file_system, VFS::new_native_file_system(mount_path.encode(PathSeparator::system_preferred).c_str()));
+            luexp(VFS::mount(file_system, "/"));
 
             // Load all asset metadata.
             luexp(Asset::load_assets_meta("/"));
@@ -759,7 +761,8 @@ namespace Luna
         Asset::close();
     }
 
-    void draw_asset_tile(GUI::IContext* context, Asset::asset_t asset, const RectF& draw_rect)
+    R<GUI::paint_order_id_t> draw_asset_tile(GUI::IContext* context, Asset::asset_t asset,
+        const RectF& draw_rect, GUI::paint_order_id_t paint_order_id)
     {
         luassert(context);
         if(asset)
@@ -770,7 +773,8 @@ namespace Luna
             {
                 if(iter->second.on_draw_tile_gui)
                 {
-                    iter->second.on_draw_tile_gui(context, iter->second.userdata.get(), asset, draw_rect);
+                    return iter->second.on_draw_tile_gui(context, iter->second.userdata.get(), asset,
+                        draw_rect, paint_order_id);
                 }
                 else
                 {
@@ -782,9 +786,9 @@ namespace Luna
                     command.horizontal_alignment = VG::TextAlignment::center;
                     command.vertical_alignment = VG::TextAlignment::center;
                     command.text = asset_type.c_str();
-                    context->draw(command);
+                    context->draw(command, paint_order_id);
                 }
-                return;
+                return paint_order_id;
             }
             GUI::DrawCommand command;
             command.type = GUI::DrawCommandType::text;
@@ -794,13 +798,15 @@ namespace Luna
             command.horizontal_alignment = VG::TextAlignment::center;
             command.vertical_alignment = VG::TextAlignment::center;
             command.text = asset_type.c_str();
-            context->draw(command);
+            context->draw(command, paint_order_id);
         }
+        return paint_order_id;
     }
 
     namespace
     {
-        void draw_relative_tile_text(GUI::IContext* context, const RectF& relative_rect, const c8* text)
+        void draw_relative_tile_text(GUI::IContext* context, const RectF& relative_rect, const c8* text,
+            GUI::paint_order_id_t paint_order_id)
         {
             GUI::DrawCommand command;
             command.type = GUI::DrawCommandType::text;
@@ -811,11 +817,12 @@ namespace Luna
             command.horizontal_alignment = VG::TextAlignment::center;
             command.vertical_alignment = VG::TextAlignment::center;
             command.text = text ? text : "";
-            context->draw(command);
+            context->draw(command, paint_order_id);
         }
     }
 
-    void draw_asset_tile_preview(GUI::IContext* context, Asset::asset_t asset, const RectF& relative_rect)
+    R<GUI::paint_order_id_t> draw_asset_tile_preview(GUI::IContext* context, Asset::asset_t asset,
+        const RectF& relative_rect, GUI::paint_order_id_t paint_order_id)
     {
         luassert(context);
         if(asset)
@@ -826,15 +833,17 @@ namespace Luna
             {
                 if(iter->second.on_draw_tile_preview_gui)
                 {
-                    iter->second.on_draw_tile_preview_gui(context, iter->second.userdata.get(), asset, relative_rect);
+                    return iter->second.on_draw_tile_preview_gui(context, iter->second.userdata.get(), asset,
+                        relative_rect, paint_order_id);
                 }
                 else
                 {
-                    draw_relative_tile_text(context, relative_rect, asset_type.c_str());
+                    draw_relative_tile_text(context, relative_rect, asset_type.c_str(), paint_order_id);
                 }
-                return;
+                return paint_order_id;
             }
-            draw_relative_tile_text(context, relative_rect, asset_type.c_str());
+            draw_relative_tile_text(context, relative_rect, asset_type.c_str(), paint_order_id);
         }
+        return paint_order_id;
     }
 }

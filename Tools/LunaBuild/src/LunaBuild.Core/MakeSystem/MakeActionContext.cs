@@ -19,5 +19,7 @@ public interface IMakeActionExecutor
 
     string? GetDescription(MakeActionContext context) => context.ActionKind;
 
+    Task InitializeAsync(IReadOnlyList<MakeActionContext> actions, CancellationToken cancellationToken) => Task.CompletedTask;
+
     Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken);
 }

@@ -40,8 +40,9 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_panel(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_panel(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 PopupPanelDrawData* data = (PopupPanelDrawData*)userdata;
                 if(!data || !data->prefix) return E_BAD_ARGUMENTS;
@@ -65,10 +66,11 @@ namespace Luna
                 outer_effects[0].shadow_desc.softness = shadow_softness * 3.0f;
                 outer_effects[1].color = border;
                 if(RV result = draw_rounded_rect_effects(context, element, RectF(), Float4U(), radius,
-                    Span<const RoundedRectEffect>(outer_effects, 2)); failed(result))
+                    Span<const RoundedRectEffect>(outer_effects, 2), paint_order_id); failed(result))
                 {
-                    return result;
+                    return result.errcode();
                 }
+                GUI::paint_order_id_t fill_paint_order_id = paint_order_id + 1;
                 if(draw_backdrop)
                 {
                     GUI::DrawCommand backdrop;
@@ -77,14 +79,19 @@ namespace Luna
                     backdrop.rect = RectF(1.0f, 1.0f, -2.0f, -2.0f);
                     backdrop.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
                     backdrop.radius = max(radius - 1.0f, 0.0f);
-                    context->draw(backdrop);
+                    context->draw(backdrop, paint_order_id + 1);
+                    fill_paint_order_id = paint_order_id + 2;
                 }
 
                 RoundedRectEffect fill;
                 fill.color = background;
-                return draw_rounded_rect_effects(context, element,
+                if(RV result = draw_rounded_rect_effects(context, element,
                     RectF(1.0f, 1.0f, -2.0f, -2.0f), Float4U(), max(radius - 1.0f, 0.0f),
-                    Span<const RoundedRectEffect>(&fill, 1));
+                    Span<const RoundedRectEffect>(&fill, 1), fill_paint_order_id); failed(result))
+                {
+                    return result.errcode();
+                }
+                return fill_paint_order_id;
             }
 
             static void set_panel_draw_config(GUI::IContext* context,

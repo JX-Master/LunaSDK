@@ -66,6 +66,10 @@ internal static class CppCommandLineBuilder
             "/D_CRT_SECURE_NO_WARNINGS",
             $"/sourceDependencies {Quote(sourceDependencies)}",
         };
+        if(MsvcUtf8Enabled(payload))
+        {
+            args.Add("/utf-8");
+        }
         if(payload.Required("language").Equals("c", StringComparison.OrdinalIgnoreCase))
         {
             args.Add("/TC");
@@ -95,6 +99,20 @@ internal static class CppCommandLineBuilder
         args.Add($"/Fo{Quote(output)}");
         args.Add(Quote(source));
         return args;
+    }
+
+    private static bool MsvcUtf8Enabled(ActionPayload payload)
+    {
+        if(!payload.Contains("msvc_utf8"))
+        {
+            return true;
+        }
+        var value = payload.Required("msvc_utf8");
+        if(bool.TryParse(value, out var enabled))
+        {
+            return enabled;
+        }
+        throw new MakeSystemException($"Unsupported MSVC UTF-8 option: {value}");
     }
 
     public static IReadOnlyList<string> BuildAppleCompileArguments(

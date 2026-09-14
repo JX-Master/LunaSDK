@@ -22,10 +22,14 @@ namespace Luna
 
         ShapeDrawCall& ShapeDrawList::get_current_draw_call()
         {
-            if (m_draw_call_dirty || m_draw_calls.empty())
+            IShapeBuffer* shape_buffer = get_effective_shape_buffer();
+            if (m_force_new_draw_call || m_draw_calls.empty() ||
+                m_draw_call_buffers.back() != shape_buffer ||
+                m_draw_calls.back().texture != m_texture ||
+                !sampler_desc_equal(m_draw_calls.back().sampler, m_sampler))
             {
-                new_draw_call();
-                m_draw_call_dirty = false;
+                new_draw_call(shape_buffer);
+                m_force_new_draw_call = false;
             }
             return m_draw_calls.back();
         }
@@ -74,7 +78,7 @@ namespace Luna
             m_rounded_clip_radii = Float4U(0.0f);
             m_state_index_dirty = true;
             m_current_state_index = 0;
-            m_draw_call_dirty = false;
+            m_force_new_draw_call = false;
         }
         void ShapeDrawList::draw_shape(u32 begin_command, u32 num_commands,
             const Float2U& min_position, const Float2U& max_position,
@@ -134,14 +138,7 @@ namespace Luna
                 }
                 for(usize i = 0; i < m_draw_calls.size(); ++i)
                 {
-                    if(!m_draw_call_buffers[i])
-                    {
-                        luset(m_draw_calls[i].shape_buffer, m_internal_shape_buffer->build(m_device));
-                    }
-                    else
-                    {
-                        luset(m_draw_calls[i].shape_buffer, m_draw_call_buffers[i]->build(m_device));
-                    }
+                    luset(m_draw_calls[i].shape_buffer, m_draw_call_buffers[i]->build(m_device));
                 }
             }
             lucatchret;

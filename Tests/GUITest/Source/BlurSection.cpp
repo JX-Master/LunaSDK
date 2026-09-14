@@ -107,25 +107,27 @@ namespace Luna::GUITest
             }
         };
 
-        void draw_backdrop(GUI::IContext* context, const RectF& rect, f32 radius)
+        void draw_backdrop(GUI::IContext* context, const RectF& rect, f32 radius,
+            GUI::paint_order_id_t paint_order_id)
         {
             GUI::DrawCommand command;
             command.type = GUI::DrawCommandType::backdrop_blur;
             command.rect_reference = GUI::DrawCommandRectReference::element;
             command.rect = rect;
             command.radius = radius;
-            context->draw(command);
+            context->draw(command, paint_order_id);
         }
 
-        RV draw_animated_background(GUI::IContext* context,
-            const GUI::ElementHandle&, GUI::DrawPhase, void* userdata)
+        R<GUI::paint_order_id_t> draw_animated_background(GUI::IContext* context,
+            const GUI::ElementHandle&, GUI::DrawPhase,
+            GUI::paint_order_id_t paint_order_id, void* userdata)
         {
             SheetState* state = (SheetState*)userdata;
             if(!state) return E_BAD_ARGUMENTS;
             f32 time = state->animation_time;
 
             draw_rect(context, RectF(0.0f, 0.0f, SECTION_WIDTH, SECTION_HEIGHT),
-                Float4U(0.095f, 0.106f, 0.132f, 1.0f));
+                Float4U(0.095f, 0.106f, 0.132f, 1.0f), 0.0f, paint_order_id);
 
             struct BackdropShape
             {
@@ -178,13 +180,15 @@ namespace Luna::GUITest
                     cos(time * shape.speed * 0.73f + shape.phase * 1.41f) *
                     shape.travel.y;
                 draw_rect(context, RectF(x, y, shape.rect.width, shape.rect.height),
-                    shape.color, shape.circle ? shape.rect.width * 0.5f : 0.0f);
+                    shape.color, shape.circle ? shape.rect.width * 0.5f : 0.0f,
+                    paint_order_id + 1);
             }
-            return ok;
+            return paint_order_id + 1;
         }
 
-        RV draw_glass_panel(GUI::IContext* context,
-            const GUI::ElementHandle&, GUI::DrawPhase, void* userdata)
+        R<GUI::paint_order_id_t> draw_glass_panel(GUI::IContext* context,
+            const GUI::ElementHandle&, GUI::DrawPhase,
+            GUI::paint_order_id_t paint_order_id, void* userdata)
         {
             const GlassMaterialSample* material =
                 (const GlassMaterialSample*)userdata;
@@ -195,15 +199,15 @@ namespace Luna::GUITest
             shadow.softness = 18.0f;
             shadow.spread = -2.0f;
             draw_shadow(context, RectF(0.0f, 0.0f, PANEL_WIDTH, PANEL_HEIGHT),
-                Float4U(0.0f, 0.0f, 0.0f, 0.28f), PANEL_RADIUS, shadow);
+                Float4U(0.0f, 0.0f, 0.0f, 0.28f), PANEL_RADIUS, shadow, paint_order_id);
             draw_rect(context, RectF(0.0f, 0.0f, PANEL_WIDTH, PANEL_HEIGHT),
-                material->border, PANEL_RADIUS);
+                material->border, PANEL_RADIUS, paint_order_id + 1);
             draw_backdrop(context, RectF(1.0f, 1.0f,
                 PANEL_WIDTH - 2.0f, PANEL_HEIGHT - 2.0f),
-                PANEL_RADIUS - 1.0f);
+                PANEL_RADIUS - 1.0f, paint_order_id + 2);
             draw_rect(context, RectF(1.0f, 1.0f,
                 PANEL_WIDTH - 2.0f, PANEL_HEIGHT - 2.0f),
-                material->tint, PANEL_RADIUS - 1.0f);
+                material->tint, PANEL_RADIUS - 1.0f, paint_order_id + 3);
 
             u32 grain_count = (u32)(material->grain * 32.0f);
             for(u32 i = 0; i < grain_count; ++i)
@@ -213,19 +217,22 @@ namespace Luna::GUITest
                 f32 y = 12.0f + (f32)((hash >> 9u) % 132u);
                 f32 alpha = 0.025f + (f32)(hash & 3u) * 0.012f;
                 draw_rect(context, RectF(x, y, 1.5f, 1.5f),
-                    Float4U(1.0f, 1.0f, 1.0f, alpha), 0.75f);
+                    Float4U(1.0f, 1.0f, 1.0f, alpha), 0.75f, paint_order_id + 4);
             }
 
             draw_rect(context, RectF(12.0f, 142.0f, PANEL_WIDTH - 24.0f, 87.0f),
-                Float4U(0.015f, 0.025f, 0.045f, 0.24f), 16.0f);
+                Float4U(0.015f, 0.025f, 0.045f, 0.24f), 16.0f, paint_order_id + 5);
             draw_text(context, RectF(24.0f, 151.0f, PANEL_WIDTH - 48.0f, 34.0f),
-                material->title, 25.0f, Float4U(1.0f, 1.0f, 1.0f, 1.0f));
+                material->title, 25.0f, Float4U(1.0f, 1.0f, 1.0f, 1.0f),
+                VG::TextAlignment::begin, paint_order_id + 6);
             draw_text(context, RectF(24.0f, 183.0f, PANEL_WIDTH - 48.0f, 24.0f),
-                material->caption, 14.0f, Float4U(0.94f, 0.97f, 1.0f, 0.84f));
+                material->caption, 14.0f, Float4U(0.94f, 0.97f, 1.0f, 0.84f),
+                VG::TextAlignment::begin, paint_order_id + 6);
             draw_text(context, RectF(24.0f, 208.0f, PANEL_WIDTH - 48.0f, 18.0f),
                 material->parameters, 11.5f,
-                Float4U(0.90f, 0.95f, 1.0f, 0.72f));
-            return ok;
+                Float4U(0.90f, 0.95f, 1.0f, 0.72f), VG::TextAlignment::begin,
+                paint_order_id + 6);
+            return paint_order_id + 6;
         }
 
         void build_glass_panel(GUI::IContext* context, GUI::id_t id,

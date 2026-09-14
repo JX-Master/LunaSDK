@@ -166,13 +166,14 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_icon(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_icon(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 IconData* data = (IconData*)userdata;
-                if(!data || !g_icon_shape_buffer) return ok;
+                if(!data || !g_icon_shape_buffer) return paint_order_id;
                 const IconVariantData* variant = find_variant(data->value, data->desc.weight, true);
-                if(!variant) return ok;
+                if(!variant) return paint_order_id;
 
                 Float4U tint = data->desc.tint;
                 if(tint.w < 0.0f)
@@ -182,7 +183,7 @@ namespace Luna
                 }
                 RectF rect = get_item_rect(context, element);
                 f32 side = min(rect.width, rect.height);
-                if(side <= 0.0f || tint.w <= 0.0f) return ok;
+                if(side <= 0.0f || tint.w <= 0.0f) return paint_order_id;
                 RectF local_rect((rect.width - side) * 0.5f, (rect.height - side) * 0.5f, side, side);
                 for(u32 i = 0; i < variant->num_layers; ++i)
                 {
@@ -198,9 +199,9 @@ namespace Luna
                     command.shape.first_command = layer.first_float;
                     command.shape.num_commands = layer.num_floats;
                     command.shape.bounds = RectF(0.0f, 0.0f, 256.0f, 256.0f);
-                    context->draw(command);
+                    context->draw(command, paint_order_id);
                 }
-                return ok;
+                return paint_order_id;
             }
         }
 

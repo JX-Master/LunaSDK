@@ -58,6 +58,54 @@ namespace Luna
                 destination.insert(destination.end(), floats.begin(), floats.end());
                 return first_float;
             }
+
+            R<paint_order_id_t> next_paint_order_id(paint_order_id_t paint_order_id)
+            {
+                if(paint_order_id == INVALID_PAINT_ORDER_ID ||
+                    paint_order_id + 1 == INVALID_PAINT_ORDER_ID)
+                {
+                    return set_error(E_OUT_OF_RANGE, "GUI Paint Order ID overflow.");
+                }
+                return paint_order_id + 1;
+            }
+
+            bool is_paint_order_barrier(DrawCommandType type)
+            {
+                return type == DrawCommandType::backdrop_blur_capture;
+            }
+
+            bool is_element_visual_command(DrawCommandType type)
+            {
+                switch(type)
+                {
+                case DrawCommandType::rect:
+                case DrawCommandType::gradient_rect:
+                case DrawCommandType::rounded_rect:
+                case DrawCommandType::rounded_rect_stroke:
+                case DrawCommandType::line:
+                case DrawCommandType::text:
+                case DrawCommandType::image:
+                case DrawCommandType::shape:
+                case DrawCommandType::shadow:
+                case DrawCommandType::sdf:
+                case DrawCommandType::backdrop_blur:
+                    return true;
+                default:
+                    return false;
+                }
+            }
+
+            struct PaintFrame
+            {
+                u32 element = INVALID_ELEMENT;
+                paint_order_id_t base_paint_order_id = INVALID_PAINT_ORDER_ID;
+                paint_order_id_t first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
+                paint_order_id_t max_paint_order_id = INVALID_PAINT_ORDER_ID;
+                paint_order_id_t shared_child_paint_order_id = INVALID_PAINT_ORDER_ID;
+                ChildPaintOrderMode child_mode = ChildPaintOrderMode::sequential;
+                bool has_output = false;
+                bool has_barrier = false;
+            };
         }
 
         void Context::begin_frame(const FrameDesc& desc)
@@ -74,9 +122,9 @@ namespace Luna
             m_layout_callback_configs.clear();
             m_navigation_configs.clear();
             m_hit_test_configs.clear();
-            m_draw_configs.clear();
+            m_paint_configs.clear();
+            m_visual_effects.clear();
             m_backdrop_blur_captures.clear();
-            m_recorded_draw_commands.clear();
             m_layer_draw_operations.clear();
             m_draw_commands.clear();
             m_recorded_sdf_shape_floats.clear();
@@ -95,6 +143,12 @@ namespace Luna
             m_hovered_elements.clear();
             m_draw_generation_layer = INVALID_LAYER;
             m_draw_generation_element = INVALID_ELEMENT;
+            m_draw_generation_phase_first_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_max_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_has_output = false;
+            m_draw_generation_phase_has_barrier = false;
+            m_draw_generation_error = ResultCode();
             m_generating_draw_commands = false;
             m_draw_commands_generated = false;
             m_counters = PerformanceCounters();
@@ -251,11 +305,6 @@ namespace Luna
             {
                 if(element.layer == source) element.layer = destination;
                 else if(element.layer > source) --element.layer;
-            }
-            for(DrawCommand& command : m_recorded_draw_commands)
-            {
-                if(command.layer == source) command.layer = destination;
-                else if(command.layer > source) --command.layer;
             }
             for(u32& layer_index : m_layer_stack)
             {
@@ -738,13 +787,10 @@ namespace Luna
             }
             if(e->draw_config == U32_MAX)
             {
-                e->draw_config = (u32)m_draw_configs.size();
-                m_draw_configs.push_back(config);
+                e->draw_config = (u32)m_paint_configs.size();
+                m_paint_configs.push_back(ElementPaintConfig());
             }
-            else
-            {
-                m_draw_configs[e->draw_config] = config;
-            }
+            m_paint_configs[e->draw_config].draw = config;
             m_draw_commands_generated = false;
         }
 
@@ -756,11 +802,141 @@ namespace Luna
                 return DrawConfig();
             }
             const Element& e = m_elements[element.index];
-            if(e.id != element.id || e.draw_config >= m_draw_configs.size())
+            if(e.id != element.id || e.draw_config >= m_paint_configs.size())
             {
                 return DrawConfig();
             }
-            return m_draw_configs[e.draw_config];
+            return m_paint_configs[e.draw_config].draw;
+        }
+
+        RV Context::set_element_visual_config(const ElementHandle& element,
+            const ElementVisualConfig& config)
+        {
+            lutsassert();
+            luassert_msg(!m_generating_draw_commands,
+                "Element Visual Effects cannot change while draw commands are being generated.");
+            Element* e = mutable_element(element);
+            if(!e)
+            {
+                return ok;
+            }
+            if(e->draw_config == U32_MAX && config.before_children.empty() &&
+                config.after_children.empty())
+            {
+                return ok;
+            }
+            auto validate_effects = [](Span<const ElementVisualEffect> effects) -> RV
+            {
+                for(const ElementVisualEffect& effect : effects)
+                {
+                    if(!is_element_visual_command(effect.command.type))
+                    {
+                        return set_error(E_BAD_DATA,
+                            "Element Visual Effects cannot contain structural draw commands.");
+                    }
+                }
+                return ok;
+            };
+            RV validation = validate_effects(config.before_children);
+            if(failed(validation)) return validation.errcode();
+            validation = validate_effects(config.after_children);
+            if(failed(validation)) return validation.errcode();
+            u64 num_new_effects = (u64)config.before_children.size() +
+                (u64)config.after_children.size();
+            if(num_new_effects > U32_MAX ||
+                (u64)m_visual_effects.size() + num_new_effects > U32_MAX)
+            {
+                return set_error(E_OUT_OF_RANGE,
+                    "Element Visual Effect storage exceeds the 32-bit range.");
+            }
+            auto aliases_effect_storage = [&](Span<const ElementVisualEffect> effects)
+            {
+                if(effects.empty() || m_visual_effects.empty()) return false;
+                usize storage_begin = (usize)m_visual_effects.data();
+                usize storage_end = storage_begin +
+                    m_visual_effects.size() * sizeof(ElementVisualEffect);
+                usize effects_begin = (usize)effects.data();
+                return effects_begin >= storage_begin && effects_begin < storage_end;
+            };
+            Vector<ElementVisualEffect> before_copy;
+            Vector<ElementVisualEffect> after_copy;
+            Span<const ElementVisualEffect> before_effects = config.before_children;
+            Span<const ElementVisualEffect> after_effects = config.after_children;
+            if(aliases_effect_storage(before_effects))
+            {
+                before_copy.insert(before_copy.end(), before_effects.begin(), before_effects.end());
+                before_effects = before_copy.cspan();
+            }
+            if(aliases_effect_storage(after_effects))
+            {
+                after_copy.insert(after_copy.end(), after_effects.begin(), after_effects.end());
+                after_effects = after_copy.cspan();
+            }
+            if(e->draw_config == U32_MAX)
+            {
+                e->draw_config = (u32)m_paint_configs.size();
+                m_paint_configs.push_back(ElementPaintConfig());
+            }
+            ElementPaintConfig& paint = m_paint_configs[e->draw_config];
+            auto copy_effects = [&](Span<const ElementVisualEffect> effects)
+            {
+                ElementVisualEffectRange range;
+                range.first_effect = (u32)m_visual_effects.size();
+                range.num_effects = (u32)effects.size();
+                for(const ElementVisualEffect& effect : effects)
+                {
+                    m_visual_effects.push_back(effect);
+                }
+                return range;
+            };
+            paint.before_children = copy_effects(before_effects);
+            paint.after_children = copy_effects(after_effects);
+            m_draw_commands_generated = false;
+            return ok;
+        }
+
+        ElementVisualConfig Context::get_element_visual_config(
+            const ElementHandle& element) const
+        {
+            lutsassert();
+            ElementVisualConfig config;
+            if(!element.id || element.generation != m_generation ||
+                element.index >= m_elements.size())
+            {
+                return config;
+            }
+            const Element& e = m_elements[element.index];
+            if(e.id != element.id || e.draw_config >= m_paint_configs.size())
+            {
+                return config;
+            }
+            auto get_effects = [&](const ElementVisualEffectRange& range)
+            {
+                if(!range.num_effects ||
+                    (u64)range.first_effect + range.num_effects > m_visual_effects.size())
+                {
+                    return Span<const ElementVisualEffect>();
+                }
+                return Span<const ElementVisualEffect>(
+                    m_visual_effects.data() + range.first_effect, range.num_effects);
+            };
+            const ElementPaintConfig& paint = m_paint_configs[e.draw_config];
+            config.before_children = get_effects(paint.before_children);
+            config.after_children = get_effects(paint.after_children);
+            return config;
+        }
+
+        void Context::set_child_paint_order_mode(const ElementHandle& element,
+            ChildPaintOrderMode mode)
+        {
+            lutsassert();
+            luassert_msg(!m_generating_draw_commands,
+                "Child Paint Order mode cannot change while callbacks are running.");
+            if(Element* e = mutable_element(element))
+            {
+                e->child_paint_order_mode = mode;
+                m_draw_commands_generated = false;
+            }
         }
 
         void Context::set_backdrop_blur_capture(const ElementHandle& element,
@@ -854,26 +1030,61 @@ namespace Luna
             return m_sdf_color_floats.cspan();
         }
 
-        void Context::append_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command)
+        void Context::append_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command,
+            paint_order_id_t paint_order_id)
         {
             DrawCommand cmd = command;
             cmd.layer = layer_index;
             cmd.element = element_index;
+            cmd.paint_order_id = paint_order_id;
             u32 command_index = (u32)m_draw_commands.size();
             Layer& layer = m_layers[layer_index];
             layer.draw_command_indices.push_back(command_index);
             m_draw_commands.push_back(move(cmd));
         }
 
-        void Context::record_static_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command)
+        RV Context::emit_element_visual_effects(u32 layer_index, u32 element_index, DrawPhase phase,
+            paint_order_id_t paint_order_id, paint_order_id_t& max_paint_order_id,
+            bool& has_output)
         {
-            DrawCommand recorded = command;
-            recorded.layer = layer_index;
-            recorded.element = element_index;
-            u32 command_index = (u32)m_recorded_draw_commands.size();
-            m_recorded_draw_commands.push_back(move(recorded));
-            m_layer_draw_operations[layer_index].push_back(DrawOperation { DrawOperationType::static_command, command_index });
-            m_draw_commands_generated = false;
+            max_paint_order_id = paint_order_id;
+            has_output = false;
+            if(element_index >= m_elements.size())
+            {
+                return ok;
+            }
+            const Element& element = m_elements[element_index];
+            if(element.draw_config >= m_paint_configs.size())
+            {
+                return ok;
+            }
+            const ElementPaintConfig& paint = m_paint_configs[element.draw_config];
+            const ElementVisualEffectRange& range = phase == DrawPhase::before_children ?
+                paint.before_children : paint.after_children;
+            if(!range.num_effects)
+            {
+                return ok;
+            }
+            if((u64)range.first_effect + range.num_effects > m_visual_effects.size())
+            {
+                return set_error(E_BAD_DATA, "Element Visual Effect range is invalid.");
+            }
+            paint_order_id_t current_paint_order_id = paint_order_id;
+            for(u32 i = 0; i < range.num_effects; ++i)
+            {
+                const ElementVisualEffect& effect = m_visual_effects[range.first_effect + i];
+                append_draw_command(layer_index, element_index, effect.command,
+                    current_paint_order_id);
+                max_paint_order_id = current_paint_order_id;
+                has_output = true;
+                if(i + 1 < range.num_effects)
+                {
+                    R<paint_order_id_t> next = next_paint_order_id(current_paint_order_id);
+                    if(failed(next)) return next.errcode();
+                    current_paint_order_id = next.get();
+                }
+            }
+            return ok;
         }
 
         void Context::reset_generated_draw_commands()
@@ -884,21 +1095,28 @@ namespace Luna
             for(Layer& layer : m_layers)
             {
                 layer.draw_command_indices.clear();
+                layer.first_paint_order_id = INVALID_PAINT_ORDER_ID;
+                layer.max_paint_order_id = INVALID_PAINT_ORDER_ID;
             }
         }
 
-        RV Context::invoke_draw_callback(u32 layer_index, u32 element_index, DrawPhase phase)
+        RV Context::invoke_draw_callback(u32 layer_index, u32 element_index, DrawPhase phase,
+            paint_order_id_t paint_order_id, paint_order_id_t first_barrier_paint_order_id,
+            paint_order_id_t& max_paint_order_id, bool& has_output, bool& has_barrier)
         {
+            max_paint_order_id = paint_order_id;
+            has_output = false;
+            has_barrier = false;
             if(element_index >= m_elements.size())
             {
                 return ok;
             }
             const Element& element = m_elements[element_index];
-            if(element.draw_config >= m_draw_configs.size())
+            if(element.draw_config >= m_paint_configs.size())
             {
                 return ok;
             }
-            const DrawConfig& config = m_draw_configs[element.draw_config];
+            const DrawConfig& config = m_paint_configs[element.draw_config].draw;
             DrawPhaseFlag required_phase = phase == DrawPhase::before_children ?
                 DrawPhaseFlag::before_children : DrawPhaseFlag::after_children;
             if(!config.callback || !test_flags(config.phases, required_phase))
@@ -907,8 +1125,49 @@ namespace Luna
             }
             m_draw_generation_layer = layer_index;
             m_draw_generation_element = element_index;
+            m_draw_generation_phase_first_paint_order_id = paint_order_id;
+            m_draw_generation_phase_first_barrier_paint_order_id = first_barrier_paint_order_id;
+            m_draw_generation_phase_max_paint_order_id = paint_order_id;
+            m_draw_generation_phase_has_output = false;
+            m_draw_generation_phase_has_barrier = false;
+            m_draw_generation_error = ResultCode();
             ++m_counters.draw_callback_count;
-            return config.callback(this, ElementHandle { element.id, element_index, m_generation }, phase, config.userdata);
+            R<paint_order_id_t> result = config.callback(this,
+                ElementHandle { element.id, element_index, m_generation }, phase, paint_order_id,
+                config.userdata);
+            const paint_order_id_t emitted_max = m_draw_generation_phase_max_paint_order_id;
+            const bool emitted = m_draw_generation_phase_has_output;
+            const bool emitted_barrier = m_draw_generation_phase_has_barrier;
+            const ResultCode generation_error = m_draw_generation_error;
+            m_draw_generation_phase_first_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_max_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_has_output = false;
+            m_draw_generation_phase_has_barrier = false;
+            m_draw_generation_error = ResultCode();
+            if(failed(generation_error))
+            {
+                return generation_error;
+            }
+            if(failed(result))
+            {
+                return result.errcode();
+            }
+            paint_order_id_t returned_max = result.get();
+            if(returned_max == INVALID_PAINT_ORDER_ID || returned_max < paint_order_id)
+            {
+                return set_error(E_BAD_DATA,
+                    "A GUI draw callback returned a Paint Order ID below its phase input.");
+            }
+            if(emitted && returned_max < emitted_max)
+            {
+                return set_error(E_BAD_DATA,
+                    "A GUI draw callback returned a Paint Order ID below a command it emitted.");
+            }
+            max_paint_order_id = emitted ? max(returned_max, emitted_max) : returned_max;
+            has_output = emitted || returned_max > paint_order_id;
+            has_barrier = emitted_barrier;
+            return ok;
         }
 
         RV Context::generate_draw_commands()
@@ -926,8 +1185,82 @@ namespace Luna
             m_counters.draw_callback_count = 0;
             m_generating_draw_commands = true;
             m_draw_commands_generated = false;
+            m_draw_generation_error = ResultCode();
+
+            Vector<u8> subtree_has_known_barrier;
+            subtree_has_known_barrier.resize(m_elements.size(), 0);
+            for(usize i = m_elements.size(); i > 0; --i)
+            {
+                u32 element_index = (u32)i - 1;
+                const Element& element = m_elements[element_index];
+                if(element.backdrop_blur_capture < m_backdrop_blur_captures.size())
+                {
+                    subtree_has_known_barrier[element_index] = 1;
+                }
+                if(subtree_has_known_barrier[element_index] &&
+                    element.parent < m_elements.size())
+                {
+                    subtree_has_known_barrier[element.parent] = 1;
+                }
+            }
+
+            auto finish_generation_failure = [&](ResultCode error) -> RV
+            {
+                m_generating_draw_commands = false;
+                m_draw_generation_layer = INVALID_LAYER;
+                m_draw_generation_element = INVALID_ELEMENT;
+                m_draw_generation_phase_first_paint_order_id = INVALID_PAINT_ORDER_ID;
+                m_draw_generation_phase_first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
+                m_draw_generation_phase_max_paint_order_id = INVALID_PAINT_ORDER_ID;
+                m_draw_generation_phase_has_output = false;
+                m_draw_generation_phase_has_barrier = false;
+                m_draw_generation_error = ResultCode();
+                m_counters.draw_generate_ms = perf_elapsed_ms(generate_begin, get_ticks());
+                return error;
+            };
+
+            auto first_free_paint_order_id = [&](const PaintFrame& frame) -> R<paint_order_id_t>
+            {
+                if(!frame.has_output)
+                {
+                    return frame.base_paint_order_id;
+                }
+                return next_paint_order_id(frame.max_paint_order_id);
+            };
+
+            auto allocate_child_paint_order_id = [&](PaintFrame& parent,
+                bool child_has_known_barrier) -> R<paint_order_id_t>
+            {
+                if(child_has_known_barrier)
+                {
+                    parent.shared_child_paint_order_id = INVALID_PAINT_ORDER_ID;
+                    R<paint_order_id_t> first = first_free_paint_order_id(parent);
+                    if(failed(first)) return first.errcode();
+                    return max(first.get(), parent.first_barrier_paint_order_id);
+                }
+                if(parent.child_mode == ChildPaintOrderMode::shared)
+                {
+                    if(parent.shared_child_paint_order_id == INVALID_PAINT_ORDER_ID)
+                    {
+                        R<paint_order_id_t> first = first_free_paint_order_id(parent);
+                        if(failed(first)) return first.errcode();
+                        parent.shared_child_paint_order_id = first.get();
+                    }
+                    return parent.shared_child_paint_order_id;
+                }
+                return first_free_paint_order_id(parent);
+            };
+
+            paint_order_id_t next_layer_paint_order_id = 0;
             for(u32 layer_index = 0; layer_index < m_layer_draw_operations.size(); ++layer_index)
             {
+                Layer& layer = m_layers[layer_index];
+                layer.first_paint_order_id = INVALID_PAINT_ORDER_ID;
+                PaintFrame layer_frame;
+                layer_frame.base_paint_order_id = next_layer_paint_order_id;
+                layer_frame.first_barrier_paint_order_id = next_layer_paint_order_id;
+                layer_frame.max_paint_order_id = next_layer_paint_order_id;
+                Vector<PaintFrame> paint_stack;
                 for(const DrawOperation& operation : m_layer_draw_operations[layer_index])
                 {
                     RV result = ok;
@@ -937,6 +1270,28 @@ namespace Luna
                         if(operation.index < m_elements.size())
                         {
                             const Element& element = m_elements[operation.index];
+                            PaintFrame& parent = paint_stack.empty() ? layer_frame : paint_stack.back();
+                            R<paint_order_id_t> first_barrier = first_free_paint_order_id(parent);
+                            if(failed(first_barrier))
+                            {
+                                return finish_generation_failure(first_barrier.errcode());
+                            }
+                            paint_order_id_t inherited_first_barrier = max(first_barrier.get(),
+                                parent.first_barrier_paint_order_id);
+                            R<paint_order_id_t> first = allocate_child_paint_order_id(parent,
+                                subtree_has_known_barrier[operation.index] != 0);
+                            if(failed(first))
+                            {
+                                return finish_generation_failure(first.errcode());
+                            }
+                            PaintFrame frame;
+                            frame.element = operation.index;
+                            frame.base_paint_order_id = first.get();
+                            frame.first_barrier_paint_order_id = inherited_first_barrier;
+                            frame.max_paint_order_id = first.get();
+                            frame.child_mode = element.child_paint_order_mode;
+                            paint_stack.push_back(frame);
+                            PaintFrame& current = paint_stack.back();
                             if(element.backdrop_blur_capture < m_backdrop_blur_captures.size())
                             {
                                 DrawCommand marker;
@@ -945,71 +1300,192 @@ namespace Luna
                                 marker.rect_layout_scale = Float4U(0.0f, 0.0f, 1.0f, 1.0f);
                                 marker.backdrop_blur_capture =
                                     m_backdrop_blur_captures[element.backdrop_blur_capture];
-                                append_draw_command(layer_index, operation.index, marker);
+                                append_draw_command(layer_index, operation.index, marker,
+                                    current.base_paint_order_id);
+                                current.has_output = true;
+                                current.has_barrier = true;
+                                current.max_paint_order_id = current.base_paint_order_id;
                             }
-                        }
-                        result = invoke_draw_callback(layer_index, operation.index, DrawPhase::before_children);
-                        break;
-                    case DrawOperationType::static_command:
-                        if(operation.index < m_recorded_draw_commands.size())
-                        {
-                            const DrawCommand& command = m_recorded_draw_commands[operation.index];
-                            append_draw_command(command.layer, command.element, command);
+                            R<paint_order_id_t> visual_first = first_free_paint_order_id(current);
+                            if(failed(visual_first))
+                            {
+                                return finish_generation_failure(visual_first.errcode());
+                            }
+                            paint_order_id_t visual_max = visual_first.get();
+                            bool visual_has_output = false;
+                            result = emit_element_visual_effects(layer_index, operation.index,
+                                DrawPhase::before_children, visual_first.get(), visual_max,
+                                visual_has_output);
+                            if(failed(result)) break;
+                            if(visual_has_output)
+                            {
+                                current.max_paint_order_id = max(current.max_paint_order_id,
+                                    visual_max);
+                                current.has_output = true;
+                            }
+                            paint_order_id_t callback_order = current.base_paint_order_id;
+                            if(current.has_output)
+                            {
+                                R<paint_order_id_t> next = next_paint_order_id(current.max_paint_order_id);
+                                if(failed(next))
+                                {
+                                    return finish_generation_failure(next.errcode());
+                                }
+                                callback_order = next.get();
+                            }
+                            paint_order_id_t callback_max = callback_order;
+                            bool callback_has_output = false;
+                            bool callback_has_barrier = false;
+                            paint_order_id_t first_barrier_callback_order = current.has_output ?
+                                callback_order : current.first_barrier_paint_order_id;
+                            result = invoke_draw_callback(layer_index, operation.index,
+                                DrawPhase::before_children, callback_order,
+                                first_barrier_callback_order, callback_max,
+                                callback_has_output, callback_has_barrier);
+                            if(succeeded(result) && callback_has_output)
+                            {
+                                current.max_paint_order_id = max(current.max_paint_order_id, callback_max);
+                                current.has_output = true;
+                            }
+                            if(callback_has_barrier)
+                            {
+                                current.has_barrier = true;
+                                current.shared_child_paint_order_id = INVALID_PAINT_ORDER_ID;
+                            }
                         }
                         break;
                     case DrawOperationType::end_element:
-                        result = invoke_draw_callback(layer_index, operation.index, DrawPhase::after_children);
+                        if(operation.index < m_elements.size() && !paint_stack.empty())
+                        {
+                            PaintFrame& current = paint_stack.back();
+                            luassert(current.element == operation.index);
+                            R<paint_order_id_t> visual_first = first_free_paint_order_id(current);
+                            if(failed(visual_first))
+                            {
+                                return finish_generation_failure(visual_first.errcode());
+                            }
+                            paint_order_id_t visual_max = visual_first.get();
+                            bool visual_has_output = false;
+                            result = emit_element_visual_effects(layer_index, operation.index,
+                                DrawPhase::after_children, visual_first.get(), visual_max,
+                                visual_has_output);
+                            if(failed(result)) break;
+                            if(visual_has_output)
+                            {
+                                current.max_paint_order_id = max(current.max_paint_order_id,
+                                    visual_max);
+                                current.has_output = true;
+                            }
+                            R<paint_order_id_t> first = first_free_paint_order_id(current);
+                            if(failed(first))
+                            {
+                                return finish_generation_failure(first.errcode());
+                            }
+                            paint_order_id_t callback_max = first.get();
+                            bool callback_has_output = false;
+                            bool callback_has_barrier = false;
+                            paint_order_id_t first_barrier_callback_order = max(first.get(),
+                                current.first_barrier_paint_order_id);
+                            result = invoke_draw_callback(layer_index, operation.index,
+                                DrawPhase::after_children, first.get(), first_barrier_callback_order, callback_max,
+                                callback_has_output, callback_has_barrier);
+                            if(succeeded(result) && callback_has_output)
+                            {
+                                current.max_paint_order_id = max(current.max_paint_order_id, callback_max);
+                                current.has_output = true;
+                            }
+                            if(callback_has_barrier)
+                            {
+                                current.has_barrier = true;
+                                current.shared_child_paint_order_id = INVALID_PAINT_ORDER_ID;
+                            }
+                            PaintFrame finished = current;
+                            paint_stack.pop_back();
+                            PaintFrame& parent = paint_stack.empty() ? layer_frame : paint_stack.back();
+                            if(finished.has_output)
+                            {
+                                parent.max_paint_order_id = max(parent.max_paint_order_id,
+                                    finished.max_paint_order_id);
+                                parent.has_output = true;
+                            }
+                            if(finished.has_barrier)
+                            {
+                                parent.has_barrier = true;
+                                parent.shared_child_paint_order_id = INVALID_PAINT_ORDER_ID;
+                            }
+                        }
                         break;
                     }
                     if(failed(result))
                     {
-                        m_generating_draw_commands = false;
-                        m_draw_generation_layer = INVALID_LAYER;
-                        m_draw_generation_element = INVALID_ELEMENT;
-                        m_counters.draw_generate_ms = perf_elapsed_ms(generate_begin, get_ticks());
-                        return result;
+                        return finish_generation_failure(result.errcode());
                     }
+                }
+                luassert(paint_stack.empty());
+                if(layer_frame.has_output)
+                {
+                    layer.first_paint_order_id = layer_frame.base_paint_order_id;
+                    layer.max_paint_order_id = layer_frame.max_paint_order_id;
+                    if(layer_index + 1 < m_layer_draw_operations.size())
+                    {
+                        R<paint_order_id_t> next = next_paint_order_id(layer.max_paint_order_id);
+                        if(failed(next))
+                        {
+                            return finish_generation_failure(next.errcode());
+                        }
+                        next_layer_paint_order_id = next.get();
+                    }
+                }
+                else
+                {
+                    layer.max_paint_order_id = INVALID_PAINT_ORDER_ID;
                 }
             }
             m_generating_draw_commands = false;
             m_draw_generation_layer = INVALID_LAYER;
             m_draw_generation_element = INVALID_ELEMENT;
+            m_draw_generation_phase_first_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_max_paint_order_id = INVALID_PAINT_ORDER_ID;
+            m_draw_generation_phase_has_output = false;
+            m_draw_generation_phase_has_barrier = false;
+            m_draw_generation_error = ResultCode();
             m_draw_commands_generated = true;
             m_counters.draw_generate_ms = perf_elapsed_ms(generate_begin, get_ticks());
             return ok;
         }
 
-        void Context::draw(const DrawCommand& command)
+        void Context::draw(const DrawCommand& command, paint_order_id_t paint_order_id)
         {
             lutsassert();
-            if(m_generating_draw_commands)
+            luassert_msg(m_generating_draw_commands,
+                "Explicit Paint Order IDs may only be used while GUI draw callbacks are running.");
+            luassert(m_draw_generation_layer < m_layers.size());
+            luassert(m_draw_generation_phase_first_paint_order_id != INVALID_PAINT_ORDER_ID);
+            luassert(m_draw_generation_phase_first_barrier_paint_order_id != INVALID_PAINT_ORDER_ID);
+            if(failed(m_draw_generation_error)) return;
+            if(paint_order_id == INVALID_PAINT_ORDER_ID ||
+                paint_order_id < m_draw_generation_phase_first_paint_order_id)
             {
-                luassert(m_draw_generation_layer < m_layers.size());
-                append_draw_command(m_draw_generation_layer, m_draw_generation_element, command);
+                m_draw_generation_error = E_BAD_DATA;
                 return;
             }
-            luassert(!m_layer_stack.empty());
-            u32 layer_index = m_layer_stack.back();
-            u32 element_index = m_element_stack.empty() ? INVALID_ELEMENT : m_element_stack.back();
-            record_static_draw_command(layer_index, element_index, command);
-        }
-
-        void Context::draw_for_element(const ElementHandle& element, const DrawCommand& command)
-        {
-            lutsassert();
-            Element* e = mutable_element(element);
-            if(!e || e->layer >= m_layers.size())
+            const bool barrier = is_paint_order_barrier(command.type);
+            if((barrier && paint_order_id < m_draw_generation_phase_first_barrier_paint_order_id) ||
+                (m_draw_generation_phase_has_barrier &&
+                    paint_order_id <= m_draw_generation_phase_max_paint_order_id) ||
+                (barrier && m_draw_generation_phase_has_output &&
+                    paint_order_id <= m_draw_generation_phase_max_paint_order_id))
             {
+                m_draw_generation_error = E_BAD_DATA;
                 return;
             }
-            if(m_generating_draw_commands)
-            {
-                luassert_msg(e->layer == m_draw_generation_layer,
-                    "A draw callback cannot emit commands into a different layer.");
-                append_draw_command(e->layer, element.index, command);
-                return;
-            }
-            record_static_draw_command(e->layer, element.index, command);
+            append_draw_command(m_draw_generation_layer, m_draw_generation_element, command,
+                paint_order_id);
+            m_draw_generation_phase_max_paint_order_id = max(
+                m_draw_generation_phase_max_paint_order_id, paint_order_id);
+            m_draw_generation_phase_has_output = true;
+            m_draw_generation_phase_has_barrier |= barrier;
         }
 
         RectF Context::to_screen_rect(u32 layer_index, const RectF& rect) const

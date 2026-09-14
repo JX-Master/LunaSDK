@@ -148,21 +148,21 @@ namespace Luna::GUITest
             command.horizontal_alignment = VG::TextAlignment::center;
             command.vertical_alignment = VG::TextAlignment::center;
             command.text = text ? text : "";
-            context->draw(command);
+            record_draw_command(context, command);
         }
 
         void text_block(GUI::IContext* context, const c8* text)
         {
-            GUI::ElementHandle body = context->begin_element(ID_LAYOUT);
+            GUI::ElementHandle body = begin_element(context, ID_LAYOUT);
             context->set_layout_config(body, fixed_layout(SHEET_WIDTH - 128.0f, 66.0f));
             draw_text(context, RectF(0.0f, 0.0f, 1180.0f, 34.0f), text, 23.0f,
                 Float4U(0.10f, 0.10f, 0.10f, 1.0f));
-            context->end_element();
+            end_element(context);
         }
 
         void demo_child(GUI::IContext* context, GUI::id_t id, const DemoChild& desc, GUI::LayoutAxis axis)
         {
-            GUI::ElementHandle child = context->begin_element(id);
+            GUI::ElementHandle child = begin_element(context, id);
             context->set_layout_config(child, flex_child_layout(axis, desc));
             if(desc.main_kind == GUI::SizeKind::fit)
             {
@@ -174,13 +174,13 @@ namespace Luna::GUITest
             }
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), desc.color, 0.0f);
             draw_element_text(context, desc.label, 15.0f);
-            context->end_element();
+            end_element(context);
         }
 
         void flex_case(GUI::IContext* context, GUI::id_t id, const c8* title, f32 width, f32 height,
             GUI::FlexLayoutDesc* desc, Span<const DemoChild> children)
         {
-            GUI::ElementHandle container = context->begin_element(id);
+            GUI::ElementHandle container = begin_element(context, id);
             context->set_layout_config(container, flex_container_layout(width, height));
             context->set_layout_callback_config(container, flex_container_callbacks(desc));
             draw_text(context, RectF(0.0f, -32.0f, width, 26.0f), title, 20.0f,
@@ -191,23 +191,23 @@ namespace Luna::GUITest
             {
                 demo_child(context, child_id(id, i), children[i], desc->axis);
             }
-            context->end_element();
+            end_element(context);
         }
 
         void plain_box(GUI::IContext* context, GUI::id_t id, const c8* label, f32 width, f32 height,
             const Float4U& color = Float4U(0.93f, 0.93f, 0.93f, 1.0f))
         {
-            GUI::ElementHandle child = context->begin_element(id);
+            GUI::ElementHandle child = begin_element(context, id);
             context->set_layout_config(child, fixed_layout(width, height));
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), color, 0.0f);
             draw_element_text(context, label, 17.0f);
-            context->end_element();
+            end_element(context);
         }
 
         void marker_box(GUI::IContext* context, GUI::id_t id, const c8* label, f32 width, f32 height,
             const Float4U& color, bool outline)
         {
-            GUI::ElementHandle marker = context->begin_element(id);
+            GUI::ElementHandle marker = begin_element(context, id);
             context->set_layout_config(marker, fixed_layout(width, height));
             if(outline)
             {
@@ -219,12 +219,12 @@ namespace Luna::GUITest
             {
                 draw_rect(context, RectF(0.0f, 0.0f, width, height), color, min(width, height) * 0.5f);
             }
-            context->end_element();
+            end_element(context);
         }
 
         void concept_case(GUI::IContext* context, GUI::id_t id, const c8* title, const c8* detail)
         {
-            GUI::ElementHandle box = context->begin_element(id);
+            GUI::ElementHandle box = begin_element(context, id);
             context->set_layout_config(box, fixed_layout(360.0f, 126.0f));
             draw_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f), Float4U(0.97f, 0.97f, 0.97f, 1.0f), 0.0f);
             draw_outline(context, RectF(0.0f, 0.0f, 360.0f, 126.0f), Float4U(0.0f, 0.0f, 0.0f, 1.0f), 1.0f);
@@ -232,7 +232,7 @@ namespace Luna::GUITest
                 Float4U(0.0f, 0.0f, 0.0f, 1.0f));
             draw_text(context, RectF(18.0f, 58.0f, 320.0f, 46.0f), detail, 17.0f,
                 Float4U(0.22f, 0.22f, 0.22f, 1.0f));
-            context->end_element();
+            end_element(context);
         }
 
         void add_case_grid(SheetState& state, u32 count)
@@ -525,7 +525,7 @@ namespace Luna::GUITest
             columns.column_count = 4;
             for(u32 c = 0; c < 2; ++c)
             {
-                GUI::ElementHandle grid = context->begin_element(demo_id(c));
+                GUI::ElementHandle grid = begin_element(context, demo_id(c));
                 context->set_layout_config(grid, fixed_layout(430.0f, 170.0f));
                 GUI::LayoutConfig layout = fixed_layout(430.0f, 170.0f);
                 layout.padding = Float4U(10.0f);
@@ -545,7 +545,7 @@ namespace Luna::GUITest
                     snprintf(label, sizeof(label), "%u", i + 1);
                     plain_box(context, child_id(demo_id(c), i), label, 48.0f, 36.0f);
                 }
-                context->end_element();
+                end_element(context);
             }
         }
 
@@ -586,7 +586,7 @@ namespace Luna::GUITest
             descs[case_index].items = Span<const GUI::CanvasLayoutItem>(items[case_index], 3);
             descs[case_index].clip_children = true;
 
-            GUI::ElementHandle canvas = context->begin_element(id);
+            GUI::ElementHandle canvas = begin_element(context, id);
             GUI::LayoutConfig layout = fixed_layout(WIDTH, HEIGHT);
             layout.padding = Float4U(PADDING);
             context->set_layout_config(canvas, layout);
@@ -603,7 +603,7 @@ namespace Luna::GUITest
             marker_box(context, anchor_id, "anchor point", 18.0f, 18.0f, Float4U(0.0f, 0.36f, 0.95f, 1.0f), true);
             marker_box(context, pivot_id, "pivot point", 8.0f, 8.0f, Float4U(0.95f, 0.12f, 0.12f, 1.0f), false);
             set_canvas_layout(context, canvas, &descs[case_index]);
-            context->end_element();
+            end_element(context);
         }
 
         void build_canvas_non_stretch(GUI::IContext* context)
@@ -649,7 +649,7 @@ namespace Luna::GUITest
             f32 anchor_width = content_width * (anchor_max.x - anchor_min.x);
             f32 anchor_height = content_height * (anchor_max.y - anchor_min.y);
 
-            GUI::ElementHandle canvas = context->begin_element(id);
+            GUI::ElementHandle canvas = begin_element(context, id);
             GUI::LayoutConfig layout = fixed_layout(width, height);
             layout.padding = Float4U(PADDING);
             context->set_layout_config(canvas, layout);
@@ -663,13 +663,13 @@ namespace Luna::GUITest
                 Float4U(0.22f, 0.22f, 0.22f, 1.0f), VG::TextAlignment::center);
 
             plain_box(context, child, "stretched child", 80.0f, 40.0f, Float4U(0.90f, 0.92f, 0.96f, 0.92f));
-            GUI::ElementHandle marker = context->begin_element(anchor_rect);
+            GUI::ElementHandle marker = begin_element(context, anchor_rect);
             context->set_layout_config(marker, fixed_layout(anchor_width, anchor_height));
             draw_outline(context, RectF(0.0f, 0.0f, anchor_width, anchor_height), Float4U(0.95f, 0.55f, 0.0f, 1.0f), 2.0f);
-            context->end_element();
+            end_element(context);
 
             set_canvas_layout(context, canvas, &descs[case_index]);
-            context->end_element();
+            end_element(context);
         }
 
         void build_canvas_stretch(GUI::IContext* context)
@@ -692,7 +692,7 @@ namespace Luna::GUITest
             desc.clip_children = true;
             GUI::LayoutConfig layout = fixed_layout(SCROLL_VIEWPORT_WIDTH, SCROLL_VIEWPORT_HEIGHT);
             layout.padding = Float4U(SCROLL_VIEWPORT_PADDING);
-            GUI::ElementHandle viewport = context->begin_element(demo_id(0));
+            GUI::ElementHandle viewport = begin_element(context, demo_id(0));
             context->set_layout_config(viewport, layout);
             GUI::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.test.scroll_viewport");
@@ -731,7 +731,7 @@ namespace Luna::GUITest
                     SCROLL_ROW_WIDTH, SCROLL_ROW_HEIGHT, row_color);
                 context->set_layout_config(context->find_element_handle(child_id(demo_id(0), i)), item);
             }
-            context->end_element();
+            end_element(context);
         }
 
         void build_table_layout(GUI::IContext* context)
@@ -769,7 +769,7 @@ namespace Luna::GUITest
             desc.gap = Float2U(6.0f, 6.0f);
             GUI::LayoutConfig layout = fixed_layout(560.0f, 170.0f);
             layout.padding = Float4U(10.0f);
-            GUI::ElementHandle table = context->begin_element(demo_id(0));
+            GUI::ElementHandle table = begin_element(context, demo_id(0));
             context->set_layout_config(table, layout);
             GUI::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.test.table");
@@ -785,7 +785,7 @@ namespace Luna::GUITest
             {
                 plain_box(context, child_id(demo_id(0), i), labels[i], 60.0f, 34.0f);
             }
-            context->end_element();
+            end_element(context);
         }
     }
 

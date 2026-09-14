@@ -138,15 +138,18 @@ namespace Luna::GUITest
             }
         }
 
-        RV draw_sdf_sample(GUI::IContext* context, const GUI::ElementHandle& element,
-            GUI::DrawPhase, void* userdata)
+        R<GUI::paint_order_id_t> draw_sdf_sample(GUI::IContext* context,
+            const GUI::ElementHandle& element, GUI::DrawPhase,
+            GUI::paint_order_id_t paint_order_id, void* userdata)
         {
             SDFSample sample = (SDFSample)(u32)(usize)userdata;
             u32 sample_index = (u32)sample;
-            if(sample_index >= (u32)SDFSample::count) return ok;
+            if(sample_index >= (u32)SDFSample::count) return paint_order_id;
 
-            draw_rect(context, RectF(), Float4U(0.975f, 0.975f, 0.975f, 1.0f), 8.0f);
-            draw_rect(context, SAMPLE_RECT, Float4U(0.91f, 0.91f, 0.91f, 1.0f), 7.0f);
+            draw_rect(context, RectF(), Float4U(0.975f, 0.975f, 0.975f, 1.0f), 8.0f,
+                paint_order_id);
+            draw_rect(context, SAMPLE_RECT, Float4U(0.91f, 0.91f, 0.91f, 1.0f), 7.0f,
+                paint_order_id + 1);
 
             Vector<f32> shape_floats;
             build_sample_shape(shape_floats, sample);
@@ -163,7 +166,8 @@ namespace Luna::GUITest
                 {0.0f, highlight, 0.42f}, {0.5f, accent, 0.58f}, {1.0f, accent_dark, 0.5f}
             };
 
-            auto submit_color = [&](Vector<f32>& color_floats) -> RV
+            auto submit_color = [&](Vector<f32>& color_floats,
+                GUI::paint_order_id_t color_order) -> RV
             {
                 auto color = context->append_sdf_color_program(color_floats.cspan());
                 if(failed(color)) return color.errcode();
@@ -173,7 +177,7 @@ namespace Luna::GUITest
                 command.rect = SAMPLE_RECT;
                 command.sdf.shape = shape.get();
                 command.sdf.color = color.get();
-                context->draw(command);
+                context->draw(command, color_order);
                 return ok;
             };
 
@@ -228,23 +232,25 @@ namespace Luna::GUITest
                     Float2U(SAMPLE_RECT.width, SAMPLE_RECT.height), Span<const SDFGradientStop>(stops, 3));
             }
 
-            RV color_result = submit_color(color_floats);
-            if(failed(color_result)) return color_result;
+            RV color_result = submit_color(color_floats, paint_order_id + 2);
+            if(failed(color_result)) return color_result.errcode();
             if(sample >= SDFSample::no_clip)
             {
                 Vector<f32> boundary_floats;
                 sdf_color_add_solid(boundary_floats, accent_dark, SDFClipDesc::stroke(1.5f));
-                RV result = submit_color(boundary_floats);
-                if(failed(result)) return result;
+                RV result = submit_color(boundary_floats, paint_order_id + 3);
+                if(failed(result)) return result.errcode();
             }
 
             draw_outline(context, RectF(0.0f, 0.0f, TILE_WIDTH, TILE_HEIGHT),
-                Float4U(0.77f, 0.77f, 0.77f, 1.0f), 1.0f);
+                Float4U(0.77f, 0.77f, 0.77f, 1.0f), 1.0f, paint_order_id + 4);
             draw_text(context, RectF(10.0f, 6.0f, TILE_WIDTH - 20.0f, 18.0f),
-                SAMPLE_TITLES[sample_index], 15.0f, Float4U(0.03f, 0.03f, 0.03f, 1.0f));
+                SAMPLE_TITLES[sample_index], 15.0f, Float4U(0.03f, 0.03f, 0.03f, 1.0f),
+                VG::TextAlignment::begin, paint_order_id + 4);
             draw_text(context, RectF(10.0f, 23.0f, TILE_WIDTH - 20.0f, 14.0f),
-                SAMPLE_OPCODES[sample_index], 11.0f, Float4U(0.38f, 0.38f, 0.38f, 1.0f));
-            return ok;
+                SAMPLE_OPCODES[sample_index], 11.0f, Float4U(0.38f, 0.38f, 0.38f, 1.0f),
+                VG::TextAlignment::begin, paint_order_id + 4);
+            return paint_order_id + 4;
         }
 
         void build_sdf_sample(GUI::IContext* context, SDFSample sample)

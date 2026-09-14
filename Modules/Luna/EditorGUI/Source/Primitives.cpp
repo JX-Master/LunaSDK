@@ -122,32 +122,9 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_text(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
-            {
-                TextData* data = (TextData*)userdata;
-                if(!data)
-                {
-                    return ok;
-                }
-                GUI::DrawCommand command;
-                command.type = GUI::DrawCommandType::text;
-                command.rect_reference = GUI::DrawCommandRectReference::element;
-                command.rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
-                command.text = data->text ? data->text : "";
-                command.font = resolve_font_id(context, element, data->desc);
-                command.font_size = resolve_font_size(context, element, data->desc);
-                command.color = resolve_text_color(context, element, data->desc);
-                command.horizontal_alignment = text_alignment(data->desc.horizontal_alignment);
-                command.vertical_alignment = text_alignment(data->desc.vertical_alignment);
-                context->draw(command);
-                return ok;
-            }
-
             struct ImageData
             {
                 RHI::ITexture* texture = nullptr;
-                ImageDesc desc;
             };
 
             static GUI::MeasureResult measure_image(GUI::IContext*, const GUI::ElementHandle&,
@@ -163,34 +140,9 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_image(GUI::IContext* context, const GUI::ElementHandle&,
-                GUI::DrawPhase, void* userdata)
-            {
-                ImageData* data = (ImageData*)userdata;
-                if(!data || !data->texture)
-                {
-                    return ok;
-                }
-                GUI::DrawCommand command;
-                command.type = GUI::DrawCommandType::image;
-                command.rect_reference = GUI::DrawCommandRectReference::element;
-                command.texture = data->texture;
-                command.color = data->desc.tint;
-                command.min_texcoord = data->desc.min_texcoord;
-                command.max_texcoord = data->desc.max_texcoord;
-                if(test_flags(data->desc.flags, ImageFlag::flip_y))
-                {
-                    swap(command.min_texcoord.y, command.max_texcoord.y);
-                }
-                command.nearest_sampler = test_flags(data->desc.flags, ImageFlag::nearest);
-                context->draw(command);
-                return ok;
-            }
-
             struct ShapeData
             {
                 GUI::ShapeDesc shape;
-                ShapeWidgetDesc desc;
             };
 
             static GUI::MeasureResult measure_shape(GUI::IContext*, const GUI::ElementHandle&,
@@ -204,20 +156,6 @@ namespace Luna
                         max(data->shape.bounds.height, 0.0f));
                 }
                 return result;
-            }
-
-            static RV draw_shape(GUI::IContext* context, const GUI::ElementHandle&,
-                GUI::DrawPhase, void* userdata)
-            {
-                ShapeData* data = (ShapeData*)userdata;
-                if(!data || !data->shape.buffer || !data->shape.num_commands) return ok;
-                GUI::DrawCommand command;
-                command.type = GUI::DrawCommandType::shape;
-                command.rect_reference = GUI::DrawCommandRectReference::element;
-                command.color = data->desc.tint;
-                command.shape = data->shape;
-                context->draw(command);
-                return ok;
             }
 
             struct ProgressData
@@ -238,13 +176,14 @@ namespace Luna
                 return result;
             }
 
-            static RV draw_progress(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_progress(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 ProgressData* data = (ProgressData*)userdata;
                 if(!data)
                 {
-                    return ok;
+                    return paint_order_id;
                 }
                 f32 radius = style_scalar(context, element, "gui.progress.radius", 4.0f);
                 GUI::DrawCommand command;
@@ -252,7 +191,7 @@ namespace Luna
                 command.rect_reference = GUI::DrawCommandRectReference::element;
                 command.color = style_color(context, element, "gui.progress.border", Float4U(0.24f, 0.29f, 0.35f, 1.0f));
                 command.radius = radius;
-                context->draw(command);
+                context->draw(command, paint_order_id);
                 const RectF inner_rect(1.0f, 1.0f, -2.0f, -2.0f);
                 const f32 inner_radius = max(radius - 1.0f, 0.0f);
                 const f32 softness = style_scalar(context, element, "gui.shadow.softness", 5.0f);
@@ -272,10 +211,12 @@ namespace Luna
                 track_effects[2].shadow_desc.softness = softness * 0.4f;
                 track_effects[2].shadow_desc.mode = GUI::ShadowMode::inner;
                 if(RV result = draw_rounded_rect_effects(context, element, inner_rect, Float4U(),
-                    inner_radius, Span<const RoundedRectEffect>(track_effects, 3)); failed(result))
+                    inner_radius, Span<const RoundedRectEffect>(track_effects, 3),
+                    paint_order_id + 1); failed(result))
                 {
-                    return result;
+                    return result.errcode();
                 }
+                GUI::paint_order_id_t max_paint_order_id = paint_order_id + 1;
                 if(data->fraction > 0.0f)
                 {
                     RectF fill_rect(1.0f, 1.0f, -2.0f * data->fraction, -2.0f);
@@ -292,10 +233,12 @@ namespace Luna
                     fill_effects[1].shadow_desc.softness = 1.0f;
                     fill_effects[1].shadow_desc.mode = GUI::ShadowMode::inner;
                     if(RV result = draw_rounded_rect_effects(context, element, fill_rect, fill_scale,
-                        inner_radius, Span<const RoundedRectEffect>(fill_effects, 2)); failed(result))
+                        inner_radius, Span<const RoundedRectEffect>(fill_effects, 2),
+                        paint_order_id + 2); failed(result))
                     {
-                        return result;
+                        return result.errcode();
                     }
+                    max_paint_order_id = paint_order_id + 2;
                 }
                 if(data->show_overlay)
                 {
@@ -308,9 +251,10 @@ namespace Luna
                     text_command.horizontal_alignment = VG::TextAlignment::center;
                     text_command.vertical_alignment = VG::TextAlignment::center;
                     text_command.text = data->overlay ? data->overlay : "";
-                    context->draw(text_command);
+                    context->draw(text_command, paint_order_id + 3);
+                    max_paint_order_id = paint_order_id + 3;
                 }
-                return ok;
+                return max_paint_order_id;
             }
         }
 
@@ -326,11 +270,18 @@ namespace Luna
             layout_callbacks.measure_callback = Internal::measure_text;
             layout_callbacks.userdata = data;
             context->set_layout_callback_config(element, layout_callbacks);
-            GUI::DrawConfig draw;
-            draw.name = Name("gui.text");
-            draw.callback = Internal::draw_text;
-            draw.userdata = data;
-            context->set_draw_config(element, draw);
+            GUI::ElementVisualEffect visual;
+            visual.command.type = GUI::DrawCommandType::text;
+            visual.command.rect_reference = GUI::DrawCommandRectReference::element;
+            visual.command.text = data->text ? data->text : "";
+            visual.command.font = Internal::resolve_font_id(context, element, desc);
+            visual.command.font_size = Internal::resolve_font_size(context, element, desc);
+            visual.command.color = Internal::resolve_text_color(context, element, desc);
+            visual.command.horizontal_alignment = Internal::text_alignment(desc.horizontal_alignment);
+            visual.command.vertical_alignment = Internal::text_alignment(desc.vertical_alignment);
+            GUI::ElementVisualConfig visual_config;
+            visual_config.before_children = Span<const GUI::ElementVisualEffect>(&visual, 1);
+            lupanic_if_failed(context->set_element_visual_config(element, visual_config));
             context->end_element();
             return element;
         }
@@ -341,17 +292,29 @@ namespace Luna
             GUI::ElementHandle element = Internal::begin_element(context, id, "Image", layout);
             Internal::ImageData* data = Internal::allocate_frame<Internal::ImageData>(context);
             data->texture = texture;
-            data->desc = desc;
             GUI::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.image");
             callbacks.measure_callback = Internal::measure_image;
             callbacks.userdata = data;
             context->set_layout_callback_config(element, callbacks);
-            GUI::DrawConfig draw;
-            draw.name = Name("gui.image");
-            draw.callback = Internal::draw_image;
-            draw.userdata = data;
-            context->set_draw_config(element, draw);
+            if(texture)
+            {
+                GUI::ElementVisualEffect visual;
+                visual.command.type = GUI::DrawCommandType::image;
+                visual.command.rect_reference = GUI::DrawCommandRectReference::element;
+                visual.command.texture = texture;
+                visual.command.color = desc.tint;
+                visual.command.min_texcoord = desc.min_texcoord;
+                visual.command.max_texcoord = desc.max_texcoord;
+                if(test_flags(desc.flags, ImageFlag::flip_y))
+                {
+                    swap(visual.command.min_texcoord.y, visual.command.max_texcoord.y);
+                }
+                visual.command.nearest_sampler = test_flags(desc.flags, ImageFlag::nearest);
+                GUI::ElementVisualConfig visual_config;
+                visual_config.before_children = Span<const GUI::ElementVisualEffect>(&visual, 1);
+                lupanic_if_failed(context->set_element_visual_config(element, visual_config));
+            }
             context->end_element();
             return element;
         }
@@ -362,17 +325,22 @@ namespace Luna
             GUI::ElementHandle element = Internal::begin_element(context, id, "Shape", layout);
             Internal::ShapeData* data = Internal::allocate_frame<Internal::ShapeData>(context);
             data->shape = value;
-            data->desc = desc;
             GUI::LayoutCallbackConfig callbacks;
             callbacks.algorithm = Name("gui.shape");
             callbacks.measure_callback = Internal::measure_shape;
             callbacks.userdata = data;
             context->set_layout_callback_config(element, callbacks);
-            GUI::DrawConfig draw;
-            draw.name = Name("gui.shape");
-            draw.callback = Internal::draw_shape;
-            draw.userdata = data;
-            context->set_draw_config(element, draw);
+            if(value.buffer && value.num_commands)
+            {
+                GUI::ElementVisualEffect visual;
+                visual.command.type = GUI::DrawCommandType::shape;
+                visual.command.rect_reference = GUI::DrawCommandRectReference::element;
+                visual.command.color = desc.tint;
+                visual.command.shape = value;
+                GUI::ElementVisualConfig visual_config;
+                visual_config.before_children = Span<const GUI::ElementVisualEffect>(&visual, 1);
+                lupanic_if_failed(context->set_element_visual_config(element, visual_config));
+            }
             context->end_element();
             return element;
         }

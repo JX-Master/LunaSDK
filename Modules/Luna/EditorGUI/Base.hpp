@@ -161,6 +161,8 @@ namespace Luna
         };
 
         //! Describes a draggable numeric editor.
+        //! @remark Drag editors switch to direct text entry when double-clicked. Enter or focus loss accepts a
+        //! valid value, while Escape restores the value from before direct entry began.
         struct DragDesc
         {
             //! Whether the editor accepts input.

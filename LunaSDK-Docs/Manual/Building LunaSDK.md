@@ -36,7 +36,7 @@ Install the iOS/iPadOS platform in Xcode. LunaBuild can compile iOS targets, ass
 
 ## Setup
 
-Clone or download this project, then download LunaSDK's prebuilt third-party SDK bundle.
+Clone or download this project, then run setup to install LunaSDK's third-party SDK bundle and source dependencies.
 
 On Windows:
 
@@ -51,7 +51,9 @@ chmod +x ./setup.sh
 ./setup.sh
 ```
 
-The setup script downloads the platform SDK archive into `SDKs`. LunaBuild does not manage packages and does not download third-party libraries during build. All external SDK paths are declared by LunaSDK target rules.
+The setup script installs the platform SDK bundle and versioned source SDKs into `SDKs`. Source archives for libzip and zlib are downloaded with pinned SHA-256 checksums; their C sources are compiled locally by LunaBuild when needed. Source SDK checks also run when the platform bundle is already installed, so rerun setup after updating the repository to install newly required dependencies.
+
+Third-party library sources stay in the Git-ignored `SDKs` directory. The repository contains download recipes and build integration code. LunaBuild does not download third-party libraries during build. All SDK paths are declared by LunaSDK target rules.
 
 ## Building
 

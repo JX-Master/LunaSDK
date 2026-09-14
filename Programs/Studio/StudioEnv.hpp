@@ -9,6 +9,7 @@
 */
 #pragma once
 #include <Luna/Asset/Asset.hpp>
+#include <Luna/GUI/Base.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Runtime/HashMap.hpp>
 #include <Luna/Runtime/HashSet.hpp>
@@ -35,10 +36,16 @@ namespace Luna
     struct AssetEditorDesc
     {
         ObjRef userdata;
-        //! Called when the tile is going to be drawn by a GUI based asset browser.
-        void (*on_draw_tile_gui)(GUI::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect) = nullptr;
-        //! Called while a GUI tile element is being built to draw a preview relative to that tile element.
-        void (*on_draw_tile_preview_gui)(GUI::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& relative_rect) = nullptr;
+        //! Called during GUI draw-command generation to draw an asset tile.
+        //! @param[in] paint_order_id The first Paint Order ID available to the callback.
+        //! @return Returns the maximum Paint Order ID used by the callback, or a failure code.
+        R<GUI::paint_order_id_t> (*on_draw_tile_gui)(GUI::IContext* context, object_t userdata,
+            Asset::asset_t asset, const RectF& draw_rect, GUI::paint_order_id_t paint_order_id) = nullptr;
+        //! Called during GUI draw-command generation to draw a preview relative to its tile element.
+        //! @param[in] paint_order_id The first Paint Order ID available to the callback.
+        //! @return Returns the maximum Paint Order ID used by the callback, or a failure code.
+        R<GUI::paint_order_id_t> (*on_draw_tile_preview_gui)(GUI::IContext* context, object_t userdata,
+            Asset::asset_t asset, const RectF& relative_rect, GUI::paint_order_id_t paint_order_id) = nullptr;
         //! Called when a new editor is requested to be open for the specified asset.
         Ref<IAssetEditor>(*new_editor)(object_t userdata, Asset::asset_t editing_asset) = nullptr;
     };

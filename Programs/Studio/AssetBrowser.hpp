@@ -62,6 +62,21 @@ namespace Luna
         void render(GUI::IContext* context, bool* open);
 
     private:
+        struct TileDrawData
+        {
+            bool selected = false;
+            bool directory = false;
+            Asset::asset_t asset;
+            Float4U state_color = Float4U(0.0f);
+            String label;
+            f32 tile_size = 0.0f;
+        };
+
+        Vector<TileDrawData> m_tile_draw_data;
+
+        static R<GUI::paint_order_id_t> draw_tile(GUI::IContext* context,
+            const GUI::ElementHandle& element, GUI::DrawPhase phase,
+            GUI::paint_order_id_t paint_order_id, void* userdata);
         void navbar(GUI::IContext* context);
         void tile_context(GUI::IContext* context);
     };

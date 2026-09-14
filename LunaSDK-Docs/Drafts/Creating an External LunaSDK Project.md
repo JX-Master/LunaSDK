@@ -90,8 +90,10 @@ MyLunaApp/
     Main.cpp
 ```
 
-`global.json` selects the .NET 9 SDK family used by LunaBuild while allowing
-newer installed .NET 9 feature bands.
+`global.json` selects the .NET 9 SDK family used by LunaBuild when available,
+and rolls forward to a higher installed major SDK when no compatible .NET 9
+SDK is installed. The generated LunaBuild runner also rolls forward to a higher
+installed major runtime when the .NET 9 runtime is unavailable.
 
 ### 2. Inspect the project
 

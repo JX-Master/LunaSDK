@@ -167,7 +167,8 @@ namespace Luna
             return desc;
         }
 
-        void gui_draw_relative_rect(GUI::IContext* context, const RectF& rect, const Float4U& color, f32 radius = 0.0f,
+        void gui_draw_relative_rect(GUI::IContext* context, const RectF& rect, const Float4U& color,
+            GUI::paint_order_id_t paint_order_id, f32 radius = 0.0f,
             const Float4U& scale = Float4U(0.0f))
         {
             GUI::DrawCommand command;
@@ -177,12 +178,12 @@ namespace Luna
             command.rect_layout_scale = scale;
             command.color = color;
             command.radius = radius;
-            context->draw(command);
+            context->draw(command, paint_order_id);
         }
 
         void gui_draw_relative_text(GUI::IContext* context, const RectF& rect, const c8* text,
-            const Float4U& color = Float4U(1.0f), f32 font_size = 16.0f,
-            VG::TextAlignment alignment = VG::TextAlignment::center)
+            const Float4U& color, f32 font_size,
+            VG::TextAlignment alignment, GUI::paint_order_id_t paint_order_id)
         {
             GUI::DrawCommand command;
             command.type = GUI::DrawCommandType::text;
@@ -193,10 +194,11 @@ namespace Luna
             command.horizontal_alignment = alignment;
             command.vertical_alignment = VG::TextAlignment::center;
             command.text = text ? text : "";
-            context->draw(command);
+            context->draw(command, paint_order_id);
         }
 
-        void gui_draw_folder_icon(GUI::IContext* context, f32 tile_size)
+        void gui_draw_folder_icon(GUI::IContext* context, f32 tile_size,
+            GUI::paint_order_id_t paint_order_id)
         {
             Float4U folder_color(0.78f, 0.78f, 0.78f, 1.0f);
             gui_draw_relative_rect(context, RectF(
@@ -204,13 +206,13 @@ namespace Luna
                 5.0f + tile_size * 0.18f,
                 tile_size * 0.44f,
                 tile_size * 0.18f),
-                folder_color, 5.0f);
+                folder_color, paint_order_id, 5.0f);
             gui_draw_relative_rect(context, RectF(
                 5.0f + tile_size * 0.08f,
                 5.0f + tile_size * 0.30f,
                 tile_size * 0.84f,
                 tile_size * 0.56f),
-                folder_color, 7.0f);
+                folder_color, paint_order_id, 7.0f);
         }
 
         void create_new_asset_in_folder(const Path& folder, const Name& type, Name& editing_asset_name, String& editing_buf)
@@ -279,6 +281,52 @@ namespace Luna
             }
             editing_asset_name.reset();
         }
+    }
+
+    R<GUI::paint_order_id_t> AssetBrowser::draw_tile(GUI::IContext* context,
+        const GUI::ElementHandle& element, GUI::DrawPhase phase,
+        GUI::paint_order_id_t paint_order_id, void* userdata)
+    {
+        TileDrawData& data = *(TileDrawData*)userdata;
+        GUI::paint_order_id_t current_order = paint_order_id;
+        if(data.selected)
+        {
+            gui_draw_relative_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f),
+                Float4U(0.18f, 0.28f, 0.45f, 0.90f), current_order, 5.0f,
+                Float4U(0.0f, 0.0f, 1.0f, 1.0f));
+        }
+        ++current_order;
+        constexpr f32 padding = 5.0f;
+        constexpr f32 label_height = 24.0f;
+        if(data.directory)
+        {
+            gui_draw_folder_icon(context, data.tile_size, current_order);
+        }
+        else if(data.asset)
+        {
+            R<GUI::paint_order_id_t> result = draw_asset_tile_preview(context, data.asset,
+                RectF(padding, padding, data.tile_size, data.tile_size), current_order);
+            if(failed(result)) return result.errcode();
+            current_order = result.get();
+        }
+        else
+        {
+            gui_draw_relative_text(context, RectF(padding, padding, data.tile_size, data.tile_size),
+                "Unknown", Float4U(1.0f), 16.0f, VG::TextAlignment::center, current_order);
+        }
+        ++current_order;
+        if(!data.directory)
+        {
+            gui_draw_relative_rect(context,
+                RectF(padding + data.tile_size - 16.0f, padding + data.tile_size - 16.0f,
+                    12.0f, 12.0f), data.state_color, current_order, 6.0f);
+        }
+        ++current_order;
+        gui_draw_relative_text(context,
+            RectF(padding, padding + data.tile_size, data.tile_size, label_height),
+            data.label.c_str(), Float4U(1.0f), 16.0f, VG::TextAlignment::center,
+            current_order);
+        return current_order;
     }
 
     void AssetBrowser::render(GUI::IContext* context, bool* open)
@@ -509,6 +557,7 @@ namespace Luna
     }
     void AssetBrowser::tile_context(GUI::IContext* context)
     {
+        m_tile_draw_data.clear();
         context->push_data_scope(context->make_id("tile_context"));
         GUI::ElementHandle scroll = EditorGUI::begin_scroll_view(context, context->make_id("scroll"), "Asset Tile Scroll",
             fill_layout());
@@ -521,6 +570,7 @@ namespace Luna
             }
             else
             {
+                m_tile_draw_data.reserve(assets.get().size());
                 constexpr f32 padding = 5.0f;
                 constexpr f32 label_height = 24.0f;
                 f32 tile_width = m_tile_size + padding * 2.0f;
@@ -534,17 +584,11 @@ namespace Luna
                     context->push_data_scope(context->make_id(thumbnail.m_filename.c_str()));
                     GUI::ElementHandle tile = EditorGUI::begin_button(context, context->make_id("tile"), thumbnail.m_filename.c_str(),
                         fixed_size(tile_width, tile_height));
-                    if(selected)
-                    {
-                        gui_draw_relative_rect(context, RectF(0.0f, 0.0f, 0.0f, 0.0f),
-                            Float4U(0.18f, 0.28f, 0.45f, 0.90f), 5.0f);
-                    }
-
-                    if(thumbnail.m_is_dir)
-                    {
-                        gui_draw_folder_icon(context, m_tile_size);
-                    }
-                    else
+                    TileDrawData draw_data;
+                    draw_data.selected = selected;
+                    draw_data.directory = thumbnail.m_is_dir;
+                    draw_data.tile_size = m_tile_size;
+                    if(!thumbnail.m_is_dir)
                     {
                         auto meta_path = m_path;
                         meta_path.push_back(thumbnail.m_filename);
@@ -552,7 +596,7 @@ namespace Luna
                         if(succeeded(asset))
                         {
                             auto asset_type = Asset::get_asset_type(asset.get());
-                            draw_asset_tile_preview(context, asset.get(), RectF(padding, padding, m_tile_size, m_tile_size));
+                            draw_data.asset = asset.get();
 
                             auto iter = g_env->editor_types.find(asset_type);
                             if(iter != g_env->editor_types.end() && EditorGUI::is_item_double_clicked(context, tile))
@@ -568,15 +612,11 @@ namespace Luna
                             }
                             Float4U state_color = succeeded(state) && state.get() == Asset::AssetDataUnitState::loaded ?
                                 Color::green() : Color::yellow();
-                            gui_draw_relative_rect(context, RectF(padding + m_tile_size - 16.0f, padding + m_tile_size - 16.0f,
-                                12.0f, 12.0f), state_color, 6.0f);
+                            draw_data.state_color = state_color;
                         }
                         else
                         {
-                            gui_draw_relative_text(context, RectF(padding, padding, m_tile_size, m_tile_size), "Unknown",
-                                Float4U(1.0f), 16.0f);
-                            gui_draw_relative_rect(context, RectF(padding + m_tile_size - 16.0f, padding + m_tile_size - 16.0f,
-                                12.0f, 12.0f), Color::red(), 6.0f);
+                            draw_data.state_color = Color::red();
                         }
                     }
 
@@ -592,8 +632,25 @@ namespace Luna
                     {
                         display_text = display_name;
                     }
-                    gui_draw_relative_text(context, RectF(padding, padding + m_tile_size, m_tile_size, label_height),
-                        display_text.c_str(), Float4U(1.0f), 16.0f);
+                    draw_data.label = move(display_text);
+                    m_tile_draw_data.push_back(move(draw_data));
+                    GUI::ElementHandle visual = context->begin_element(context->make_id("tile.visual"));
+                    GUI::LayoutConfig visual_layout = fixed_size(tile_width, tile_height);
+                    Name button_style = context->current_style();
+                    if(button_style.empty()) button_style = Name(EditorGUI::DEFAULT_STYLE_NAME);
+                    Float4U button_padding_value = context->get_style_value(button_style,
+                        Name("gui.button.padding"), GUI::style_f32x2(Float2U(10.0f, 6.0f))).number;
+                    visual_layout.margin = Float4U(-button_padding_value.x, -button_padding_value.y,
+                        -button_padding_value.x, -button_padding_value.y);
+                    visual_layout.flex_shrink = 0.0f;
+                    context->set_layout_config(visual, visual_layout);
+                    context->set_element_debug_name(visual, Name("Asset Tile Visual"));
+                    GUI::DrawConfig visual_draw;
+                    visual_draw.name = Name("studio.asset_browser.tile");
+                    visual_draw.callback = draw_tile;
+                    visual_draw.userdata = &m_tile_draw_data.back();
+                    context->set_draw_config(visual, visual_draw);
+                    context->end_element();
                     EditorGUI::end_button(context);
 
                     if(EditorGUI::is_item_clicked(context, tile) || EditorGUI::is_item_right_clicked(context, tile))

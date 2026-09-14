@@ -39,14 +39,26 @@ namespace Luna
         enum class DrawOperationType : u8
         {
             begin_element,
-            static_command,
             end_element
         };
 
         struct DrawOperation
         {
-            DrawOperationType type = DrawOperationType::static_command;
+            DrawOperationType type = DrawOperationType::begin_element;
             u32 index = U32_MAX;
+        };
+
+        struct ElementVisualEffectRange
+        {
+            u32 first_effect = 0;
+            u32 num_effects = 0;
+        };
+
+        struct ElementPaintConfig
+        {
+            DrawConfig draw;
+            ElementVisualEffectRange before_children;
+            ElementVisualEffectRange after_children;
         };
 
         struct [[Luna::struct("{5D63E090-946C-4941-8452-F11277682199}")]] ScrollViewportHistoryState
@@ -66,9 +78,9 @@ namespace Luna
             Vector<LayoutCallbackConfig> m_layout_callback_configs;
             Vector<NavigationConfig> m_navigation_configs;
             Vector<ElementHitTestConfig> m_hit_test_configs;
-            Vector<DrawConfig> m_draw_configs;
+            Vector<ElementPaintConfig> m_paint_configs;
+            Vector<ElementVisualEffect> m_visual_effects;
             Vector<BackdropBlurCaptureDesc> m_backdrop_blur_captures;
-            Vector<DrawCommand> m_recorded_draw_commands;
             Vector<Vector<DrawOperation>> m_layer_draw_operations;
             Vector<DrawCommand> m_draw_commands;
             Vector<f32> m_recorded_sdf_shape_floats;
@@ -107,6 +119,12 @@ namespace Luna
             u32 m_generation = 0;
             u32 m_draw_generation_layer = INVALID_LAYER;
             u32 m_draw_generation_element = INVALID_ELEMENT;
+            paint_order_id_t m_draw_generation_phase_first_paint_order_id = INVALID_PAINT_ORDER_ID;
+            paint_order_id_t m_draw_generation_phase_first_barrier_paint_order_id = INVALID_PAINT_ORDER_ID;
+            paint_order_id_t m_draw_generation_phase_max_paint_order_id = INVALID_PAINT_ORDER_ID;
+            bool m_draw_generation_phase_has_output = false;
+            bool m_draw_generation_phase_has_barrier = false;
+            ResultCode m_draw_generation_error = ResultCode();
             bool m_generating_draw_commands = false;
             bool m_draw_commands_generated = false;
             PerformanceCounters m_counters;
@@ -157,6 +175,12 @@ namespace Luna
             virtual void set_element_debug_name(const ElementHandle& element, const Name& name) override;
             virtual void set_draw_config(const ElementHandle& element, const DrawConfig& config) override;
             virtual DrawConfig get_draw_config(const ElementHandle& element) const override;
+            virtual RV set_element_visual_config(const ElementHandle& element,
+                const ElementVisualConfig& config) override;
+            virtual ElementVisualConfig get_element_visual_config(
+                const ElementHandle& element) const override;
+            virtual void set_child_paint_order_mode(const ElementHandle& element,
+                ChildPaintOrderMode mode) override;
             virtual void set_backdrop_blur_capture(const ElementHandle& element,
                 const BackdropBlurCaptureDesc& desc) override;
             virtual BackdropBlurCaptureDesc get_backdrop_blur_capture(
@@ -167,8 +191,7 @@ namespace Luna
             virtual R<SDFColorProgram> append_sdf_color_program(Span<const f32> floats) override;
             virtual Span<const f32> get_sdf_shape_floats() const override;
             virtual Span<const f32> get_sdf_color_floats() const override;
-            virtual void draw(const DrawCommand& command) override;
-            virtual void draw_for_element(const ElementHandle& element, const DrawCommand& command) override;
+            virtual void draw(const DrawCommand& command, paint_order_id_t paint_order_id) override;
             virtual RV register_font(const Name& id, Font::IFontFile* font, u32 font_index = 0) override;
             virtual FontDesc get_font(const Name& id) override;
             virtual void set_clipboard_io(const ClipboardIO& io) override;
@@ -214,10 +237,15 @@ namespace Luna
             InteractionState& get_or_create_interaction(id_t id);
             void mark_subtree_interaction(id_t id, bool hovered, bool active, bool focused, bool clicked, bool double_clicked);
             void deliver_input_event(id_t id, const InputEvent& event);
-            void append_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command);
-            void record_static_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command);
+            void append_draw_command(u32 layer_index, u32 element_index, const DrawCommand& command,
+                paint_order_id_t paint_order_id);
+            RV emit_element_visual_effects(u32 layer_index, u32 element_index, DrawPhase phase,
+                paint_order_id_t paint_order_id, paint_order_id_t& max_paint_order_id,
+                bool& has_output);
             void reset_generated_draw_commands();
-            RV invoke_draw_callback(u32 layer_index, u32 element_index, DrawPhase phase);
+            RV invoke_draw_callback(u32 layer_index, u32 element_index, DrawPhase phase,
+                paint_order_id_t paint_order_id, paint_order_id_t first_barrier_paint_order_id,
+                paint_order_id_t& max_paint_order_id, bool& has_output, bool& has_barrier);
             bool point_hits_element(const Element& element, const Float2U& screen_position) const;
             bool element_can_focus(const Element& element) const;
             id_t focus_scope_of(id_t element_id) const;

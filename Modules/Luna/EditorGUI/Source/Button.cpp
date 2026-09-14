@@ -28,11 +28,12 @@ namespace Luna
                 return a + (b - a) * clamp(factor, 0.0f, 1.0f);
             }
 
-            static RV draw_button(GUI::IContext* context, const GUI::ElementHandle& element,
-                GUI::DrawPhase, void* userdata)
+            static R<GUI::paint_order_id_t> draw_button(GUI::IContext* context,
+                const GUI::ElementHandle& element, GUI::DrawPhase,
+                GUI::paint_order_id_t paint_order_id, void* userdata)
             {
                 ButtonData* data = (ButtonData*)userdata;
-                if(!data) return ok;
+                if(!data) return paint_order_id;
                 const f32 active = data->enabled && data->state ? data->state->active : 0.0f;
                 const f32 radius = style_scalar(context, element, "gui.button.radius", 4.0f);
                 const Float2U shadow_offset = style_vector2(context, element, "gui.shadow.offset", Float2U(3.0f));
@@ -71,9 +72,9 @@ namespace Luna
                     style_color(context, element, "gui.button.focus", Float4U(0.45f, 0.60f, 0.85f, 1.0f)) :
                     style_color(context, element, "gui.button.border", Float4U(0.24f, 0.29f, 0.35f, 1.0f));
                 if(RV result = draw_rounded_rect_effects(context, element, RectF(), Float4U(), radius,
-                    Span<const RoundedRectEffect>(outer_effects, num_outer_effects)); failed(result))
+                    Span<const RoundedRectEffect>(outer_effects, num_outer_effects), paint_order_id); failed(result))
                 {
-                    return result;
+                    return result.errcode();
                 }
 
                 RoundedRectEffect inner_effects[2];
@@ -93,11 +94,12 @@ namespace Luna
                 if(RV result = draw_rounded_rect_effects(context, element,
                     RectF(1.0f, 1.0f, -2.0f, -2.0f),
                     Float4U(), max(radius - 1.0f, 0.0f),
-                    Span<const RoundedRectEffect>(inner_effects, num_inner_effects)); failed(result))
+                    Span<const RoundedRectEffect>(inner_effects, num_inner_effects),
+                    paint_order_id + 1); failed(result))
                 {
-                    return result;
+                    return result.errcode();
                 }
-                return ok;
+                return paint_order_id + 1;
             }
 
             static GUI::FlexLayoutDesc* configure_button_layout(GUI::IContext* context,

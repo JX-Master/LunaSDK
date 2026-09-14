@@ -32,6 +32,21 @@ namespace Luna
             y
         };
 
+        //! Identifies how a panel is placed relative to an existing docked panel.
+        enum class DockPanelPlacement : u8
+        {
+            //! Adds the panel as a tab in the target panel's leaf.
+            tab,
+            //! Splits the target leaf and places the panel on its left side.
+            left,
+            //! Splits the target leaf and places the panel on its right side.
+            right,
+            //! Splits the target leaf and places the panel above it.
+            up,
+            //! Splits the target leaf and places the panel below it.
+            down
+        };
+
         //! Describes one node in a dock space split tree.
         struct DockSpaceLayoutNodeDesc
         {
@@ -84,8 +99,8 @@ namespace Luna
             f32 minimum_split_ratio = 0.08f;
             //! Color used by splitters.
             Float4U splitter_color = Float4U(0.24f, 0.29f, 0.36f, 1.0f);
-            //! Color used by docking target indicators.
-            Float4U docking_indicator_color = Float4U(0.10f, 0.50f, 0.82f, 0.86f);
+            //! Color used by docking target indicators. Zero alpha uses `gui.accent` from the current Style.
+            Float4U docking_indicator_color = Float4U(0.0f);
         };
 
         //! Configures one panel managed by a dock space.
@@ -99,6 +114,9 @@ namespace Luna
             bool resize_border = true;
             //! Title bar height in logical units. A non-positive value uses `gui.control.height` from the current Style.
             f32 title_bar_height = 0.0f;
+            //! Uniform padding around panel content in logical units. A negative value uses
+            //! `gui.dock_panel.content_padding` from the current Style.
+            f32 content_padding = -1.0f;
             //! Border thickness in logical units.
             f32 border_size = 1.0f;
             //! Resize hit region thickness in logical units.
@@ -135,6 +153,28 @@ namespace Luna
         LUNA_EDITOR_GUI_API void set_dockspace_layout(GUI::IContext* context, id_t dock_space,
             const DockSpaceLayoutDesc& desc);
 
+        //! Docks one panel relative to an existing docked panel.
+        //! @param[in] context GUI context.
+        //! @param[in] dock_space Stable dock space ID.
+        //! @param[in] panel Stable ID of the panel to place. The panel does not need to be submitted yet.
+        //! @param[in] target_panel Stable ID of an existing docked panel.
+        //! @param[in] placement Placement relative to `target_panel`.
+        //! @param[in] panel_ratio Fraction of the target leaf assigned to `panel` for split placements.
+        //! This value is ignored for @ref DockPanelPlacement::tab.
+        //! @return Returns `true` if `target_panel` exists in the dock tree and the panel was placed.
+        LUNA_EDITOR_GUI_API bool dock_panel(GUI::IContext* context, id_t dock_space, id_t panel,
+            id_t target_panel, DockPanelPlacement placement = DockPanelPlacement::tab,
+            f32 panel_ratio = 0.5f);
+
+        //! Activates one panel in a dock space.
+        //! @param[in] context GUI context.
+        //! @param[in] dock_space Stable dock space ID.
+        //! @param[in] panel Stable panel ID.
+        //! @return Returns `true` if the panel exists. Docked panels become the selected tab of their leaf;
+        //! floating panels are raised above other floating panels on the next frame.
+        LUNA_EDITOR_GUI_API bool activate_dock_panel(GUI::IContext* context, id_t dock_space,
+            id_t panel);
+
         //! Begins one panel in the current dock space.
         //! @param[in] context GUI context.
         //! @param[in] id Stable panel ID referenced by @ref DockSpaceLayoutDesc.
@@ -143,6 +183,8 @@ namespace Luna
         //! @param[in] desc Panel behavior and drawing configuration.
         //! @return Returns `true` when this panel's content should be submitted. Call @ref end_dock_panel only
         //! when this function returns `true`.
+        //! @remark Panel content uses the Style-defined padding by default. Set
+        //! @ref DockPanelDesc::content_padding to zero for edge-to-edge content.
         LUNA_EDITOR_GUI_API bool begin_dock_panel(GUI::IContext* context, id_t id, const c8* label,
             bool* open = nullptr, const DockPanelDesc& desc = DockPanelDesc());
 

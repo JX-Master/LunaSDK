@@ -1,4 +1,77 @@
+using System.Text.Json;
+
 namespace LunaBuild.Core.Targets;
+
+internal static class SourceSdkPaths
+{
+    public static string DirectoryFor(BuildWorkspace workspace, string name)
+    {
+        using var recipes = JsonDocument.Parse(File.ReadAllText(workspace.ResolveRepositoryPath("Tools/LunaSetup/SourceSdks.json")));
+        var version = recipes.RootElement.GetProperty(name).GetProperty("version").GetString();
+        return "SDKs/" + name + "-" + version;
+    }
+
+    public static string[] SourcesFor(BuildWorkspace workspace, string name)
+    {
+        return File.ReadAllLines(workspace.ResolveRepositoryPath("Tools/LunaSetup/SourceSdks/" + name + "/Sources.txt"));
+    }
+}
+
+public sealed class LibZipTargetRules : TargetRules
+{
+    public LibZipTargetRules() : base("libzip", ".", "ThirdParty.Target.cs")
+    {
+        Kind = BuildTargetKind.StaticLibrary;
+        DependsOn("zlib");
+    }
+
+    protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+    {
+        var directory = SourceSdkPaths.DirectoryFor(workspace, "libzip");
+        Headers(directory + "/*.h", directory + "/lib/*.h");
+        IncludeDirectories(directory, directory + "/lib");
+        PublicIncludeDirectories(directory, directory + "/lib");
+        foreach(var source in SourceSdkPaths.SourcesFor(workspace, "libzip"))
+        {
+            Sources(directory + "/lib/" + source);
+        }
+        if(Platform == BuildPlatform.Windows)
+        {
+            Defines("WIN32_LEAN_AND_MEAN", "_CRT_SECURE_NO_WARNINGS");
+            foreach(var source in new[] { "zip_source_file_win32.c", "zip_source_file_win32_named.c",
+                "zip_source_file_win32_utf16.c", "zip_source_file_win32_utf8.c",
+                "zip_source_file_win32_ansi.c", "zip_random_win32.c" })
+            {
+                Sources(directory + "/lib/" + source);
+            }
+            SystemLibraries("advapi32");
+        }
+        else
+        {
+            Defines("_FILE_OFFSET_BITS=64");
+            Sources(directory + "/lib/zip_source_file_stdio_named.c", directory + "/lib/zip_random_unix.c");
+        }
+    }
+}
+
+public sealed class ZlibTargetRules : TargetRules
+{
+    public ZlibTargetRules() : base("zlib", ".", "ThirdParty.Target.cs")
+    {
+        Kind = BuildTargetKind.StaticLibrary;
+    }
+
+    protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+    {
+        var directory = SourceSdkPaths.DirectoryFor(workspace, "zlib");
+        Headers(directory + "/*.h");
+        PublicIncludeDirectories(directory);
+        foreach(var source in SourceSdkPaths.SourcesFor(workspace, "zlib"))
+        {
+            Sources(directory + "/" + source);
+        }
+    }
+}
 
 public sealed class StbTargetRules : TargetRules
 {

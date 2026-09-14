@@ -52,7 +52,9 @@ namespace Luna
             //! does not draw pixels.
             backdrop_blur_capture,
             //! Draws the nearest self-or-ancestor backdrop capture through the command rectangle.
-            backdrop_blur
+            backdrop_blur,
+            //! Draws a centered analytic rounded-rectangle stroke.
+            rounded_rect_stroke
         };
 
         //! Identifies the coordinate space used by a draw command rectangle.
@@ -67,9 +69,9 @@ namespace Luna
         //! Identifies one point in an element's painter-order traversal.
         enum class DrawPhase : u8
         {
-            //! Runs before the element's statically recorded commands and child elements.
+            //! Runs before the element's child elements.
             before_children,
-            //! Runs after the element's statically recorded commands and child elements.
+            //! Runs after the element's child elements.
             after_children
         };
 
@@ -89,12 +91,14 @@ namespace Luna
         //! commands for the element currently being generated.
         //! @param[in] element The element being generated.
         //! @param[in] phase The painter-order traversal phase being generated.
+        //! @param[in] paint_order_id The first Paint Order ID available to this callback phase.
         //! @param[in] userdata User data stored in @ref DrawConfig.
-        //! @return Returns success or failure code.
+        //! @return Returns the maximum Paint Order ID used or reserved by this callback, or a failure code.
         //! @remark Draw callbacks run after layout and input routing. They must not mutate the element tree, layout,
         //! interaction state, or application data. The callback and userdata must remain valid until draw command
-        //! generation finishes.
-        using DrawCallback = RV(*)(IContext* context, const ElementHandle& element, DrawPhase phase, void* userdata);
+        //! generation finishes. A callback that emits nothing and reserves no IDs returns @p paint_order_id unchanged.
+        using DrawCallback = R<paint_order_id_t>(*)(IContext* context, const ElementHandle& element,
+            DrawPhase phase, paint_order_id_t paint_order_id, void* userdata);
 
         //! Describes delayed draw behavior attached to one typeless element.
         struct DrawConfig
@@ -171,6 +175,9 @@ namespace Luna
             u32 layer = INVALID_LAYER;
             //! Owning element index, or @ref INVALID_ELEMENT when the command is not element-scoped.
             u32 element = INVALID_ELEMENT;
+            //! Frame-local Paint Order ID used to order and batch this command, or @ref INVALID_PAINT_ORDER_ID before
+            //! command generation assigns an ID.
+            paint_order_id_t paint_order_id = INVALID_PAINT_ORDER_ID;
             //! Destination rectangle or clip rectangle in layer coordinates.
             RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             //! Coordinate reference used by @ref rect.
@@ -194,7 +201,7 @@ namespace Luna
             //! @remark A positive value makes a @ref DrawCommandType::push_clip command establish an additional
             //! rounded clip rectangle until its matching @ref DrawCommandType::pop_clip command.
             f32 radius = 0.0f;
-            //! Line width for line commands.
+            //! Line width for line and rounded-rectangle stroke commands.
             f32 line_width = 1.0f;
             //! Font ID used by text commands.
             Name font;
@@ -225,6 +232,25 @@ namespace Luna
             //! element or layer coordinate space selected by @ref rect_reference. Its resolved extent is also the
             //! finite raster domain when the color program does not enable outer clipping.
             SDFDrawDesc sdf;
+        };
+
+        //! Describes one static visual effect attached to an element.
+        //! @remark The command must be drawable. GUI Core overwrites its layer, element and Paint Order metadata
+        //! when draw commands are generated.
+        struct ElementVisualEffect
+        {
+            //! Drawable command template emitted for this effect.
+            DrawCommand command;
+        };
+
+        //! Describes ordered static visuals attached to an element.
+        //! @remark @ref IContext::set_element_visual_config copies both spans into context-owned frame storage.
+        struct ElementVisualConfig
+        {
+            //! Effects emitted before the element's child subtrees and before its before-children draw callback.
+            Span<const ElementVisualEffect> before_children;
+            //! Effects emitted after the element's child subtrees and before its after-children draw callback.
+            Span<const ElementVisualEffect> after_children;
         };
     }
 }

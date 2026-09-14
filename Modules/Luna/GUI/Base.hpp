@@ -35,11 +35,20 @@ namespace Luna
         //! Stable identifier type used by GUI elements, layers and state objects.
         using id_t = u64;
 
+        //! Frame-local ordering coordinate used by GUI rendering.
+        //! @remark Commands with lower IDs execute first. Equal IDs permit cross-batch-key reordering while
+        //! preserving submission order within one complete batch key. IDs are regenerated with draw commands and
+        //! are not stable across frames.
+        using paint_order_id_t = u32;
+
         //! The invalid element index value.
         constexpr u32 INVALID_ELEMENT = U32_MAX;
 
         //! The invalid layer index value.
         constexpr u32 INVALID_LAYER = U32_MAX;
+
+        //! The invalid Paint Order ID value.
+        constexpr paint_order_id_t INVALID_PAINT_ORDER_ID = U32_MAX;
 
         //! Default data scope used when no explicit scope has been pushed.
         constexpr id_t DEFAULT_DATA_SCOPE = 14695981039346656037ull;

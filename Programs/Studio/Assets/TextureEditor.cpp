@@ -62,7 +62,8 @@ namespace Luna
         context->pop_data_scope();
     }
 
-    static void on_draw_tex_tile_gui(GUI::IContext* context, object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
+    static R<GUI::paint_order_id_t> on_draw_tex_tile_gui(GUI::IContext* context, object_t userdata,
+        Asset::asset_t asset, const RectF& draw_rect, GUI::paint_order_id_t paint_order_id)
     {
         auto state = Asset::get_asset_data_unit_state(asset, Name());
         if(succeeded(state) && state.get() == Asset::AssetDataUnitState::loaded)
@@ -74,8 +75,8 @@ namespace Luna
                 command.type = GUI::DrawCommandType::image;
                 command.rect = draw_rect;
                 command.texture = tex.get();
-                context->draw(command);
-                return;
+                context->draw(command, paint_order_id);
+                return paint_order_id;
             }
         }
         GUI::DrawCommand command;
@@ -86,10 +87,11 @@ namespace Luna
         command.horizontal_alignment = VG::TextAlignment::center;
         command.vertical_alignment = VG::TextAlignment::center;
         command.text = "Texture";
-        context->draw(command);
+        context->draw(command, paint_order_id);
+        return paint_order_id;
     }
-    static void on_draw_tex_tile_preview_gui(GUI::IContext* context, object_t userdata, Asset::asset_t asset,
-        const RectF& relative_rect)
+    static R<GUI::paint_order_id_t> on_draw_tex_tile_preview_gui(GUI::IContext* context, object_t userdata,
+        Asset::asset_t asset, const RectF& relative_rect, GUI::paint_order_id_t paint_order_id)
     {
         auto state = Asset::get_asset_data_unit_state(asset, Name());
         if(succeeded(state) && state.get() == Asset::AssetDataUnitState::loaded)
@@ -103,8 +105,8 @@ namespace Luna
                 command.rect = relative_rect;
                 command.color = Float4U(1.0f);
                 command.texture = tex.get();
-                context->draw(command);
-                return;
+                context->draw(command, paint_order_id);
+                return paint_order_id;
             }
         }
         GUI::DrawCommand command;
@@ -116,7 +118,8 @@ namespace Luna
         command.horizontal_alignment = VG::TextAlignment::center;
         command.vertical_alignment = VG::TextAlignment::center;
         command.text = "Texture";
-        context->draw(command);
+        context->draw(command, paint_order_id);
+        return paint_order_id;
     }
     static Ref<IAssetEditor> new_tex_editor(object_t userdata, Asset::asset_t editing_asset)
     {
