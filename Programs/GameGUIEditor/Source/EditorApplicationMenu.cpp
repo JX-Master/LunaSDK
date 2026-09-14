@@ -27,6 +27,7 @@ namespace Luna
             constexpr Window::application_menu_item_id_t MENU_ITEM_UNDO = 6;
             constexpr Window::application_menu_item_id_t MENU_ITEM_REDO = 7;
             constexpr Window::application_menu_item_id_t MENU_ITEM_COOK = 8;
+            constexpr Window::application_menu_item_id_t MENU_ITEM_OPEN_DIRECTORY = 9;
 
             Window::ApplicationMenuItemDesc menu_command(const c8* title,
                 Window::application_menu_item_id_t id, KeyCode shortcut_key = KeyCode::unknown,
@@ -98,6 +99,8 @@ namespace Luna
 
                 Window::ApplicationMenuItemDesc file_items[] =
                 {
+                    menu_command("Open Directory...", MENU_ITEM_OPEN_DIRECTORY, KeyCode::o,
+                        Window::KeyModifierFlag::system | Window::KeyModifierFlag::shift),
                     menu_command("New", MENU_ITEM_NEW, KeyCode::n, Window::KeyModifierFlag::system),
                     menu_command("Open...", MENU_ITEM_OPEN, KeyCode::o, Window::KeyModifierFlag::system),
                     menu_separator(),
@@ -110,10 +113,12 @@ namespace Luna
                 };
                 DocumentView* document = active_document();
                 bool has_document = document != nullptr;
-                file_items[3].state = menu_item_state(has_document);
+                file_items[1].state = menu_item_state(selected_directory != 0);
+                file_items[2].state = menu_item_state(selected_directory != 0);
                 file_items[4].state = menu_item_state(has_document);
-                file_items[5].state = menu_item_state(document && !document->asset_path.empty());
-                file_items[7].state = menu_item_state(has_document);
+                file_items[5].state = menu_item_state(has_document);
+                file_items[6].state = menu_item_state(document && !document->asset_path.empty());
+                file_items[8].state = menu_item_state(has_document);
 
                 Window::ApplicationMenuItemDesc edit_items[] =
                 {
@@ -127,7 +132,7 @@ namespace Luna
                 Window::ApplicationMenuItemDesc main_items[] =
                 {
                     menu_submenu(APP_NAME, Span<const Window::ApplicationMenuItemDesc>(app_items, 9)),
-                    menu_submenu("File", Span<const Window::ApplicationMenuItemDesc>(file_items, 8)),
+                    menu_submenu("File", Span<const Window::ApplicationMenuItemDesc>(file_items, 9)),
                     menu_submenu("Edit", Span<const Window::ApplicationMenuItemDesc>(edit_items, 2)),
                     menu_submenu(nullptr, {}, Window::ApplicationMenuItemRole::window_menu),
                     menu_submenu(nullptr, {}, Window::ApplicationMenuItemRole::help_menu),
@@ -138,6 +143,7 @@ namespace Luna
                 {
                     luexp(Window::set_application_menu(desc));
                     application_menu_has_document = has_document;
+                    application_menu_has_directory = selected_directory != 0;
                     application_menu_can_cook = document && !document->asset_path.empty();
                     application_menu_can_undo = document && document->can_undo;
                     application_menu_can_redo = document && document->can_redo;
@@ -155,6 +161,12 @@ namespace Luna
                 bool can_cook = document && !document->asset_path.empty();
                 lutry
                 {
+                    if(application_menu_has_directory != (selected_directory != 0))
+                    {
+                        luexp(Window::set_application_menu_item_state(MENU_ITEM_NEW, menu_item_state(selected_directory != 0)));
+                        luexp(Window::set_application_menu_item_state(MENU_ITEM_OPEN, menu_item_state(selected_directory != 0)));
+                        application_menu_has_directory = selected_directory != 0;
+                    }
                     if(has_document != application_menu_has_document)
                     {
                         Window::ApplicationMenuItemState state = menu_item_state(has_document);
@@ -188,8 +200,12 @@ namespace Luna
 
             void EditorApp::handle_application_menu_item(Window::application_menu_item_id_t id)
             {
+                if(directory_dialog_active || !deferred_directory_closes.empty()) return;
                 switch(id)
                 {
+                case MENU_ITEM_OPEN_DIRECTORY:
+                    open_working_directory();
+                    break;
                 case MENU_ITEM_NEW:
                     create_document();
                     break;

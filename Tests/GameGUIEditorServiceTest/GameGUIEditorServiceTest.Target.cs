@@ -12,7 +12,6 @@ public sealed class GameGUIEditorServiceTestTargetRules : TargetRules
         Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("Source/**.cpp");
-        Sources("../../Programs/GameGUIEditor/Source/DocumentFileSystem.cpp");
         DependsOn("Runtime", "GameGUI", "GameGUIEditorService", "Frontend", "VariantUtils");
     }
 }

@@ -10,6 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GAME_GUI_EDITOR_SERVICE_API LUNA_EXPORT
 #include "../Authoring.hpp"
+#include "PreviewResources.hpp"
 #include "GameGUIEditorService.meta.generated.hpp"
 #include <Luna/Runtime/Guid.hpp>
 #include <Luna/Runtime/HashMap.hpp>
@@ -908,6 +909,9 @@ namespace Luna
             if(g_authoring_initialized) return ok;
             Meta::register_GameGUIEditorService_types();
             register_boxed_type<AuthoringDocument>();
+            register_boxed_type<DirectoryFileSystem>();
+            impl_interface_for_type<DirectoryFileSystem, VFS::IFileSystem>();
+            register_boxed_type<PreviewResources>();
             Asset::AssetLoaderDesc loader;
             loader.name = get_authoring_asset_loader();
             loader.on_load_asset_data_unit = load_authoring;

@@ -2,7 +2,7 @@
 Proposed.
 
 ## Last updated
-2026/8/29
+2026/9/11
 
 ## Background
 LunaSDK separates its current GUI infrastructure into two layers. `GUI` is the low-level, data-oriented foundation
@@ -264,6 +264,43 @@ frame; operations exported to the GUI-hosted MCP server must therefore have boun
 cancellable work requires a future asynchronous job contract. GameGUIEditor does not implement a separate TCP MCP
 protocol.
 
+### Working directories and asset databases
+The editor service owns multiple explicitly opened native working directories. Each directory owns a distinct VFS
+mount and an explicitly registered Asset Database as defined by [[ADR-0019 Introduce Pak storage and asset metadata databases]].
+Opening a directory registers metadata for all asset types, without eagerly loading payloads. If `assets.db` exists,
+it is authoritative and is opened read/write; otherwise the directory uses a read/write sidecar database. Opening
+does not convert formats or fall back from an invalid centralized database. Duplicate GUIDs and overlapping native
+directory roots are rejected. Reopening the same directory selects its existing entry.
+
+Documents, including untitled documents, belong to an opened working directory. All document creation, loading,
+saving and dependency loading is checked against service-owned directory roots. Native file dialogs do not grant
+access to additional directories, and selecting a path outside those roots never implicitly mounts its parent.
+Working-directory selection does not change the process current directory. Mount paths and session directory IDs
+are not asset identity and are not serialized into references; references continue to use persistent asset GUIDs.
+
+Save writes Authoring data, persists changed metadata, flushes the owning database and checks filesystem publication
+before advancing the save point. Save As may target another opened directory, but changes the document binding only
+after success. Overwriting an existing asset requires explicit confirmation. Save and Cook remain separate. Failures
+retain editable state and report errors; no transaction across all payload and metadata files is promised.
+
+Explorer displays each directory as a root, its folder hierarchy and GameGUI asset records only. Other asset types
+remain registered for resource resolution but are not editable through Explorer. A GameGUI asset without editable
+Authoring data is identified as such rather than silently receiving an empty source unit. Cached directory entries
+are refreshed explicitly, not scanned on every GUI frame. External changes do not overwrite unsaved documents.
+
+Unloading first collects Save/Discard/Cancel decisions for every dirty document, without discarding documents while
+confirmation is incomplete. Cancellation or save failure leaves the directory open. After saving, the host releases
+preview resources at a safe frame boundary; the service unloads owned data units, unregisters the database and unmounts
+VFS before removing documents and the Explorer root. Failed cleanup remains retryable. References from surviving
+directories retain their GUIDs and produce missing-dependency diagnostics until the directory is reopened. Application
+exit uses the same checked workflow. Unloading never deletes asset files or shuts down the global Asset registry.
+
+Editor preview preparation loads referenced Authoring data outside GUI generation and cooks immutable dependency
+snapshots in memory. Open documents contribute their current working snapshots. Instances and diagnostics use the
+same no-I/O resource resolver, and editor changes invalidate affected preview state. Preview cooking never publishes
+unsaved data into an Asset main unit or writes cooked files. Explicit directory reload remains distinct from editor
+revision updates; automatic filesystem watching and runtime hot reload are not introduced.
+
 ### GameGUIEditor GUI and preview
 The GUI application uses EditorGUI DockSpace or tabs for multiple open documents. Its hierarchy, node palette,
 property inspector and validation views consume GameGUIEditor authoring node schemas rather than hard-coded knowledge of built-in
@@ -399,6 +436,9 @@ framework, service boundary and preview lifecycle are sufficiently stable. This 
 define the initial contract during that period.
 
 ## Version history
+* **2026/9/11** Added explicit multi-directory Asset Database ownership, Explorer, checked source persistence,
+  editor preview dependency resolution and cancellable directory unload. Unreleased GameGUI decisions continue
+  to evolve in this ADR rather than allocating additional ADR numbers.
 * **2026/8/29** Renumbered to ADR-0015 after ADR-0014 was assigned to Asset data units; split each GameGUI asset into
   an editor-owned versioned `Authoring` unit and a latest-only cooked main unit.
 * **2026/8/27** Renumbered from ADR-0012 to ADR-0014 after restoring the approved application-menu and message-box ADR numbers.

@@ -191,6 +191,8 @@ namespace Luna
             {
                 if(metadata.type() != VariantType::object) return false;
                 document.id = metadata["document_id"].unum();
+                document.working_directory_id = metadata["working_directory_id"].unum();
+                document.creation_folder = Path(metadata["creation_folder"].c_str());
                 document.revision = metadata["revision"].unum();
                 document.history_state = metadata["history_state"].unum();
                 document.title = metadata["title"].c_str();
@@ -231,7 +233,10 @@ namespace Luna
                 DocumentView* target = active_document();
                 u64 target_id = target ? target->id : 0;
                 Variant metadata;
-                if(!invoke(GameGUIEditor::CREATE_DOCUMENT_URL, Variant(VariantType::object), metadata))
+                Variant params(VariantType::object);
+                params["working_directory_id"] = selected_directory;
+                params["relative_directory"] = selected_folder.encode().c_str();
+                if(!invoke(GameGUIEditor::CREATE_DOCUMENT_URL, params, metadata))
                     return false;
                 DocumentView document;
                 update_metadata(document, metadata);
@@ -258,19 +263,19 @@ namespace Luna
             bool EditorApp::native_path_to_asset_path(Path native_path, String& asset_path,
                 bool allow_missing)
             {
-                auto resolved = document_files.resolve_document_path(workspace_root, native_path);
-                if(!resolved.valid())
+                Variant params(VariantType::object), result;
+                params["native_path"] = native_path.encode().c_str();
+                if(!invoke(RESOLVE_PATH_URL, params, result)) return false;
+                asset_path = result["path"].c_str();
+                if(!allow_missing)
                 {
-                    error_message = explain(resolved.errcode());
-                    return false;
+                    auto asset = Asset::get_asset_by_path(Path(asset_path.c_str()));
+                    if(!asset.valid())
+                    {
+                        error_message = "This file is not a registered asset in an opened working directory. Refresh its directory first.";
+                        return false;
+                    }
                 }
-                RV loaded = load_document_meta(resolved.get(), allow_missing);
-                if(failed(loaded))
-                {
-                    error_message = explain(loaded.errcode());
-                    return false;
-                }
-                asset_path = resolved.get().encode();
                 return true;
             }
 
@@ -281,7 +286,7 @@ namespace Luna
                 const c8* extension = "json";
                 filter.extensions = {&extension, 1};
                 auto selected_files = Window::open_file_dialog("Open GameGUI Document",
-                    {&filter, 1}, workspace_root);
+                    {&filter, 1}, directory_native_path(selected_directory));
                 if(!selected_files.valid())
                 {
                     if(selected_files.errcode() != E_INTERRUPTED)
@@ -300,6 +305,11 @@ namespace Luna
                 }
                 Variant params(VariantType::object);
                 params["path"] = asset_path.c_str();
+                return open_document_asset(params);
+            }
+
+            bool EditorApp::open_document_asset(const Variant& params)
+            {
                 Variant metadata;
                 if(!invoke(GameGUIEditor::OPEN_DOCUMENT_URL, params, metadata))
                 {
@@ -397,24 +407,6 @@ namespace Luna
                 document.inspector_revision = document.revision;
                 document.inspector_node = document.selected_node;
             }
-            bool EditorApp::confirm_exit()
-            {
-                if(!has_dirty_documents()) return true;
-                constexpr usize DISCARD_BUTTON_INDEX = 0;
-                constexpr usize CANCEL_BUTTON_INDEX = 1;
-                const c8* buttons[] = {"Discard Changes", "Cancel"};
-                auto response = Window::message_box(
-                    "There are unsaved changes. Discard them and quit?", "Unsaved Changes",
-                    Span<const c8*>(buttons, 2), Window::MessageBoxIcon::warning,
-                    DISCARD_BUTTON_INDEX, CANCEL_BUTTON_INDEX);
-                if(!response.valid())
-                {
-                    error_message = explain(response.errcode());
-                    return false;
-                }
-                return response.get() == DISCARD_BUTTON_INDEX;
-            }
-
             void EditorApp::undo_document(DocumentView& document)
             {
                 if(!document.can_undo) return;
@@ -431,9 +423,10 @@ namespace Luna
                     refresh_snapshot(document);
             }
 
-            void EditorApp::save(DocumentView& document, bool save_as)
+            bool EditorApp::save(DocumentView& document, bool save_as, u64 close_token)
             {
                 Variant params = editing_params(document);
+                params["close_token"] = close_token;
                 const c8* url = GameGUIEditor::SAVE_URL;
                 if(save_as || document.asset_path.empty())
                 {
@@ -441,7 +434,8 @@ namespace Luna
                     filter.name = "GameGUI Document";
                     const c8* extension = "json";
                     filter.extensions = {&extension, 1};
-                    Path initial_path = workspace_root;
+                    Path initial_path = directory_native_path(document.working_directory_id);
+                    initial_path.append(document.creation_folder);
                     if(document.asset_path.empty()) initial_path.push_back(Name("Untitled.json"));
                     else
                     {
@@ -459,13 +453,22 @@ namespace Luna
                             error_message = explain(selected_path.errcode());
                             show_file_error("Save GameGUI Document Failed");
                         }
-                        return;
+                        return false;
                     }
                     String asset_path;
                     if(!native_path_to_asset_path(selected_path.get(), asset_path, true))
                     {
                         show_file_error("Save GameGUI Document Failed");
-                        return;
+                        return false;
+                    }
+                    auto existing = Asset::get_asset_by_path(Path(asset_path.c_str()));
+                    if(existing.valid() && Asset::get_asset_guid(existing.get()) != document.asset_guid)
+                    {
+                        const c8* buttons[] = {"Replace", "Cancel"};
+                        auto response = Window::message_box("Replace the existing GameGUI asset at this destination?",
+                            "Replace Asset", {buttons, 2}, Window::MessageBoxIcon::warning, 1, 1);
+                        if(!response.valid() || response.get() != 0) return false;
+                        params["overwrite"] = true;
                     }
                     params["path"] = asset_path.c_str();
                     url = GameGUIEditor::SAVE_AS_URL;
@@ -474,11 +477,13 @@ namespace Luna
                 if(!invoke(url, params, metadata))
                 {
                     show_file_error("Save GameGUI Document Failed");
-                    return;
+                    return false;
                 }
                 // The savepoint is already committed even if refreshing the view later fails.
                 update_metadata(document, metadata);
                 if(!refresh_snapshot(document)) show_file_error("Document Saved, Refresh Failed");
+                refresh_working_directories();
+                return true;
             }
 
             void EditorApp::cook(DocumentView& document)

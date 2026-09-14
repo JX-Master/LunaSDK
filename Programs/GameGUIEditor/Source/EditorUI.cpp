@@ -229,12 +229,16 @@ namespace Luna
                     gui->make_id("main_menu_bar"), "Main Menu Bar", fill_width(34.0f));
                 if(EditorGUI::begin_menu(gui, gui->make_id("main_menu.file"), "File"))
                 {
+                    handles.open_directory = EditorGUI::menu_item(gui,
+                        gui->make_id("main_menu.file.open_directory"), "Open Directory...");
+                    EditorGUI::MenuItemDesc directory_desc;
+                    directory_desc.enabled = selected_directory != 0;
                     handles.create_document = EditorGUI::menu_item(gui,
-                        gui->make_id("main_menu.file.new"), "New");
+                        gui->make_id("main_menu.file.new"), "New", false, directory_desc);
                     EditorGUI::menu_separator(gui, gui->make_id("main_menu.file.new_separator"));
 
                     handles.open_document = EditorGUI::menu_item(gui,
-                        gui->make_id("main_menu.file.open"), "Open...");
+                        gui->make_id("main_menu.file.open"), "Open...", false, directory_desc);
                     EditorGUI::menu_separator(gui, gui->make_id("main_menu.file.save_separator"));
 
                     EditorGUI::MenuItemDesc document_desc;
@@ -256,7 +260,7 @@ namespace Luna
                     handles.close_document = EditorGUI::menu_item(gui,
                         gui->make_id("main_menu.file.close"), "Close", false, close_desc);
                     lupanic_if_failed(EditorGUI::end_menu(gui,
-                        RectF(0.0f, 0.0f, 230.0f, 210.0f)));
+                        RectF(0.0f, 0.0f, 230.0f, 245.0f)));
                 }
 
                 if(EditorGUI::begin_menu(gui, gui->make_id("main_menu.edit"), "Edit"))
@@ -606,11 +610,13 @@ namespace Luna
                 EditorGUI::begin_dock_space(gui,
                     gui->make_id("editor.dock_space"), "GameGUI Editor DockSpace", fill_layout());
                 build_document_panels(handles);
+                build_explorer_panel(handles);
                 build_hierarchy_panel(handles);
                 build_palette_panel(handles);
                 build_inspector_panel(handles);
                 build_diagnostics_panel();
                 EditorGUI::end_dock_space(gui);
+                build_asset_picker(handles);
                 EditorGUI::end_v_layout(gui, root);
                 return root;
             }

@@ -11,6 +11,8 @@
 #include <Luna/Font/Font.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Runtime.hpp>
+#include <Luna/Runtime/Random.hpp>
+#include <Luna/Runtime/File.hpp>
 
 using namespace Luna;
 using namespace Luna::GameGUIEditor;
@@ -31,6 +33,7 @@ namespace
     {
         EditorApp app;
         UIHandles handles;
+        Path fixture;
 
         HierarchyTest()
         {
@@ -41,6 +44,14 @@ namespace
             auto service = new_service();
             lupanic_if_failed(service);
             app.service = move(service.get());
+            const c8* current = get_current_dir();
+            fixture = current;
+            release_current_dir(current);
+            c8 name[GUID_STRING_LENGTH + 1] = {};
+            lupanic_if_failed(encode_guid(random_guid(), name, GUID_STRING_LENGTH));
+            fixture.push_back(name);
+            lupanic_if_failed(create_dir(fixture.encode().c_str()));
+            luassert_always(app.open_working_directory(fixture));
             Variant types;
             luassert_always(app.invoke(GET_NODE_TYPES_URL, Variant(VariantType::object), types));
             for(const Variant& value : types.values())
@@ -68,6 +79,13 @@ namespace
         }
 
         DocumentView& document() { return *app.active_document(); }
+
+        ~HierarchyTest()
+        {
+            app.documents.clear();
+            app.service.reset();
+            lupanic_if_failed(delete_file(fixture.encode().c_str()));
+        }
 
         void frame(Span<const GUI::InputEvent> events = {})
         {
@@ -239,6 +257,8 @@ namespace
     }
 }
 
+void explorer_test();
+
 int main()
 {
     lupanic_if_failed(Luna::init());
@@ -246,6 +266,7 @@ int main()
         Frontend::module_frontend()}));
     lupanic_if_failed(init_modules());
     palette_drag_test();
+    explorer_test();
     Luna::close();
     return 0;
 }

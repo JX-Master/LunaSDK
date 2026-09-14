@@ -55,6 +55,10 @@ namespace Luna
 
             void EditorApp::apply_inspector_changes(DocumentView& document)
             {
+                // A document opened through Explorer may not have a visible Inspector this frame.
+                // Never apply uninitialized or stale property-editor buffers to its new snapshot.
+                if(document.inspector_revision != document.revision ||
+                    document.inspector_node != document.selected_node) return;
                 if(!document.snapshot) return;
                 const AuthoringNodeRecord* node = find_authoring_node(*document.snapshot,
                     document.selected_node);
@@ -472,6 +476,8 @@ namespace Luna
 
             void EditorApp::process_interactions(const UIHandles& handles)
             {
+                if(directory_dialog_active || !deferred_directory_closes.empty()) return;
+                if(process_explorer_interactions(handles)) return;
                 for(usize i = 0; i < documents.size(); ++i)
                 {
                     if(documents[i].panel_open) continue;
@@ -500,34 +506,24 @@ namespace Luna
                             hit.property_index >= document->property_editors.size()) continue;
                         PropertyEditor& property =
                             document->property_editors[hit.property_index];
-                        Window::FileDialogFilter filter;
-                        filter.name = "GameGUI Document";
-                        const c8* extension = "json";
-                        filter.extensions = {&extension, 1};
-                        auto selected_files = Window::open_file_dialog("Select GameGUI Asset",
-                            {&filter, 1}, workspace_root);
-                        if(!selected_files.valid())
+                        asset_picker_document = document->id;
+                        asset_picker_property = hit.property_index;
+                        asset_picker_revision = document->revision;
+                        RectF rect = item_screen_rect(gui, hit.element);
+                        asset_picker_position = Float2U(rect.offset_x - 280.0f, rect.offset_y + rect.height);
+                        EditorGUI::open_popup(gui, gui->make_id("inspector.asset_picker"));
+                        return;
+                    }
+                    for(const auto& choice : handles.asset_choices)
+                    {
+                        if(!EditorGUI::is_item_clicked(gui, choice.element)) continue;
+                        if(asset_picker_document == document->id && asset_picker_revision == document->revision &&
+                            asset_picker_property < document->property_editors.size())
                         {
-                            if(selected_files.errcode() != E_INTERRUPTED)
-                                error_message = explain(selected_files.errcode());
-                            return;
+                            document->property_editors[asset_picker_property].text = guid_string(choice.asset);
+                            apply_inspector_changes(*document);
                         }
-                        if(selected_files.get().empty()) return;
-                        String asset_path;
-                        if(!native_path_to_asset_path(selected_files.get()[0], asset_path)) return;
-                        auto asset = Asset::get_asset_by_path(Path(asset_path.c_str()));
-                        if(!asset.valid())
-                        {
-                            error_message = explain(asset.errcode());
-                            return;
-                        }
-                        if(!property.desc.asset_type.empty() &&
-                            Asset::get_asset_type(asset.get()) != property.desc.asset_type)
-                        {
-                            error_message = "The selected asset has an incompatible type.";
-                            return;
-                        }
-                        property.text = guid_string(Asset::get_asset_guid(asset.get()));
+                        EditorGUI::close_popup(gui, gui->make_id("inspector.asset_picker"));
                         return;
                     }
                     if(process_hierarchy_interactions(*document, handles)) return;

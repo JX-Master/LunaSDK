@@ -522,7 +522,7 @@ namespace Luna
                                 document.preview.render_size.x,
                                 document.preview.render_size.y, 1, 1)));
                     }
-                    if(!document.preview.instance || document.preview.revision != document.revision)
+                    if(!document.preview.instance || document.preview.revision != service->preview_revision())
                     {
                         if(!document.cooked_snapshot)
                         {
@@ -530,8 +530,8 @@ namespace Luna
                             document.preview.revision = document.revision;
                             return ok;
                         }
-                        GameGUI::InstanceDesc desc;
-                        desc.document = document.cooked_snapshot;
+                        lulet(desc, service->prepare_preview(document.id));
+                        if(!desc.document) return ok;
                         desc.instance_scope = GUI::make_scoped_id(GUI::DEFAULT_DATA_SCOPE,
                             document.id);
                         if(document.asset_guid != Guid())
@@ -539,7 +539,7 @@ namespace Luna
                         document.preview.instance = GameGUI::new_instance(desc);
                         RV prepared = document.preview.instance->prepare();
                         if(failed(prepared)) error_message = explain(prepared.errcode());
-                        document.preview.revision = document.revision;
+                        document.preview.revision = service->preview_revision();
                     }
                 }
                 lucatchret;

@@ -8,7 +8,6 @@
 * @date 2026/8/28
 */
 #pragma once
-#include "DocumentFileSystem.hpp"
 #include "../Service/GameGUIEditorService.hpp"
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/EditorGUI/EditorGUI.hpp>
@@ -154,6 +153,8 @@ namespace Luna
             struct DocumentView
             {
                 u64 id = 0;
+                u64 working_directory_id = 0;
+                Path creation_folder;
                 u64 revision = 0;
                 u64 history_state = 0;
                 String title;
@@ -222,6 +223,10 @@ namespace Luna
                 u64 document_id = 0;
                 GUI::ElementHandle create_document;
                 GUI::ElementHandle open_document;
+                GUI::ElementHandle open_directory;
+                GUI::ElementHandle open_directory_button;
+                GUI::ElementHandle unload_directory;
+                GUI::ElementHandle refresh_directory;
                 GUI::ElementHandle save_document;
                 GUI::ElementHandle save_as_document;
                 GUI::ElementHandle cook_document;
@@ -235,6 +240,15 @@ namespace Luna
                 Vector<TypeHit> types;
                 Vector<PropertyActionHit> browse_assets;
                 Vector<VisualEffectActionHit> visual_effect_actions;
+                struct ExplorerHit
+                {
+                    u64 directory_id = 0;
+                    Path path;
+                    Guid asset;
+                    GUI::ElementHandle element;
+                };
+                Vector<ExplorerHit> explorer;
+                Vector<ExplorerHit> asset_choices;
             };
 
             struct PreviewInput
@@ -261,9 +275,19 @@ namespace Luna
                 i32 selected_document = 0;
                 bool dock_layout_initialized = false;
                 bool discard_smoke = false;
-                String workspace_path;
-                Path workspace_root;
-                DocumentFileSystem document_files;
+                Vector<String> startup_directories;
+                Variant working_directories = Variant(VariantType::array);
+                u64 selected_directory = 0;
+                Path selected_folder;
+                u64 observed_preview_revision = 0;
+                bool directory_dialog_active = false;
+                u64 explorer_context_directory = 0;
+                Float2U explorer_context_position = Float2U(0.0f);
+                Vector<Variant> deferred_directory_closes;
+                u64 asset_picker_document = 0;
+                usize asset_picker_property = 0;
+                u64 asset_picker_revision = 0;
+                Float2U asset_picker_position = Float2U(0.0f);
                 String error_message;
                 u32 queue = U32_MAX;
                 u32 width = 0;
@@ -271,6 +295,7 @@ namespace Luna
                 i32 max_frames = -1;
 #if defined(LUNA_PLATFORM_MACOS)
                 bool application_menu_has_document = false;
+                bool application_menu_has_directory = false;
                 bool application_menu_can_cook = false;
                 bool application_menu_can_undo = false;
                 bool application_menu_can_redo = false;
@@ -286,6 +311,14 @@ namespace Luna
                 void show_file_error(const c8* title);
                 bool create_document();
                 bool open_document();
+                bool open_document_asset(const Variant& params);
+                bool open_working_directory(const Path& path = Path());
+                bool refresh_working_directories();
+                Path directory_native_path(u64 directory_id) const;
+                bool confirm_directory_close(u64 directory_id, Variant& plan);
+                bool commit_directory_close(const Variant& plan);
+                void process_deferred_directory_closes();
+                void synchronize_previews();
                 bool refresh_snapshot(DocumentView& document);
                 bool update_metadata(DocumentView& document, const Variant& metadata);
                 DocumentView* find_document(u64 id);
@@ -304,6 +337,10 @@ namespace Luna
                 void build_main_menu_bar(UIHandles& handles);
 #endif
                 void build_hierarchy_panel(UIHandles& handles);
+                void build_explorer_panel(UIHandles& handles);
+                void build_explorer_folder(const Variant& directory, const Path& folder, u32 depth, UIHandles& handles);
+                bool process_explorer_interactions(const UIHandles& handles);
+                void build_asset_picker(UIHandles& handles);
                 void build_palette_panel(UIHandles& handles);
                 void build_document_panels(UIHandles& handles);
                 void build_inspector_panel(UIHandles& handles);
@@ -327,7 +364,7 @@ namespace Luna
                 bool has_dirty_documents() const;
                 bool confirm_exit();
                 void request_close(DocumentView& document, bool discard);
-                void save(DocumentView& document, bool save_as);
+                bool save(DocumentView& document, bool save_as, u64 close_token = 0);
                 void cook(DocumentView& document);
                 void undo_document(DocumentView& document);
                 void redo_document(DocumentView& document);

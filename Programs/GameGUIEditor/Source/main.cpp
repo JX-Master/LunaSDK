@@ -24,13 +24,11 @@ int luna_main(int argc, const char* argv[])
 {
     i32 max_frames = -1;
     bool discard_smoke = false;
-    const c8* workspace_path = nullptr;
     for(int i = 1; i < argc; ++i)
     {
         i32 parsed = 0;
         if(sscanf(argv[i], "--frames=%d", &parsed) == 1) max_frames = parsed;
         else if(!strcmp(argv[i], "--discard-smoke")) discard_smoke = true;
-        else if(!strncmp(argv[i], "--workspace=", 12)) workspace_path = argv[i] + 12;
     }
     lupanic_if_failed(Luna::init());
     lupanic_if_failed(add_modules({
@@ -53,7 +51,11 @@ int luna_main(int argc, const char* argv[])
         GameGUIEditor::Internal::EditorApp app;
         app.max_frames = max_frames;
         app.discard_smoke = discard_smoke;
-        if(workspace_path) app.workspace_path = workspace_path;
+        for(int i = 1; i < argc; ++i)
+        {
+            if(!strncmp(argv[i], "--workspace=", 12)) app.startup_directories.push_back(argv[i] + 12);
+            else if(!strncmp(argv[i], "--working-directory=", 20)) app.startup_directories.push_back(argv[i] + 20);
+        }
         lupanic_if_failed(app.init());
         lupanic_if_failed(app.run());
     }

@@ -27,10 +27,10 @@ using namespace Luna;
 namespace
 {
     usize g_authoring_migration_count = 0;
-    constexpr const c8* MOUNT_PATH = "/GameGUIEditorServiceTest";
-    constexpr const c8* SAVE_PATH = "/GameGUIEditorServiceTest/SavedDocument";
-    constexpr const c8* SOURCE_PATH = "/GameGUIEditorServiceTest/UnknownSource";
-    constexpr const c8* COOK_PATH = "/GameGUIEditorServiceTest/CookedDocument";
+    const c8* MOUNT_PATH = nullptr;
+    const c8* SAVE_PATH = nullptr;
+    const c8* SOURCE_PATH = nullptr;
+    const c8* COOK_PATH = nullptr;
 
     String guid_string(const Guid& guid)
     {
@@ -515,6 +515,7 @@ namespace
             GameGUI::get_asset_type(), false);
         lutest(source_asset_result.valid());
         Asset::asset_t source_asset = source_asset_result.get();
+        lupanic_if_failed(GameGUIEditor::ensure_authoring_data_unit(source_asset));
         auto encoded_source = GameGUIEditor::encode_authoring_document(*source);
         lutest(encoded_source.valid());
         Path source_path(SOURCE_PATH);
@@ -585,7 +586,7 @@ namespace
     }
 }
 
-void document_file_system_test();
+void working_directory_test();
 
 int main()
 {
@@ -595,31 +596,44 @@ int main()
         Frontend::module_frontend()
     }));
     lupanic_if_failed(init_modules());
-    document_file_system_test();
+    working_directory_test();
     const c8* current_dir = get_current_dir();
-    auto file_system = VFS::new_native_file_system(current_dir);
+    Path fixture(current_dir);
     release_current_dir(current_dir);
-    lupanic_if_failed(file_system);
-    RV mounted = VFS::mount(file_system.get(), MOUNT_PATH);
-    file_system.get() = nullptr;
-    lupanic_if_failed(mounted);
+    c8 name[GUID_STRING_LENGTH + 1] = {};
+    lupanic_if_failed(encode_guid(random_guid(), name, GUID_STRING_LENGTH));
+    fixture.push_back(name);
+    lupanic_if_failed(create_dir(fixture.encode().c_str()));
     {
         auto service_result = GameGUIEditor::new_service();
         lutest(service_result.valid());
         UniquePtr<GameGUIEditor::Service> service = move(service_result.get());
+        Variant params(VariantType::object);
+        params["native_path"] = fixture.encode().c_str();
+        Variant directory = invoke(service->frontend(), GameGUIEditor::OPEN_DIRECTORY_URL, params);
+        String mount = directory["vfs_path"].c_str();
+        String save_path = mount;
+        save_path.append("/SavedDocument");
+        String source_path = mount;
+        source_path.append("/UnknownSource");
+        String cook_path = mount;
+        cook_path.append("/CookedDocument");
+        MOUNT_PATH = mount.c_str();
+        SAVE_PATH = save_path.c_str();
+        SOURCE_PATH = source_path.c_str();
+        COOK_PATH = cook_path.c_str();
         authoring_migration_test();
         inspector_stretch_warning_test();
         service_history_test(*service);
         asset_boundary_test(*service);
+        // Delete only assets created by these tests, before their database is unmounted.
+        for(const c8* path : {SAVE_PATH, SOURCE_PATH, COOK_PATH})
+        {
+            auto asset = Asset::get_asset_by_path(path);
+            if(asset.valid()) lupanic_if_failed(Asset::delete_asset(asset.get()));
+        }
     }
-    remove_file_if_present("/GameGUIEditorServiceTest/UnknownSource.json");
-    remove_file_if_present("/GameGUIEditorServiceTest/UnknownSource.meta");
-    remove_file_if_present("/GameGUIEditorServiceTest/SavedDocument.json");
-    remove_file_if_present("/GameGUIEditorServiceTest/SavedDocument.meta");
-    remove_file_if_present("/GameGUIEditorServiceTest/CookedDocument.json");
-    remove_file_if_present("/GameGUIEditorServiceTest/CookedDocument.cooked");
-    remove_file_if_present("/GameGUIEditorServiceTest/CookedDocument.meta");
-    lupanic_if_failed(VFS::unmount(MOUNT_PATH));
+    lupanic_if_failed(delete_file(fixture.encode().c_str()));
     Luna::close();
     return 0;
 }

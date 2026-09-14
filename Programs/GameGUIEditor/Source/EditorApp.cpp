@@ -32,11 +32,15 @@ namespace Luna
                     while(true)
                     {
                         Window::poll_events();
+                        // Native menus can close documents before a GUI frame has begun.
+                        for(u64 id : deferred_document_removals) remove_document_view(id);
+                        deferred_document_removals.clear();
 #if defined(LUNA_PLATFORM_MACOS)
                         if(Window::is_application_quit_requested()) break;
                         luexp(update_application_menu_state());
 #endif
                         if(window->is_closed()) break;
+                        synchronize_previews();
                         if(window->is_minimized())
                         {
                             sleep(100);
@@ -92,6 +96,8 @@ namespace Luna
                         }
                         DocumentView* preview_document = find_document(preview_input.document_id);
                         if(!preview_document) preview_document = active_document();
+                        for(u64 id : deferred_document_removals)
+                            if(preview_document && preview_document->id == id) preview_document = nullptr;
                         if(preview_document)
                         {
                             Span<const GUI::InputEvent> events;
@@ -103,6 +109,7 @@ namespace Luna
                         luexp(render_frame(preview_document));
                         for(u64 id : deferred_document_removals) remove_document_view(id);
                         deferred_document_removals.clear();
+                        process_deferred_directory_closes();
                         ++frame_index;
                         if(max_frames >= 0 && frame_index >= max_frames) break;
                     }
@@ -113,8 +120,6 @@ namespace Luna
                     Window::set_event_handler(nullptr, nullptr);
                     service.reset();
                     documents.clear();
-                    luexp(document_files.close());
-                    luexp(VFS::unmount("/"));
                 }
                 lucatchret;
                 return ok;
@@ -137,7 +142,7 @@ namespace Luna
             RV EditorApp::initialize_dock_layout()
             {
                 EditorGUI::DockSpaceLayoutDesc layout;
-                layout.nodes.resize(9);
+                layout.nodes.resize(11);
                 layout.root_node = 0;
                 layout.nodes[0].split = true;
                 layout.nodes[0].split_axis = EditorGUI::DockSplitAxis::y;
@@ -151,7 +156,13 @@ namespace Luna
                 layout.nodes[2].split_ratio = 0.22f;
                 layout.nodes[2].child0 = 3;
                 layout.nodes[2].child1 = 4;
-                layout.nodes[3].tabs.push_back(gui->make_id("panel.hierarchy"));
+                layout.nodes[3].split = true;
+                layout.nodes[3].split_axis = EditorGUI::DockSplitAxis::y;
+                layout.nodes[3].split_ratio = 0.5f;
+                layout.nodes[3].child0 = 9;
+                layout.nodes[3].child1 = 10;
+                layout.nodes[9].tabs.push_back(gui->make_id("panel.explorer"));
+                layout.nodes[10].tabs.push_back(gui->make_id("panel.hierarchy"));
                 layout.nodes[4].split = true;
                 layout.nodes[4].split_axis = EditorGUI::DockSplitAxis::x;
                 layout.nodes[4].split_ratio = 0.76f;
@@ -191,23 +202,6 @@ namespace Luna
             {
                 lutry
                 {
-                    Path current_dir;
-                    if(workspace_path.empty())
-                    {
-                        const c8* process_path = get_process_path();
-                        current_dir = process_path;
-                        release_process_path(process_path);
-                        current_dir.pop_back();
-                    }
-                    else current_dir = workspace_path.c_str();
-                    luexp(set_current_dir(current_dir.encode().c_str()));
-                    const c8* resolved_current_dir = get_current_dir();
-                    workspace_root = resolved_current_dir;
-                    release_current_dir(resolved_current_dir);
-                    lulet(file_system, VFS::new_native_file_system(workspace_root.encode(PathSeparator::system_preferred).c_str()));
-                    luexp(VFS::mount(file_system, "/"));
-                    luexp(Asset::load_assets_meta("/", true));
-
                     luset(window, Window::new_window(APP_NAME,
                         Window::DEFAULT_POS, Window::DEFAULT_POS, 1440, 960));
                     luexp(window->set_foreground());
@@ -265,7 +259,9 @@ namespace Luna
                         }
                         node_types.push_back(move(type));
                     }
-                    if(!create_document()) luthrow(E_FAILURE);
+                    for(const String& path : startup_directories)
+                        if(!open_working_directory(Path(path.c_str()))) luthrow(E_FAILURE);
+                    if(discard_smoke && selected_directory && !create_document()) luthrow(E_FAILURE);
                     luexp(initialize_dock_layout());
 
                     Window::set_event_handler([](object_t event, void* userdata)

@@ -10,6 +10,9 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GAME_GUI_EDITOR_SERVICE_API LUNA_EXPORT
 #include "../GameGUIEditorService.hpp"
+#include "PreviewResources.hpp"
+#include <Luna/Runtime/Log.hpp>
+#include <Luna/VFS/VFS.hpp>
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/GameGUI/GameGUI.hpp>
 #include <Luna/Runtime/Guid.hpp>
@@ -33,6 +36,10 @@ namespace Luna
             struct DocumentState
             {
                 u64 id = 0;
+                u64 working_directory_id = 0;
+                Path creation_folder;
+                u64 preview_epoch = 0;
+                GameGUI::InstanceDesc preview;
                 String title;
                 Asset::asset_t asset;
                 Vector<HistoryEntry> history;
@@ -110,46 +117,12 @@ namespace Luna
                 return result;
             }
 
-            void refresh_diagnostics(DocumentState& state)
-            {
-                state.diagnostics.clear();
-                auto cooked = cook_authoring_document(*state.document(), &state.diagnostics);
-                if(!cooked.valid())
-                {
-                    bool has_error = false;
-                    for(const GameGUI::Diagnostic& diagnostic : state.diagnostics)
-                        has_error = has_error || diagnostic.severity == GameGUI::DiagnosticSeverity::error;
-                    if(!has_error)
-                    {
-                        GameGUI::Diagnostic diagnostic;
-                        diagnostic.severity = GameGUI::DiagnosticSeverity::error;
-                        diagnostic.message = explain(cooked.errcode());
-                        state.diagnostics.push_back(move(diagnostic));
-                    }
-                    return;
-                }
-                GameGUI::InstanceDesc desc;
-                desc.document = cooked.get();
-                desc.source_asset = state.asset;
-                Ref<GameGUI::IInstance> instance = GameGUI::new_instance(desc);
-                RV prepared = instance->prepare();
-                for(const GameGUI::Diagnostic& diagnostic : instance->get_diagnostics())
-                {
-                    state.diagnostics.push_back(diagnostic);
-                }
-                if(failed(prepared) && state.diagnostics.empty())
-                {
-                    GameGUI::Diagnostic diagnostic;
-                    diagnostic.severity = GameGUI::DiagnosticSeverity::error;
-                    diagnostic.message = explain(prepared.errcode());
-                    state.diagnostics.push_back(move(diagnostic));
-                }
-            }
-
             Variant metadata_variant(const DocumentState& state)
             {
                 Variant result(VariantType::object);
                 result["document_id"] = state.id;
+                result["working_directory_id"] = state.working_directory_id;
+                result["creation_folder"] = state.creation_folder.encode().c_str();
                 result["title"] = state.title.c_str();
                 result["revision"] = state.revision;
                 result["history_state"] = state.history_state();
@@ -532,6 +505,232 @@ namespace Luna
             Vector<u64> document_order;
             u64 next_document_id = 1;
             u64 next_untitled_id = 1;
+            WorkingDirectories working_directories;
+            u64 preview_epoch = 1;
+            u64 next_close_token = 1;
+
+            void invalidate_previews()
+            {
+                ++preview_epoch;
+                for(auto& entry : documents)
+                {
+                    entry.second->preview = GameGUI::InstanceDesc();
+                    entry.second->preview_epoch = 0;
+                }
+            }
+
+            void refresh_diagnostics(DocumentState& state)
+            {
+                if(state.preview_epoch == preview_epoch) return;
+                state.preview = GameGUI::InstanceDesc();
+                state.diagnostics.clear();
+                auto prepared = prepare_editor_preview(*state.document(), state.asset, working_directories,
+                    [this](Asset::asset_t asset) -> Ref<AuthoringDocument>
+                    {
+                        auto opened = asset_documents.find(Asset::get_asset_guid(asset));
+                        if(opened == asset_documents.end()) return nullptr;
+                        return documents.find(opened->second)->second->document();
+                    });
+                if(prepared.valid())
+                {
+                    state.preview = move(prepared.get());
+                    auto instance = GameGUI::new_instance(state.preview);
+                    RV result = instance->prepare();
+                    for(const auto& diagnostic : instance->get_diagnostics()) state.diagnostics.push_back(diagnostic);
+                    if(failed(result) && state.diagnostics.empty())
+                    {
+                        GameGUI::Diagnostic diagnostic;
+                        diagnostic.severity = GameGUI::DiagnosticSeverity::error;
+                        diagnostic.message = explain(result.errcode());
+                        state.diagnostics.push_back(move(diagnostic));
+                    }
+                }
+                else
+                {
+                    GameGUI::Diagnostic diagnostic;
+                    diagnostic.severity = GameGUI::DiagnosticSeverity::error;
+                    diagnostic.message = explain(prepared.errcode());
+                    state.diagnostics.push_back(move(diagnostic));
+                }
+                state.preview_epoch = preview_epoch;
+            }
+
+            R<Variant> open_directory(const Variant& params)
+            {
+                if(params["native_path"].type() != VariantType::string || params["native_path"].str().empty())
+                    return set_error(E_BAD_ARGUMENTS, "native_path must name a directory.");
+                auto opened = working_directories.open(Path(params["native_path"].c_str()));
+                if(!opened.valid()) return opened.errcode();
+                invalidate_previews();
+                return working_directories.describe(*opened.get(), true);
+            }
+
+            R<Variant> list_directories(const Variant&)
+            {
+                Variant result(VariantType::array);
+                for(auto& directory : working_directories.directories)
+                    result.push_back(working_directories.describe(*directory, true));
+                return result;
+            }
+
+            R<Variant> resolve_path(const Variant& params)
+            {
+                lutry
+                {
+                    lulet(path, working_directories.resolve_native(Path(params["native_path"].c_str())));
+                    lulet(directory, working_directories.owner(path, true));
+                    Variant result(VariantType::object);
+                    result["path"] = path.encode().c_str();
+                    result["working_directory_id"] = directory->id;
+                    return result;
+                }
+                lucatchret;
+                return E_FAILURE;
+            }
+
+            R<Variant> prepare_close_directory(const Variant& params)
+            {
+                lutry
+                {
+                    lulet(directory, working_directories.get(params["working_directory_id"].unum(), true));
+                    directory->closing = true;
+                    directory->close_token = next_close_token++;
+                    Variant result = working_directories.describe(*directory);
+                    result["close_token"] = directory->close_token;
+                    result["documents"] = Variant(VariantType::array);
+                    for(u64 id : document_order)
+                    {
+                        auto& state = *documents.find(id)->second;
+                        if(state.working_directory_id == directory->id)
+                            result["documents"].push_back(metadata_variant(state));
+                    }
+                    return result;
+                }
+                lucatchret;
+                return E_FAILURE;
+            }
+
+            R<WorkingDirectory*> closing_directory(const Variant& params)
+            {
+                auto result = working_directories.get(params["working_directory_id"].unum(), true);
+                if(!result.valid()) return result.errcode();
+                auto directory = result.get();
+                if(!directory->closing || !directory->close_token || directory->close_token != params["close_token"].unum())
+                    return set_error(E_BUSY, "The directory close token is stale.");
+                return directory;
+            }
+
+            R<Variant> cancel_close_directory(const Variant& params)
+            {
+                lutry
+                {
+                    lulet(directory, closing_directory(params));
+                    // An unsuccessful VFS cleanup must be retried before normal use.
+                    if(!directory->registered) luthrow(E_BUSY);
+                    directory->closing = false;
+                    directory->close_token = 0;
+                    invalidate_previews();
+                    return working_directories.describe(*directory);
+                }
+                lucatchret;
+                return E_FAILURE;
+            }
+
+            R<Variant> close_directory(const Variant& params)
+            {
+                lutry
+                {
+                    lulet(directory, closing_directory(params));
+                    Vector<u64> closing_documents;
+                    for(u64 id : document_order)
+                    {
+                        auto& state = *documents.find(id)->second;
+                        if(state.working_directory_id != directory->id) continue;
+                        const Variant* decision = nullptr;
+                        for(const Variant& item : params["documents"].values())
+                            if(item["document_id"].unum() == id) { decision = &item; break; }
+                        if(!decision || (*decision)["expected_revision"].unum() != state.revision)
+                            luthrow(set_error(E_BUSY, "The document close decision is missing or stale."));
+                        if(state.dirty() && !(*decision)["discard"].boolean())
+                            luthrow(set_error(E_BUSY, "Unsaved changes require Save or explicit Discard."));
+                        closing_documents.push_back(id);
+                    }
+                    invalidate_previews();
+                    luexp(working_directories.close(*directory));
+                    for(u64 id : closing_documents)
+                    {
+                        auto& state = *documents.find(id)->second;
+                        if(state.asset) asset_documents.erase(Asset::get_asset_guid(state.asset));
+                        documents.erase(id);
+                        for(usize i = 0; i < document_order.size(); ++i)
+                            if(document_order[i] == id) { document_order.erase(document_order.begin() + i); break; }
+                    }
+                    Variant result(VariantType::object);
+                    result["closed"] = true;
+                    return result;
+                }
+                lucatchret;
+                return E_FAILURE;
+            }
+
+            R<Variant> refresh_directory(const Variant& params)
+            {
+                lutry
+                {
+                    lulet(directory, working_directories.get(params["working_directory_id"].unum()));
+                    for(auto& entry : documents)
+                        if(entry.second->working_directory_id == directory->id && entry.second->dirty())
+                            luthrow(set_error(E_BUSY, "Save or close modified documents before refreshing this directory."));
+                    if(directory->database->is_dirty()) luthrow(set_error(E_BUSY, "Save pending metadata before refreshing."));
+                    lulet(candidate, directory->database->read_snapshot());
+                    for(auto& entry : documents)
+                    {
+                        auto& state = *entry.second;
+                        if(state.working_directory_id != directory->id || !state.asset) continue;
+                        bool compatible = false;
+                        for(const auto& record : candidate)
+                        {
+                            if(record.guid != Asset::get_asset_guid(state.asset) || record.type != GameGUI::get_asset_type()) continue;
+                            for(const auto& unit : record.data_units)
+                                if(unit.id == get_authoring_data_unit() && unit.loader == get_authoring_asset_loader()) compatible = true;
+                        }
+                        if(!compatible) luthrow(set_error(E_BUSY,
+                            "Close documents whose metadata was removed or changed to an incompatible type before refreshing."));
+                    }
+                    invalidate_previews();
+                    luexp(working_directories.unload_data(*directory));
+                    luexp(Asset::reload_asset_database(directory->database));
+                    luexp(working_directories.rebuild_index(*directory));
+                    // Read candidates before replacing any open document snapshot.
+                    Vector<Pair<DocumentState*, Ref<AuthoringDocument>>> replacements;
+                    for(auto& entry : documents)
+                    {
+                        auto& state = *entry.second;
+                        if(state.working_directory_id != directory->id || !state.asset) continue;
+                        luexp(Asset::load_asset_data_unit(state.asset, get_authoring_data_unit()));
+                        lulet(source, Asset::get_asset_data_unit_object<AuthoringDocument>(state.asset, get_authoring_data_unit()));
+                        if(!source) luthrow(E_BAD_DATA);
+                        replacements.push_back(make_pair(&state, clone_document(*source)));
+                    }
+                    for(auto& replacement : replacements)
+                    {
+                        auto& state = *replacement.first;
+                        HistoryEntry entry;
+                        entry.document = replacement.second;
+                        entry.state_id = state.next_history_state++;
+                        entry.label = "Reload";
+                        state.history.clear();
+                        state.history.push_back(move(entry));
+                        state.history_index = 0;
+                        state.saved_state = state.history_state();
+                        state.title = Asset::get_asset_name(state.asset).c_str();
+                        ++state.revision;
+                    }
+                    return working_directories.describe(*directory, true);
+                }
+                lucatchret;
+                return E_FAILURE;
+            }
 
             R<DocumentState*> get_document(const Variant& params)
             {
@@ -547,8 +746,13 @@ namespace Luna
                 return iter->second.get();
             }
 
-            RV check_revision(const DocumentState& document, const Variant& params)
+            RV check_revision(const DocumentState& document, const Variant& params, bool saving = false)
             {
+                auto directory = working_directories.get(document.working_directory_id, true);
+                if(!directory.valid()) return directory.errcode();
+                if(directory.get()->closing && (!saving ||
+                    params["close_token"].unum() != directory.get()->close_token))
+                    return set_error(E_BUSY, "The working directory is closing.");
                 if(params["expected_revision"].type() != VariantType::number)
                 {
                     return set_error(E_BAD_ARGUMENTS, "expected_revision must be provided as an integer.");
@@ -564,10 +768,11 @@ namespace Luna
             }
 
             DocumentState* add_document(const Ref<AuthoringDocument>& source, const c8* title,
-                Asset::asset_t asset, bool saved)
+                Asset::asset_t asset, bool saved, u64 directory_id)
             {
                 UniquePtr<DocumentState> state(memnew<DocumentState>());
                 state->id = next_document_id++;
+                state->working_directory_id = directory_id;
                 state->title = title;
                 state->asset = asset;
                 HistoryEntry entry;
@@ -576,6 +781,7 @@ namespace Luna
                 entry.label = "Initial";
                 state->history.push_back(move(entry));
                 state->saved_state = saved ? 1 : 0;
+                invalidate_previews();
                 refresh_diagnostics(*state);
                 u64 id = state->id;
                 DocumentState* result = state.get();
@@ -587,6 +793,14 @@ namespace Luna
 
             R<Variant> create(const Variant& params)
             {
+                u64 directory_id = params["working_directory_id"].unum();
+                if(!directory_id && working_directories.directories.size() == 1)
+                    directory_id = working_directories.directories[0]->id;
+                auto directory = working_directories.get(directory_id);
+                if(!directory.valid()) return directory.errcode();
+                Path folder(params["relative_directory"].c_str());
+                auto checked_folder = directory.get()->file_system->open_dir(folder);
+                if(!checked_folder.valid()) return checked_folder.errcode();
                 AuthoringNodeRecord root;
                 root.id = random_guid();
                 root.type = GameGUI::get_flex_node_type();
@@ -600,7 +814,8 @@ namespace Luna
                 document->nodes.push_back(move(root));
                 String title;
                 strprintf(title, "Untitled %llu", (unsigned long long)next_untitled_id++);
-                DocumentState* state = add_document(document, title.c_str(), Asset::asset_t(), false);
+                DocumentState* state = add_document(document, title.c_str(), Asset::asset_t(), false, directory_id);
+                state->creation_folder = folder;
                 return metadata_variant(*state);
             }
 
@@ -616,7 +831,12 @@ namespace Luna
                         lulet(guid, guid_param(params["asset_guid"], "asset_guid"));
                         auto existing = asset_documents.find(guid);
                         if(existing != asset_documents.end())
-                            return metadata_variant(*documents.find(existing->second)->second);
+                        {
+                            auto& existing_state = *documents.find(existing->second)->second;
+                            luexp(working_directories.get(existing_state.working_directory_id));
+                            refresh_diagnostics(existing_state);
+                            return metadata_variant(existing_state);
+                        }
                         asset = Asset::get_asset(guid);
                     }
                     else if(params["path"].type() == VariantType::string)
@@ -627,7 +847,12 @@ namespace Luna
                         Guid guid = Asset::get_asset_guid(asset);
                         auto existing = asset_documents.find(guid);
                         if(existing != asset_documents.end())
-                            return metadata_variant(*documents.find(existing->second)->second);
+                        {
+                            auto& existing_state = *documents.find(existing->second)->second;
+                            luexp(working_directories.get(existing_state.working_directory_id));
+                            refresh_diagnostics(existing_state);
+                            return metadata_variant(existing_state);
+                        }
                     }
                     else
                     {
@@ -640,13 +865,10 @@ namespace Luna
                         luthrow(set_error(E_NOT_FOUND, "The GameGUI asset is not registered."));
                     if(Asset::get_asset_type(asset) != GameGUI::get_asset_type())
                         luthrow(set_error(E_BAD_ARGUMENTS, "The selected asset is not a GameGUI document."));
-                    luexp(ensure_authoring_data_unit(asset));
-                    luexp(Asset::load_asset_data_unit(asset, get_authoring_data_unit()));
-                    lulet(source, Asset::get_asset_data_unit_object<AuthoringDocument>(asset,
-                        get_authoring_data_unit()));
-                    if(!source) luthrow(set_error(E_BAD_DATA, "The GameGUI asset has no document data."));
+                    lulet(directory, working_directories.owner(Asset::get_asset_path(asset)));
+                    lulet(source, load_editor_authoring(asset));
                     DocumentState* state = add_document(source,
-                        Asset::get_asset_name(asset).c_str(), asset, true);
+                        Asset::get_asset_name(asset).c_str(), asset, true, directory->id);
                     return metadata_variant(*state);
                 }
                 lucatchret;
@@ -659,7 +881,11 @@ namespace Luna
                 for(u64 id : document_order)
                 {
                     auto iter = documents.find(id);
-                    if(iter != documents.end()) result.push_back(metadata_variant(*iter->second));
+                    if(iter != documents.end())
+                    {
+                        refresh_diagnostics(*iter->second);
+                        result.push_back(metadata_variant(*iter->second));
+                    }
                 }
                 return result;
             }
@@ -669,6 +895,7 @@ namespace Luna
                 lutry
                 {
                     lulet(state, get_document(params));
+                    refresh_diagnostics(*state);
                     Variant result = metadata_variant(*state);
                     lulet(document, encode_authoring_document(*state->document()));
                     result["document"] = move(document);
@@ -719,6 +946,7 @@ namespace Luna
                         state->history_index = state->history.size() - 1;
                     }
                     ++state->revision;
+                    invalidate_previews();
                     refresh_diagnostics(*state);
                     Variant result = metadata_variant(*state);
                     Variant created_result(VariantType::array);
@@ -741,6 +969,7 @@ namespace Luna
                         luthrow(set_error(E_BAD_CALLING_TIME, "The GameGUI editor document cannot be undone."));
                     --state->history_index;
                     ++state->revision;
+                    invalidate_previews();
                     refresh_diagnostics(*state);
                     return metadata_variant(*state);
                 }
@@ -758,6 +987,7 @@ namespace Luna
                         luthrow(set_error(E_BAD_CALLING_TIME, "The GameGUI editor document cannot be redone."));
                     ++state->history_index;
                     ++state->revision;
+                    invalidate_previews();
                     refresh_diagnostics(*state);
                     return metadata_variant(*state);
                 }
@@ -770,20 +1000,36 @@ namespace Luna
                 lutry
                 {
                     lulet(state, get_document(params));
-                    luexp(check_revision(*state, params));
+                    luexp(check_revision(*state, params, true));
                     if(!state->asset)
-                        luthrow(set_error(E_BAD_CALLING_TIME,
-                            "An untitled GameGUI document must be saved with SaveAs."));
-                    luexp(ensure_authoring_data_unit(state->asset));
-                    luexp(Asset::set_asset_data_unit_object(state->asset,
-                        get_authoring_data_unit(), state->document().object()));
-                    luexp(Asset::save_asset_data_unit(state->asset, get_authoring_data_unit()));
+                        luthrow(set_error(E_BAD_CALLING_TIME, "An untitled document must be saved with SaveAs."));
+                    lulet(directory, working_directories.get(state->working_directory_id, true));
+                    luexp(persist(*state, state->asset, *directory));
                     state->saved_state = state->history_state();
                     ++state->revision;
+                    invalidate_previews();
+                    refresh_diagnostics(*state);
                     return metadata_variant(*state);
                 }
                 lucatchret;
                 return E_FAILURE;
+            }
+
+            RV persist(DocumentState& state, Asset::asset_t asset, WorkingDirectory& directory)
+            {
+                working_directories.track_asset(directory, asset);
+                lutry
+                {
+                    luexp(ensure_authoring_data_unit(asset));
+                    luexp(Asset::set_asset_data_unit_object(asset, get_authoring_data_unit(), state.document().object()));
+                    luexp(Asset::save_asset_data_unit(asset, get_authoring_data_unit()));
+                    luexp(Asset::save_asset_meta(asset));
+                    luexp(working_directories.flush(directory));
+                    // Update only the saved entry; unrelated directory scans are not part of a save.
+                    working_directories.track_asset(directory, asset);
+                }
+                lucatchret;
+                return ok;
             }
 
             R<Variant> save_as(const Variant& params)
@@ -791,31 +1037,45 @@ namespace Luna
                 lutry
                 {
                     lulet(state, get_document(params));
-                    luexp(check_revision(*state, params));
-                    if(params["path"].type() != VariantType::string ||
-                        params["path"].str().empty())
-                    {
-                        luthrow(set_error(E_BAD_ARGUMENTS, "SaveAs path must be a non-empty string."));
-                    }
+                    luexp(check_revision(*state, params, true));
+                    if(params["path"].type() != VariantType::string || params["path"].str().empty())
+                        luthrow(set_error(E_BAD_ARGUMENTS, "SaveAs requires an asset path."));
                     Path path(params["path"].c_str());
+                    luexp(working_directories.validate_asset_path(path, true));
+                    lulet(directory, working_directories.owner(path, true));
+                    if(directory->closing && (state->working_directory_id != directory->id ||
+                        params["close_token"].unum() != directory->close_token)) luthrow(E_BUSY);
+                    auto existing = Asset::get_asset_by_path(path);
+                    if(existing.valid())
+                    {
+                        if(Asset::get_asset_type(existing.get()) != GameGUI::get_asset_type())
+                            luthrow(set_error(E_BAD_ARGUMENTS, "The destination belongs to another asset type."));
+                        auto opened = asset_documents.find(Asset::get_asset_guid(existing.get()));
+                        if(opened != asset_documents.end() && opened->second != state->id)
+                            luthrow(set_error(E_ALREADY_EXISTS, "The destination asset is open in another document."));
+                        if(existing.get() != state->asset && !params["overwrite"].boolean())
+                            luthrow(set_error(E_ALREADY_EXISTS, "Replacing an existing asset requires overwrite=true."));
+                    }
+                    else if(existing.errcode() != E_NOT_FOUND) luthrow(existing.errcode());
+                    if(!existing.valid())
+                    {
+                        Path source = path;
+                        source.append_extension("json");
+                        auto payload = VFS::get_file_attribute(source);
+                        if(payload.valid()) luthrow(set_error(E_ALREADY_EXISTS,
+                            "An unregistered file already exists at the destination. Choose another name."));
+                        if(payload.errcode() != E_NOT_FOUND) luthrow(payload.errcode());
+                    }
                     lulet(asset, Asset::new_asset(path, GameGUI::get_asset_type(), true));
-                    if(Asset::get_asset_type(asset) != GameGUI::get_asset_type())
-                        luthrow(set_error(E_BAD_ARGUMENTS, "The SaveAs path belongs to another asset type."));
-                    Guid guid = Asset::get_asset_guid(asset);
-                    auto open_document = asset_documents.find(guid);
-                    if(open_document != asset_documents.end() && open_document->second != state->id)
-                        luthrow(set_error(E_ALREADY_EXISTS,
-                            "The SaveAs asset is already open in another document."));
-                    luexp(ensure_authoring_data_unit(asset));
-                    luexp(Asset::set_asset_data_unit_object(asset, get_authoring_data_unit(),
-                        state->document().object()));
-                    luexp(Asset::save_asset_data_unit(asset, get_authoring_data_unit()));
+                    luexp(persist(*state, asset, *directory));
                     if(state->asset) asset_documents.erase(Asset::get_asset_guid(state->asset));
                     state->asset = asset;
-                    asset_documents.insert_or_assign(guid, state->id);
+                    state->working_directory_id = directory->id;
+                    asset_documents.insert_or_assign(Asset::get_asset_guid(asset), state->id);
                     state->title = Asset::get_asset_name(asset).c_str();
                     state->saved_state = state->history_state();
                     ++state->revision;
+                    invalidate_previews();
                     refresh_diagnostics(*state);
                     return metadata_variant(*state);
                 }
@@ -835,6 +1095,13 @@ namespace Luna
                             "The GameGUI editor document has unsaved changes; explicit discard is required."));
                     }
                     u64 id = state->id;
+                    if(state->asset)
+                    {
+                        auto loaded = Asset::get_asset_data_unit_state(state->asset, get_authoring_data_unit());
+                        if(loaded.valid() && loaded.get() == Asset::AssetDataUnitState::loaded)
+                            luexp(Asset::set_asset_data_unit_object(state->asset, get_authoring_data_unit(), nullptr));
+                    }
+                    invalidate_previews();
                     if(state->asset) asset_documents.erase(Asset::get_asset_guid(state->asset));
                     documents.erase(id);
                     for(usize i = 0; i < document_order.size(); ++i)
@@ -867,6 +1134,8 @@ namespace Luna
                     lulet(cooked, cook_authoring_document(*state->document(), &diagnostics));
                     luexp(Asset::set_asset_data_unit_object(state->asset, Name(), cooked.object()));
                     luexp(Asset::save_asset_data_unit(state->asset, Name()));
+                    lulet(directory, working_directories.get(state->working_directory_id));
+                    luexp(working_directories.flush(*directory));
                     return metadata_variant(*state);
                 }
                 lucatchret;
@@ -888,6 +1157,20 @@ namespace Luna
                 frontend = Frontend::new_frontend();
                 lutry
                 {
+                    luexp(frontend->set_resource_function(OPEN_DIRECTORY_URL,
+                        [this](Frontend::IFrontend*, const Variant& params) { return open_directory(params); }));
+                    luexp(frontend->set_resource_function(LIST_DIRECTORIES_URL,
+                        [this](Frontend::IFrontend*, const Variant& params) { return list_directories(params); }));
+                    luexp(frontend->set_resource_function(RESOLVE_PATH_URL,
+                        [this](Frontend::IFrontend*, const Variant& params) { return resolve_path(params); }));
+                    luexp(frontend->set_resource_function(REFRESH_DIRECTORY_URL,
+                        [this](Frontend::IFrontend*, const Variant& params) { return refresh_directory(params); }));
+                    luexp(frontend->set_resource_function(PREPARE_CLOSE_DIRECTORY_URL,
+                        [this](Frontend::IFrontend*, const Variant& params) { return prepare_close_directory(params); }));
+                    luexp(frontend->set_resource_function(CANCEL_CLOSE_DIRECTORY_URL,
+                        [this](Frontend::IFrontend*, const Variant& params) { return cancel_close_directory(params); }));
+                    luexp(frontend->set_resource_function(CLOSE_DIRECTORY_URL,
+                        [this](Frontend::IFrontend*, const Variant& params) { return close_directory(params); }));
                     luexp(frontend->set_resource_function(CREATE_DOCUMENT_URL,
                         [this](Frontend::IFrontend*, const Variant& params) { return create(params); }));
                     luexp(frontend->set_resource_function(OPEN_DOCUMENT_URL,
@@ -923,6 +1206,17 @@ namespace Luna
         Service::~Service()
         {
             m_impl->frontend.reset();
+            m_impl->documents.clear();
+            while(!m_impl->working_directories.directories.empty())
+            {
+                auto& directory = *m_impl->working_directories.directories.back();
+                RV closed = m_impl->working_directories.close(directory);
+                if(failed(closed))
+                {
+                    log_error("GameGUIEditor", "Directory cleanup failed: %s", explain(closed.errcode()));
+                    break;
+                }
+            }
             memdelete(m_impl);
         }
 
@@ -934,6 +1228,16 @@ namespace Luna
         Frontend::IFrontend* Service::frontend() const
         {
             return m_impl->frontend;
+        }
+
+        u64 Service::preview_revision() const { return m_impl->preview_epoch; }
+
+        R<GameGUI::InstanceDesc> Service::prepare_preview(u64 document_id)
+        {
+            auto found = m_impl->documents.find(document_id);
+            if(found == m_impl->documents.end()) return E_NOT_FOUND;
+            m_impl->refresh_diagnostics(*found->second);
+            return found->second->preview;
         }
 
         LUNA_GAME_GUI_EDITOR_SERVICE_API R<UniquePtr<Service>> new_service()
