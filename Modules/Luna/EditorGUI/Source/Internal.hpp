@@ -69,6 +69,50 @@ namespace Luna
                 return state;
             }
 
+            inline bool input_pressed(const GUI::InputEvent& event)
+            {
+                return event.type == GUI::InputEventType::touch_down ||
+                    (event.type == GUI::InputEventType::pointer_down && event.button == GUI::PointerButton::left);
+            }
+
+            inline bool input_moved(const GUI::InputEvent& event)
+            {
+                return event.type == GUI::InputEventType::touch_move || event.type == GUI::InputEventType::pointer_move;
+            }
+
+            inline bool input_released(const GUI::InputEvent& event)
+            {
+                return event.type == GUI::InputEventType::touch_up ||
+                    (event.type == GUI::InputEventType::pointer_up && event.button == GUI::PointerButton::left);
+            }
+
+            inline bool input_canceled(const GUI::InputEvent& event)
+            {
+                return event.type == GUI::InputEventType::touch_cancel || event.type == GUI::InputEventType::blur;
+            }
+
+            inline bool InputOwner::alive(GUI::IContext* context) const
+            {
+                if(source == 1) return context->is_pointer_button_down(GUI::PointerButton::left);
+                GUI::TouchState state;
+                return source == 2 && context->get_touch_state(device_id, touch_id, state);
+            }
+
+            inline Ref<InputOwner> input_owner(GUI::IContext* context, id_t id)
+            {
+                return widget_state<InputOwner>(context, GUI::make_scoped_id(id, "input.owner"));
+            }
+
+            inline void set_touch_gestures(GUI::IContext* context, const GUI::ElementHandle& handle,
+                GUI::TouchGestureFlag gestures)
+            {
+                const GUI::Element* element = context->get_element(handle.index);
+                if(!element) return;
+                GUI::Interactable interactable = element->interactable;
+                interactable.touch_gestures = gestures;
+                context->set_interactable(handle, interactable);
+            }
+
             GUI::ElementHandle begin_element(GUI::IContext* context, id_t id, const c8* debug_name,
                 const GUI::LayoutConfig& layout);
             void set_interactable(GUI::IContext* context, const GUI::ElementHandle& element,

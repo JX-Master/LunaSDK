@@ -297,11 +297,11 @@ namespace Luna
                 state.cursor = clamp_cursor(value, state.cursor);
                 bool changed = false;
                 bool focused = context->focused_element() == action.id;
+                Ref<InputOwner> input = input_owner(context, action.id);
                 for(const GUI::RoutedInputEvent& routed : context->get_routed_input_events(action.id))
                 {
                     const GUI::InputEvent& event = routed.event;
-                    if(event.type == GUI::InputEventType::pointer_down && event.button == GUI::PointerButton::left &&
-                        routed.has_element_position)
+                    if(input_pressed(event) && routed.has_element_position && input->claim(event))
                     {
                         TextInputMetrics metrics(value, action.font, action.font_size);
                         usize cursor = cursor_from_x(value, routed.element_position.x - action.padding_x + state.scroll_x,
@@ -311,16 +311,17 @@ namespace Luna
                         state.selecting = true;
                         state.blink_time = 0.0f;
                     }
-                    else if(event.type == GUI::InputEventType::pointer_move && state.selecting && routed.has_element_position)
+                    else if(input_moved(event) && input->matches(event) && state.selecting && routed.has_element_position)
                     {
                         TextInputMetrics metrics(value, action.font, action.font_size);
                         state.cursor = cursor_from_x(value, routed.element_position.x - action.padding_x + state.scroll_x,
                             metrics);
                         state.blink_time = 0.0f;
                     }
-                    else if(event.type == GUI::InputEventType::pointer_up && event.button == GUI::PointerButton::left)
+                    else if((input_released(event) || input_canceled(event)) && input->matches(event))
                     {
                         state.selecting = false;
+                        input->reset();
                         if(state.selection_anchor == state.cursor) state.selection_anchor = USIZE_MAX;
                     }
                     else if(focused && event.type == GUI::InputEventType::text_utf8 && action.enabled &&
@@ -405,10 +406,12 @@ namespace Luna
                         {
                             context->focus_element(0);
                             state.selecting = false;
+                            input->reset();
                         }
                         state.blink_time = 0.0f;
                     }
                 }
+                if(!input->alive(context)) { input->reset(); state.selecting = false; }
                 if(focused)
                 {
                     context->request_text_input(context->find_element_handle(action.id), (i32)state.cursor);
@@ -435,6 +438,7 @@ namespace Luna
             luassert(context && id);
             GUI::ElementHandle element = Internal::begin_element(context, id, "Text Input", layout);
             Internal::set_interactable(context, element, desc.enabled, desc.read_only);
+            Internal::set_touch_gestures(context, element, GUI::TouchGestureFlag::drag_x);
             Ref<Internal::TextInputState> state = Internal::widget_state<Internal::TextInputState>(context, id);
             Internal::TextInputData* data = Internal::allocate_frame<Internal::TextInputData>(context);
             data->value = &value;

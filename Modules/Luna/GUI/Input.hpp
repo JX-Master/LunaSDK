@@ -50,7 +50,39 @@ namespace Luna
             //! The GUI screen gained input focus.
             focus,
             //! The GUI screen lost input focus.
-            blur
+            blur,
+            //! An independent touch contact began. Uses device_id, touch_id and position.
+            touch_down,
+            //! An independent touch contact moved. Routed events include the contact's logical movement delta.
+            touch_move,
+            //! An independent touch contact ended normally.
+            touch_up,
+            //! An independent touch contact was interrupted or lost gesture ownership. Never activates a control.
+            touch_cancel
+        };
+
+        //! Checks whether an event belongs to the independent touch input path.
+        inline bool is_touch_event(InputEventType type)
+        {
+            return type == InputEventType::touch_down || type == InputEventType::touch_move ||
+                type == InputEventType::touch_up || type == InputEventType::touch_cancel;
+        }
+
+        //! Describes one active contact. Mouse state is never included in this structure.
+        struct TouchState
+        {
+            //! Platform-defined device identity.
+            u64 device_id = 0;
+            //! Contact identity scoped to the device.
+            u64 touch_id = 0;
+            //! Current position in GUI logical coordinates.
+            Float2U position = Float2U(0.0f);
+            //! Position where the contact began.
+            Float2U start_position = Float2U(0.0f);
+            //! Contact movement accumulated during the latest routing pass.
+            Float2U delta = Float2U(0.0f);
+            //! Element capturing this contact, or zero. Other contacts and the mouse have separate captures.
+            id_t captured_element = 0;
         };
 
         //! Identifies one pointer button.
@@ -114,13 +146,18 @@ namespace Luna
             //! The kind of this input event.
             InputEventType type = InputEventType::pointer_move;
             //! The host-defined input device identifier preserved with this event.
-            //! @remark Current GUI routing uses one shared pointer and keyboard state. It does not distinguish
-            //! simultaneous devices.
+            //! @remark Mouse events use one pointer stream. Touch events use independent (device_id, touch_id) contacts.
             u64 device_id = 0;
             //! The host-defined pointer identifier preserved with this event.
-            //! @remark Current GUI routing supports one pointer stream. This field does not yet create
-            //! independent hover, capture or button state for multiple pointers.
+            //! @remark This identifies the mouse pointer stream. Touch events use touch_id instead.
             u64 pointer_id = 0;
+            //! Contact identity used only by touch events, independent of pointer_id.
+            u64 touch_id = 0;
+            //! Contact movement in logical coordinates, filled by touch routing for delivered touch-move events.
+            Float2U touch_delta = Float2U(0.0f);
+            //! Whether touch movement has crossed the threshold and won a directional gesture target.
+            //! @remark Set by GUI routing; hosts only need to submit touch identities and positions.
+            bool touch_dragging = false;
             //! The pointer position in GUI surface logical coordinates.
             Float2U position = Float2U(0.0f);
             //! Wheel or trackpad scrolling delta in logical units.

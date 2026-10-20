@@ -542,6 +542,7 @@ namespace Luna
                 picker_layout.height.value = 300.0f;
                 GUI::ElementHandle picker = begin_element(context, picker_id, "Color Picker", picker_layout);
                 set_interactable(context, picker, desc.enabled);
+                set_touch_gestures(context, picker, GUI::TouchGestureFlag::drag_x | GUI::TouchGestureFlag::drag_y);
                 PickerData* picker_data = allocate_frame<PickerData>(context);
                 picker_data->binding = binding;
                 picker_data->state = state;
@@ -637,11 +638,11 @@ namespace Luna
                 if(action.enabled)
                 {
                     PickerGeometry geometry;
+                    Ref<InputOwner> input = input_owner(context, action.picker_id);
                     for(const GUI::RoutedInputEvent& routed : context->get_routed_input_events(action.picker_id))
                     {
                         if(!routed.has_element_position) continue;
-                        if(routed.event.type == GUI::InputEventType::pointer_down &&
-                            routed.event.button == GUI::PointerButton::left)
+                        if(input_pressed(routed.event) && input->claim(routed.event))
                         {
                             if(rect_contains(geometry.square, routed.element_position)) state.active_part = 1;
                             else if(rect_contains(geometry.bar, routed.element_position)) state.active_part = 2;
@@ -659,19 +660,20 @@ namespace Luna
                                 changed |= before.x != after.x || before.y != after.y || before.z != after.z || before.w != after.w;
                             }
                         }
-                        else if(routed.event.type == GUI::InputEventType::pointer_move && state.active_part)
+                        else if(input_moved(routed.event) && input->matches(routed.event) && state.active_part)
                         {
                             Float4U before = read_color(binding);
                             apply_picker_position(binding, state, state.active_part, routed.element_position);
                             Float4U after = read_color(binding);
                             changed |= before.x != after.x || before.y != after.y || before.z != after.z || before.w != after.w;
                         }
-                        else if(routed.event.type == GUI::InputEventType::pointer_up &&
-                            routed.event.button == GUI::PointerButton::left)
+                        else if((input_released(routed.event) || input_canceled(routed.event)) && input->matches(routed.event))
                         {
                             state.active_part = 0;
+                            input->reset();
                         }
                     }
+                    if(!input->alive(context)) { input->reset(); state.active_part = 0; }
                     bool rgb_changed = false;
                     bool hsv_changed = false;
                     for(u32 i = 0; i < 4; ++i) rgb_changed |= state.rgb[i] != action.rgb_before[i];

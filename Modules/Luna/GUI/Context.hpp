@@ -479,6 +479,26 @@ namespace Luna
             //! @return Returns the captured element ID, or zero when no element captures pointer input.
             virtual id_t captured_element() const = 0;
 
+            //! Queries one active contact without reading or modifying mouse state.
+            //! @param[in] device_id Device identity supplied by the host.
+            //! @param[in] touch_id Contact identity supplied by the host.
+            //! @param[out] out_state Receives independent contact position, delta and capture state.
+            //! @return Returns false after up/cancel, or when this contact is unknown.
+            virtual bool get_touch_state(u64 device_id, u64 touch_id, TouchState& out_state) const = 0;
+
+            //! Transfers one active contact to an enabled, writable interactable element.
+            //! @param[in] device_id Device identity supplied by the host.
+            //! @param[in] touch_id Identity of the active contact.
+            //! @param[in] element_id New owner of this contact.
+            //! @remark Losing targets receive touch_cancel. Explicit capture prevents automatic gesture transfer.
+            //! This does not capture any other contact or the mouse.
+            virtual void capture_touch(u64 device_id, u64 touch_id, id_t element_id) = 0;
+
+            //! Releases one contact capture and cancels its current targets, without synthesizing a mouse release.
+            //! @param[in] device_id Device identity supplied by the host.
+            //! @param[in] touch_id Identity of the contact to release.
+            virtual void release_touch_capture(u64 device_id, u64 touch_id) = 0;
+
             //! Gets a state object by ID.
             //! @param[in] id The state identifier.
             //! @return Returns the boxed state object, or `nullptr` when no state exists.

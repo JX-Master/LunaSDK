@@ -90,33 +90,20 @@ namespace Luna
                 ge.type = GUI::InputEventType::pointer_wheel;
                 ge.wheel_delta = Float2U(e->scroll_x, e->scroll_y);
             }
-            else if(auto e = cast_object<Window::WindowTouchDownEvent>(event))
+            else if(auto e = cast_object<Window::WindowTouchEvent>(event))
             {
                 ge.position = Float2U(e->x, e->y);
-                if(!is_client_position_valid(window, ge.position)) return false;
-                ge.type = GUI::InputEventType::pointer_down;
-                ge.device_id = 1;
-                ge.pointer_id = e->id;
-                ge.button = GUI::PointerButton::left;
-            }
-            else if(auto e = cast_object<Window::WindowTouchMoveEvent>(event))
-            {
-                ge.position = Float2U(e->x, e->y);
-                ge.type = GUI::InputEventType::pointer_move;
-                ge.device_id = 1;
-                ge.pointer_id = e->id;
-                if(!is_client_position_valid(window, ge.position))
+                ge.device_id = e->device_id;
+                ge.touch_id = e->id;
+                if(cast_object<Window::WindowTouchDownEvent>(event))
                 {
-                    ge.type = GUI::InputEventType::pointer_leave;
+                    if(!is_client_position_valid(window, ge.position)) return false;
+                    ge.type = GUI::InputEventType::touch_down;
                 }
-            }
-            else if(auto e = cast_object<Window::WindowTouchUpEvent>(event))
-            {
-                ge.position = Float2U(e->x, e->y);
-                ge.type = GUI::InputEventType::pointer_up;
-                ge.device_id = 1;
-                ge.pointer_id = e->id;
-                ge.button = GUI::PointerButton::left;
+                else if(cast_object<Window::WindowTouchMoveEvent>(event)) ge.type = GUI::InputEventType::touch_move;
+                else if(cast_object<Window::WindowTouchUpEvent>(event)) ge.type = GUI::InputEventType::touch_up;
+                else if(cast_object<Window::WindowTouchCancelEvent>(event)) ge.type = GUI::InputEventType::touch_cancel;
+                else return false;
             }
             else if(auto e = cast_object<Window::WindowKeyDownEvent>(event))
             {

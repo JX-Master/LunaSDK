@@ -239,47 +239,33 @@ namespace Luna
             f32 scroll_y;
         };
 
-        //! Dispatched when a new touch point is detected.
-        //! @par Default Behavior
-        //! Do nothing.
-        struct [[luna::struct("e96554e5-d807-4c41-a1bb-62b18c1f015b")]] WindowTouchDownEvent : WindowEvent
+        //! Common payload for a native touch contact, independent of mouse input.
+        //! @remark Coordinates use the same client units as window mouse-move events. A contact is identified by
+        //! the pair (device_id, id). Its lifetime ends with either an up or a cancel event.
+        struct [[luna::struct("fbf0d32a-8861-42f4-8d6a-0be206ad672a")]] WindowTouchEvent : WindowEvent
         {
-            //! The identifier of the touch point. 
-            //! This id remains unchanged for the same touch point during different touch events.
-            u64 id;
-            //! The x position of the touch point relative to the window position.
-            f32 x;
-            //! The y position of the touch point relative to the window position.
-            f32 y;
+            //! Platform-defined touch device identity. Zero means the platform does not expose a device identity.
+            u64 device_id = 0;
+            //! Contact identity, stable for this contact's lifetime and reusable after it ends.
+            u64 id = 0;
+            //! Horizontal contact position relative to the client origin.
+            f32 x = 0.0f;
+            //! Vertical contact position relative to the client origin.
+            f32 y = 0.0f;
         };
 
-        //! Dispatched when the position of one existing touch point is changed.
-        //! @par Default Behavior
-        //! Do nothing.
-        struct [[luna::struct("a77f1f7f-26e9-4ce2-8d9b-9677fa65f50f")]] WindowTouchMoveEvent : WindowEvent
-        {
-            //! The identifier of the touch point. 
-            //! This id remains unchanged for the same touch point during different touch events.
-            u64 id;
-            //! The x position of the touch point relative to the window position.
-            f32 x;
-            //! The y position of the touch point relative to the window position.
-            f32 y;
-        };
+        //! Dispatched when a new touch contact begins. This does not generate a mouse-down event.
+        struct [[luna::struct("e96554e5-d807-4c41-a1bb-62b18c1f015b")]] WindowTouchDownEvent : WindowTouchEvent {};
 
-        //! Dispatched when an existing touch point is released.
-        //! @par Default Behavior
-        //! Do nothing.
-        struct [[luna::struct("38c25e24-6c7f-4f90-91f1-133baa030b38")]] WindowTouchUpEvent : WindowEvent
-        {
-            //! The identifier of the touch point. 
-            //! This id remains unchanged for the same touch point during different touch events.
-            u64 id;
-            //! The x position of the touch point relative to the window position.
-            f32 x;
-            //! The y position of the touch point relative to the window position.
-            f32 y;
-        };
+        //! Dispatched when an existing contact moves, including movement outside the client area while captured.
+        struct [[luna::struct("a77f1f7f-26e9-4ce2-8d9b-9677fa65f50f")]] WindowTouchMoveEvent : WindowTouchEvent {};
+
+        //! Dispatched when a contact ends normally.
+        struct [[luna::struct("38c25e24-6c7f-4f90-91f1-133baa030b38")]] WindowTouchUpEvent : WindowTouchEvent {};
+
+        //! Dispatched when a contact is interrupted, for example by capture or focus loss.
+        //! @remark Cancellation must release contact state without producing a click or a normal release action.
+        struct [[luna::struct("a9815b72-9640-46eb-ba8c-b62475e77cbd")]] WindowTouchCancelEvent : WindowTouchEvent {};
 
         //! Dispatched when the user drags and drops files into the window.
         //! @par Default Behavior

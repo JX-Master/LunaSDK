@@ -19,6 +19,33 @@ namespace Luna
     {
         namespace Internal
         {
+            // Locks one manipulation to its initiating mouse stream or independent touch contact.
+            struct [[Luna::struct("e35d6834-dce7-46a6-9d41-420a857633a3")]] InputOwner
+            {
+                u8 source = 0;
+                u64 device_id = 0;
+                u64 touch_id = 0;
+
+                bool matches(const GUI::InputEvent& event) const
+                {
+                    return GUI::is_touch_event(event.type) ? source == 2 && device_id == event.device_id &&
+                        touch_id == event.touch_id : source == 1;
+                }
+
+                bool claim(const GUI::InputEvent& event)
+                {
+                    if(source) return matches(event);
+                    source = GUI::is_touch_event(event.type) ? 2 : 1;
+                    device_id = event.device_id;
+                    touch_id = event.touch_id;
+                    return true;
+                }
+
+                bool alive(GUI::IContext* context) const;
+
+                void reset() { source = 0; }
+            };
+
             enum class ActionType : u8
             {
                 button,
@@ -387,6 +414,7 @@ namespace Luna
             struct [[Luna::struct("{BF108424-36AE-4BA2-96F1-4533BD8A8FE9}")]] FrameState
             {
                 u32 generation = 0;
+                bool touch_navigation = false;
                 Vector<Blob> blocks;
                 usize block_index = 0;
                 usize offset = 0;

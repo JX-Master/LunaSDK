@@ -118,6 +118,111 @@ namespace Luna
             }
         }
 
+        template <typename T>
+        static void dispatch_touch(Window* window, const NativeTouchContact& contact)
+        {
+            auto event = new_object<T>();
+            event->window = window;
+            event->device_id = contact.device_id;
+            event->id = contact.id;
+            event->x = contact.position.x;
+            event->y = contact.position.y;
+            dispatch_event_to_handler(event.object());
+        }
+
+        static void cancel_native_touches(Window* window)
+        {
+            // Remove state before calling user code, which may close the window or reenter message handling.
+            Vector<NativeTouchContact> contacts = move(window->m_touch_contacts);
+            for(const NativeTouchContact& contact : contacts) dispatch_touch<WindowTouchCancelEvent>(window, contact);
+        }
+
+        static bool handle_native_touch(Window* window, UINT message, WPARAM wparam)
+        {
+            u32 id = GET_POINTERID_WPARAM(wparam);
+            usize index = 0;
+            while(index < window->m_touch_contacts.size() && window->m_touch_contacts[index].id != id) ++index;
+            bool known = index < window->m_touch_contacts.size();
+            POINTER_INFO info = {};
+            bool have_info = GetPointerInfo(id, &info) != FALSE;
+            POINTER_INPUT_TYPE type = PT_POINTER;
+            if(have_info) type = info.pointerType;
+            else GetPointerType(id, &type);
+            if(type != PT_TOUCH && !known) return false;
+            if(message == WM_POINTERCAPTURECHANGED || (have_info && (info.pointerFlags & POINTER_FLAG_CANCELED)))
+            {
+                if(known)
+                {
+                    NativeTouchContact contact = window->m_touch_contacts[index];
+                    window->m_touch_contacts.erase(window->m_touch_contacts.begin() + index);
+                    dispatch_touch<WindowTouchCancelEvent>(window, contact);
+                }
+                return true;
+            }
+            if(message != WM_POINTERDOWN && message != WM_POINTERUPDATE && message != WM_POINTERUP) return true;
+            if(!have_info)
+            {
+                // An interrupted contact must not remain active when native position retrieval fails.
+                if(known)
+                {
+                    NativeTouchContact contact = window->m_touch_contacts[index];
+                    window->m_touch_contacts.erase(window->m_touch_contacts.begin() + index);
+                    dispatch_touch<WindowTouchCancelEvent>(window, contact);
+                }
+                return true;
+            }
+            POINT position = info.ptPixelLocation;
+            if(!ScreenToClient(window->m_hwnd, &position)) return true;
+            NativeTouchContact contact;
+            contact.id = id;
+            contact.device_id = (u64)(usize)info.sourceDevice;
+            contact.position = Float2U((f32)position.x, (f32)position.y);
+            if(message == WM_POINTERDOWN)
+            {
+                if(known)
+                {
+                    NativeTouchContact previous = window->m_touch_contacts[index];
+                    window->m_touch_contacts.erase(window->m_touch_contacts.begin() + index);
+                    dispatch_touch<WindowTouchCancelEvent>(window, previous);
+                    if(window->is_closed()) return true;
+                }
+                window->m_touch_contacts.push_back(contact);
+                dispatch_touch<WindowTouchDownEvent>(window, contact);
+            }
+            else if(known)
+            {
+                // Keep the original device identity throughout the contact, including its terminal event.
+                contact.device_id = window->m_touch_contacts[index].device_id;
+                if(message == WM_POINTERUP)
+                {
+                    window->m_touch_contacts.erase(window->m_touch_contacts.begin() + index);
+                    dispatch_touch<WindowTouchUpEvent>(window, contact);
+                }
+                else
+                {
+                    window->m_touch_contacts[index] = contact;
+                    dispatch_touch<WindowTouchMoveEvent>(window, contact);
+                }
+            }
+            return true;
+        }
+
+        static bool is_touch_compatibility_mouse(UINT message)
+        {
+            switch(message)
+            {
+            case WM_MOUSEMOVE:
+            case WM_LBUTTONDOWN: case WM_LBUTTONUP:
+            case WM_RBUTTONDOWN: case WM_RBUTTONUP:
+            case WM_MBUTTONDOWN: case WM_MBUTTONUP:
+            case WM_XBUTTONDOWN: case WM_XBUTTONUP:
+            case WM_MOUSEWHEEL: case WM_MOUSEHWHEEL:
+                // Windows marks compatibility mouse input from touch with MI_WP_SIGNATURE and its touch bit.
+                return ((ULONG_PTR)GetMessageExtraInfo() & 0xFFFFFF80) == 0xFF515780;
+            default: return false;
+            }
+        }
+
         static void dispatch_text_input(Window* window, c32 character)
         {
             c8 buf[4];
@@ -141,8 +246,17 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         // If the window object is not ready, we simply do not handle all messages.
         return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
+    if(is_touch_compatibility_mouse(msg)) return 0;
     switch (msg)
     {
+    case WM_POINTERDOWN:
+    case WM_POINTERUPDATE:
+    case WM_POINTERUP:
+    case WM_POINTERENTER:
+    case WM_POINTERLEAVE:
+    case WM_POINTERCAPTURECHANGED:
+        if(handle_native_touch(pw, msg, wParam)) return 0;
+        break;
     case WM_CLOSE:
         {
             auto event = new_object<WindowRequestCloseEvent>();
@@ -157,6 +271,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         return 0;
     case WM_DESTROY:
         {
+            cancel_native_touches(pw);
             if(!pw->m_destructing)
             {
                 auto event = new_object<WindowClosedEvent>();
@@ -178,6 +293,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         return 0;
     case WM_KILLFOCUS:
         {
+            cancel_native_touches(pw);
             auto event = new_object<WindowLoseInputFocusEvent>();
             event->window = pw;
             dispatch_event_to_handler(event.object());

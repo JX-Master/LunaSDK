@@ -52,8 +52,13 @@ namespace Luna
             if(!context) return result;
             Ref<Internal::FrameState> frame = Internal::frame_state(context);
             f32 delta_time = max(context->get_frame_desc().delta_time, 0.0f);
+            // Passive mouse hover must not replace a menu opened by touch. Actual mouse input restores hover navigation.
+            Float2U mouse_delta = context->get_pointer_delta();
+            if(mouse_delta.x != 0.0f || mouse_delta.y != 0.0f) frame->touch_navigation = false;
             for(const GUI::InputEvent& event : context->get_input_events())
             {
+                if(event.type == GUI::InputEventType::touch_down) frame->touch_navigation = true;
+                else if(event.type == GUI::InputEventType::pointer_down) frame->touch_navigation = false;
                 bool navigation_back = (event.type == GUI::InputEventType::key_down &&
                     event.key == KeyCode::esc) || event.type == GUI::InputEventType::navigation_back;
                 if(navigation_back)
@@ -74,8 +79,7 @@ namespace Luna
                     }
                     if(topmost) close_popup(context, topmost->id);
                 }
-                if(event.type == GUI::InputEventType::pointer_down &&
-                    event.button == GUI::PointerButton::left)
+                if(Internal::input_pressed(event))
                 {
                     i32 hit_layer = popup_layer_at_position(context, *frame, event.position);
                     for(Internal::Action& record : frame->actions)

@@ -168,18 +168,18 @@ namespace Luna
                 if(state->editing)
                     return resolve_drag_text_edit(context, id, value, minimum, maximum, *state);
                 bool changed = false;
+                Ref<InputOwner> input = input_owner(context, id);
                 for(const GUI::RoutedInputEvent& routed : context->get_routed_input_events(id))
                 {
                     if(!routed.has_element_position) continue;
-                    if(routed.event.type == GUI::InputEventType::pointer_down &&
-                        routed.event.button == GUI::PointerButton::left)
+                    if(input_pressed(routed.event) && input->claim(routed.event))
                     {
                         state->dragging = true;
                         state->start_pointer_x = routed.element_position.x;
                         if constexpr(is_same_v<T, f32>) state->start_float = *value;
                         else state->start_int = *value;
                     }
-                    else if(routed.event.type == GUI::InputEventType::pointer_move && state->dragging)
+                    else if(input_moved(routed.event) && input->matches(routed.event) && state->dragging)
                     {
                         f32 start = is_same_v<T, f32> ? state->start_float : (f32)state->start_int;
                         f32 next = start + (routed.element_position.x - state->start_pointer_x) * speed;
@@ -189,12 +189,13 @@ namespace Luna
                         if(maximum > minimum) converted = clamp(converted, minimum, maximum);
                         if(*value != converted) { *value = converted; changed = true; }
                     }
-                    else if(routed.event.type == GUI::InputEventType::pointer_up &&
-                        routed.event.button == GUI::PointerButton::left)
+                    else if((input_released(routed.event) || input_canceled(routed.event)) && input->matches(routed.event))
                     {
                         state->dragging = false;
+                        input->reset();
                     }
                 }
+                if(!input->alive(context)) { input->reset(); state->dragging = false; }
                 if(context->get_interaction_state(id).double_clicked)
                     begin_drag_text_edit(context, id, *value, *state);
                 return changed;
@@ -238,6 +239,7 @@ namespace Luna
                 {
                     element = begin_element(context, id, "Float Drag", layout);
                     set_interactable(context, element, desc.enabled);
+                    set_touch_gestures(context, element, GUI::TouchGestureFlag::drag_x);
                     GUI::LayoutCallbackConfig callbacks;
                     callbacks.algorithm = Name("gui.drag");
                     callbacks.measure_callback = measure_drag;
@@ -274,6 +276,7 @@ namespace Luna
                 {
                     element = begin_element(context, id, "Integer Drag", layout);
                     set_interactable(context, element, desc.enabled);
+                    set_touch_gestures(context, element, GUI::TouchGestureFlag::drag_x);
                     GUI::LayoutCallbackConfig callbacks;
                     callbacks.algorithm = Name("gui.drag");
                     callbacks.measure_callback = measure_drag;

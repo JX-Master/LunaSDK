@@ -162,20 +162,22 @@ namespace Luna
             static bool resolve_slider_position(GUI::IContext* context, id_t id, f32& fraction)
             {
                 bool changed = false;
+                Ref<InputOwner> input = input_owner(context, id);
                 for(const GUI::RoutedInputEvent& routed : context->get_routed_input_events(id))
                 {
                     if(!routed.has_element_position) continue;
-                    if((routed.event.type == GUI::InputEventType::pointer_down &&
-                        routed.event.button == GUI::PointerButton::left) ||
-                        (routed.event.type == GUI::InputEventType::pointer_move &&
-                        context->is_pointer_button_down(GUI::PointerButton::left)))
+                    if((input_pressed(routed.event) && input->claim(routed.event)) ||
+                        (input_moved(routed.event) && input->matches(routed.event)))
                     {
                         const GUI::Element* element = context->find_element(id);
                         f32 width = element ? max(element->layout_result.rect.width, 1.0f) : 1.0f;
                         fraction = clamp(routed.element_position.x / width, 0.0f, 1.0f);
                         changed = true;
                     }
+                    if((input_released(routed.event) || input_canceled(routed.event)) && input->matches(routed.event))
+                        input->reset();
                 }
+                if(!input->alive(context)) input->reset();
                 return changed;
             }
 
@@ -230,6 +232,7 @@ namespace Luna
             {
                 GUI::ElementHandle element = begin_element(context, id, "Slider", layout);
                 set_interactable(context, element, data->enabled);
+                set_touch_gestures(context, element, GUI::TouchGestureFlag::drag_x);
                 GUI::LayoutCallbackConfig callbacks;
                 callbacks.algorithm = Name("gui.slider");
                 callbacks.measure_callback = measure_slider;

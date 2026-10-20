@@ -242,8 +242,17 @@ using namespace Luna;
                 dispatch_event_to_handler(e.object());
                 break;
             }
-            case UITouchPhaseEnded:
             case UITouchPhaseCancelled:
+            {
+                auto e = Luna::new_object<WindowTouchCancelEvent>();
+                e->window = self.lunaWindow;
+                e->id = tid;
+                e->x = (f32)pt.x;
+                e->y = (f32)pt.y;
+                dispatch_event_to_handler(e.object());
+                break;
+            }
+            case UITouchPhaseEnded:
             {
                 auto e = Luna::new_object<WindowTouchUpEvent>();
                 e->window = self.lunaWindow;

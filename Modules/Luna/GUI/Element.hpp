@@ -324,6 +324,17 @@ namespace Luna
             block
         };
 
+        //! Directional manipulation capabilities used to arbitrate independent touch contacts.
+        enum class TouchGestureFlag : u8
+        {
+            //! A tap target that does not claim contact movement.
+            none = 0,
+            //! Claims predominantly horizontal contact movement.
+            drag_x = 0x01,
+            //! Claims predominantly vertical contact movement.
+            drag_y = 0x02
+        };
+
         struct Interactable;
 
         //! Bit flags describing reusable input behavior attached to one element.
@@ -358,6 +369,10 @@ namespace Luna
             InteractableFlag flags = InteractableFlag::none;
             //! Pointer hit-test behavior.
             PointerHitBehavior pointer_hit_behavior = PointerHitBehavior::none;
+            //! Directions this element can manipulate with a touch contact.
+            //! @remark After eight logical units of movement, the nearest capable ancestor wins that direction.
+            //! Losing targets receive touch_cancel; mouse routing is unaffected.
+            TouchGestureFlag touch_gestures = TouchGestureFlag::none;
             //! Optional focus scope ID.
             id_t focus_scope = 0;
         };
@@ -478,13 +493,23 @@ namespace Luna
         {
             //! Whether the element is currently hovered.
             bool hovered = false;
-            //! Whether the element is active for the current primary pointer interaction.
+            //! Whether the element is active for the mouse or at least one independent touch contact.
             //! @remark Multiple pass-through event targets can be active at once. Use @ref IContext::captured_element
             //! to identify the one representative pointer capture owner.
             bool active = false;
+            //! Whether at least one independent touch contact is active on this element.
+            bool touch_active = false;
+            //! Whether a touch tap activated this element in the latest routing pass.
+            bool touch_clicked = false;
+            //! Whether two touch taps activated this element within the double-tap interval.
+            bool touch_double_clicked = false;
+            //! Latest routed touch position in screen logical coordinates; never changes pointer_screen_position.
+            Float2U touch_screen_position = Float2U(0.0f);
+            //! Latest routed touch position in element-local coordinates.
+            Float2U touch_element_position = Float2U(0.0f);
             //! Whether the element is currently focused.
             bool focused = false;
-            //! Whether the element was clicked during the latest input routing pass.
+            //! Whether the element was activated by a mouse click, touch tap or navigation during this routing pass.
             bool clicked = false;
             //! Whether the element was double-clicked during the latest input routing pass.
             bool double_clicked = false;

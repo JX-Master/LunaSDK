@@ -1779,7 +1779,7 @@ namespace Luna
             }
             RoutedInputEvent routed_event;
             routed_event.event = event;
-            if(pointer_event_has_position(event.type))
+            if(pointer_event_has_position(event.type) || is_touch_event(event.type))
             {
                 const Element& element = m_elements[element_iter->second];
                 if(element.layer < m_layers.size())
@@ -1787,9 +1787,17 @@ namespace Luna
                     routed_event.has_element_position = true;
                     routed_event.element_position = element_local_position(element, m_layers[element.layer], event.position);
                     InteractionState& state = get_or_create_interaction(id);
-                    state.pointer_screen_position = event.position;
-                    state.pointer_element_position = routed_event.element_position;
-                    state.pointer_element_rect = element.layout_result.rect;
+                    if(is_touch_event(event.type))
+                    {
+                        state.touch_screen_position = event.position;
+                        state.touch_element_position = routed_event.element_position;
+                    }
+                    else
+                    {
+                        state.pointer_screen_position = event.position;
+                        state.pointer_element_position = routed_event.element_position;
+                        state.pointer_element_rect = element.layout_result.rect;
+                    }
                 }
             }
             routed_iter->second.push_back(move(routed_event));
@@ -2120,6 +2128,9 @@ namespace Luna
                     iter->second.clicked_element_position = Float2U(0.0f);
                     iter->second.clicked_element_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
                     iter->second.active = false;
+                    iter->second.touch_active = false;
+                    iter->second.touch_clicked = false;
+                    iter->second.touch_double_clicked = false;
                     iter->second.focused = false;
                     iter->second.subtree_hovered = false;
                     iter->second.subtree_active = false;
@@ -2168,6 +2179,7 @@ namespace Luna
                 m_focused_element = 0;
             }
 
+            prepare_touch_input();
             Vector<ElementHandle> pointer_targets;
             auto collect_pointer_targets = [&](Vector<ElementHandle>& targets)
             {
@@ -2228,6 +2240,11 @@ namespace Luna
 
             for(const InputEvent& event : m_input_events)
             {
+                if(is_touch_event(event.type))
+                {
+                    route_touch_event(event);
+                    continue;
+                }
                 switch(event.type)
                 {
                 case InputEventType::pointer_enter:
@@ -2469,6 +2486,8 @@ namespace Luna
                 case InputEventType::focus:
                     break;
                 case InputEventType::blur:
+                    cancel_touch_contacts();
+                    m_touch_taps.clear();
                     m_pointer_inside = false;
                     m_hovered_elements.clear();
                     m_pointer_capture_element = 0;
@@ -2500,6 +2519,7 @@ namespace Luna
             {
                 get_or_create_interaction(active).active = true;
             }
+            update_touch_interactions();
             if(m_focused_element)
             {
                 get_or_create_interaction(m_focused_element).focused = true;

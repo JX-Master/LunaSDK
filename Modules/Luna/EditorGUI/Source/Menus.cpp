@@ -147,7 +147,7 @@ namespace Luna
         {
             GUI::InteractionState interaction = context->get_interaction_state(id);
             Ref<Internal::FrameState> frame = Internal::frame_state(context);
-            if(interaction.hovered && !frame->popup_stack.empty())
+            if(!frame->touch_navigation && interaction.hovered && !frame->popup_stack.empty())
             {
                 frame->popup_stack.back().hovered_menu_item = id;
             }
@@ -240,21 +240,21 @@ namespace Luna
                     menu_bar_state->active_popup = 0;
                 }
             }
-            else if(interaction.hovered && !frame->popup_stack.empty())
+            else if(!frame->touch_navigation && interaction.hovered && !frame->popup_stack.empty())
             {
                 frame->popup_stack.back().hovered_menu_item = id;
             }
-            if(!top_level && !interaction.hovered && !frame->popup_stack.empty() &&
+            if(!frame->touch_navigation && !top_level && !interaction.hovered && !frame->popup_stack.empty() &&
                 frame->popup_stack.back().hovered_menu_item &&
                 frame->popup_stack.back().hovered_menu_item != id)
             {
                 close_popup(context, popup_id);
             }
-            bool switch_top_level = top_level && interaction.hovered && menu_bar_state->active_popup &&
+            bool switch_top_level = !frame->touch_navigation && top_level && interaction.hovered && menu_bar_state->active_popup &&
                 menu_bar_state->active_popup != popup_id;
-            if(desc.enabled && (interaction.clicked || switch_top_level || (!top_level && interaction.hovered)))
+            if(desc.enabled && (interaction.clicked || switch_top_level || (!frame->touch_navigation && !top_level && interaction.hovered)))
             {
-                bool should_open = !is_popup_open(context, popup_id) || (!top_level && interaction.hovered);
+                bool should_open = !is_popup_open(context, popup_id) || (!frame->touch_navigation && !top_level && interaction.hovered);
                 if(switch_top_level)
                 {
                     close_popup(context, menu_bar_state->active_popup);
@@ -323,7 +323,7 @@ namespace Luna
         {
             GUI::InteractionState interaction = context->get_interaction_state(id);
             Ref<Internal::FrameState> frame = Internal::frame_state(context);
-            if(interaction.hovered && !frame->popup_stack.empty())
+            if(!frame->touch_navigation && interaction.hovered && !frame->popup_stack.empty())
             {
                 frame->popup_stack.back().hovered_menu_item = id;
             }

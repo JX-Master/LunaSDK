@@ -163,42 +163,40 @@ namespace Luna
                 }
                 TableState& state = *action.state;
                 bool changed = false;
+                Ref<InputOwner> input = input_owner(context, action.id);
                 for(usize i = 0; i < action.splitter_count; ++i)
                 {
                     id_t splitter_id = action.splitter_ids[i];
                     for(const GUI::RoutedInputEvent& routed : context->get_routed_input_events(splitter_id))
                     {
-                        if(routed.event.type == GUI::InputEventType::pointer_down &&
-                            routed.event.button == GUI::PointerButton::left)
+                        if(input_pressed(routed.event) && input->claim(routed.event))
                         {
                             state.resizing_column = (i32)i;
                             state.resize_start_pointer_x = routed.event.position.x;
                             state.resize_start_width = action.layout_desc->columns[i].value;
                         }
-                    }
-                }
-                if(state.resizing_column >= 0 && (usize)state.resizing_column < action.splitter_count)
-                {
-                    usize column_index = (usize)state.resizing_column;
-                    if(context->is_pointer_button_down(GUI::PointerButton::left))
-                    {
-                        const GUI::TableTrackDesc& column = action.layout_desc->columns[column_index];
-                        f32 width = state.resize_start_width + context->get_pointer_position().x -
-                            state.resize_start_pointer_x;
-                        width = clamp(width, column.min,
-                            column.max >= 0.0f ? max(column.max, column.min) : F32_MAX);
-                        if(width != action.mutable_columns[column_index].value)
+                        else if(input_moved(routed.event) && input->matches(routed.event) &&
+                            state.resizing_column == (i32)i)
                         {
-                            action.mutable_columns[column_index].value = width;
-                            state.column_widths[column_index] = width;
-                            changed = true;
+                            const GUI::TableTrackDesc& column = action.layout_desc->columns[i];
+                            f32 width = state.resize_start_width + routed.event.position.x - state.resize_start_pointer_x;
+                            width = clamp(width, column.min,
+                                column.max >= 0.0f ? max(column.max, column.min) : F32_MAX);
+                            if(width != action.mutable_columns[i].value)
+                            {
+                                action.mutable_columns[i].value = width;
+                                state.column_widths[i] = width;
+                                changed = true;
+                            }
+                        }
+                        if((input_released(routed.event) || input_canceled(routed.event)) && input->matches(routed.event))
+                        {
+                            state.resizing_column = -1;
+                            input->reset();
                         }
                     }
-                    else
-                    {
-                        state.resizing_column = -1;
-                    }
                 }
+                if(!input->alive(context)) { input->reset(); state.resizing_column = -1; }
                 return changed;
             }
         }
@@ -370,6 +368,7 @@ namespace Luna
                     interactable.pointer_hit_behavior = GUI::PointerHitBehavior::target;
                     set_flags(interactable.flags, GUI::InteractableFlag::hoverable);
                     set_flags(interactable.flags, GUI::InteractableFlag::activatable);
+                    interactable.touch_gestures = GUI::TouchGestureFlag::drag_x;
                     context->set_interactable(splitter, interactable);
                     Internal::TableSplitterDrawData* draw_data =
                         Internal::allocate_frame<Internal::TableSplitterDrawData>(context);

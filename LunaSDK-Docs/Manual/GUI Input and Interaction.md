@@ -19,7 +19,7 @@ Composite protocols such as drag-drop also belong to high-level packages. They c
 
 Keyboard keys use `Luna::KeyCode` from Runtime. GUI does not define another key enum.
 
-`device_id` and `pointer_id` are preserved in submitted and delivered events, but the current context maintains one shared pointer stream and one shared keyboard state. Simultaneous multi-pointer routing is not implemented: separate pointer IDs do not receive independent hover, button or capture state.
+`device_id` and `pointer_id` identify the shared mouse pointer stream. Independent touch events use `(device_id, touch_id)` and maintain contact-specific positions, movement, targets and captures. Touch routing never changes mouse position, hover, button, capture or click-history state. See [[Independent Touch Input]] for Window integration, touch cancellation and directional gesture ownership.
 
 ### Interactable
 `GUI::Interactable` is optional element data that enables input behavior. Most boolean capabilities are packed in `InteractableFlag`:
@@ -40,7 +40,7 @@ Keyboard keys use `Luna::KeyCode` from Runtime. GUI does not define another key 
 4. `block`: stop routing without receiving pointer events.
 
 ### Interaction state
-`GUI::InteractionState` is produced by `IContext::route_input`. It reports state for an element and its subtree, including hover, active, focus, click, double-click and pointer positions.
+`GUI::InteractionState` is produced by `IContext::route_input`. It reports state for an element and its subtree, including mouse hover, semantic active/focus/activation state and input positions. Touch-specific flags and coordinates are separate from mouse pointer coordinates. Semantic `active`, `clicked` and `double_clicked` include touch activation; mouse-only hover is unchanged.
 
 Multiple `pass_through` elements can be hovered or active at the same time. `active` means an element participates in the current primary pointer interaction; use `IContext::captured_element` to identify the single representative pointer-capture owner.
 

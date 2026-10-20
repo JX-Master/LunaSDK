@@ -56,6 +56,16 @@ namespace Luna
                             content->layout.margin.w);
                     }
                 }
+                // A viewport with no overflow must allow an enclosing viewport to claim the contact.
+                GUI::Interactable interactable = viewport->interactable;
+                interactable.touch_gestures = GUI::TouchGestureFlag::none;
+                f32 available_x = max(rect.width - viewport->layout.padding.x - viewport->layout.padding.z, 0.0f);
+                f32 available_y = max(rect.height - viewport->layout.padding.y - viewport->layout.padding.w, 0.0f);
+                if(action->desc.horizontal && content_size.x > available_x + 0.5f)
+                    set_flags(interactable.touch_gestures, GUI::TouchGestureFlag::drag_x);
+                if(action->desc.vertical && content_size.y > available_y + 0.5f)
+                    set_flags(interactable.touch_gestures, GUI::TouchGestureFlag::drag_y);
+                context->set_interactable(element, interactable);
                 f32 right_inset = action->desc.scrollbar_mode == ScrollBarMode::dynamic_overlay ? 2.0f : 0.0f;
                 f32 bottom_inset = right_inset;
                 const GUI::Element* scrollbar_group = context->find_element(action->scrollbar_group_id);
@@ -165,6 +175,7 @@ namespace Luna
                     max(content_size.y - viewport_size.y, 0.0f));
                 Float2U old_offset = state.offset;
                 bool activity = false;
+                Ref<InputOwner> pan = input_owner(context, action.id);
                 for(const GUI::RoutedInputEvent& routed : context->get_routed_input_events(action.id))
                 {
                     if(routed.event.type == GUI::InputEventType::pointer_wheel)
@@ -173,18 +184,27 @@ namespace Luna
                         if(action.desc.vertical) state.offset.y -= routed.event.wheel_delta.y * action.desc.wheel_scale;
                         activity = true;
                     }
+                    else if(routed.event.type == GUI::InputEventType::touch_move && routed.event.touch_dragging &&
+                        pan->claim(routed.event))
+                    {
+                        if(action.desc.horizontal) state.offset.x -= routed.event.touch_delta.x;
+                        if(action.desc.vertical) state.offset.y -= routed.event.touch_delta.y;
+                        activity = true;
+                    }
+                    if((input_released(routed.event) || input_canceled(routed.event)) && pan->matches(routed.event))
+                        pan->reset();
                 }
+                if(!pan->alive(context)) pan->reset();
                 auto resolve_bar = [&](id_t bar_id, bool vertical)
                 {
                     const GUI::Element* bar = context->find_element(bar_id);
                     if(!bar) return;
+                    Ref<InputOwner> input = input_owner(context, bar_id);
                     for(const GUI::RoutedInputEvent& routed : context->get_routed_input_events(bar_id))
                     {
                         if(!routed.has_element_position) continue;
-                        if((routed.event.type == GUI::InputEventType::pointer_down &&
-                            routed.event.button == GUI::PointerButton::left) ||
-                            (routed.event.type == GUI::InputEventType::pointer_move &&
-                            context->is_pointer_button_down(GUI::PointerButton::left)))
+                        if((input_pressed(routed.event) && input->claim(routed.event)) ||
+                            (input_moved(routed.event) && input->matches(routed.event)))
                         {
                             f32 length = vertical ? bar->layout_result.rect.height : bar->layout_result.rect.width;
                             f32 position = vertical ? routed.element_position.y : routed.element_position.x;
@@ -193,7 +213,10 @@ namespace Luna
                             else state.offset.x = maximum.x * fraction;
                             activity = true;
                         }
+                        if((input_released(routed.event) || input_canceled(routed.event)) && input->matches(routed.event))
+                            input->reset();
                     }
+                    if(!input->alive(context)) input->reset();
                 };
                 resolve_bar(action.horizontal_bar_id, false);
                 resolve_bar(action.vertical_bar_id, true);
@@ -242,6 +265,8 @@ namespace Luna
             GUI::Interactable interactable;
             interactable.pointer_hit_behavior = GUI::PointerHitBehavior::target;
             set_flags(interactable.flags, GUI::InteractableFlag::scrollable);
+            if(desc.horizontal) set_flags(interactable.touch_gestures, GUI::TouchGestureFlag::drag_x);
+            if(desc.vertical) set_flags(interactable.touch_gestures, GUI::TouchGestureFlag::drag_y);
             context->set_interactable(viewport, interactable);
             Ref<Internal::ScrollState> state = Internal::widget_state<Internal::ScrollState>(context, id);
             Internal::ScrollAction* action = Internal::allocate_frame<Internal::ScrollAction>(context);
@@ -302,6 +327,8 @@ namespace Luna
                 GUI::ElementHandle bar = Internal::begin_element(context, bar_id,
                     vertical ? "Vertical Scrollbar" : "Horizontal Scrollbar", layout);
                 Internal::set_interactable(context, bar, enabled);
+                Internal::set_touch_gestures(context, bar, vertical ?
+                    GUI::TouchGestureFlag::drag_y : GUI::TouchGestureFlag::drag_x);
                 Internal::ScrollbarData* data = Internal::allocate_frame<Internal::ScrollbarData>(context);
                 data->viewport_id = scope.viewport.id;
                 data->vertical = vertical;

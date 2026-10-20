@@ -67,6 +67,22 @@ namespace Luna
             u32 layout_generation = 0;
         };
 
+        struct TouchContact
+        {
+            TouchState state;
+            Vector<id_t> targets;
+            bool tap_canceled = false;
+            bool gesture_claimed = false;
+        };
+
+        struct TouchTapHistory
+        {
+            u64 device_id = 0;
+            id_t element = 0;
+            Float2U position = Float2U(0.0f);
+            f32 time = -1000.0f;
+        };
+
         struct [[Luna::struct("{FA7AB346-9939-47ED-8506-6B4D5F9C5F4C}")]] Context : IContext
         {
             luiimpl();
@@ -103,6 +119,8 @@ namespace Luna
             HashMap<id_t, Vector<InputEvent>, IdHash> m_input_deliveries;
             HashMap<id_t, Vector<RoutedInputEvent>, IdHash> m_routed_input_deliveries;
             Vector<id_t> m_hovered_elements;
+            Vector<TouchContact> m_touch_contacts;
+            Vector<TouchTapHistory> m_touch_taps;
             id_t m_pointer_capture_element = 0;
             Vector<id_t> m_active_elements;
             id_t m_focused_element = 0;
@@ -210,6 +228,9 @@ namespace Luna
             virtual void capture_pointer(id_t id) override;
             virtual void release_pointer_capture(id_t id = 0) override;
             virtual id_t captured_element() const override;
+            virtual bool get_touch_state(u64 device_id, u64 touch_id, TouchState& out_state) const override;
+            virtual void capture_touch(u64 device_id, u64 touch_id, id_t element_id) override;
+            virtual void release_touch_capture(u64 device_id, u64 touch_id) override;
             virtual object_t get_state(id_t id) override;
             virtual RV set_state(id_t id, object_t data, StateLifetime lifetime = StateLifetime::next_frame) override;
             virtual void clear_state(id_t id) override;
@@ -228,6 +249,10 @@ namespace Luna
             virtual Span<const StyleEntrySchema> get_style_entry_schemas() override;
             virtual PerformanceCounters get_performance_counters() override;
 
+            void prepare_touch_input();
+            void route_touch_event(const InputEvent& event);
+            void cancel_touch_contacts();
+            void update_touch_interactions();
             void gc_states();
             void refresh_counters();
             Element* mutable_element(const ElementHandle& element);

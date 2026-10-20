@@ -968,8 +968,9 @@ namespace Luna
             {
                 for(const GUI::InputEvent& event : context->get_delivered_input_events(id))
                 {
-                    if(event.type == type && (type != GUI::InputEventType::pointer_down &&
-                        type != GUI::InputEventType::pointer_up || event.button == GUI::PointerButton::left))
+                    if((type == GUI::InputEventType::pointer_down && input_pressed(event)) ||
+                        (type == GUI::InputEventType::pointer_up && input_released(event)) ||
+                        (type == GUI::InputEventType::pointer_move && input_moved(event)))
                     {
                         if(out_event) *out_event = event;
                         return true;
@@ -990,6 +991,7 @@ namespace Luna
             {
                 if(!context || !action.state) return false;
                 DockSpaceState& state = *action.state;
+                Ref<InputOwner> input = input_owner(context, action.id);
                 bool relayout = false;
 
                 for(usize i = 0; i < action.panel_count; ++i)
@@ -1007,8 +1009,8 @@ namespace Luna
                         if(panel.open) *panel.open = false;
                         continue;
                     }
-                    if(panel.title.id && has_pointer_event(context, panel.title.id,
-                        GUI::InputEventType::pointer_down, &event))
+                    if(state.drag_mode == DockDragMode::none && panel.title.id && has_pointer_event(context, panel.title.id,
+                        GUI::InputEventType::pointer_down, &event) && input->claim(event))
                     {
                         id_t drag_panel = panel.id;
                         DockPanelPersistentData* drag_persistent = persistent;
@@ -1028,7 +1030,7 @@ namespace Luna
                                     action, leaf, font_size, tab_bar_width);
                                 for(const GUI::RoutedInputEvent& routed : context->get_routed_input_events(panel.title.id))
                                 {
-                                    if(routed.event.type != GUI::InputEventType::pointer_down || !routed.has_element_position) continue;
+                                    if(!input_pressed(routed.event) || !input->matches(routed.event) || !routed.has_element_position) continue;
                                     f32 x = 0.0f;
                                     for(id_t tab : leaf.tabs)
                                     {
@@ -1062,8 +1064,8 @@ namespace Luna
                         state.drag_mode = drag_persistent->mode == DockPanelMode::floating ?
                             DockDragMode::floating_move : DockDragMode::docked_title;
                     }
-                    if(panel.resize.id && has_pointer_event(context, panel.resize.id,
-                        GUI::InputEventType::pointer_down, &event))
+                    if(state.drag_mode == DockDragMode::none && panel.resize.id && has_pointer_event(context, panel.resize.id,
+                        GUI::InputEventType::pointer_down, &event) && input->claim(event))
                     {
                         raise_panel(context, state, panel);
                         state.drag_panel = panel.id;
@@ -1074,13 +1076,13 @@ namespace Luna
                 }
 
                 GUI::InputEvent root_event;
-                if(has_pointer_event(context, action.id, GUI::InputEventType::pointer_down, &root_event))
+                if(state.drag_mode == DockDragMode::none && has_pointer_event(context, action.id, GUI::InputEventType::pointer_down, &root_event))
                 {
                     Float2U pointer = dock_space_pointer(action, context, root_event.position);
                     for(u32 i = 0; i < state.nodes.size(); ++i)
                     {
                         if(state.nodes[i].active && state.nodes[i].split &&
-                            point_in_rect(state.nodes[i].splitter_rect, pointer))
+                            point_in_rect(state.nodes[i].splitter_rect, pointer) && input->claim(root_event))
                         {
                             state.drag_mode = DockDragMode::splitter;
                             state.drag_splitter = i;
@@ -1095,7 +1097,7 @@ namespace Luna
                 GUI::InputEvent move_event;
                 for(const GUI::InputEvent& event : context->get_input_events())
                 {
-                    if(event.type == GUI::InputEventType::pointer_move)
+                    if(input_moved(event) && input->matches(event))
                     {
                         pointer_moved = true;
                         move_event = event;
@@ -1178,22 +1180,30 @@ namespace Luna
                 }
 
                 bool pointer_released = false;
+                bool canceled = false;
                 for(const GUI::InputEvent& event : context->get_input_events())
                 {
-                    if(event.type == GUI::InputEventType::pointer_up && event.button == GUI::PointerButton::left)
+                    if((input_released(event) || input_canceled(event)) && input->matches(event))
                     {
                         pointer_released = true;
+                        canceled = input_canceled(event);
                         break;
                     }
                 }
+                if(state.drag_mode != DockDragMode::none && !input->alive(context) && !pointer_released)
+                {
+                    pointer_released = true;
+                    canceled = true;
+                }
                 if(pointer_released && state.drag_mode != DockDragMode::none)
                 {
-                    if(state.drag_mode == DockDragMode::floating_move && state.drag_panel &&
+                    if(!canceled && state.drag_mode == DockDragMode::floating_move && state.drag_panel &&
                         state.drop_direction != DockDropDirection::none)
                     {
                         dock_panel(state, state.drag_panel, state.drop_target, state.drop_direction, 0.5f);
                         relayout = true;
                     }
+                    input->reset();
                     state.drag_mode = DockDragMode::none;
                     state.drag_panel = 0;
                     state.drag_splitter = U32_MAX;
@@ -1201,6 +1211,7 @@ namespace Luna
                     state.drop_target_available = false;
                     state.drop_direction = DockDropDirection::none;
                 }
+                if(state.drag_mode == DockDragMode::none && !input->alive(context)) input->reset();
                 if(state.drag_mode == DockDragMode::floating_move)
                 {
                     context->bring_layer_to_front(action.indicator_layer_id);
@@ -1221,6 +1232,7 @@ namespace Luna
             interactable.pointer_hit_behavior = GUI::PointerHitBehavior::target;
             set_flags(interactable.flags, GUI::InteractableFlag::hoverable);
             set_flags(interactable.flags, GUI::InteractableFlag::activatable);
+            interactable.touch_gestures = GUI::TouchGestureFlag::drag_x | GUI::TouchGestureFlag::drag_y;
             context->set_interactable(root, interactable);
             Ref<Internal::DockSpaceState> state = Internal::dock_space_state(context, id);
             Ref<Internal::FrameState> frame = Internal::frame_state(context);
@@ -1428,6 +1440,7 @@ namespace Luna
                 info.title = Internal::begin_element(context, Internal::derived_id(id, "dock.panel.title"),
                     "Dock Panel Title", title_layout);
                 Internal::set_interactable(context, info.title, true);
+                Internal::set_touch_gestures(context, info.title, GUI::TouchGestureFlag::drag_x | GUI::TouchGestureFlag::drag_y);
                 context->end_element();
             }
 
@@ -1486,6 +1499,7 @@ namespace Luna
                 panel.resize = Internal::begin_element(context, Internal::derived_id(panel.id, "dock.panel.resize"),
                     "Dock Panel Resize", resize_layout);
                 Internal::set_interactable(context, panel.resize, true);
+                Internal::set_touch_gestures(context, panel.resize, GUI::TouchGestureFlag::drag_x | GUI::TouchGestureFlag::drag_y);
                 context->end_element();
             }
             if(panel.floating)

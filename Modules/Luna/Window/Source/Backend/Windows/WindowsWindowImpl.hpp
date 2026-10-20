@@ -9,15 +9,24 @@
 */
 #pragma once
 #include "../../../Windows/Win32Window.hpp"
+#include <Luna/Runtime/Vector.hpp>
 #include "WindowsWindowImpl.generated.hpp"
 namespace Luna
 {
     namespace Window
     {
+        struct NativeTouchContact
+        {
+            u32 id = 0;
+            u64 device_id = 0;
+            Float2U position = Float2U(0.0f);
+        };
+
         struct [[luna::struct("{541DB2B8-3EB7-465B-BCCA-522AFFC157CA}")]] Window : IWin32Window
         {
             luiimpl();
 
+            Vector<NativeTouchContact> m_touch_contacts;
             HWND m_hwnd;
             WindowStyleFlag m_style;
             bool m_text_input_active = false;
