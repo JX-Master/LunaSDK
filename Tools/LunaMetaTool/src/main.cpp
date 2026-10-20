@@ -5,8 +5,10 @@
 #include <clang/Lex/Lexer.h>
 #include <clang/Tooling/Tooling.h>
 #include <llvm/Support/Casting.h>
+#include <llvm/Support/JSON.h>
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -24,6 +26,10 @@ namespace
 {
 struct Options
 {
+    std::string stage = "generate";
+    std::string intermediate;
+    std::vector<std::string> inputs;
+    std::vector<std::string> placeholder_headers;
     std::vector<std::string> headers;
     std::vector<std::string> header_languages;
     std::vector<std::string> include_roots;
@@ -85,6 +91,111 @@ struct ParsedAttribute
     std::string guid;
 };
 
+// Intermediate files preserve all information needed by the existing generators.
+// Only Merge publishes generated headers and target registration files.
+struct HeaderMetadata
+{
+    int version = 1;
+    std::string target;
+    std::string header;
+    std::string language;
+    std::vector<ReflectedDecl> declarations;
+};
+
+llvm::json::Value toJSON(const ReflectedDecl::Property& property)
+{
+    return llvm::json::Object{
+        {"name", property.name}, {"type", property.type}, {"offset", property.offset},
+        {"type_dependencies", property.type_dependencies}};
+}
+
+bool fromJSON(const llvm::json::Value& value, ReflectedDecl::Property& property, llvm::json::Path path)
+{
+    llvm::json::ObjectMapper mapper(value, path);
+    return mapper && mapper.map("name", property.name) && mapper.map("type", property.type) &&
+        mapper.map("offset", property.offset) && mapper.map("type_dependencies", property.type_dependencies);
+}
+
+llvm::json::Value toJSON(const ReflectedDecl::Option& option)
+{
+    return llvm::json::Object{{"name", option.name}, {"value", option.value}};
+}
+
+bool fromJSON(const llvm::json::Value& value, ReflectedDecl::Option& option, llvm::json::Path path)
+{
+    llvm::json::ObjectMapper mapper(value, path);
+    return mapper && mapper.map("name", option.name) && mapper.map("value", option.value);
+}
+
+llvm::json::Value toJSON(const ReflectedDecl& declaration)
+{
+    return llvm::json::Object{
+        {"kind", static_cast<int>(declaration.kind)},
+        {"declaration_keyword", declaration.declaration_keyword},
+        {"name", declaration.name}, {"qualified_name", declaration.qualified_name},
+        {"reflection_name", declaration.reflection_name}, {"guid", declaration.guid},
+        {"declaration_attributes", declaration.declaration_attributes},
+        {"enum_underlying_type", declaration.enum_underlying_type},
+        {"enum_scoped", declaration.enum_scoped},
+        {"has_direct_interface_base", declaration.has_direct_interface_base},
+        {"abstract", declaration.abstract}, {"namespaces", declaration.namespaces},
+        {"base_qualified_names", declaration.base_qualified_names},
+        {"interface_qualified_names", declaration.interface_qualified_names},
+        {"properties", declaration.properties}, {"options", declaration.options}};
+}
+
+bool fromJSON(const llvm::json::Value& value, ReflectedDecl& declaration, llvm::json::Path path)
+{
+    llvm::json::ObjectMapper mapper(value, path);
+    int kind = 0;
+    if (!(mapper && mapper.map("kind", kind) &&
+        mapper.map("declaration_keyword", declaration.declaration_keyword) &&
+        mapper.map("name", declaration.name) && mapper.map("qualified_name", declaration.qualified_name) &&
+        mapper.map("reflection_name", declaration.reflection_name) && mapper.map("guid", declaration.guid) &&
+        mapper.map("declaration_attributes", declaration.declaration_attributes) &&
+        mapper.map("enum_underlying_type", declaration.enum_underlying_type) &&
+        mapper.map("enum_scoped", declaration.enum_scoped) &&
+        mapper.map("has_direct_interface_base", declaration.has_direct_interface_base) &&
+        mapper.map("abstract", declaration.abstract) && mapper.map("namespaces", declaration.namespaces) &&
+        mapper.map("base_qualified_names", declaration.base_qualified_names) &&
+        mapper.map("interface_qualified_names", declaration.interface_qualified_names) &&
+        mapper.map("properties", declaration.properties) && mapper.map("options", declaration.options)))
+    {
+        return false;
+    }
+    if (kind < static_cast<int>(ReflectedDeclKind::record) || kind > static_cast<int>(ReflectedDeclKind::enumeration))
+    {
+        path.field("kind").report("unsupported reflected declaration kind");
+        return false;
+    }
+    declaration.kind = static_cast<ReflectedDeclKind>(kind);
+    return true;
+}
+
+llvm::json::Value toJSON(const HeaderMetadata& metadata)
+{
+    return llvm::json::Object{
+        {"version", metadata.version}, {"target", metadata.target}, {"header", metadata.header},
+        {"language", metadata.language}, {"declarations", metadata.declarations}};
+}
+
+bool fromJSON(const llvm::json::Value& value, HeaderMetadata& metadata, llvm::json::Path path)
+{
+    llvm::json::ObjectMapper mapper(value, path);
+    return mapper && mapper.map("version", metadata.version) && mapper.map("target", metadata.target) &&
+        mapper.map("header", metadata.header) && mapper.map("language", metadata.language) &&
+        mapper.map("declarations", metadata.declarations);
+}
+
+std::string NormalizedPath(const std::filesystem::path& path)
+{
+    auto result = std::filesystem::absolute(path).lexically_normal().generic_string();
+#ifdef _WIN32
+    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+#endif
+    return result;
+}
+
 Options ParseOptions(int argc, char** argv)
 {
     Options options;
@@ -99,7 +210,23 @@ Options ParseOptions(int argc, char** argv)
             return argv[++i];
         };
 
-        if (arg == "--header")
+        if (arg == "--stage")
+        {
+            options.stage = next();
+        }
+        else if (arg == "--intermediate")
+        {
+            options.intermediate = next();
+        }
+        else if (arg == "--input")
+        {
+            options.inputs.push_back(next());
+        }
+        else if (arg == "--placeholder-header")
+        {
+            options.placeholder_headers.push_back(next());
+        }
+        else if (arg == "--header")
         {
             options.headers.push_back(next());
         }
@@ -1531,7 +1658,8 @@ bool ParseHeader(
     const std::filesystem::path& header,
     const std::string& language,
     std::vector<ReflectedDecl>& target_declarations,
-    unsigned& reflected_decl_count)
+    unsigned& reflected_decl_count,
+    std::vector<std::string>* dependencies = nullptr)
 {
     std::string source_text;
     if (!ReadTextFile(header, source_text))
@@ -1547,6 +1675,13 @@ bool ParseHeader(
 
     auto wrapper_source = "#include \"" + EscapeCppString(std::filesystem::absolute(header).string()) + "\"\n";
     auto wrapper_file_name = header.stem().string() + ".luna_meta.cpp";
+    clang::tooling::FileContentMappings placeholders;
+    std::set<std::string> placeholder_paths;
+    for (const auto& path : options.placeholder_headers)
+    {
+        placeholders.emplace_back(std::filesystem::absolute(path).lexically_normal().string(), "#pragma once\n");
+        placeholder_paths.insert(NormalizedPath(path));
+    }
     auto ast_unit = clang::tooling::buildASTFromCodeWithArgs(
         wrapper_source,
         BuildClangArgs(options, header, language),
@@ -1554,13 +1689,29 @@ bool ParseHeader(
         "LunaMetaTool",
         std::make_shared<clang::PCHContainerOperations>(),
         clang::tooling::getClangStripDependencyFileAdjuster(),
-        clang::tooling::FileContentMappings(),
+        placeholders,
         nullptr);
 
     if (!ast_unit)
     {
         std::cerr << "error: failed to parse meta header: " << header.string() << "\n";
         return false;
+    }
+
+    if (dependencies)
+    {
+        std::set<std::string> included_files{NormalizedPath(header)};
+        const auto& source_manager = ast_unit->getSourceManager();
+        for (auto iter = source_manager.fileinfo_begin(); iter != source_manager.fileinfo_end(); ++iter)
+        {
+            auto path = NormalizedPath(iter->first.getName().str());
+            std::error_code error;
+            if (!placeholder_paths.contains(path) && std::filesystem::is_regular_file(path, error))
+            {
+                included_files.insert(path);
+            }
+        }
+        dependencies->assign(included_files.begin(), included_files.end());
     }
 
     std::vector<ReflectedDecl> reflected_decls;
@@ -1570,7 +1721,7 @@ bool ParseHeader(
         return false;
     }
     reflected_decl_count += static_cast<unsigned>(reflected_decls.size());
-    if (!WriteGeneratedHeader(GeneratedHeaderPath(options, header), reflected_decls))
+    if (options.stage != "parse" && !WriteGeneratedHeader(GeneratedHeaderPath(options, header), reflected_decls))
     {
         return false;
     }
@@ -1597,7 +1748,7 @@ std::string EscapeDepfilePath(std::string value)
     return result;
 }
 
-bool WriteDepfile(const Options& options)
+bool WriteDepfile(const Options& options, const std::string& output, const std::vector<std::string>& dependencies)
 {
     std::ofstream stream(options.depfile, std::ios::trunc);
     if (!stream)
@@ -1605,13 +1756,119 @@ bool WriteDepfile(const Options& options)
         std::cerr << "error: cannot write depfile: " << options.depfile << "\n";
         return false;
     }
-    stream << EscapeDepfilePath(options.stamp) << ":";
-    for (const auto& header : options.headers)
+    stream << EscapeDepfilePath(output) << ":";
+    for (const auto& header : dependencies)
     {
         stream << " " << EscapeDepfilePath(header);
     }
     stream << "\n";
     return true;
+}
+
+bool WriteStamp(const Options& options, unsigned reflected_decl_count);
+
+bool ParseMetadata(const Options& options)
+{
+    if (options.headers.size() != 1 || options.intermediate.empty() || options.depfile.empty() || options.target.empty())
+    {
+        std::cerr << "error: parse requires exactly one --header, --intermediate, --depfile, and --target\n";
+        return false;
+    }
+    HeaderMetadata metadata;
+    metadata.target = options.target;
+    metadata.header = NormalizedPath(options.headers[0]);
+    metadata.language = options.header_languages.empty() ? "c++20" : options.header_languages[0];
+    unsigned declaration_count = 0;
+    std::vector<std::string> dependencies;
+    if (!ParseHeader(options, options.headers[0], metadata.language, metadata.declarations, declaration_count, &dependencies))
+    {
+        return false;
+    }
+    std::filesystem::create_directories(std::filesystem::path(options.intermediate).parent_path());
+    std::string data;
+    llvm::raw_string_ostream stream(data);
+    stream << toJSON(metadata);
+    stream.flush();
+    std::ofstream output(options.intermediate, std::ios::trunc);
+    output << data << "\n";
+    output.close();
+    if (!output)
+    {
+        std::cerr << "error: cannot write metadata intermediate: " << options.intermediate << "\n";
+        return false;
+    }
+    return WriteDepfile(options, options.intermediate, dependencies);
+}
+
+bool MergeMetadata(const Options& options)
+{
+    if (options.inputs.size() != options.headers.size())
+    {
+        std::cerr << "error: merge requires one --input per --header\n";
+        return false;
+    }
+    std::vector<HeaderMetadata> metadata;
+    std::vector<ReflectedDecl> declarations;
+    std::set<std::string> generated_names;
+    for (size_t i = 0; i < options.inputs.size(); ++i)
+    {
+        std::string data;
+        if (!ReadTextFile(options.inputs[i], data))
+        {
+            return false;
+        }
+        auto value = llvm::json::parse(data);
+        if (!value)
+        {
+            std::cerr << "error: invalid metadata intermediate " << options.inputs[i] << ": " << llvm::toString(value.takeError()) << "\n";
+            return false;
+        }
+        HeaderMetadata item;
+        llvm::json::Path::Root path(options.inputs[i]);
+        if (!fromJSON(*value, item, path))
+        {
+            std::cerr << "error: invalid metadata intermediate " << options.inputs[i] << ": " << llvm::toString(path.getError()) << "\n";
+            return false;
+        }
+        const auto language = options.header_languages.empty() ? "c++20" : options.header_languages[i];
+        if (item.version != 1 || item.target != options.target || item.header != NormalizedPath(options.headers[i]) || item.language != language)
+        {
+            std::cerr << "error: metadata intermediate version or identity mismatch: " << options.inputs[i] << "\n";
+            return false;
+        }
+        if (!generated_names.insert(NormalizedPath(GeneratedHeaderPath(options, options.headers[i]))).second)
+        {
+            std::cerr << "error: duplicate generated header: " << GeneratedHeaderName(options.headers[i]) << "\n";
+            return false;
+        }
+        declarations.insert(declarations.end(), item.declarations.begin(), item.declarations.end());
+        metadata.push_back(std::move(item));
+    }
+    std::set<std::string> names;
+    for (const auto& declaration : declarations)
+    {
+        if (!names.insert(declaration.qualified_name).second)
+        {
+            std::cerr << "error: duplicate reflected declaration in target " << options.target << ": " << declaration.qualified_name << "\n";
+            return false;
+        }
+    }
+    std::vector<const ReflectedDecl*> ordered_records;
+    std::string error;
+    if (!BuildRegistrationRecordOrder(declarations, AutoRegisterRecordNames(declarations), ordered_records, error))
+    {
+        std::cerr << "error: " << error << "\n";
+        return false;
+    }
+    for (size_t i = 0; i < metadata.size(); ++i)
+    {
+        if (!WriteGeneratedHeader(GeneratedHeaderPath(options, options.headers[i]), metadata[i].declarations))
+        {
+            return false;
+        }
+    }
+    return WriteTargetRegistrationFiles(options, declarations) &&
+        WriteDepfile(options, options.stamp, options.inputs) && WriteStamp(options, static_cast<unsigned>(declarations.size()));
 }
 
 bool WriteStamp(const Options& options, unsigned reflected_decl_count)
@@ -1636,7 +1893,12 @@ int main(int argc, char** argv)
         std::cerr << "error: missing --header\n";
         return 2;
     }
-    if (options.output_dir.empty() || options.stamp.empty() || options.depfile.empty() || options.target.empty())
+    if (options.stage != "generate" && options.stage != "parse" && options.stage != "merge")
+    {
+        std::cerr << "error: unsupported --stage: " << options.stage << "\n";
+        return 2;
+    }
+    if (options.output_dir.empty() || (options.stage != "parse" && options.stamp.empty()) || options.depfile.empty() || options.target.empty())
     {
         std::cerr << "error: missing --output-dir, --stamp, --depfile, or --target\n";
         return 2;
@@ -1653,6 +1915,15 @@ int main(int argc, char** argv)
             std::cerr << "error: unsupported meta header language: " << language << "\n";
             return 2;
         }
+    }
+
+    if (options.stage == "parse")
+    {
+        return ParseMetadata(options) ? 0 : 1;
+    }
+    if (options.stage == "merge")
+    {
+        return MergeMetadata(options) ? 0 : 1;
     }
 
     if (!PrecreateGeneratedHeaders(options))
@@ -1678,7 +1949,7 @@ int main(int argc, char** argv)
     }
 
     if (!WriteTargetRegistrationFiles(options, target_declarations) ||
-        !WriteDepfile(options) ||
+        !WriteDepfile(options, options.stamp, options.headers) ||
         !WriteStamp(options, reflected_decl_count))
     {
         return 1;

@@ -114,4 +114,31 @@ When running long builds locally, prefer the repository timeout wrapper:
 
 The C# MakeSystem backend currently owns graph validation, incremental cache
 state, ready-queue scheduling, Windows/MSVC `cpp.compile` and `cpp.link.*`
-executors, `cppsl.shader`, and `file.copy`.
+executors, header-level `luna.meta.parse` and target-level `luna.meta.merge`,
+`cppsl.shader`, and `file.copy`. Metadata parses share the scheduler's global
+task budget; Merge publishes generated headers and registration code after all
+of a target's parses succeed.
+
+Dependency analysis uses an in-memory file-state snapshot shared by all nodes in
+one build invocation. It resolves each path once and reads each distinct file's
+existence and timestamp once, including missing files. A new snapshot is created
+for every build; action output validation and cache updates read the live
+filesystem. File states are not persisted in the incremental cache. A missing
+cached implicit dependency invalidates its action so stale outputs cannot be
+reported as up to date.
+
+Run the graph and scheduler regressions with:
+
+```powershell
+dotnet run --project Tools/LunaBuild/tests/LunaBuild.Core.Tests/LunaBuild.Core.Tests.csproj
+```
+
+After building `LunaMetaTool`, its native Parse/Merge protocol tests exercise
+parallel parsing with missing physical generated headers, include dependencies,
+deterministic merging, and rejected intermediates:
+
+```powershell
+dotnet run --project LunaBuild.csproj -- build --target LunaMetaTool
+python Tools/LunaMetaTool/tests/test_pipeline.py --tool build/LunaBuild/Windows/x64/Debug/bin/LunaMetaTool.exe
+dotnet run --project LunaBuild.csproj -- run --target LunaMetaToolSmoke
+```

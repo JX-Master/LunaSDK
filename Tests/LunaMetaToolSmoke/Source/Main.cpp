@@ -1,4 +1,5 @@
 #include "MetaSmoke.hpp"
+#include "MetaSmokeEmpty.hpp"
 #include "LunaMetaToolSmoke.meta.generated.hpp"
 #include <Luna/Runtime/Reflection.hpp>
 #include <Luna/Runtime/Ref.hpp>

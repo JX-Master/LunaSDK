@@ -46,51 +46,7 @@ public sealed class MakeSystemBackend
         var indexById = buildInfos.Select((info, index) => (info.Node.Id, index))
             .ToDictionary(pair => pair.Id, pair => pair.index, StringComparer.Ordinal);
 
-        var sideOutputIds = new HashSet<string>(
-            orderedNodes.SelectMany(node => node.Outputs.Concat(node.Depfiles)),
-            StringComparer.Ordinal);
-
-        for(var i = 0; i < buildInfos.Length; ++i)
-        {
-            var node = buildInfos[i].Node;
-            var currentTimestamp = GetNodeTimestamp(workspace, cache, node);
-            var maxDependencyTimestamp = 0L;
-            var dependencyNeedsBuild = false;
-
-            foreach(var dependencyId in node.Dependencies)
-            {
-                var dependency = validated.NodesById[dependencyId];
-                maxDependencyTimestamp = Math.Max(maxDependencyTimestamp, GetNodeTimestamp(workspace, cache, dependency));
-                if(indexById.TryGetValue(dependencyId, out var dependencyIndex) && buildInfos[dependencyIndex].NeedsBuild)
-                {
-                    dependencyNeedsBuild = true;
-                }
-            }
-            if(cache.TryGet(node.Id, out var cachedRecord) && cachedRecord.ImplicitDependencies is not null)
-            {
-                foreach(var dependencyPath in cachedRecord.ImplicitDependencies)
-                {
-                    var fullPath = workspace.ResolveRepositoryPath(dependencyPath);
-                    maxDependencyTimestamp = Math.Max(maxDependencyTimestamp, File.Exists(fullPath) ? File.GetLastWriteTimeUtc(fullPath).Ticks : 0);
-                }
-            }
-
-            var missingFile = node.Kind == BuildGraphNodeKind.File && NodeOutputs(workspace, validated, node).Any(path => !File.Exists(path));
-            var commandChanged = !cache.TryGet(node.Id, out var record) || record.ActionPayload != (node.Command ?? string.Empty);
-
-            if(!string.IsNullOrWhiteSpace(node.Command))
-            {
-                buildInfos[i].NeedsBuild = options.ForceRebuild || missingFile || commandChanged || maxDependencyTimestamp > currentTimestamp || dependencyNeedsBuild;
-            }
-            else if(node.Kind == BuildGraphNodeKind.File && missingFile && !sideOutputIds.Contains(node.Id))
-            {
-                throw new MakeSystemException($"Input file node is missing and has no action: {node.Path}");
-            }
-            else if(node.Kind == BuildGraphNodeKind.Phony)
-            {
-                buildInfos[i].NeedsBuild = dependencyNeedsBuild;
-            }
-        }
+        AnalyzeBuildNodes(workspace, validated, cache, buildInfos, indexById, options.ForceRebuild);
 
         var commandsToRun = buildInfos
             .Where(info => info.NeedsBuild && !string.IsNullOrWhiteSpace(info.Node.Command))
@@ -200,6 +156,64 @@ public sealed class MakeSystemBackend
 
         cache.Save();
         return new MakeSystemResult(orderedNodes.Count, executedActions, UpToDate: false);
+    }
+
+    private static void AnalyzeBuildNodes(
+        BuildWorkspace workspace,
+        ValidatedGraph validated,
+        MakeSystemCache cache,
+        BuildInfo[] buildInfos,
+        IReadOnlyDictionary<string, int> indexById,
+        bool forceRebuild)
+    {
+        var files = new FileStateSnapshot(workspace);
+        var sideOutputIds = new HashSet<string>(
+            buildInfos.SelectMany(info => info.Node.Outputs.Concat(info.Node.Depfiles)),
+            StringComparer.Ordinal);
+
+        for(var i = 0; i < buildInfos.Length; ++i)
+        {
+            var node = buildInfos[i].Node;
+            var currentTimestamp = GetNodeTimestamp(files, cache, node);
+            var maxDependencyTimestamp = 0L;
+            var dependencyNeedsBuild = false;
+            var missingImplicitDependency = false;
+
+            foreach(var dependencyId in node.Dependencies)
+            {
+                var dependency = validated.NodesById[dependencyId];
+                maxDependencyTimestamp = Math.Max(maxDependencyTimestamp, GetNodeTimestamp(files, cache, dependency));
+                if(indexById.TryGetValue(dependencyId, out var dependencyIndex) && buildInfos[dependencyIndex].NeedsBuild)
+                {
+                    dependencyNeedsBuild = true;
+                }
+            }
+            if(cache.TryGet(node.Id, out var cachedRecord) && cachedRecord.ImplicitDependencies is not null)
+            {
+                foreach(var dependencyPath in cachedRecord.ImplicitDependencies)
+                {
+                    var state = files.Get(dependencyPath);
+                    missingImplicitDependency |= !state.Exists;
+                    maxDependencyTimestamp = Math.Max(maxDependencyTimestamp, state.Timestamp);
+                }
+            }
+
+            var missingFile = node.Kind == BuildGraphNodeKind.File && NodeOutputPaths(validated, node).Any(path => !files.Get(path).Exists);
+            var commandChanged = !cache.TryGet(node.Id, out var record) || record.ActionPayload != (node.Command ?? string.Empty);
+
+            if(!string.IsNullOrWhiteSpace(node.Command))
+            {
+                buildInfos[i].NeedsBuild = forceRebuild || missingFile || missingImplicitDependency || commandChanged || maxDependencyTimestamp > currentTimestamp || dependencyNeedsBuild;
+            }
+            else if(node.Kind == BuildGraphNodeKind.File && missingFile && !sideOutputIds.Contains(node.Id))
+            {
+                throw new MakeSystemException($"Input file node is missing and has no action: {node.Path}");
+            }
+            else if(node.Kind == BuildGraphNodeKind.Phony)
+            {
+                buildInfos[i].NeedsBuild = dependencyNeedsBuild;
+            }
+        }
     }
 
     public MakeSystemCleanResult Clean(
@@ -576,7 +590,7 @@ public sealed class MakeSystemBackend
         ordered.Add(node);
     }
 
-    private static long GetNodeTimestamp(BuildWorkspace workspace, MakeSystemCache cache, BuildGraphNode node)
+    private static long GetNodeTimestamp(FileStateSnapshot files, MakeSystemCache cache, BuildGraphNode node)
     {
         if(node.Kind == BuildGraphNodeKind.File)
         {
@@ -584,8 +598,7 @@ public sealed class MakeSystemBackend
             {
                 return 0;
             }
-            var path = workspace.ResolveRepositoryPath(node.Path);
-            return File.Exists(path) ? File.GetLastWriteTimeUtc(path).Ticks : 0;
+            return files.Get(node.Path).Timestamp;
         }
 
         return cache.TryGet(node.Id, out var record) ? record.Timestamp : 0;
@@ -593,16 +606,22 @@ public sealed class MakeSystemBackend
 
     private static IReadOnlyList<string> NodeOutputs(BuildWorkspace workspace, ValidatedGraph graph, BuildGraphNode node)
     {
-        var outputs = new List<string>();
+        return NodeOutputPaths(graph, node).Select(workspace.ResolveRepositoryPath).ToArray();
+    }
+
+    private static IEnumerable<string> NodeOutputPaths(ValidatedGraph graph, BuildGraphNode node)
+    {
         if(node.Kind == BuildGraphNodeKind.File && node.Path is not null)
         {
-            outputs.Add(workspace.ResolveRepositoryPath(node.Path));
+            yield return node.Path;
         }
-        outputs.AddRange(node.Outputs.Concat(node.Depfiles)
+        foreach(var path in node.Outputs.Concat(node.Depfiles)
             .Select(id => graph.NodesById[id])
             .Where(output => output.Kind == BuildGraphNodeKind.File && output.Path is not null)
-            .Select(output => workspace.ResolveRepositoryPath(output.Path!)));
-        return outputs;
+            .Select(output => output.Path!))
+        {
+            yield return path;
+        }
     }
 
     private static void UpdateCache(BuildWorkspace workspace, ValidatedGraph graph, MakeSystemCache cache, BuildGraphNode node)
