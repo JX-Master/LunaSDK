@@ -93,7 +93,8 @@ namespace Luna
             case VK_MULTIPLY:    return KeyCode::numpad_multiply;
             case VK_DIVIDE:        return KeyCode::numpad_divide;
             //case VK_CLEAR:        return KeyCode::clear;
-            default: lupanic(); return KeyCode::unknown;
+            // Native messages can contain reserved keys or keys that KeyCode does not represent.
+            default: return KeyCode::unknown;
             }
         }
 
@@ -364,9 +365,11 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         {
             return 0;
         }
+        KeyCode translated_key = translate_virtual_key(key);
+        if(translated_key == KeyCode::unknown) return 0;
         auto event = new_object<WindowKeyDownEvent>();
         event->window = pw;
-        event->key = translate_virtual_key(key);
+        event->key = translated_key;
         dispatch_event_to_handler(event.object());
         return 0;
     }
@@ -377,9 +380,11 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         {
             return 0;
         }
+        KeyCode translated_key = translate_virtual_key(key);
+        if(translated_key == KeyCode::unknown) return 0;
         auto event = new_object<WindowKeyUpEvent>();
         event->window = pw;
-        event->key = translate_virtual_key(key);
+        event->key = translated_key;
         dispatch_event_to_handler(event.object());
         return 0;
     }
