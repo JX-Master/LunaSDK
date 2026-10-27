@@ -1,30 +1,37 @@
 namespace LunaBuild.Core.MakeSystem;
 
-public sealed class LunaMetaActionExecutor : KnownActionExecutor
+public sealed class LunaMetaActionExecutor : IMakeActionExecutor
 {
     private readonly TimeSpan _actionTimeout;
 
     public LunaMetaActionExecutor(TimeSpan? actionTimeout = null)
-        : base("luna.meta")
     {
         _actionTimeout = actionTimeout ?? TimeSpan.FromMinutes(5);
     }
 
-    public override string GetDescription(MakeActionContext context)
+    public bool CanExecute(string actionKind) => actionKind is "luna.meta" or "luna.meta.parse" or "luna.meta.merge";
+
+    public string GetDescription(MakeActionContext context)
     {
         var payload = ActionPayload.Parse(context.ActionPayload);
-        return $"generating metadata for {payload.Required("target")}";
+        return context.ActionKind switch
+        {
+            "luna.meta.parse" => $"parsing metadata for {payload.Required("target")}: {Path.GetFileName(payload.Required("header"))}",
+            "luna.meta.merge" => $"merging metadata for {payload.Required("target")}",
+            _ => $"generating metadata for {payload.Required("target")}",
+        };
     }
 
-    public override async Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
         var payload = ActionPayload.Parse(context.ActionPayload);
         var outputDirectory = context.Workspace.ResolveRepositoryPath(payload.Required("output_dir"));
-        var stamp = context.Workspace.ResolveRepositoryPath(payload.Required("stamp"));
+        var isParse = context.ActionKind == "luna.meta.parse";
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required(isParse ? "intermediate" : "stamp"));
         var depfile = context.Workspace.ResolveRepositoryPath(payload.Required("depfile"));
 
         Directory.CreateDirectory(outputDirectory);
-        Directory.CreateDirectory(Path.GetDirectoryName(stamp)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
         Directory.CreateDirectory(Path.GetDirectoryName(depfile)!);
 
         var tool = context.Workspace.ResolveRepositoryPath(payload.Required("tool"));
@@ -34,10 +41,12 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
         }
         var args = new List<string>
         {
+            "--stage",
+            isParse ? "parse" : context.ActionKind == "luna.meta.merge" ? "merge" : "generate",
             "--output-dir",
             outputDirectory,
-            "--stamp",
-            stamp,
+            isParse ? "--intermediate" : "--stamp",
+            output,
             "--depfile",
             depfile,
             "--target",
@@ -60,7 +69,17 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
             args.Add("--header-language");
             args.Add(language);
         }
-        if((context.Options.Platform is BuildPlatform.MacOS or BuildPlatform.IOS) && OperatingSystem.IsMacOS())
+        foreach(var path in payload.All("placeholder_header"))
+        {
+            args.Add("--placeholder-header");
+            args.Add(context.Workspace.ResolveRepositoryPath(path));
+        }
+        foreach(var path in payload.All("input"))
+        {
+            args.Add("--input");
+            args.Add(context.Workspace.ResolveRepositoryPath(path));
+        }
+        if(context.ActionKind != "luna.meta.merge" && (context.Options.Platform is BuildPlatform.MacOS or BuildPlatform.IOS) && OperatingSystem.IsMacOS())
         {
             var appleToolchain = AppleClangToolchainLocator.Locate(CppCommandLineBuilder.AppleSdkName(context.Options));
             args.Add("--isysroot");
@@ -69,6 +88,11 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
             args.Add(payload.Contains("resource_dir")
                 ? context.Workspace.ResolveRepositoryPath(payload.Required("resource_dir"))
                 : await LocateClangResourceDirectoryAsync(context.Workspace, appleToolchain.Clang, cancellationToken));
+        }
+        else if(payload.Contains("resource_dir"))
+        {
+            args.Add("--resource-dir");
+            args.Add(context.Workspace.ResolveRepositoryPath(payload.Required("resource_dir")));
         }
         foreach(var include in payload.All("include"))
         {

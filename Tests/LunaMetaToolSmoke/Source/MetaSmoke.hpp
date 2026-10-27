@@ -1,6 +1,7 @@
 #pragma once
 #include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Runtime.hpp>
+#include "MetaSmokeBase.hpp"
 #include "MetaSmoke.generated.hpp"
 
 namespace Luna::MetaToolSmoke
@@ -37,11 +38,6 @@ namespace Luna::MetaToolSmoke
     struct [[luna::struct("{BF234AF8-5C4C-42F6-9231-752103CE1203}")]] MetaSmokeStructWithPlainBase : MetaSmokePlainBase
     {
         [[Luna::property]] i32 value = 0;
-    };
-
-    struct [[luna::struct("{53746E16-A04F-4203-BDE9-B22EDEB2C3D4}")]] MetaSmokeReflectedBase
-    {
-        [[Luna::property]] i32 reflected_base_value = 0;
     };
 
     struct [[luna::struct("{80A50329-D966-46E4-830C-651DA1DDA97F}")]] MetaSmokeDerivedStruct : MetaSmokeReflectedBase

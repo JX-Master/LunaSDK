@@ -1,6 +1,6 @@
 LunaMetaTool is LunaSDK's C++ metadata preprocessing tool. It lets LunaSDK collect runtime reflection metadata from C++ declarations instead of maintaining type names, GUIDs, properties, enum options, interface implementations, and module registration code by hand.
 
-LunaMetaTool is integrated into LunaBuild. A target declares the headers that need preprocessing, LunaBuild runs a `luna.meta` action before normal C++ compilation, and the generated headers and registration source are compiled with the target.
+LunaMetaTool is integrated into LunaBuild. A target declares the headers that need preprocessing. LunaBuild schedules one Meta Parse action per header and one Meta Merge action for the target; the merged headers and registration source are compiled with the target.
 
 ## When to use LunaMetaTool
 
@@ -202,16 +202,18 @@ Two meta headers in the same target must not produce the same generated header n
 
 When a target has meta headers, LunaBuild:
 
-1. Adds a `luna.meta` action to the build graph.
-2. Runs LunaMetaTool before compiling any C++ source in that target.
-3. Generates files under `build/LunaBuild/<Platform>/<Arch>/<Mode>/generated/<Target>/meta`.
+1. Adds one `luna.meta.parse` action per header and one `luna.meta.merge` action to the build graph. The `luna.meta` action configuration still selects the tool.
+2. Runs Header-level Parse tasks through LunaBuild's global scheduler, alongside C++ and shader tasks. Every Parse writes its own versioned JSON intermediate and include dependency file in the generated meta directory's `.parse` subdirectory.
+3. Runs Merge after all Parse tasks succeed. Merge generates files under `build/LunaBuild/<Platform>/<Arch>/<Mode>/generated/<Target>/meta` in stable header order and writes the target stamp after generation completes.
 4. Adds that directory to the target include paths.
 5. Exposes that directory as a public include path to dependent targets.
-6. Compiles the generated `<Target>.meta.generated.cpp` source with the target.
+6. Compiles the generated `<Target>.meta.generated.cpp` source with the target (or `.mm` when Objective-C++ meta headers are present). All target C++ compilation and downstream metadata tasks wait for the completed Merge.
+
+Parse uses empty virtual generated headers inside Clang for every reflected header in its own target. It does not write or truncate shared generated headers, so clean builds and incremental builds use the same parsing environment. Upstream generated headers remain available normally. Included source files and upstream generated files are tracked in each Parse dependency file; the current target's virtual placeholders are excluded. Merge reuses unchanged Parse intermediates when their input dependencies remain current.
 
 The generated include directory is also emitted into generated IDE and compile command outputs. Do not add the generated directory manually in target rules.
 
-On platforms that define a `LunaMetaTool` target, LunaBuild adds an implicit build-graph dependency from every `luna.meta` action to that tool target. Building a target that uses `MetaHeaders(...)` therefore builds `LunaMetaTool` first when needed:
+On platforms that define a `LunaMetaTool` target, LunaBuild adds an implicit build-graph dependency from Meta Parse and Meta Merge actions to that tool target. Building a target that uses `MetaHeaders(...)` therefore builds `LunaMetaTool` first when needed:
 
 ```sh
 dotnet run --project LunaBuild.csproj -- build --target MyModule

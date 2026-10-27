@@ -35,6 +35,11 @@ internal static class Program
             ("MSVC UTF-8 compilation is enabled by default and configurable", MsvcUtf8CompilationOption),
             ("MSVC environment capture normalizes duplicate path keys", MsvcEnvironmentCapture),
             ("apple deployment settings affect layout and commands", AppleDeploymentSettings),
+            ("metadata headers parse independently before a single merge", HeaderMetadataGraph),
+            ("file snapshots reuse normalized paths and cache missing files", FileSnapshotAliases),
+            ("file snapshots refresh between build invocations", FileSnapshotBuildLifetime),
+            ("execution observes files created after dependency analysis", FileSnapshotGeneratedOutputs),
+            ("deleted implicit dependencies invalidate cached actions", DeletedImplicitDependency),
         };
 
         foreach(var test in tests)
@@ -54,6 +59,211 @@ internal static class Program
 
         Console.WriteLine($"Passed {_passed} LunaBuild Core tests.");
         return 0;
+    }
+
+    private static void FileSnapshotAliases()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("FileSnapshotAliases");
+        Write(root, "input/Header.hpp", "// input\n");
+        var workspace = new BuildWorkspace(root);
+        var path = workspace.ResolveRepositoryPath("input/Header.hpp");
+        var originalTime = DateTime.UtcNow.AddMinutes(-5);
+        File.SetLastWriteTimeUtc(path, originalTime);
+        var snapshot = new FileStateSnapshot(workspace);
+        var first = snapshot.Get("input/Header.hpp");
+        True(first.Exists, "existing snapshot input");
+        Equal(first, snapshot.Get(path), "absolute and relative aliases share state");
+        Equal(first, snapshot.Get("input/../input/Header.hpp"), "normalized relative alias");
+        if(OperatingSystem.IsWindows())
+        {
+            Equal(first, snapshot.Get(path.ToUpperInvariant()), "Windows case aliases share state");
+        }
+        Equal(1, snapshot.FilesReadCount, "aliases cause one metadata read");
+        File.SetLastWriteTimeUtc(path, originalTime.AddMinutes(1));
+        Equal(first, snapshot.Get(path), "a snapshot remains stable within its analysis pass");
+        True(new FileStateSnapshot(workspace).Get(path).Timestamp > first.Timestamp, "a new pass observes edits");
+
+        var missingPath = workspace.ResolveRepositoryPath("input/Missing.hpp");
+        True(!snapshot.Get(missingPath).Exists, "missing files have an explicit state");
+        File.WriteAllText(missingPath, "// generated later\n");
+        True(!snapshot.Get(missingPath).Exists, "missing state is also cached for this pass");
+        True(new FileStateSnapshot(workspace).Get(missingPath).Exists, "a new pass observes created files");
+        File.Delete(path);
+        True(snapshot.Get(path).Exists, "previous snapshot is immutable after deletion");
+        True(!new FileStateSnapshot(workspace).Get(path).Exists, "a new pass observes deletion");
+        Equal(2, snapshot.FilesReadCount, "two unique paths were read");
+    }
+
+    private static void FileSnapshotBuildLifetime()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("FileSnapshotBuildLifetime");
+        var workspace = new BuildWorkspace(root);
+        Write(root, "Header.hpp", "// shared input\n");
+        var input = new BuildGraphNode(BuildGraphIds.File("Header.hpp"), BuildGraphNodeKind.File, "Header.hpp", null,
+            Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>());
+        var first = TestFileActionNode("out/first.txt", "first", 0) with { Dependencies = new[] { input.Id } };
+        var second = TestFileActionNode("out/second.txt", "second", 0) with { Dependencies = new[] { input.Id } };
+        var graph = new BuildGraph(2, BuildOptions.HostDefault(), new[] { input, first, second }, new[] { first.Id, second.Id });
+        var backend = new MakeSystemBackend(new[] { new TestFileActionExecutor() });
+        File.SetLastWriteTimeUtc(workspace.ResolveRepositoryPath(input.Path!), DateTime.UtcNow.AddMinutes(-5));
+        Equal(2, backend.BuildAsync(workspace, graph).GetAwaiter().GetResult().ActionsExecuted, "initial shared-input actions");
+        True(backend.BuildAsync(workspace, graph).GetAwaiter().GetResult().UpToDate, "new outputs are recorded from live state");
+        foreach(var node in new[] { first, second })
+        {
+            File.SetLastWriteTimeUtc(workspace.ResolveRepositoryPath(node.Path!), DateTime.UtcNow.AddMinutes(-2));
+        }
+        File.SetLastWriteTimeUtc(workspace.ResolveRepositoryPath(input.Path!), DateTime.UtcNow.AddMinutes(-1));
+        Equal(2, backend.BuildAsync(workspace, graph).GetAwaiter().GetResult().ActionsExecuted, "both consumers observe the changed input");
+        True(backend.BuildAsync(workspace, graph).GetAwaiter().GetResult().UpToDate, "rebuild output timestamps are current");
+        File.Delete(workspace.ResolveRepositoryPath(second.Path!));
+        Equal(1, backend.BuildAsync(workspace, graph).GetAwaiter().GetResult().ActionsExecuted, "deleted output is detected on a later invocation");
+        True(backend.BuildAsync(workspace, graph).GetAwaiter().GetResult().UpToDate, "recreated output is current");
+    }
+
+    private static void FileSnapshotGeneratedOutputs()
+    {
+        using var scope = new TestScope();
+        var workspace = new BuildWorkspace(scope.Project("FileSnapshotGeneratedOutputs"));
+        const string headerPath = "out/Generated.hpp";
+        var header = new BuildGraphNode(BuildGraphIds.File(headerPath), BuildGraphNodeKind.File, headerPath, null,
+            Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>());
+        var producer = TestFileActionNode("out/producer.stamp", "producer", 0) with { Outputs = new[] { header.Id } };
+        var consumer = TestFileActionNode("out/consumer.txt", "consumer", 0) with { Dependencies = new[] { producer.Id, header.Id } };
+        var graph = new BuildGraph(2, BuildOptions.HostDefault(), new[] { header, producer, consumer }, new[] { consumer.Id });
+        var executor = new TestFileActionExecutor(
+            onStarted: description =>
+            {
+                if(description == "consumer")
+                {
+                    True(File.Exists(workspace.ResolveRepositoryPath(headerPath)), "consumer sees a header created after preflight");
+                }
+            },
+            onFinished: description =>
+            {
+                if(description == "producer")
+                {
+                    File.WriteAllText(workspace.ResolveRepositoryPath(headerPath), "// generated header\n");
+                }
+            });
+        var backend = new MakeSystemBackend(new[] { executor });
+        Equal(2, backend.BuildAsync(workspace, graph).GetAwaiter().GetResult().ActionsExecuted, "missing generated inputs are produced normally");
+        True(backend.BuildAsync(workspace, graph).GetAwaiter().GetResult().UpToDate, "live side-output timestamps are persisted");
+    }
+
+    private static void DeletedImplicitDependency()
+    {
+        using var scope = new TestScope();
+        var root = scope.Project("DeletedImplicitDependency");
+        var workspace = new BuildWorkspace(root);
+        Write(root, "Hidden.hpp", "// compiler-discovered dependency\n");
+        var node = TestFileActionNode("out/result.txt", "implicit", 0);
+        Write(root, node.Path!, "cached output");
+        File.SetLastWriteTimeUtc(workspace.ResolveRepositoryPath("Hidden.hpp"), DateTime.UtcNow.AddMinutes(-2));
+        using(var cache = MakeSystemCache.Load(workspace))
+        {
+            cache.Set(node.Id, new MakeSystemCacheRecord(node.Command!, DateTime.UtcNow.Ticks,
+                new[] { node.Path! }, Array.Empty<string>(), new[] { "Hidden.hpp" }));
+            cache.Save();
+        }
+        var graph = new BuildGraph(2, BuildOptions.HostDefault(), new[] { node }, new[] { node.Id });
+        var backend = new MakeSystemBackend(new[] { new TestFileActionExecutor(onStarted: _ =>
+        {
+            if(!File.Exists(workspace.ResolveRepositoryPath("Hidden.hpp")))
+            {
+                throw new InvalidOperationException("Missing implicit header reached the action.");
+            }
+        }) });
+        True(backend.BuildAsync(workspace, graph).GetAwaiter().GetResult().UpToDate, "unchanged implicit dependency is current");
+        File.Delete(workspace.ResolveRepositoryPath("Hidden.hpp"));
+        Throws<MakeSystemException>(() => backend.BuildAsync(workspace, graph).GetAwaiter().GetResult(),
+            "Missing implicit header reached the action", "a deleted implicit dependency cannot be silently up to date");
+    }
+
+    private static void HeaderMetadataGraph()
+    {
+        using var scope = new TestScope();
+        var host = scope.Project("Meta");
+        Write(host, "Meta.Project.cs", """
+            using LunaBuild.Core;
+            public sealed class MetaProjectRules : ProjectRules
+            {
+                public MetaProjectRules() : base("Meta") {}
+                protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+                {
+                    ActionConfiguration("luna.meta", targets: new Dictionary<string, string> { ["tool"] = "MetaTool" });
+                }
+            }
+            """);
+        Write(host, "MetaTool.Target.cs", """
+            using LunaBuild.Core;
+            public sealed class ToolRules : TargetRules
+            {
+                public ToolRules() : base("MetaTool", ".", "MetaTool.Target.cs")
+                {
+                    Kind = BuildTargetKind.Executable;
+                    Sources("Tool.cpp");
+                }
+            }
+            """);
+        Write(host, "Dependency.Target.cs", """
+            using LunaBuild.Core;
+            public sealed class DependencyRules : TargetRules
+            {
+                public DependencyRules() : base("Dependency", ".", "Dependency.Target.cs")
+                {
+                    Sources("Dependency.cpp");
+                    MetaHeaders("Dependency.hpp");
+                }
+            }
+            """);
+        Write(host, "Sample.Target.cs", """
+            using LunaBuild.Core;
+            public sealed class SampleRules : TargetRules
+            {
+                public SampleRules() : base("Sample", ".", "Sample.Target.cs")
+                {
+                    DependsOn("Dependency");
+                    Sources("Sample.cpp");
+                    MetaHeaders("A.hpp", "B.mm.hpp", "Empty.hpp");
+                }
+            }
+            """);
+        foreach(var file in new[] { "Tool.cpp", "Dependency.cpp", "Sample.cpp", "Dependency.hpp", "A.hpp", "B.mm.hpp", "Empty.hpp" })
+        {
+            Write(host, file, "// graph fixture\n");
+        }
+        Write(host, "B.mm.hpp", "@interface NativeObject\n@end\n");
+        var session = CreateSession(host);
+        var graph = new CppTargetGraphGenerator().Generate(session.HostWorkspace, session.HostProject.PrimaryOptions, session.Targets, "Sample");
+        var parses = graph.Nodes.Where(node => node.Command?.StartsWith("kind=luna.meta.parse\n", StringComparison.Ordinal) == true &&
+            node.Command.Contains("target=Meta.Sample\n", StringComparison.Ordinal)).ToArray();
+        var merge = graph.Nodes.Single(node => node.Command?.StartsWith("kind=luna.meta.merge\n", StringComparison.Ordinal) == true &&
+            node.Command.Contains("target=Meta.Sample\n", StringComparison.Ordinal));
+        var upstreamMerge = graph.Nodes.Single(node => node.Command?.StartsWith("kind=luna.meta.merge\n", StringComparison.Ordinal) == true &&
+            node.Command.Contains("target=Meta.Dependency\n", StringComparison.Ordinal));
+        Equal(3, parses.Length, "one parse per reflected header");
+        Equal(3, parses.Select(node => node.Path).Distinct(StringComparer.OrdinalIgnoreCase).Count(), "isolated parse outputs");
+        foreach(var parse in parses)
+        {
+            Equal(1, parse.Command!.Split('\n').Count(line => line.StartsWith("header=", StringComparison.Ordinal)), "one header per parse invocation");
+            Equal(3, parse.Command.Split('\n').Count(line => line.StartsWith("placeholder_header=", StringComparison.Ordinal)), "all local generated headers are virtual placeholders");
+            Equal(0, parse.Outputs.Count, "parse must not publish shared generated headers");
+            Equal(1, parse.Depfiles.Count, "per-header include dependencies");
+            True(parse.Dependencies.Contains(upstreamMerge.Id), "upstream metadata is ready before parsing");
+            True(!parse.Dependencies.Contains(merge.Id), "merge must not block its own parses");
+            True(!parses.Any(other => parse.Dependencies.Contains(other.Id)), "sibling parses must be independent");
+            True(merge.Dependencies.Contains(parse.Id), "merge waits for every parse");
+        }
+        Equal(3, merge.Command!.Split('\n').Count(line => line.StartsWith("input=", StringComparison.Ordinal)), "all intermediates are passed to merge");
+        Equal(5, merge.Outputs.Count, "merge owns three headers and two registration files");
+        True(merge.Outputs.Any(id => id.EndsWith("Sample.meta.generated.mm", StringComparison.Ordinal)), "Objective-C++ registration language is preserved");
+        var compiles = graph.Nodes.Where(node => node.Command?.StartsWith("kind=cpp.compile\n", StringComparison.Ordinal) == true &&
+            node.Command.Contains("target=Meta.Sample\n", StringComparison.Ordinal)).ToArray();
+        True(compiles.Length > 0 && compiles.All(node => node.Dependencies.Contains(merge.Id)), "C++ compilation waits for merged metadata");
+        var generatedFileNodes = merge.Outputs.Select(id => graph.Nodes.Single(node => node.Id == id));
+        True(generatedFileNodes.All(node => node.Command is null), "shared outputs have a single merge owner");
     }
 
     private static void ImportIsolation()

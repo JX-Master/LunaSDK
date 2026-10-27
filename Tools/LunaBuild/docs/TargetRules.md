@@ -442,10 +442,24 @@ Headers("Source/*.hpp");
 MetaHeaders("Source/MyType.hpp");
 ```
 
-Targets with meta headers automatically get a build-graph dependency from their
-`luna.meta` action to the `LunaMetaTool` target when that tool target is
-available for the current platform. This builds the tool before metadata
-generation without making it a normal module dependency.
+Targets with meta headers automatically build `LunaMetaTool` before metadata
+processing, without making it a normal module dependency. The `luna.meta`
+action configuration continues to select the tool and its resources.
+
+LunaBuild schedules one `luna.meta.parse` action per header, using the same
+global parallelism limit as C++ and shader compilation. Each action writes a
+separate versioned JSON intermediate and an include dependency file under the
+target's generated meta directory in `.parse`. A `luna.meta.merge` action waits
+for all those intermediates and generates the public metadata headers, target
+registration source, and target stamp in stable header order. C++ compilation
+and downstream metadata parsing wait for the completed Merge action.
+
+Parse actions map the current target's generated headers to empty virtual files
+inside Clang. They do not truncate or publish shared generated headers. This
+works on a clean build and prevents old or concurrently generated metadata from
+changing a header's parse result. Actual included source and upstream generated
+files are recorded for incremental invalidation; virtual placeholders are
+excluded. Removing an intermediate or its dependency file rebuilds that parse.
 
 Each meta header must include its generated header by basename after all normal
 includes:
@@ -467,8 +481,10 @@ build/LunaBuild/<Platform>/<Arch>/<Mode>/generated/<Target>/meta
 ```
 
 The generated meta include directory is added to the target and propagated as a
-public include directory to dependent targets. In the first phase these headers
-are intentionally empty except for `#pragma once`.
+public include directory to dependent targets. Merge is the sole producer of
+the final `*.generated.hpp` files and `<Target>.meta.generated.cpp` (or `.mm`
+when any meta header requires Objective-C++). The target rules and reflected
+C++ declarations require no additional Parse/Merge configuration.
 
 ## Runtime Files
 

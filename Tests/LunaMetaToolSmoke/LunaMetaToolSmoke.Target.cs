@@ -11,7 +11,7 @@ public sealed class LunaMetaToolSmokeTargetRules : TargetRules
         Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Headers("Source/*.hpp");
-        MetaHeaders("Source/MetaSmoke.hpp");
+        MetaHeaders("Source/MetaSmoke.hpp", "Source/MetaSmokeBase.hpp", "Source/MetaSmokeEmpty.hpp");
         Sources("Source/*.cpp");
         DependsOn("Runtime");
     }

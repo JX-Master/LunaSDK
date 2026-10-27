@@ -843,7 +843,6 @@ public sealed class CppTargetGraphGenerator
                 generatedByName.Add(generatedName, header);
             }
 
-            var sourceHeaderIds = new List<string>();
             foreach(var header in target.MetaHeaderFiles)
             {
                 var sourceId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(header));
@@ -856,7 +855,6 @@ public sealed class CppTargetGraphGenerator
                     OrderOnlyDependencies: Array.Empty<string>(),
                     Outputs: Array.Empty<string>(),
                     Depfiles: Array.Empty<string>()));
-                sourceHeaderIds.Add(sourceId);
             }
 
             var generatedHeaderIds = target.MetaHeaderFiles
@@ -921,6 +919,35 @@ public sealed class CppTargetGraphGenerator
                 .ToArray();
             var toolDependencyIds = metaToolOutputs is null ? Array.Empty<string>() : new[] { metaToolOutputs.BinaryId };
             var toolOrderOnlyDependencyIds = metaToolOutputs is null ? Array.Empty<string>() : new[] { metaToolOutputs.TargetId };
+            var parseIds = new List<string>();
+            var intermediatePaths = new List<string>();
+            foreach(var header in target.MetaHeaderFiles.Order(StringComparer.OrdinalIgnoreCase))
+            {
+                var headerHash = StableHash(_workspace.ToRepositoryRelativePath(header))[..10];
+                var intermediatePath = Path.Combine(generatedDirectory, ".parse", $"{Path.GetFileNameWithoutExtension(header)}-{headerHash}.json");
+                var intermediateId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(intermediatePath));
+                var parseDepfilePath = Path.ChangeExtension(intermediatePath, ".d");
+                var parseDepfileId = AddFileReferenceNode(parseDepfilePath);
+                AddNode(new BuildGraphNode(
+                    Id: intermediateId,
+                    Kind: BuildGraphNodeKind.File,
+                    Path: _workspace.ToRepositoryRelativePath(intermediatePath),
+                    Command: BuildMetaCommandDescription(
+                        _workspace, _options, target, dependencyOutputs, generatedDirectory,
+                        stampPath, parseDepfilePath, metaToolOutputs?.BinaryId,
+                        "luna.meta.parse", header, intermediatePath),
+                    Dependencies: new[] { BuildGraphIds.File(_workspace.ToRepositoryRelativePath(header)) }
+                        .Concat(dependencyMetaIds)
+                        .Concat(toolDependencyIds)
+                        .Concat(actionConfigurationInputIds)
+                        .Distinct(StringComparer.Ordinal)
+                        .ToArray(),
+                    OrderOnlyDependencies: toolOrderOnlyDependencyIds,
+                    Outputs: Array.Empty<string>(),
+                    Depfiles: new[] { parseDepfileId }));
+                parseIds.Add(intermediateId);
+                intermediatePaths.Add(intermediatePath);
+            }
             AddNode(new BuildGraphNode(
                 Id: stampId,
                 Kind: BuildGraphNodeKind.File,
@@ -933,11 +960,10 @@ public sealed class CppTargetGraphGenerator
                     generatedDirectory,
                     stampPath,
                     depfilePath,
-                    metaToolOutputs?.BinaryId),
-                Dependencies: sourceHeaderIds
-                    .Concat(dependencyMetaIds)
+                    metaToolOutputs?.BinaryId,
+                    "luna.meta.merge", inputPaths: intermediatePaths),
+                Dependencies: parseIds
                     .Concat(toolDependencyIds)
-                    .Concat(actionConfigurationInputIds)
                     .Distinct(StringComparer.Ordinal)
                     .ToArray(),
                 OrderOnlyDependencies: toolOrderOnlyDependencyIds,
@@ -1394,11 +1420,15 @@ public sealed class CppTargetGraphGenerator
         string generatedDirectory,
         string stampPath,
         string depfilePath,
-        string? toolId)
+        string? toolId,
+        string actionKind,
+        string? parseHeader = null,
+        string? intermediatePath = null,
+        IReadOnlyList<string>? inputPaths = null)
     {
         var lines = new List<string>
         {
-            "kind=luna.meta",
+            $"kind={actionKind}",
             $"target={target.QualifiedName}",
             $"target_name={target.Name}",
             $"output_dir={workspace.ToRepositoryRelativePath(generatedDirectory)}",
@@ -1415,6 +1445,16 @@ public sealed class CppTargetGraphGenerator
         {
             lines.Add($"tool={FileIdToRepositoryRelativePath(toolId)}");
         }
+        if(intermediatePath is not null)
+        {
+            lines.Add($"intermediate={workspace.ToRepositoryRelativePath(intermediatePath)}");
+            lines.AddRange(target.MetaHeaderFiles.Order(StringComparer.OrdinalIgnoreCase)
+                .Select(path => $"placeholder_header={workspace.ToRepositoryRelativePath(GetMetaGeneratedHeaderPath(workspace, options, target, path))}"));
+        }
+        if(inputPaths is not null)
+        {
+            lines.AddRange(inputPaths.Select(path => $"input={workspace.ToRepositoryRelativePath(path)}"));
+        }
         var actionConfiguration = options.FindActionConfiguration("luna.meta");
         if(actionConfiguration is not null && actionConfiguration.Directories.TryGetValue("clang_resource", out var resourceDirectory))
         {
@@ -1427,7 +1467,7 @@ public sealed class CppTargetGraphGenerator
         lines.AddRange(options.GlobalDefines.Select(define => $"define={define}"));
         lines.AddRange(options.GlobalUndefines.Select(undefine => $"undefine={undefine}"));
         lines.AddRange(options.GlobalIncludeDirectories.Select(path => $"include={workspace.ToRepositoryRelativePath(path)}"));
-        var metaHeaders = target.MetaHeaderFiles
+        var metaHeaders = (parseHeader is null ? target.MetaHeaderFiles : new[] { parseHeader })
             .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         lines.AddRange(metaHeaders.Select(path => $"header={workspace.ToRepositoryRelativePath(path)}"));
